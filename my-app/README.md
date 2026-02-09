@@ -22,7 +22,7 @@ Required keys for core flow:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `REPLICATE_API_TOKEN`
-- `REPLICATE_MODEL_VERSION`
+- `REPLICATE_MODEL` (recommended, e.g. `black-forest-labs/flux-schnell`) **or** `REPLICATE_MODEL_VERSION`
 
 Optional:
 - `GOOGLE_API_KEY` (Prompt LLM; fallback heuristic works without it)
@@ -74,7 +74,7 @@ Set these in Cloudflare Workers/Pages project settings (or Wrangler secrets):
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `REPLICATE_API_TOKEN`
-- `REPLICATE_MODEL_VERSION`
+- `REPLICATE_MODEL` or `REPLICATE_MODEL_VERSION`
 - `GOOGLE_API_KEY` (optional)
 - `PROMPT_LLM_MODEL` (optional)
 - `POLAR_ACCESS_TOKEN` / `POLAR_WEBHOOK_SECRET` (if payment routes used)

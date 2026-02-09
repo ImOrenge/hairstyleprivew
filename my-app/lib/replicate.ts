@@ -28,6 +28,73 @@ function requiredEnv(name: string): string {
   return value;
 }
 
+function sanitizeEnvValue(value?: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.includes("YOUR_")) {
+    return null;
+  }
+
+  return trimmed;
+}
+
+function resolveModelTarget():
+  | { kind: "version"; version: string }
+  | { kind: "model"; model: string } {
+  const explicitVersion = sanitizeEnvValue(process.env.REPLICATE_MODEL_VERSION);
+  if (explicitVersion) {
+    return { kind: "version", version: explicitVersion };
+  }
+
+  const model = sanitizeEnvValue(process.env.REPLICATE_MODEL);
+  if (!model) {
+    throw new Error("Missing REPLICATE_MODEL or REPLICATE_MODEL_VERSION");
+  }
+
+  // Support both "owner/model" and "owner/model:versionHash".
+  const parts = model.split(":");
+  if (parts.length === 2 && parts[1]) {
+    return { kind: "version", version: parts[1] };
+  }
+
+  return { kind: "model", model };
+}
+
+async function resolveVersionFromModel(apiToken: string, model: string): Promise<string> {
+  const [owner, ...nameParts] = model.split("/");
+  const name = nameParts.join("/");
+
+  if (!owner || !name) {
+    throw new Error("REPLICATE_MODEL must be in 'owner/model' format");
+  }
+
+  const response = await fetch(`https://api.replicate.com/v1/models/${owner}/${name}`, {
+    headers: {
+      Authorization: `Token ${apiToken}`,
+    },
+  });
+
+  const json = (await response.json().catch(() => ({}))) as {
+    latest_version?: { id?: string };
+    detail?: string;
+    error?: string;
+  };
+
+  if (!response.ok) {
+    throw new Error(json.detail || json.error || "Failed to resolve model version");
+  }
+
+  const version = json.latest_version?.id;
+  if (!version) {
+    throw new Error(`Could not find latest_version for model: ${model}`);
+  }
+
+  return version;
+}
+
 function toInternalStatus(status: string): ReplicateGenerationResult["status"] {
   if (status === "succeeded") {
     return "completed";
@@ -56,7 +123,11 @@ function extractOutputUrl(output: unknown): string | undefined {
 }
 
 export function isReplicateConfigured() {
-  return Boolean(process.env.REPLICATE_API_TOKEN && process.env.REPLICATE_MODEL_VERSION);
+  return Boolean(
+    sanitizeEnvValue(process.env.REPLICATE_API_TOKEN) &&
+      (sanitizeEnvValue(process.env.REPLICATE_MODEL_VERSION) ||
+        sanitizeEnvValue(process.env.REPLICATE_MODEL)),
+  );
 }
 
 export async function runReplicatePrediction(
@@ -67,7 +138,11 @@ export async function runReplicatePrediction(
   }
 
   const apiToken = requiredEnv("REPLICATE_API_TOKEN");
-  const modelVersion = requiredEnv("REPLICATE_MODEL_VERSION");
+  const modelTarget = resolveModelTarget();
+  const modelVersion =
+    modelTarget.kind === "version"
+      ? modelTarget.version
+      : await resolveVersionFromModel(apiToken, modelTarget.model);
 
   const promptKey = process.env.REPLICATE_INPUT_PROMPT_KEY || "prompt";
   const negativePromptKey = process.env.REPLICATE_INPUT_NEGATIVE_PROMPT_KEY || "negative_prompt";
