@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+﻿# HairFit AI (Next.js + Cloudflare Workers)
 
-## Getting Started
+HairFit AI is a Next.js App Router project for hairstyle preview generation using Prompt API + Replicate.
 
-First, run the development server:
+## Local development
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create `.env.local` from `.env.local.example` and fill real values.
 
-## Learn More
+Required keys for core flow:
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `REPLICATE_API_TOKEN`
+- `REPLICATE_MODEL_VERSION`
 
-To learn more about Next.js, take a look at the following resources:
+Optional:
+- `GOOGLE_API_KEY` (Prompt LLM; fallback heuristic works without it)
+- `PROMPT_LLM_MODEL`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Replicate smoke test
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run replicate:smoke
+```
 
-## Deploy on Vercel
+## Cloudflare deployment prep
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+This project is configured with OpenNext for Cloudflare Workers.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Added files:
+- `wrangler.jsonc`
+- `open-next.config.ts`
+- `middleware.ts`
+
+Note:
+- OpenNext currently does not support **Node.js proxy middleware**.
+- For Cloudflare compatibility, this repo uses `middleware.ts` (Edge middleware) instead of `proxy.ts`.
+
+### 1) Build for Cloudflare
+
+```bash
+npm run cf:build
+```
+
+### 2) Preview locally on Workers runtime
+
+```bash
+npm run cf:preview
+```
+
+### 3) Deploy to Cloudflare
+
+```bash
+npm run cf:deploy
+```
+
+## Cloudflare environment variables
+
+Set these in Cloudflare Workers/Pages project settings (or Wrangler secrets):
+- `CLERK_SECRET_KEY`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `REPLICATE_API_TOKEN`
+- `REPLICATE_MODEL_VERSION`
+- `GOOGLE_API_KEY` (optional)
+- `PROMPT_LLM_MODEL` (optional)
+- `POLAR_ACCESS_TOKEN` / `POLAR_WEBHOOK_SECRET` (if payment routes used)
+- `INTERNAL_API_SECRET`
+
+For local Wrangler preview, copy `.dev.vars.example` to `.dev.vars` and fill values.

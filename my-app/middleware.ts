@@ -1,5 +1,6 @@
-﻿import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
+// OpenNext on Cloudflare currently supports Edge Middleware.
 export default clerkMiddleware();
 
 export const config = {

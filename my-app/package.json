@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "replicate:smoke": "node scripts/replicate-smoke.mjs"
+    "replicate:smoke": "node scripts/replicate-smoke.mjs",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf:typegen": "wrangler types"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.3",
@@ -25,6 +29,8 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@ast-grep/napi-win32-x64-msvc": "^0.40.5",
+    "@opennextjs/cloudflare": "^1.16.3",
     "@tailwindcss/oxide-win32-x64-msvc": "^4.1.18",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -33,6 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.63.0"
   }
 }

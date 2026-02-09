@@ -16,6 +16,7 @@
 # next.js
 /.next/
 /out/
+/.open-next/
 
 # production
 /build
@@ -45,3 +46,7 @@ next-env.d.ts
 
 # supabase local temp
 supabase/.temp/
+
+# cloudflare
+/.wrangler/
+.dev.vars
