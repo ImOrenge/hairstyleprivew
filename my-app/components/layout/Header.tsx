@@ -28,14 +28,16 @@ export function Header() {
         </Link>
 
         <nav className="flex items-center gap-4 text-sm text-gray-700">
-          {navItems.map((item) => (
-            <Link key={item.href} href={item.href} className="hover:text-black">
-              {item.label}
-            </Link>
-          ))}
-
           {hasClerkKey ? (
             <>
+              <SignedIn>
+                {navItems.map((item) => (
+                  <Link key={item.href} href={item.href} className="hover:text-black">
+                    {item.label}
+                  </Link>
+                ))}
+              </SignedIn>
+
               <SignedOut>
                 <SignInButton>
                   <button className="rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold hover:bg-gray-100">
@@ -55,6 +57,11 @@ export function Header() {
             </>
           ) : (
             <>
+              {navItems.map((item) => (
+                <Link key={item.href} href={item.href} className="hover:text-black">
+                  {item.label}
+                </Link>
+              ))}
               <Link
                 href="/login"
                 className="rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold hover:bg-gray-100"

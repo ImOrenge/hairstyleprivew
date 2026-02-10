@@ -1,4 +1,4 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
@@ -11,8 +11,28 @@ const hasClerkConfig =
   secretKey.startsWith("sk_") &&
   !secretKey.includes("YOUR_");
 
+const isProtectedRoute = createRouteMatcher([
+  "/upload(.*)",
+  "/generate(.*)",
+  "/mypage(.*)",
+  "/result(.*)",
+]);
+
 const middleware = hasClerkConfig
-  ? clerkMiddleware()
+  ? clerkMiddleware(async (auth, req) => {
+      if (!isProtectedRoute(req)) {
+        return NextResponse.next();
+      }
+
+      const { userId } = await auth();
+      if (userId) {
+        return NextResponse.next();
+      }
+
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("redirect_url", req.url);
+      return NextResponse.redirect(loginUrl);
+    })
   : () => NextResponse.next();
 
 export default middleware;
