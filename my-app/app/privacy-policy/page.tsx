@@ -1,54 +1,54 @@
-const sections = [
+﻿const sections = [
   {
-    title: "1. 수집하는 개인정보 항목",
+    title: "1. Data We Collect",
     items: [
-      "회원가입/로그인 정보: 이메일, 외부 인증 식별자(Clerk user ID)",
-      "서비스 이용 정보: 생성 요청 프롬프트, 생성 결과 메타데이터, 접속 로그",
-      "결제 관련 정보(선택): 결제 상태 및 결제 식별자(민감 결제정보 원문은 보관하지 않음)",
+      "Account data: email and external auth identifier (Clerk user ID).",
+      "Service usage data: prompt requests, generation metadata, and access logs.",
+      "Payment status data (optional): payment state and transaction identifiers.",
     ],
   },
   {
-    title: "2. 개인정보 이용 목적",
+    title: "2. Why We Use Data",
     items: [
-      "AI 헤어스타일 생성 서비스 제공 및 품질 개선",
-      "회원 식별, 계정 보안 유지, 부정 사용 방지",
-      "결제 처리 및 이용권/크레딧 관리",
-      "고객 문의 대응 및 분쟁 처리",
+      "To provide and improve the HairFit AI hairstyle preview service.",
+      "To identify users, secure accounts, and prevent abuse.",
+      "To process payments and manage credits.",
+      "To respond to support requests and resolve disputes.",
     ],
   },
   {
-    title: "3. 보관 및 파기",
+    title: "3. Retention and Deletion",
     items: [
-      "계정 정보는 회원 탈퇴 시 지체 없이 파기합니다. 단, 관련 법령에 따라 보존이 필요한 정보는 해당 기간 동안 보관합니다.",
-      "서비스 로그 및 운영 기록은 보안 및 장애 대응 목적으로 일정 기간 보관 후 파기합니다.",
+      "Account data is deleted after account closure unless retention is required by law.",
+      "Operational logs are retained for security and reliability for a limited period.",
     ],
   },
   {
-    title: "4. 제3자 제공 및 처리 위탁",
+    title: "4. Third-Party Services",
     items: [
-      "서비스 운영을 위해 다음 외부 서비스를 이용할 수 있습니다: Clerk(인증), Supabase(DB), Google Gemini(AI 처리), Polar(결제).",
-      "법령상 요구가 있는 경우를 제외하고, 이용자 동의 없이 개인정보를 제3자에게 판매하지 않습니다.",
+      "HairFit may use Clerk (auth), Supabase (database), Google Gemini (AI), and Polar (payments).",
+      "We do not sell personal data to third parties.",
     ],
   },
   {
-    title: "5. 이용자 권리",
+    title: "5. Your Rights",
     items: [
-      "이용자는 언제든지 개인정보 열람, 정정, 삭제, 처리정지를 요청할 수 있습니다.",
-      "요청은 고객 지원 채널 또는 등록된 문의 수단을 통해 접수할 수 있습니다.",
+      "You may request access, correction, deletion, or restriction of your personal data.",
+      "Requests can be submitted through our support channel.",
     ],
   },
   {
-    title: "6. 쿠키 및 유사 기술",
+    title: "6. Cookies and Similar Technologies",
     items: [
-      "로그인 유지, 보안, 서비스 성능 분석을 위해 쿠키 또는 유사 기술을 사용할 수 있습니다.",
-      "브라우저 설정을 통해 쿠키 저장을 거부할 수 있으나 일부 기능 이용이 제한될 수 있습니다.",
+      "We may use cookies for login session management, security, and performance analysis.",
+      "Disabling cookies may limit parts of the service.",
     ],
   },
   {
-    title: "7. 정책 변경",
+    title: "7. Policy Changes",
     items: [
-      "관련 법령 또는 서비스 변경에 따라 본 방침은 수정될 수 있습니다.",
-      "중요 변경 시 서비스 내 공지 또는 별도 고지를 통해 안내합니다.",
+      "This policy may be updated for legal or service changes.",
+      "Major updates will be announced in the service.",
     ],
   },
 ] as const;
@@ -59,13 +59,13 @@ export default function PrivacyPolicyPage() {
       <header className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Legal</p>
         <h1 className="text-3xl font-black tracking-tight text-stone-900 sm:text-4xl">Privacy Policy</h1>
-        <p className="text-sm text-stone-600">최종 업데이트: 2026-02-10</p>
+        <p className="text-sm text-stone-600">Last updated: 2026-02-10</p>
       </header>
 
       <section className="mt-6 space-y-3 rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-6 text-stone-700 sm:p-6">
         <p>
-          StyleMirror(이하 &ldquo;회사&rdquo;)는 이용자의 개인정보를 중요하게 생각하며, 관련 법령을 준수합니다.
-          본 개인정보 처리방침은 회사가 어떤 정보를 수집하고 어떻게 이용/보관/보호하는지 안내합니다.
+          HairFit (&quot;Company&quot;) values your privacy and handles personal data in accordance with applicable laws.
+          This policy explains what we collect, why we use it, and how we protect it.
         </p>
       </section>
 

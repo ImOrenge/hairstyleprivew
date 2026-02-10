@@ -35,7 +35,7 @@ export function HeroSection() {
       <div className="pointer-events-none absolute inset-0 opacity-50 [background:radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.28),transparent_42%),radial-gradient(circle_at_80%_14%,rgba(186,230,253,0.2),transparent_40%)]" />
       <div className="relative grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-200">StyleMirror</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-200">HairFit</p>
           <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight sm:text-5xl">
             한 줄 프롬프트로
             <br />
