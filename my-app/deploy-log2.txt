@@ -1,0 +1,100 @@
+﻿
+> my-app@0.1.0 cf:deploy
+> opennextjs-cloudflare build && opennextjs-cloudflare deploy
+
+
+?뚢?????????????????????????????????OpenNext ??Cloudflare build ???붴???????????????????????????????
+node.exe : WARN OpenNext is not fully compatible with Windows.
+위치 C:\Program Files\nodejs\npm.ps1:29 문자:3
++   & $NODE_EXE $NPM_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (WARN OpenNext i...e with Wind 
+   ows.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+WARN For optimal performance, it is recommended to use Windows Subsystem fo
+r Linux (WSL).
+WARN While OpenNext may function on Windows, it could encounter unpredictab
+le failures during runtime.
+(node:10236) [DEP0040] DeprecationWarning: The `punycode` module is depreca
+ted. Please use a userland alternative instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+App directory: C:\Users\user\HariStyle-Preview\my-app
+Next.js version : 16.1.6
+@opennextjs/cloudflare version: 1.16.3
+@opennextjs/aws version: 3.9.15
+
+?뚢?????????????????????????????????????OpenNext ??Building Next.js app ???붴???????????????????????????????????
+
+> my-app@0.1.0 build
+> next build
+
+??Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+??Compiled successfully in 4.8s
+  Running TypeScript ...
+  Collecting page data using 11 workers ...
+
+> Build error occurred
+Error: Route segment config is not allowed in Proxy file at "./proxy.ts". P
+roxy always runs on Node.js runtime. Learn more: https://nextjs.org/docs/me
+ssages/middleware-to-proxy
+    at ignore-listed frames
+opennextjs-cloudflare build
+
+Build an OpenNext Cloudflare worker
+
+Options:
+      --help                                Show help                  [boo
+lean]
+      --version                             Show version number        [boo
+lean]
+  -c, --config                              Path to Wrangler configuration 
+file
+                                                                        [st
+ring]
+      --configPath                          Path to Wrangler configuration 
+file
+                                                           [deprecated] [st
+ring]
+  -e, --env                                 Wrangler environment to use for
+                                            operations                  [st
+ring]
+  -s, --skipNextBuild, --skipBuild          Skip building the Next.js app
+                                                      [boolean] [default: f
+alse]
+      --noMinify                            Disable worker minification
+                                                      [boolean] [default: f
+alse]
+      --skipWranglerConfigCheck             Skip checking for a Wrangler co
+nfig
+                                                      [boolean] [default: f
+alse]
+      --openNextConfigPath                  Path to the OpenNext configurat
+ion
+                                            file                        [st
+ring]
+      --dangerouslyUseUnsupportedNextVersi  Allow using unsupported Next.js
+      on                                    versions  [boolean] [default: f
+alse]
+
+Error: Command failed: npm run build
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at checkExecSyncError (node:child_process:882:11)
+    at Object.execSync (node:child_process:954:15)
+    at buildNextjsApp (file:///C:/Users/user/HariStyle-Preview/my-app/node_
+modules/@opennextjs/aws/dist/build/buildNextApp.js:15:8)
+    at build (file:///C:/Users/user/HariStyle-Preview/my-app/node_modules/@
+opennextjs/cloudflare/dist/cli/build/build.js:49:9)
+    at async buildCommand (file:///C:/Users/user/HariStyle-Preview/my-app/n
+ode_modules/@opennextjs/cloudflare/dist/cli/commands/build.js:21:5) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 21344,
+  stdout: null,
+  stderr: null
+}
