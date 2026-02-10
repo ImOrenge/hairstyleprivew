@@ -6,8 +6,8 @@ import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 
 export const metadata: Metadata = {
-  title: "HairFit AI",
-  description: "AI 헤어스타일 미리보기 SaaS",
+  title: "StyleMirror",
+  description: "자르기 전에, 내 얼굴로 먼저 확인하는 AI 헤어스타일 미리보기",
 };
 
 export default function RootLayout({
