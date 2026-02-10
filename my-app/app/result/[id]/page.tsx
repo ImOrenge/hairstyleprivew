@@ -59,7 +59,7 @@ export default function ResultPage() {
         <ActionToolbar id={id} outputImageUrl={hasRealOutput ? afterImage : null} />
       </div>
       <div className="flex w-full max-w-2xl justify-center">
-        <FeedbackModal />
+        <FeedbackModal generationId={id} />
       </div>
     </div>
   );

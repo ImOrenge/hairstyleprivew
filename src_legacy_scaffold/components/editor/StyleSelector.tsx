@@ -12,8 +12,10 @@ const styleOptions = [
 const colorOptions = ["black", "brown", "ash", "blonde", "red"];
 
 export function StyleSelector() {
-  const selectedOptions = useGenerationStore((state) => state.selectedOptions);
-  const setOptions = useGenerationStore((state) => state.setOptions);
+  const { selectedOptions, setOptions } = useGenerationStore((state) => ({
+    selectedOptions: state.selectedOptions,
+    setOptions: state.setOptions,
+  }));
 
   return (
     <div className="space-y-4">

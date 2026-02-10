@@ -1,6 +1,6 @@
-﻿# HairFit AI (Next.js + Cloudflare Workers)
+# HairFit AI (Next.js + Cloudflare Workers)
 
-HairFit AI is a Next.js App Router project for hairstyle preview generation using Prompt API + Replicate.
+HairFit AI is a Next.js App Router project for hairstyle preview generation using a Gemini prompt-agent pipeline and Gemini image generation.
 
 ## Local development
 
@@ -21,18 +21,13 @@ Required keys for core flow:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `REPLICATE_API_TOKEN`
-- `REPLICATE_MODEL` (recommended, e.g. `black-forest-labs/flux-schnell`) **or** `REPLICATE_MODEL_VERSION`
+- `GOOGLE_API_KEY`
 
 Optional:
-- `GOOGLE_API_KEY` (Prompt LLM; fallback heuristic works without it)
-- `PROMPT_LLM_MODEL`
-
-## Replicate smoke test
-
-```bash
-npm run replicate:smoke
-```
+- `PROMPT_LLM_MODEL` (default: `gemini-2.5-pro`, deep-research prompt-agent)
+- `PROMPT_RESEARCH_MODEL` (default: `PROMPT_LLM_MODEL`, grounded deep-research stage)
+- `PROMPT_DEEP_RESEARCH_GROUNDING` (default: `true`, enables Google Search grounding in deep-research stage)
+- `GEMINI_IMAGE_MODEL` (default: `gemini-3-pro-image-preview`, Nano Banana Pro line)
 
 ## Cloudflare deployment prep
 
@@ -73,10 +68,11 @@ Set these in Cloudflare Workers/Pages project settings (or Wrangler secrets):
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `REPLICATE_API_TOKEN`
-- `REPLICATE_MODEL` or `REPLICATE_MODEL_VERSION`
-- `GOOGLE_API_KEY` (optional)
+- `GOOGLE_API_KEY`
 - `PROMPT_LLM_MODEL` (optional)
+- `PROMPT_RESEARCH_MODEL` (optional)
+- `PROMPT_DEEP_RESEARCH_GROUNDING` (optional)
+- `GEMINI_IMAGE_MODEL` (optional)
 - `POLAR_ACCESS_TOKEN` / `POLAR_WEBHOOK_SECRET` (if payment routes used)
 - `INTERNAL_API_SECRET`
 

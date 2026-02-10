@@ -1,12 +1,12 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { runReplicatePrediction } from "../../../../lib/replicate";
+import { runGeminiImageGeneration } from "../../../../lib/gemini-image";
 
 interface RunGenerationRequest {
   prompt?: string;
-  negativePrompt?: string;
+  productRequirements?: string;
+  researchReport?: string;
   imageDataUrl?: string;
-  inputOverrides?: Record<string, unknown>;
 }
 
 export async function POST(request: Request) {
@@ -22,20 +22,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "prompt is required" }, { status: 400 });
   }
 
-  if (prompt.length > 2000) {
+  if (prompt.length > 20_000) {
     return NextResponse.json({ error: "prompt is too long" }, { status: 400 });
+  }
+
+  if (body.productRequirements && body.productRequirements.length > 30_000) {
+    return NextResponse.json({ error: "productRequirements is too long" }, { status: 400 });
+  }
+
+  if (body.researchReport && body.researchReport.length > 30_000) {
+    return NextResponse.json({ error: "researchReport is too long" }, { status: 400 });
   }
 
   if (body.imageDataUrl && body.imageDataUrl.length > 12_000_000) {
     return NextResponse.json({ error: "imageDataUrl is too large" }, { status: 400 });
   }
 
+  if (!body.imageDataUrl) {
+    return NextResponse.json({ error: "imageDataUrl is required" }, { status: 400 });
+  }
+
   try {
-    const result = await runReplicatePrediction({
+    const result = await runGeminiImageGeneration({
       prompt,
-      negativePrompt: body.negativePrompt?.trim(),
+      productRequirements: body.productRequirements?.trim(),
+      researchReport: body.researchReport?.trim(),
       imageDataUrl: body.imageDataUrl,
-      inputOverrides: body.inputOverrides,
     });
 
     return NextResponse.json(result, { status: 200 });

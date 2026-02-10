@@ -7,6 +7,8 @@ interface GeneratePromptRequest {
   generationId?: string;
   userInput?: string;
   styleOptions?: PromptStyleOptions;
+  hasReferenceImage?: boolean;
+  referenceImageDataUrl?: string;
 }
 
 const uuidV4LikeRegex =
@@ -26,9 +28,15 @@ export async function POST(request: Request) {
   const generationId = body.generationId?.trim();
   const userInput = body.userInput?.trim();
   const styleOptions = body.styleOptions;
+  const hasReferenceImage = body.hasReferenceImage === true;
+  const referenceImageDataUrl = body.referenceImageDataUrl?.trim();
 
   if (!userInput) {
     return NextResponse.json({ error: "userInput is required" }, { status: 400 });
+  }
+
+  if (referenceImageDataUrl && referenceImageDataUrl.length > 12_000_000) {
+    return NextResponse.json({ error: "referenceImageDataUrl is too large" }, { status: 400 });
   }
 
   if (generationId && !uuidV4LikeRegex.test(generationId)) {
@@ -82,6 +90,8 @@ export async function POST(request: Request) {
       styleOptions,
       imageContext: {
         originalImagePath,
+        hasReferenceImage,
+        referenceImageDataUrl: referenceImageDataUrl || null,
       },
     });
 
@@ -89,7 +99,6 @@ export async function POST(request: Request) {
       const nextOptions = {
         ...existingOptions,
         normalizedOptions: generated.normalizedOptions,
-        negativePrompt: generated.negativePrompt,
         promptVersion: generated.promptVersion,
         promptModel: generated.model,
         promptSource: "prompt-generator-api",

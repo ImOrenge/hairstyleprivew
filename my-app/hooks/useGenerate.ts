@@ -3,8 +3,42 @@
 import { useCallback } from "react";
 import { useGenerationStore } from "../store/useGenerationStore";
 
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+interface PromptApiResponse {
+  prompt?: string;
+  researchReport?: string;
+  productRequirements?: string;
+  model?: string;
+  promptVersion?: string;
+  deepResearch?: {
+    summary?: string;
+    references?: string[];
+    grounded?: boolean;
+    model?: string;
+  };
+  error?: string;
+}
+
+interface GenerationApiResponse {
+  id?: string;
+  status?: "completed" | "failed";
+  outputUrl?: string;
+  error?: string;
+}
+
+export interface PipelinePromptArtifacts {
+  prompt: string;
+  researchReport: string | null;
+  productRequirements: string | null;
+  deepResearch: PromptApiResponse["deepResearch"] | null;
+  model: string;
+  promptVersion: string;
+}
+
+function toErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -20,49 +54,199 @@ export function useGenerate() {
   const originalImage = useGenerationStore((state) => state.originalImage);
   const setIsGenerating = useGenerationStore((state) => state.setIsGenerating);
   const setProgress = useGenerationStore((state) => state.setProgress);
+  const setPipelineState = useGenerationStore((state) => state.setPipelineState);
+  const setPipelineError = useGenerationStore((state) => state.setPipelineError);
+  const setLatestResult = useGenerationStore((state) => state.setLatestResult);
+  const clearLatestResult = useGenerationStore((state) => state.clearLatestResult);
+  const resetPipeline = useGenerationStore((state) => state.resetPipeline);
+
+  const requestImageGeneration = useCallback(
+    async (payload: {
+      prompt: string;
+      productRequirements?: string;
+      researchReport?: string;
+      imageDataUrl: string;
+    }) => {
+      const response = await fetch("/api/generations/run", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const result = (await response.json().catch(() => ({}))) as GenerationApiResponse;
+
+      if (!response.ok || !result.id) {
+        throw new Error(result.error || "이미지 생성에 실패했습니다.");
+      }
+
+      const currentStatus = result.status ?? "failed";
+      const currentOutputUrl = result.outputUrl ?? null;
+      if (currentStatus === "failed") {
+        throw new Error(result.error || "생성 모델에서 실패 응답을 반환했습니다.");
+      }
+
+      if (currentStatus !== "completed" || !currentOutputUrl) {
+        throw new Error("생성 결과 이미지가 비어 있습니다.");
+      }
+
+      return { id: result.id, outputUrl: currentOutputUrl };
+    },
+    [],
+  );
 
   const runGeneration = useCallback(
-    async (prompt: string, negativePrompt?: string) => {
+    async (prompt: string, productRequirements?: string, researchReport?: string) => {
+      if (!originalImage) {
+        const message = "업로드된 원본 이미지가 없습니다.";
+        setPipelineError(message);
+        setPipelineState("failed", message);
+        throw new Error(message);
+      }
+
       setIsGenerating(true);
-      setProgress(0);
+      setProgress(10);
+      clearLatestResult();
+      setPipelineError(null);
+
       try {
-        for (let i = 1; i <= 5; i += 1) {
-          await wait(180);
-          setProgress(i * 10);
-        }
+        setPipelineState("generating_image", "이미지 생성 중입니다.");
+        const imageDataUrl = await fileToDataUrl(originalImage);
+        const result = await requestImageGeneration({
+          prompt,
+          productRequirements,
+          researchReport,
+          imageDataUrl,
+        });
 
-        const imageDataUrl = originalImage ? await fileToDataUrl(originalImage) : undefined;
+        setPipelineState("finalizing", "결과를 정리하고 있습니다.");
+        setProgress(90);
+        setLatestResult({
+          predictionId: result.id,
+          outputUrl: result.outputUrl,
+        });
+        setPipelineState("completed", "생성이 완료되었습니다.");
+        setProgress(100);
+        return result;
+      } catch (error) {
+        const message = toErrorMessage(error, "이미지 생성 중 오류가 발생했습니다.");
+        setPipelineError(message);
+        setPipelineState("failed", message);
+        throw new Error(message);
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [
+      clearLatestResult,
+      originalImage,
+      requestImageGeneration,
+      setIsGenerating,
+      setLatestResult,
+      setPipelineError,
+      setPipelineState,
+      setProgress,
+    ],
+  );
 
-        const response = await fetch("/api/generations/run", {
+  const runPipeline = useCallback(
+    async (userInput: string) => {
+      const normalizedUserInput = userInput.trim();
+      if (!normalizedUserInput) {
+        const message = "원하는 스타일을 자유롭게 입력해 주세요.";
+        setPipelineError(message);
+        setPipelineState("failed", message);
+        throw new Error(message);
+      }
+
+      if (!originalImage) {
+        const message = "원본 이미지가 없습니다. 업로드 화면에서 사진을 먼저 등록해 주세요.";
+        setPipelineError(message);
+        setPipelineState("failed", message);
+        throw new Error(message);
+      }
+
+      setIsGenerating(true);
+      setProgress(5);
+      clearLatestResult();
+      setPipelineError(null);
+
+      try {
+        setPipelineState("validating", "입력값과 원본 이미지를 확인하고 있습니다.");
+        const referenceImageDataUrl = await fileToDataUrl(originalImage);
+        setProgress(20);
+
+        setPipelineState("generating_prompt", "요청 기반 프롬프트를 생성하고 있습니다.");
+        const promptResponse = await fetch("/api/prompts/generate", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            prompt,
-            negativePrompt,
-            imageDataUrl,
+            userInput: normalizedUserInput,
+            hasReferenceImage: true,
+            referenceImageDataUrl,
           }),
         });
 
-        const result = (await response.json().catch(() => ({}))) as {
-          id?: string;
-          error?: string;
-        };
-
-        if (!response.ok || !result.id) {
-          throw new Error(result.error || "Failed to generate image");
+        const promptData = (await promptResponse.json().catch(() => ({}))) as PromptApiResponse;
+        if (!promptResponse.ok) {
+          throw new Error(promptData.error || "프롬프트 생성에 실패했습니다.");
         }
 
+        if (!promptData.prompt) {
+          throw new Error("프롬프트 응답 형식이 올바르지 않습니다.");
+        }
+        setProgress(50);
+
+        const artifacts: PipelinePromptArtifacts = {
+          prompt: promptData.prompt,
+          researchReport: promptData.researchReport || null,
+          productRequirements: promptData.productRequirements || null,
+          deepResearch: promptData.deepResearch || null,
+          model: promptData.model || "unknown",
+          promptVersion: promptData.promptVersion || "v1",
+        };
+
+        setPipelineState("generating_image", "프롬프트를 적용해 이미지를 생성하고 있습니다.");
+        const generation = await requestImageGeneration({
+          prompt: artifacts.prompt,
+          productRequirements: artifacts.productRequirements || undefined,
+          researchReport: artifacts.researchReport || undefined,
+          imageDataUrl: referenceImageDataUrl,
+        });
+
+        setPipelineState("finalizing", "결과를 정리하고 있습니다.");
+        setProgress(90);
+        setLatestResult({
+          predictionId: generation.id,
+          outputUrl: generation.outputUrl,
+        });
+        setPipelineState("completed", "헤어스타일 생성이 완료되었습니다.");
         setProgress(100);
-        await wait(180);
-        return result.id;
+        return { ...generation, artifacts };
+      } catch (error) {
+        const message = toErrorMessage(error, "생성 파이프라인 실행 중 오류가 발생했습니다.");
+        setPipelineError(message);
+        setPipelineState("failed", message);
+        setProgress(0);
+        throw new Error(message);
       } finally {
         setIsGenerating(false);
       }
     },
-    [originalImage, setIsGenerating, setProgress],
+    [
+      clearLatestResult,
+      originalImage,
+      requestImageGeneration,
+      setIsGenerating,
+      setLatestResult,
+      setPipelineError,
+      setPipelineState,
+      setProgress,
+    ],
   );
 
-  return { runGeneration };
+  return { runGeneration, runPipeline, resetPipeline };
 }

@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export const PROMPT_VERSION = "v10";
+export const PROMPT_VERSION = "v6";
 
 export interface PromptStyleOptions {
   gender?: "male" | "female" | "unisex";
@@ -21,35 +21,40 @@ export interface GeneratePromptInput {
 
 export interface GeneratePromptResult {
   prompt: string;
-  researchReport?: string;
-  productRequirements?: string;
+  negativePrompt: string;
   normalizedOptions: PromptStyleOptions;
   promptVersion: string;
   model: string;
-  deepResearch?: {
-    summary?: string;
-    references?: string[];
-    grounded?: boolean;
-    model?: string;
-  };
 }
 
 interface DeepResearchResult {
-  report?: string;
-  summary?: string;
   hairstyleDetails: string[];
   colorDirection?: string;
   textureDirection?: string;
   structureNotes?: string[];
   riskNotes?: string[];
-  references?: string[];
-  grounded?: boolean;
 }
 
-interface ComposedPromptResult {
-  prompt: string;
-  productRequirements?: string;
-}
+const DEFAULT_NEGATIVE_PROMPT = [
+  "low quality",
+  "blurry",
+  "deformed face",
+  "bad anatomy",
+  "watermark",
+  "text",
+  "different person",
+  "face swap",
+  "changed identity",
+  "changed ethnicity",
+  "changed skin tone",
+  "changed face shape",
+  "age change",
+  "gender swap",
+  "side profile",
+  "three-quarter view",
+  "head tilt",
+  "looking away",
+].join(", ");
 
 const QUALITY_PREFIX = "reference photo hair edit";
 
@@ -124,70 +129,23 @@ const HAIR_ONLY_CONSTRAINTS = [
   "keep facial expression, pose, and camera framing unchanged",
 ];
 
-const DEEP_RESEARCH_AGENT_SYSTEM_PROMPT_PLACEHOLDER = `
-You are the hairstyle prompt-research agent.
-Use a Deep Research workflow to analyze the user's request and the provided reference image together.
+const REQUIRED_NEGATIVE_TERMS = [
+  "different person",
+  "face swap",
+  "changed identity",
+  "changed ethnicity",
+  "changed skin tone",
+  "changed face shape",
+  "side profile",
+  "three-quarter view",
+  "head tilt",
+];
 
-Return JSON only with this shape:
-{
-  "report": string,
-  "summary": string,
-  "hairstyleDetails": string[],
-  "colorDirection": string,
-  "textureDirection": string,
-  "structureNotes": string[],
-  "riskNotes": string[],
-  "references": string[]
-}
-
-Research requirements:
-- Perform deep research reasoning: infer explicit and implicit hairstyle intent, then validate terminology consistency.
-- Extract concrete hairstyle attributes: length, layering, bangs, parting, curl/wave, volume, silhouette, and named style terms.
-- Preserve celebrity/style names if present and convert Korean requests into clear English hairstyle descriptors.
-- If request and reference conflict, record the conflict in "riskNotes".
-- Write a research report in "report" (multi-paragraph, structured, concrete).
-- Add short evidence-style research summary in "summary".
-- If available, include source URLs or domains in "references".
-
-Hard constraints:
-- Keep the same person identity (face and appearance).
-- No ethnicity transformation.
-- Keep a frontal face photo.
-- Keep white background.
-`;
-
-const PROMPT_COMPOSER_SYSTEM_PROMPT_PLACEHOLDER = `
-You are the hairstyle prompt-composer agent.
-You must use the Deep Research result and produce the final prompt for the image-generation agent.
-
-Return JSON only with this shape:
-{
-  "productRequirements": string,
-  "prompt": string
-}
-
-Prompt requirements:
-- Write one production-ready English prompt focused on hairstyle transformation.
-- Do not compress to one line. The prompt must be multi-line with sections and bullet points.
-- Use the deep-research report as mandatory evidence.
-- Include that this is the same person from the reference image.
-- Explicitly enforce: no ethnicity change, frontal face photo, white background.
-- Change only hairstyle and hair color. Keep face, skin tone, age, and gender unchanged.
-`;
+const DEEP_RESEARCH_AGENT_SYSTEM_PROMPT_PLACEHOLDER = "";
+const PROMPT_COMPOSER_SYSTEM_PROMPT_PLACEHOLDER = "";
 
 function cleanText(input: string): string {
   return input.replace(/\s+/g, " ").trim();
-}
-
-function sanitizeMultilineBlock(input: string): string {
-  return input
-    .replace(/\r\n/g, "\n")
-    .replace(/\r/g, "\n")
-    .split("\n")
-    .map((line) => line.replace(/[ \t]+$/g, ""))
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
 }
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } | null {
@@ -199,58 +157,6 @@ function parseDataUrl(dataUrl: string): { mimeType: string; data: string } | nul
   return {
     mimeType: match[1] || "image/png",
     data: match[2] || "",
-  };
-}
-
-function readBooleanEnv(value: string | undefined, defaultValue: boolean): boolean {
-  if (!value) {
-    return defaultValue;
-  }
-
-  const normalized = value.trim().toLowerCase();
-  if (["1", "true", "yes", "on"].includes(normalized)) {
-    return true;
-  }
-  if (["0", "false", "no", "off"].includes(normalized)) {
-    return false;
-  }
-  return defaultValue;
-}
-
-function getPromptModelName(): string {
-  return process.env.PROMPT_LLM_MODEL || "gemini-2.5-pro";
-}
-
-function getResearchModelName(): string {
-  return process.env.PROMPT_RESEARCH_MODEL || getPromptModelName();
-}
-
-function isDeepResearchGroundingEnabled(): boolean {
-  return readBooleanEnv(process.env.PROMPT_DEEP_RESEARCH_GROUNDING, true);
-}
-
-interface GroundedGenerateResponse {
-  candidates?: Array<{
-    content?: {
-      parts?: Array<{ text?: string }>;
-    };
-    groundingMetadata?: {
-      groundingChunks?: Array<{
-        web?: {
-          uri?: string;
-        };
-      }>;
-    };
-    grounding_metadata?: {
-      grounding_chunks?: Array<{
-        web?: {
-          uri?: string;
-        };
-      }>;
-    };
-  }>;
-  error?: {
-    message?: string;
   };
 }
 
@@ -290,77 +196,6 @@ function buildGeminiAgentRequest(
   };
 }
 
-function extractGroundedText(response: GroundedGenerateResponse): string {
-  const parts = response.candidates?.[0]?.content?.parts || [];
-  return parts
-    .map((part) => (typeof part.text === "string" ? part.text : ""))
-    .join("\n")
-    .trim();
-}
-
-function extractGroundedReferences(response: GroundedGenerateResponse): string[] {
-  const candidate = response.candidates?.[0];
-  const chunks =
-    candidate?.groundingMetadata?.groundingChunks ||
-    candidate?.grounding_metadata?.grounding_chunks ||
-    [];
-
-  const references = chunks
-    .map((chunk) => chunk?.web?.uri || "")
-    .map((uri) => cleanText(uri))
-    .filter(Boolean);
-
-  return Array.from(new Set(references)).slice(0, 12);
-}
-
-async function runGroundedDeepResearchAgent(
-  payload: Record<string, unknown>,
-  referenceImageDataUrl?: string | null,
-): Promise<DeepResearchResult | null> {
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (!apiKey || apiKey.includes("YOUR_")) {
-    return null;
-  }
-
-  const model = getResearchModelName();
-  const requestBody = {
-    ...buildGeminiAgentRequest(
-      DEEP_RESEARCH_AGENT_SYSTEM_PROMPT_PLACEHOLDER,
-      payload,
-      referenceImageDataUrl,
-    ),
-    tools: [{ google_search: {} }],
-  };
-
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    },
-  );
-
-  const json = (await response.json().catch(() => ({}))) as GroundedGenerateResponse;
-  if (!response.ok) {
-    return null;
-  }
-
-  const text = extractGroundedText(json);
-  const parsed = parseResearchJsonFromLLM(text);
-  if (!parsed) {
-    return null;
-  }
-
-  const references = extractGroundedReferences(json);
-  if (references.length > 0) {
-    parsed.references = Array.from(new Set([...(parsed.references || []), ...references]));
-    parsed.grounded = true;
-  }
-
-  return parsed;
-}
-
 function normalizeOptions(options?: PromptStyleOptions): PromptStyleOptions {
   if (!options) {
     return {};
@@ -395,6 +230,26 @@ function findMappedValues(input: string, mappings: Array<{ keywords: string[]; v
   return mappings.filter((item) => hasAnyKeyword(input, item.keywords)).map((item) => item.value);
 }
 
+function mergeCommaParts(base: string, requiredParts: string[]): string {
+  const nextParts = base
+    .split(",")
+    .map((item) => cleanText(item))
+    .filter(Boolean);
+
+  const normalizedSet = new Set(nextParts.map((item) => item.toLowerCase()));
+
+  for (const part of requiredParts) {
+    const cleaned = cleanText(part);
+    const normalized = cleaned.toLowerCase();
+    if (!normalizedSet.has(normalized)) {
+      nextParts.push(cleaned);
+      normalizedSet.add(normalized);
+    }
+  }
+
+  return nextParts.join(", ");
+}
+
 function shouldLockIdentity(input: GeneratePromptInput): boolean {
   if (typeof input.imageContext?.hasReferenceImage === "boolean") {
     return input.imageContext.hasReferenceImage;
@@ -405,6 +260,17 @@ function shouldLockIdentity(input: GeneratePromptInput): boolean {
   }
 
   return true;
+}
+
+function applyHairOnlyConstraints(basePrompt: string, lockIdentity: boolean): string {
+  if (!lockIdentity) {
+    return basePrompt;
+  }
+  return mergeCommaParts(basePrompt, HAIR_ONLY_CONSTRAINTS);
+}
+
+function applyNegativeConstraints(baseNegativePrompt?: string): string {
+  return mergeCommaParts(baseNegativePrompt || DEFAULT_NEGATIVE_PROMPT, REQUIRED_NEGATIVE_TERMS);
 }
 
 function sanitizePositivePrompt(prompt: string): string {
@@ -502,141 +368,21 @@ function buildHairDetailsFromResearch(research: DeepResearchResult | null): stri
   return Array.from(new Set(details.map((item) => cleanText(item)).filter(Boolean)));
 }
 
-function buildResearchReport(
-  userInput: string,
-  research: DeepResearchResult | null,
-  fallbackHairDetails: string[],
-): string {
-  const details = buildHairDetailsFromResearch(research).length > 0
-    ? buildHairDetailsFromResearch(research)
-    : fallbackHairDetails;
-
-  const lines = [
-    "Deep Research Report",
-    "",
-    `User Request: ${cleanText(userInput)}`,
-    "",
-    "Findings:",
-    ...(details.length > 0 ? details.slice(0, 18).map((item) => `- ${item}`) : ["- No explicit detail extracted"]),
-  ];
-
-  if (research?.structureNotes && research.structureNotes.length > 0) {
-    lines.push("", "Structure Notes:", ...research.structureNotes.slice(0, 10).map((item) => `- ${item}`));
-  }
-
-  if (research?.riskNotes && research.riskNotes.length > 0) {
-    lines.push("", "Risk Notes:", ...research.riskNotes.slice(0, 10).map((item) => `- ${item}`));
-  }
-
-  if (research?.references && research.references.length > 0) {
-    lines.push("", "References:", ...research.references.slice(0, 10).map((item) => `- ${item}`));
-  }
-
-  if (research?.summary) {
-    lines.push("", `Summary: ${research.summary}`);
-  }
-
-  return sanitizeMultilineBlock(lines.join("\n"));
-}
-
-function buildProductRequirementsDocument(
-  researchReport: string,
-  hairDetails: string[],
-  lockIdentity: boolean,
-): string {
-  const requirements = [
-    "Product Requirements Document (PRD) - Hairstyle Edit",
-    "",
-    "Goal:",
-    "- Modify only hairstyle and hair color from the reference image.",
-    "",
-    "Input Requirements:",
-    "- Use the provided reference image as identity source.",
-    "- Use the deep research report below as mandatory context.",
-    "",
-    "Acceptance Criteria:",
-    ...(hairDetails.length > 0
-      ? hairDetails.slice(0, 16).map((item) => `- Must reflect: ${item}`)
-      : ["- Must reflect the user's requested hairstyle intent."]),
-  ];
-
-  if (lockIdentity) {
-    requirements.push(
-      "- Must keep the same person identity.",
-      "- Must not change ethnicity, age, gender, skin tone, or face geometry.",
-      "- Must keep frontal composition and white background.",
-    );
-  }
-
-  requirements.push(
-    "",
-    "Deep Research Report:",
-    researchReport,
-  );
-
-  return sanitizeMultilineBlock(requirements.join("\n"));
-}
-
-function composeStructuredPrompt(
-  hairDetails: string[],
-  lockIdentity: boolean,
-  researchReport: string,
-  productRequirements: string,
-): string {
+function composeMinimalHairEditPrompt(hairDetails: string[], lockIdentity: boolean): string {
   const sanitizedDetails = hairDetails
     .map((item) => cleanText(item))
     .filter(Boolean)
-    .slice(0, 18);
+    .slice(0, 14);
 
-  const lines: string[] = [
-    "Image Editing Prompt",
-    "",
-    `Quality Anchor: ${QUALITY_PREFIX}`,
-    "",
-    "Hairstyle Direction:",
-    ...(sanitizedDetails.length > 0
-      ? sanitizedDetails.map((item) => `- ${item}`)
-      : ["- natural clean hairstyle refinement"]),
-    "",
-    "Identity and Scene Constraints:",
-    "- Use the same person as the reference image.",
-    "- Change only hairstyle and hair color.",
-    "- Keep frontal portrait and white background.",
-  ];
+  const base = sanitizedDetails.length > 0
+    ? [QUALITY_PREFIX, ...sanitizedDetails]
+    : [QUALITY_PREFIX, "natural clean hairstyle refinement"];
 
-  if (lockIdentity) {
-    lines.push(
-      "- Do not change ethnicity, skin tone, age, gender, or face geometry.",
-      "- Keep expression, pose, camera angle, framing, clothing, and background unchanged.",
-    );
-  }
-
-  lines.push(
-    "",
-    "Product Requirements Document:",
-    productRequirements,
-    "",
-    "Deep Research Report:",
-    researchReport,
-  );
-
-  return sanitizeMultilineBlock(lines.join("\n"));
+  const withConstraints = applyHairOnlyConstraints(base.join(", "), lockIdentity);
+  return sanitizePositivePrompt(withConstraints);
 }
 
-function ensurePromptIsNotSingleLine(prompt: string): string {
-  const normalized = sanitizeMultilineBlock(prompt);
-  if (normalized.includes("\n")) {
-    return normalized;
-  }
-
-  return sanitizeMultilineBlock([
-    "Image Editing Prompt",
-    "",
-    `Instruction: ${normalized}`,
-  ].join("\n"));
-}
-
-function parsePromptJsonFromLLM(text: string): ComposedPromptResult | null {
+function parsePromptJsonFromLLM(text: string): { prompt: string; negativePrompt?: string } | null {
   const trimmed = text.trim();
   const withoutCodeFence = trimmed
     .replace(/^```json/i, "")
@@ -645,20 +391,14 @@ function parsePromptJsonFromLLM(text: string): ComposedPromptResult | null {
     .trim();
 
   try {
-    const parsed = JSON.parse(withoutCodeFence) as {
-      prompt?: unknown;
-      productRequirements?: unknown;
-    };
+    const parsed = JSON.parse(withoutCodeFence) as { prompt?: unknown; negativePrompt?: unknown };
     if (typeof parsed.prompt !== "string" || !parsed.prompt.trim()) {
       return null;
     }
 
     return {
-      prompt: sanitizeMultilineBlock(parsed.prompt),
-      productRequirements:
-        typeof parsed.productRequirements === "string" && parsed.productRequirements.trim()
-          ? sanitizeMultilineBlock(parsed.productRequirements)
-          : undefined,
+      prompt: cleanText(parsed.prompt),
+      negativePrompt: typeof parsed.negativePrompt === "string" ? cleanText(parsed.negativePrompt) : undefined,
     };
   } catch {
     return null;
@@ -675,14 +415,11 @@ function parseResearchJsonFromLLM(text: string): DeepResearchResult | null {
 
   try {
     const parsed = JSON.parse(withoutCodeFence) as {
-      report?: unknown;
-      summary?: unknown;
       hairstyleDetails?: unknown;
       colorDirection?: unknown;
       textureDirection?: unknown;
       structureNotes?: unknown;
       riskNotes?: unknown;
-      references?: unknown;
     };
 
     const hairstyleDetails = Array.isArray(parsed.hairstyleDetails)
@@ -701,19 +438,12 @@ function parseResearchJsonFromLLM(text: string): DeepResearchResult | null {
       ? parsed.riskNotes.filter((item): item is string => typeof item === "string").map(cleanText)
       : undefined;
 
-    const references = Array.isArray(parsed.references)
-      ? parsed.references.filter((item): item is string => typeof item === "string").map(cleanText)
-      : undefined;
-
     return {
-      report: typeof parsed.report === "string" ? sanitizeMultilineBlock(parsed.report) : undefined,
-      summary: typeof parsed.summary === "string" ? cleanText(parsed.summary) : undefined,
       hairstyleDetails,
       colorDirection: typeof parsed.colorDirection === "string" ? cleanText(parsed.colorDirection) : undefined,
       textureDirection: typeof parsed.textureDirection === "string" ? cleanText(parsed.textureDirection) : undefined,
       structureNotes,
       riskNotes,
-      references,
     };
   } catch {
     return null;
@@ -734,18 +464,6 @@ async function runDeepResearchAgent(
     constraints: HAIR_ONLY_CONSTRAINTS,
   };
 
-  if (isDeepResearchGroundingEnabled()) {
-    const grounded = await runGroundedDeepResearchAgent(
-      payload,
-      input.imageContext?.referenceImageDataUrl,
-    ).catch(() => null);
-
-    if (grounded) {
-      grounded.grounded = true;
-      return grounded;
-    }
-  }
-
   const result = await model.generateContent(
     buildGeminiAgentRequest(
       DEEP_RESEARCH_AGENT_SYSTEM_PROMPT_PLACEHOLDER,
@@ -753,12 +471,8 @@ async function runDeepResearchAgent(
       input.imageContext?.referenceImageDataUrl,
     ),
   );
-  const parsed = parseResearchJsonFromLLM(result.response.text());
-  if (parsed) {
-    parsed.grounded = false;
-    parsed.references = parsed.references || [];
-  }
-  return parsed;
+
+  return parseResearchJsonFromLLM(result.response.text());
 }
 
 async function runPromptComposerAgent(
@@ -766,17 +480,16 @@ async function runPromptComposerAgent(
   input: GeneratePromptInput,
   normalizedOptions: PromptStyleOptions,
   research: DeepResearchResult | null,
-  researchReport: string,
   lockIdentity: boolean,
-): Promise<ComposedPromptResult | null> {
+): Promise<{ prompt: string; negativePrompt?: string } | null> {
   const payload = {
     userInput: cleanText(input.userInput),
     styleOptions: normalizedOptions,
     deepResearch: research,
-    deepResearchReport: researchReport,
     imageContext: input.imageContext ?? {},
     lockIdentity,
     constraints: HAIR_ONLY_CONSTRAINTS,
+    defaultNegativePrompt: DEFAULT_NEGATIVE_PROMPT,
   };
 
   const result = await model.generateContent(
@@ -795,14 +508,11 @@ function buildHeuristicPrompt(input: GeneratePromptInput): GeneratePromptResult 
   const normalizedOptions = normalizeOptions(input.styleOptions);
   const lockIdentity = shouldLockIdentity(input);
   const hairDetails = buildHairDetailsFromInput(normalizedInput, normalizedOptions);
-  const researchReport = buildResearchReport(normalizedInput, null, hairDetails);
-  const productRequirements = buildProductRequirementsDocument(researchReport, hairDetails, lockIdentity);
-  const prompt = composeStructuredPrompt(hairDetails, lockIdentity, researchReport, productRequirements);
+  const prompt = composeMinimalHairEditPrompt(hairDetails, lockIdentity);
 
   return {
     prompt,
-    researchReport,
-    productRequirements,
+    negativePrompt: applyNegativeConstraints(DEFAULT_NEGATIVE_PROMPT),
     normalizedOptions,
     promptVersion: PROMPT_VERSION,
     model: "heuristic-agent-fallback-v1",
@@ -815,8 +525,7 @@ async function tryGenerateWithGemini(input: GeneratePromptInput): Promise<Genera
     return null;
   }
 
-  const modelName = getPromptModelName();
-  const researchModelName = getResearchModelName();
+  const modelName = process.env.PROMPT_LLM_MODEL || "gemini-2.5-pro";
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: modelName });
   const lockIdentity = shouldLockIdentity(input);
@@ -830,50 +539,35 @@ async function tryGenerateWithGemini(input: GeneratePromptInput): Promise<Genera
     lockIdentity,
   ).catch(() => null);
 
-  const fallbackHairDetails = buildHairDetailsFromInput(cleanText(input.userInput), normalizedOptions);
-  const researchReport = research?.report
-    ? sanitizeMultilineBlock(research.report)
-    : buildResearchReport(cleanText(input.userInput), research, fallbackHairDetails);
-
   const composed = await runPromptComposerAgent(
     model,
     input,
     normalizedOptions,
     research,
-    researchReport,
     lockIdentity,
   ).catch(() => null);
 
-  const fromComposed = composed ? extractHairOnlySegments(composed.prompt) : [];
+  if (!composed) {
+    return null;
+  }
+
+  const fromComposed = extractHairOnlySegments(composed.prompt);
   const fromResearch = buildHairDetailsFromResearch(research);
-  const fromFallback = fallbackHairDetails;
+  const fromFallback = buildHairDetailsFromInput(cleanText(input.userInput), normalizedOptions);
 
   const mergedDetails = Array.from(
     new Set([...fromComposed, ...fromResearch, ...fromFallback].map((item) => cleanText(item)).filter(Boolean)),
   );
 
-  const productRequirements = composed?.productRequirements
-    ? sanitizeMultilineBlock(composed.productRequirements)
-    : buildProductRequirementsDocument(researchReport, mergedDetails, lockIdentity);
-  const prompt = composed?.prompt
-    ? ensurePromptIsNotSingleLine(sanitizeMultilineBlock(composed.prompt))
-    : composeStructuredPrompt(mergedDetails, lockIdentity, researchReport, productRequirements);
+  const prompt = composeMinimalHairEditPrompt(mergedDetails, lockIdentity);
+  const negativePrompt = applyNegativeConstraints(composed.negativePrompt || DEFAULT_NEGATIVE_PROMPT);
 
   return {
     prompt,
-    researchReport,
-    productRequirements,
+    negativePrompt,
     normalizedOptions,
     promptVersion: PROMPT_VERSION,
     model: `${modelName}-deep-research-agent`,
-    deepResearch: research
-      ? {
-        summary: research.summary,
-        references: research.references || [],
-        grounded: research.grounded === true,
-        model: research.grounded ? researchModelName : modelName,
-      }
-      : undefined,
   };
 }
 

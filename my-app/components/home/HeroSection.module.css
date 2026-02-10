@@ -1,0 +1,195 @@
+﻿.previewShell {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.genderTabs {
+  display: inline-flex;
+  width: fit-content;
+  gap: 0.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  background: rgba(2, 6, 23, 0.58);
+  padding: 0.3rem;
+}
+
+.genderTab {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #e2e8f0;
+  padding: 0.4rem 0.95rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background-color 220ms ease, color 220ms ease, transform 220ms ease;
+}
+
+.genderTab:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.genderTab:focus-visible {
+  outline: 2px solid rgba(251, 191, 36, 0.75);
+  outline-offset: 2px;
+}
+
+.genderTabActive {
+  background: #f8fafc;
+  color: #0f172a;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
+}
+
+.comparisonCard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.35rem;
+  aspect-ratio: 3 / 4;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 32px 70px rgba(2, 6, 23, 0.48);
+  background: #09090b;
+}
+
+.comparisonCard::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0) 60%, rgba(15, 23, 42, 0.32));
+}
+
+.afterLayer {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(0 100% 0 0);
+  will-change: clip-path;
+  animation: overlayReveal 10s linear infinite;
+}
+
+.scanDivider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0));
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.7);
+  animation: scanLine 10s linear infinite;
+}
+
+.tag {
+  position: absolute;
+  bottom: 0.95rem;
+  z-index: 2;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+}
+
+.before {
+  left: 0.9rem;
+  background: rgba(17, 24, 39, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #e5e7eb;
+}
+
+.after {
+  right: 0.9rem;
+  background: rgba(20, 83, 45, 0.65);
+  border: 1px solid rgba(134, 239, 172, 0.55);
+  color: #ecfdf5;
+}
+
+.promptBox {
+  display: grid;
+  gap: 0.34rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(3, 7, 18, 0.58);
+  padding: 0.85rem 0.95rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  color: #e2e8f0;
+  overflow: hidden;
+}
+
+.promptPrefix {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+}
+
+.typewriter {
+  --type-ch: 30ch;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  border-right: 2px solid rgba(251, 191, 36, 0.9);
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: #f8fafc;
+  animation:
+    typing 10s steps(28, end) infinite,
+    caretBlink 0.85s step-end infinite;
+}
+
+@keyframes overlayReveal {
+  0%,
+  56% {
+    clip-path: inset(0 100% 0 0);
+  }
+
+  78%,
+  98% {
+    clip-path: inset(0 0% 0 0);
+  }
+
+  100% {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+@keyframes scanLine {
+  0%,
+  56% {
+    left: 0%;
+  }
+
+  78%,
+  98% {
+    left: 100%;
+  }
+
+  100% {
+    left: 0%;
+  }
+}
+
+@keyframes typing {
+  0%,
+  8% {
+    width: 0;
+  }
+
+  34%,
+  56% {
+    width: var(--type-ch);
+  }
+
+  100% {
+    width: 0;
+  }
+}
+
+@keyframes caretBlink {
+  50% {
+    border-color: transparent;
+  }
+}

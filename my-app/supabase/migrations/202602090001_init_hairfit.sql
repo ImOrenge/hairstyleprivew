@@ -73,7 +73,7 @@ create table if not exists public.generations (
   status public.generation_status not null default 'queued',
   error_message text,
   credits_used integer not null default 2 check (credits_used >= 0),
-  model_provider text not null default 'replicate',
+  model_provider text not null default 'gemini',
   model_name text,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())

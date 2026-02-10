@@ -32,8 +32,8 @@ with demo_generation as (
     '{"gender":"female","length":"medium","style":"layered","color":"brown"}'::jsonb,
     'completed'::public.generation_status,
     2,
-    'replicate',
-    'stable-diffusion-inpainting'
+    'gemini',
+    'gemini-3-pro-image-preview'
   where not exists (
     select 1
       from public.generations
