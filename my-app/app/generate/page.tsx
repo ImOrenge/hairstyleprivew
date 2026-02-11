@@ -7,8 +7,10 @@ import { PipelineStatusIndicator } from "../../components/generate/PipelineStatu
 import { Button } from "../../components/ui/Button";
 import { useGenerate, type PipelinePromptArtifacts } from "../../hooks/useGenerate";
 import { useGenerationStore } from "../../store/useGenerationStore";
+import { useT } from "../../lib/i18n/useT";
 
 export default function GeneratePage() {
+  const t = useT();
   const router = useRouter();
   const { runPipeline, resetPipeline } = useGenerate();
   const previewUrl = useGenerationStore((state) => state.previewUrl);
@@ -48,7 +50,7 @@ export default function GeneratePage() {
         : "";
       router.push(`/result/${result.id}${outputQuery}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "생성 중 오류가 발생했습니다.";
+      const message = error instanceof Error ? error.message : t("generate.error");
       setRunError(message);
     }
   };
@@ -66,9 +68,9 @@ export default function GeneratePage() {
       <div className="mx-auto w-full max-w-5xl px-4 pb-40 pt-8 sm:px-6">
         <div className="mx-auto max-w-3xl space-y-4">
           <header className="space-y-1 text-center">
-            <h1 className="text-2xl font-bold text-gray-900">스타일 생성</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("generate.title")}</h1>
             <p className="text-sm text-gray-600">
-              입력한 요청으로 프롬프트 생성부터 이미지 생성까지 한 번에 실행합니다.
+              {t("generate.subtitle")}
             </p>
           </header>
 
@@ -78,7 +80,7 @@ export default function GeneratePage() {
                 {previewUrl ? (
                   <motion.img
                     src={previewUrl}
-                    alt="원본 업로드 이미지"
+                    alt={t("generate.title")}
                     className="h-full w-full object-cover"
                     initial={{ scale: 1.03, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
@@ -86,11 +88,11 @@ export default function GeneratePage() {
                   />
                 ) : !imageHydrated ? (
                   <div className="flex h-full items-center justify-center p-8 text-sm text-gray-500">
-                    업로드한 이미지를 불러오는 중입니다...
+                    {t("generate.loading")}
                   </div>
                 ) : (
                   <div className="flex h-full items-center justify-center p-8 text-sm text-gray-500">
-                    업로드된 이미지가 없습니다. `/upload`에서 사진을 먼저 등록해 주세요.
+                    {t("generate.noImage")}
                   </div>
                 )}
 
@@ -118,7 +120,7 @@ export default function GeneratePage() {
 
             {artifacts ? (
               <section className="rounded-2xl border border-gray-200 bg-white p-4 text-xs text-gray-700">
-                <p className="font-semibold">생성 프롬프트 메타</p>
+                <p className="font-semibold">{t("generate.promptMeta")}</p>
                 <p className="mt-1">
                   model: {artifacts.model} / version: {artifacts.promptVersion}
                 </p>
@@ -136,7 +138,7 @@ export default function GeneratePage() {
               value={userInput}
               onChange={(event) => handleUserInputChange(event.target.value)}
               className="h-12 min-h-12 flex-1 resize-none rounded-2xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-black disabled:bg-gray-100"
-              placeholder="예: 자연스러운 웨이브 펌, 앞머리는 가볍게"
+              placeholder={t("generate.placeholder")}
               disabled={!previewUrl}
             />
             <Button
@@ -144,7 +146,7 @@ export default function GeneratePage() {
               onClick={handleRunPipeline}
               disabled={isRunDisabled}
               className="h-12 w-12 shrink-0 rounded-full p-0 text-xl"
-              aria-label="이미지 생성"
+              aria-label={t("generate.ariaLabel")}
             >
               {isGenerating ? "..." : "→"}
             </Button>
@@ -153,7 +155,7 @@ export default function GeneratePage() {
           {runError ? <p className="mx-auto mt-2 w-full max-w-3xl text-xs text-rose-600">{runError}</p> : null}
           {!previewUrl && imageHydrated ? (
             <p className="mx-auto mt-2 w-full max-w-3xl text-xs text-amber-700">
-              생성하려면 먼저 업로드 이미지를 등록해 주세요.
+              {t("generate.needUpload")}
             </p>
           ) : null}
         </div>

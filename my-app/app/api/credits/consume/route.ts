@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 
 interface ConsumeCreditsRequest {
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as ConsumeCreditsRequest;
   const generationId = body.generationId?.trim();
-  const amount = body.amount ?? 2;
+  const amount = body.amount ?? getCreditsPerStyle();
   const reason = body.reason?.trim() || "generation_usage";
   const metadata = body.metadata ?? {};
 

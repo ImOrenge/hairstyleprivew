@@ -3,6 +3,7 @@
   // my-app/wrangler.jsonc
 "name": "hairstyleprivew",
   "main": ".open-next/worker.js",
+  "minify": true,
   "find_additional_modules": true,
   "base_dir": ".open-next/middleware",
   "compatibility_date": "2026-02-05",

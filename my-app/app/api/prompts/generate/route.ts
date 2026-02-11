@@ -1,7 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { generatePrompt, type PromptStyleOptions } from "../../../../lib/prompt-generator";
+import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { createPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
+import { generatePrompt, type PromptStyleOptions } from "../../../../lib/prompt-generator";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 
 interface GeneratePromptRequest {
@@ -17,6 +18,11 @@ const uuidV4LikeRegex =
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function createInlineOriginalImagePath(userId: string): string {
+  const safeUser = userId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `inline-upload://${safeUser}/${Date.now()}`;
 }
 
 const ALLOWED_STYLE_VALUES = new Set(["straight", "perm", "bangs", "layered"]);
@@ -61,7 +67,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as GeneratePromptRequest;
-  const generationId = body.generationId?.trim();
+  const requestedGenerationId = body.generationId?.trim();
   const userInput = body.userInput?.trim();
   const styleOptions = sanitizeStyleOptions(body.styleOptions);
   const hasReferenceImage = body.hasReferenceImage === true;
@@ -75,7 +81,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "referenceImageDataUrl is too large" }, { status: 400 });
   }
 
-  if (generationId && !uuidV4LikeRegex.test(generationId)) {
+  if (requestedGenerationId && !uuidV4LikeRegex.test(requestedGenerationId)) {
     return NextResponse.json({ error: "generationId must be a valid UUID" }, { status: 400 });
   }
 
@@ -84,23 +90,35 @@ export async function POST(request: Request) {
       from: (table: string) => {
         select: (columns: string) => {
           eq: (column: string, value: string) => {
-            maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string; code?: string } | null }>;
+            maybeSingle: () => Promise<{
+              data: Record<string, unknown> | null;
+              error: { message: string; code?: string } | null;
+            }>;
           };
         };
         update: (values: Record<string, unknown>) => {
           eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
         };
+        insert: (values: Record<string, unknown>) => {
+          select: (columns: string) => {
+            single: () => Promise<{
+              data: Record<string, unknown> | null;
+              error: { message: string; code?: string } | null;
+            }>;
+          };
+        };
       };
     };
 
+    let resolvedGenerationId = requestedGenerationId ?? null;
     let originalImagePath: string | null = null;
     let existingOptions: Record<string, unknown> = {};
 
-    if (generationId) {
+    if (resolvedGenerationId) {
       const { data: generation, error: generationError } = await supabase
         .from("generations")
         .select("id,user_id,original_image_path,options")
-        .eq("id", generationId)
+        .eq("id", resolvedGenerationId)
         .maybeSingle();
 
       if (generationError) {
@@ -131,32 +149,64 @@ export async function POST(request: Request) {
       },
     });
 
-    if (generationId) {
-      const nextOptions = {
-        ...existingOptions,
-        normalizedOptions: generated.normalizedOptions,
-        promptVersion: generated.promptVersion,
-        promptModel: generated.model,
-        promptSource: "prompt-generator-api",
-        promptUserInput: userInput,
-      };
+    const nextOptions = {
+      ...existingOptions,
+      normalizedOptions: generated.normalizedOptions,
+      promptVersion: generated.promptVersion,
+      promptModel: generated.model,
+      promptSource: "prompt-generator-api",
+      promptUserInput: userInput,
+      promptUsage: generated.usage ?? null,
+    };
 
+    if (resolvedGenerationId) {
       const { error: updateError } = await supabase
         .from("generations")
         .update({
           prompt_used: generated.prompt,
           options: nextOptions,
+          status: "queued",
+          error_message: null,
+          credits_used: getCreditsPerStyle(),
+          model_provider: "gemini",
+          model_name: generated.model,
         })
-        .eq("id", generationId);
+        .eq("id", resolvedGenerationId);
 
       if (updateError) {
         return NextResponse.json({ error: updateError.message }, { status: 500 });
       }
+    } else {
+      const { data: created, error: createError } = await supabase
+        .from("generations")
+        .insert({
+          user_id: userId,
+          original_image_path: createInlineOriginalImagePath(userId),
+          prompt_used: generated.prompt,
+          options: nextOptions,
+          status: "queued",
+          credits_used: getCreditsPerStyle(),
+          model_provider: "gemini",
+          model_name: generated.model,
+        })
+        .select("id")
+        .single();
+
+      if (createError) {
+        return NextResponse.json({ error: createError.message }, { status: 500 });
+      }
+
+      const createdGenerationId = typeof created?.id === "string" ? created.id : "";
+      if (!createdGenerationId) {
+        return NextResponse.json({ error: "Failed to create generation record" }, { status: 500 });
+      }
+
+      resolvedGenerationId = createdGenerationId;
     }
 
     return NextResponse.json(
       {
-        generationId: generationId ?? null,
+        generationId: resolvedGenerationId,
         promptArtifactToken: createPromptArtifactToken({
           userId,
           prompt: generated.prompt,

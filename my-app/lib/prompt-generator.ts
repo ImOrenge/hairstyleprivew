@@ -25,6 +25,11 @@ export interface GeneratePromptResult {
   normalizedOptions: PromptStyleOptions;
   promptVersion: string;
   model: string;
+  usage?: {
+    deepResearch?: GeminiUsageMetadata | null;
+    promptComposer?: GeminiUsageMetadata | null;
+    totalTokenCount?: number | null;
+  };
 }
 
 interface DeepResearchResult {
@@ -33,6 +38,14 @@ interface DeepResearchResult {
   textureDirection?: string;
   structureNotes?: string[];
   riskNotes?: string[];
+}
+
+export interface GeminiUsageMetadata {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+  thoughtsTokenCount?: number;
+  cachedContentTokenCount?: number;
 }
 
 const DEFAULT_NEGATIVE_PROMPT = [
@@ -176,6 +189,93 @@ Rules:
 
 function cleanText(input: string): string {
   return input.replace(/\s+/g, " ").trim();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function toPositiveInteger(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const rounded = Math.round(value);
+    return rounded >= 0 ? rounded : undefined;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      const rounded = Math.round(parsed);
+      return rounded >= 0 ? rounded : undefined;
+    }
+  }
+
+  return undefined;
+}
+
+function extractGeminiUsageMetadata(source: unknown): GeminiUsageMetadata | null {
+  if (!isRecord(source)) {
+    return null;
+  }
+
+  const usageCandidate = isRecord(source.usageMetadata)
+    ? source.usageMetadata
+    : isRecord(source.usage_metadata)
+      ? source.usage_metadata
+      : null;
+  if (!usageCandidate) {
+    return null;
+  }
+
+  const usage: GeminiUsageMetadata = {
+    promptTokenCount: toPositiveInteger(usageCandidate.promptTokenCount ?? usageCandidate.prompt_token_count),
+    candidatesTokenCount: toPositiveInteger(
+      usageCandidate.candidatesTokenCount ?? usageCandidate.candidates_token_count,
+    ),
+    totalTokenCount: toPositiveInteger(usageCandidate.totalTokenCount ?? usageCandidate.total_token_count),
+    thoughtsTokenCount: toPositiveInteger(usageCandidate.thoughtsTokenCount ?? usageCandidate.thoughts_token_count),
+    cachedContentTokenCount: toPositiveInteger(
+      usageCandidate.cachedContentTokenCount ?? usageCandidate.cached_content_token_count,
+    ),
+  };
+
+  const hasAnyField = Object.values(usage).some((value) => typeof value === "number");
+  return hasAnyField ? usage : null;
+}
+
+function logGeminiUsage(phase: string, model: string, usage: GeminiUsageMetadata | null) {
+  if (!usage) {
+    return;
+  }
+
+  console.info("[gemini-usage]", {
+    phase,
+    model,
+    usage,
+    timestamp: new Date().toISOString(),
+  });
+}
+
+function buildSafeImageContext(imageContext?: GeneratePromptInput["imageContext"]) {
+  return {
+    originalImagePath: imageContext?.originalImagePath || null,
+    hasReferenceImage: Boolean(imageContext?.hasReferenceImage || imageContext?.referenceImageDataUrl),
+    referenceImageAttachedInline: Boolean(imageContext?.referenceImageDataUrl),
+  };
+}
+
+function sumTokenCounts(usages: Array<GeminiUsageMetadata | null | undefined>): number | null {
+  let total = 0;
+  let found = false;
+
+  for (const usage of usages) {
+    const count = usage?.totalTokenCount;
+    if (typeof count === "number") {
+      total += count;
+      found = true;
+    }
+  }
+
+  return found ? total : null;
 }
 
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } | null {
@@ -482,14 +582,15 @@ function parseResearchJsonFromLLM(text: string): DeepResearchResult | null {
 
 async function runDeepResearchAgent(
   model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
+  modelName: string,
   input: GeneratePromptInput,
   normalizedOptions: PromptStyleOptions,
   lockIdentity: boolean,
-): Promise<DeepResearchResult | null> {
+): Promise<{ research: DeepResearchResult | null; usage: GeminiUsageMetadata | null }> {
   const payload = {
     userInput: cleanText(input.userInput),
     styleOptions: normalizedOptions,
-    imageContext: input.imageContext ?? {},
+    imageContext: buildSafeImageContext(input.imageContext),
     lockIdentity,
     constraints: HAIR_ONLY_CONSTRAINTS,
   };
@@ -502,21 +603,28 @@ async function runDeepResearchAgent(
     ),
   );
 
-  return parseResearchJsonFromLLM(result.response.text());
+  const usage = extractGeminiUsageMetadata(result.response);
+  logGeminiUsage("prompt_deep_research", modelName, usage);
+
+  return {
+    research: parseResearchJsonFromLLM(result.response.text()),
+    usage,
+  };
 }
 
 async function runPromptComposerAgent(
   model: ReturnType<GoogleGenerativeAI["getGenerativeModel"]>,
+  modelName: string,
   input: GeneratePromptInput,
   normalizedOptions: PromptStyleOptions,
   research: DeepResearchResult | null,
   lockIdentity: boolean,
-): Promise<{ prompt: string; negativePrompt?: string } | null> {
+): Promise<{ composed: { prompt: string; negativePrompt?: string } | null; usage: GeminiUsageMetadata | null }> {
   const payload = {
     userInput: cleanText(input.userInput),
     styleOptions: normalizedOptions,
     deepResearch: research,
-    imageContext: input.imageContext ?? {},
+    imageContext: buildSafeImageContext(input.imageContext),
     lockIdentity,
     constraints: HAIR_ONLY_CONSTRAINTS,
     defaultNegativePrompt: DEFAULT_NEGATIVE_PROMPT,
@@ -530,7 +638,13 @@ async function runPromptComposerAgent(
     ),
   );
 
-  return parsePromptJsonFromLLM(result.response.text());
+  const usage = extractGeminiUsageMetadata(result.response);
+  logGeminiUsage("prompt_composer", modelName, usage);
+
+  return {
+    composed: parsePromptJsonFromLLM(result.response.text()),
+    usage,
+  };
 }
 
 function buildHeuristicPrompt(input: GeneratePromptInput): GeneratePromptResult {
@@ -562,20 +676,29 @@ async function tryGenerateWithGemini(input: GeneratePromptInput): Promise<Genera
 
   const normalizedOptions = normalizeOptions(input.styleOptions);
 
-  const research = await runDeepResearchAgent(
+  const deepResearchRun = await runDeepResearchAgent(
     model,
+    modelName,
     input,
     normalizedOptions,
     lockIdentity,
-  ).catch(() => null);
+  ).catch(() => ({ research: null, usage: null as GeminiUsageMetadata | null }));
 
-  const composed = await runPromptComposerAgent(
+  const research = deepResearchRun.research;
+
+  const promptComposerRun = await runPromptComposerAgent(
     model,
+    modelName,
     input,
     normalizedOptions,
     research,
     lockIdentity,
-  ).catch(() => null);
+  ).catch(() => ({
+    composed: null,
+    usage: null as GeminiUsageMetadata | null,
+  }));
+
+  const composed = promptComposerRun.composed;
 
   if (!composed) {
     return null;
@@ -598,6 +721,11 @@ async function tryGenerateWithGemini(input: GeneratePromptInput): Promise<Genera
     normalizedOptions,
     promptVersion: PROMPT_VERSION,
     model: `${modelName}-deep-research-agent`,
+    usage: {
+      deepResearch: deepResearchRun.usage,
+      promptComposer: promptComposerRun.usage,
+      totalTokenCount: sumTokenCounts([deepResearchRun.usage, promptComposerRun.usage]),
+    },
   };
 }
 

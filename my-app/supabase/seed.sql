@@ -31,7 +31,7 @@ with demo_generation as (
     'brown layered hair, medium length, female, photorealistic',
     '{"gender":"female","length":"medium","style":"layered","color":"brown"}'::jsonb,
     'completed'::public.generation_status,
-    2,
+    5,
     'gemini',
     'gemini-3-pro-image-preview'
   where not exists (

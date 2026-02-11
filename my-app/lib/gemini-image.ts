@@ -10,6 +10,15 @@ export interface GeminiImageGenerationResult {
   status: "completed" | "failed";
   outputUrl?: string;
   error?: string;
+  usage?: GeminiUsageMetadata | null;
+}
+
+export interface GeminiUsageMetadata {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+  thoughtsTokenCount?: number;
+  cachedContentTokenCount?: number;
 }
 
 interface GeminiInlinePart {
@@ -30,6 +39,20 @@ interface GeminiGenerateResponse {
       parts?: GeminiInlinePart[];
     };
   }>;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+    thoughtsTokenCount?: number;
+    cachedContentTokenCount?: number;
+  };
+  usage_metadata?: {
+    prompt_token_count?: number;
+    candidates_token_count?: number;
+    total_token_count?: number;
+    thoughts_token_count?: number;
+    cached_content_token_count?: number;
+  };
   error?: {
     message?: string;
   };
@@ -90,6 +113,47 @@ function toOutputDataUrl(response: GeminiGenerateResponse): string | null {
 
   const mimeType = imagePart?.inlineData?.mimeType || imagePart?.inline_data?.mime_type || "image/png";
   return `data:${mimeType};base64,${base64}`;
+}
+
+function toPositiveInteger(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    const rounded = Math.round(value);
+    return rounded >= 0 ? rounded : undefined;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      const rounded = Math.round(parsed);
+      return rounded >= 0 ? rounded : undefined;
+    }
+  }
+
+  return undefined;
+}
+
+function extractGeminiUsageMetadata(response: GeminiGenerateResponse): GeminiUsageMetadata | null {
+  const usageSource = (response.usageMetadata ?? response.usage_metadata) as
+    | Record<string, unknown>
+    | undefined;
+  if (!usageSource) {
+    return null;
+  }
+
+  const usage: GeminiUsageMetadata = {
+    promptTokenCount: toPositiveInteger(usageSource.promptTokenCount ?? usageSource.prompt_token_count),
+    candidatesTokenCount: toPositiveInteger(
+      usageSource.candidatesTokenCount ?? usageSource.candidates_token_count,
+    ),
+    totalTokenCount: toPositiveInteger(usageSource.totalTokenCount ?? usageSource.total_token_count),
+    thoughtsTokenCount: toPositiveInteger(usageSource.thoughtsTokenCount ?? usageSource.thoughts_token_count),
+    cachedContentTokenCount: toPositiveInteger(
+      usageSource.cachedContentTokenCount ?? usageSource.cached_content_token_count,
+    ),
+  };
+
+  const hasAnyField = Object.values(usage).some((value) => typeof value === "number");
+  return hasAnyField ? usage : null;
 }
 
 export function getGeminiImageModel() {
@@ -165,6 +229,15 @@ export async function runGeminiImageGeneration(
   if (!response.ok) {
     throw new Error(json.error?.message || "Gemini image generation request failed");
   }
+  const usage = extractGeminiUsageMetadata(json);
+  if (usage) {
+    console.info("[gemini-usage]", {
+      phase: "image_generate",
+      model,
+      usage,
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   const outputUrl = toOutputDataUrl(json);
   if (!outputUrl) {
@@ -175,5 +248,6 @@ export async function runGeminiImageGeneration(
     id: `gemini_${Date.now()}`,
     status: "completed",
     outputUrl,
+    usage,
   };
 }

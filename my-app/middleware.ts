@@ -16,23 +16,24 @@ const isProtectedRoute = createRouteMatcher([
   "/generate(.*)",
   "/mypage(.*)",
   "/result(.*)",
+  "/api/(.*)",
 ]);
+
+const isWebhookRoute = createRouteMatcher(["/api/payments/webhook"]);
 
 const middleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
-      if (!isProtectedRoute(req)) {
-        return NextResponse.next();
-      }
+    if (!isProtectedRoute(req) || isWebhookRoute(req)) {
+      return NextResponse.next();
+    }
 
-      const { userId } = await auth();
-      if (userId) {
-        return NextResponse.next();
-      }
+    const { userId } = await auth();
+    if (userId) {
+      return NextResponse.next();
+    }
 
-      const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set("redirect_url", req.url);
-      return NextResponse.redirect(loginUrl);
-    })
+    return NextResponse.redirect(new URL("/login", req.url));
+  })
   : () => NextResponse.next();
 
 export default middleware;

@@ -8,8 +8,10 @@ import { ValidationCheck } from "../../components/upload/ValidationCheck";
 import { Button } from "../../components/ui/Button";
 import { useUpload } from "../../hooks/useUpload";
 import { useGenerationStore } from "../../store/useGenerationStore";
+import { useT } from "../../lib/i18n/useT";
 
 export default function UploadPage() {
+  const t = useT();
   const [guideOpen, setGuideOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const { status, message, details, validateImage, resetValidation } = useUpload();
@@ -44,9 +46,9 @@ export default function UploadPage() {
       <div className="flex min-h-[calc(100vh-190px)] items-center justify-center">
         <div className="w-full max-w-3xl space-y-4">
           <header className="space-y-1 text-center">
-            <h1 className="text-2xl font-bold text-gray-900">사진 업로드</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("upload.title")}</h1>
             <p className="text-sm text-gray-600">
-              업로드 카드 중앙에서 파일을 선택하고, 확인 후 다음 단계로 진행하세요.
+              {t("upload.subtitle")}
             </p>
           </header>
 
@@ -59,21 +61,21 @@ export default function UploadPage() {
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Button type="button" variant="secondary" onClick={() => setGuideOpen(true)}>
-                  가이드 보기
+                  {t("upload.guide")}
                 </Button>
                 {previewUrl ? (
                   <Button type="button" variant="ghost" onClick={handleReset}>
-                    초기화
+                    {t("upload.reset")}
                   </Button>
                 ) : null}
               </div>
 
               {previewUrl ? (
                 <Link href="/generate">
-                  <Button>다음 단계</Button>
+                  <Button>{t("upload.next")}</Button>
                 </Link>
               ) : (
-                <Button disabled>다음 단계</Button>
+                <Button disabled>{t("upload.next")}</Button>
               )}
             </div>
           </section>

@@ -22,7 +22,11 @@ export default function SignupPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-md justify-center px-6 py-10">
-      <SignUp path="/signup" signInUrl="/login" />
+      <SignUp
+        path="/signup"
+        signInUrl="/login"
+        fallbackRedirectUrl="/"
+      />
     </div>
   );
 }

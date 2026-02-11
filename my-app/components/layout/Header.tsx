@@ -1,19 +1,13 @@
-﻿import Link from "next/link";
-import {
-  SignInButton,
-  SignUpButton,
-  SignedIn,
-  SignedOut,
-  UserButton,
-} from "@clerk/nextjs";
+﻿"use client";
 
-const navItems = [
-  { href: "/upload", label: "업로드" },
-  { href: "/generate", label: "스타일 생성" },
-  { href: "/mypage", label: "마이페이지" },
-];
+import Link from "next/link";
+import Image from "next/image";
+import { useT } from "../../lib/i18n/useT";
+import { LanguageSwitch } from "./LanguageSwitch";
+import { ClerkAuthButtons } from "./ClerkAuthButtons";
 
 export function Header() {
+  const t = useT();
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
   const hasClerkKey =
     typeof publishableKey === "string" &&
@@ -23,59 +17,46 @@ export function Header() {
   return (
     <header className="border-b border-gray-200 bg-white">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-        <Link href="/" className="text-xl font-bold">
-          HairFit
+        <Link href="/" className="inline-flex items-center">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo.png"
+              alt="HairFit"
+              width={40}
+              height={40}
+              priority
+              className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl"
+            />
+            <span className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
+              HairFit
+            </span>
+          </div>
         </Link>
 
         <nav className="flex items-center gap-4 text-sm text-gray-700">
+          <Link href="/upload" className="hover:text-black">{t("nav.upload")}</Link>
+          <Link href="/generate" className="hover:text-black">{t("nav.generate")}</Link>
+          <Link href="/mypage" className="hover:text-black">{t("nav.mypage")}</Link>
+
           {hasClerkKey ? (
-            <>
-              <SignedIn>
-                {navItems.map((item) => (
-                  <Link key={item.href} href={item.href} className="hover:text-black">
-                    {item.label}
-                  </Link>
-                ))}
-              </SignedIn>
-
-              <SignedOut>
-                <SignInButton>
-                  <button className="rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold hover:bg-gray-100">
-                    로그인
-                  </button>
-                </SignInButton>
-                <SignUpButton>
-                  <button className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800">
-                    회원가입
-                  </button>
-                </SignUpButton>
-              </SignedOut>
-
-              <SignedIn>
-                <UserButton />
-              </SignedIn>
-            </>
+            <ClerkAuthButtons />
           ) : (
             <>
-              {navItems.map((item) => (
-                <Link key={item.href} href={item.href} className="hover:text-black">
-                  {item.label}
-                </Link>
-              ))}
               <Link
                 href="/login"
                 className="rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold hover:bg-gray-100"
               >
-                로그인
+                {t("nav.login")}
               </Link>
               <Link
                 href="/signup"
                 className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800"
               >
-                회원가입
+                {t("nav.signup")}
               </Link>
             </>
           )}
+          <LanguageSwitch />
         </nav>
       </div>
     </header>

@@ -4,6 +4,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
+import { LocaleSync } from "../components/layout/LocaleSync";
 
 export const metadata: Metadata = {
   title: "HairFit",
@@ -22,6 +23,7 @@ export default function RootLayout({
   const appShell = (
     <html lang="ko">
       <body>
+        <LocaleSync />
         <Header />
         <main>{children}</main>
         <Footer />

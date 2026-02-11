@@ -4,63 +4,70 @@ import { CSSProperties, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "../ui/Button";
+import { useT } from "../../lib/i18n/useT";
 import styles from "./HeroSection.module.css";
 
-const PREVIEW_BY_GENDER = {
-  male: {
-    label: "남자",
-    beforeImage: "/hero/befor.png",
-    afterImage: "/hero/after.jpg",
-    prompt: "손흥민 가일컷 스타일로 바꿔줘",
-  },
-  female: {
-    label: "여자",
-    beforeImage: "/hero/befor_women.png",
-    afterImage: "/hero/after_women.jpg",
-    prompt: "긴 머리 히피펌으로 바꿔줘",
-  },
-} as const;
-
-type GenderKey = keyof typeof PREVIEW_BY_GENDER;
+type GenderKey = "male" | "female";
 
 export function HeroSection() {
+  const t = useT();
   const [activeGender, setActiveGender] = useState<GenderKey>("male");
+
+  const PREVIEW_BY_GENDER: Record<GenderKey, { label: string; beforeImage: string; afterImage: string; prompt: string }> = {
+    male: {
+      label: t("hero.gender.male"),
+      beforeImage: "/hero/befor.png",
+      afterImage: "/hero/after.jpg",
+      prompt: t("hero.prompt.male"),
+    },
+    female: {
+      label: t("hero.gender.female"),
+      beforeImage: "/hero/befor_women.png",
+      afterImage: "/hero/after_women.jpg",
+      prompt: t("hero.prompt.female"),
+    },
+  };
+
   const activePreview = PREVIEW_BY_GENDER[activeGender];
   const typewriterStyle = {
     "--type-ch": `${activePreview.prompt.length}ch`,
   } as CSSProperties & Record<"--type-ch", string>;
+
+  const titleLines = t("hero.title").split("\n");
 
   return (
     <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-zinc-900 via-slate-800 to-zinc-700 p-6 text-white sm:p-10">
       <div className="pointer-events-none absolute inset-0 opacity-50 [background:radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.28),transparent_42%),radial-gradient(circle_at_80%_14%,rgba(186,230,253,0.2),transparent_40%)]" />
       <div className="relative grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-200">HairFit</p>
-          <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-            한 줄 프롬프트로
-            <br />
-            헤어스타일 변화를 바로 확인하세요
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-zinc-200">{t("hero.badge")}</p>
+          <h1 className="mt-4 min-h-[4rem] text-3xl font-black leading-tight tracking-tight sm:min-h-[8rem] sm:text-5xl">
+            {titleLines.map((line, i) => (
+              <span key={i}>
+                {i > 0 && <br />}
+                {line}
+              </span>
+            ))}
           </h1>
-          <p className="mt-4 max-w-xl text-sm leading-6 text-zinc-100 sm:text-base">
-            업로드한 얼굴 사진 위에 원하는 스타일을 즉시 오버레이해서, 시술 전에 결과를 직관적으로 확인할 수 있습니다.
+          <p className="mt-4 min-h-[3rem] max-w-xl text-sm leading-6 text-zinc-100 sm:min-h-[4rem] sm:text-base">
+            {t("hero.subtitle")}
           </p>
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href="/upload">
-              <Button className="bg-white text-zinc-900 hover:bg-zinc-200">무료로 시작하기</Button>
+              <Button className="bg-white text-zinc-900 hover:bg-zinc-200">{t("hero.cta.start")}</Button>
             </Link>
             <Link href="/generate">
               <Button variant="secondary" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
-                데모 생성 보기
+                {t("hero.cta.demo")}
               </Button>
             </Link>
           </div>
         </div>
 
         <div className={styles.previewShell}>
-          <div className={styles.genderTabs} role="tablist" aria-label="미리보기 성별 전환">
+          <div className={styles.genderTabs} role="tablist" aria-label="Preview gender toggle">
             {(Object.keys(PREVIEW_BY_GENDER) as GenderKey[]).map((genderKey) => {
               const isActive = genderKey === activeGender;
-
               return (
                 <button
                   key={genderKey}
@@ -79,7 +86,7 @@ export function HeroSection() {
           <div key={activeGender} className={styles.comparisonCard}>
             <Image
               src={activePreview.beforeImage}
-              alt={`${activePreview.label} 변경 전 헤어스타일`}
+              alt={`${activePreview.label} ${t("hero.alt.before")}`}
               fill
               priority
               className="object-cover object-center"
@@ -97,11 +104,11 @@ export function HeroSection() {
             </div>
 
             <div className={styles.scanDivider} aria-hidden="true" />
-            <span className={`${styles.tag} ${styles.before}`}>Before</span>
-            <span className={`${styles.tag} ${styles.after}`}>After</span>
+            <span className={`${styles.tag} ${styles.before}`}>{t("hero.tag.before")}</span>
+            <span className={`${styles.tag} ${styles.after}`}>{t("hero.tag.after")}</span>
           </div>
 
-          <div className={styles.promptBox} aria-label="스타일 변경 요청 프롬프트">
+          <div className={styles.promptBox} aria-label="Style change prompt">
             <span className={styles.promptPrefix}>prompt:</span>
             <span key={activeGender} className={styles.typewriter} style={typewriterStyle}>
               {activePreview.prompt}
