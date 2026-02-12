@@ -5,6 +5,7 @@ import { verifyPromptArtifactToken } from "../../../../lib/prompt-artifact-token
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 import { getGeminiImageModel, runGeminiImageGeneration } from "../../../../lib/gemini-image";
 import { runAIEvaluation } from "../../../../lib/ai-evaluation";
+import { applyWatermark } from "../../../../lib/watermark";
 
 interface RunGenerationRequest {
   generationId?: string;
@@ -93,33 +94,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid prompt artifact token" }, { status: 400 });
   }
 
-  const supabase = getSupabaseAdminClient() as unknown as {
-    from: (table: string) => {
-      select: (columns: string) => {
-        eq: (column: string, value: string) => {
-          maybeSingle: () => Promise<{
-            data: Record<string, unknown> | null;
-            error: { message: string; code?: string } | null;
-          }>;
-        };
-      };
-      update: (values: Record<string, unknown>) => {
-        eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
-      };
-      insert: (values: Record<string, unknown>) => {
-        select: (columns: string) => {
-          single: () => Promise<{
-            data: Record<string, unknown> | null;
-            error: { message: string; code?: string } | null;
-          }>;
-        };
-      };
-    };
-    rpc: (fn: string, params: Record<string, unknown>) => Promise<{
-      data: unknown;
-      error: { message: string } | null;
-    }>;
-  };
+  const supabase = getSupabaseAdminClient() as any;
 
   const creditCost = getCreditsPerStyle();
   const imageModel = getGeminiImageModel();
@@ -267,6 +242,25 @@ export async function POST(request: Request) {
       researchReport,
       imageDataUrl: body.imageDataUrl,
     });
+
+    // Check if user is on free plan (no paid transactions)
+    const { data: paidTx } = await supabase
+      .from("payment_transactions")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("status", "paid")
+      .limit(1)
+      .maybeSingle();
+
+    const isFreePlan = !paidTx;
+
+    if (isFreePlan && result.outputUrl) {
+      try {
+        result.outputUrl = await applyWatermark(result.outputUrl);
+      } catch (watermarkError) {
+        console.error("[generations/run] Failed to apply watermark", watermarkError);
+      }
+    }
 
     // Run AI Evaluation
     let aiEvaluation = null;
