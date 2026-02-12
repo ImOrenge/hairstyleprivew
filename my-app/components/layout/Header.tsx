@@ -19,12 +19,12 @@ export function Header({ clerkEnabled }: HeaderProps) {
         <Link href="/" className="inline-flex items-center">
           <div className="flex items-center gap-2">
             <Image
-              src="/logo.svg"
+              src="/logo.png"
               alt="HairFit"
               width={40}
               height={40}
               priority
-              className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl"
+              className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl object-contain"
             />
             <span className="text-xl font-bold tracking-tight text-gray-900 sm:text-2xl">
               HairFit
