@@ -1,15 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { buildSignInRedirectUrl, getClerkConfigState } from "./lib/clerk";
 
-const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY;
-const secretKey = process.env.CLERK_SECRET_KEY;
-const hasClerkConfig =
-  typeof publishableKey === "string" &&
-  publishableKey.startsWith("pk_") &&
-  !publishableKey.includes("YOUR_") &&
-  typeof secretKey === "string" &&
-  secretKey.startsWith("sk_") &&
-  !secretKey.includes("YOUR_");
+const { canUseClerkServer: hasClerkConfig } = getClerkConfigState();
 const isProtectedRoute = createRouteMatcher([
   "/upload(.*)",
   "/generate(.*)",
@@ -31,7 +24,8 @@ const middleware = hasClerkConfig
       return NextResponse.next();
     }
 
-    return NextResponse.redirect(new URL("/login", req.url));
+    const returnBackPath = `${req.nextUrl.pathname}${req.nextUrl.search}`;
+    return NextResponse.redirect(new URL(buildSignInRedirectUrl(returnBackPath), req.url));
   })
   : () => NextResponse.next();
 

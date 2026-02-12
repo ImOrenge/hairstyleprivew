@@ -5,6 +5,7 @@ import "./globals.css";
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 import { LocaleSync } from "../components/layout/LocaleSync";
+import { getClerkConfigState } from "../lib/clerk";
 
 export const metadata: Metadata = {
   title: "HairFit",
@@ -14,24 +15,20 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const hasClerkKey =
-    typeof publishableKey === "string" &&
-    publishableKey.startsWith("pk_") &&
-    !publishableKey.includes("YOUR_");
+  const { canUseClerkFrontend, publishableKey } = getClerkConfigState();
 
   const appShell = (
     <html lang="ko">
       <body>
         <LocaleSync />
-        <Header />
+        <Header clerkEnabled={canUseClerkFrontend} />
         <main>{children}</main>
         <Footer />
       </body>
     </html>
   );
 
-  if (!hasClerkKey) {
+  if (!canUseClerkFrontend || !publishableKey) {
     return appShell;
   }
 

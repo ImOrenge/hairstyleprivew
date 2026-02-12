@@ -6,13 +6,12 @@ import { useT } from "../../lib/i18n/useT";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ClerkAuthButtons } from "./ClerkAuthButtons";
 
-export function Header() {
+type HeaderProps = {
+  clerkEnabled: boolean;
+};
+
+export function Header({ clerkEnabled }: HeaderProps) {
   const t = useT();
-  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  const hasClerkKey =
-    typeof publishableKey === "string" &&
-    publishableKey.startsWith("pk_") &&
-    !publishableKey.includes("YOUR_");
 
   return (
     <header className="border-b border-gray-200 bg-white">
@@ -38,7 +37,7 @@ export function Header() {
           <Link href="/generate" className="hover:text-black">{t("nav.generate")}</Link>
           <Link href="/mypage" className="hover:text-black">{t("nav.mypage")}</Link>
 
-          {hasClerkKey ? (
+          {clerkEnabled ? (
             <ClerkAuthButtons />
           ) : (
             <>

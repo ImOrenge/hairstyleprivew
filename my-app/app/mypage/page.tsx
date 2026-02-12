@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { Card } from "../../components/ui/Card";
+import { buildSignInRedirectUrl } from "../../lib/clerk";
 import { getCreditsPerStyle } from "../../lib/pricing-plan";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 
@@ -123,7 +124,7 @@ export default async function MyPage({
 }) {
   const { userId } = await auth();
   if (!userId) {
-    redirect("/login");
+    redirect(buildSignInRedirectUrl("/mypage"));
   }
 
   const resolvedSearchParams = (await searchParams) ?? {};

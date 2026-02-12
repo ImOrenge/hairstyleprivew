@@ -79,6 +79,10 @@ Set these in Cloudflare Workers/Pages project settings (or Wrangler secrets):
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GOOGLE_API_KEY`
+
+Clerk note:
+- In local development (`http://localhost:*`), use `pk_test_` / `sk_test_` keys.
+- `pk_live_` keys are domain-restricted and will not render Clerk widgets on localhost.
 - `POLAR_ACCESS_TOKEN`
 - `POLAR_WEBHOOK_SECRET`
 - `POLAR_SERVER` (optional)
