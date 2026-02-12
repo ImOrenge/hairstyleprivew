@@ -61,7 +61,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
           {/* Social Proof Indicator */}
           {userCount > 0 && (
             <div className="mt-8 flex items-center gap-4">
-              <div className="flex -space-x-3 overflow-hidden">
+              <div className="flex gap-1.5 overflow-hidden">
                 {avatars.map((url, i) => (
                   <div
                     key={i}

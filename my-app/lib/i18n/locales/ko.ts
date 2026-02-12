@@ -15,7 +15,7 @@ const ko = {
     "hero.badge": "HairFit",
     "hero.title": "한 줄 프롬프트로\n헤어스타일 변화를 바로 확인하세요",
     "hero.subtitle": "업로드한 얼굴 사진 위에 원하는 스타일을 즉시 오버레이해서, 시술 전에 결과를 직관적으로 확인할 수 있습니다.",
-    "hero.socialProof": "이미 **{{count}}명**의 사용자가 헤어핏과 함께하고 있습니다",
+    "hero.socialProof": "누적 **{{count}}명**의 멤버가 헤어핏과 함께하고 있습니다",
     "hero.cta.start": "무료로 시작하기",
     "hero.cta.demo": "데모 생성 보기",
     "hero.gender.male": "남자",
