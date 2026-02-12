@@ -38,6 +38,8 @@ Optional:
 - `PRICING_USD_TO_KRW` (default: `1350`, USD/KRW 환율)
 - `PRICING_SAFETY_MULTIPLIER` (default: `1.06`, 안전 계수)
 - `PRICING_STARTER_FIXED_PRICE_USD` (default: `10`, Starter 플랜 고정 월 가격)
+- `RESEND_API_KEY` (optional, payment success email notifications)
+- `RESEND_FROM_EMAIL` (optional, default: `HairFit <onboarding@resend.dev>`)
 
 ## Cloudflare deployment prep
 
@@ -79,12 +81,15 @@ Set these in Cloudflare Workers/Pages project settings (or Wrangler secrets):
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GOOGLE_API_KEY`
+- `POLAR_ACCESS_TOKEN`
+- `POLAR_WEBHOOK_SECRET`
+- `INTERNAL_API_SECRET`
+- `RESEND_API_KEY` (optional)
+- `RESEND_FROM_EMAIL` (optional)
 
 Clerk note:
 - In local development (`http://localhost:*`), use `pk_test_` / `sk_test_` keys.
 - `pk_live_` keys are domain-restricted and will not render Clerk widgets on localhost.
-- `POLAR_ACCESS_TOKEN`
-- `POLAR_WEBHOOK_SECRET`
 - `POLAR_SERVER` (optional)
 - `POLAR_PRODUCT_ID_STARTER` (optional if request body sends `productId`)
 - `POLAR_PRODUCT_ID_PRO` (optional if request body sends `productId`)
@@ -99,7 +104,6 @@ Clerk note:
 - `PRICING_USD_TO_KRW` (optional)
 - `PRICING_SAFETY_MULTIPLIER` (optional)
 - `PRICING_STARTER_FIXED_PRICE_USD` (optional)
-- `INTERNAL_API_SECRET`
 
 ## Polar payment routes
 
@@ -109,5 +113,6 @@ Clerk note:
 - `POST /api/payments/webhook`
   - Verifies Standard Webhook signature headers and processes `order.paid` events.
   - Updates `payment_transactions` to `paid` and calls `apply_payment_credits` RPC.
+  - Sends payment success email when `RESEND_API_KEY` is configured.
 
 For local Wrangler preview, copy `.dev.vars.example` to `.dev.vars` and fill values.

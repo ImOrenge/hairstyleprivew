@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyPolarWebhookSignature } from "../../../../lib/polar";
+import { sendPaymentSuccessEmail } from "../../../../lib/resend";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
 
 interface PolarOrderPaidPayload {
@@ -8,6 +9,19 @@ interface PolarOrderPaidPayload {
   providerCustomerId?: string;
   amount?: number;
   currency?: string;
+}
+
+interface PaymentTransactionForEmailRow {
+  user_id: string;
+  amount: number;
+  currency: string;
+  credits_to_grant: number;
+  metadata: unknown;
+}
+
+interface UserForEmailRow {
+  email?: string | null;
+  credits?: number | null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -68,6 +82,14 @@ function extractOrderPaidPayload(data: Record<string, unknown>): PolarOrderPaidP
   };
 }
 
+function mergeMetadata(
+  baseValue: unknown,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const base = asRecord(baseValue) ?? {};
+  return { ...base, ...patch };
+}
+
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
     return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
@@ -96,6 +118,11 @@ export async function POST(request: Request) {
       from: (table: string) => {
         update: (values: Record<string, unknown>) => {
           eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
+        };
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            maybeSingle: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
+          };
         };
       };
       rpc: (
@@ -148,6 +175,64 @@ export async function POST(request: Request) {
       }
 
       return NextResponse.json({ error: applyError.message }, { status: 500 });
+    }
+
+    const txResult = await supabase
+      .from("payment_transactions")
+      .select("user_id, amount, currency, credits_to_grant, metadata")
+      .eq("id", orderPayload.paymentTransactionId)
+      .maybeSingle<PaymentTransactionForEmailRow>();
+
+    if (!txResult.error && txResult.data) {
+      const tx = txResult.data;
+      const txMetadata = asRecord(tx.metadata);
+      const receiptAlreadySent = Boolean(txMetadata?.receipt_email_sent_at);
+
+      if (!receiptAlreadySent) {
+        const userResult = await supabase
+          .from("users")
+          .select("email, credits")
+          .eq("id", tx.user_id)
+          .maybeSingle<UserForEmailRow>();
+
+        const userEmail = readString(userResult.data?.email);
+        if (userEmail) {
+          const appOrigin = new URL(request.url).origin;
+          const myPageUrl = `${appOrigin}/mypage`;
+          const plan = readString(txMetadata?.plan);
+
+          const emailResult = await sendPaymentSuccessEmail({
+            to: userEmail,
+            creditsGranted: tx.credits_to_grant,
+            currentCredits: userResult.data?.credits,
+            amount: tx.amount,
+            currency: tx.currency,
+            plan,
+            myPageUrl,
+            paymentTransactionId: orderPayload.paymentTransactionId,
+          });
+
+          if (!emailResult.error) {
+            const receiptPatch = {
+              receipt_email_sent_at: new Date().toISOString(),
+              receipt_email_message_id: emailResult.data?.id ?? null,
+            };
+
+            const { error: receiptUpdateError } = await supabase
+              .from("payment_transactions")
+              .update({
+                metadata: mergeMetadata(tx.metadata, receiptPatch),
+              })
+              .eq("id", orderPayload.paymentTransactionId);
+
+            if (receiptUpdateError) {
+              console.error("[payments/webhook] failed to persist receipt email metadata:", receiptUpdateError.message);
+            }
+          } else {
+            console.error("[payments/webhook] failed to send receipt email:", emailResult.error);
+          }
+        }
+      }
     }
 
     return NextResponse.json(
