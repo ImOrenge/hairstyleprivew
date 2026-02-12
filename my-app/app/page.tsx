@@ -1,8 +1,15 @@
+import dynamic from "next/dynamic";
 import { clerkClient } from "@clerk/nextjs/server";
 import { FeatureShowcase } from "../components/home/FeatureShowcase";
 import { HeroSection } from "../components/home/HeroSection";
-import { PricingPreview } from "../components/home/PricingPreview";
-import { ReviewCarousel } from "../components/home/ReviewCarousel";
+
+const PricingPreview = dynamic(() => import("../components/home/PricingPreview").then(mod => mod.PricingPreview), {
+  loading: () => <div className="h-96 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />,
+});
+
+const ReviewCarousel = dynamic(() => import("../components/home/ReviewCarousel").then(mod => mod.ReviewCarousel), {
+  loading: () => <div className="h-64 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />,
+});
 
 export default async function HomePage() {
   let userCount = 0;

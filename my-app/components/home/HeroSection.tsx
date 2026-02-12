@@ -73,6 +73,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                       alt="User avatar"
                       fill
                       className="object-cover"
+                      sizes="40px"
                     />
                   </div>
                 ))}
