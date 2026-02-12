@@ -56,11 +56,6 @@ export function HeroSection() {
             <Link href="/upload">
               <Button className="bg-white text-zinc-900 hover:bg-zinc-200">{t("hero.cta.start")}</Button>
             </Link>
-            <Link href="/generate">
-              <Button variant="secondary" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
-                {t("hero.cta.demo")}
-              </Button>
-            </Link>
           </div>
         </div>
 
