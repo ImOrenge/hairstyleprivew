@@ -120,6 +120,7 @@ const en: Record<TranslationKey, string> = {
     "result.action.copied": "Copied!",
     "result.action.download": "Download",
     "result.action.downloading": "Downloading...",
+    "result.action.viewEvaluation": "View AI Review",
     "result.action.regenerate": "Edit & Regenerate",
     "generate.loading": "Loading your image…",
     "generate.noImage": "No image uploaded. Please upload a photo at /upload.",

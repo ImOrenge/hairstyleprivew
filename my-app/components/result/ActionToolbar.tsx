@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 interface ActionToolbarProps {
   id: string;
   outputImageUrl?: string | null;
+  hasEvaluation?: boolean;
 }
 
 function inferExtensionFromMime(mimeType: string): string {
@@ -38,10 +39,11 @@ function triggerDownload(href: string, filename: string) {
   link.remove();
 }
 
-export function ActionToolbar({ id, outputImageUrl = null }: ActionToolbarProps) {
+export function ActionToolbar({ id, outputImageUrl = null, hasEvaluation = false }: ActionToolbarProps) {
   const t = useT();
   const router = useRouter();
   const clearLatestResult = useGenerationStore((state) => state.clearLatestResult);
+  const clearRecommendationSession = useGenerationStore((state) => state.clearRecommendationSession);
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
@@ -106,7 +108,16 @@ export function ActionToolbar({ id, outputImageUrl = null }: ActionToolbarProps)
 
   const handleRegenerate = () => {
     clearLatestResult();
+    clearRecommendationSession();
     router.push("/generate");
+  };
+
+  const handleViewEvaluation = () => {
+    if (!hasEvaluation) return;
+    const evaluationSection = document.getElementById("ai-evaluation-section");
+    if (evaluationSection) {
+      evaluationSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   return (
@@ -172,6 +183,25 @@ export function ActionToolbar({ id, outputImageUrl = null }: ActionToolbarProps)
                   <span className="text-sm font-semibold">{t("result.action.download")}</span>
                 </>
               )}
+            </span>
+          </Button>
+
+          <Button
+            variant="secondary"
+            onClick={handleViewEvaluation}
+            disabled={!hasEvaluation}
+            className="flex h-11 min-w-[100px] items-center justify-center rounded-2xl sm:min-w-[120px]"
+          >
+            <span className="flex items-center gap-2">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 17h6m-6-4h6m-6-4h6M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z"
+                />
+              </svg>
+              <span className="text-sm font-semibold">{t("result.action.viewEvaluation")}</span>
             </span>
           </Button>
 

@@ -5,20 +5,22 @@ import type { PipelineStage } from "../../store/useGenerationStore";
 
 const STAGE_ORDER: PipelineStage[] = [
   "validating",
-  "generating_prompt",
+  "analyzing_face",
+  "building_grid",
   "generating_image",
   "finalizing",
   "completed",
 ];
 
 const STAGE_LABELS: Record<PipelineStage, string> = {
-  idle: "대기",
-  validating: "입력 검증",
-  generating_prompt: "프롬프트 생성",
-  generating_image: "이미지 생성",
-  finalizing: "결과 정리",
-  completed: "완료",
-  failed: "실패",
+  idle: "Idle",
+  validating: "Validate Photo",
+  analyzing_face: "Analyze Face",
+  building_grid: "Build Grid",
+  generating_image: "Render Variants",
+  finalizing: "Finalize",
+  completed: "Complete",
+  failed: "Failed",
 };
 
 const STAGE_THEME: Record<
@@ -42,11 +44,17 @@ const STAGE_THEME: Record<
     badge: "bg-sky-500 text-white",
     spinnerDuration: 1.1,
   },
-  generating_prompt: {
+  analyzing_face: {
     ring: "border-indigo-200 border-t-indigo-500",
     text: "text-indigo-700",
     badge: "bg-indigo-500 text-white",
     spinnerDuration: 0.95,
+  },
+  building_grid: {
+    ring: "border-violet-200 border-t-violet-500",
+    text: "text-violet-700",
+    badge: "bg-violet-500 text-white",
+    spinnerDuration: 0.92,
   },
   generating_image: {
     ring: "border-emerald-200 border-t-emerald-500",
@@ -134,10 +142,8 @@ export function PipelineStatusIndicator({ stage, message, error, progress }: Pip
 
       <div className="space-y-1">
         <p className={`text-sm font-semibold ${theme.text}`}>{message}</p>
-        <p className="text-xs text-gray-600">
-          현재 단계: {STAGE_LABELS[stage]}
-        </p>
-        {!isFailed ? <p className="text-[11px] text-gray-500">진행률 {Math.max(0, Math.min(100, progress))}%</p> : null}
+        <p className="text-xs text-gray-600">Current stage: {STAGE_LABELS[stage]}</p>
+        {!isFailed ? <p className="text-[11px] text-gray-500">Progress {Math.max(0, Math.min(100, progress))}%</p> : null}
         {error ? <p className="text-xs text-rose-600">{error}</p> : null}
       </div>
 

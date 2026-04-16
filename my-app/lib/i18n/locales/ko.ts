@@ -118,6 +118,7 @@ const ko = {
     "result.action.copied": "복사 완료!",
     "result.action.download": "다운로드",
     "result.action.downloading": "다운로드 중...",
+    "result.action.viewEvaluation": "AI 평가보기",
     "result.action.regenerate": "옵션 수정 후 다시 생성",
     "generate.loading": "업로드한 이미지를 불러오는 중입니다...",
     "generate.noImage": "업로드된 이미지가 없습니다. `/upload`에서 사진을 먼저 등록해 주세요.",

@@ -1,42 +1,33 @@
 "use client";
 
 import { useCallback } from "react";
+import type {
+  FaceAnalysisSummary,
+  GeneratedVariant,
+  RecommendationCandidate,
+} from "../lib/recommendation-types";
 import { convertImageSrcToWebpDataUrl } from "../lib/webp-client";
 import { useGenerationStore } from "../store/useGenerationStore";
 
-interface PromptApiResponse {
-  generationId?: string | null;
-  prompt?: string;
-  promptArtifactToken?: string;
-  researchReport?: string;
-  productRequirements?: string;
+interface RecommendationApiResponse {
+  generationId?: string;
+  analysis?: FaceAnalysisSummary;
+  recommendations?: Array<RecommendationCandidate & { promptArtifactToken?: string }>;
+  creditsRequired?: number;
   model?: string;
   promptVersion?: string;
-  deepResearch?: {
-    summary?: string;
-    references?: string[];
-    grounded?: boolean;
-    model?: string;
-  };
   error?: string;
 }
 
 interface GenerationApiResponse {
   id?: string;
-  status?: "completed" | "failed";
+  variantId?: string;
+  variantIndex?: number;
   outputUrl?: string;
+  generatedImagePath?: string;
+  evaluation?: GeneratedVariant["evaluation"];
+  chargedCredits?: number;
   error?: string;
-}
-
-export interface PipelinePromptArtifacts {
-  generationId: string;
-  prompt: string;
-  promptArtifactToken: string;
-  researchReport: string | null;
-  productRequirements: string | null;
-  deepResearch: PromptApiResponse["deepResearch"] | null;
-  model: string;
-  promptVersion: string;
 }
 
 function toErrorMessage(error: unknown, fallback: string) {
@@ -55,23 +46,38 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+function toGeneratedVariant(candidate: RecommendationCandidate & { promptArtifactToken?: string }): GeneratedVariant {
+  return {
+    ...candidate,
+    status: "queued",
+    outputUrl: null,
+    generatedImagePath: null,
+    evaluation: null,
+    error: null,
+    generatedAt: null,
+  };
+}
+
 export function useGenerate() {
   const originalImage = useGenerationStore((state) => state.originalImage);
   const setIsGenerating = useGenerationStore((state) => state.setIsGenerating);
   const setProgress = useGenerationStore((state) => state.setProgress);
   const setPipelineState = useGenerationStore((state) => state.setPipelineState);
   const setPipelineError = useGenerationStore((state) => state.setPipelineError);
-  const setLatestResult = useGenerationStore((state) => state.setLatestResult);
   const clearLatestResult = useGenerationStore((state) => state.clearLatestResult);
   const resetPipeline = useGenerationStore((state) => state.resetPipeline);
+  const initializeRecommendationSession = useGenerationStore((state) => state.initializeRecommendationSession);
+  const updateRecommendationVariant = useGenerationStore((state) => state.updateRecommendationVariant);
+  const setGridGenerationProgress = useGenerationStore((state) => state.setGridGenerationProgress);
 
   const requestImageGeneration = useCallback(
     async (payload: {
-      generationId?: string;
+      generationId: string;
+      variantIndex: number;
+      variantId: string;
+      variantLabel: string;
       prompt: string;
       promptArtifactToken: string;
-      productRequirements?: string;
-      researchReport?: string;
       imageDataUrl: string;
     }) => {
       const response = await fetch("/api/generations/run", {
@@ -83,204 +89,213 @@ export function useGenerate() {
       });
 
       const result = (await response.json().catch(() => ({}))) as GenerationApiResponse;
-
-      if (!response.ok || !result.id) {
-        throw new Error(result.error || "이미지 생성에 실패했습니다.");
+      if (!response.ok || !result.id || !result.variantId) {
+        throw new Error(result.error || "Failed to generate hairstyle variant.");
       }
 
-      const currentStatus = result.status ?? "failed";
-      const currentOutputUrl = result.outputUrl ?? null;
-      if (currentStatus === "failed") {
-        throw new Error(result.error || "생성 모델에서 실패 응답을 반환했습니다.");
-      }
+      const webpOutputUrl = result.outputUrl
+        ? (await convertImageSrcToWebpDataUrl(result.outputUrl)) || result.outputUrl
+        : null;
 
-      if (currentStatus !== "completed" || !currentOutputUrl) {
-        throw new Error("생성 결과 이미지가 비어 있습니다.");
-      }
-
-      const webpOutputUrl = (await convertImageSrcToWebpDataUrl(currentOutputUrl)) || currentOutputUrl;
-      return { id: result.id, outputUrl: webpOutputUrl };
+      return {
+        id: result.id,
+        variantId: result.variantId,
+        variantIndex: result.variantIndex ?? payload.variantIndex,
+        outputUrl: webpOutputUrl,
+        generatedImagePath: result.generatedImagePath || null,
+        evaluation: result.evaluation || null,
+        chargedCredits: result.chargedCredits ?? 0,
+      };
     },
     [],
   );
 
-  const runGeneration = useCallback(
-    async (
-      prompt: string,
-      promptArtifactToken: string,
-      productRequirements?: string,
-      researchReport?: string,
-      generationId?: string,
-    ) => {
+  const runGridPipeline = useCallback(async () => {
+    if (!originalImage) {
+      const message = "Upload a reference photo before generating recommendations.";
+      setPipelineError(message);
+      setPipelineState("failed", message);
+      throw new Error(message);
+    }
+
+    setIsGenerating(true);
+    setProgress(5);
+    setGridGenerationProgress(0);
+    clearLatestResult();
+    setPipelineError(null);
+
+    try {
+      setPipelineState("validating", "Checking the uploaded portrait.");
+      const referenceImageDataUrl = await fileToDataUrl(originalImage);
+      setProgress(15);
+
+      setPipelineState("analyzing_face", "Analyzing head balance and face proportions.");
+      const promptResponse = await fetch("/api/prompts/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          referenceImageDataUrl,
+        }),
+      });
+
+      const promptData = (await promptResponse.json().catch(() => ({}))) as RecommendationApiResponse;
+      if (!promptResponse.ok) {
+        throw new Error(promptData.error || "Failed to build hairstyle recommendations.");
+      }
+
+      if (!promptData.generationId || !promptData.analysis || !promptData.recommendations?.length) {
+        throw new Error("Recommendation response is incomplete.");
+      }
+
+      const workingGrid = promptData.recommendations.map(toGeneratedVariant);
+      initializeRecommendationSession({
+        generationId: promptData.generationId,
+        analysisSummary: promptData.analysis,
+        recommendationGrid: workingGrid,
+      });
+
+      setPipelineState("building_grid", "Prepared a 3x3 recommendation grid.");
+      setProgress(30);
+
+      let completedCount = 0;
+
+      for (const [index, candidate] of promptData.recommendations.entries()) {
+        if (!candidate.promptArtifactToken) {
+          updateRecommendationVariant(candidate.id, {
+            status: "failed",
+            error: "Missing prompt artifact token.",
+          });
+          continue;
+        }
+
+        updateRecommendationVariant(candidate.id, {
+          status: "generating",
+          error: null,
+        });
+        setPipelineState("generating_image", `Rendering ${candidate.label} (${index + 1}/9).`);
+
+        try {
+          const result = await requestImageGeneration({
+            generationId: promptData.generationId,
+            variantIndex: index,
+            variantId: candidate.id,
+            variantLabel: candidate.label,
+            prompt: candidate.prompt,
+            promptArtifactToken: candidate.promptArtifactToken,
+            imageDataUrl: referenceImageDataUrl,
+          });
+
+          completedCount += 1;
+          updateRecommendationVariant(candidate.id, {
+            status: "completed",
+            outputUrl: result.outputUrl,
+            generatedImagePath: result.generatedImagePath,
+            evaluation: result.evaluation,
+            error: null,
+            generatedAt: new Date().toISOString(),
+          });
+        } catch (error) {
+          updateRecommendationVariant(candidate.id, {
+            status: "failed",
+            error: toErrorMessage(error, "Variant generation failed."),
+          });
+        }
+
+        const percent = Math.round(((index + 1) / promptData.recommendations.length) * 100);
+        setGridGenerationProgress(percent);
+        setProgress(30 + Math.round(percent * 0.6));
+      }
+
+      setPipelineState("finalizing", "Finalizing the recommendation board.");
+      setProgress(95);
+
+      if (completedCount === 0) {
+        throw new Error("All recommendation variants failed.");
+      }
+
+      setPipelineState("completed", "Your 3x3 hairstyle recommendation grid is ready.");
+      setProgress(100);
+
+      return {
+        generationId: promptData.generationId,
+        analysis: promptData.analysis,
+      };
+    } catch (error) {
+      const message = toErrorMessage(error, "The recommendation pipeline failed.");
+      setPipelineError(message);
+      setPipelineState("failed", message);
+      setProgress(0);
+      throw new Error(message);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [
+    clearLatestResult,
+    initializeRecommendationSession,
+    originalImage,
+    requestImageGeneration,
+    setGridGenerationProgress,
+    setIsGenerating,
+    setPipelineError,
+    setPipelineState,
+    setProgress,
+    updateRecommendationVariant,
+  ]);
+
+  const retryRecommendationVariant = useCallback(
+    async (payload: {
+      generationId: string;
+      variant: GeneratedVariant;
+    }) => {
       if (!originalImage) {
-        const message = "업로드된 원본 이미지가 없습니다.";
-        setPipelineError(message);
-        setPipelineState("failed", message);
-        throw new Error(message);
+        throw new Error("Original image is missing.");
       }
 
-      if (!promptArtifactToken.trim()) {
-        const message = "프롬프트 토큰이 없어 생성을 진행할 수 없습니다.";
-        setPipelineError(message);
-        setPipelineState("failed", message);
-        throw new Error(message);
+      if (!payload.variant.promptArtifactToken) {
+        throw new Error("Prompt artifact token is missing.");
       }
 
-      setIsGenerating(true);
-      setProgress(10);
-      clearLatestResult();
-      setPipelineError(null);
+      const imageDataUrl = await fileToDataUrl(originalImage);
+      updateRecommendationVariant(payload.variant.id, {
+        status: "generating",
+        error: null,
+      });
 
       try {
-        setPipelineState("generating_image", "이미지 생성 중입니다.");
-        const imageDataUrl = await fileToDataUrl(originalImage);
         const result = await requestImageGeneration({
-          generationId,
-          prompt,
-          promptArtifactToken,
-          productRequirements,
-          researchReport,
+          generationId: payload.generationId,
+          variantIndex: Math.max(0, payload.variant.rank - 1),
+          variantId: payload.variant.id,
+          variantLabel: payload.variant.label,
+          prompt: payload.variant.prompt,
+          promptArtifactToken: payload.variant.promptArtifactToken,
           imageDataUrl,
         });
 
-        setPipelineState("finalizing", "결과를 정리하고 있습니다.");
-        setProgress(90);
-        setLatestResult({
-          predictionId: result.id,
+        updateRecommendationVariant(payload.variant.id, {
+          status: "completed",
           outputUrl: result.outputUrl,
+          generatedImagePath: result.generatedImagePath,
+          evaluation: result.evaluation,
+          error: null,
+          generatedAt: new Date().toISOString(),
         });
-        setPipelineState("completed", "생성이 완료되었습니다.");
-        setProgress(100);
-        return result;
       } catch (error) {
-        const message = toErrorMessage(error, "이미지 생성 중 오류가 발생했습니다.");
-        setPipelineError(message);
-        setPipelineState("failed", message);
-        throw new Error(message);
-      } finally {
-        setIsGenerating(false);
+        updateRecommendationVariant(payload.variant.id, {
+          status: "failed",
+          error: toErrorMessage(error, "Variant generation failed."),
+        });
+        throw error;
       }
     },
-    [
-      clearLatestResult,
-      originalImage,
-      requestImageGeneration,
-      setIsGenerating,
-      setLatestResult,
-      setPipelineError,
-      setPipelineState,
-      setProgress,
-    ],
+    [originalImage, requestImageGeneration, updateRecommendationVariant],
   );
 
-  const runPipeline = useCallback(
-    async (userInput: string) => {
-      const normalizedUserInput = userInput.trim();
-      if (!normalizedUserInput) {
-        const message = "원하는 스타일을 자유롭게 입력해 주세요.";
-        setPipelineError(message);
-        setPipelineState("failed", message);
-        throw new Error(message);
-      }
-
-      if (!originalImage) {
-        const message = "원본 이미지가 없습니다. 업로드 화면에서 사진을 먼저 등록해 주세요.";
-        setPipelineError(message);
-        setPipelineState("failed", message);
-        throw new Error(message);
-      }
-
-      setIsGenerating(true);
-      setProgress(5);
-      clearLatestResult();
-      setPipelineError(null);
-
-      try {
-        setPipelineState("validating", "입력값과 원본 이미지를 확인하고 있습니다.");
-        const referenceImageDataUrl = await fileToDataUrl(originalImage);
-        setProgress(20);
-
-        setPipelineState("generating_prompt", "요청 기반 프롬프트를 생성하고 있습니다.");
-        const promptResponse = await fetch("/api/prompts/generate", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userInput: normalizedUserInput,
-            hasReferenceImage: true,
-            referenceImageDataUrl,
-          }),
-        });
-
-        const promptData = (await promptResponse.json().catch(() => ({}))) as PromptApiResponse;
-        if (!promptResponse.ok) {
-          throw new Error(promptData.error || "프롬프트 생성에 실패했습니다.");
-        }
-
-        if (!promptData.prompt) {
-          throw new Error("프롬프트 응답 형식이 올바르지 않습니다.");
-        }
-        const generationId = promptData.generationId?.trim() || "";
-        if (!generationId) {
-          throw new Error("generationId가 없어 생성을 진행할 수 없습니다.");
-        }
-        if (!promptData.promptArtifactToken) {
-          throw new Error("프롬프트 토큰이 없어 생성을 진행할 수 없습니다.");
-        }
-        setProgress(50);
-
-        const artifacts: PipelinePromptArtifacts = {
-          generationId,
-          prompt: promptData.prompt,
-          promptArtifactToken: promptData.promptArtifactToken,
-          researchReport: promptData.researchReport || null,
-          productRequirements: promptData.productRequirements || null,
-          deepResearch: promptData.deepResearch || null,
-          model: promptData.model || "unknown",
-          promptVersion: promptData.promptVersion || "v1",
-        };
-
-        setPipelineState("generating_image", "프롬프트를 적용해 이미지를 생성하고 있습니다.");
-        const generation = await requestImageGeneration({
-          generationId: artifacts.generationId,
-          prompt: artifacts.prompt,
-          promptArtifactToken: artifacts.promptArtifactToken,
-          productRequirements: artifacts.productRequirements || undefined,
-          researchReport: artifacts.researchReport || undefined,
-          imageDataUrl: referenceImageDataUrl,
-        });
-
-        setPipelineState("finalizing", "결과를 정리하고 있습니다.");
-        setProgress(90);
-        setLatestResult({
-          predictionId: generation.id,
-          outputUrl: generation.outputUrl,
-        });
-        setPipelineState("completed", "헤어스타일 생성이 완료되었습니다.");
-        setProgress(100);
-        return { ...generation, artifacts };
-      } catch (error) {
-        const message = toErrorMessage(error, "생성 파이프라인 실행 중 오류가 발생했습니다.");
-        setPipelineError(message);
-        setPipelineState("failed", message);
-        setProgress(0);
-        throw new Error(message);
-      } finally {
-        setIsGenerating(false);
-      }
-    },
-    [
-      clearLatestResult,
-      originalImage,
-      requestImageGeneration,
-      setIsGenerating,
-      setLatestResult,
-      setPipelineError,
-      setPipelineState,
-      setProgress,
-    ],
-  );
-
-  return { runGeneration, runPipeline, resetPipeline };
+  return {
+    runGridPipeline,
+    retryRecommendationVariant,
+    resetPipeline,
+  };
 }
