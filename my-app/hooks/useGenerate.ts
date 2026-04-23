@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import type {
   FaceAnalysisSummary,
   GeneratedVariant,
+  HairDesignerBrief,
   RecommendationCandidate,
 } from "../lib/recommendation-types";
 import { convertImageSrcToWebpDataUrl } from "../lib/webp-client";
@@ -12,7 +13,12 @@ import { useGenerationStore } from "../store/useGenerationStore";
 interface RecommendationApiResponse {
   generationId?: string;
   analysis?: FaceAnalysisSummary;
-  recommendations?: Array<RecommendationCandidate & { promptArtifactToken?: string }>;
+  recommendations?: Array<
+    RecommendationCandidate & {
+      designerBrief?: HairDesignerBrief | null;
+      promptArtifactToken?: string;
+    }
+  >;
   catalogCycleId?: string;
   creditsRequired?: number;
   model?: string;
@@ -47,13 +53,19 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-function toGeneratedVariant(candidate: RecommendationCandidate & { promptArtifactToken?: string }): GeneratedVariant {
+function toGeneratedVariant(
+  candidate: RecommendationCandidate & {
+    designerBrief?: HairDesignerBrief | null;
+    promptArtifactToken?: string;
+  },
+): GeneratedVariant {
   return {
     ...candidate,
     status: "queued",
     outputUrl: null,
     generatedImagePath: null,
     evaluation: null,
+    designerBrief: candidate.designerBrief ?? null,
     error: null,
     generatedAt: null,
   };

@@ -32,6 +32,16 @@ export interface FaceAnalysisSummary {
   summary: string;
 }
 
+export interface HairDesignerBrief {
+  headline: string;
+  consultationSummary: string;
+  cutDirection: string;
+  volumeTextureDirection: string;
+  stylingDirection: string;
+  cautionNotes: string[];
+  salonKeywords: string[];
+}
+
 export interface HairstyleCatalogCycle {
   cycleId: string;
   status: HairstyleCatalogCycleStatus;
@@ -104,6 +114,7 @@ export interface GeneratedVariant extends RecommendationCandidate {
   outputUrl: string | null;
   generatedImagePath: string | null;
   evaluation: AIEvaluationResult | null;
+  designerBrief: HairDesignerBrief | null;
   error: string | null;
   generatedAt: string | null;
 }

@@ -1,1 +1,11 @@
-{}
+{
+  "scripts": {
+    "dev": "npm --prefix my-app run dev",
+    "build": "npm --prefix my-app run build",
+    "cf:build": "npm --prefix my-app run cf:build",
+    "cf:deploy": "npm --prefix my-app run cf:deploy",
+    "cf:preview": "npm --prefix my-app run cf:preview",
+    "lint": "npm --prefix my-app run lint",
+    "start": "npm --prefix my-app run start"
+  }
+}

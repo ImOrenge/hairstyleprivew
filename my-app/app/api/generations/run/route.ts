@@ -6,6 +6,7 @@ import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { verifyPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
 import type {
   GeneratedVariant,
+  HairDesignerBrief,
   RecommendationSet,
 } from "../../../../lib/recommendation-types";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
@@ -64,6 +65,37 @@ function createInlineGeneratedImagePath(providerRunId: string): string {
   return `inline-output://${safeId}`;
 }
 
+function normalizeDesignerBrief(raw: unknown): HairDesignerBrief | null {
+  if (!isObject(raw)) {
+    return null;
+  }
+
+  const headline = typeof raw.headline === "string" ? raw.headline : "";
+  const consultationSummary = typeof raw.consultationSummary === "string" ? raw.consultationSummary : "";
+  const cutDirection = typeof raw.cutDirection === "string" ? raw.cutDirection : "";
+  const volumeTextureDirection =
+    typeof raw.volumeTextureDirection === "string" ? raw.volumeTextureDirection : "";
+  const stylingDirection = typeof raw.stylingDirection === "string" ? raw.stylingDirection : "";
+
+  if (!headline || !consultationSummary || !cutDirection || !volumeTextureDirection || !stylingDirection) {
+    return null;
+  }
+
+  return {
+    headline,
+    consultationSummary,
+    cutDirection,
+    volumeTextureDirection,
+    stylingDirection,
+    cautionNotes: Array.isArray(raw.cautionNotes)
+      ? raw.cautionNotes.filter((item): item is string => typeof item === "string")
+      : [],
+    salonKeywords: Array.isArray(raw.salonKeywords)
+      ? raw.salonKeywords.filter((item): item is string => typeof item === "string")
+      : [],
+  };
+}
+
 function normalizeVariant(raw: unknown): GeneratedVariant | null {
   if (!isObject(raw)) {
     return null;
@@ -100,12 +132,18 @@ function normalizeVariant(raw: unknown): GeneratedVariant | null {
     tags: Array.isArray(raw.tags) ? raw.tags.filter((item): item is string => typeof item === "string") : [],
     lengthBucket,
     correctionFocus,
+    promptArtifactToken: typeof raw.promptArtifactToken === "string" ? raw.promptArtifactToken : undefined,
+    catalogItemId: typeof raw.catalogItemId === "string" ? raw.catalogItemId : undefined,
+    catalogCycleId: typeof raw.catalogCycleId === "string" ? raw.catalogCycleId : undefined,
+    selectionScore: typeof raw.selectionScore === "number" ? raw.selectionScore : undefined,
+    promptTemplateVersion: typeof raw.promptTemplateVersion === "string" ? raw.promptTemplateVersion : undefined,
     status,
     outputUrl: typeof raw.outputUrl === "string" ? raw.outputUrl : null,
     generatedImagePath: typeof raw.generatedImagePath === "string" ? raw.generatedImagePath : null,
     evaluation: isObject(raw.evaluation)
       ? (raw.evaluation as unknown as GeneratedVariant["evaluation"])
       : null,
+    designerBrief: normalizeDesignerBrief(raw.designerBrief),
     error: typeof raw.error === "string" ? raw.error : null,
     generatedAt: typeof raw.generatedAt === "string" ? raw.generatedAt : null,
   };

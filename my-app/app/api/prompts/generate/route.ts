@@ -1,10 +1,10 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { generateDesignerBriefs } from "../../../../lib/designer-brief-generator";
 import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { createPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
 import { generateRecommendationSet } from "../../../../lib/recommendation-generator";
 import type {
-  CatalogBackedRecommendationCandidate,
   GeneratedVariant,
   RecommendationSet,
 } from "../../../../lib/recommendation-types";
@@ -76,11 +76,19 @@ export async function POST(request: Request) {
     }
 
     const generated = await generateRecommendationSet(referenceImageDataUrl);
+    const designerBriefs = await generateDesignerBriefs({
+      analysis: generated.analysis,
+      candidates: generated.recommendations,
+    });
+    const recommendationsWithBriefs = generated.recommendations.map((candidate) => ({
+      ...candidate,
+      designerBrief: designerBriefs[candidate.id] ?? null,
+    }));
 
     const creditsRequired = getCreditsPerStyle();
     const now = new Date().toISOString();
 
-    const variants: GeneratedVariant[] = generated.recommendations.map((candidate) => ({
+    const variants: GeneratedVariant[] = recommendationsWithBriefs.map((candidate) => ({
       ...candidate,
       status: "queued",
       outputUrl: null,
@@ -105,7 +113,7 @@ export async function POST(request: Request) {
       .insert({
         user_id: userId,
         original_image_path: createInlineOriginalImagePath(userId),
-        prompt_used: generated.recommendations[0]?.prompt || generated.analysis.summary,
+        prompt_used: recommendationsWithBriefs[0]?.prompt || generated.analysis.summary,
         options: {
           analysis: generated.analysis,
           recommendationSet,
@@ -131,7 +139,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to create generation record" }, { status: 500 });
     }
 
-    const recommendations = generated.recommendations.map((candidate: CatalogBackedRecommendationCandidate) => ({
+    const recommendations = recommendationsWithBriefs.map((candidate) => ({
       ...candidate,
       promptArtifactToken: createPromptArtifactToken({
         userId,

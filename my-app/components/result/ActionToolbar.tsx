@@ -11,6 +11,7 @@ interface ActionToolbarProps {
   id: string;
   outputImageUrl?: string | null;
   hasEvaluation?: boolean;
+  selectedVariantId?: string | null;
 }
 
 function inferExtensionFromMime(mimeType: string): string {
@@ -39,7 +40,12 @@ function triggerDownload(href: string, filename: string) {
   link.remove();
 }
 
-export function ActionToolbar({ id, outputImageUrl = null, hasEvaluation = false }: ActionToolbarProps) {
+export function ActionToolbar({
+  id,
+  outputImageUrl = null,
+  hasEvaluation = false,
+  selectedVariantId = null,
+}: ActionToolbarProps) {
   const t = useT();
   const router = useRouter();
   const clearLatestResult = useGenerationStore((state) => state.clearLatestResult);
@@ -49,7 +55,12 @@ export function ActionToolbar({ id, outputImageUrl = null, hasEvaluation = false
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
 
-  const shareLink = typeof window !== "undefined" ? `${window.location.origin}/result/${id}` : "";
+  const shareLink =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/result/${id}${
+          selectedVariantId ? `?variant=${encodeURIComponent(selectedVariantId)}` : ""
+        }`
+      : "";
 
   const handleShare = async () => {
     if (typeof navigator !== "undefined" && navigator.share) {
