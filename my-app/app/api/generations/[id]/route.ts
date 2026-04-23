@@ -33,6 +33,7 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
     analysis: analysis as unknown as RecommendationSet["analysis"],
     variants: variants as unknown as RecommendationSet["variants"],
     selectedVariantId: typeof raw.selectedVariantId === "string" ? raw.selectedVariantId : null,
+    catalogCycleId: typeof raw.catalogCycleId === "string" ? raw.catalogCycleId : null,
     creditChargedAt: typeof raw.creditChargedAt === "string" ? raw.creditChargedAt : null,
     creditChargeAmount: typeof raw.creditChargeAmount === "number" ? raw.creditChargeAmount : null,
   };

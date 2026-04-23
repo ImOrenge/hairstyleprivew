@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { createPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
 import { generateRecommendationSet } from "../../../../lib/recommendation-generator";
-import type { GeneratedVariant, RecommendationSet } from "../../../../lib/recommendation-types";
+import type {
+  CatalogBackedRecommendationCandidate,
+  GeneratedVariant,
+  RecommendationSet,
+} from "../../../../lib/recommendation-types";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 
 interface GenerateRecommendationsRequest {
@@ -71,9 +75,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: ensureProfileError.message }, { status: 500 });
     }
 
-    const generated = await generateRecommendationSet({
-      referenceImageDataUrl,
-    });
+    const generated = await generateRecommendationSet(referenceImageDataUrl);
 
     const creditsRequired = getCreditsPerStyle();
     const now = new Date().toISOString();
@@ -93,6 +95,7 @@ export async function POST(request: Request) {
       analysis: generated.analysis,
       variants,
       selectedVariantId: null,
+      catalogCycleId: generated.catalogCycleId,
       creditChargedAt: null,
       creditChargeAmount: creditsRequired,
     };
@@ -106,6 +109,7 @@ export async function POST(request: Request) {
         options: {
           analysis: generated.analysis,
           recommendationSet,
+          catalogCycleId: generated.catalogCycleId,
           promptVersion: generated.promptVersion,
           promptModel: generated.model,
           promptSource: "recommendation-grid-api",
@@ -127,7 +131,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to create generation record" }, { status: 500 });
     }
 
-    const recommendations = generated.recommendations.map((candidate) => ({
+    const recommendations = generated.recommendations.map((candidate: CatalogBackedRecommendationCandidate) => ({
       ...candidate,
       promptArtifactToken: createPromptArtifactToken({
         userId,
@@ -144,6 +148,7 @@ export async function POST(request: Request) {
         generationId,
         analysis: generated.analysis,
         recommendations,
+        catalogCycleId: generated.catalogCycleId,
         creditsRequired,
         model: generated.model,
         promptVersion: generated.promptVersion,

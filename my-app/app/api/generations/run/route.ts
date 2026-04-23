@@ -20,6 +20,7 @@ interface RunGenerationRequest {
   imageDataUrl?: string;
   variantIndex?: number;
   variantId?: string;
+  catalogItemId?: string;
   variantLabel?: string;
 }
 
@@ -132,6 +133,7 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
     analysis: analysis as unknown as RecommendationSet["analysis"],
     variants,
     selectedVariantId: typeof raw.selectedVariantId === "string" ? raw.selectedVariantId : null,
+    catalogCycleId: typeof raw.catalogCycleId === "string" ? raw.catalogCycleId : null,
     creditChargedAt: typeof raw.creditChargedAt === "string" ? raw.creditChargedAt : null,
     creditChargeAmount: typeof raw.creditChargeAmount === "number" ? raw.creditChargeAmount : null,
   };
@@ -212,6 +214,7 @@ export async function POST(request: Request) {
   const imageDataUrl = body.imageDataUrl?.trim() || "";
   const variantIndex = typeof body.variantIndex === "number" ? body.variantIndex : null;
   const requestedVariantId = body.variantId?.trim() || "";
+  const requestedCatalogItemId = body.catalogItemId?.trim() || "";
 
   if (!generationId || !uuidV4LikeRegex.test(generationId)) {
     return NextResponse.json({ error: "generationId must be a valid UUID" }, { status: 400 });
@@ -280,6 +283,9 @@ export async function POST(request: Request) {
   if (!targetVariant || targetVariant.prompt !== prompt) {
     return NextResponse.json({ error: "Variant prompt mismatch" }, { status: 400 });
   }
+  if (requestedCatalogItemId && targetVariant.catalogItemId !== requestedCatalogItemId) {
+    return NextResponse.json({ error: "Catalog item mismatch" }, { status: 400 });
+  }
 
   const creditCost = recommendationSet.creditChargeAmount ?? getCreditsPerStyle();
   let chargedCredits = 0;
@@ -331,6 +337,7 @@ export async function POST(request: Request) {
         credits_used: creditCost,
         options: {
           ...existingOptions,
+          catalogCycleId: recommendationSet.catalogCycleId ?? targetVariant.catalogCycleId ?? null,
           analysis: recommendationSet.analysis,
           recommendationSet,
         },
@@ -389,6 +396,7 @@ export async function POST(request: Request) {
         credits_used: creditCost,
         options: {
           ...existingOptions,
+          catalogCycleId: recommendationSet.catalogCycleId ?? primaryVariant?.catalogCycleId ?? null,
           analysis: recommendationSet.analysis,
           recommendationSet,
         },
@@ -400,6 +408,8 @@ export async function POST(request: Request) {
         id: generationId,
         variantId: targetVariant.id,
         variantIndex: resolvedVariantIndex,
+        catalogItemId: targetVariant.catalogItemId || null,
+        catalogCycleId: targetVariant.catalogCycleId || recommendationSet.catalogCycleId || null,
         outputUrl,
         evaluation,
         generatedImagePath,
@@ -427,6 +437,7 @@ export async function POST(request: Request) {
         error_message: message,
         options: {
           ...existingOptions,
+          catalogCycleId: recommendationSet.catalogCycleId ?? null,
           analysis: recommendationSet.analysis,
           recommendationSet,
         },

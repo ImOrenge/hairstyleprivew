@@ -13,6 +13,7 @@ interface RecommendationApiResponse {
   generationId?: string;
   analysis?: FaceAnalysisSummary;
   recommendations?: Array<RecommendationCandidate & { promptArtifactToken?: string }>;
+  catalogCycleId?: string;
   creditsRequired?: number;
   model?: string;
   promptVersion?: string;
@@ -75,6 +76,7 @@ export function useGenerate() {
       generationId: string;
       variantIndex: number;
       variantId: string;
+      catalogItemId?: string;
       variantLabel: string;
       prompt: string;
       promptArtifactToken: string;
@@ -181,6 +183,7 @@ export function useGenerate() {
             generationId: promptData.generationId,
             variantIndex: index,
             variantId: candidate.id,
+            catalogItemId: candidate.catalogItemId,
             variantLabel: candidate.label,
             prompt: candidate.prompt,
             promptArtifactToken: candidate.promptArtifactToken,
@@ -268,6 +271,7 @@ export function useGenerate() {
           generationId: payload.generationId,
           variantIndex: Math.max(0, payload.variant.rank - 1),
           variantId: payload.variant.id,
+          catalogItemId: payload.variant.catalogItemId,
           variantLabel: payload.variant.label,
           prompt: payload.variant.prompt,
           promptArtifactToken: payload.variant.promptArtifactToken,
