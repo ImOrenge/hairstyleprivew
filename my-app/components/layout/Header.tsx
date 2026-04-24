@@ -28,7 +28,7 @@ export function Header({ clerkEnabled }: HeaderProps) {
           <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">HairFit</span>
         </Link>
 
-        <nav className="flex items-center gap-4 text-sm font-medium">
+        <nav className="hidden items-center gap-4 text-sm font-medium md:flex">
           <Link href="/upload" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
             {t("nav.upload")}
           </Link>
@@ -62,6 +62,17 @@ export function Header({ clerkEnabled }: HeaderProps) {
             <LanguageSwitch />
           </div>
         </nav>
+
+        <div className="flex items-center gap-2 md:hidden">
+          <Link
+            href="/upload"
+            className="rounded-full bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-stone-800 dark:bg-white dark:text-stone-900 dark:hover:bg-zinc-200"
+          >
+            {t("nav.upload")}
+          </Link>
+          <ThemeToggle />
+          <LanguageSwitch />
+        </div>
       </div>
     </header>
   );

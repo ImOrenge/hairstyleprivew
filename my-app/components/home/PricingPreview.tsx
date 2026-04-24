@@ -84,7 +84,7 @@ export function PricingPreview() {
         body: JSON.stringify({ plan: "starter" }),
       });
 
-      const result = (await response.json().catch((error) => ({}))) as CheckoutResponseBody;
+      const result = (await response.json().catch(() => ({}))) as CheckoutResponseBody;
       if (response.status === 401) {
         const returnPath = `${window.location.pathname}${window.location.search}`;
         window.location.assign(`/login?redirect_url=${encodeURIComponent(returnPath)}`);

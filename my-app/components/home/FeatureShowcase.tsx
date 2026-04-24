@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 
+import { Camera, CheckCircle2, Grid3X3 } from "lucide-react";
 import { useT } from "../../lib/i18n/useT";
 
 export function FeatureShowcase() {
@@ -10,16 +11,19 @@ export function FeatureShowcase() {
       title: t("features.1.title"),
       description: t("features.1.desc"),
       point: t("features.1.point"),
+      icon: Camera,
     },
     {
       title: t("features.2.title"),
       description: t("features.2.desc"),
       point: t("features.2.point"),
+      icon: Grid3X3,
     },
     {
       title: t("features.3.title"),
       description: t("features.3.desc"),
       point: t("features.3.point"),
+      icon: CheckCircle2,
     },
   ];
 
@@ -33,19 +37,29 @@ export function FeatureShowcase() {
       </div>
 
       <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {features.map((feature, index) => (
-          <article
-            key={feature.title}
-            className="group flex flex-col rounded-2xl border border-stone-200/60 bg-gradient-to-b from-amber-50/50 to-white/50 p-5 transition duration-300 hover:-translate-y-1 dark:border-zinc-800/60 dark:from-zinc-800/50 dark:to-zinc-900/50"
-          >
-            <span className="inline-flex w-fit rounded-full border border-amber-300/60 bg-white px-3 py-1 text-xs font-semibold text-amber-700 dark:border-amber-500/30 dark:bg-zinc-800 dark:text-amber-400">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <h3 className="mt-4 text-lg font-bold text-stone-900 dark:text-white">{feature.title}</h3>
-            <p className="mt-2 flex-1 text-sm leading-6 text-stone-700 dark:text-zinc-300">{feature.description}</p>
-            <p className="mt-4 text-xs font-semibold text-stone-500 dark:text-zinc-500">{feature.point}</p>
-          </article>
-        ))}
+        {features.map((feature, index) => {
+          const Icon = feature.icon;
+          return (
+            <article
+              key={feature.title}
+              className="group flex min-h-64 flex-col rounded-2xl border border-stone-200/70 bg-white p-5 transition duration-300 hover:-translate-y-1 hover:border-amber-300 dark:border-zinc-800/60 dark:bg-zinc-900/70"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-900 text-white dark:bg-white dark:text-stone-900">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className="text-xs font-black uppercase tracking-[0.18em] text-stone-300 dark:text-zinc-700">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+              </div>
+              <h3 className="mt-5 text-lg font-bold text-stone-900 dark:text-white">{feature.title}</h3>
+              <p className="mt-2 flex-1 text-sm leading-6 text-stone-700 dark:text-zinc-300">{feature.description}</p>
+              <p className="mt-5 rounded-2xl bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 dark:bg-zinc-800/70 dark:text-zinc-300">
+                {feature.point}
+              </p>
+            </article>
+          );
+        })}
       </div>
     </section>
   );
