@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useAuth, UserButton } from "@clerk/nextjs";
 import { useT } from "../../lib/i18n/useT";
+import { loginButtonClassName, signupButtonClassName } from "./authButtonStyles";
 
 /**
  * Handles auth buttons with graceful fallback.
@@ -25,13 +26,13 @@ export function ClerkAuthButtons() {
             <>
                 <Link
                     href="/login"
-                    className="rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold hover:bg-gray-100"
+                    className={loginButtonClassName}
                 >
                     {t("nav.login")}
                 </Link>
                 <Link
                     href="/signup"
-                    className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+                    className={signupButtonClassName}
                 >
                     {t("nav.signup")}
                 </Link>
@@ -44,13 +45,13 @@ export function ClerkAuthButtons() {
         <>
             <Link
                 href="/login"
-                className="rounded-full border border-gray-300 px-4 py-2 text-xs font-semibold hover:bg-gray-100"
+                className={loginButtonClassName}
             >
                 {t("nav.login")}
             </Link>
             <Link
                 href="/signup"
-                className="rounded-full bg-black px-4 py-2 text-xs font-semibold text-white hover:bg-gray-800"
+                className={signupButtonClassName}
             >
                 {t("nav.signup")}
             </Link>
