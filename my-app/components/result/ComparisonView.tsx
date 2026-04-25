@@ -28,7 +28,7 @@ export function ComparisonView({ beforeImage, afterImage }: ComparisonViewProps)
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/50 to-transparent px-4 py-4">
           <p className="text-xs text-white/90">
-            마우스를 올리면 원본 사진이 오버레이되어 비교됩니다.
+            마우스를 올리면 원본 사진이 겹쳐 보여서 차이를 바로 비교할 수 있습니다.
           </p>
         </div>
       </div>

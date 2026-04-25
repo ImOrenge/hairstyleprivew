@@ -13,6 +13,7 @@ import { type AIEvaluationResult } from "../../../lib/ai-evaluation";
 import type { GeneratedVariant, RecommendationSet } from "../../../lib/recommendation-types";
 import { convertImageSrcToWebpDataUrl } from "../../../lib/webp-client";
 import { useGenerationStore } from "../../../store/useGenerationStore";
+import { useResultTranslations } from "../../../hooks/useResultTranslations";
 
 interface GenerationDetailsResponse {
   recommendationSet?: RecommendationSet | null;
@@ -49,21 +50,21 @@ export default function ResultPage() {
       return null;
     }
 
-      return {
-        generatedAt: new Date().toISOString(),
-        analysis: storeAnalysisSummary || {
-          faceShape: "Current session",
-          headShape: "Current session",
-          foreheadExposure: "",
-          balance: "",
-          bestLengthStrategy: "",
-          volumeFocus: [],
-          avoidNotes: [],
-          summary: "",
-        },
-        variants: storeGrid,
-        selectedVariantId: storeSelectedVariantId,
-      };
+    return {
+      generatedAt: new Date().toISOString(),
+      analysis: storeAnalysisSummary || {
+        faceShape: "Current session",
+        headShape: "Current session",
+        foreheadExposure: "",
+        balance: "",
+        bestLengthStrategy: "",
+        volumeFocus: [],
+        avoidNotes: [],
+        summary: "",
+      },
+      variants: storeGrid,
+      selectedVariantId: storeSelectedVariantId,
+    };
   }, [id, storeAnalysisSummary, storeGenerationId, storeGrid, storeSelectedVariantId]);
 
   useEffect(() => {
@@ -134,6 +135,7 @@ export default function ResultPage() {
 
   const evaluation = currentVariant?.evaluation || (currentVariant ? null : serverEvaluation);
   const activeSelectedVariantId = currentVariant?.id || selectedVariantId || requestedVariantId || null;
+  const { translate } = useResultTranslations([currentVariant?.reason || ""]);
 
   const beforeImage = previewUrl || "https://placehold.co/900x1200?text=Original";
   const rawAfterImage =
@@ -179,18 +181,19 @@ export default function ResultPage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-32 pt-8 sm:px-6">
       <header className="space-y-2 text-center">
-        <p className="text-xs font-bold uppercase tracking-[0.24em] text-stone-400">Selected Variant</p>
+        <p className="text-xs font-bold uppercase tracking-[0.24em] text-stone-400">선택된 스타일</p>
         <h1 className="text-3xl font-black tracking-tight text-stone-900">
-          {currentVariant?.label || "Hairstyle Result"}
+          {currentVariant?.label || "헤어 결과"}
         </h1>
         <p className="mx-auto max-w-3xl text-sm leading-6 text-stone-600">
-          {currentVariant?.reason || "Inspect the selected hairstyle mockup, compare it against the original portrait, and review the AI styling feedback."}
+          {translate(currentVariant?.reason) ||
+            "선택한 헤어 결과를 원본 사진과 비교하고, AI 분석 피드백까지 한 화면에서 확인해 보세요."}
         </p>
       </header>
 
       {!hasRealOutput ? (
         <p className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-center text-sm text-amber-800">
-          Result image not found. The selected variant may still be processing.
+          결과 이미지를 아직 찾지 못했습니다. 선택한 스타일이 아직 생성 중일 수 있습니다.
         </p>
       ) : null}
 
