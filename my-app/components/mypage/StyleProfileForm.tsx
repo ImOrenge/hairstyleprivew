@@ -9,6 +9,10 @@ interface StyleProfileResponse {
   error?: string;
 }
 
+interface StyleProfileFormProps {
+  variant?: "standalone" | "dashboard";
+}
+
 const initialProfile: StyleProfile = {
   userId: "",
   heightCm: null,
@@ -46,7 +50,9 @@ const exposureOptions = [
   ["bold", "Bold"],
 ] as const;
 
-export function StyleProfileForm() {
+export function StyleProfileForm({
+  variant = "standalone",
+}: StyleProfileFormProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<StyleProfile>(initialProfile);
   const [avoidText, setAvoidText] = useState("");
@@ -165,19 +171,33 @@ export function StyleProfileForm() {
     Boolean(profile.exposurePreference) &&
     Boolean(profile.bodyPhotoPath);
 
-  return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold">Body Style Profile</h3>
-          <p className="mt-1 text-sm text-gray-600">
-            Saved body specs and a full-body reference photo are used for fashion lookbook generation.
-          </p>
+  const content = (
+    <>
+      {variant === "standalone" ? (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold">Body Style Profile</h3>
+            <p className="mt-1 text-sm text-gray-600">
+              Saved body specs and a full-body reference photo are used for fashion lookbook generation.
+            </p>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${ready ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+            {ready ? "Ready" : "Incomplete"}
+          </span>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-bold ${ready ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-          {ready ? "Ready" : "Incomplete"}
-        </span>
-      </div>
+      ) : (
+        <div className="flex flex-wrap items-start justify-between gap-3 rounded-[1.5rem] border border-stone-200 bg-stone-50 px-4 py-4">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Profile Status</p>
+            <p className="mt-2 text-base font-semibold text-stone-900">
+              {ready ? "스타일러 시작 준비가 완료되었습니다." : "전신 사진과 체형 정보를 먼저 채워 주세요."}
+            </p>
+          </div>
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+            {ready ? "준비됨" : "설정 필요"}
+          </span>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="mt-4 rounded-xl bg-stone-50 p-4 text-sm text-stone-500">Loading style profile...</div>
@@ -310,6 +330,16 @@ export function StyleProfileForm() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  if (variant === "dashboard") {
+    return content;
+  }
+
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white p-5">
+      {content}
     </section>
   );
 }
