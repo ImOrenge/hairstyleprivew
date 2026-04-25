@@ -1,0 +1,22 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.2
+2 info using node@v22.13.1
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\user\HariStyle-Preview\my-app\.npmrc
+5 silly config load:file:C:\Users\user\.npmrc
+6 silly config load:file:C:\home\user\.npm-global\etc\npmrc
+7 verbose title npm exec tsx -e import { createClient } from '@supabase/supabase-js'; const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } }); const run = async () => { const cycle = await supabase.from('hairstyle_catalog_cycles').select('cycle_id,status,market,started_at,finished_at,item_count,source_summary,error_log').eq('status', 'succeeded').order('started_at', { ascending: false }).limit(1).maybeSingle(); if (cycle.error) throw new Error(cycle.error.message); const rows = cycle.data?.cycle_id ? await supabase.from('hairstyle_catalog').select('id', { count: 'exact', head: true }).eq('source_cycle_id', cycle.data.cycle_id) : { count: 0, error: null }; if (rows.error) throw new Error(rows.error.message); console.log(JSON.stringify({ latestCycle: cycle.data, rowCount: rows.count ?? 0 }, null, 2)); }; run().catch((error) => { console.error(error); process.exit(1); });
+8 verbose argv "exec" "--yes" "--" "tsx" "-e" "import { createClient } from '@supabase/supabase-js'; const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } }); const run = async () => { const cycle = await supabase.from('hairstyle_catalog_cycles').select('cycle_id,status,market,started_at,finished_at,item_count,source_summary,error_log').eq('status', 'succeeded').order('started_at', { ascending: false }).limit(1).maybeSingle(); if (cycle.error) throw new Error(cycle.error.message); const rows = cycle.data?.cycle_id ? await supabase.from('hairstyle_catalog').select('id', { count: 'exact', head: true }).eq('source_cycle_id', cycle.data.cycle_id) : { count: 0, error: null }; if (rows.error) throw new Error(rows.error.message); console.log(JSON.stringify({ latestCycle: cycle.data, rowCount: rows.count ?? 0 }, null, 2)); }; run().catch((error) => { console.error(error); process.exit(1); });"
+9 verbose logfile logs-max:10 dir:C:\Users\user\HariStyle-Preview\.npm-cache-temp\_logs\2026-04-25T09_55_40_567Z-
+10 verbose logfile C:\Users\user\HariStyle-Preview\.npm-cache-temp\_logs\2026-04-25T09_55_40_567Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 http fetch GET 200 https://registry.npmjs.org/tsx 79ms (cache revalidated)
+14 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+15 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+16 verbose cwd C:\Users\user\HariStyle-Preview\my-app
+17 verbose os Windows_NT 10.0.26200
+18 verbose node v22.13.1
+19 verbose npm  v10.9.2
+20 verbose exit 0
+21 info ok

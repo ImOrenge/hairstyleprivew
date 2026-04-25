@@ -28,6 +28,22 @@ Rules:
 - Return JSON only. No markdown fences.
 `;
 
+const DEFAULT_EVALUATION_MODEL = "gemini-2.5-flash";
+
+function getEvaluationModelName() {
+    const candidate =
+        process.env.EVALUATION_MODEL?.trim() ||
+        process.env.PROMPT_RESEARCH_MODEL?.trim() ||
+        process.env.PROMPT_LLM_MODEL?.trim() ||
+        "";
+
+    if (!candidate || candidate.includes("YOUR_")) {
+        return DEFAULT_EVALUATION_MODEL;
+    }
+
+    return candidate;
+}
+
 function parseDataUrl(dataUrl: string): { mimeType: string; data: string } {
     const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (!match) {
@@ -50,14 +66,17 @@ export async function runAIEvaluation(
         throw new Error("Missing GOOGLE_API_KEY");
     }
 
+    const modelName = getEvaluationModelName();
     const genAI = new GoogleGenerativeAI(apiKey);
-    // Use flash for faster/cheaper evaluation
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: modelName });
 
     const original = parseDataUrl(originalImageDataUrl);
     const generated = parseDataUrl(generatedImageDataUrl);
 
-    console.log("[ai-evaluation] Running evaluation for prompt:", prompt);
+    console.log("[ai-evaluation] Running evaluation", {
+        model: modelName,
+        prompt,
+    });
 
     try {
         const result = await model.generateContent([
@@ -80,7 +99,6 @@ export async function runAIEvaluation(
         const responseText = result.response.text().trim();
         console.log("[ai-evaluation] Gemini Response:", responseText);
 
-        // More robust JSON extraction
         let jsonStr = responseText;
         if (responseText.includes("```")) {
             const matches = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -88,7 +106,6 @@ export async function runAIEvaluation(
                 jsonStr = matches[1].trim();
             }
         } else {
-            // Try to find the first '{' and last '}'
             const start = responseText.indexOf("{");
             const end = responseText.lastIndexOf("}");
             if (start !== -1 && end !== -1) {
@@ -106,8 +123,11 @@ export async function runAIEvaluation(
         console.error("[ai-evaluation] Evaluation failed", error);
         return {
             score: 0,
-            comment: "정밀 평가를 생성하지 못했습니다. (AI 분석 오류)",
-            tips: ["잠시 후 다시 시도해 주세요.", "데이터 형식이 올바르지 않을 수 있습니다."],
+            comment: "AI evaluation could not be completed for this result.",
+            tips: [
+                "Try the generation again after confirming the source image is valid.",
+                "Check that the configured Gemini evaluation model supports generateContent.",
+            ],
         };
     }
 }
