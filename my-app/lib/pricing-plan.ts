@@ -1,4 +1,5 @@
 export const DEFAULT_CREDITS_PER_STYLE = 5;
+export const DEFAULT_CREDITS_PER_OUTFIT = 8;
 const DEFAULT_STYLE_COST_USD = 0.16;
 const DEFAULT_TARGET_MARGIN = 0.4;
 const DEFAULT_USD_TO_KRW = 1350;
@@ -89,6 +90,13 @@ export function getPricingEconomics(): PricingEconomics {
 
 export function getCreditsPerStyle(): number {
   return getPricingEconomics().creditsPerStyle;
+}
+
+export function getCreditsPerOutfit(): number {
+  return Math.max(
+    1,
+    Math.round(readEnvNumber("PRICING_CREDITS_PER_OUTFIT", DEFAULT_CREDITS_PER_OUTFIT)),
+  );
 }
 
 function getPackCredits(key: PricingTierKey): number {

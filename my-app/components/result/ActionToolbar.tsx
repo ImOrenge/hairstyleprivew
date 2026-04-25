@@ -131,6 +131,11 @@ export function ActionToolbar({
     }
   };
 
+  const handleStartStyler = () => {
+    if (!selectedVariantId) return;
+    router.push(`/styler/new?generationId=${encodeURIComponent(id)}&variant=${encodeURIComponent(selectedVariantId)}`);
+  };
+
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <div className="mx-auto w-full max-w-5xl px-4 pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 sm:px-6">
@@ -213,6 +218,20 @@ export function ActionToolbar({
                 />
               </svg>
               <span className="text-sm font-semibold">{t("result.action.viewEvaluation")}</span>
+            </span>
+          </Button>
+
+          <Button
+            variant="secondary"
+            onClick={handleStartStyler}
+            disabled={!selectedVariantId}
+            className="flex h-11 min-w-[120px] items-center justify-center rounded-2xl sm:min-w-[150px]"
+          >
+            <span className="flex items-center gap-2">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 3h12l2 6-4 12H8L4 9l2-6zm2 6h8m-4 0v12" />
+              </svg>
+              <span className="text-sm font-semibold">Fashion Styler</span>
             </span>
           </Button>
 

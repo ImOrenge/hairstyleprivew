@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { StyleProfileForm } from "../../components/mypage/StyleProfileForm";
 import { Card } from "../../components/ui/Card";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
 import { getCreditsPerStyle } from "../../lib/pricing-plan";
@@ -229,6 +230,8 @@ export default async function MyPage({
           </p>
         </div>
       </Card>
+
+      <StyleProfileForm />
 
       <Card title="Generation History" description="Latest generated results">
         <div className="grid gap-2 text-sm text-stone-700">
