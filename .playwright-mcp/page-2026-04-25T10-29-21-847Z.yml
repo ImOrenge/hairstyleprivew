@@ -1,0 +1,283 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "HairFit Logo HairFit" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "HairFit Logo" [ref=e5]
+        - generic [ref=e6]: HairFit
+      - navigation [ref=e7]:
+        - link "업로드" [ref=e8] [cursor=pointer]:
+          - /url: /upload
+        - link "스타일 생성" [ref=e9] [cursor=pointer]:
+          - /url: /generate
+        - link "마이페이지" [ref=e10] [cursor=pointer]:
+          - /url: /mypage
+        - link "로그인" [ref=e11] [cursor=pointer]:
+          - /url: /login
+        - link "회원가입" [ref=e12] [cursor=pointer]:
+          - /url: /signup
+        - generic [ref=e13]:
+          - button "Toggle theme" [ref=e14]:
+            - img [ref=e15]
+          - generic [ref=e21]:
+            - button "Switch language to KO" [pressed] [ref=e22]: KO
+            - button "Switch language to EN" [ref=e23]: EN
+  - main [ref=e24]:
+    - generic [ref=e25]:
+      - generic [ref=e27]:
+        - generic [ref=e28]:
+          - paragraph [ref=e29]: HairFit
+          - heading "상담 전에 먼저 보는 내 얼굴 맞춤 9가지 헤어스타일" [level=1] [ref=e30]:
+            - text: 상담 전에 먼저 보는
+            - generic [ref=e31]: 내 얼굴 맞춤 9가지 헤어스타일
+          - paragraph [ref=e32]: 머리를 자르기 전, 펌이나 염색을 하기 전 정면 사진 한 장만 올려보세요. 얼굴형과 두상 밸런스에 맞춰 짧은 머리부터 긴 머리까지 9가지 스타일을 보여드리고, 마음에 드는 결과를 저장해 미용실 상담 때 그대로 보여줄 수 있습니다.
+          - paragraph [ref=e33]: 유행 사진을 그대로 따라가기보다 내 얼굴에 어울리는 선택지를 먼저 확인하고, 설명하기 어려운 길이와 볼륨, 분위기를 이미지로 준비하세요.
+          - generic [ref=e34]:
+            - generic [ref=e35]:
+              - paragraph [ref=e36]: "1"
+              - paragraph [ref=e37]: 정면 사진만 준비
+            - generic [ref=e38]:
+              - paragraph [ref=e39]: 3x3
+              - paragraph [ref=e40]: 길이별 스타일 비교
+            - generic [ref=e41]:
+              - paragraph [ref=e42]: AI
+              - paragraph [ref=e43]: 상담 이미지 저장
+          - generic [ref=e44]:
+            - img "User avatar" [ref=e47]
+            - paragraph [ref=e48]: + 1 USERS
+          - link "내 스타일 9가지 받아보기" [ref=e50] [cursor=pointer]:
+            - /url: /upload
+            - button "내 스타일 9가지 받아보기" [ref=e51]:
+              - text: 내 스타일 9가지 받아보기
+              - img [ref=e52]
+        - generic "AI 헤어스타일 추천 워크플로우 데모" [ref=e54]:
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - paragraph [ref=e57]: AI 스타일 미리보기
+              - heading "사진 한 장으로 완성되는 9가지 추천" [level=2] [ref=e58]
+            - generic [ref=e59]: 추천 준비 중
+          - tablist "데모 성별 선택" [ref=e61]:
+            - tab "남자" [selected] [ref=e62] [cursor=pointer]
+            - tab "여자" [ref=e63] [cursor=pointer]
+          - generic [ref=e64]:
+            - generic [ref=e65]:
+              - img "AI 추천 데모용 얼굴 사진" [ref=e66]
+              - generic [ref=e68]:
+                - generic [ref=e69]:
+                  - img [ref=e70]
+                  - text: 추천 완료
+                - generic [ref=e73]:
+                  - generic [ref=e74]:
+                    - term [ref=e75]: 얼굴형
+                    - definition [ref=e76]: 긴 타원형
+                  - generic [ref=e77]:
+                    - term [ref=e78]: 두상 밸런스
+                    - definition [ref=e79]: 정수리 볼륨·관자 보정
+            - generic [ref=e80]:
+              - generic [ref=e81]:
+                - img [ref=e83]
+                - generic [ref=e86]:
+                  - strong [ref=e87]: 사진 올리기
+                  - generic [ref=e88]: 셀카처럼 정면 사진 한 장만 올리면 충분합니다.
+              - generic [ref=e89]:
+                - img [ref=e91]
+                - generic [ref=e94]:
+                  - strong [ref=e95]: 어울림 확인
+                  - generic [ref=e96]: 짧은 머리, 중간 길이, 긴 머리 중 어떤 분위기가 어울리는지 확인합니다.
+              - generic [ref=e97]:
+                - img [ref=e99]
+                - generic [ref=e101]:
+                  - strong [ref=e102]: 상담용 결과 선택
+                  - generic [ref=e103]: 선택한 이미지를 저장해 원하는 스타일을 디자이너에게 더 정확하게 전달하세요.
+          - generic [ref=e104]:
+            - generic [ref=e105]: 스타일 보드
+            - strong [ref=e106]: 9가지 스타일 완성
+          - generic [ref=e107]:
+            - article [ref=e108]:
+              - generic [ref=e110]: "94"
+              - generic [ref=e111]:
+                - generic [ref=e112]: 짧은 / 정수리
+                - strong [ref=e113]: 마이크로 크롭
+            - article [ref=e114]:
+              - generic [ref=e116]: "92"
+              - generic [ref=e117]:
+                - generic [ref=e118]: 짧은 / 관자
+                - strong [ref=e119]: 센터 투블럭
+            - article [ref=e120]:
+              - generic [ref=e122]: "90"
+              - generic [ref=e123]:
+                - generic [ref=e124]: 짧은 / 턱선
+                - strong [ref=e125]: 아이비리그
+            - article [ref=e126]:
+              - generic [ref=e128]: "91"
+              - generic [ref=e129]:
+                - generic [ref=e130]: 중간 / 관자
+                - strong [ref=e131]: 콤마 헤어
+            - article [ref=e132]:
+              - generic [ref=e134]: "88"
+              - generic [ref=e135]:
+                - generic [ref=e136]: 중간 / 정수리
+                - strong [ref=e137]: 커튼 레이어
+            - article [ref=e138]:
+              - generic [ref=e140]: "86"
+              - generic [ref=e141]:
+                - generic [ref=e142]: 중간 / 정수리
+                - strong [ref=e143]: 섀도우 펌
+            - article [ref=e144]:
+              - generic [ref=e146]: "84"
+              - generic [ref=e147]:
+                - generic [ref=e148]: 긴 / 턱선
+                - strong [ref=e149]: 롱 레이어
+            - article [ref=e150]:
+              - generic [ref=e152]: "82"
+              - generic [ref=e153]:
+                - generic [ref=e154]: 긴 / 관자
+                - strong [ref=e155]: 울프컷
+            - article [ref=e156]:
+              - generic [ref=e158]: "80"
+              - generic [ref=e159]:
+                - generic [ref=e160]: 중간 / 정수리
+                - strong [ref=e161]: 소프트 웨이브
+      - generic [ref=e162]:
+        - generic [ref=e163]:
+          - paragraph [ref=e164]: Style Consultation
+          - heading "어울릴지 고민하는 시간을 줄여드려요" [level=2] [ref=e165]
+        - generic [ref=e166]:
+          - article [ref=e167]:
+            - generic [ref=e168]:
+              - img [ref=e170]
+              - generic [ref=e173]: "01"
+            - heading "내 얼굴 기준으로 보기" [level=3] [ref=e174]
+            - paragraph [ref=e175]: 유행하는 사진을 그대로 따라가기 전에, 내 얼굴형과 두상에 자연스럽게 어울리는 방향부터 확인해보세요.
+            - paragraph [ref=e176]: 막연한 검색 대신 나에게 맞는 후보부터 시작합니다.
+          - article [ref=e177]:
+            - generic [ref=e178]:
+              - img [ref=e180]
+              - generic [ref=e182]: "02"
+            - heading "짧은 머리부터 긴 머리까지 비교" [level=3] [ref=e183]
+            - paragraph [ref=e184]: 숏컷, 미디엄, 롱 스타일을 한 번에 펼쳐보고 길이와 볼륨이 달라졌을 때의 분위기를 쉽게 비교할 수 있어요.
+            - paragraph [ref=e185]: 9가지 스타일을 한 화면에서 빠르게 비교합니다.
+          - article [ref=e186]:
+            - generic [ref=e187]:
+              - img [ref=e189]
+              - generic [ref=e192]: "03"
+            - heading "디자이너에게 바로 보여주기" [level=3] [ref=e193]
+            - paragraph [ref=e194]: 마음에 드는 스타일을 저장해 상담 때 보여주세요. 말로 설명하기 어려운 길이, 볼륨, 분위기를 이미지로 전달할 수 있습니다.
+            - paragraph [ref=e195]: 상담 전 원하는 스타일을 더 선명하게 정리합니다.
+      - generic [ref=e196]:
+        - generic [ref=e197]:
+          - generic [ref=e198]:
+            - paragraph [ref=e199]: Pricing
+            - heading "필요한 만큼 스타일을 비교해보세요" [level=2] [ref=e200]
+          - paragraph [ref=e201]: 스타일 생성 1회에 5크레딧이 사용됩니다. 3x3 후보 추천은 무료로 확인하세요.
+        - generic [ref=e202]:
+          - article [ref=e203]:
+            - paragraph [ref=e204]: 무료 체험
+            - heading "Free" [level=3] [ref=e205]
+            - paragraph [ref=e206]: 상담 전에 내 얼굴에 어울리는지 가볍게 확인하고 싶은 분
+            - generic [ref=e207]:
+              - paragraph [ref=e208]: ₩0
+              - paragraph [ref=e209]: 크레딧 팩
+            - paragraph [ref=e210]: 10크레딧 · 스타일 생성 약 2회
+            - list [ref=e211]:
+              - listitem [ref=e212]:
+                - generic [ref=e213]: ✓
+                - text: 정면 사진으로 9가지 후보 확인
+              - listitem [ref=e214]:
+                - generic [ref=e215]: ✓
+                - text: 워터마크 포함 결과 2회 생성
+              - listitem [ref=e216]:
+                - generic [ref=e217]: ✓
+                - text: 상담 전 체험에 적합
+            - button "무료로 시작" [ref=e218]
+          - article [ref=e219]:
+            - generic [ref=e220]: 추천 플랜
+            - paragraph [ref=e221]: 개인 팩
+            - heading "Starter" [level=3] [ref=e222]
+            - paragraph [ref=e223]: 여러 스타일을 저장하고 미용실 상담용 이미지로 비교하고 싶은 분
+            - generic [ref=e224]:
+              - paragraph [ref=e225]: ₩9,900
+              - paragraph [ref=e226]: 크레딧 팩
+            - paragraph [ref=e227]: 60크레딧 · 스타일 생성 약 12회
+            - list [ref=e228]:
+              - listitem [ref=e229]:
+                - generic [ref=e230]: ✓
+                - text: 스타일 결과 워터마크 제거
+              - listitem [ref=e231]:
+                - generic [ref=e232]: ✓
+                - text: 마음에 드는 결과 저장
+              - listitem [ref=e233]:
+                - generic [ref=e234]: ✓
+                - text: 고화질 상담 이미지 다운로드
+              - listitem [ref=e235]:
+                - generic [ref=e236]: ✓
+                - text: 큰 변화 전 여러 후보 비교
+            - button "Starter Pack 구매" [ref=e237]
+          - article [ref=e238]:
+            - paragraph [ref=e239]: 살롱 팩
+            - heading "Pro" [level=3] [ref=e240]
+            - paragraph [ref=e241]: 고객 상담 이미지를 자주 준비하는 디자이너와 살롱
+            - generic [ref=e242]:
+              - paragraph [ref=e243]: ₩39,000
+              - paragraph [ref=e244]: 크레딧 팩
+            - paragraph [ref=e245]: 250크레딧 · 스타일 생성 약 50회
+            - list [ref=e246]:
+              - listitem [ref=e247]:
+                - generic [ref=e248]: ✓
+                - text: 상담용 스타일 템플릿
+              - listitem [ref=e249]:
+                - generic [ref=e250]: ✓
+                - text: 고객별 결과 정리
+              - listitem [ref=e251]:
+                - generic [ref=e252]: ✓
+                - text: 빠른 생성 지원
+              - listitem [ref=e253]:
+                - generic [ref=e254]: ✓
+                - text: 살롱 상담 이미지 관리
+            - button "Pro Salon Pack 구매" [ref=e255]
+      - generic [ref=e257]:
+        - generic [ref=e258]:
+          - paragraph [ref=e259]: Salon Ready
+          - heading "상담 전에 원하는 스타일을 더 정확하게 전달하세요" [level=2] [ref=e260]
+          - paragraph [ref=e261]: 말로 설명하기 어려운 길이, 볼륨, 분위기를 이미지로 먼저 정리해 미용실 상담을 더 쉽게 시작할 수 있습니다.
+          - generic [ref=e262]:
+            - generic [ref=e263]:
+              - paragraph [ref=e264]: "9"
+              - paragraph [ref=e265]: 추천 스타일
+            - generic [ref=e266]:
+              - paragraph [ref=e267]: 4+
+              - paragraph [ref=e268]: 비교 기준
+            - generic [ref=e269]:
+              - paragraph [ref=e270]: 저장
+              - paragraph [ref=e271]: 상담 활용
+        - generic [ref=e272]:
+          - article [ref=e273]:
+            - img [ref=e275]
+            - generic [ref=e281]:
+              - paragraph [ref=e282]: "01"
+              - heading "방향 잡기" [level=3] [ref=e283]
+              - paragraph [ref=e284]: 원하는 스타일을 찾기 전에 내 얼굴에 어울리는 길이와 볼륨 방향을 먼저 좁혀보세요.
+          - article [ref=e285]:
+            - img [ref=e287]
+            - generic [ref=e290]:
+              - paragraph [ref=e291]: "02"
+              - heading "상담 이미지로 공유" [level=3] [ref=e292]
+              - paragraph [ref=e293]: 선택한 스타일을 저장해 디자이너에게 보여주면 원하는 분위기를 더 빠르고 정확하게 전달할 수 있습니다.
+          - article [ref=e294]:
+            - img [ref=e296]
+            - generic [ref=e298]:
+              - paragraph [ref=e299]: "03"
+              - heading "큰 변화 전 비교" [level=3] [ref=e300]
+              - paragraph [ref=e301]: 짧게 자르거나 펌을 하기 전, 여러 후보를 먼저 비교해 변화에 대한 부담을 줄여보세요.
+  - contentinfo [ref=e302]:
+    - generic [ref=e303]:
+      - paragraph [ref=e304]: © 2026 HairFit
+      - generic [ref=e305]:
+        - link "개인정보처리방침" [ref=e306] [cursor=pointer]:
+          - /url: /privacy-policy
+        - link "이용약관" [ref=e307] [cursor=pointer]:
+          - /url: /terms-of-service
+        - paragraph [ref=e308]: Built with Clerk, Polar, Supabase, and Gemini
+  - button "Open Next.js Dev Tools" [ref=e314] [cursor=pointer]:
+    - img [ref=e315]
+  - alert [ref=e318]

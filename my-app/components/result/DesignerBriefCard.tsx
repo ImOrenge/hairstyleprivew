@@ -7,6 +7,7 @@ import type {
   GeneratedVariant,
   HairDesignerBrief,
 } from "../../lib/recommendation-types";
+import { useResultTranslations } from "../../hooks/useResultTranslations";
 
 interface DesignerBriefCardProps {
   variant: GeneratedVariant | null;
@@ -22,11 +23,11 @@ function buildFallbackBrief(
   if (!variant) {
     return {
       headline: "선택된 헤어스타일이 없습니다",
-      consultationSummary: "완성된 3x3 카드 중 하나를 선택하면 디자이너 상담용 브리프가 표시됩니다.",
-      cutDirection: "선택된 스타일이 없어 컷 방향을 확정할 수 없습니다.",
-      volumeTextureDirection: "선택된 스타일이 없어 볼륨과 텍스처 방향을 확정할 수 없습니다.",
+      consultationSummary: "완성된 3x3 카드 중 하나를 선택하면 디자이너 상담용 브리프가 여기에 표시됩니다.",
+      cutDirection: "선택된 스타일이 없어 커트 방향을 안내할 수 없습니다.",
+      volumeTextureDirection: "선택된 스타일이 없어 볼륨과 텍스처 방향을 안내할 수 없습니다.",
       stylingDirection: "완성된 결과를 선택한 뒤 상담 화면으로 사용해 주세요.",
-      cautionNotes: ["완성되지 않은 카드는 디자이너 상담용 기준으로 사용하지 마세요."],
+      cautionNotes: ["완성되지 않은 카드는 디자이너 상담 참고용으로 사용하지 마세요."],
       salonKeywords: ["상담 대기"],
     };
   }
@@ -37,29 +38,37 @@ function buildFallbackBrief(
       : variant.correctionFocus === "temple"
         ? "사이드 밸런스"
         : "정수리 볼륨";
+
   const lengthLabel =
-    variant.lengthBucket === "short" ? "짧은 기장" : variant.lengthBucket === "medium" ? "중간 기장" : "긴 기장";
+    variant.lengthBucket === "short"
+      ? "짧은 기장"
+      : variant.lengthBucket === "medium"
+        ? "중간 기장"
+        : "긴 기장";
 
   return {
     headline: `${variant.label} 디자이너 브리프`,
-    consultationSummary: `${analysis?.faceShape || "현재 얼굴형"}과 ${analysis?.balance || "전체 비율"}을 기준으로 ${variant.label}을 상담합니다. ${variant.reason}`,
-    cutDirection: `${lengthLabel}을 기준으로 얼굴선이 답답해 보이지 않도록 라인과 레이어를 조절해 주세요.`,
+    consultationSummary: `${analysis?.faceShape || "현재 얼굴형"}과 ${analysis?.balance || "전체 비율"}을 기준으로 ${variant.label} 스타일을 제안합니다. ${variant.reason}`,
+    cutDirection: `${lengthLabel} 기준으로 얼굴 폭이 답답해 보이지 않도록 라인과 레이어를 조절해 주세요.`,
     volumeTextureDirection: `${focusLabel}을 중심으로 볼륨을 설계하고, 질감은 과하지 않게 자연스럽게 정리해 주세요.`,
     stylingDirection: "드라이 후 손질이 쉬운 방향으로 마무리하고, 가벼운 제품으로 형태만 고정해 주세요.",
     cautionNotes:
       analysis?.avoidNotes?.length
         ? analysis.avoidNotes.slice(0, 3)
-        : ["얼굴 윤곽을 무겁게 만드는 과한 볼륨은 피해주세요.", "앞머리와 사이드 라인은 현장에서 비율을 보며 미세 조정해 주세요."],
+        : [
+            "얼굴 윤곽을 무겁게 만드는 과한 볼륨은 피해주세요.",
+            "앞머리와 사이드 라인은 현장에서 비율을 보며 미세 조정해 주세요.",
+          ],
     salonKeywords: Array.from(new Set([variant.label, lengthLabel, focusLabel, ...variant.tags])).slice(0, 6),
   };
 }
 
 function briefToClipboardText(variant: GeneratedVariant | null, brief: HairDesignerBrief) {
   return [
-    `[HairFit 디자이너 브리프] ${variant?.label || "선택 스타일"}`,
+    `[HairFit 디자이너 브리프] ${variant?.label || "선택 스타일 없음"}`,
     "",
     `상담 요약: ${brief.consultationSummary}`,
-    `컷 방향: ${brief.cutDirection}`,
+    `커트 방향: ${brief.cutDirection}`,
     `볼륨/텍스처: ${brief.volumeTextureDirection}`,
     `스타일링: ${brief.stylingDirection}`,
     `주의사항: ${brief.cautionNotes.join(" / ")}`,
@@ -75,6 +84,14 @@ export function DesignerBriefCard({
 }: DesignerBriefCardProps) {
   const [copied, setCopied] = useState(false);
   const brief = variant?.designerBrief || buildFallbackBrief(variant, analysis);
+  const { translate, hasTranslated } = useResultTranslations([
+    brief.headline,
+    brief.consultationSummary,
+    brief.cutDirection,
+    brief.volumeTextureDirection,
+    brief.stylingDirection,
+    ...brief.cautionNotes,
+  ]);
 
   const handleCopy = async () => {
     try {
@@ -85,6 +102,12 @@ export function DesignerBriefCard({
       setCopied(false);
     }
   };
+
+  const sections = [
+    { label: "커트 방향", value: brief.cutDirection },
+    { label: "볼륨/텍스처", value: brief.volumeTextureDirection },
+    { label: "스타일링", value: brief.stylingDirection },
+  ];
 
   return (
     <section className="overflow-hidden rounded-[2rem] border border-stone-900 bg-stone-950 text-white shadow-[0_30px_90px_-45px_rgba(0,0,0,0.8)]">
@@ -101,20 +124,25 @@ export function DesignerBriefCard({
             />
           ) : (
             <div className="flex h-full min-h-[280px] items-center justify-center px-6 text-center text-sm text-stone-300">
-              완성된 결과 이미지를 선택하면 디자이너에게 보여줄 이미지가 표시됩니다.
+              생성된 결과 이미지를 선택하면 디자이너 상담용 대표 이미지가 여기에 표시됩니다.
             </div>
           )}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/55">Designer Consultation</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight">{variant?.label || "Pending selection"}</h2>
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/55">디자이너 상담 브리프</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight">{variant?.label || "선택 대기 중"}</h2>
           </div>
         </div>
 
         <div className="space-y-6 p-6 sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200/80">Hair Directing Brief</p>
-              <h3 className="mt-2 text-3xl font-black leading-tight tracking-tight">{brief.headline}</h3>
+              <p className="text-xs font-bold uppercase tracking-[0.22em] text-amber-200/80">헤어 디렉팅 브리프</p>
+              <h3 className="mt-2 text-3xl font-black leading-tight tracking-tight">
+                {translate(brief.headline) || brief.headline}
+              </h3>
+              {hasTranslated(brief.headline) ? (
+                <p className="mt-2 text-sm text-stone-300">{brief.headline}</p>
+              ) : null}
             </div>
             <button
               type="button"
@@ -125,37 +153,46 @@ export function DesignerBriefCard({
             </button>
           </div>
 
-          <p className="rounded-3xl bg-white/10 p-4 text-sm font-medium leading-7 text-stone-100">
-            {brief.consultationSummary}
-          </p>
+          <div className="rounded-3xl bg-white/10 p-4">
+            <p className="text-sm font-medium leading-7 text-stone-100">
+              {translate(brief.consultationSummary) || brief.consultationSummary}
+            </p>
+            {hasTranslated(brief.consultationSummary) ? (
+              <p className="mt-2 text-xs leading-6 text-stone-300">{brief.consultationSummary}</p>
+            ) : null}
+          </div>
 
           <div className="grid gap-3">
-            {[
-              ["컷 방향", brief.cutDirection],
-              ["볼륨/텍스처", brief.volumeTextureDirection],
-              ["스타일링", brief.stylingDirection],
-            ].map(([label, value]) => (
-              <div key={label} className="rounded-3xl border border-white/10 bg-white/[0.06] p-4">
-                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-200/75">{label}</p>
-                <p className="mt-2 text-sm leading-6 text-stone-100">{value}</p>
+            {sections.map((section) => (
+              <div key={section.label} className="rounded-3xl border border-white/10 bg-white/[0.06] p-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-amber-200/75">{section.label}</p>
+                <p className="mt-2 text-sm leading-6 text-stone-100">
+                  {translate(section.value) || section.value}
+                </p>
+                {hasTranslated(section.value) ? (
+                  <p className="mt-2 text-xs leading-5 text-stone-300">{section.value}</p>
+                ) : null}
               </div>
             ))}
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-stone-400">Caution</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-stone-400">주의 포인트</p>
               <ul className="mt-3 space-y-2">
                 {brief.cautionNotes.map((note, index) => (
                   <li key={`${note}-${index}`} className="rounded-2xl bg-rose-200/10 px-3 py-2 text-xs leading-5 text-rose-50">
-                    {note}
+                    <p>{translate(note) || note}</p>
+                    {hasTranslated(note) ? (
+                      <p className="mt-1 text-[11px] text-rose-100/80">{note}</p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
             </div>
 
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-stone-400">Salon Keywords</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-stone-400">살롱 키워드</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {brief.salonKeywords.map((keyword, index) => (
                   <span key={`${keyword}-${index}`} className="rounded-full bg-amber-200 px-3 py-1 text-xs font-black text-stone-950">

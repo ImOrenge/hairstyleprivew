@@ -1,6 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getSupabaseAdminClient } from "./supabase";
-import { buildCatalogRowsForCycle, buildKoreanWeeklyStyleQueries } from "./hairstyle-catalog-seed";
+import {
+  buildCatalogRowsForCycle,
+  buildKoreanWeeklyStyleQueries,
+  type BlueprintTrendSignal,
+} from "./hairstyle-catalog-seed";
 import { collectKoreanHairstyleTrendResearch } from "./hairstyle-trend-research";
 import type {
   CatalogBackedRecommendationCandidate,
@@ -34,18 +38,47 @@ Allowed JSON schema:
 
 export const RECOMMENDATION_PROMPT_VERSION = "catalog-backed-grid-v1";
 
+export type CatalogRebuildMode = "auto" | "researched" | "seeded";
+type CatalogSourceMode = "researched-weekly" | "seeded-weekly";
+
+const CATALOG_MARKET = "kr";
+const CATALOG_BOOTSTRAP_MAX_POLLS = 8;
+const CATALOG_BOOTSTRAP_POLL_MS = 500;
+const UNIQUE_CONSTRAINT_VIOLATION_CODE = "23505";
+
+interface QueryError {
+  message: string;
+  code?: string;
+}
+
+interface CatalogRebuildResult {
+  cycleId: string;
+  status: "succeeded";
+  insertedCount: number;
+  updatedCount: number;
+  itemCount: number;
+  sourceSummary: HairstyleCatalogSourceSummary;
+  requestedMode: CatalogRebuildMode;
+  resolvedMode: CatalogSourceMode;
+}
+
+interface CatalogAvailabilityResult {
+  cycle: HairstyleCatalogCycle;
+  rows: HairstyleCatalogRow[];
+}
+
 interface SupabaseCatalogClient {
   from: (table: string) => {
     insert: (values: Record<string, unknown>) => {
       select: (columns: string) => {
         single: () => Promise<{
           data: Record<string, unknown> | null;
-          error: { message: string } | null;
+          error: QueryError | null;
         }>;
       };
     };
     update: (values: Record<string, unknown>) => {
-      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
+      eq: (column: string, value: string) => Promise<{ error: QueryError | null }>;
     };
     select: (columns: string) => {
       eq: (column: string, value: string) => {
@@ -54,7 +87,7 @@ interface SupabaseCatalogClient {
         limit?: never;
         maybeSingle: () => Promise<{
           data: Record<string, unknown> | null;
-          error: { message: string } | null;
+          error: QueryError | null;
         }>;
       };
       in: (column: string, values: string[]) => {
@@ -67,7 +100,7 @@ interface SupabaseCatalogClient {
         limit: (count: number) => {
           maybeSingle: () => Promise<{
             data: Record<string, unknown> | null;
-            error: { message: string } | null;
+            error: QueryError | null;
           }>;
           returns?: never;
         };
@@ -77,7 +110,7 @@ interface SupabaseCatalogClient {
     upsert: (
       values: Record<string, unknown>[],
       options: { onConflict: string },
-    ) => Promise<{ error: { message: string } | null }>;
+    ) => Promise<{ error: QueryError | null }>;
   };
 }
 
@@ -302,6 +335,109 @@ function normalizeSourceSummary(raw: unknown): HairstyleCatalogSourceSummary | n
   };
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function buildCycleSourceSummary(mode: CatalogSourceMode, startedAt: string): HairstyleCatalogSourceSummary {
+  const queries = buildKoreanWeeklyStyleQueries(new Date(startedAt));
+
+  if (mode === "seeded-weekly") {
+    return {
+      mode,
+      queries,
+      notes: "Weekly Korean hairstyle catalog rebuilt from curated seed blueprints without live research.",
+      providers: ["catalog-seed"],
+      documentsCollected: 0,
+      documentsUsed: 0,
+    };
+  }
+
+  return {
+    mode,
+    queries,
+    notes: "Weekly Korean hairstyle rebuild is collecting live search signals.",
+    providers: ["google-news-rss"],
+  };
+}
+
+function buildSeededTrendSignals() {
+  return new Map<string, BlueprintTrendSignal>();
+}
+
+function isBootstrapInProgressError(error: unknown) {
+  return error instanceof Error && error.message.includes("bootstrap is already in progress");
+}
+
+async function loadCatalogRows(
+  supabase: SupabaseCatalogClient,
+  cycleId: string,
+): Promise<HairstyleCatalogRow[]> {
+  const response = await ((supabase
+    .from("hairstyle_catalog")
+    .select(
+      "id,slug,name_ko,description,market,length_bucket,silhouette,texture,bang_type,volume_focus_tags,face_shape_fit_tags,avoid_tags,trend_score,freshness_score,prompt_template,negative_prompt,prompt_template_version,status,source_cycle_id,created_at,updated_at",
+    )
+    .eq("source_cycle_id", cycleId)) as unknown as Promise<{
+    data: Array<Record<string, unknown>> | null;
+    error: QueryError | null;
+  }>);
+
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+
+  return (response.data || [])
+    .map((row) => normalizeCatalogRow(row))
+    .filter((row): row is HairstyleCatalogRow => row !== null && row.status === "active");
+}
+
+async function getLatestCatalogCycleByStatus(
+  supabase: SupabaseCatalogClient,
+  status: HairstyleCatalogCycle["status"],
+) {
+  const query = supabase
+    .from("hairstyle_catalog_cycles")
+    .select("cycle_id,status,market,started_at,finished_at,item_count,source_summary,error_log")
+    .eq("status", status) as unknown as {
+    order: (column: string, options?: { ascending?: boolean }) => {
+      limit: (count: number) => {
+        maybeSingle: () => Promise<{
+          data: Record<string, unknown> | null;
+          error: QueryError | null;
+        }>;
+      };
+    };
+  };
+
+  const response = await query.order("started_at", { ascending: false }).limit(1).maybeSingle();
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+
+  if (!response.data) {
+    return null;
+  }
+
+  return normalizeCatalogCycle(response.data);
+}
+
+async function waitForSuccessfulCatalogCycle(supabase: SupabaseCatalogClient) {
+  for (let attempt = 0; attempt < CATALOG_BOOTSTRAP_MAX_POLLS; attempt += 1) {
+    const cycle = await getLatestCatalogCycleByStatus(supabase, "succeeded");
+    if (cycle) {
+      const rows = await loadCatalogRows(supabase, cycle.cycleId);
+      if (rows.length > 0) {
+        return { cycle, rows };
+      }
+    }
+
+    await sleep(CATALOG_BOOTSTRAP_POLL_MS);
+  }
+
+  return null;
+}
+
 export function getAdminSecret() {
   const secret = process.env.INTERNAL_API_SECRET?.trim();
   if (!secret || secret.includes("YOUR_")) {
@@ -515,29 +651,41 @@ async function runImageAnalysis(referenceImageDataUrl: string): Promise<{ analys
 }
 
 export async function createHairstyleCatalogCycle() {
+  return createHairstyleCatalogCycleForMode("researched-weekly");
+}
+
+async function createHairstyleCatalogCycleForMode(mode: CatalogSourceMode) {
   const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
   const startedAt = new Date().toISOString();
-  const queries = buildKoreanWeeklyStyleQueries(new Date(startedAt));
+  const sourceSummary = buildCycleSourceSummary(mode, startedAt);
 
   const { data, error } = await supabase
     .from("hairstyle_catalog_cycles")
     .insert({
       status: "running",
-      market: "kr",
+      market: CATALOG_MARKET,
       started_at: startedAt,
       item_count: 0,
-      source_summary: {
-        mode: "researched-weekly",
-        queries,
-        notes: "Weekly Korean hairstyle rebuild is collecting live search signals.",
-        providers: ["google-news-rss"],
-      },
+      source_summary: sourceSummary,
     })
     .select("cycle_id,status,market,started_at,finished_at,item_count,source_summary,error_log")
     .single();
 
   if (error || !data) {
-    throw new Error(error?.message || "Failed to create hairstyle catalog cycle");
+    const insertError = error || { message: "Failed to create hairstyle catalog cycle" };
+    if (insertError.code === UNIQUE_CONSTRAINT_VIOLATION_CODE) {
+      const runningCycle = await getLatestCatalogCycleByStatus(supabase, "running");
+      if (runningCycle) {
+        const waited = await waitForSuccessfulCatalogCycle(supabase);
+        if (waited) {
+          return waited.cycle;
+        }
+
+        throw new Error("Hairstyle catalog bootstrap is already in progress. Please retry shortly.");
+      }
+    }
+
+    throw new Error(insertError.message);
   }
 
   const cycle = normalizeCatalogCycle(data);
@@ -548,13 +696,54 @@ export async function createHairstyleCatalogCycle() {
   return cycle;
 }
 
-export async function rebuildWeeklyHairstyleCatalog() {
+async function finalizeCatalogCycleFailure(
+  supabase: SupabaseCatalogClient,
+  cycleId: string,
+  message: string,
+) {
+  await supabase
+    .from("hairstyle_catalog_cycles")
+    .update({
+      status: "failed",
+      finished_at: new Date().toISOString(),
+      error_log: message,
+    })
+    .eq("cycle_id", cycleId);
+}
+
+async function rebuildCatalogWithMode(
+  requestedMode: CatalogRebuildMode,
+  sourceMode: CatalogSourceMode,
+): Promise<CatalogRebuildResult> {
   const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
-  const cycle = await createHairstyleCatalogCycle();
+  const cycle = await createHairstyleCatalogCycleForMode(sourceMode);
+
+  if (cycle.status === "succeeded") {
+    const rows = await loadCatalogRows(supabase, cycle.cycleId);
+    const resolvedMode = cycle.sourceSummary?.mode ?? sourceMode;
+
+    return {
+      cycleId: cycle.cycleId,
+      status: "succeeded",
+      insertedCount: 0,
+      updatedCount: rows.length,
+      itemCount: rows.length,
+      sourceSummary: cycle.sourceSummary ?? buildCycleSourceSummary(resolvedMode, cycle.startedAt),
+      requestedMode,
+      resolvedMode,
+    };
+  }
+
   const nowIso = new Date().toISOString();
 
   try {
-    const research = await collectKoreanHairstyleTrendResearch(new Date(nowIso));
+    const research =
+      sourceMode === "researched-weekly"
+        ? await collectKoreanHairstyleTrendResearch(new Date(nowIso))
+        : {
+            trendSignals: buildSeededTrendSignals(),
+            sourceSummary: buildCycleSourceSummary(sourceMode, nowIso),
+          };
     const rows = buildCatalogRowsForCycle(cycle.cycleId, nowIso, research.trendSignals);
     const slugs = rows.map((row) => row.slug);
 
@@ -562,9 +751,9 @@ export async function rebuildWeeklyHairstyleCatalog() {
       .from("hairstyle_catalog")
       .select("slug")
       .in("slug", slugs)) as unknown as Promise<{
-      data: Array<Record<string, unknown>> | null;
-      error: { message: string } | null;
-    }>);
+        data: Array<Record<string, unknown>> | null;
+        error: QueryError | null;
+      }>);
 
     if (existingResponse.error) {
       throw new Error(existingResponse.error.message);
@@ -631,77 +820,45 @@ export async function rebuildWeeklyHairstyleCatalog() {
       updatedCount,
       itemCount: upsertPayload.length,
       sourceSummary: research.sourceSummary,
+      requestedMode,
+      resolvedMode: sourceMode,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected catalog rebuild error";
-    await supabase
-      .from("hairstyle_catalog_cycles")
-      .update({
-        status: "failed",
-        finished_at: new Date().toISOString(),
-        error_log: message,
-      })
-      .eq("cycle_id", cycle.cycleId);
+    await finalizeCatalogCycleFailure(supabase, cycle.cycleId, message);
     throw error;
+  }
+}
+
+export async function rebuildWeeklyHairstyleCatalog(mode: CatalogRebuildMode = "auto"): Promise<CatalogRebuildResult> {
+  if (mode === "seeded") {
+    return rebuildCatalogWithMode(mode, "seeded-weekly");
+  }
+
+  if (mode === "researched") {
+    return rebuildCatalogWithMode(mode, "researched-weekly");
+  }
+
+  try {
+    return await rebuildCatalogWithMode(mode, "researched-weekly");
+  } catch (error) {
+    if (isBootstrapInProgressError(error)) {
+      throw error;
+    }
+
+    console.warn("[catalog] Live research rebuild failed, retrying with seeded fallback.", error);
+    return rebuildCatalogWithMode(mode, "seeded-weekly");
   }
 }
 
 export async function getLatestSuccessfulCatalogCycle() {
   const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
-  const query = supabase
-    .from("hairstyle_catalog_cycles")
-    .select("cycle_id,status,market,started_at,finished_at,item_count,source_summary,error_log")
-    .eq("status", "succeeded") as unknown as {
-    order: (column: string, options?: { ascending?: boolean }) => {
-      limit: (count: number) => {
-        maybeSingle: () => Promise<{
-          data: Record<string, unknown> | null;
-          error: { message: string } | null;
-        }>;
-      };
-    };
-  };
-
-  const response = await (query.order("started_at", { ascending: false }).limit(1).maybeSingle() as Promise<{
-    data: Record<string, unknown> | null;
-    error: { message: string } | null;
-  }>);
-
-  if (response.error) {
-    throw new Error(response.error.message);
-  }
-
-  if (!response.data) {
-    return null;
-  }
-
-  const cycle = normalizeCatalogCycle(response.data);
-  if (!cycle) {
-    return null;
-  }
-
-  return cycle;
+  return getLatestCatalogCycleByStatus(supabase, "succeeded");
 }
 
 export async function listCatalogRowsForCycle(cycleId: string) {
   const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
-  const response = await ((supabase
-    .from("hairstyle_catalog")
-    .select(
-      "id,slug,name_ko,description,market,length_bucket,silhouette,texture,bang_type,volume_focus_tags,face_shape_fit_tags,avoid_tags,trend_score,freshness_score,prompt_template,negative_prompt,prompt_template_version,status,source_cycle_id,created_at,updated_at",
-    )
-    .eq("source_cycle_id", cycleId)) as unknown as Promise<{
-    data: Array<Record<string, unknown>> | null;
-    error: { message: string } | null;
-  }>);
-
-  if (response.error) {
-    throw new Error(response.error.message);
-  }
-
-  return (response.data || [])
-    .map((row) => normalizeCatalogRow(row))
-    .filter((row): row is HairstyleCatalogRow => row !== null && row.status === "active");
+  return loadCatalogRows(supabase, cycleId);
 }
 
 export async function analyzeFaceForCatalog(referenceImageDataUrl: string) {
@@ -716,16 +873,39 @@ export async function analyzeFaceForCatalog(referenceImageDataUrl: string) {
   };
 }
 
-export async function generateCatalogBackedRecommendationSet(referenceImageDataUrl: string) {
+export async function ensureCatalogAvailable(mode: CatalogRebuildMode = "auto"): Promise<CatalogAvailabilityResult> {
+  const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
   const latestCycle = await getLatestSuccessfulCatalogCycle();
-  if (!latestCycle) {
-    throw new Error("No successful hairstyle catalog cycle is available.");
+
+  if (latestCycle) {
+    const rows = await loadCatalogRows(supabase, latestCycle.cycleId);
+    if (rows.length > 0) {
+      return {
+        cycle: latestCycle,
+        rows,
+      };
+    }
   }
 
-  const rows = await listCatalogRowsForCycle(latestCycle.cycleId);
-  if (rows.length === 0) {
-    throw new Error("Hairstyle catalog is empty for the latest successful cycle.");
+  const rebuildResult = await rebuildWeeklyHairstyleCatalog(mode);
+  const rebuiltCycle = await getLatestSuccessfulCatalogCycle();
+  if (!rebuiltCycle || rebuiltCycle.cycleId !== rebuildResult.cycleId) {
+    throw new Error("Hairstyle catalog bootstrap did not produce a usable cycle.");
   }
+
+  const rebuiltRows = await loadCatalogRows(supabase, rebuiltCycle.cycleId);
+  if (rebuiltRows.length === 0) {
+    throw new Error("Hairstyle catalog bootstrap produced an empty cycle.");
+  }
+
+  return {
+    cycle: rebuiltCycle,
+    rows: rebuiltRows,
+  };
+}
+
+export async function generateCatalogBackedRecommendationSet(referenceImageDataUrl: string) {
+  const { cycle: latestCycle, rows } = await ensureCatalogAvailable();
 
   const analysisRun = await analyzeFaceForCatalog(referenceImageDataUrl);
   const selectionContext = buildCatalogSelectionContext(analysisRun.analysis);

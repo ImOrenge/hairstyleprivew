@@ -2,7 +2,23 @@ import "server-only";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
-type SupabaseAny = Record<string, Json>;
+
+type SupabaseLooseTable = {
+  Row: Record<string, Json | undefined>;
+  Insert: Record<string, unknown>;
+  Update: Record<string, unknown>;
+  Relationships: [];
+};
+
+type SupabaseDatabase = {
+  public: {
+    Tables: Record<string, SupabaseLooseTable>;
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
+    Enums: Record<string, string>;
+    CompositeTypes: Record<string, never>;
+  };
+};
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -21,11 +37,11 @@ export function isSupabaseConfigured() {
   );
 }
 
-export function getSupabaseAdminClient(): SupabaseClient<SupabaseAny> {
+export function getSupabaseAdminClient(): SupabaseClient<SupabaseDatabase> {
   const supabaseUrl = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceRole = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
 
-  return createClient<SupabaseAny>(supabaseUrl, serviceRole, {
+  return createClient<SupabaseDatabase>(supabaseUrl, serviceRole, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

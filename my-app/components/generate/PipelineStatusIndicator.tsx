@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { cn } from "../../lib/utils";
 import type { PipelineStage } from "../../store/useGenerationStore";
 
 const STAGE_ORDER: PipelineStage[] = [
@@ -87,16 +88,32 @@ interface PipelineStatusIndicatorProps {
   message: string;
   error: string | null;
   progress: number;
+  mode?: "panel" | "overlay";
+  className?: string;
 }
 
-export function PipelineStatusIndicator({ stage, message, error, progress }: PipelineStatusIndicatorProps) {
+export function PipelineStatusIndicator({
+  stage,
+  message,
+  error,
+  progress,
+  mode = "panel",
+  className,
+}: PipelineStatusIndicatorProps) {
   const currentIndex = STAGE_ORDER.indexOf(stage);
   const isCompleted = stage === "completed";
   const isFailed = stage === "failed";
   const theme = STAGE_THEME[stage];
+  const isOverlay = mode === "overlay";
+  const spinnerSize = isOverlay ? "h-14 w-14" : "h-20 w-20";
+  const iconSize = isOverlay ? "h-7 w-7" : "h-10 w-10";
+  const containerClassName = isOverlay
+    ? "w-full rounded-[1.5rem] border border-white/15 bg-black/70 px-4 py-4 text-left text-white shadow-[0_18px_60px_-30px_rgba(0,0,0,0.7)] backdrop-blur-md"
+    : "flex h-full w-full flex-col items-center justify-center gap-5 rounded-2xl bg-white/78 px-6 py-8 text-center backdrop-blur-sm";
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-5 rounded-2xl bg-white/78 px-6 py-8 text-center backdrop-blur-sm">
+    <div className={cn(containerClassName, className)}>
+      <div className={cn("flex gap-4", isOverlay ? "items-start" : "flex-col items-center justify-center gap-5")}>
       <div className="relative flex items-center justify-center">
         {isCompleted ? (
           <motion.div
@@ -106,14 +123,14 @@ export function PipelineStatusIndicator({ stage, message, error, progress }: Pip
             className="relative"
           >
             <motion.div
-              className="h-20 w-20 rounded-full border-4 border-emerald-200 bg-emerald-50"
+              className={cn(spinnerSize, "rounded-full border-4 border-emerald-200 bg-emerald-50")}
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.2 }}
             />
             <motion.svg
               viewBox="0 0 24 24"
-              className="absolute inset-0 m-auto h-10 w-10 text-emerald-600"
+              className={cn("absolute inset-0 m-auto text-emerald-600", iconSize)}
               fill="none"
               stroke="currentColor"
               strokeWidth="2.5"
@@ -130,9 +147,9 @@ export function PipelineStatusIndicator({ stage, message, error, progress }: Pip
           </motion.div>
         ) : (
           <>
-            <motion.div className="h-20 w-20 rounded-full border-4 border-slate-200" />
+            <motion.div className={cn(spinnerSize, "rounded-full border-4 border-slate-200")} />
             <motion.div
-              className={`absolute h-20 w-20 rounded-full border-4 border-transparent ${theme.ring}`}
+              className={cn(spinnerSize, "absolute rounded-full border-4 border-transparent", theme.ring)}
               animate={{ rotate: 360 }}
               transition={{ repeat: Infinity, duration: theme.spinnerDuration, ease: "linear" }}
             />
@@ -140,14 +157,19 @@ export function PipelineStatusIndicator({ stage, message, error, progress }: Pip
         )}
       </div>
 
-      <div className="space-y-1">
-        <p className={`text-sm font-semibold ${theme.text}`}>{message}</p>
-        <p className="text-xs text-gray-600">Current stage: {STAGE_LABELS[stage]}</p>
-        {!isFailed ? <p className="text-[11px] text-gray-500">Progress {Math.max(0, Math.min(100, progress))}%</p> : null}
-        {error ? <p className="text-xs text-rose-600">{error}</p> : null}
+      <div className={cn("space-y-1", isOverlay ? "flex-1" : "")}>
+        <p className={cn("text-sm font-semibold", isOverlay ? "text-white" : theme.text)}>{message}</p>
+        <p className={cn("text-xs", isOverlay ? "text-white/70" : "text-gray-600")}>Current stage: {STAGE_LABELS[stage]}</p>
+        {!isFailed ? (
+          <p className={cn("text-[11px]", isOverlay ? "text-white/60" : "text-gray-500")}>
+            Progress {Math.max(0, Math.min(100, progress))}%
+          </p>
+        ) : null}
+        {error ? <p className={cn("text-xs", isOverlay ? "text-rose-300" : "text-rose-600")}>{error}</p> : null}
+      </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
+      <div className={cn("flex flex-wrap gap-2", isOverlay ? "mt-4 items-center" : "items-center justify-center")}>
         {STAGE_ORDER.map((value, index) => {
           const isDone = currentIndex >= 0 && index < currentIndex;
           const isActive = value === stage;
@@ -155,7 +177,9 @@ export function PipelineStatusIndicator({ stage, message, error, progress }: Pip
             ? STAGE_THEME[value].badge
             : isDone
               ? "bg-emerald-100 text-emerald-700"
-              : "bg-gray-100 text-gray-500";
+              : isOverlay
+                ? "bg-white/10 text-white/70"
+                : "bg-gray-100 text-gray-500";
 
           return (
             <span

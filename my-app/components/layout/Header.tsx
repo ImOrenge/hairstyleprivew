@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useT } from "../../lib/i18n/useT";
+import { loginButtonClassName, signupButtonClassName } from "./authButtonStyles";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ClerkAuthButtons } from "./ClerkAuthButtons";
 import { ThemeToggle } from "./ThemeToggle";
@@ -45,13 +46,13 @@ export function Header({ clerkEnabled }: HeaderProps) {
             <div className="flex items-center gap-2">
               <Link
                 href="/login"
-                className="rounded-full border border-stone-300 px-4 py-1.5 text-xs font-semibold hover:bg-stone-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+                className={loginButtonClassName}
               >
                 {t("nav.login")}
               </Link>
               <Link
                 href="/signup"
-                className="rounded-full bg-stone-900 px-4 py-1.5 text-xs font-semibold text-white hover:bg-stone-800 dark:bg-white dark:text-stone-900 dark:hover:bg-zinc-200"
+                className={signupButtonClassName}
               >
                 {t("nav.signup")}
               </Link>

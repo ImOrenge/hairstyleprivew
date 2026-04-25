@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { useGenerationStore } from "../../store/useGenerationStore";
 import { Button } from "../ui/Button";
 import { useT } from "../../lib/i18n/useT";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface ActionToolbarProps {
   id: string;
@@ -66,8 +66,8 @@ export function ActionToolbar({
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: "My HairStyle Preview",
-          text: "Check out this AI-generated hairstyle!",
+          title: "내 헤어 결과",
+          text: "AI로 생성한 헤어 결과를 확인해 보세요.",
           url: shareLink,
         });
         return;
@@ -78,7 +78,6 @@ export function ActionToolbar({
       }
     }
 
-    // Fallback to copy
     try {
       await navigator.clipboard.writeText(shareLink);
       setIsCopied(true);
@@ -105,11 +104,11 @@ export function ActionToolbar({
 
       triggerDownload(objectUrl, filename);
       URL.revokeObjectURL(objectUrl);
-    } catch (error) {
+    } catch {
       try {
         const ext = inferExtensionFromUrl(outputImageUrl) || "png";
         triggerDownload(outputImageUrl, `haristyle-${id}.${ext}`);
-      } catch (error) {
+      } catch {
         setDownloadError("다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.");
       }
     } finally {
@@ -129,6 +128,11 @@ export function ActionToolbar({
     if (evaluationSection) {
       evaluationSection.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  };
+
+  const handleStartStyler = () => {
+    if (!selectedVariantId) return;
+    router.push(`/styler/new?generationId=${encodeURIComponent(id)}&variant=${encodeURIComponent(selectedVariantId)}`);
   };
 
   return (
@@ -213,6 +217,20 @@ export function ActionToolbar({
                 />
               </svg>
               <span className="text-sm font-semibold">{t("result.action.viewEvaluation")}</span>
+            </span>
+          </Button>
+
+          <Button
+            variant="secondary"
+            onClick={handleStartStyler}
+            disabled={!selectedVariantId}
+            className="flex h-11 min-w-[120px] items-center justify-center rounded-2xl sm:min-w-[150px]"
+          >
+            <span className="flex items-center gap-2">
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 3h12l2 6-4 12H8L4 9l2-6zm2 6h8m-4 0v12" />
+              </svg>
+              <span className="text-sm font-semibold">패션 스타일러</span>
             </span>
           </Button>
 
