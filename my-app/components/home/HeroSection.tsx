@@ -1,11 +1,12 @@
 "use client";
 
-import { CSSProperties } from "react";
+import { CSSProperties, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Camera, CheckCircle2, Grid3X3, Sparkles } from "lucide-react";
 import { Button } from "../ui/Button";
 import { useT } from "../../lib/i18n/useT";
+import type { TranslationKey } from "../../lib/i18n/locales/ko";
 import styles from "./HeroSection.module.css";
 
 interface HeroSectionProps {
@@ -13,90 +14,184 @@ interface HeroSectionProps {
   avatars?: string[];
 }
 
+type DemoGender = "male" | "female";
+
 type RecommendationDemoCard = {
-  title: string;
-  bucket: string;
-  fit: string;
+  titleKey: TranslationKey;
+  bucketKey: TranslationKey;
+  fitKey: TranslationKey;
   score: string;
   image: string;
   featured?: boolean;
 };
 
+type DemoProfile = {
+  labelKey: TranslationKey;
+  originalImage: string;
+  faceShapeKey: TranslationKey;
+  headBalanceKey: TranslationKey;
+  cards: RecommendationDemoCard[];
+};
+
+const DEMO_GENDERS: DemoGender[] = ["male", "female"];
+
+const DEMO_PROFILES: Record<DemoGender, DemoProfile> = {
+  male: {
+    labelKey: "hero.gender.male",
+    originalImage: "/hero/demo/male-original.webp",
+    faceShapeKey: "hero.demo.male.faceShapeValue",
+    headBalanceKey: "hero.demo.male.headBalanceValue",
+    cards: [
+      {
+        titleKey: "hero.demo.male.card.1.title",
+        bucketKey: "hero.demo.bucket.short",
+        fitKey: "hero.demo.fit.crown",
+        score: "94",
+        image: "/hero/demo/grid/male-01.webp",
+        featured: true,
+      },
+      {
+        titleKey: "hero.demo.male.card.2.title",
+        bucketKey: "hero.demo.bucket.short",
+        fitKey: "hero.demo.fit.temple",
+        score: "92",
+        image: "/hero/demo/grid/male-02.webp",
+      },
+      {
+        titleKey: "hero.demo.male.card.3.title",
+        bucketKey: "hero.demo.bucket.short",
+        fitKey: "hero.demo.fit.jawline",
+        score: "90",
+        image: "/hero/demo/grid/male-03.webp",
+      },
+      {
+        titleKey: "hero.demo.male.card.4.title",
+        bucketKey: "hero.demo.bucket.medium",
+        fitKey: "hero.demo.fit.temple",
+        score: "91",
+        image: "/hero/demo/grid/male-04.webp",
+      },
+      {
+        titleKey: "hero.demo.male.card.5.title",
+        bucketKey: "hero.demo.bucket.medium",
+        fitKey: "hero.demo.fit.crown",
+        score: "88",
+        image: "/hero/demo/grid/male-05.webp",
+      },
+      {
+        titleKey: "hero.demo.male.card.6.title",
+        bucketKey: "hero.demo.bucket.medium",
+        fitKey: "hero.demo.fit.crown",
+        score: "86",
+        image: "/hero/demo/grid/male-06.webp",
+      },
+      {
+        titleKey: "hero.demo.male.card.7.title",
+        bucketKey: "hero.demo.bucket.long",
+        fitKey: "hero.demo.fit.jawline",
+        score: "84",
+        image: "/hero/demo/grid/male-07.webp",
+      },
+      {
+        titleKey: "hero.demo.male.card.8.title",
+        bucketKey: "hero.demo.bucket.long",
+        fitKey: "hero.demo.fit.temple",
+        score: "82",
+        image: "/hero/demo/grid/male-08.webp",
+      },
+      {
+        titleKey: "hero.demo.male.card.9.title",
+        bucketKey: "hero.demo.bucket.medium",
+        fitKey: "hero.demo.fit.crown",
+        score: "80",
+        image: "/hero/demo/grid/male-09.webp",
+      },
+    ],
+  },
+  female: {
+    labelKey: "hero.gender.female",
+    originalImage: "/hero/demo/female-original.webp",
+    faceShapeKey: "hero.demo.female.faceShapeValue",
+    headBalanceKey: "hero.demo.female.headBalanceValue",
+    cards: [
+      {
+        titleKey: "hero.demo.female.card.1.title",
+        bucketKey: "hero.demo.bucket.short",
+        fitKey: "hero.demo.fit.jawline",
+        score: "95",
+        image: "/hero/demo/grid/female-01.webp",
+        featured: true,
+      },
+      {
+        titleKey: "hero.demo.female.card.2.title",
+        bucketKey: "hero.demo.bucket.short",
+        fitKey: "hero.demo.fit.temple",
+        score: "93",
+        image: "/hero/demo/grid/female-02.webp",
+      },
+      {
+        titleKey: "hero.demo.female.card.3.title",
+        bucketKey: "hero.demo.bucket.short",
+        fitKey: "hero.demo.fit.crown",
+        score: "89",
+        image: "/hero/demo/grid/female-03.webp",
+      },
+      {
+        titleKey: "hero.demo.female.card.4.title",
+        bucketKey: "hero.demo.bucket.medium",
+        fitKey: "hero.demo.fit.jawline",
+        score: "92",
+        image: "/hero/demo/grid/female-04.webp",
+      },
+      {
+        titleKey: "hero.demo.female.card.5.title",
+        bucketKey: "hero.demo.bucket.medium",
+        fitKey: "hero.demo.fit.temple",
+        score: "90",
+        image: "/hero/demo/grid/female-05.webp",
+      },
+      {
+        titleKey: "hero.demo.female.card.6.title",
+        bucketKey: "hero.demo.bucket.medium",
+        fitKey: "hero.demo.fit.crown",
+        score: "88",
+        image: "/hero/demo/grid/female-06.webp",
+      },
+      {
+        titleKey: "hero.demo.female.card.7.title",
+        bucketKey: "hero.demo.bucket.long",
+        fitKey: "hero.demo.fit.jawline",
+        score: "87",
+        image: "/hero/demo/grid/female-07.webp",
+      },
+      {
+        titleKey: "hero.demo.female.card.8.title",
+        bucketKey: "hero.demo.bucket.long",
+        fitKey: "hero.demo.fit.crown",
+        score: "85",
+        image: "/hero/demo/grid/female-08.webp",
+      },
+      {
+        titleKey: "hero.demo.female.card.9.title",
+        bucketKey: "hero.demo.bucket.long",
+        fitKey: "hero.demo.fit.temple",
+        score: "83",
+        image: "/hero/demo/grid/female-09.webp",
+      },
+    ],
+  },
+};
+
 export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
   const t = useT();
+  const [activeDemoGender, setActiveDemoGender] = useState<DemoGender>("male");
   const titleLines = t("hero.title").split("\n");
+  const activeDemo = DEMO_PROFILES[activeDemoGender];
 
   const workflowSteps = [
     { icon: Camera, label: t("hero.workflow.upload"), detail: t("hero.workflow.uploadDetail") },
     { icon: Sparkles, label: t("hero.workflow.analysis"), detail: t("hero.workflow.analysisDetail") },
     { icon: Grid3X3, label: t("hero.workflow.grid"), detail: t("hero.workflow.gridDetail") },
-  ];
-
-  const recommendationCards: RecommendationDemoCard[] = [
-    {
-      title: t("hero.demo.card.1.title"),
-      bucket: t("hero.demo.bucket.short"),
-      fit: t("hero.demo.fit.crown"),
-      score: "94",
-      image: "/hero/after.jpg",
-      featured: true,
-    },
-    {
-      title: t("hero.demo.card.2.title"),
-      bucket: t("hero.demo.bucket.medium"),
-      fit: t("hero.demo.fit.temple"),
-      score: "91",
-      image: "/hero/after_women.jpg",
-    },
-    {
-      title: t("hero.demo.card.3.title"),
-      bucket: t("hero.demo.bucket.long"),
-      fit: t("hero.demo.fit.jawline"),
-      score: "89",
-      image: "/hero/befor_women.png",
-    },
-    {
-      title: t("hero.demo.card.4.title"),
-      bucket: t("hero.demo.bucket.short"),
-      fit: t("hero.demo.fit.temple"),
-      score: "88",
-      image: "/hero/befor.png",
-    },
-    {
-      title: t("hero.demo.card.5.title"),
-      bucket: t("hero.demo.bucket.medium"),
-      fit: t("hero.demo.fit.crown"),
-      score: "86",
-      image: "/hero/after.jpg",
-    },
-    {
-      title: t("hero.demo.card.6.title"),
-      bucket: t("hero.demo.bucket.long"),
-      fit: t("hero.demo.fit.crown"),
-      score: "84",
-      image: "/hero/after_women.jpg",
-    },
-    {
-      title: t("hero.demo.card.7.title"),
-      bucket: t("hero.demo.bucket.short"),
-      fit: t("hero.demo.fit.jawline"),
-      score: "83",
-      image: "/hero/befor.png",
-    },
-    {
-      title: t("hero.demo.card.8.title"),
-      bucket: t("hero.demo.bucket.medium"),
-      fit: t("hero.demo.fit.jawline"),
-      score: "81",
-      image: "/hero/befor_women.png",
-    },
-    {
-      title: t("hero.demo.card.9.title"),
-      bucket: t("hero.demo.bucket.long"),
-      fit: t("hero.demo.fit.temple"),
-      score: "79",
-      image: "/hero/after_women.jpg",
-    },
   ];
 
   return (
@@ -114,6 +209,9 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
           </h1>
           <p className="mt-4 max-w-xl text-sm leading-6 text-stone-200 sm:text-base">
             {t("hero.subtitle")}
+          </p>
+          <p className="mt-3 max-w-xl text-xs font-semibold leading-5 text-stone-400 sm:text-sm">
+            {t("hero.supporting")}
           </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
@@ -183,14 +281,35 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
             </span>
           </div>
 
+          <div className={styles.genderTabs} role="tablist" aria-label={t("hero.demo.genderTabs")}>
+            {DEMO_GENDERS.map((gender) => {
+              const profile = DEMO_PROFILES[gender];
+              const isActive = activeDemoGender === gender;
+
+              return (
+                <button
+                  key={gender}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`${styles.genderTab} ${isActive ? styles.genderTabActive : ""}`}
+                  onClick={() => setActiveDemoGender(gender)}
+                >
+                  {t(profile.labelKey)}
+                </button>
+              );
+            })}
+          </div>
+
           <div className={styles.workflowLayout}>
             <div className={styles.photoFrame}>
               <Image
-                src="/hero/befor.png"
+                key={activeDemo.originalImage}
+                src={activeDemo.originalImage}
                 alt={t("hero.demo.photoAlt")}
                 fill
                 priority
-                className="object-cover object-center"
+                className={styles.photoImage}
                 sizes="(max-width: 1024px) 100vw, 340px"
               />
               <div className={styles.scanLine} aria-hidden="true" />
@@ -202,11 +321,11 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                 <dl className={styles.analysisList}>
                   <div>
                     <dt>{t("hero.demo.faceShapeLabel")}</dt>
-                    <dd>{t("hero.demo.faceShapeValue")}</dd>
+                    <dd>{t(activeDemo.faceShapeKey)}</dd>
                   </div>
                   <div>
                     <dt>{t("hero.demo.headBalanceLabel")}</dt>
-                    <dd>{t("hero.demo.headBalanceValue")}</dd>
+                    <dd>{t(activeDemo.headBalanceKey)}</dd>
                   </div>
                 </dl>
               </div>
@@ -239,9 +358,9 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
             <strong>{t("hero.demo.gridReady")}</strong>
           </div>
           <div className={styles.gridBoard}>
-            {recommendationCards.map((card, index) => (
+            {activeDemo.cards.map((card, index) => (
               <article
-                key={`${card.title}-${card.score}`}
+                key={`${activeDemoGender}-${card.titleKey}`}
                 className={`${styles.gridCard} ${card.featured ? styles.gridCardFeatured : ""}`}
                 style={{ "--delay": `${index * 0.35}s` } as CSSProperties}
               >
@@ -250,13 +369,13 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                   alt=""
                   fill
                   className={styles.gridCardImage}
-                  sizes="(max-width: 768px) 33vw, 150px"
+                  sizes="(max-width: 720px) 30vw, 150px"
                 />
                 <div className={styles.gridCardOverlay} />
                 <div className={styles.scoreBadge}>{card.score}</div>
                 <div className={styles.cardText}>
-                  <span>{card.bucket} · {card.fit}</span>
-                  <strong>{card.title}</strong>
+                  <span>{t(card.bucketKey)} / {t(card.fitKey)}</span>
+                  <strong>{t(card.titleKey)}</strong>
                 </div>
               </article>
             ))}

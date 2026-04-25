@@ -37,7 +37,12 @@ Optional:
 - `PRICING_CREDITS_PER_STYLE` (default: `5`, 스타일 1회당 크레딧 차감값)
 - `PRICING_USD_TO_KRW` (default: `1350`, USD/KRW 환율)
 - `PRICING_SAFETY_MULTIPLIER` (default: `1.06`, 안전 계수)
-- `PRICING_STARTER_FIXED_PRICE_USD` (default: `10`, Starter 플랜 고정 월 가격)
+- `PRICING_FREE_CREDITS` (default: `10`, 무료 체험 지급 크레딧)
+- `PRICING_FREE_PRICE_KRW` (default: `0`, 무료 체험 표시 가격)
+- `PRICING_STARTER_CREDITS` (default: `60`, Starter Pack 지급 크레딧)
+- `PRICING_STARTER_PRICE_KRW` (default: `9900`, Starter Pack 일회성 결제 가격)
+- `PRICING_PRO_CREDITS` (default: `250`, Pro Salon Pack 지급 크레딧)
+- `PRICING_PRO_PRICE_KRW` (default: `39000`, Pro Salon Pack 일회성 결제 가격)
 - `RESEND_API_KEY` (optional, payment success email notifications)
 - `RESEND_FROM_EMAIL` (optional, default: `HairFit <onboarding@resend.dev>`)
 
@@ -103,13 +108,19 @@ Clerk note:
 - `PRICING_CREDITS_PER_STYLE` (optional)
 - `PRICING_USD_TO_KRW` (optional)
 - `PRICING_SAFETY_MULTIPLIER` (optional)
-- `PRICING_STARTER_FIXED_PRICE_USD` (optional)
+- `PRICING_FREE_CREDITS` (optional)
+- `PRICING_FREE_PRICE_KRW` (optional)
+- `PRICING_STARTER_CREDITS` (optional)
+- `PRICING_STARTER_PRICE_KRW` (optional)
+- `PRICING_PRO_CREDITS` (optional)
+- `PRICING_PRO_PRICE_KRW` (optional)
 
 ## Polar payment routes
 
 - `POST /api/payments/checkout`
   - Creates a pending `payment_transactions` row and returns `checkoutUrl`.
-  - Body example: `{"plan":"starter"}` or `{"productId":"...","amount":9900,"creditsToGrant":100}`
+  - Body example: `{"plan":"starter"}` grants 60 credits for ₩9,900, `{"plan":"pro"}` grants 250 credits for ₩39,000, or use `{"productId":"...","amount":4900,"creditsToGrant":25}` for a custom top-up.
+  - Polar products must be configured as one-time products with prices matching the plan amount in code.
 - `POST /api/payments/webhook`
   - Verifies Standard Webhook signature headers and processes `order.paid` events.
   - Updates `payment_transactions` to `paid` and calls `apply_payment_credits` RPC.

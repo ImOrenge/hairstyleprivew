@@ -88,8 +88,8 @@ export async function POST(request: Request) {
   const planEconomics = plan ? getPlanEconomics(plan) : undefined;
   const creditsToGrant = isPositiveInteger(body.creditsToGrant)
     ? body.creditsToGrant
-    : planEconomics?.monthlyCredits;
-  const amount = isPositiveInteger(body.amount) ? body.amount : planEconomics?.monthlyPriceKrw;
+    : planEconomics?.credits;
+  const amount = isPositiveInteger(body.amount) ? body.amount : planEconomics?.priceKrw;
 
   if (!isPositiveInteger(creditsToGrant)) {
     return NextResponse.json(

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { getPricingEconomics, getSuggestedPricingTiers } from "../../lib/pricing-plan";
+import { getPricingEconomics, getSuggestedPricingTiers, type PricingTierKey } from "../../lib/pricing-plan";
 import { cn } from "../../lib/utils";
 import { useT } from "../../lib/i18n/useT";
 
-type PlanKey = "free" | "starter" | "pro";
+type PlanKey = PricingTierKey;
 
 interface CheckoutResponseBody {
   checkoutUrl?: string;
@@ -25,7 +25,7 @@ export function PricingPreview() {
       name: "Free",
       subtitle: t("pricing.free.subtitle"),
       description: t("pricing.free.desc"),
-      period: t("pricing.perMonth"),
+      period: t("pricing.packLabel"),
       features: [t("pricing.free.f1"), t("pricing.free.f2"), t("pricing.free.f3")],
       cta: t("pricing.free.cta"),
       tone: "basic" as const,
@@ -36,7 +36,7 @@ export function PricingPreview() {
       name: "Starter",
       subtitle: t("pricing.starter.subtitle"),
       description: t("pricing.starter.desc"),
-      period: t("pricing.perMonth"),
+      period: t("pricing.packLabel"),
       features: [t("pricing.starter.f1"), t("pricing.starter.f2"), t("pricing.starter.f3"), t("pricing.starter.f4")],
       cta: t("pricing.starter.cta"),
       tone: "recommended" as const,
@@ -47,7 +47,7 @@ export function PricingPreview() {
       name: "Pro",
       subtitle: t("pricing.pro.subtitle"),
       description: t("pricing.pro.desc"),
-      period: t("pricing.perMonth"),
+      period: t("pricing.packLabel"),
       features: [t("pricing.pro.f1"), t("pricing.pro.f2"), t("pricing.pro.f3"), t("pricing.pro.f4")],
       cta: t("pricing.pro.cta"),
       tone: "premium" as const,
@@ -67,13 +67,13 @@ export function PricingPreview() {
 
     return {
       ...plan,
-      price: tier.monthlyPriceLabel,
-      credits: t("pricing.credits", { credits: tier.monthlyCredits, styles: tier.estimatedStyles }),
+      price: tier.priceLabel,
+      credits: t("pricing.credits", { credits: tier.credits, styles: tier.estimatedStyles }),
     };
   });
 
-  const startStarterCheckout = async () => {
-    setPendingPlan("starter");
+  const startCheckout = async (planKey: Exclude<PlanKey, "free">) => {
+    setPendingPlan(planKey);
 
     try {
       const response = await fetch("/api/payments/checkout", {
@@ -81,7 +81,7 @@ export function PricingPreview() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ plan: "starter" }),
+        body: JSON.stringify({ plan: planKey }),
       });
 
       const result = (await response.json().catch(() => ({}))) as CheckoutResponseBody;
@@ -102,7 +102,7 @@ export function PricingPreview() {
       window.location.assign(result.checkoutUrl);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to start checkout";
-      console.error("[pricing] starter checkout failed:", error);
+      console.error(`[pricing] ${planKey} checkout failed:`, error);
       window.alert(message);
     } finally {
       setPendingPlan(null);
@@ -110,8 +110,8 @@ export function PricingPreview() {
   };
 
   const handlePlanClick = (planKey: string) => {
-    if (planKey === "starter") {
-      void startStarterCheckout();
+    if (planKey === "starter" || planKey === "pro") {
+      void startCheckout(planKey);
       return;
     }
 
@@ -119,8 +119,6 @@ export function PricingPreview() {
       window.location.assign("/signup");
       return;
     }
-
-    window.location.assign("/mypage");
   };
 
   return (
@@ -135,17 +133,16 @@ export function PricingPreview() {
         <p className="text-sm text-stone-600 dark:text-zinc-400">
           {t("pricing.creditNote", {
             credits: economics.creditsPerStyle,
-            margin: Math.round(economics.targetMargin * 100),
           })}
         </p>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+      <div className="mt-6 grid gap-4 lg:grid-cols-3 max-md:max-h-[32rem] max-md:overflow-y-auto max-md:snap-y max-md:snap-mandatory max-md:overscroll-contain max-md:pr-1">
         {plans.map((plan) => (
           <article
             key={plan.name}
             className={cn(
-              "relative flex h-full flex-col rounded-2xl border p-5 transition-colors",
+              "relative flex h-full flex-col rounded-2xl border p-5 transition-colors max-md:min-h-[24rem] max-md:snap-start",
               plan.tone === "recommended" &&
               "border-amber-300 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/10",
               plan.tone === "premium" && "border-stone-900/10 bg-gradient-to-b from-stone-50 to-white dark:border-zinc-700/30 dark:from-zinc-800/40 dark:to-zinc-900/40",
@@ -185,7 +182,7 @@ export function PricingPreview() {
             <button
               type="button"
               onClick={() => handlePlanClick(plan.key)}
-              disabled={pendingPlan === "starter"}
+              disabled={pendingPlan === plan.key}
               className={cn(
                 "mt-auto inline-flex w-full items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition",
                 plan.tone === "recommended"
@@ -193,10 +190,10 @@ export function PricingPreview() {
                   : plan.tone === "premium"
                     ? "bg-stone-800 text-white hover:bg-stone-700 dark:bg-zinc-700 dark:hover:bg-zinc-600"
                     : "border border-stone-300 bg-white text-stone-900 hover:bg-stone-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700",
-                pendingPlan === "starter" && "cursor-not-allowed opacity-70",
+                pendingPlan === plan.key && "cursor-not-allowed opacity-70",
               )}
             >
-              {pendingPlan === "starter" && plan.key === "starter" ? "Connecting..." : plan.cta}
+              {pendingPlan === plan.key ? t("pricing.connecting") : plan.cta}
             </button>
           </article>
         ))}

@@ -36,13 +36,13 @@ export function FeatureShowcase() {
         </h2>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+      <div className="mt-6 grid gap-4 md:grid-cols-3 max-md:max-h-[30rem] max-md:overflow-y-auto max-md:snap-y max-md:snap-mandatory max-md:overscroll-contain max-md:pr-1">
         {features.map((feature, index) => {
           const Icon = feature.icon;
           return (
             <article
               key={feature.title}
-              className="group flex min-h-64 flex-col rounded-2xl border border-stone-200/70 bg-white p-5 transition duration-300 hover:-translate-y-1 hover:border-amber-300 dark:border-zinc-800/60 dark:bg-zinc-900/70"
+              className="group flex min-h-64 flex-col rounded-2xl border border-stone-200/70 bg-white p-5 transition duration-300 hover:-translate-y-1 hover:border-amber-300 dark:border-zinc-800/60 dark:bg-zinc-900/70 max-md:min-h-[18rem] max-md:snap-start"
             >
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-900 text-white dark:bg-white dark:text-stone-900">

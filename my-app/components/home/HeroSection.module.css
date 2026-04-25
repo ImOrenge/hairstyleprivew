@@ -56,6 +56,39 @@
   animation: livePulse 2.2s ease-out infinite;
 }
 
+.genderTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.95rem;
+  background: rgba(12, 10, 9, 0.45);
+  padding: 0.35rem;
+}
+
+.genderTab {
+  min-height: 2.35rem;
+  border: 0;
+  border-radius: 0.72rem;
+  background: transparent;
+  color: rgba(245, 245, 244, 0.7);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.genderTab:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.genderTabActive {
+  background: #ffffff;
+  color: #1c1917;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
 .workflowLayout {
   display: grid;
   gap: 1rem;
@@ -69,6 +102,11 @@
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 1.2rem;
   background: #171717;
+}
+
+.photoImage {
+  object-fit: cover;
+  object-position: center top;
 }
 
 .photoFrame::after {
@@ -206,7 +244,7 @@
 
 .gridCard {
   position: relative;
-  min-height: 7.1rem;
+  aspect-ratio: 4 / 5;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 0.95rem;
@@ -222,14 +260,15 @@
 
 .gridCardImage {
   object-fit: cover;
-  opacity: 0.72;
+  object-position: center 14%;
+  opacity: 0.92;
   transform: scale(1.02);
 }
 
 .gridCardOverlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.78));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.66));
 }
 
 .scoreBadge {
@@ -332,11 +371,41 @@
   }
 
   .photoFrame {
-    min-height: 18rem;
+    min-height: auto;
+    aspect-ratio: 4 / 5;
+    background: #cfb79e;
+  }
+
+  .photoImage {
+    object-fit: contain;
+    object-position: center top;
+  }
+
+  .gridBoard {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
   }
 
   .gridCard {
-    min-height: 6.3rem;
+    aspect-ratio: 3 / 4;
+  }
+
+  .gridCardImage {
+    object-position: center 12%;
+  }
+
+  .cardText {
+    right: 0.38rem;
+    bottom: 0.38rem;
+    left: 0.38rem;
+  }
+
+  .cardText span {
+    font-size: 0.56rem;
+  }
+
+  .cardText strong {
+    font-size: 0.66rem;
   }
 }
 
