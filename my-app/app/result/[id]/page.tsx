@@ -204,23 +204,21 @@ export default function ResultPage() {
         hasRealOutput={hasRealOutput}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <ComparisonView beforeImage={beforeImage} afterImage={afterImage} />
+      <ComparisonView beforeImage={beforeImage} afterImage={afterImage} />
 
-        <aside className="space-y-4">
-          <SelectedVariantCard
-            variant={currentVariant}
-            analysis={activeSet?.analysis || null}
-            generationId={id}
-          />
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] xl:items-start">
+        <SelectedVariantCard
+          variant={currentVariant}
+          analysis={activeSet?.analysis || null}
+          generationId={id}
+        />
 
-          {evaluation ? (
-            <section id="ai-evaluation-section">
-              <AIEvaluationView evaluation={evaluation} />
-            </section>
-          ) : null}
-        </aside>
-      </div>
+        {evaluation ? (
+          <div id="ai-evaluation-section">
+            <AIEvaluationView evaluation={evaluation} />
+          </div>
+        ) : null}
+      </section>
 
       <VariantSwitcherGrid
         variants={activeSet?.variants || []}
