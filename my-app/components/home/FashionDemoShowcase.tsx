@@ -6,7 +6,14 @@ import { CheckCircle2, Layers3, Palette, Shirt, Sparkles } from "lucide-react";
 import { useT } from "../../lib/i18n/useT";
 import type { TranslationKey } from "../../lib/i18n/locales/ko";
 
-type FashionDemoId = "short-clean" | "medium-work" | "long-date";
+type FashionDemoGender = "male" | "female";
+type FashionDemoId =
+  | "male-short-clean"
+  | "male-medium-work"
+  | "male-long-date"
+  | "female-short-soft"
+  | "female-medium-work"
+  | "female-long-date";
 
 interface FashionDemoLook {
   id: FashionDemoId;
@@ -20,9 +27,15 @@ interface FashionDemoLook {
   items: TranslationKey[];
 }
 
-const DEMO_LOOKS: FashionDemoLook[] = [
+const DEMO_GENDERS: Array<{ id: FashionDemoGender; labelKey: TranslationKey }> = [
+  { id: "male", labelKey: "fashionDemo.gender.male" },
+  { id: "female", labelKey: "fashionDemo.gender.female" },
+];
+
+const DEMO_LOOKS: Record<FashionDemoGender, FashionDemoLook[]> = {
+  male: [
   {
-    id: "short-clean",
+    id: "male-short-clean",
     titleKey: "fashionDemo.look.short.title",
     moodKey: "fashionDemo.look.short.mood",
     summaryKey: "fashionDemo.look.short.summary",
@@ -37,7 +50,7 @@ const DEMO_LOOKS: FashionDemoLook[] = [
     ],
   },
   {
-    id: "medium-work",
+    id: "male-medium-work",
     titleKey: "fashionDemo.look.medium.title",
     moodKey: "fashionDemo.look.medium.mood",
     summaryKey: "fashionDemo.look.medium.summary",
@@ -52,7 +65,7 @@ const DEMO_LOOKS: FashionDemoLook[] = [
     ],
   },
   {
-    id: "long-date",
+    id: "male-long-date",
     titleKey: "fashionDemo.look.long.title",
     moodKey: "fashionDemo.look.long.mood",
     summaryKey: "fashionDemo.look.long.summary",
@@ -66,12 +79,67 @@ const DEMO_LOOKS: FashionDemoLook[] = [
       "fashionDemo.look.long.item.3",
     ],
   },
-];
+  ],
+  female: [
+    {
+      id: "female-short-soft",
+      titleKey: "fashionDemo.look.femaleShort.title",
+      moodKey: "fashionDemo.look.femaleShort.mood",
+      summaryKey: "fashionDemo.look.femaleShort.summary",
+      hairLabelKey: "fashionDemo.look.femaleShort.hair",
+      image: "/hero/fashion-demo/female-short-soft.webp",
+      hairImage: "/hero/demo/grid/female-01.webp",
+      palette: ["#f3eadc", "#faf7f0", "#b8cfe4", "#efe4d8"],
+      items: [
+        "fashionDemo.look.femaleShort.item.1",
+        "fashionDemo.look.femaleShort.item.2",
+        "fashionDemo.look.femaleShort.item.3",
+      ],
+    },
+    {
+      id: "female-medium-work",
+      titleKey: "fashionDemo.look.femaleMedium.title",
+      moodKey: "fashionDemo.look.femaleMedium.mood",
+      summaryKey: "fashionDemo.look.femaleMedium.summary",
+      hairLabelKey: "fashionDemo.look.femaleMedium.hair",
+      image: "/hero/fashion-demo/female-medium-work.webp",
+      hairImage: "/hero/demo/grid/female-05.webp",
+      palette: ["#8f8376", "#fff8ef", "#b3aaa0", "#b9a58e"],
+      items: [
+        "fashionDemo.look.femaleMedium.item.1",
+        "fashionDemo.look.femaleMedium.item.2",
+        "fashionDemo.look.femaleMedium.item.3",
+      ],
+    },
+    {
+      id: "female-long-date",
+      titleKey: "fashionDemo.look.femaleLong.title",
+      moodKey: "fashionDemo.look.femaleLong.mood",
+      summaryKey: "fashionDemo.look.femaleLong.summary",
+      hairLabelKey: "fashionDemo.look.femaleLong.hair",
+      image: "/hero/fashion-demo/female-long-date.webp",
+      hairImage: "/hero/demo/grid/female-07.webp",
+      palette: ["#151515", "#f1dfcf", "#f4ecdf", "#3a2e2a"],
+      items: [
+        "fashionDemo.look.femaleLong.item.1",
+        "fashionDemo.look.femaleLong.item.2",
+        "fashionDemo.look.femaleLong.item.3",
+      ],
+    },
+  ],
+};
 
 export function FashionDemoShowcase() {
   const t = useT();
-  const [activeId, setActiveId] = useState<FashionDemoId>("short-clean");
-  const activeLook = DEMO_LOOKS.find((look) => look.id === activeId) ?? DEMO_LOOKS[0];
+  const [activeGender, setActiveGender] = useState<FashionDemoGender>("male");
+  const [activeId, setActiveId] = useState<FashionDemoId>("male-short-clean");
+  const activeLooks = DEMO_LOOKS[activeGender];
+  const activeLook = activeLooks.find((look) => look.id === activeId) ?? activeLooks[0];
+
+  const handleGenderChange = (gender: FashionDemoGender) => {
+    setActiveGender(gender);
+    setActiveId(DEMO_LOOKS[gender][0].id);
+  };
 
   return (
     <section className="overflow-hidden rounded-3xl border border-stone-200/70 bg-stone-950 text-white shadow-2xl transition-colors dark:border-zinc-800/70">
@@ -87,8 +155,29 @@ export function FashionDemoShowcase() {
             </p>
           </div>
 
+          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.06] p-1">
+            {DEMO_GENDERS.map((gender) => {
+              const isActive = activeGender === gender.id;
+
+              return (
+                <button
+                  key={gender.id}
+                  type="button"
+                  onClick={() => handleGenderChange(gender.id)}
+                  className={[
+                    "min-h-11 rounded-xl px-4 text-sm font-black transition",
+                    isActive ? "bg-white text-stone-950 shadow-lg" : "text-stone-300 hover:bg-white/10 hover:text-white",
+                  ].join(" ")}
+                  aria-pressed={isActive}
+                >
+                  {t(gender.labelKey)}
+                </button>
+              );
+            })}
+          </div>
+
           <div className="grid gap-3">
-            {DEMO_LOOKS.map((look, index) => {
+            {activeLooks.map((look, index) => {
               const isActive = activeLook.id === look.id;
 
               return (
