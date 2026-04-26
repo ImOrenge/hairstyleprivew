@@ -7,21 +7,27 @@ import { AppClerkProvider } from "../components/providers/AppClerkProvider";
 import { LocaleSync } from "../components/layout/LocaleSync";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { inter, notoSansKR } from "../lib/fonts";
+import { homeSeo } from "../lib/home-content";
+import { getSiteUrl } from "../lib/site-url";
 
 export const metadata: Metadata = {
-  title: "HairFit - AI Hairstyle Preview",
-  description: "자르기 전에, 내 얼굴로 먼저 확인하는 AI 헤어스타일 미리보기. 당신에게 어울리는 스타일을 데이터로 추천합니다.",
-  keywords: ["AI 헤어스타일", "헤어스타일 미리보기", "헤어핏", "헤어 스타일링", "가상 헤어"],
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: homeSeo.title,
+    template: "%s - HairFit",
+  },
+  description: homeSeo.description,
+  keywords: homeSeo.keywords,
   openGraph: {
-    title: "HairFit - AI Hairstyle Preview",
-    description: "내 얼굴로 먼저 확인하는 AI 헤어스타일 미리보기",
+    title: homeSeo.title,
+    description: homeSeo.description,
     type: "website",
     locale: "ko_KR",
   },
   twitter: {
     card: "summary_large_image",
-    title: "HairFit - AI Hairstyle Preview",
-    description: "내 얼굴로 먼저 확인하는 AI 헤어스타일 미리보기",
+    title: homeSeo.title,
+    description: homeSeo.description,
   },
 };
 

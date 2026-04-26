@@ -196,7 +196,7 @@ export function FashionDemoShowcase() {
                   <span className="relative h-16 overflow-hidden rounded-xl bg-stone-800">
                     <Image
                       src={look.hairImage}
-                      alt=""
+                      alt={`${t(look.hairLabelKey)} 헤어스타일 미리보기`}
                       fill
                       className="object-cover"
                       sizes="68px"

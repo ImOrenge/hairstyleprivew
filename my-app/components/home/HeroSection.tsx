@@ -366,7 +366,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
               >
                 <Image
                   src={card.image}
-                  alt=""
+                  alt={`${t(card.titleKey)} ${t(card.bucketKey)} 헤어스타일 AI 미리보기`}
                   fill
                   className={styles.gridCardImage}
                   sizes="(max-width: 720px) 30vw, 150px"
