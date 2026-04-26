@@ -14,9 +14,9 @@ const en: Record<TranslationKey, string> = {
     "footer.builtWith": "Built with Clerk, Polar, Supabase, and Gemini",
 
     // Hero
-    "hero.badge": "HairFit",
-    "hero.title": "See 9 hairstyles for your face\nbefore the salon visit",
-    "hero.subtitle": "Before you cut, perm, or color your hair, upload one front-facing photo. HairFit shows 9 style ideas across short, medium, and long looks matched to your face shape and head balance, then lets you save the result for your salon consultation.",
+    "hero.badge": "AI Hair + Fashion Styling",
+    "hero.title": "Hair to fashion —\nsee it on your face & body first",
+    "hero.subtitle": "Stop browsing other people's photos. Upload one front-facing shot to compare hairstyles that suit your face — then once you lock in a style, outfit recommendations matched to your body type follow naturally.",
     "hero.supporting": "Instead of copying a trend photo, start with options that fit your own features and prepare the length, volume, and mood you want to explain with an image.",
     "hero.socialProof": "+ {{count}} USERS",
     "hero.cta.start": "Get My 9 Style Ideas",
@@ -30,8 +30,11 @@ const en: Record<TranslationKey, string> = {
     "hero.tag.before": "Before",
     "hero.tag.after": "After",
     "hero.stat.photo": "One front photo",
-    "hero.stat.grid": "Compare by length",
-    "hero.stat.analysis": "Save for salon",
+    "hero.stat.photo.value": "1",
+    "hero.stat.grid": "Hair style picks",
+    "hero.stat.grid.value": "Hair",
+    "hero.stat.analysis": "Fashion outfit picks",
+    "hero.stat.analysis.value": "Fashion",
     "hero.workflow.upload": "Upload photo",
     "hero.workflow.uploadDetail": "One clear front-facing photo is enough to begin.",
     "hero.workflow.analysis": "Check the fit",
@@ -97,7 +100,7 @@ const en: Record<TranslationKey, string> = {
     "features.4.point": "Continue from a confirmed hair result to a guided outfit recommendation.",
 
     // Fashion demo
-    "fashionDemo.badge": "Fashion Styler Demo",
+    "fashionDemo.badge": "Next Step · Fashion Picks",
     "fashionDemo.gender.male": "Male model",
     "fashionDemo.gender.female": "Female model",
     "fashionDemo.title": "Extend your chosen hair into a full-body outfit",
@@ -106,7 +109,7 @@ const en: Record<TranslationKey, string> = {
     "fashionDemo.previewLabel": "Full-body preview",
     "fashionDemo.recommendationLabel": "Outfit direction",
     "fashionDemo.paletteLabel": "Color palette",
-    "fashionDemo.flowNote": "This landing section is a demo. The real fashion recommendation starts after you confirm a hairstyle result.",
+    "fashionDemo.flowNote": "Once you confirm a hairstyle, fashion recommendations like this lookbook will start automatically.",
     "fashionDemo.step.hair": "Choose one hair result",
     "fashionDemo.step.direction": "Set occasion and mood",
     "fashionDemo.step.lookbook": "Review the full-body lookbook",
@@ -255,6 +258,17 @@ const en: Record<TranslationKey, string> = {
     "generate.promptMeta": "Prompt Data",
     "generate.needUpload": "Please upload an image first.",
     "generate.ariaLabel": "Generate",
+
+    // Hero fashion teaser
+    "hero.fashionTeaser": "Confirm a hairstyle and get outfit recommendations matched to your body type and mood.",
+
+    // Final CTA block
+    "home.finalCta.title": "See it on your face right now",
+    "home.finalCta.subtitle": "A front-facing photo is all you need. Try it free first.",
+    "home.finalCta.button": "Get my style recommendations",
+
+    // Mobile sticky CTA
+    "home.mobileCta": "Start for free",
 };
 
 export default en;

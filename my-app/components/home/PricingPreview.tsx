@@ -26,7 +26,7 @@ export function PricingPreview() {
       subtitle: t("pricing.free.subtitle"),
       description: t("pricing.free.desc"),
       period: t("pricing.packLabel"),
-      features: [t("pricing.free.f1"), t("pricing.free.f2"), t("pricing.free.f3")],
+      features: [t("pricing.free.f1"), t("pricing.free.f3"), t("pricing.free.f2")],
       cta: t("pricing.free.cta"),
       tone: "basic" as const,
       recommended: false,

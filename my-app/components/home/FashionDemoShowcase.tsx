@@ -301,8 +301,9 @@ export function FashionDemoShowcase() {
                 ))}
               </div>
 
-              <div className="rounded-3xl border border-amber-200 bg-amber-50 p-5 text-amber-950 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-100">
-                <p className="text-sm font-bold leading-6">{t("fashionDemo.flowNote")}</p>
+              <div className="rounded-3xl border border-amber-200/70 bg-gradient-to-br from-amber-50 to-amber-100/60 p-5 text-amber-950 dark:border-amber-400/20 dark:from-amber-400/10 dark:to-amber-500/5 dark:text-amber-100">
+                <Shirt className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+                <p className="mt-2 text-sm font-bold leading-6">{t("fashionDemo.flowNote")}</p>
               </div>
             </aside>
           </div>

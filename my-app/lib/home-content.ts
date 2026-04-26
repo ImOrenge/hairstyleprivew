@@ -1,7 +1,7 @@
 export const homeSeo = {
   title: "AI 헤어스타일 미리보기 | 얼굴형 맞춤 9가지 추천 - HairFit",
   description:
-    "정면 사진 한 장으로 내 얼굴형에 어울리는 남자·여자 헤어스타일 9가지를 비교하고 미용실 상담 이미지로 저장하세요.",
+    "정면 사진 한 장으로 내 얼굴형에 맞는 남자·여자 헤어스타일 9가지를 AI가 추천합니다. 짧은 머리부터 긴 머리까지 3x3 보드로 비교하고, 미용실 상담 이미지로 저장해 헤어디자이너에게 정확히 전달하세요.",
   keywords: [
     "AI 헤어스타일 미리보기",
     "얼굴형 헤어스타일 추천",
@@ -10,6 +10,19 @@ export const homeSeo = {
     "미용실 상담 이미지",
     "가상 헤어스타일",
     "헤어스타일 추천",
+    "내 얼굴형에 어울리는 헤어스타일",
+    "얼굴형별 헤어스타일",
+    "숏컷 추천",
+    "앞머리 추천",
+    "남자 투블럭 추천",
+    "여자 보브컷 추천",
+    "헤어스타일 변신",
+    "미용실 상담 앱",
+    "헤어디자이너 상담 도구",
+    "헤어 상담 이미지",
+    "AI 헤어 분석",
+    "헤어스타일 AI 추천",
+    "온라인 헤어스타일 테스트",
   ],
 };
 
@@ -28,18 +41,18 @@ export const homeWorkflow = [
   },
   {
     step: "03",
-    title: "상담 이미지로 저장",
+    title: "상담 이미지로 저장 — 패션 추천으로 이어지기",
     description:
-      "마음에 드는 결과를 저장해 미용실에서 바로 보여주세요. 말로 설명하기 어려운 분위기와 디테일을 이미지로 전달할 수 있습니다.",
+      "마음에 드는 결과를 저장해 미용실에서 바로 보여주세요. 헤어스타일을 하나 확정하면 체형과 무드에 맞는 패션 코디 추천으로도 자연스럽게 이어집니다.",
   },
 ];
 
 export const homeNavItems = [
   { href: "#home-hero", label: "처음", shortLabel: "TOP" },
   { href: "#home-workflow", label: "사용 흐름", shortLabel: "01" },
-  { href: "#home-demo", label: "스타일 데모", shortLabel: "02" },
-  { href: "#home-criteria", label: "추천 기준", shortLabel: "03" },
-  { href: "#home-salon", label: "상담 활용", shortLabel: "04" },
+  { href: "#home-criteria", label: "추천 기준", shortLabel: "02" },
+  { href: "#home-salon", label: "상담 활용", shortLabel: "03" },
+  { href: "#home-demo", label: "스타일 데모", shortLabel: "04" },
   { href: "#home-pricing", label: "가격", shortLabel: "05" },
   { href: "#home-faq", label: "FAQ", shortLabel: "06" },
   { href: "#home-reviews", label: "후기", shortLabel: "07" },

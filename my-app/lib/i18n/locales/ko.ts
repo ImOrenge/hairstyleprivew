@@ -12,12 +12,12 @@ const ko = {
     "footer.builtWith": "Built with Clerk, Polar, Supabase, and Gemini",
 
     // Hero
-    "hero.badge": "HairFit",
-    "hero.title": "내 얼굴 사진 한 장으로\n어울리는 헤어스타일 9가지 미리보기",
-    "hero.subtitle": "머리를 자르기 전, 펌이나 염색을 하기 전 정면 사진 한 장만 올려보세요. HairFit이 얼굴형과 두상 밸런스를 기준으로 남자·여자 헤어스타일 후보를 3x3 보드로 보여드립니다.",
+    "hero.badge": "AI 헤어 + 패션 스타일링",
+    "hero.title": "헤어부터 패션까지,\n내 얼굴·체형으로 먼저 확인하세요",
+    "hero.subtitle": "남의 사진이 아닌, 내 얼굴과 체형으로 직접 맞춰보세요. 정면 사진 한 장이면 어울리는 헤어스타일 후보를 비교하고, 스타일을 확정하는 순간 체형과 무드에 맞는 패션 코디까지 자연스럽게 이어집니다.",
     "hero.supporting": "AI 헤어스타일 미리보기 결과를 저장해 미용실 상담 이미지로 활용하고, 설명하기 어려운 길이와 볼륨, 분위기를 더 정확하게 전달하세요.",
     "hero.socialProof": "+ {{count}} USERS",
-    "hero.cta.start": "내 얼굴로 9가지 추천 받기",
+    "hero.cta.start": "내 얼굴·체형으로 스타일링 시작",
     "hero.cta.demo": "데모 생성 보기",
     "hero.gender.male": "남자",
     "hero.gender.female": "여자",
@@ -28,8 +28,11 @@ const ko = {
     "hero.tag.before": "Before",
     "hero.tag.after": "After",
     "hero.stat.photo": "정면 사진만 준비",
-    "hero.stat.grid": "길이별 스타일 비교",
-    "hero.stat.analysis": "상담 이미지 저장",
+    "hero.stat.photo.value": "1",
+    "hero.stat.grid": "헤어 스타일 추천",
+    "hero.stat.grid.value": "헤어",
+    "hero.stat.analysis": "패션 코디 추천",
+    "hero.stat.analysis.value": "패션",
     "hero.workflow.upload": "사진 올리기",
     "hero.workflow.uploadDetail": "셀카처럼 정면 사진 한 장만 올리면 충분합니다.",
     "hero.workflow.analysis": "어울림 확인",
@@ -96,7 +99,7 @@ const ko = {
     "features.4.point": "헤어 결과를 고른 뒤 패션 추천 흐름으로 이어집니다.",
 
     // Fashion demo
-    "fashionDemo.badge": "Fashion Styler Demo",
+    "fashionDemo.badge": "헤어 다음 단계 · 패션 추천",
     "fashionDemo.gender.male": "남성 모델",
     "fashionDemo.gender.female": "여성 모델",
     "fashionDemo.title": "고른 헤어에 맞춰 전신 착장까지 이어보세요",
@@ -105,7 +108,7 @@ const ko = {
     "fashionDemo.previewLabel": "Full-body preview",
     "fashionDemo.recommendationLabel": "추천 코디",
     "fashionDemo.paletteLabel": "컬러 팔레트",
-    "fashionDemo.flowNote": "랜딩에서는 데모만 보여주고, 실제 패션 추천은 헤어 결과에서 원하는 스타일을 확정한 뒤 시작됩니다.",
+    "fashionDemo.flowNote": "헤어스타일을 하나 확정하면 이 룩북처럼 체형과 무드에 맞는 패션 코디가 자동으로 시작됩니다.",
     "fashionDemo.step.hair": "헤어 결과를 하나 선택",
     "fashionDemo.step.direction": "상황과 무드 방향 설정",
     "fashionDemo.step.lookbook": "전신 룩북 이미지 확인",
@@ -160,7 +163,7 @@ const ko = {
     "pricing.free.subtitle": "무료 체험",
     "pricing.free.desc": "상담 전에 내 얼굴에 어울리는지 가볍게 확인하고 싶은 분",
     "pricing.free.cta": "무료로 시작",
-    "pricing.free.f1": "정면 사진으로 9가지 후보 확인",
+    "pricing.free.f1": "기장별 1개씩 3가지 스타일 미리보기",
     "pricing.free.f2": "워터마크 포함 결과 2회 생성",
     "pricing.free.f3": "상담 전 체험에 적합",
     "pricing.starter.subtitle": "개인 팩",
@@ -187,12 +190,12 @@ const ko = {
     "reviews.badge": "Salon Ready",
     "reviews.title": "상담 전에 원하는 스타일을 더 정확하게 전달하세요",
     "reviews.subtitle": "말로 설명하기 어려운 길이, 볼륨, 분위기를 이미지로 먼저 정리해 미용실 상담을 더 쉽게 시작할 수 있습니다.",
-    "reviews.metrics.1.label": "추천 스타일",
-    "reviews.metrics.1.value": "9",
-    "reviews.metrics.2.label": "비교 기준",
-    "reviews.metrics.2.value": "4+",
-    "reviews.metrics.3.label": "상담 활용",
-    "reviews.metrics.3.value": "저장",
+    "reviews.metrics.1.label": "추천 스타일 수",
+    "reviews.metrics.1.value": "9가지",
+    "reviews.metrics.2.label": "분석 기준",
+    "reviews.metrics.2.value": "4가지",
+    "reviews.metrics.3.label": "저장 후 활용",
+    "reviews.metrics.3.value": "상담 이미지",
     "reviews.scenario.1.title": "방향 잡기",
     "reviews.scenario.1.body": "원하는 스타일을 찾기 전에 내 얼굴에 어울리는 길이와 볼륨 방향을 먼저 좁혀보세요.",
     "reviews.scenario.2.title": "상담 이미지로 공유",
@@ -254,6 +257,16 @@ const ko = {
     "generate.promptMeta": "생성 프롬프트 메타",
     "generate.ariaLabel": "이미지 생성",
     "generate.needUpload": "생성하려면 먼저 업로드 이미지를 등록해 주세요.",
+    // Hero 패션 teaser
+    "hero.fashionTeaser": "헤어스타일을 확정하면 체형·무드 맞춤 패션 코디 추천으로 이어집니다",
+
+    // Final CTA block (Reviews 하단)
+    "home.finalCta.title": "지금 내 얼굴로 확인해보세요",
+    "home.finalCta.subtitle": "정면 사진 한 장이면 충분합니다. 어울리는 스타일을 무료로 먼저 확인해보세요.",
+    "home.finalCta.button": "내 얼굴로 추천 받기",
+
+    // Mobile sticky CTA
+    "home.mobileCta": "무료로 시작하기",
 } as const;
 
 export type TranslationKey = keyof typeof ko;
