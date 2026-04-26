@@ -10,6 +10,7 @@ const isProtectedRoute = createRouteMatcher([
   "/generate(.*)",
   "/mypage(.*)",
   "/result(.*)",
+  "/salon(.*)",
   "/styler(.*)",
   "/api/(.*)",
 ]);
@@ -17,6 +18,8 @@ const isProtectedRoute = createRouteMatcher([
 const isWebhookRoute = createRouteMatcher(["/api/payments/webhook"]);
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isOnboardingApiRoute = createRouteMatcher(["/api/onboarding(.*)"]);
+const isSalonRoute = createRouteMatcher(["/salon(.*)"]);
+const isMyPageRoute = createRouteMatcher(["/mypage"]);
 
 const middleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
@@ -47,6 +50,14 @@ const middleware = hasClerkConfig
       if (isOnboardingRoute(req)) {
         const redirectTo = normalizeAppPath(req.nextUrl.searchParams.get("return_url"), "/mypage");
         return NextResponse.redirect(new URL(redirectTo, req.url));
+      }
+
+      if (isSalonRoute(req) && metadata.accountType !== "salon_owner") {
+        return NextResponse.redirect(new URL("/mypage", req.url));
+      }
+
+      if (isMyPageRoute(req) && metadata.accountType === "salon_owner") {
+        return NextResponse.redirect(new URL("/salon/customers", req.url));
       }
     } catch (error) {
       console.error("[middleware] Failed to read onboarding metadata", error);

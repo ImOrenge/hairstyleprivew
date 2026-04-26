@@ -39,6 +39,9 @@ export function Header({ clerkEnabled }: HeaderProps) {
           <Link href="/mypage" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
             {t("nav.mypage")}
           </Link>
+          <Link href="/salon/customers" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
+            Salon CRM
+          </Link>
 
           {clerkEnabled ? (
             <ClerkAuthButtons />
