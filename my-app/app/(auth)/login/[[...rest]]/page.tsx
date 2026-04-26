@@ -1,5 +1,5 @@
 import { SignIn } from "@clerk/nextjs";
-import { getClerkConfigState } from "../../../lib/clerk";
+import { getClerkConfigState } from "../../../../lib/clerk";
 
 export default function LoginPage() {
   const clerkConfig = getClerkConfigState();
@@ -8,12 +8,12 @@ export default function LoginPage() {
   if (!hasClerkKey) {
     const reasonText =
       clerkConfig.issue === "live_key_on_local_dev"
-        ? "현재 로컬 개발 환경에서 프로덕션 Clerk 키(pk_live_)를 사용 중이라 위젯이 차단됩니다. 로컬에서는 테스트 키(pk_test_, sk_test_)를 사용해 주세요."
-        : "Clerk 키가 설정되지 않았습니다. my-app/.env.local에 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY를 설정해 주세요.";
+        ? "?꾩옱 濡쒖뺄 媛쒕컻 ?섍꼍?먯꽌 ?꾨줈?뺤뀡 Clerk ??pk_live_)瑜??ъ슜 以묒씠???꾩젽??李⑤떒?⑸땲?? 濡쒖뺄?먯꽌???뚯뒪????pk_test_, sk_test_)瑜??ъ슜??二쇱꽭??"
+        : "Clerk ?ㅺ? ?ㅼ젙?섏? ?딆븯?듬땲?? my-app/.env.local??NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY瑜??ㅼ젙??二쇱꽭??";
 
     return (
       <div className="mx-auto w-full max-w-xl px-6 py-10">
-        <h1 className="text-2xl font-bold">로그인</h1>
+        <h1 className="text-2xl font-bold">Login</h1>
         <p className="mt-3 text-sm text-gray-600">{reasonText}</p>
       </div>
     );

@@ -1,11 +1,9 @@
 ﻿import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 import { LocaleSync } from "../components/layout/LocaleSync";
-import { getClerkConfigState } from "../lib/clerk";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { inter, notoSansKR } from "../lib/fonts";
 
@@ -29,25 +27,16 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
-  const { canUseClerkFrontend, publishableKey } = getClerkConfigState();
-
-  const appShell = (
+  return (
     <html lang="ko" className={`${inter.variable} ${notoSansKR.variable}`} suppressHydrationWarning>
       <body className="font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <LocaleSync />
-          <Header clerkEnabled={canUseClerkFrontend} />
+          <Header />
           <main>{children}</main>
           <Footer />
         </ThemeProvider>
       </body>
     </html>
   );
-
-
-  if (!canUseClerkFrontend || !publishableKey) {
-    return appShell;
-  }
-
-  return <ClerkProvider publishableKey={publishableKey}>{appShell}</ClerkProvider>;
 }

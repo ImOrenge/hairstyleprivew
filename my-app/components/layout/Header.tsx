@@ -5,14 +5,9 @@ import Image from "next/image";
 import { useT } from "../../lib/i18n/useT";
 import { loginButtonClassName, signupButtonClassName } from "./authButtonStyles";
 import { LanguageSwitch } from "./LanguageSwitch";
-import { ClerkAuthButtons } from "./ClerkAuthButtons";
 import { ThemeToggle } from "./ThemeToggle";
 
-type HeaderProps = {
-  clerkEnabled: boolean;
-};
-
-export function Header({ clerkEnabled }: HeaderProps) {
+export function Header() {
   const t = useT();
 
   return (
@@ -43,24 +38,20 @@ export function Header({ clerkEnabled }: HeaderProps) {
             Salon CRM
           </Link>
 
-          {clerkEnabled ? (
-            <ClerkAuthButtons />
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href="/login"
-                className={loginButtonClassName}
-              >
-                {t("nav.login")}
-              </Link>
-              <Link
-                href="/signup"
-                className={signupButtonClassName}
-              >
-                {t("nav.signup")}
-              </Link>
-            </div>
-          )}
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/login"
+              className={loginButtonClassName}
+            >
+              {t("nav.login")}
+            </Link>
+            <Link
+              href="/signup"
+              className={signupButtonClassName}
+            >
+              {t("nav.signup")}
+            </Link>
+          </div>
           <div className="flex items-center gap-1 border-l border-stone-200 pl-3 dark:border-zinc-800">
             <ThemeToggle />
             <LanguageSwitch />
