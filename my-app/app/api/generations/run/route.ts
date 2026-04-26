@@ -189,6 +189,21 @@ function deriveGenerationStatus(variants: GeneratedVariant[]): "queued" | "proce
   return "failed";
 }
 
+function isCompletedVariant(variant: GeneratedVariant) {
+  return variant.status === "completed" && Boolean(variant.outputUrl || variant.generatedImagePath);
+}
+
+function hasFreePlanBucketLimit(set: RecommendationSet, targetVariant: GeneratedVariant) {
+  const completedInBucket = set.variants.filter(
+    (variant) => variant.lengthBucket === targetVariant.lengthBucket && isCompletedVariant(variant),
+  );
+  if (completedInBucket.length === 0) {
+    return false;
+  }
+
+  return !completedInBucket.some((variant) => variant.id === targetVariant.id);
+}
+
 function selectPrimaryVariant(set: RecommendationSet): GeneratedVariant | null {
   const selected = set.selectedVariantId
     ? set.variants.find((variant) => variant.id === set.selectedVariantId)
@@ -325,6 +340,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Catalog item mismatch" }, { status: 400 });
   }
 
+  const freePlan = await isFreePlanUser(supabase, userId);
+  if (freePlan && hasFreePlanBucketLimit(recommendationSet, targetVariant)) {
+    return NextResponse.json(
+      {
+        error:
+          "무료 플랜은 짧은/중간/긴 기장별로 1개씩만 생성할 수 있습니다. 이 기장에서는 이미 1개를 생성했습니다.",
+      },
+      { status: 403 },
+    );
+  }
+
   const creditCost = recommendationSet.creditChargeAmount ?? getCreditsPerStyle();
   let chargedCredits = 0;
 
@@ -389,7 +415,6 @@ export async function POST(request: Request) {
       imageDataUrl,
     });
 
-    const freePlan = await isFreePlanUser(supabase, userId);
     let outputUrl = result.outputUrl || null;
 
     if (freePlan && outputUrl) {
