@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
+import { AppClerkProvider } from "../components/providers/AppClerkProvider";
 import { LocaleSync } from "../components/layout/LocaleSync";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { inter, notoSansKR } from "../lib/fonts";
@@ -30,12 +31,14 @@ export default function RootLayout({
   return (
     <html lang="ko" className={`${inter.variable} ${notoSansKR.variable}`} suppressHydrationWarning>
       <body className="font-sans">
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          <LocaleSync />
-          <Header />
-          <main>{children}</main>
-          <Footer />
-        </ThemeProvider>
+        <AppClerkProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            <LocaleSync />
+            <Header />
+            <main>{children}</main>
+            <Footer />
+          </ThemeProvider>
+        </AppClerkProvider>
       </body>
     </html>
   );

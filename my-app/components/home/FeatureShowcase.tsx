@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CheckCircle2, Grid3X3 } from "lucide-react";
+import { Camera, CheckCircle2, Grid3X3, Shirt } from "lucide-react";
 import { useT } from "../../lib/i18n/useT";
 
 export function FeatureShowcase() {
@@ -25,6 +25,12 @@ export function FeatureShowcase() {
       point: t("features.3.point"),
       icon: CheckCircle2,
     },
+    {
+      title: t("features.4.title"),
+      description: t("features.4.desc"),
+      point: t("features.4.point"),
+      icon: Shirt,
+    },
   ];
 
   return (
@@ -36,7 +42,7 @@ export function FeatureShowcase() {
         </h2>
       </div>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3 max-md:max-h-[30rem] max-md:overflow-y-auto max-md:snap-y max-md:snap-mandatory max-md:overscroll-contain max-md:pr-1">
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4 max-md:max-h-[30rem] max-md:overflow-y-auto max-md:snap-y max-md:snap-mandatory max-md:overscroll-contain max-md:pr-1">
         {features.map((feature, index) => {
           const Icon = feature.icon;
           return (

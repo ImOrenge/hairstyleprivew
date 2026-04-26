@@ -1,5 +1,6 @@
 import dynamic from "next/dynamic";
 import { FeatureShowcase } from "../components/home/FeatureShowcase";
+import { FashionDemoShowcase } from "../components/home/FashionDemoShowcase";
 import { HeroSection } from "../components/home/HeroSection";
 
 const PricingPreview = dynamic(() => import("../components/home/PricingPreview").then(mod => mod.PricingPreview), {
@@ -14,6 +15,7 @@ export default async function HomePage() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 sm:gap-10 sm:py-12">
       <HeroSection />
+      <FashionDemoShowcase />
       <FeatureShowcase />
       <PricingPreview />
       <ReviewCarousel />
