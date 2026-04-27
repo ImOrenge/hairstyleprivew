@@ -222,8 +222,8 @@ async function generateSingleContent(
 export async function generateHairCareContents(
   input: GenerateHairCareInput,
 ): Promise<HairCareContentItem[]> {
-  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
-  if (!apiKey) throw new Error("Missing GOOGLE_GENERATIVE_AI_API_KEY");
+  const apiKey = process.env.GOOGLE_API_KEY?.trim();
+  if (!apiKey) throw new Error("Missing GOOGLE_API_KEY");
 
   const genAI = new GoogleGenerativeAI(apiKey);
   // Flash 모델: 속도 우선 (6개 병렬 생성)
