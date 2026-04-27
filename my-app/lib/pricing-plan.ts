@@ -10,13 +10,21 @@ const DEFAULT_CREDIT_PACKS = {
     credits: 10,
     priceKrw: 0,
   },
-  starter: {
-    credits: 60,
+  basic: {
+    credits: 30,
+    priceKrw: 4900,
+  },
+  standard: {
+    credits: 80,
     priceKrw: 9900,
   },
   pro: {
-    credits: 250,
-    priceKrw: 39000,
+    credits: 200,
+    priceKrw: 19900,
+  },
+  salon: {
+    credits: 500,
+    priceKrw: 39900,
   },
 } as const;
 

@@ -1,261 +1,230 @@
+// POST /api/payments/webhook
+// PortOne V2 웹훅 처리
+// 이벤트: Transaction.Paid (월 갱신), Transaction.Failed (결제 실패)
 import { NextResponse } from "next/server";
-import { verifyPolarWebhookSignature } from "../../../../lib/polar";
-import { sendPaymentSuccessEmail } from "../../../../lib/resend";
+import { verifyPortoneWebhook } from "../../../../lib/portone";
+import { sendSubscriptionRenewalEmail } from "../../../../lib/resend";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
 
-interface PolarOrderPaidPayload {
-  paymentTransactionId: string;
-  providerOrderId?: string;
-  providerCustomerId?: string;
-  amount?: number;
-  currency?: string;
-}
+// ─── 타입 ──────────────────────────────────────────────────────────────────
 
-interface PaymentTransactionForEmailRow {
-  user_id: string;
-  amount: number;
-  currency: string;
-  credits_to_grant: number;
-  metadata: unknown;
-}
-
-interface UserForEmailRow {
+interface UserEmailRow {
   email?: string | null;
   credits?: number | null;
 }
 
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
+interface SubscriptionRow {
+  id: string;
+  user_id: string;
+  plan_key: string;
+  credits_per_cycle: number;
+}
+
+interface PaymentTxRow {
+  id: string;
+  subscription_id: string | null;
+  credits_to_grant: number;
+  metadata: unknown;
+}
+
+// ─── 유틸 ──────────────────────────────────────────────────────────────────
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return typeof v === "object" && v !== null && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
     : null;
 }
 
-function readString(value: unknown): string | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
+function readStr(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() ? v.trim() : undefined;
 }
 
-function isDeliverableEmail(value: string): boolean {
-  const email = value.trim().toLowerCase();
-  if (!email || email.endsWith("@placeholder.local")) {
-    return false;
-  }
-
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+function isDeliverableEmail(email: string): boolean {
+  return (
+    !email.endsWith("@placeholder.local") &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  );
 }
 
-function readPositiveInteger(value: unknown): number | undefined {
-  if (!Number.isInteger(value) || Number(value) <= 0) {
-    return undefined;
-  }
-
-  return Number(value);
-}
-
-function extractOrderPaidPayload(data: Record<string, unknown>): PolarOrderPaidPayload | null {
-  const metadata = asRecord(data.metadata);
-  const paymentTransactionId =
-    readString(metadata?.payment_transaction_id) ??
-    readString(metadata?.paymentTransactionId) ??
-    readString(data.payment_transaction_id) ??
-    readString(data.paymentTransactionId);
-
-  if (!paymentTransactionId) {
-    return null;
-  }
-
-  const nestedCustomer = asRecord(data.customer);
-  const providerCustomerId =
-    readString(data.customer_id) ??
-    readString(data.customerId) ??
-    readString(nestedCustomer?.id);
-
-  const amount =
-    readPositiveInteger(data.amount) ??
-    readPositiveInteger(data.net_amount) ??
-    readPositiveInteger(data.total_amount);
-
-  const currency = readString(data.currency)?.toUpperCase();
-  const providerOrderId = readString(data.id);
-
-  return {
-    paymentTransactionId,
-    providerOrderId,
-    providerCustomerId,
-    amount,
-    currency,
-  };
-}
-
-function mergeMetadata(
-  baseValue: unknown,
-  patch: Record<string, unknown>,
-): Record<string, unknown> {
-  const base = asRecord(baseValue) ?? {};
-  return { ...base, ...patch };
-}
+// ─── 핸들러 ────────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
   if (!isSupabaseConfigured()) {
-    return NextResponse.json({ error: "Supabase is not configured" }, { status: 503 });
+    return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
   }
 
-  const rawPayload = await request.text();
-  if (!rawPayload) {
-    return NextResponse.json({ error: "Missing webhook payload" }, { status: 400 });
+  const rawBody = await request.text();
+  if (!rawBody) {
+    return NextResponse.json({ error: "Empty payload" }, { status: 400 });
   }
 
+  // 1. 웹훅 서명 검증
+  let event: { type: string; data: Record<string, unknown> };
   try {
-    const event = verifyPolarWebhookSignature(rawPayload, request.headers);
-    if (event.type !== "order.paid") {
-      return NextResponse.json({ received: true, ignoredType: event.type }, { status: 200 });
-    }
+    event = await verifyPortoneWebhook(rawBody, request.headers);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Webhook verification failed";
+    console.error("[webhook] 서명 검증 실패:", msg);
+    return NextResponse.json({ error: msg }, { status: 403 });
+  }
 
-    const orderPayload = extractOrderPaidPayload(event.data);
-    if (!orderPayload) {
-      return NextResponse.json(
-        { received: true, ignoredReason: "payment_transaction_id missing" },
-        { status: 202 },
-      );
-    }
+  const { type, data } = event;
 
-    const supabase = getSupabaseAdminClient() as unknown as {
-      from: (table: string) => {
-        update: (values: Record<string, unknown>) => {
-          eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
-        };
-        select: (columns: string) => {
-          eq: (column: string, value: string) => {
-            maybeSingle: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
-          };
+  // 2. 미처리 이벤트 무시
+  if (type !== "Transaction.Paid" && type !== "Transaction.Failed") {
+    return NextResponse.json({ received: true, ignoredType: type }, { status: 200 });
+  }
+
+  const paymentId = readStr(data.paymentId) ?? readStr(data.payment_id);
+  if (!paymentId) {
+    return NextResponse.json(
+      { received: true, ignoredReason: "paymentId missing" },
+      { status: 202 },
+    );
+  }
+
+  const supabase = getSupabaseAdminClient() as unknown as {
+    from: (table: string) => {
+      select: (c: string) => {
+        eq: (c: string, v: unknown) => {
+          maybeSingle: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
+          single: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
         };
       };
-      rpc: (
-        fn: string,
-        params: Record<string, unknown>,
-      ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      update: (v: Record<string, unknown>) => {
+        eq: (c: string, v: unknown) => Promise<{ error: { message: string } | null }>;
+      };
+      insert: (v: Record<string, unknown>) => {
+        select: (c: string) => {
+          single: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
+        };
+      };
     };
+    rpc: (fn: string, params: Record<string, unknown>) => Promise<{
+      data: unknown;
+      error: { message: string } | null;
+    }>;
+  };
 
-    const paymentUpdate: Record<string, unknown> = {
-      status: "paid",
-      paid_at: new Date().toISOString(),
-    };
-    if (orderPayload.providerOrderId) {
-      paymentUpdate.provider_order_id = orderPayload.providerOrderId;
-    }
-    if (orderPayload.providerCustomerId) {
-      paymentUpdate.provider_customer_id = orderPayload.providerCustomerId;
-    }
-    if (orderPayload.amount) {
-      paymentUpdate.amount = orderPayload.amount;
-    }
-    if (orderPayload.currency) {
-      paymentUpdate.currency = orderPayload.currency;
-    }
+  // ─── Transaction.Failed 처리 ──────────────────────────────────────────
 
-    const { error: updateError } = await supabase
+  if (type === "Transaction.Failed") {
+    // payment_transactions에서 구독 찾기
+    const { data: txRow } = await supabase
       .from("payment_transactions")
-      .update(paymentUpdate)
-      .eq("id", orderPayload.paymentTransactionId);
+      .select("id, subscription_id")
+      .eq("provider_order_id", paymentId)
+      .maybeSingle<PaymentTxRow>();
 
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (txRow?.subscription_id) {
+      await supabase
+        .from("user_subscriptions")
+        .update({ status: "past_due", updated_at: new Date().toISOString() })
+        .eq("id", txRow.subscription_id);
     }
 
-    const { data: ledgerId, error: applyError } = await supabase.rpc("apply_payment_credits", {
-      p_payment_transaction_id: orderPayload.paymentTransactionId,
-      p_reason: "polar_order_paid",
-    });
+    console.warn("[webhook] 결제 실패 처리:", paymentId);
+    return NextResponse.json({ received: true }, { status: 200 });
+  }
 
-    if (applyError) {
-      const lowered = applyError.message.toLowerCase();
-      if (lowered.includes("not found") || lowered.includes("must be paid")) {
-        return NextResponse.json(
-          {
-            received: true,
-            ignoredReason: applyError.message,
-          },
-          { status: 202 },
-        );
-      }
+  // ─── Transaction.Paid 처리 ────────────────────────────────────────────
 
-      return NextResponse.json({ error: applyError.message }, { status: 500 });
-    }
+  // 3. payment_transactions에서 기록 조회
+  //    (subscription_id가 있으면 월 갱신, 없으면 최초 결제 — subscribe route에서 이미 처리됨)
+  const { data: txRow } = await supabase
+    .from("payment_transactions")
+    .select("id, subscription_id, credits_to_grant, metadata")
+    .eq("provider_order_id", paymentId)
+    .maybeSingle<PaymentTxRow>();
 
-    const txResult = await supabase
-      .from("payment_transactions")
-      .select("user_id, amount, currency, credits_to_grant, metadata")
-      .eq("id", orderPayload.paymentTransactionId)
-      .maybeSingle<PaymentTransactionForEmailRow>();
-
-    if (!txResult.error && txResult.data) {
-      const tx = txResult.data;
-      const txMetadata = asRecord(tx.metadata);
-      const receiptAlreadySent = Boolean(txMetadata?.receipt_email_sent_at);
-
-      if (!receiptAlreadySent) {
-        const userResult = await supabase
-          .from("users")
-          .select("email, credits")
-          .eq("id", tx.user_id)
-          .maybeSingle<UserForEmailRow>();
-
-        const userEmail = readString(userResult.data?.email);
-        if (userEmail && isDeliverableEmail(userEmail)) {
-          const appOrigin = new URL(request.url).origin;
-          const myPageUrl = `${appOrigin}/mypage`;
-          const plan = readString(txMetadata?.plan);
-
-          const emailResult = await sendPaymentSuccessEmail({
-            to: userEmail,
-            creditsGranted: tx.credits_to_grant,
-            currentCredits: userResult.data?.credits,
-            amount: tx.amount,
-            currency: tx.currency,
-            plan,
-            myPageUrl,
-            paymentTransactionId: orderPayload.paymentTransactionId,
-          });
-
-          if (!emailResult.error) {
-            const receiptPatch = {
-              receipt_email_sent_at: new Date().toISOString(),
-              receipt_email_message_id: emailResult.data?.id ?? null,
-            };
-
-            const { error: receiptUpdateError } = await supabase
-              .from("payment_transactions")
-              .update({
-                metadata: mergeMetadata(tx.metadata, receiptPatch),
-              })
-              .eq("id", orderPayload.paymentTransactionId);
-
-            if (receiptUpdateError) {
-              console.error("[payments/webhook] failed to persist receipt email metadata:", receiptUpdateError.message);
-            }
-          } else {
-            console.error("[payments/webhook] failed to send receipt email:", emailResult.error);
-          }
-        } else if (userEmail) {
-          console.warn("[payments/webhook] skipping receipt email: non-deliverable recipient", userEmail);
-        }
-      }
-    }
-
+  // 최초 결제(subscribe route에서 이미 크레딧 지급)는 여기서 재처리 금지
+  if (txRow && !txRow.subscription_id) {
     return NextResponse.json(
-      {
-        received: true,
-        paymentTransactionId: orderPayload.paymentTransactionId,
-        ledgerId,
-      },
+      { received: true, note: "first-payment already processed by subscribe route" },
       { status: 200 },
     );
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Invalid webhook request";
-    return NextResponse.json({ error: message }, { status: 403 });
   }
+
+  // 4. 월 갱신 결제 처리
+  //    Cron에서 chargeBillingKey 호출 시 provider_order_id로 tx를 먼저 생성하므로
+  //    여기서는 그 tx를 찾아 크레딧 지급 + period 갱신
+  if (!txRow) {
+    // 웹훅이 DB 기록보다 빠른 경우: 무시하고 Cron이 처리하도록 위임
+    return NextResponse.json(
+      { received: true, ignoredReason: "tx not found yet" },
+      { status: 202 },
+    );
+  }
+
+  const subscriptionId = txRow.subscription_id;
+  if (!subscriptionId) {
+    return NextResponse.json({ received: true }, { status: 200 });
+  }
+
+  // 5. 구독 조회
+  const { data: subRow } = await supabase
+    .from("user_subscriptions")
+    .select("id, user_id, plan_key, credits_per_cycle")
+    .eq("id", subscriptionId)
+    .maybeSingle<SubscriptionRow>();
+
+  if (!subRow) {
+    console.error("[webhook] 구독 레코드 없음:", subscriptionId);
+    return NextResponse.json({ error: "subscription not found" }, { status: 500 });
+  }
+
+  // 6. period 갱신
+  const now = new Date();
+  const newPeriodEnd = new Date(now);
+  newPeriodEnd.setDate(newPeriodEnd.getDate() + 30);
+
+  await supabase.rpc("advance_subscription_period", {
+    p_subscription_id: subscriptionId,
+    p_payment_id: paymentId,
+    p_new_period_start: now.toISOString(),
+    p_new_period_end: newPeriodEnd.toISOString(),
+  });
+
+  // 7. 크레딧 지급
+  const { error: grantErr } = await supabase.rpc("grant_subscription_credits", {
+    p_user_id: subRow.user_id,
+    p_credits: subRow.credits_per_cycle,
+    p_subscription_id: subscriptionId,
+    p_reason: "subscription_renewal",
+  });
+
+  if (grantErr) {
+    console.error("[webhook] 크레딧 지급 실패:", grantErr.message);
+    return NextResponse.json({ error: grantErr.message }, { status: 500 });
+  }
+
+  // 8. 갱신 알림 이메일 발송 (선택적)
+  try {
+    const { data: userRow } = await supabase
+      .from("users")
+      .select("email, credits")
+      .eq("id", subRow.user_id)
+      .maybeSingle<UserEmailRow>();
+
+    const email = userRow?.email?.trim();
+    if (email && isDeliverableEmail(email)) {
+      const origin = new URL(request.url).origin;
+      await sendSubscriptionRenewalEmail({
+        to: email,
+        plan: subRow.plan_key,
+        creditsGranted: subRow.credits_per_cycle,
+        currentCredits: userRow?.credits ?? null,
+        periodEnd: newPeriodEnd.toISOString(),
+        myPageUrl: `${origin}/mypage`,
+      });
+    }
+  } catch (err) {
+    console.error("[webhook] 갱신 이메일 발송 실패:", err);
+    // 이메일 실패는 치명적이지 않으므로 계속 진행
+  }
+
+  return NextResponse.json(
+    { received: true, subscriptionId, credits: subRow.credits_per_cycle },
+    { status: 200 },
+  );
 }

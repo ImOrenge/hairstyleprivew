@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.3",
+    "@portone/browser-sdk": "^0.0.8",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.95.3",
     "framer-motion": "^12.34.0",
