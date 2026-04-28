@@ -7,6 +7,7 @@ const { canUseClerkServer: hasClerkConfig } = getClerkConfigState();
 const isProtectedRoute = createRouteMatcher([
   "/onboarding(.*)",
   "/admin(.*)",
+  "/aftercare(.*)",
   "/upload(.*)",
   "/generate(.*)",
   "/mypage(.*)",

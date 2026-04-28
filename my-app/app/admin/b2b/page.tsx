@@ -20,6 +20,17 @@ interface LeadRow {
   last_contacted_at: string | null;
   created_at: string;
   updated_at: string;
+  plan_interest: string | null;
+  region: string | null;
+  shop_count: number | null;
+  seat_count: number | null;
+  monthly_clients: number | null;
+  current_tools: string | null;
+  desired_timeline: string | null;
+  budget_range: string | null;
+  source_page: string | null;
+  webhook_delivered: boolean;
+  webhook_error: string | null;
 }
 
 interface StageSummary {
@@ -232,6 +243,56 @@ export default function AdminB2BPage() {
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="mt-3 grid gap-2 rounded-lg border border-stone-100 bg-stone-50 px-3 py-3 text-xs text-stone-600 sm:grid-cols-2 lg:grid-cols-4">
+              <p>
+                <span className="font-bold text-stone-900">관심 플랜</span>
+                <br />
+                {lead.plan_interest || "-"}
+              </p>
+              <p>
+                <span className="font-bold text-stone-900">지역</span>
+                <br />
+                {lead.region || "-"}
+              </p>
+              <p>
+                <span className="font-bold text-stone-900">지점 / 좌석</span>
+                <br />
+                {lead.shop_count ?? "-"} / {lead.seat_count ?? "-"}
+              </p>
+              <p>
+                <span className="font-bold text-stone-900">월 고객</span>
+                <br />
+                {lead.monthly_clients ?? "-"}
+              </p>
+              <p>
+                <span className="font-bold text-stone-900">도입 시점</span>
+                <br />
+                {lead.desired_timeline || "-"}
+              </p>
+              <p>
+                <span className="font-bold text-stone-900">예산</span>
+                <br />
+                {lead.budget_range || "-"}
+              </p>
+              <p className="sm:col-span-2">
+                <span className="font-bold text-stone-900">현재 도구</span>
+                <br />
+                {lead.current_tools || "-"}
+              </p>
+              <p className="sm:col-span-2">
+                <span className="font-bold text-stone-900">웹훅</span>
+                <br />
+                {lead.webhook_delivered ? "delivered" : lead.webhook_error || "not delivered"}
+              </p>
+              {lead.source_page ? (
+                <p className="sm:col-span-2">
+                  <span className="font-bold text-stone-900">유입 페이지</span>
+                  <br />
+                  {lead.source_page}
+                </p>
+              ) : null}
             </div>
 
             <p className="mt-3 whitespace-pre-wrap rounded-lg border border-stone-100 bg-stone-50 px-3 py-3 text-sm leading-6 text-stone-700">

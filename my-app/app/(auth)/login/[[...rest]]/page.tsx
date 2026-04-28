@@ -7,8 +7,8 @@ export default function LoginPage() {
 
   if (!hasClerkKey) {
     const reasonText =
-      clerkConfig.issue === "live_key_on_local_dev"
-        ? "현재 로컬 개발 환경에서 프로덕션 Clerk 키(pk_live_)가 감지되어 로그인을 차단했습니다. 로컬에서는 테스트 키(pk_test_, sk_test_)를 사용해 주세요."
+      clerkConfig.issue === "mismatched_key_types"
+        ? "Clerk publishable key와 secret key의 환경이 서로 다릅니다. pk_test_에는 sk_test_, pk_live_에는 sk_live_를 함께 사용해 주세요."
         : "Clerk 키가 설정되지 않았습니다. my-app/.env.local에 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY와 CLERK_SECRET_KEY를 설정해 주세요.";
 
     return (

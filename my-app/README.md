@@ -45,6 +45,10 @@ Optional:
 - `PRICING_PRO_PRICE_KRW` (default: `39000`, Pro Salon Pack 일회성 결제 가격)
 - `RESEND_API_KEY` (optional, payment success email notifications)
 - `RESEND_FROM_EMAIL` (optional, default: `HairFit <onboarding@resend.dev>`)
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (required for B2B inquiry form CAPTCHA)
+- `TURNSTILE_SECRET_KEY` (required for server-side Cloudflare Turnstile validation)
+- `B2B_LEAD_WEBHOOK_URL` (optional, receives B2B lead JSON payloads)
+- `B2B_LEAD_WEBHOOK_SECRET` (optional, signs B2B lead webhook payloads)
 
 ## Cloudflare deployment prep
 
@@ -91,6 +95,10 @@ Set these in Cloudflare Workers/Pages project settings (or Wrangler secrets):
 - `INTERNAL_API_SECRET`
 - `RESEND_API_KEY` (optional)
 - `RESEND_FROM_EMAIL` (optional)
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
+- `TURNSTILE_SECRET_KEY`
+- `B2B_LEAD_WEBHOOK_URL` (optional)
+- `B2B_LEAD_WEBHOOK_SECRET` (optional)
 
 Clerk note:
 - In local development (`http://localhost:*`), use `pk_test_` / `sk_test_` keys.

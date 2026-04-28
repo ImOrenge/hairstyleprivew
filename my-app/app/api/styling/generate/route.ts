@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { dataUrlToBuffer, runGeminiOutfitGeneration } from "../../../../lib/gemini-outfit-image";
 import type { FashionRecommendation } from "../../../../lib/fashion-types";
 import type { GeneratedVariant, RecommendationSet } from "../../../../lib/recommendation-types";
+import {
+  countUserCompletedFashionGenerations,
+  formatLimitError,
+  getPlanEntitlement,
+} from "../../../../lib/plan-entitlements";
 import { getCreditsPerOutfit } from "../../../../lib/pricing-plan";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 import {
@@ -148,6 +153,17 @@ export async function POST(request: Request) {
   if (existingImagePath && session.status === "completed") {
     const imageUrl = await createSignedUrl(supabase, STYLING_RESULTS_BUCKET, existingImagePath);
     return NextResponse.json({ sessionId, imageUrl, imagePath: existingImagePath }, { status: 200 });
+  }
+
+  const entitlement = await getPlanEntitlement(supabase, userId);
+  if (entitlement.maxFashionGenerations !== null) {
+    const completedFashionGenerations = await countUserCompletedFashionGenerations(supabase, userId);
+    if (completedFashionGenerations >= entitlement.maxFashionGenerations) {
+      return NextResponse.json(
+        { error: formatLimitError("fashion", entitlement), plan: entitlement.key },
+        { status: 403 },
+      );
+    }
   }
 
   const freePlan = await isFreePlanUser(supabase, userId);

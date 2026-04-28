@@ -1,8 +1,3 @@
-// POST /api/hair-records
-// 결과 페이지에서 "이 스타일로 확정" 클릭 시 호출
-// 1. user_hair_records 생성
-// 2. Gemini로 케어 콘텐츠 6개 생성
-// 3. user_care_contents에 예약 저장
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import {
@@ -10,39 +5,68 @@ import {
   generateHairCareContents,
   type ServiceType,
 } from "../../../lib/hair-care-generator";
+import { generateAftercareGuide } from "../../../lib/aftercare-guide-generator";
+import type { GeneratedVariant, RecommendationSet } from "../../../lib/recommendation-types";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../lib/supabase";
 
 interface CreateHairRecordBody {
   generationId?: string;
-  styleName?: string;
+  selectedVariantId?: string;
   serviceType?: string;
   serviceDate?: string; // YYYY-MM-DD
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const VALID_SERVICE_TYPES: ServiceType[] = [
-  "perm", "color", "cut", "bleach", "treatment", "other",
-];
+const VALID_SERVICE_TYPES: ServiceType[] = ["perm", "color", "cut", "bleach", "treatment", "other"];
 
-function isServiceType(v: string): v is ServiceType {
-  return (VALID_SERVICE_TYPES as string[]).includes(v);
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-/** serviceDate + dayOffset → scheduled_send_at (UTC ISO) */
+function isServiceType(value: string): value is ServiceType {
+  return (VALID_SERVICE_TYPES as string[]).includes(value);
+}
+
+function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
+  if (!isObject(raw)) {
+    return null;
+  }
+
+  const generatedAt = typeof raw.generatedAt === "string" ? raw.generatedAt : "";
+  const analysis = isObject(raw.analysis) ? raw.analysis : null;
+  const variants = Array.isArray(raw.variants) ? raw.variants : null;
+
+  if (!generatedAt || !analysis || !variants) {
+    return null;
+  }
+
+  return {
+    generatedAt,
+    analysis: analysis as unknown as RecommendationSet["analysis"],
+    variants: variants as unknown as RecommendationSet["variants"],
+    selectedVariantId: typeof raw.selectedVariantId === "string" ? raw.selectedVariantId : null,
+    catalogCycleId: typeof raw.catalogCycleId === "string" ? raw.catalogCycleId : null,
+    creditChargedAt: typeof raw.creditChargedAt === "string" ? raw.creditChargedAt : null,
+    creditChargeAmount: typeof raw.creditChargeAmount === "number" ? raw.creditChargeAmount : null,
+  };
+}
+
 function scheduledAt(serviceDate: string, dayOffset: number): string {
-  const d = new Date(`${serviceDate}T10:00:00+09:00`); // 오전 10시 KST 발송
-  d.setDate(d.getDate() + dayOffset);
-  return d.toISOString();
+  const date = new Date(`${serviceDate}T10:00:00+09:00`);
+  date.setDate(date.getDate() + dayOffset);
+  return date.toISOString();
 }
 
-/** {{CTA_URL}} 치환 */
 function replaceCta(html: string, url: string): string {
   return html.replaceAll("{{CTA_URL}}", url);
 }
 
+function getStyleName(variant: GeneratedVariant): string {
+  return variant.label?.trim().slice(0, 80) || "선택한 헤어스타일";
+}
+
 export async function POST(request: Request) {
-  // 1. 인증
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -52,57 +76,87 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 503 });
   }
 
-  // 2. 요청 파싱 & 검증
   const body = (await request.json().catch(() => ({}))) as CreateHairRecordBody;
+  const generationId = body.generationId?.trim() || "";
+  const selectedVariantId = body.selectedVariantId?.trim() || "";
+  const serviceTypeRaw = body.serviceType?.trim().toLowerCase() || "";
+  const serviceDate = body.serviceDate?.trim() || "";
 
-  const generationId = body.generationId?.trim();
-  const styleName = body.styleName?.trim().slice(0, 80);
-  const serviceTypeRaw = body.serviceType?.trim().toLowerCase();
-  const serviceDate = body.serviceDate?.trim();
-
-  if (!styleName) {
-    return NextResponse.json({ error: "styleName이 필요합니다" }, { status: 400 });
+  if (!generationId || !UUID_RE.test(generationId)) {
+    return NextResponse.json({ error: "generationId format is invalid" }, { status: 400 });
   }
+
+  if (!selectedVariantId) {
+    return NextResponse.json({ error: "selectedVariantId is required" }, { status: 400 });
+  }
+
   if (!serviceTypeRaw || !isServiceType(serviceTypeRaw)) {
     return NextResponse.json(
-      { error: `serviceType은 ${VALID_SERVICE_TYPES.join("/")} 중 하나여야 합니다` },
+      { error: `serviceType must be one of ${VALID_SERVICE_TYPES.join("/")}` },
       { status: 400 },
     );
   }
+
   if (!serviceDate || !DATE_RE.test(serviceDate)) {
-    return NextResponse.json(
-      { error: "serviceDate는 YYYY-MM-DD 형식이어야 합니다" },
-      { status: 400 },
-    );
-  }
-  if (generationId && !UUID_RE.test(generationId)) {
-    return NextResponse.json({ error: "generationId 형식 오류" }, { status: 400 });
+    return NextResponse.json({ error: "serviceDate must be YYYY-MM-DD" }, { status: 400 });
   }
 
   const serviceType: ServiceType = serviceTypeRaw;
   const nextVisitDays = DEFAULT_NEXT_VISIT_DAYS[serviceType];
   const origin = new URL(request.url).origin;
-  const ctaUrl = `${origin}/upload`;
+  const ctaUrl = `${origin}/aftercare`;
+  const supabase = getSupabaseAdminClient();
 
-  const supabase = getSupabaseAdminClient() as unknown as {
-    from: (table: string) => {
-      insert: (v: Record<string, unknown>) => {
-        select: (c: string) => {
-          single: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
-        };
-      };
-      update: (v: Record<string, unknown>) => {
-        eq: (c: string, v: unknown) => Promise<{ error: { message: string } | null }>;
-      };
-    };
-  };
+  const { data: generation, error: generationError } = await supabase
+    .from("generations")
+    .select("id,user_id,options")
+    .eq("id", generationId)
+    .maybeSingle<Record<string, unknown>>();
 
-  // 3. user_hair_records 생성
-  const { data: record, error: recordErr } = await supabase
+  if (generationError) {
+    return NextResponse.json({ error: generationError.message }, { status: 500 });
+  }
+
+  if (!generation) {
+    return NextResponse.json({ error: "Generation not found" }, { status: 404 });
+  }
+
+  if (generation.user_id !== userId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const options = isObject(generation.options) ? generation.options : {};
+  const recommendationSet = normalizeRecommendationSet(options.recommendationSet);
+  if (!recommendationSet) {
+    return NextResponse.json({ error: "Recommendation set not found" }, { status: 400 });
+  }
+
+  const selectedVariant = recommendationSet.variants.find((variant) => variant.id === selectedVariantId);
+  if (!selectedVariant) {
+    return NextResponse.json({ error: "Variant not found" }, { status: 404 });
+  }
+
+  const styleName = getStyleName(selectedVariant);
+  const aftercareGuide = await generateAftercareGuide({
+    styleName,
+    serviceType,
+    serviceDate,
+    analysis: recommendationSet.analysis,
+    designerBrief: selectedVariant.designerBrief,
+  });
+
+  const contents = await generateHairCareContents({
+    styleName,
+    serviceType,
+    serviceDate,
+    aftercareGuide,
+  });
+
+  const { data: record, error: recordError } = await supabase
     .from("user_hair_records")
     .insert({
       user_id: userId,
-      generation_id: generationId ?? null,
+      generation_id: generationId,
       style_name: styleName,
       service_type: serviceType,
       service_date: serviceDate,
@@ -111,62 +165,74 @@ export async function POST(request: Request) {
     .select("id")
     .single<{ id: string }>();
 
-  if (recordErr || !record) {
-    console.error("[hair-records] DB insert 실패:", recordErr?.message);
-    return NextResponse.json({ error: "시술 기록 저장 실패" }, { status: 500 });
+  if (recordError || !record) {
+    console.error("[hair-records] record insert failed:", recordError?.message);
+    return NextResponse.json({ error: "hair record save failed" }, { status: 500 });
   }
 
   const hairRecordId = record.id;
 
-  // 4. Gemini 케어 콘텐츠 생성 (비동기 — 클라이언트에는 즉시 응답)
-  //    실패해도 hairRecord 자체는 유지됨
-  void (async () => {
-    try {
-      const contents = await generateHairCareContents({
-        styleName,
-        serviceType,
-        serviceDate,
-      });
+  const { data: guideRow, error: guideError } = await supabase
+    .from("user_aftercare_guides")
+    .insert({
+      user_id: userId,
+      hair_record_id: hairRecordId,
+      guide_json: aftercareGuide,
+    })
+    .select("id")
+    .single<{ id: string }>();
 
-      // user_care_contents bulk insert
-      for (const content of contents) {
-        await supabase
-          .from("user_care_contents")
-          .insert({
-            user_id: userId,
-            hair_record_id: hairRecordId,
-            content_type: content.contentType,
-            day_offset: content.dayOffset,
-            subject: content.subject,
-            body_html: replaceCta(content.bodyHtml, ctaUrl),
-            scheduled_send_at: scheduledAt(serviceDate, content.dayOffset),
-          })
-          .select("id")
-          .single();
-      }
+  if (guideError || !guideRow) {
+    console.error("[hair-records] aftercare guide insert failed:", guideError?.message);
+    return NextResponse.json({ error: "aftercare guide save failed" }, { status: 500 });
+  }
 
-      // care_generated_at 업데이트
-      await supabase
-        .from("user_hair_records")
-        .update({ care_generated_at: new Date().toISOString() })
-        .eq("id", hairRecordId);
+  const careRows = contents.map((content) => ({
+    user_id: userId,
+    hair_record_id: hairRecordId,
+    content_type: content.contentType,
+    day_offset: content.dayOffset,
+    subject: content.subject,
+    body_html: replaceCta(content.bodyHtml, `${ctaUrl}/${hairRecordId}`),
+    scheduled_send_at: scheduledAt(serviceDate, content.dayOffset),
+  }));
 
-      console.info(
-        `[hair-records] ${styleName} 케어 콘텐츠 ${contents.length}개 생성 완료 (record: ${hairRecordId})`,
-      );
-    } catch (err) {
-      console.error("[hair-records] 케어 콘텐츠 생성 실패:", err);
-    }
-  })();
+  const { error: careInsertError } = await supabase.from("user_care_contents").insert(careRows);
+
+  if (careInsertError) {
+    console.error("[hair-records] care content insert failed:", careInsertError.message);
+    return NextResponse.json({ error: "care content save failed" }, { status: 500 });
+  }
+
+  await supabase
+    .from("user_hair_records")
+    .update({ care_generated_at: new Date().toISOString() })
+    .eq("id", hairRecordId);
+
+  recommendationSet.selectedVariantId = selectedVariantId;
+  await supabase
+    .from("generations")
+    .update({
+      prompt_used: selectedVariant.prompt,
+      generated_image_path: selectedVariant.generatedImagePath,
+      options: {
+        ...options,
+        analysis: recommendationSet.analysis,
+        recommendationSet,
+      },
+    })
+    .eq("id", generationId);
 
   return NextResponse.json(
     {
       hairRecordId,
+      aftercareGuideId: guideRow.id,
       styleName,
       serviceType,
       serviceDate,
       nextVisitTargetDays: nextVisitDays,
-      careScheduledCount: 6,
+      careScheduledCount: contents.length,
+      redirectTo: `/aftercare/${hairRecordId}`,
     },
     { status: 201 },
   );

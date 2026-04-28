@@ -1,6 +1,6 @@
 type KeyType = "test" | "live" | null;
 
-export type ClerkConfigIssue = "missing_keys" | "live_key_on_local_dev" | null;
+export type ClerkConfigIssue = "missing_keys" | "mismatched_key_types" | null;
 
 export type ClerkConfigState = {
   publishableKey: string | null;
@@ -73,16 +73,20 @@ export function getClerkConfigState(): ClerkConfigState {
   const hasValidPublishableKey = Boolean(publishableKeyType) && !isPlaceholder(publishableKey);
   const hasValidSecretKey = Boolean(secretKeyType) && !isPlaceholder(secretKey);
 
-  const usesLiveKeyInLocalDev = isLocalDevelopment && publishableKeyType === "live";
+  const usesMismatchedKeyTypes = Boolean(
+    publishableKeyType &&
+      secretKeyType &&
+      publishableKeyType !== secretKeyType,
+  );
 
-  const canUseClerkFrontend = hasValidPublishableKey && !usesLiveKeyInLocalDev;
-  const canUseClerkServer = hasValidPublishableKey && hasValidSecretKey && !usesLiveKeyInLocalDev;
+  const canUseClerkFrontend = hasValidPublishableKey;
+  const canUseClerkServer = hasValidPublishableKey && hasValidSecretKey && !usesMismatchedKeyTypes;
 
   let issue: ClerkConfigIssue = null;
   if (!hasValidPublishableKey || !hasValidSecretKey) {
     issue = "missing_keys";
-  } else if (usesLiveKeyInLocalDev) {
-    issue = "live_key_on_local_dev";
+  } else if (usesMismatchedKeyTypes) {
+    issue = "mismatched_key_types";
   }
 
   return {
