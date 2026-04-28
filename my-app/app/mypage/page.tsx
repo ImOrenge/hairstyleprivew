@@ -484,6 +484,11 @@ export default async function MyPage({
                 label="패션 추천"
                 description="확정한 헤어 결과를 바탕으로 장르별 코디를 만듭니다."
               />
+              <QuickActionLink
+                href="/aftercare"
+                label="에프터케어"
+                description="확정한 헤어별 드라이, 트리트먼트, 고데기, 스타일링 방법을 확인합니다."
+              />
             </div>
           </Card>
 
