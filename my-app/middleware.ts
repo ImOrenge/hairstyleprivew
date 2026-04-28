@@ -1,5 +1,5 @@
 import { clerkClient, clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { buildSignInRedirectUrl, getClerkConfigState } from "./lib/clerk";
 import { buildOnboardingRedirectUrl, normalizeAppPath, parseOnboardingMetadata } from "./lib/onboarding";
 
@@ -24,6 +24,15 @@ const isAdminApiRoute = createRouteMatcher(["/api/admin(.*)"]);
 const isCatalogSecretAdminApiRoute = createRouteMatcher(["/api/admin/hairstyles(.*)"]);
 const isSalonRoute = createRouteMatcher(["/salon(.*)"]);
 const isMyPageRoute = createRouteMatcher(["/mypage"]);
+
+function clerkConfigRequiredResponse(req: NextRequest) {
+  const url = new URL(req.url);
+  if (url.pathname.startsWith("/api/")) {
+    return NextResponse.json({ error: "Authentication is not configured" }, { status: 503 });
+  }
+
+  return NextResponse.redirect(new URL("/login", req.url));
+}
 
 const middleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
@@ -80,7 +89,13 @@ const middleware = hasClerkConfig
 
     return NextResponse.next();
   })
-  : () => NextResponse.next();
+  : (req: NextRequest) => {
+      if (!isProtectedRoute(req) || isWebhookRoute(req)) {
+        return NextResponse.next();
+      }
+
+      return clerkConfigRequiredResponse(req);
+    };
 
 export default middleware;
 

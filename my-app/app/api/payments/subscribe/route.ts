@@ -226,6 +226,7 @@ export async function POST(request: Request) {
       p_credits: credits,
       p_subscription_id: subData.id,
       p_reason: "subscription_first_payment",
+      p_payment_transaction_id: txData.id,
     });
 
     if (grantResult.error) {

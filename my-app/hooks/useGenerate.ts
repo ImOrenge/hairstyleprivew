@@ -163,21 +163,25 @@ export function useGenerate() {
         throw new Error("Recommendation response is incomplete.");
       }
 
-      const workingGrid = promptData.recommendations.map(toGeneratedVariant);
+      const generationId = promptData.generationId;
+      const analysis = promptData.analysis;
+      const recommendations = promptData.recommendations;
+
+      const workingGrid = recommendations.map(toGeneratedVariant);
       initializeRecommendationSession({
-        generationId: promptData.generationId,
-        analysisSummary: promptData.analysis,
+        generationId,
+        analysisSummary: analysis,
         recommendationGrid: workingGrid,
       });
 
       setPipelineState("building_grid", "Prepared a 3x3 recommendation grid.");
       setProgress(30);
 
-      const total = promptData.recommendations.length;
+      const total = recommendations.length;
       let settledCount = 0;
       let completedCount = 0;
 
-      for (const candidate of promptData.recommendations) {
+      for (const candidate of recommendations) {
         updateRecommendationVariant(candidate.id, {
           status: candidate.promptArtifactToken ? "generating" : "failed",
           error: candidate.promptArtifactToken ? null : "Missing prompt artifact token.",
@@ -185,14 +189,14 @@ export function useGenerate() {
       }
       setPipelineState("generating_image", "Rendering all 9 hairstyle variants in parallel.");
 
-      const generationTasks = promptData.recommendations.map((candidate, index) => {
+      const generationTasks = recommendations.map((candidate, index) => {
         if (!candidate.promptArtifactToken) {
           settledCount += 1;
           return Promise.resolve(null);
         }
 
         return requestImageGeneration({
-          generationId: promptData.generationId,
+          generationId,
           variantIndex: index,
           variantId: candidate.id,
           catalogItemId: candidate.catalogItemId,
@@ -241,8 +245,8 @@ export function useGenerate() {
       setProgress(100);
 
       return {
-        generationId: promptData.generationId,
-        analysis: promptData.analysis,
+        generationId,
+        analysis,
       };
     } catch (error) {
       const message = toErrorMessage(error, "The recommendation pipeline failed.");

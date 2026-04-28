@@ -29,12 +29,6 @@ interface PaymentTxRow {
 
 // ─── 유틸 ──────────────────────────────────────────────────────────────────
 
-function asRecord(v: unknown): Record<string, unknown> | null {
-  return typeof v === "object" && v !== null && !Array.isArray(v)
-    ? (v as Record<string, unknown>)
-    : null;
-}
-
 function readStr(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
 }
@@ -191,6 +185,7 @@ export async function POST(request: Request) {
     p_credits: subRow.credits_per_cycle,
     p_subscription_id: subscriptionId,
     p_reason: "subscription_renewal",
+    p_payment_transaction_id: txRow.id,
   });
 
   if (grantErr) {

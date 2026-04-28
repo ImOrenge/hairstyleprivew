@@ -38,7 +38,7 @@ export function Header() {
           <Link href="/salon/customers" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
             Salon CRM
           </Link>
-          <AdminNavLink />
+          <AdminNavLink label="Admin" />
 
           <div className="flex shrink-0 items-center gap-2">
             <HeaderAuthSlot />
@@ -50,6 +50,10 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2 md:hidden">
+          <AdminNavLink
+            label="Admin"
+            className="rounded-full border border-stone-200 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:border-stone-300 hover:text-black dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-700 dark:hover:text-white"
+          />
           <Link
             href="/upload"
             className="rounded-full bg-stone-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-stone-800 dark:bg-white dark:text-stone-900 dark:hover:bg-zinc-200"
