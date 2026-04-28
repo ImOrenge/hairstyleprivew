@@ -25,23 +25,11 @@ export default function GeneratePage() {
   const clearRecommendationSession = useGenerationStore((state) => state.clearRecommendationSession);
   const hydrateOriginalImage = useGenerationStore((state) => state.hydrateOriginalImage);
 
-  const hasTriggeredRef = useRef(false);
   const hasRedirectedRef = useRef(false);
 
   useEffect(() => {
     void hydrateOriginalImage();
   }, [hydrateOriginalImage]);
-
-  useEffect(() => {
-    if (!previewUrl || hasTriggeredRef.current || generationId || isGenerating) {
-      return;
-    }
-
-    hasTriggeredRef.current = true;
-    void runGridPipeline().catch(() => {
-      hasTriggeredRef.current = false;
-    });
-  }, [generationId, isGenerating, previewUrl, runGridPipeline]);
 
   useEffect(() => {
     const hasRenderableVariant = recommendationGrid.some(
@@ -61,8 +49,7 @@ export default function GeneratePage() {
     router.replace(`/generate/${generationId}`);
   }, [generationId, pipelineStage, recommendationGrid, router]);
 
-  const handleRunAgain = async () => {
-    hasTriggeredRef.current = true;
+  const handleGenerate = async () => {
     hasRedirectedRef.current = false;
     clearRecommendationSession();
     resetPipeline();
@@ -70,7 +57,7 @@ export default function GeneratePage() {
     try {
       await runGridPipeline();
     } catch {
-      hasTriggeredRef.current = false;
+      // The pipeline state already carries the user-facing error.
     }
   };
 
@@ -179,8 +166,8 @@ export default function GeneratePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={handleRunAgain} disabled={!previewUrl || isGenerating}>
-                Rebuild Grid
+              <Button onClick={handleGenerate} disabled={!previewUrl || isGenerating}>
+                {generationId ? "Rebuild Grid" : "Generate Grid"}
               </Button>
               {!previewUrl ? (
                 <Link href="/upload" className="text-sm font-medium text-stone-700 underline underline-offset-4">
