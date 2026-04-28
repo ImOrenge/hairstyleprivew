@@ -14,7 +14,7 @@ export const PLAN_ENTITLEMENTS: Record<ActivePlanKey, PlanEntitlement> = {
   free: {
     key: "free",
     label: "Free",
-    maxHairResults: 2,
+    maxHairResults: 9,
     maxFashionGenerations: 1,
     watermarkHairResults: true,
   },
