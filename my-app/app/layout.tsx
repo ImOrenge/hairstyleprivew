@@ -58,7 +58,13 @@ export default function RootLayout({
     <html lang="ko" className={`${inter.variable} ${notoSansKR.variable}`} suppressHydrationWarning>
       <body className="font-sans">
         <AppClerkProvider>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+            scriptProps={{ "data-cfasync": "false" }}
+          >
             <LocaleSync />
             <Header />
             <main>{children}</main>
