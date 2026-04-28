@@ -119,8 +119,9 @@ Customer profile:
 
 Confirmed hairstyle: ${request.hairVariant.label}
 Outfit headline: ${request.recommendation.headline}
-Occasion: ${request.recommendation.occasion}
-Mood: ${request.recommendation.mood}
+Fashion genre: ${request.recommendation.genre}
+Legacy occasion: ${request.recommendation.occasion || "none"}
+Legacy mood: ${request.recommendation.mood || "none"}
 Palette: ${request.recommendation.palette.join(", ")}
 Silhouette: ${request.recommendation.silhouette}
 Items:

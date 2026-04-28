@@ -1,4 +1,5 @@
 import type {
+  FashionGenre,
   FashionMood,
   FashionOccasion,
   FashionRecommendation,
@@ -7,11 +8,12 @@ import type {
 import {
   BODY_SHAPES,
   EXPOSURE_PREFERENCES,
+  FASHION_GENRES,
   FASHION_MOODS,
   FASHION_OCCASIONS,
   FIT_PREFERENCES,
 } from "./fashion-types";
-import { getFashionTemplate } from "./fashion-template-catalog";
+import { getFashionGenreLabelKo } from "./fashion-catalog";
 
 export function isFashionOccasion(value: string): value is FashionOccasion {
   return FASHION_OCCASIONS.includes(value as FashionOccasion);
@@ -19,6 +21,10 @@ export function isFashionOccasion(value: string): value is FashionOccasion {
 
 export function isFashionMood(value: string): value is FashionMood {
   return FASHION_MOODS.includes(value as FashionMood);
+}
+
+export function isFashionGenre(value: string): value is FashionGenre {
+  return FASHION_GENRES.includes(value as FashionGenre);
 }
 
 export function isSupportedBodyShape(value: string) {
@@ -34,49 +40,65 @@ export function isSupportedExposurePreference(value: string) {
 }
 
 function bodyShapeNote(shape: string | null) {
-  if (shape === "triangle") return "Add visual weight near the shoulder line and keep the lower half clean.";
-  if (shape === "inverted_triangle") return "Use a calmer shoulder area and add movement below the waist.";
-  if (shape === "round") return "Use long vertical lines and avoid bulky layering at the center.";
-  if (shape === "hourglass") return "Keep the waist line visible and avoid over-boxy proportions.";
-  return "Keep the top and bottom proportions balanced.";
+  if (shape === "triangle") return "어깨와 상체 쪽에 시선을 조금 더 주고 하체는 깔끔하게 정리하세요.";
+  if (shape === "inverted_triangle") return "어깨 주변은 담백하게 두고 허리 아래에 움직임을 더하면 균형이 좋아집니다.";
+  if (shape === "round") return "중심부에 두꺼운 레이어를 쌓기보다 긴 세로선을 살리는 구성이 좋습니다.";
+  if (shape === "hourglass") return "허리선이 너무 사라지지 않게 상하의 비율을 정리하세요.";
+  return "상체와 하체의 볼륨이 한쪽으로 치우치지 않게 균형을 맞추세요.";
 }
 
 function exposureNote(value: string | null) {
-  if (value === "low") return "Keep necklines and hemlines modest while using texture for interest.";
-  if (value === "bold") return "A stronger neckline or leg line can be used, but the hair remains the focal point.";
-  return "Use balanced coverage suitable for repeat wear.";
+  if (value === "low") return "노출은 낮게 유지하고 소재감과 색 대비로 포인트를 주세요.";
+  if (value === "bold") return "넥라인이나 레그 라인을 조금 더 선명하게 써도 좋지만 헤어가 가려지지 않아야 합니다.";
+  return "반복해서 입기 좋은 커버리지 안에서 얼굴과 헤어 주변을 가볍게 열어주세요.";
+}
+
+function fitLabel(value: string | null) {
+  if (value === "slim") return "슬림핏";
+  if (value === "relaxed") return "릴랙스핏";
+  if (value === "oversized") return "오버핏";
+  return "레귤러핏";
 }
 
 export function generateFashionRecommendation(input: FashionRecommendationInput): FashionRecommendation {
-  const template = getFashionTemplate(input.occasion, input.mood);
-  const hairLabel = input.hairVariant.label || "selected hairstyle";
-  const faceContext = input.analysis?.faceShape ? `${input.analysis.faceShape} face balance` : "current face balance";
-  const fit = input.profile.fitPreference || "regular";
+  const hairLabel = input.hairVariant.label || "선택한 헤어스타일";
+  const faceContext = input.analysis?.faceShape ? `${input.analysis.faceShape} 얼굴 균형` : "현재 얼굴 균형";
+  const fit = fitLabel(input.profile.fitPreference);
   const preferredColor = input.profile.colorPreference?.trim();
+  const genreLabel = getFashionGenreLabelKo(input.genre);
 
   const palette = preferredColor
-    ? [preferredColor, ...template.palette.filter((item) => item.toLowerCase() !== preferredColor.toLowerCase())]
-    : template.palette;
+    ? [
+        preferredColor,
+        ...input.catalogItem.palette.filter((item) => item.toLowerCase() !== preferredColor.toLowerCase()),
+      ]
+    : input.catalogItem.palette;
 
   return {
-    headline: `${template.headline} for ${hairLabel}`,
-    summary: `This outfit direction keeps ${hairLabel} visible while balancing ${faceContext}, ${input.profile.heightCm ?? "profile"}cm body scale, and a ${fit} fit preference.`,
-    occasion: input.occasion,
-    mood: input.mood,
-    palette: palette.slice(0, 4),
-    silhouette: template.silhouette,
-    items: template.items.map((item) => ({
+    headline: `${hairLabel}에 맞춘 ${genreLabel} 코디`,
+    summary:
+      `${input.catalogItem.summary} ${faceContext}, ${input.profile.heightCm ?? "프로필"}cm 체형 정보, ${fit} 선호를 함께 반영했습니다.`,
+    genre: input.genre,
+    palette: palette.slice(0, 5),
+    silhouette: input.catalogItem.silhouette,
+    items: input.catalogItem.items.map((item) => ({
       ...item,
-      fit: item.slot === "top" || item.slot === "outer" ? `${item.fit}, ${fit} friendly` : item.fit,
+      fit: item.slot === "top" || item.slot === "outer" ? `${item.fit}, ${fit} 기준 조정` : item.fit,
+      brandName: null,
+      productUrl: null,
     })),
     stylingNotes: [
+      ...input.catalogItem.stylingNotes.slice(0, 3),
       bodyShapeNote(input.profile.bodyShape),
       exposureNote(input.profile.exposurePreference),
-      "Keep the face and hairstyle unobstructed; avoid hats or heavy collars in the generated lookbook image.",
+      "헤어스타일이 보이도록 모자, 두꺼운 스카프, 높은 칼라는 피하세요.",
       input.profile.avoidItems.length
-        ? `Avoid these customer-listed items: ${input.profile.avoidItems.join(", ")}.`
-        : "No avoided fashion items were listed.",
+        ? `사용자가 피하고 싶은 아이템: ${input.profile.avoidItems.join(", ")}.`
+        : "피하고 싶은 아이템은 따로 입력되지 않았습니다.",
     ],
+    catalogItemId: input.catalogItem.id,
+    catalogCycleId: input.catalogItem.sourceCycleId,
+    sourceSummary: input.catalogItem.sourceSummary,
     generatedAt: new Date().toISOString(),
   };
 }

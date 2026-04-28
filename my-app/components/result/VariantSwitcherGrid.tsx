@@ -11,6 +11,14 @@ interface VariantSwitcherGridProps {
   onSelect: (variant: GeneratedVariant) => void;
 }
 
+function formatStatus(status: string) {
+  if (status === "completed") return "완료";
+  if (status === "generating") return "생성 중";
+  if (status === "queued") return "대기";
+  if (status === "failed") return "실패";
+  return status;
+}
+
 export function VariantSwitcherGrid({
   variants,
   selectedVariantId,
@@ -27,8 +35,8 @@ export function VariantSwitcherGrid({
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">전체 변형</p>
-          <h2 className="mt-1 text-xl font-black text-stone-900">완료된 추천 스타일을 전환해 비교해 보세요</h2>
+          <p className="text-xs font-bold uppercase text-stone-400">전체 후보</p>
+          <h2 className="mt-1 text-xl font-black text-stone-900">완성된 추천 헤어스타일을 전환해 비교하세요</h2>
         </div>
         {isSwitching ? <p className="text-xs text-stone-500">선택을 업데이트하는 중...</p> : null}
       </div>
@@ -66,7 +74,7 @@ export function VariantSwitcherGrid({
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-base font-bold text-stone-900">{variant.label}</h3>
                 <span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-600">
-                  {variant.evaluation?.score ? `점수 ${variant.evaluation.score}` : variant.status}
+                  {variant.evaluation?.score ? `점수 ${variant.evaluation.score}` : formatStatus(variant.status)}
                 </span>
               </div>
               <p className="text-sm text-stone-600">{translate(variant.reason) || variant.reason}</p>

@@ -21,7 +21,10 @@ const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isOnboardingApiRoute = createRouteMatcher(["/api/onboarding(.*)"]);
 const isAdminPageRoute = createRouteMatcher(["/admin(.*)"]);
 const isAdminApiRoute = createRouteMatcher(["/api/admin(.*)"]);
-const isCatalogSecretAdminApiRoute = createRouteMatcher(["/api/admin/hairstyles(.*)"]);
+const isCatalogSecretAdminApiRoute = createRouteMatcher([
+  "/api/admin/hairstyles(.*)",
+  "/api/admin/fashion(.*)",
+]);
 const isSalonRoute = createRouteMatcher(["/salon(.*)"]);
 const isMyPageRoute = createRouteMatcher(["/mypage"]);
 

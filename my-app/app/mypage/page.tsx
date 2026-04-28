@@ -84,26 +84,13 @@ function getPlanFromMetadata(metadata: unknown): string | null {
   }
 
   const normalized = value.trim().toLowerCase();
-  if (!normalized) {
-    return null;
-  }
-
-  return normalized;
+  return normalized || null;
 }
 
 function formatPlanLabel(planKey: string | null): string {
-  if (!planKey) {
-    return "무료";
-  }
-
-  if (planKey === "starter") {
-    return "스타터";
-  }
-
-  if (planKey === "pro") {
-    return "프로";
-  }
-
+  if (!planKey) return "무료";
+  if (planKey === "starter") return "스타터";
+  if (planKey === "pro") return "프로";
   return planKey.charAt(0).toUpperCase() + planKey.slice(1);
 }
 
@@ -127,36 +114,16 @@ function formatPrompt(prompt: string | null | undefined): string {
     return "제목 없는 생성 결과";
   }
 
-  if (value.length <= 72) {
-    return value;
-  }
-
-  return `${value.slice(0, 72)}...`;
+  return value.length <= 72 ? value : `${value.slice(0, 72)}...`;
 }
 
 function formatGenerationStatus(status: string | null | undefined): string {
   const normalized = status?.trim().toLowerCase();
-
-  if (!normalized) {
-    return "상태 확인 중";
-  }
-
-  if (normalized === "completed") {
-    return "완료";
-  }
-
-  if (normalized === "processing" || normalized === "running") {
-    return "생성 중";
-  }
-
-  if (normalized === "queued" || normalized === "pending") {
-    return "대기 중";
-  }
-
-  if (normalized === "failed" || normalized === "error") {
-    return "실패";
-  }
-
+  if (!normalized) return "상태 확인 중";
+  if (normalized === "completed") return "완료";
+  if (normalized === "processing" || normalized === "running") return "생성 중";
+  if (normalized === "queued" || normalized === "pending") return "대기 중";
+  if (normalized === "failed" || normalized === "error") return "실패";
   return normalized;
 }
 
@@ -180,22 +147,16 @@ function getStatusTone(status: string | null | undefined): string {
 
 function getDisplayName(name: string | null | undefined, email: string): string {
   const trimmed = name?.trim();
-  if (trimmed) {
-    return trimmed;
-  }
+  if (trimmed) return trimmed;
 
   const emailName = email.split("@")[0]?.trim();
-  if (emailName) {
-    return emailName;
-  }
+  if (emailName) return emailName;
 
   return "HairFit 사용자";
 }
 
 function isProfileReady(profile: UserStyleProfileRow | null): boolean {
-  if (!profile) {
-    return false;
-  }
+  if (!profile) return false;
 
   return Boolean(
     profile.height_cm &&
@@ -219,7 +180,7 @@ function MetricCard({
 }) {
   return (
     <div className="rounded-[1.75rem] border border-stone-200/80 bg-white px-5 py-5 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.18)]">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-stone-400">{label}</p>
+      <p className="text-[11px] font-bold uppercase text-stone-400">{label}</p>
       <p className="mt-3 text-3xl font-black tracking-tight text-stone-900">{value}</p>
       <p className="mt-2 text-sm text-stone-500">{helper}</p>
     </div>
@@ -382,8 +343,8 @@ export default async function MyPage({
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full bg-black px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-white">
-                My Dashboard
+              <span className="rounded-full bg-black px-3 py-1 text-xs font-bold uppercase text-white">
+                마이 대시보드
               </span>
               <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700 ring-1 ring-stone-200">
                 {activePlan} 플랜
@@ -391,30 +352,30 @@ export default async function MyPage({
             </div>
             <div>
               <h1 className="text-3xl font-black tracking-tight text-stone-900 sm:text-4xl">
-                {viewerName}님, 오늘의 스타일 준비 상태입니다.
+                {viewerName}님의 스타일 준비 상태입니다
               </h1>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600 sm:text-base">
-                크레딧 잔액, 프로필 완성도, 최근 생성 기록을 한 화면에서 확인하고 바로 다음 작업으로 이동할 수 있습니다.
+                보유 크레딧, 최근 헤어 생성 기록, 패션 추천에 필요한 바디 프로필을 한 화면에서 확인하세요.
               </p>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[320px]">
             <div className="rounded-2xl border border-stone-200 bg-white/90 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-400">현재 플랜</p>
+              <p className="text-[11px] font-bold uppercase text-stone-400">현재 플랜</p>
               <p className="mt-2 text-xl font-bold text-stone-900">{activePlan}</p>
             </div>
             <div className="rounded-2xl border border-stone-200 bg-white/90 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-stone-400">크레딧 정책</p>
+              <p className="text-[11px] font-bold uppercase text-stone-400">생성 기준</p>
               <p className="mt-2 text-xl font-bold text-stone-900">{creditsPerStyle} credits</p>
-              <p className="mt-1 text-xs text-stone-500">스타일 1회 생성 기준</p>
+              <p className="mt-1 text-xs text-stone-500">헤어스타일 1회 생성 기준</p>
             </div>
           </div>
         </div>
 
         {payment === "success" ? (
           <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            결제가 확인되었습니다. 크레딧이 잠시 후 반영됩니다.
+            결제가 확인되었습니다. 크레딧이 곧 반영됩니다.
             {checkoutId ? ` 체크아웃 ID: ${checkoutId}` : ""}
           </div>
         ) : null}
@@ -422,14 +383,14 @@ export default async function MyPage({
 
       <section className="grid gap-4 md:grid-cols-3">
         <MetricCard
-          label="남은 크레딧"
+          label="보유 크레딧"
           value={credits.toLocaleString("ko-KR")}
-          helper="현재 바로 사용할 수 있는 생성 잔액"
+          helper="현재 바로 사용할 수 있는 생성 크레딧"
         />
         <MetricCard
           label="예상 생성 가능"
           value={estimatedStyles.toLocaleString("ko-KR")}
-          helper={`${creditsPerStyle} credits 기준으로 계산한 예상 횟수`}
+          helper={`${creditsPerStyle} credits 기준 예상 횟수`}
         />
         <MetricCard
           label="최근 활동"
@@ -441,8 +402,8 @@ export default async function MyPage({
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-6">
           <Card
-            title="프로필 설정"
-            description="전신 사진과 체형 정보를 저장해 스타일러 추천 흐름을 바로 시작할 수 있도록 준비합니다."
+            title="바디 프로필 설정"
+            description="전신 사진과 체형 정보를 저장해 헤어스타일 이후 패션 추천 흐름을 바로 시작할 수 있게 준비합니다."
             className="rounded-[2rem] border-stone-200/80 px-6 py-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
           >
             <StyleProfileForm variant="dashboard" />
@@ -450,7 +411,7 @@ export default async function MyPage({
 
           <Card
             title="최근 생성 기록"
-            description="가장 최근 생성 결과를 빠르게 다시 열고 현재 상태를 확인할 수 있습니다."
+            description="가장 최근 헤어 생성 결과를 빠르게 다시 열고 패션 추천으로 이어갈 수 있습니다."
             className="rounded-[2rem] border-stone-200/80 px-6 py-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
           >
             <div className="grid gap-3">
@@ -503,15 +464,15 @@ export default async function MyPage({
 
         <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
           <Card
-            title="빠른 액션"
-            description="가장 자주 쓰는 흐름으로 바로 이동합니다."
+            title="빠른 실행"
+            description="자주 쓰는 흐름으로 바로 이동합니다."
             className="rounded-[2rem] border-stone-200/80 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
           >
             <div className="grid gap-3">
               <QuickActionLink
                 href="/upload"
                 label="이미지 업로드"
-                description="새 얼굴 이미지를 올리고 추천 흐름을 시작합니다."
+                description="얼굴 사진을 올리고 추천 흐름을 시작합니다."
               />
               <QuickActionLink
                 href="/generate"
@@ -520,30 +481,30 @@ export default async function MyPage({
               />
               <QuickActionLink
                 href="/styler/new"
-                label="패션 스타일러"
-                description="확정한 헤어 결과를 바탕으로 룩북 생성 흐름으로 이동합니다."
+                label="패션 추천"
+                description="확정한 헤어 결과를 바탕으로 장르별 코디를 만듭니다."
               />
             </div>
           </Card>
 
           <Card
             title="계정 요약"
-            description="현재 사용 중인 플랜과 생성 기준을 다시 확인합니다."
+            description="현재 사용 중인 플랜과 생성 기준을 확인합니다."
             className="rounded-[2rem] border-stone-200/80 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
           >
             <div className="grid gap-3 text-sm text-stone-700">
               <div className="rounded-2xl bg-stone-50 px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">활성 플랜</p>
+                <p className="text-xs font-bold uppercase text-stone-400">활성 플랜</p>
                 <p className="mt-2 text-base font-semibold text-stone-900">{activePlan}</p>
               </div>
               <div className="rounded-2xl bg-stone-50 px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">남은 크레딧</p>
+                <p className="text-xs font-bold uppercase text-stone-400">남은 크레딧</p>
                 <p className="mt-2 text-base font-semibold text-stone-900">{credits.toLocaleString("ko-KR")}</p>
               </div>
               <div className="rounded-2xl bg-stone-50 px-4 py-3">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">생성 기준</p>
+                <p className="text-xs font-bold uppercase text-stone-400">생성 기준</p>
                 <p className="mt-2 text-base font-semibold text-stone-900">
-                  스타일 1회당 {creditsPerStyle} credits
+                  헤어스타일 1회당 {creditsPerStyle} credits
                 </p>
               </div>
             </div>
@@ -551,13 +512,13 @@ export default async function MyPage({
 
           <Card
             title="준비 상태"
-            description="스타일러와 생성 흐름에 필요한 핵심 조건만 빠르게 점검합니다."
+            description="패션 추천 흐름에 필요한 조건을 빠르게 확인합니다."
             className="rounded-[2rem] border-stone-200/80 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
           >
             <div className="grid gap-3">
               <ChecklistItem label="바디 프로필 완성" ready={profileReady} />
               <ChecklistItem label="전신 사진 저장" ready={hasBodyPhoto} />
-              <ChecklistItem label="생성 기록 보유" ready={hasGenerationHistory} />
+              <ChecklistItem label="헤어 생성 기록 보유" ready={hasGenerationHistory} />
             </div>
           </Card>
         </aside>

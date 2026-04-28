@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "../../../components/ui/Button";
-import type { FashionRecommendation } from "../../../lib/fashion-types";
+import type { FashionGenre, FashionRecommendation } from "../../../lib/fashion-types";
 
 interface StylingSessionDetails {
   id: string;
   generationId: string;
   selectedVariantId: string;
+  genre: FashionGenre | null;
   occasion: string;
   mood: string;
   recommendation: FashionRecommendation;
@@ -23,6 +24,25 @@ interface StylingSessionDetails {
 interface StylingDetailsResponse {
   session?: StylingSessionDetails;
   error?: string;
+}
+
+const genreLabelMap: Record<FashionGenre, string> = {
+  minimal: "미니멀",
+  street: "스트릿",
+  casual: "캐주얼",
+  classic: "클래식",
+  office: "오피스",
+  date: "데이트",
+  formal: "포멀",
+  athleisure: "애슬레저",
+};
+
+function formatStatus(status: string) {
+  if (status === "completed") return "완료";
+  if (status === "generating") return "생성 중";
+  if (status === "recommended") return "추천 완료";
+  if (status === "failed") return "실패";
+  return status;
 }
 
 export default function StylerResultPage() {
@@ -44,7 +64,7 @@ export default function StylerResultPage() {
         setSession(data.session);
         setError(null);
       } else {
-        setError(data.error || "Failed to load styling session.");
+        setError(data.error || "패션 추천 결과를 불러오지 못했습니다.");
       }
       setIsLoading(false);
     }
@@ -59,21 +79,22 @@ export default function StylerResultPage() {
   }, [id]);
 
   const recommendation = session?.recommendation || null;
+  const genre = session?.genre || recommendation?.genre || null;
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-20 pt-8 sm:px-6">
       <header className="space-y-2 text-center">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">Fashion Lookbook</p>
+        <p className="text-xs font-bold uppercase text-stone-400">패션 룩북</p>
         <h1 className="text-3xl font-black tracking-tight text-stone-900">
-          {recommendation?.headline || "Styling Result"}
+          {recommendation?.headline || "패션 추천 결과"}
         </h1>
         <p className="mx-auto max-w-3xl text-sm leading-6 text-stone-600">
-          Lookbook-style outfit image based on your selected hairstyle and saved body profile. This is not an exact virtual fitting.
+          선택한 헤어스타일과 저장된 바디 프로필을 바탕으로 만든 전신 코디 이미지입니다. 실제 피팅을 보장하는 가상 착장은 아니며, 스타일 방향을 확인하기 위한 룩북입니다.
         </p>
       </header>
 
       {isLoading ? (
-        <div className="rounded-2xl bg-stone-50 p-6 text-center text-sm text-stone-500">Loading styling result...</div>
+        <div className="rounded-2xl bg-stone-50 p-6 text-center text-sm text-stone-500">패션 결과를 불러오는 중입니다...</div>
       ) : null}
       {error ? <div className="rounded-2xl bg-rose-50 p-4 text-sm font-medium text-rose-700">{error}</div> : null}
 
@@ -82,10 +103,10 @@ export default function StylerResultPage() {
           <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-100">
             <div className="aspect-[3/4]">
               {session.imageUrl ? (
-                <img src={session.imageUrl} alt="Generated outfit lookbook" className="h-full w-full object-cover" />
+                <img src={session.imageUrl} alt="생성된 패션 룩북 이미지" className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full items-center justify-center px-6 text-center text-sm text-stone-500">
-                  Outfit image is not available. Status: {session.status}
+                  룩북 이미지를 아직 사용할 수 없습니다. 현재 상태: {formatStatus(session.status)}
                 </div>
               )}
             </div>
@@ -93,7 +114,7 @@ export default function StylerResultPage() {
 
           <aside className="space-y-4">
             <section className="rounded-2xl border border-stone-200 bg-white p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Styling Summary</p>
+              <p className="text-xs font-bold uppercase text-stone-400">추천 요약</p>
               <p className="mt-3 text-sm leading-6 text-stone-700">{recommendation?.summary}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {(recommendation?.palette || []).map((color) => (
@@ -103,12 +124,12 @@ export default function StylerResultPage() {
                 ))}
               </div>
               <p className="mt-4 text-xs text-stone-500">
-                Occasion: {session.occasion} | Mood: {session.mood} | Credits used: {session.creditsUsed}
+                장르: {genre ? genreLabelMap[genre] : session.occasion} · 상태: {formatStatus(session.status)} · 사용 크레딧: {session.creditsUsed}
               </p>
             </section>
 
             <section className="rounded-2xl border border-stone-200 bg-white p-5">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Styling Notes</p>
+              <p className="text-xs font-bold uppercase text-stone-400">스타일링 메모</p>
               <div className="mt-3 grid gap-2">
                 {(recommendation?.stylingNotes || []).map((note) => (
                   <p key={note} className="rounded-xl bg-stone-50 px-3 py-2 text-sm text-stone-700">{note}</p>
@@ -116,9 +137,14 @@ export default function StylerResultPage() {
               </div>
             </section>
 
-            <Link href={`/result/${session.generationId}?variant=${encodeURIComponent(session.selectedVariantId)}`}>
-              <Button type="button" variant="secondary">Back to Hair Result</Button>
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link href={`/result/${session.generationId}?variant=${encodeURIComponent(session.selectedVariantId)}`}>
+                <Button type="button" variant="secondary">헤어 결과로 돌아가기</Button>
+              </Link>
+              <Link href="/styler/new">
+                <Button type="button" variant="secondary">새 패션 추천 만들기</Button>
+              </Link>
+            </div>
           </aside>
         </section>
       ) : null}
@@ -126,20 +152,20 @@ export default function StylerResultPage() {
       {recommendation ? (
         <section className="space-y-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">Item Slots</p>
-            <h2 className="mt-2 text-2xl font-black text-stone-900">Recommended fashion items</h2>
+            <p className="text-xs font-bold uppercase text-stone-400">추천 아이템</p>
+            <h2 className="mt-2 text-2xl font-black text-stone-900">코디 구성</h2>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             {recommendation.items.map((item) => (
               <article key={item.slot} className="rounded-2xl border border-stone-200 bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">{item.slot}</p>
+                <p className="text-xs font-bold uppercase text-stone-400">{item.slot}</p>
                 <h3 className="mt-2 text-base font-bold text-stone-900">{item.name}</h3>
                 <p className="mt-2 text-sm leading-5 text-stone-600">{item.description}</p>
                 <dl className="mt-3 grid gap-1 text-xs text-stone-500">
-                  <div>Color: {item.color}</div>
-                  <div>Fit: {item.fit}</div>
-                  <div>Material: {item.material}</div>
-                  <div>Brand: {item.brandName || "Reserved for brand integration"}</div>
+                  <div>색상: {item.color}</div>
+                  <div>핏: {item.fit}</div>
+                  <div>소재: {item.material}</div>
+                  <div>브랜드: {item.brandName || "브랜드 연동 예정"}</div>
                 </dl>
               </article>
             ))}

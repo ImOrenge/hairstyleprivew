@@ -29,20 +29,20 @@ async function readExistingProfile(supabase: ServerSupabaseLike, userId: string)
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const formData = await request.formData().catch(() => null);
   const file = formData?.get("file");
 
   if (!(file instanceof File)) {
-    return NextResponse.json({ error: "file is required" }, { status: 400 });
+    return NextResponse.json({ error: "전신 사진을 선택해 주세요." }, { status: 400 });
   }
   if (!file.type.startsWith("image/")) {
-    return NextResponse.json({ error: "file must be an image" }, { status: 400 });
+    return NextResponse.json({ error: "이미지 파일만 업로드할 수 있습니다." }, { status: 400 });
   }
   if (file.size > MAX_BODY_PHOTO_BYTES) {
-    return NextResponse.json({ error: "file is too large" }, { status: 400 });
+    return NextResponse.json({ error: "이미지 용량이 너무 큽니다. 8MB 이하 파일을 사용해 주세요." }, { status: 400 });
   }
 
   const supabase = getSupabaseAdminClient() as unknown as ServerSupabaseLike;
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ profile }, { status: 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
+    const message = error instanceof Error ? error.message : "예상하지 못한 오류가 발생했습니다.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
 export async function DELETE() {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const supabase = getSupabaseAdminClient() as unknown as ServerSupabaseLike;
@@ -135,7 +135,7 @@ export async function DELETE() {
 
     return NextResponse.json({ profile: normalizeStyleProfile(data, userId) }, { status: 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
+    const message = error instanceof Error ? error.message : "예상하지 못한 오류가 발생했습니다.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

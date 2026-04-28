@@ -1,8 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { GeneratedVariant, RecommendationSet } from "../../../../lib/recommendation-types";
-import type { FashionRecommendation, StyleProfile } from "../../../../lib/fashion-types";
-import { generateFashionRecommendation, isFashionMood, isFashionOccasion } from "../../../../lib/fashion-recommendation-generator";
+import type { FashionGenre, FashionMood, FashionOccasion, FashionRecommendation, StyleProfile } from "../../../../lib/fashion-types";
+import { ensureFashionCatalogAvailable, selectFashionCatalogItem } from "../../../../lib/fashion-catalog";
+import { generateFashionRecommendation, isFashionGenre } from "../../../../lib/fashion-recommendation-generator";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 import {
   ensureCurrentUserProfile,
@@ -14,6 +15,7 @@ import {
 interface StylingRecommendRequest {
   generationId?: string;
   selectedVariantId?: string;
+  genre?: string;
   occasion?: string;
   mood?: string;
 }
@@ -42,29 +44,39 @@ function getGeneratedVariant(set: RecommendationSet, selectedVariantId: string) 
   return set.variants.find((variant) => variant.id === selectedVariantId) || null;
 }
 
+function genreToLegacyOccasion(genre: FashionGenre): FashionOccasion {
+  if (genre === "office") return "work";
+  if (genre === "date") return "date";
+  if (genre === "formal") return "formal";
+  return "daily";
+}
+
+function genreToLegacyMood(genre: FashionGenre): FashionMood {
+  if (genre === "minimal") return "minimal";
+  if (genre === "classic" || genre === "formal") return "classic";
+  if (genre === "date" || genre === "casual") return "soft";
+  return "trendy";
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const body = (await request.json().catch(() => ({}))) as StylingRecommendRequest;
   const generationId = body.generationId?.trim() || "";
   const selectedVariantId = body.selectedVariantId?.trim() || "";
-  const occasion = body.occasion?.trim() || "";
-  const mood = body.mood?.trim() || "";
+  const genre = body.genre?.trim() || "";
 
   if (!generationId) {
-    return NextResponse.json({ error: "generationId is required" }, { status: 400 });
+    return NextResponse.json({ error: "헤어 추천 결과를 선택해 주세요." }, { status: 400 });
   }
   if (!selectedVariantId) {
-    return NextResponse.json({ error: "selectedVariantId is required" }, { status: 400 });
+    return NextResponse.json({ error: "헤어스타일을 선택해 주세요." }, { status: 400 });
   }
-  if (!isFashionOccasion(occasion)) {
-    return NextResponse.json({ error: "occasion is invalid" }, { status: 400 });
-  }
-  if (!isFashionMood(mood)) {
-    return NextResponse.json({ error: "mood is invalid" }, { status: 400 });
+  if (!isFashionGenre(genre)) {
+    return NextResponse.json({ error: "패션 장르를 다시 선택해 주세요." }, { status: 400 });
   }
 
   const supabase = getSupabaseAdminClient() as unknown as ServerSupabaseLike;
@@ -83,25 +95,25 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: generationError.message }, { status: 500 });
   }
   if (!generation) {
-    return NextResponse.json({ error: "Generation not found" }, { status: 404 });
+    return NextResponse.json({ error: "헤어 추천 결과를 찾을 수 없습니다." }, { status: 404 });
   }
   if (generation.user_id !== userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "이 헤어 추천 결과에 접근할 수 없습니다." }, { status: 403 });
   }
 
   const recommendationSet = normalizeRecommendationSet(
     isObject(generation.options) ? generation.options.recommendationSet : null,
   );
   if (!recommendationSet) {
-    return NextResponse.json({ error: "Recommendation set not found" }, { status: 400 });
+    return NextResponse.json({ error: "헤어 추천 세트를 찾을 수 없습니다." }, { status: 400 });
   }
 
   const selectedVariant = getGeneratedVariant(recommendationSet, selectedVariantId);
   if (!selectedVariant) {
-    return NextResponse.json({ error: "Selected variant not found" }, { status: 404 });
+    return NextResponse.json({ error: "선택한 헤어스타일을 찾을 수 없습니다." }, { status: 404 });
   }
   if (!selectedVariant.outputUrl) {
-    return NextResponse.json({ error: "Selected variant image is not ready" }, { status: 409 });
+    return NextResponse.json({ error: "선택한 헤어스타일 이미지가 아직 준비되지 않았습니다." }, { status: 409 });
   }
 
   const { data: profileRow, error: profileError } = await supabase
@@ -116,16 +128,26 @@ export async function POST(request: Request) {
 
   const profile = normalizeStyleProfile(profileRow, userId);
   if (!isStyleProfileComplete(profile)) {
-    return NextResponse.json({ error: "Style profile is incomplete" }, { status: 409 });
+    return NextResponse.json({ error: "바디 프로필을 먼저 완성해 주세요." }, { status: 409 });
   }
 
+  const catalog = await ensureFashionCatalogAvailable();
+  const catalogItem = selectFashionCatalogItem({
+    rows: catalog.rows,
+    genre,
+    profile,
+    hairVariant: selectedVariant,
+    analysis: recommendationSet.analysis,
+  });
   const recommendation = generateFashionRecommendation({
     profile,
     hairVariant: selectedVariant,
     analysis: recommendationSet.analysis,
-    occasion,
-    mood,
+    genre,
+    catalogItem,
   });
+  const legacyOccasion = genreToLegacyOccasion(genre);
+  const legacyMood = genreToLegacyMood(genre);
 
   const { data: session, error: sessionError } = await supabase
     .from("styling_sessions")
@@ -133,8 +155,9 @@ export async function POST(request: Request) {
       user_id: userId,
       generation_id: generationId,
       selected_variant_id: selectedVariantId,
-      occasion,
-      mood,
+      genre,
+      occasion: legacyOccasion,
+      mood: legacyMood,
       recommendation,
       status: "recommended",
       credits_used: 0,

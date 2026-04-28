@@ -57,7 +57,7 @@ function normalizeAvoidItems(value: unknown): string[] {
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const supabase = getSupabaseAdminClient() as unknown as ServerSupabaseLike;
@@ -85,7 +85,7 @@ export async function GET() {
 export async function PATCH(request: Request) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const body = (await request.json().catch(() => ({}))) as StyleProfilePatchRequest;
@@ -95,16 +95,16 @@ export async function PATCH(request: Request) {
   const exposurePreference = toTrimmedNullable(body.exposurePreference);
 
   if (!heightCm) {
-    return NextResponse.json({ error: "heightCm must be between 120 and 230" }, { status: 400 });
+    return NextResponse.json({ error: "키는 120cm에서 230cm 사이로 입력해 주세요." }, { status: 400 });
   }
   if (!bodyShape || !isSupportedBodyShape(bodyShape)) {
-    return NextResponse.json({ error: "bodyShape is invalid" }, { status: 400 });
+    return NextResponse.json({ error: "체형 정보를 다시 선택해 주세요." }, { status: 400 });
   }
   if (!fitPreference || !isSupportedFitPreference(fitPreference)) {
-    return NextResponse.json({ error: "fitPreference is invalid" }, { status: 400 });
+    return NextResponse.json({ error: "핏 선호도를 다시 선택해 주세요." }, { status: 400 });
   }
   if (!exposurePreference || !isSupportedExposurePreference(exposurePreference)) {
-    return NextResponse.json({ error: "exposurePreference is invalid" }, { status: 400 });
+    return NextResponse.json({ error: "노출 선호도를 다시 선택해 주세요." }, { status: 400 });
   }
 
   const supabase = getSupabaseAdminClient() as unknown as ServerSupabaseLike;

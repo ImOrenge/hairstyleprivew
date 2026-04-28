@@ -155,7 +155,7 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
           <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-5 shadow-xl">
             <h3 className="text-lg font-semibold text-stone-900">결과 리뷰 작성</h3>
             <p className="mt-1 text-sm text-stone-600">
-              결과에 대한 별점과 후기를 남겨주시면 품질 개선에 반영됩니다.
+              결과에 대한 별점과 후기를 남겨 주시면 품질 개선에 반영합니다.
             </p>
 
             {loadingExisting ? (
@@ -195,7 +195,7 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
                         </button>
                       );
                     })}
-                    <span className="ml-2 text-sm text-stone-600">{rating ? `${rating} / 5` : "선택 안 함"}</span>
+                    <span className="ml-2 text-sm text-stone-600">{rating ? `${rating} / 5` : "선택 전"}</span>
                   </div>
                 </div>
 
@@ -207,7 +207,7 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
                     id="review-comment"
                     value={comment}
                     onChange={(event) => setComment(event.target.value)}
-                    placeholder="예: 스타일이 자연스럽게 나와서 시술 전에 결정하는 데 도움이 됐어요."
+                    placeholder="예: 스타일이 자연스럽고 상담 전에 방향을 정하는 데 도움이 되었어요."
                     rows={4}
                     maxLength={800}
                     className="mt-2 w-full resize-y rounded-xl border border-stone-300 px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-stone-500 focus:ring-2 focus:ring-stone-300/60"

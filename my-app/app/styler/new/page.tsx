@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { Check, Scissors, X } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
-import type { FashionMood, FashionOccasion, FashionRecommendation, StyleProfile } from "../../../lib/fashion-types";
-import type { GeneratedVariant } from "../../../lib/recommendation-types";
+import type { FashionGenre, FashionRecommendation, StyleProfile } from "../../../lib/fashion-types";
+import type { FaceAnalysisSummary, GeneratedVariant } from "../../../lib/recommendation-types";
 
 interface ProfileResponse {
   profile?: StyleProfile;
@@ -27,67 +28,100 @@ interface GenerateResponse {
 interface GenerationResponse {
   selectedVariant?: GeneratedVariant | null;
   recommendationSet?: {
+    analysis?: FaceAnalysisSummary;
     variants?: GeneratedVariant[];
   } | null;
+  error?: string;
+}
+
+interface HairstyleGenerationGroup {
+  id: string;
+  createdAt: string;
+  status: string;
+  selectedVariantId: string | null;
+  analysis: FaceAnalysisSummary;
+  variants: GeneratedVariant[];
+}
+
+interface HairstyleListResponse {
+  generations?: HairstyleGenerationGroup[];
   error?: string;
 }
 
 type WizardStep = 1 | 2 | 3;
 
 const stepDefinitions: Array<{ id: WizardStep; title: string; eyebrow: string }> = [
-  { id: 1, title: "Profile", eyebrow: "Body profile" },
-  { id: 2, title: "Style Direction", eyebrow: "Occasion + mood" },
-  { id: 3, title: "Preview & Generate", eyebrow: "Outfit preview" },
+  { id: 1, title: "프로필 확인", eyebrow: "헤어 + 바디" },
+  { id: 2, title: "장르 선택", eyebrow: "패션 방향" },
+  { id: 3, title: "추천 확인", eyebrow: "룩북 생성" },
 ];
 
-const occasionOptions: Array<{
-  value: FashionOccasion;
+const genreOptions: Array<{
+  value: FashionGenre;
   label: string;
   description: string;
 }> = [
-  { value: "daily", label: "Daily", description: "Relaxed balance for repeat wear and clean layering." },
-  { value: "work", label: "Work", description: "Sharper proportions with polished structure." },
-  { value: "date", label: "Date", description: "Soft contrast and styled details around the face." },
-  { value: "formal", label: "Formal", description: "Controlled silhouette with dressier finish." },
+  { value: "minimal", label: "미니멀", description: "색과 디테일을 줄여 헤어와 얼굴을 또렷하게 보여줍니다." },
+  { value: "street", label: "스트릿", description: "오버핏과 기능성 디테일로 트렌디한 볼륨을 만듭니다." },
+  { value: "casual", label: "캐주얼", description: "반복해서 입기 쉬운 데일리 균형을 우선합니다." },
+  { value: "classic", label: "클래식", description: "재킷, 셔츠, 로퍼처럼 오래 가는 구조감을 사용합니다." },
+  { value: "office", label: "오피스", description: "출근과 미팅에 맞는 단정한 실루엣을 구성합니다." },
+  { value: "date", label: "데이트", description: "얼굴 주변을 부드럽게 살리는 색과 소재를 씁니다." },
+  { value: "formal", label: "포멀", description: "행사와 격식 있는 자리에 맞는 절제된 룩입니다." },
+  { value: "athleisure", label: "애슬레저", description: "활동성은 유지하고 인상은 깔끔하게 정리합니다." },
 ];
 
-const moodOptions: Array<{
-  value: FashionMood;
-  label: string;
-  description: string;
-}> = [
-  { value: "minimal", label: "Minimal", description: "Quiet palette and reduced detail." },
-  { value: "trendy", label: "Trendy", description: "Current shapes and stronger visual contrast." },
-  { value: "soft", label: "Soft", description: "Gentle color flow and easy drape." },
-  { value: "classic", label: "Classic", description: "Timeless structure with stable proportions." },
-];
+function formatDate(iso: string) {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
 
-const silhouetteGuide: Record<FashionOccasion, Record<FashionMood, string>> = {
-  daily: {
-    minimal: "Clean everyday layers with quiet contrast and easy volume.",
-    trendy: "Relaxed basics with current shape shifts and stronger silhouette edges.",
-    soft: "Comfort-led layering with smooth color transitions around the face.",
-    classic: "Stable daily proportions with refined staples that stay easy to wear.",
-  },
-  work: {
-    minimal: "Controlled tailoring with reduced detail and sharp line management.",
-    trendy: "Polished structure with a fashion-forward edge in shape or proportion.",
-    soft: "Professional frame with less severity and smoother fabric flow.",
-    classic: "Reliable office balance built from timeless structured pieces.",
-  },
-  date: {
-    minimal: "Simple, intentional silhouette that keeps focus on face and hair.",
-    trendy: "Styled focal points with stronger shape definition and cleaner finish.",
-    soft: "Warm texture and softer line movement for a lighter impression.",
-    classic: "Balanced dress-up styling with stable, flattering proportions.",
-  },
-  formal: {
-    minimal: "Reduced formal styling with disciplined lines and restrained palette.",
-    trendy: "Dress styling with current cuts and a more directional silhouette.",
-    soft: "Formal balance with smoother drape and less rigid contrast.",
-    classic: "Traditional formal structure with clean, dependable shape control.",
-  },
-};
+  return date.toLocaleString("ko-KR", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatLength(value?: string | null) {
+  if (value === "short") return "짧은 기장";
+  if (value === "medium") return "중간 기장";
+  if (value === "long") return "긴 기장";
+  return "-";
+}
+
+function formatFocus(value?: string | null) {
+  if (value === "crown") return "정수리 볼륨";
+  if (value === "temple") return "관자/사이드 균형";
+  if (value === "jawline") return "턱선 보정";
+  return "-";
+}
+
+function formatBodyShape(value?: string | null) {
+  if (value === "straight") return "스트레이트";
+  if (value === "hourglass") return "아워글래스";
+  if (value === "triangle") return "트라이앵글";
+  if (value === "inverted_triangle") return "역삼각형";
+  if (value === "round") return "라운드";
+  return "-";
+}
+
+function formatFit(value?: string | null) {
+  if (value === "regular") return "레귤러";
+  if (value === "slim") return "슬림";
+  if (value === "relaxed") return "릴랙스";
+  if (value === "oversized") return "오버핏";
+  return "-";
+}
+
+function formatExposure(value?: string | null) {
+  if (value === "low") return "낮음";
+  if (value === "balanced") return "균형";
+  if (value === "bold") return "과감";
+  return "-";
+}
 
 function isStepComplete(step: WizardStep, currentStep: WizardStep) {
   return currentStep > step;
@@ -123,13 +157,13 @@ function StepBadge({
         <span
           className={[
             "flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold",
-            active ? "bg-white/12 text-white" : complete ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700",
+            active ? "bg-white/15 text-white" : complete ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700",
           ].join(" ")}
         >
-          {complete ? "✓" : step.id}
+          {complete ? <Check className="h-4 w-4" /> : step.id}
         </span>
         <div>
-          <p className={active ? "text-xs font-bold uppercase tracking-[0.16em] text-white/70" : "text-xs font-bold uppercase tracking-[0.16em] text-stone-400"}>
+          <p className={active ? "text-xs font-bold uppercase text-white/70" : "text-xs font-bold uppercase text-stone-400"}>
             {step.eyebrow}
           </p>
           <p className="mt-1 text-base font-semibold">{step.title}</p>
@@ -160,7 +194,7 @@ function OptionCard<T extends string>({
       ].join(" ")}
     >
       <p className={selected ? "text-sm font-bold text-white" : "text-sm font-bold text-stone-900"}>{option.label}</p>
-      <p className={selected ? "mt-2 text-sm leading-5 text-white/78" : "mt-2 text-sm leading-5 text-stone-600"}>
+      <p className={selected ? "mt-2 text-sm leading-5 text-white/80" : "mt-2 text-sm leading-5 text-stone-600"}>
         {option.description}
       </p>
     </button>
@@ -170,8 +204,163 @@ function OptionCard<T extends string>({
 function FieldLabel({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">{label}</p>
+      <p className="text-xs font-bold uppercase text-stone-400">{label}</p>
       <p className="mt-2 text-sm font-semibold text-stone-900">{value}</p>
+    </div>
+  );
+}
+
+function HairSelectionModal({
+  open,
+  groups,
+  isLoading,
+  error,
+  selectedVariantId,
+  onClose,
+  onSelect,
+}: {
+  open: boolean;
+  groups: HairstyleGenerationGroup[];
+  isLoading: boolean;
+  error: string | null;
+  selectedVariantId: string;
+  onClose: () => void;
+  onSelect: (generationId: string, variant: GeneratedVariant) => void;
+}) {
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, open]);
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="hair-selection-title"
+        className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-stone-200 px-5 py-4">
+          <div>
+            <p className="text-xs font-bold uppercase text-stone-400">헤어스타일 선택</p>
+            <h2 id="hair-selection-title" className="mt-1 text-xl font-black text-stone-900">
+              최근 헤어 추천 결과에서 하나를 선택하세요
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full p-2 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
+            aria-label="닫기"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </header>
+
+        <div className="overflow-y-auto px-5 py-5">
+          {isLoading ? (
+            <div className="rounded-2xl bg-stone-50 px-5 py-10 text-center text-sm text-stone-500">
+              최근 헤어 추천 결과를 불러오는 중입니다.
+            </div>
+          ) : null}
+
+          {error ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+              {error}
+            </div>
+          ) : null}
+
+          {!isLoading && groups.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-stone-300 bg-stone-50 px-6 py-12 text-center">
+              <Scissors className="mx-auto h-8 w-8 text-stone-400" />
+              <p className="mt-3 text-base font-bold text-stone-900">선택할 수 있는 헤어 결과가 없습니다.</p>
+              <p className="mt-2 text-sm leading-6 text-stone-600">
+                먼저 얼굴 사진으로 3x3 헤어 추천 보드를 만든 뒤 패션 추천을 이어갈 수 있습니다.
+              </p>
+              <Link
+                href="/upload"
+                className="mt-5 inline-flex items-center justify-center rounded-full bg-stone-900 px-5 py-2 text-sm font-bold text-white transition hover:bg-stone-800"
+              >
+                헤어 추천 만들기
+              </Link>
+            </div>
+          ) : null}
+
+          <div className="grid gap-6">
+            {groups.map((group) => (
+              <section key={group.id} className="space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-stone-900">{formatDate(group.createdAt)} 생성 결과</p>
+                    <p className="text-xs text-stone-500">얼굴형: {group.analysis.faceShape || "-"} · 상태: {group.status}</p>
+                  </div>
+                  <Link href={`/result/${group.id}`} className="text-sm font-semibold text-stone-600 hover:text-stone-950">
+                    결과 보기
+                  </Link>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {group.variants.map((variant) => {
+                    const selected = selectedVariantId === variant.id;
+                    const selectable = Boolean(variant.outputUrl);
+
+                    return (
+                      <button
+                        key={variant.id}
+                        type="button"
+                        onClick={() => selectable && onSelect(group.id, variant)}
+                        disabled={!selectable}
+                        className={[
+                          "overflow-hidden rounded-2xl border bg-white text-left transition",
+                          selected ? "border-stone-900 shadow-[0_18px_45px_-28px_rgba(0,0,0,0.55)]" : "border-stone-200 hover:border-stone-400",
+                          !selectable ? "cursor-not-allowed opacity-55" : "",
+                        ].join(" ")}
+                      >
+                        <div className="relative aspect-[4/5] bg-stone-100">
+                          {variant.outputUrl ? (
+                            <img src={variant.outputUrl} alt={variant.label} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center px-4 text-center text-sm text-stone-500">
+                              {variant.status === "failed" ? "생성 실패" : "생성 대기 중"}
+                            </div>
+                          )}
+                          {selected ? (
+                            <span className="absolute right-3 top-3 rounded-full bg-stone-900 px-3 py-1 text-xs font-bold text-white">
+                              선택됨
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="p-4">
+                          <div className="flex items-start justify-between gap-2">
+                            <h3 className="text-base font-bold text-stone-900">{variant.label}</h3>
+                            <span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-600">
+                              {formatLength(variant.lengthBucket)}
+                            </span>
+                          </div>
+                          <p className="mt-2 line-clamp-2 text-sm leading-5 text-stone-600">{variant.reason}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
@@ -179,21 +368,26 @@ function FieldLabel({ label, value }: { label: string; value: string }) {
 function StylerNewContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const generationId = searchParams.get("generationId") || "";
-  const selectedVariantId = searchParams.get("variant") || "";
+  const initialGenerationId = searchParams.get("generationId") || "";
+  const initialSelectedVariantId = searchParams.get("variant") || "";
 
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
+  const [generationId, setGenerationId] = useState(initialGenerationId);
+  const [selectedVariantId, setSelectedVariantId] = useState(initialSelectedVariantId);
   const [profile, setProfile] = useState<StyleProfile | null>(null);
-  const [occasion, setOccasion] = useState<FashionOccasion>("daily");
-  const [mood, setMood] = useState<FashionMood>("minimal");
+  const [genre, setGenre] = useState<FashionGenre>("minimal");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [recommendation, setRecommendation] = useState<FashionRecommendation | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<GeneratedVariant | null>(null);
+  const [hairGroups, setHairGroups] = useState<HairstyleGenerationGroup[]>([]);
+  const [hairModalOpen, setHairModalOpen] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [isLoadingVariant, setIsLoadingVariant] = useState(true);
+  const [isLoadingVariant, setIsLoadingVariant] = useState(Boolean(initialGenerationId && initialSelectedVariantId));
+  const [isLoadingHairList, setIsLoadingHairList] = useState(false);
   const [isRecommending, setIsRecommending] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+  const [hairListError, setHairListError] = useState<string | null>(null);
   const [recommendError, setRecommendError] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
@@ -214,7 +408,7 @@ function StylerNewContent() {
       if (response.ok && data.profile) {
         setProfile(data.profile);
       } else {
-        setProfileError(data.error || "Failed to load style profile.");
+        setProfileError(data.error || "바디 프로필을 불러오지 못했습니다.");
       }
 
       setIsLoadingProfile(false);
@@ -253,10 +447,10 @@ function StylerNewContent() {
       if (response.ok) {
         setSelectedVariant(variantFromSet || data.selectedVariant || null);
         if (!variantFromSet && !data.selectedVariant) {
-          setProfileError("Selected hairstyle could not be found. Go back to the result board and confirm one variant again.");
+          setProfileError("선택한 헤어스타일을 찾지 못했습니다. 헤어 결과에서 다시 선택해 주세요.");
         }
       } else {
-        setProfileError(data.error || "Failed to load confirmed hairstyle.");
+        setProfileError(data.error || "선택한 헤어스타일을 불러오지 못했습니다.");
       }
 
       setIsLoadingVariant(false);
@@ -281,11 +475,10 @@ function StylerNewContent() {
     );
   }, [profile]);
 
-  const hasGenerationContext = Boolean(generationId && selectedVariantId);
-  const stepOneReady = Boolean(hasGenerationContext && profileReady && selectedVariant);
+  const stepOneReady = Boolean(profileReady && selectedVariant && generationId && selectedVariantId);
   const stepThreeReady = Boolean(sessionId && recommendation);
-  const visibleStep: WizardStep = !hasGenerationContext || !profileReady ? 1 : currentStep;
-  const directionSummary = silhouetteGuide[occasion][mood];
+  const visibleStep: WizardStep = !stepOneReady ? 1 : currentStep;
+  const selectedGenre = genreOptions.find((option) => option.value === genre) || genreOptions[0];
 
   const clearRecommendationState = () => {
     setSessionId(null);
@@ -294,19 +487,47 @@ function StylerNewContent() {
     setGenerateError(null);
   };
 
-  const handleOccasionSelect = (value: FashionOccasion) => {
-    if (occasion === value) {
-      return;
+  const loadHairList = async () => {
+    setIsLoadingHairList(true);
+    setHairListError(null);
+
+    const response = await fetch("/api/styling/hairstyles", { cache: "no-store" });
+    const data = (await response.json().catch(() => ({}))) as HairstyleListResponse;
+
+    if (response.ok) {
+      setHairGroups(data.generations || []);
+    } else {
+      setHairListError(data.error || "최근 헤어 결과를 불러오지 못했습니다.");
     }
-    setOccasion(value);
-    clearRecommendationState();
+
+    setIsLoadingHairList(false);
   };
 
-  const handleMoodSelect = (value: FashionMood) => {
-    if (mood === value) {
+  const openHairModal = () => {
+    setHairModalOpen(true);
+    if (hairGroups.length === 0 && !isLoadingHairList) {
+      void loadHairList();
+    }
+  };
+
+  const handleHairSelect = (nextGenerationId: string, variant: GeneratedVariant) => {
+    setGenerationId(nextGenerationId);
+    setSelectedVariantId(variant.id);
+    setSelectedVariant(variant);
+    clearRecommendationState();
+    setHairModalOpen(false);
+    setCurrentStep(1);
+    router.replace(
+      `/styler/new?generationId=${encodeURIComponent(nextGenerationId)}&variant=${encodeURIComponent(variant.id)}`,
+      { scroll: false },
+    );
+  };
+
+  const handleGenreSelect = (value: FashionGenre) => {
+    if (genre === value) {
       return;
     }
-    setMood(value);
+    setGenre(value);
     clearRecommendationState();
   };
 
@@ -339,8 +560,7 @@ function StylerNewContent() {
       body: JSON.stringify({
         generationId,
         selectedVariantId,
-        occasion,
-        mood,
+        genre,
       }),
     });
     const data = (await response.json().catch(() => ({}))) as RecommendResponse;
@@ -353,7 +573,7 @@ function StylerNewContent() {
       }
       setCurrentStep(3);
     } else {
-      setRecommendError(data.error || "Failed to build fashion recommendation.");
+      setRecommendError(data.error || "패션 추천을 만들지 못했습니다.");
     }
 
     setIsRecommending(false);
@@ -377,7 +597,7 @@ function StylerNewContent() {
     if (response.ok) {
       router.push(`/styler/${data.sessionId || sessionId}`);
     } else {
-      setGenerateError(data.error || "Failed to generate outfit lookbook image.");
+      setGenerateError(data.error || "룩북 이미지를 생성하지 못했습니다.");
     }
 
     setIsGenerating(false);
@@ -386,28 +606,32 @@ function StylerNewContent() {
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-20 pt-8 sm:px-6">
       <header className="space-y-2">
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">Fashion Styler</p>
-        <h1 className="text-3xl font-black tracking-tight text-stone-900">Style your confirmed hair with a guided outfit flow</h1>
+        <p className="text-xs font-bold uppercase text-stone-400">패션 추천</p>
+        <h1 className="text-3xl font-black tracking-tight text-stone-900">헤어스타일에 맞춘 전신 코디 만들기</h1>
         <p className="max-w-3xl text-sm leading-6 text-stone-600">
-          Confirm your body profile first, choose the outfit direction, then generate a lookbook image from the saved full-body photo.
+          먼저 헤어스타일과 바디 프로필을 확인한 뒤, 원하는 패션 장르를 선택하면 AI 카탈로그 기반 코디와 룩북 이미지를 생성합니다.
         </p>
       </header>
 
       <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400">Confirmed Hair</p>
+            <p className="text-xs font-bold uppercase text-stone-400">선택한 헤어스타일</p>
             <p className="text-xl font-bold text-stone-900">
-              {isLoadingVariant ? "Loading confirmed hairstyle..." : selectedVariant?.label || "No confirmed hairstyle selected"}
+              {isLoadingVariant ? "헤어스타일을 불러오는 중..." : selectedVariant?.label || "선택된 헤어스타일 없음"}
             </p>
             <p className="max-w-2xl text-sm leading-6 text-stone-600">
-              {selectedVariant?.reason ||
-                "Open this flow from a completed hairstyle result after choosing the final variant."}
+              {selectedVariant?.reason || "빈 헤어스타일 영역을 눌러 최근 추천 결과에서 하나를 선택하세요."}
             </p>
           </div>
 
           <div className="flex w-full gap-4 lg:w-auto">
-            <div className="relative aspect-[4/5] w-28 overflow-hidden rounded-2xl border border-stone-200 bg-stone-100">
+            <button
+              type="button"
+              onClick={openHairModal}
+              className="relative aspect-[4/5] w-28 overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 transition hover:border-stone-500"
+              aria-label="헤어스타일 선택 모달 열기"
+            >
               {selectedVariant?.outputUrl ? (
                 <img
                   src={selectedVariant.outputUrl}
@@ -416,13 +640,18 @@ function StylerNewContent() {
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center px-4 text-center text-xs font-medium text-stone-500">
-                  Hairstyle preview
+                  헤어 선택
                 </div>
               )}
-            </div>
+            </button>
             <div className="grid flex-1 gap-3 sm:grid-cols-2">
-              <FieldLabel label="Length" value={selectedVariant?.lengthBucket || "-"} />
-              <FieldLabel label="Focus" value={selectedVariant?.correctionFocus || "-"} />
+              <FieldLabel label="기장" value={formatLength(selectedVariant?.lengthBucket)} />
+              <FieldLabel label="보정 포인트" value={formatFocus(selectedVariant?.correctionFocus)} />
+              <div className="sm:col-span-2">
+                <Button type="button" variant="secondary" onClick={openHairModal}>
+                  헤어스타일 선택/변경
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -448,29 +677,31 @@ function StylerNewContent() {
         <section className="rounded-3xl border border-stone-200 bg-white p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
             <div className="grid flex-1 gap-4 sm:grid-cols-2">
-              <FieldLabel label="Height" value={profile?.heightCm ? `${profile.heightCm} cm` : "-"} />
-              <FieldLabel label="Body Shape" value={profile?.bodyShape || "-"} />
-              <FieldLabel label="Top Size" value={profile?.topSize || "-"} />
-              <FieldLabel label="Bottom Size" value={profile?.bottomSize || "-"} />
-              <FieldLabel label="Fit Preference" value={profile?.fitPreference || "-"} />
-              <FieldLabel label="Body Photo" value={profile?.bodyPhotoPath ? "Saved" : "Missing"} />
+              <FieldLabel label="키" value={profile?.heightCm ? `${profile.heightCm} cm` : "-"} />
+              <FieldLabel label="체형" value={formatBodyShape(profile?.bodyShape)} />
+              <FieldLabel label="상의 사이즈" value={profile?.topSize || "-"} />
+              <FieldLabel label="하의 사이즈" value={profile?.bottomSize || "-"} />
+              <FieldLabel label="선호 핏" value={formatFit(profile?.fitPreference)} />
+              <FieldLabel label="노출 선호" value={formatExposure(profile?.exposurePreference)} />
+              <FieldLabel label="전신 사진" value={profile?.bodyPhotoPath ? "저장됨" : "필요"} />
+              <FieldLabel label="선택 헤어" value={selectedVariant?.label || "필요"} />
             </div>
 
             <div className="w-full max-w-sm space-y-3">
               <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
                 <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Profile Status</p>
+                  <p className="text-xs font-bold uppercase text-stone-400">준비 상태</p>
                   <p className="mt-1 text-sm font-semibold text-stone-900">
-                    {isLoadingProfile ? "Checking profile..." : profileReady ? "Ready for styling" : "Needs setup"}
+                    {isLoadingProfile ? "프로필 확인 중" : stepOneReady ? "추천 준비 완료" : "추가 설정 필요"}
                   </p>
                 </div>
                 <span
                   className={[
                     "rounded-full px-3 py-1 text-xs font-bold",
-                    profileReady ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
+                    stepOneReady ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700",
                   ].join(" ")}
                 >
-                  {profileReady ? "Ready" : "Setup"}
+                  {stepOneReady ? "준비됨" : "필요"}
                 </span>
               </div>
 
@@ -478,21 +709,21 @@ function StylerNewContent() {
                 {profile?.bodyPhotoUrl ? (
                   <img
                     src={profile.bodyPhotoUrl}
-                    alt="Saved full body reference"
+                    alt="저장된 전신 참고 사진"
                     className="h-full w-full object-cover"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center px-6 text-center text-sm leading-6 text-stone-500">
-                    Save one full-body reference photo in My Page before building an outfit.
+                    룩북 생성을 위해 마이페이지에서 전신 참고 사진을 저장해 주세요.
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {!hasGenerationContext ? (
+          {!selectedVariant ? (
             <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-              Start from a completed hairstyle result and choose the confirmed variant before opening the fashion styler.
+              패션 추천을 시작하려면 헤어스타일을 먼저 선택해야 합니다.
             </p>
           ) : null}
 
@@ -505,15 +736,20 @@ function StylerNewContent() {
           <div className="mt-6 flex flex-wrap gap-3">
             {!profileReady ? (
               <Link href="/mypage">
-                <Button type="button" variant="secondary">Complete My Profile</Button>
+                <Button type="button" variant="secondary">바디 프로필 완성하기</Button>
               </Link>
+            ) : null}
+            {!selectedVariant ? (
+              <Button type="button" variant="secondary" onClick={openHairModal}>
+                헤어스타일 선택하기
+              </Button>
             ) : null}
             <Button
               type="button"
               onClick={() => setCurrentStep(2)}
               disabled={!stepOneReady || isLoadingProfile || isLoadingVariant}
             >
-              Next: Choose Style Direction
+              다음: 패션 장르 선택
             </Button>
           </div>
         </section>
@@ -522,44 +758,29 @@ function StylerNewContent() {
       {visibleStep === 2 ? (
         <section className="space-y-6 rounded-3xl border border-stone-200 bg-white p-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400">Step 2</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-900">Choose the outfit direction</h2>
+            <p className="text-xs font-bold uppercase text-stone-400">2단계</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-900">추천받을 패션 장르를 선택하세요</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
-              Select one occasion and one mood. This step builds the silhouette and styling language before image generation.
+              AI가 저장한 주간 패션 카탈로그에서 선택한 장르에 맞는 코디 방향을 가져옵니다.
             </p>
           </div>
 
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-stone-900">Occasion</p>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {occasionOptions.map((option) => (
-                <OptionCard
-                  key={option.value}
-                  option={option}
-                  selected={occasion === option.value}
-                  onSelect={handleOccasionSelect}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-stone-900">Mood</p>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {moodOptions.map((option) => (
-                <OptionCard
-                  key={option.value}
-                  option={option}
-                  selected={mood === option.value}
-                  onSelect={handleMoodSelect}
-                />
-              ))}
-            </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {genreOptions.map((option) => (
+              <OptionCard
+                key={option.value}
+                option={option}
+                selected={genre === option.value}
+                onSelect={handleGenreSelect}
+              />
+            ))}
           </div>
 
           <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Direction Preview</p>
-            <p className="mt-2 text-sm leading-6 text-stone-700">{directionSummary}</p>
+            <p className="text-xs font-bold uppercase text-stone-400">선택한 방향</p>
+            <p className="mt-2 text-sm leading-6 text-stone-700">
+              {selectedGenre.label}: {selectedGenre.description}
+            </p>
           </div>
 
           {recommendError ? (
@@ -570,10 +791,10 @@ function StylerNewContent() {
 
           <div className="flex flex-wrap gap-3">
             <Button type="button" variant="secondary" onClick={() => setCurrentStep(1)}>
-              Back
+              이전
             </Button>
             <Button type="button" onClick={handleRecommend} disabled={isRecommending || isGenerating}>
-              {isRecommending ? "Building..." : "Build Recommendation"}
+              {isRecommending ? "추천 생성 중..." : "패션 추천 만들기"}
             </Button>
           </div>
         </section>
@@ -583,20 +804,17 @@ function StylerNewContent() {
         <section className="space-y-6 rounded-3xl border border-stone-200 bg-white p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-stone-400">Step 3</p>
+              <p className="text-xs font-bold uppercase text-stone-400">3단계</p>
               <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-900">
-                {recommendation?.headline || "Preview your outfit recommendation"}
+                {recommendation?.headline || "패션 추천 미리보기"}
               </h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
-                {recommendation?.summary ||
-                  "Build a recommendation first. This step stays locked until the outfit direction is generated."}
+                {recommendation?.summary || "패션 추천을 먼저 만든 뒤 룩북 이미지를 생성할 수 있습니다."}
               </p>
             </div>
             <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Direction</p>
-              <p className="mt-1 text-sm font-semibold text-stone-900">
-                {occasionOptions.find((option) => option.value === occasion)?.label} / {moodOptions.find((option) => option.value === mood)?.label}
-              </p>
+              <p className="text-xs font-bold uppercase text-stone-400">장르</p>
+              <p className="mt-1 text-sm font-semibold text-stone-900">{selectedGenre.label}</p>
             </div>
           </div>
 
@@ -604,7 +822,7 @@ function StylerNewContent() {
             <>
               <div className="grid gap-4 lg:grid-cols-[0.62fr_1fr]">
                 <div className="rounded-3xl border border-stone-200 bg-stone-50 p-4">
-                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Confirmed Hairstyle</p>
+                  <p className="text-xs font-bold uppercase text-stone-400">선택한 헤어스타일</p>
                   <div className="mt-4 flex gap-4">
                     <div className="relative aspect-[4/5] w-28 overflow-hidden rounded-2xl border border-stone-200 bg-white">
                       {selectedVariant?.outputUrl ? (
@@ -615,7 +833,7 @@ function StylerNewContent() {
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center px-3 text-center text-xs text-stone-500">
-                          Hair preview
+                          헤어 미리보기
                         </div>
                       )}
                     </div>
@@ -636,25 +854,25 @@ function StylerNewContent() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <FieldLabel label="Silhouette" value={recommendation.silhouette} />
-                  <FieldLabel label="Palette" value={recommendation.palette.join(", ")} />
-                  <FieldLabel label="Items" value={`${recommendation.items.length} parts`} />
+                  <FieldLabel label="실루엣" value={recommendation.silhouette} />
+                  <FieldLabel label="팔레트" value={recommendation.palette.join(", ")} />
+                  <FieldLabel label="아이템" value={`${recommendation.items.length}개 구성`} />
                 </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 {recommendation.items.map((item) => (
                   <article key={item.slot} className="rounded-2xl border border-stone-200 bg-white p-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">{item.slot}</p>
+                    <p className="text-xs font-bold uppercase text-stone-400">{item.slot}</p>
                     <h3 className="mt-2 text-base font-bold text-stone-900">{item.name}</h3>
                     <p className="mt-2 text-sm leading-5 text-stone-600">{item.description}</p>
-                    <p className="mt-3 text-xs text-stone-500">{item.color} | {item.fit} | {item.material}</p>
+                    <p className="mt-3 text-xs text-stone-500">{item.color} · {item.fit} · {item.material}</p>
                   </article>
                 ))}
               </div>
 
               <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Styling Notes</p>
+                <p className="text-xs font-bold uppercase text-stone-400">스타일링 메모</p>
                 <div className="mt-3 grid gap-2">
                   {recommendation.stylingNotes.map((note) => (
                     <p key={note} className="text-sm leading-6 text-stone-700">
@@ -666,9 +884,9 @@ function StylerNewContent() {
             </>
           ) : (
             <div className="rounded-3xl border border-dashed border-stone-300 bg-stone-50 px-6 py-10 text-center">
-              <p className="text-sm font-semibold text-stone-900">Recommendation is locked</p>
+              <p className="text-sm font-semibold text-stone-900">추천이 아직 없습니다</p>
               <p className="mt-2 text-sm leading-6 text-stone-600">
-                Go back to Step 2, choose the outfit direction, and build the recommendation first.
+                2단계에서 패션 장르를 선택하고 추천을 먼저 생성하세요.
               </p>
             </div>
           )}
@@ -681,21 +899,31 @@ function StylerNewContent() {
 
           <div className="flex flex-wrap gap-3">
             <Button type="button" variant="secondary" onClick={() => setCurrentStep(2)}>
-              Back
+              이전
             </Button>
             <Button type="button" onClick={handleGenerate} disabled={!stepThreeReady || isGenerating}>
-              {isGenerating ? "Generating Lookbook..." : "Generate Lookbook"}
+              {isGenerating ? "룩북 생성 중..." : "룩북 이미지 생성"}
             </Button>
           </div>
         </section>
       ) : null}
+
+      <HairSelectionModal
+        open={hairModalOpen}
+        groups={hairGroups}
+        isLoading={isLoadingHairList}
+        error={hairListError}
+        selectedVariantId={selectedVariantId}
+        onClose={() => setHairModalOpen(false)}
+        onSelect={handleHairSelect}
+      />
     </div>
   );
 }
 
 export default function StylerNewPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-4xl px-4 py-12 text-sm text-stone-500">Loading fashion styler...</div>}>
+    <Suspense fallback={<div className="mx-auto max-w-4xl px-4 py-12 text-sm text-stone-500">패션 추천 화면을 불러오는 중입니다...</div>}>
       <StylerNewContent />
     </Suspense>
   );

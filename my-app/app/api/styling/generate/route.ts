@@ -117,13 +117,13 @@ async function hasCompletedFashionGeneration(supabase: ServerSupabaseLike, userI
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const body = (await request.json().catch(() => ({}))) as StylingGenerateRequest;
   const sessionId = body.sessionId?.trim() || "";
   if (!sessionId) {
-    return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
+    return NextResponse.json({ error: "추천 세션 정보가 필요합니다." }, { status: 400 });
   }
 
   const supabase = getSupabaseAdminClient() as unknown as ServerSupabaseLike;
@@ -138,10 +138,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: sessionError.message }, { status: 500 });
   }
   if (!session) {
-    return NextResponse.json({ error: "Styling session not found" }, { status: 404 });
+    return NextResponse.json({ error: "패션 추천 세션을 찾을 수 없습니다." }, { status: 404 });
   }
   if (session.user_id !== userId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "이 추천 세션에 접근할 수 없습니다." }, { status: 403 });
   }
 
   const existingImagePath = typeof session.generated_image_path === "string" ? session.generated_image_path : null;
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
 
   const profile = normalizeStyleProfile(profileRow, userId);
   if (!profile.bodyPhotoPath) {
-    return NextResponse.json({ error: "Body photo is required" }, { status: 409 });
+    return NextResponse.json({ error: "전신 사진을 먼저 등록해 주세요." }, { status: 409 });
   }
 
   const { data: generation, error: generationError } = await supabase
@@ -186,7 +186,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: generationError.message }, { status: 500 });
   }
   if (!generation || generation.user_id !== userId) {
-    return NextResponse.json({ error: "Generation not found" }, { status: 404 });
+    return NextResponse.json({ error: "헤어 추천 결과를 찾을 수 없습니다." }, { status: 404 });
   }
 
   const recommendationSet = normalizeRecommendationSet(
@@ -197,14 +197,14 @@ export async function POST(request: Request) {
   ) || null;
 
   if (!selectedVariant?.outputUrl) {
-    return NextResponse.json({ error: "Selected hairstyle image is not ready" }, { status: 409 });
+    return NextResponse.json({ error: "선택한 헤어스타일 이미지가 아직 준비되지 않았습니다." }, { status: 409 });
   }
 
   const recommendation = isObject(session.recommendation)
     ? (session.recommendation as unknown as FashionRecommendation)
     : null;
   if (!recommendation) {
-    return NextResponse.json({ error: "Fashion recommendation is missing" }, { status: 400 });
+    return NextResponse.json({ error: "패션 추천 정보가 없습니다." }, { status: 400 });
   }
 
   const creditCost = Number(session.credits_used) > 0 ? 0 : getCreditsPerOutfit();
@@ -230,7 +230,7 @@ export async function POST(request: Request) {
 
       if (consumeError) {
         if (consumeError.message.toLowerCase().includes("insufficient credits")) {
-          return NextResponse.json({ error: "Insufficient credits" }, { status: 409 });
+          return NextResponse.json({ error: "크레딧이 부족합니다." }, { status: 409 });
         }
         return NextResponse.json({ error: consumeError.message }, { status: 500 });
       }
@@ -286,7 +286,7 @@ export async function POST(request: Request) {
     const imageUrl = await createSignedUrl(supabase, STYLING_RESULTS_BUCKET, objectPath);
     return NextResponse.json({ sessionId, imageUrl, imagePath: objectPath, chargedCredits: creditCost }, { status: 200 });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unexpected error";
+    const message = error instanceof Error ? error.message : "예상하지 못한 오류가 발생했습니다.";
     await supabase
       .from("styling_sessions")
       .update({
