@@ -1,5 +1,5 @@
 import { clerkClient, clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { buildSignInRedirectUrl, getClerkConfigState } from "./lib/clerk";
 import { buildOnboardingRedirectUrl, normalizeAppPath, parseOnboardingMetadata } from "./lib/onboarding";
 
@@ -34,15 +34,16 @@ function clerkConfigRequiredResponse(req: NextRequest) {
   return NextResponse.redirect(new URL("/login", req.url));
 }
 
-const middleware = hasClerkConfig
+const clerkProtectedMiddleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
-    if (!isProtectedRoute(req) || isWebhookRoute(req)) {
-      return NextResponse.next();
-    }
-
     const { userId } = await auth();
     const returnBackPath = `${req.nextUrl.pathname}${req.nextUrl.search}`;
+    const isApiRequest = req.nextUrl.pathname.startsWith("/api/");
     if (!userId) {
+      if (isApiRequest) {
+        return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+      }
+
       return NextResponse.redirect(new URL(buildSignInRedirectUrl(returnBackPath), req.url));
     }
 
@@ -56,8 +57,16 @@ const middleware = hasClerkConfig
       const adminRestrictedRequest = adminPageRequest || adminApiRequest;
 
       if (!metadata.onboardingComplete || !metadata.accountType) {
-        if (onboardingAllowed || adminRestrictedRequest) {
+        if (onboardingAllowed) {
           return NextResponse.next();
+        }
+
+        if (adminApiRequest) {
+          return NextResponse.json({ error: "Admin account required" }, { status: 403 });
+        }
+
+        if (isApiRequest) {
+          return NextResponse.json({ error: "Onboarding required" }, { status: 403 });
         }
 
         return NextResponse.redirect(new URL(buildOnboardingRedirectUrl(returnBackPath), req.url));
@@ -89,6 +98,16 @@ const middleware = hasClerkConfig
 
     return NextResponse.next();
   })
+  : null;
+
+const middleware = hasClerkConfig && clerkProtectedMiddleware
+  ? (req: NextRequest, event: NextFetchEvent) => {
+      if (!isProtectedRoute(req) || isWebhookRoute(req)) {
+        return NextResponse.next();
+      }
+
+      return clerkProtectedMiddleware(req, event);
+    }
   : (req: NextRequest) => {
       if (!isProtectedRoute(req) || isWebhookRoute(req)) {
         return NextResponse.next();
