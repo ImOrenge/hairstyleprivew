@@ -198,17 +198,6 @@ function isCompletedVariant(variant: GeneratedVariant) {
   return variant.status === "completed" && Boolean(variant.outputUrl || variant.generatedImagePath);
 }
 
-function hasFreePlanBucketLimit(set: RecommendationSet, targetVariant: GeneratedVariant) {
-  const completedInBucket = set.variants.filter(
-    (variant) => variant.lengthBucket === targetVariant.lengthBucket && isCompletedVariant(variant),
-  );
-  if (completedInBucket.length === 0) {
-    return false;
-  }
-
-  return !completedInBucket.some((variant) => variant.id === targetVariant.id);
-}
-
 function selectPrimaryVariant(set: RecommendationSet): GeneratedVariant | null {
   const selected = set.selectedVariantId
     ? set.variants.find((variant) => variant.id === set.selectedVariantId)
@@ -243,18 +232,6 @@ async function ensureUserProfile(userId: string, supabase: SupabaseRunClient) {
   } catch (syncError) {
     console.warn("[generations/run] Auto-sync failed", syncError);
   }
-}
-
-async function isFreePlanUser(supabase: SupabaseRunClient, userId: string) {
-  const { data: paidTx } = await supabase
-    .from("payment_transactions")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("status", "paid")
-    .limit(1)
-    .maybeSingle();
-
-  return !paidTx;
 }
 
 export async function POST(request: Request) {
@@ -354,17 +331,6 @@ export async function POST(request: Request) {
         { status: 403 },
       );
     }
-  }
-
-  const freePlan = await isFreePlanUser(supabase, userId);
-  if (freePlan && hasFreePlanBucketLimit(recommendationSet, targetVariant)) {
-    return NextResponse.json(
-      {
-        error:
-          "무료 플랜은 짧은/중간/긴 기장별로 1개씩만 생성할 수 있습니다. 이 기장에서는 이미 1개를 생성했습니다.",
-      },
-      { status: 403 },
-    );
   }
 
   const creditCost = recommendationSet.creditChargeAmount ?? getCreditsPerStyle();
