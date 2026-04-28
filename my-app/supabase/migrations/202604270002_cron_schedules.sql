@@ -8,6 +8,7 @@
 --
 -- Edge Function 배포:
 --   supabase functions deploy cron-care-emails
+--   supabase functions deploy cron-trend-emails
 --   supabase functions deploy cron-subscription-renewal
 -- ============================================================
 
@@ -38,6 +39,11 @@ begin
         select 1 from cron.job where jobname = 'cron-subscription-renewal'
       );
 
+    perform cron.unschedule('cron-trend-emails')
+      where exists (
+        select 1 from cron.job where jobname = 'cron-trend-emails'
+      );
+
     -- 1. cron-care-emails: 매일 09:00 KST = 00:00 UTC
     perform cron.schedule(
       'cron-care-emails',
@@ -55,7 +61,24 @@ begin
       )
     );
 
-    -- 2. cron-subscription-renewal: 매일 02:00 KST = 17:00 UTC (전날)
+    -- 2. cron-trend-emails: 매일 09:15 KST = 00:15 UTC
+    perform cron.schedule(
+      'cron-trend-emails',
+      '15 0 * * *',
+      format(
+        $sql$
+          select net.http_post(
+            url     := %L,
+            headers := '{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
+            body    := '{}'::jsonb
+          ) as request_id;
+        $sql$,
+        edge_function_base_url || '/cron-trend-emails',
+        service_role_key
+      )
+    );
+
+    -- 3. cron-subscription-renewal: 매일 02:00 KST = 17:00 UTC (전날)
     perform cron.schedule(
       'cron-subscription-renewal',
       '0 17 * * *',

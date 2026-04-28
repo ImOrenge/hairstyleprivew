@@ -8,46 +8,48 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM_EMAIL =
   Deno.env.get("RESEND_FROM_EMAIL") ?? "HariStyle <onboarding@resend.dev>";
+const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
 
 const BATCH_SIZE = 50; // 1회 실행 당 최대 발송 수
 
-interface CareEmailRow {
-  id: string;
-  subject: string;
-  body_html: string;
-  content_type: string;
-  user_email: string | null;
-  user_name: string | null;
-}
-
-async function sendEmail(to: string, subject: string, html: string): Promise<string | null> {
-  if (!RESEND_API_KEY) return null;
-
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: RESEND_FROM_EMAIL,
-      to,
-      subject,
-      html,
-    }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error(`[cron-care-emails] Resend error ${res.status}: ${text}`);
-    return null;
+async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+): Promise<{ messageId: string | null; error: string | null }> {
+  if (!RESEND_API_KEY) {
+    return { messageId: null, error: "Missing RESEND_API_KEY" };
   }
 
-  const data = (await res.json()) as { id?: string };
-  return data.id ?? null;
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: RESEND_FROM_EMAIL,
+        to,
+        subject,
+        html,
+      }),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      return { messageId: null, error: `Resend error ${res.status}: ${text}` };
+    }
+
+    const data = (await res.json()) as { id?: string };
+    return { messageId: data.id ?? null, error: data.id ? null : "Resend response missing id" };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { messageId: null, error: message };
+  }
 }
 
 Deno.serve(async () => {
@@ -125,10 +127,16 @@ Deno.serve(async () => {
 
     // {{CTA_URL}} 등 남은 플레이스홀더 치환
     const resolvedHtml = row.body_html
-      .replace(/\{\{CTA_URL\}\}/g, `${SUPABASE_URL.replace("supabase.co", "hairstyle.app")}/mypage`)
+      .replace(/\{\{CTA_URL\}\}/g, `${APP_URL}/mypage`)
       .replace(/\{\{USER_NAME\}\}/g, userInfo.name ?? "고객");
 
-    const messageId = await sendEmail(userInfo.email, row.subject, resolvedHtml);
+    const { messageId, error: sendError } = await sendEmail(userInfo.email, row.subject, resolvedHtml);
+
+    if (sendError || !messageId) {
+      console.error(`[cron-care-emails] send failed id=${row.id}:`, sendError ?? "missing message id");
+      failCount++;
+      continue;
+    }
 
     const { error: updateError } = await supabase
       .from("user_care_contents")
