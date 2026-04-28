@@ -15,55 +15,65 @@
 create extension if not exists pg_net schema extensions;
 
 -- ============================================================
--- 기존 스케줄이 있으면 먼저 제거 (idempotent)
+-- pg_cron이 활성화된 프로젝트에서만 스케줄 등록
 -- ============================================================
-select cron.unschedule('cron-care-emails')
-  where exists (
-    select 1 from cron.job where jobname = 'cron-care-emails'
-  );
+do $$
+declare
+  edge_function_base_url text := nullif(current_setting('app.edge_function_base_url', true), '');
+  service_role_key text := nullif(current_setting('app.service_role_key', true), '');
+begin
+  if not exists (select 1 from pg_namespace where nspname = 'cron') then
+    raise notice 'Skipping cron schedules because pg_cron schema is not available.';
+  elsif edge_function_base_url is null or service_role_key is null then
+    raise notice 'Skipping cron schedules because app.edge_function_base_url or app.service_role_key is not set.';
+  else
+    -- 기존 스케줄이 있으면 먼저 제거 (idempotent)
+    perform cron.unschedule('cron-care-emails')
+      where exists (
+        select 1 from cron.job where jobname = 'cron-care-emails'
+      );
 
-select cron.unschedule('cron-subscription-renewal')
-  where exists (
-    select 1 from cron.job where jobname = 'cron-subscription-renewal'
-  );
+    perform cron.unschedule('cron-subscription-renewal')
+      where exists (
+        select 1 from cron.job where jobname = 'cron-subscription-renewal'
+      );
 
--- ============================================================
--- 1. cron-care-emails: 매일 09:00 KST = 00:00 UTC
--- ============================================================
-select cron.schedule(
-  'cron-care-emails',
-  '0 0 * * *',
-  format(
-    $sql$
-      select net.http_post(
-        url     := %L,
-        headers := '{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
-        body    := '{}'::jsonb
-      ) as request_id;
-    $sql$,
-    current_setting('app.edge_function_base_url') || '/cron-care-emails',
-    current_setting('app.service_role_key')
-  )
-);
+    -- 1. cron-care-emails: 매일 09:00 KST = 00:00 UTC
+    perform cron.schedule(
+      'cron-care-emails',
+      '0 0 * * *',
+      format(
+        $sql$
+          select net.http_post(
+            url     := %L,
+            headers := '{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
+            body    := '{}'::jsonb
+          ) as request_id;
+        $sql$,
+        edge_function_base_url || '/cron-care-emails',
+        service_role_key
+      )
+    );
 
--- ============================================================
--- 2. cron-subscription-renewal: 매일 02:00 KST = 17:00 UTC (전날)
--- ============================================================
-select cron.schedule(
-  'cron-subscription-renewal',
-  '0 17 * * *',
-  format(
-    $sql$
-      select net.http_post(
-        url     := %L,
-        headers := '{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
-        body    := '{}'::jsonb
-      ) as request_id;
-    $sql$,
-    current_setting('app.edge_function_base_url') || '/cron-subscription-renewal',
-    current_setting('app.service_role_key')
-  )
-);
+    -- 2. cron-subscription-renewal: 매일 02:00 KST = 17:00 UTC (전날)
+    perform cron.schedule(
+      'cron-subscription-renewal',
+      '0 17 * * *',
+      format(
+        $sql$
+          select net.http_post(
+            url     := %L,
+            headers := '{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
+            body    := '{}'::jsonb
+          ) as request_id;
+        $sql$,
+        edge_function_base_url || '/cron-subscription-renewal',
+        service_role_key
+      )
+    );
+  end if;
+end
+$$;
 
 -- ============================================================
 -- app.* 설정값 주입 (마이그레이션 적용 시 직접 지정)
