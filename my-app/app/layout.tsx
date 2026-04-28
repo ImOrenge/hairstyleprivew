@@ -23,11 +23,20 @@ export const metadata: Metadata = {
     description: homeSeo.description,
     type: "website",
     locale: "ko_KR",
+    images: [
+      {
+        url: "/logo.png",
+        width: 1024,
+        height: 1024,
+        alt: "HairFit",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: homeSeo.title,
     description: homeSeo.description,
+    images: ["/logo.png"],
   },
   robots: {
     index: true,
