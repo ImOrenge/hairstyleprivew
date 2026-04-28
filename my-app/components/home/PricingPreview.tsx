@@ -6,7 +6,7 @@ import { cn } from "../../lib/utils";
 import { useT } from "../../lib/i18n/useT";
 
 type PlanKey = PricingTierKey;
-type PaidPlanKey = Exclude<PlanKey, "free">;
+type PaymentPlanKey = Exclude<PlanKey, "free" | "salon">;
 
 interface SubscribeResponseBody {
   subscriptionId?: string;
@@ -16,16 +16,38 @@ interface SubscribeResponseBody {
   error?: string;
 }
 
-// PortOne 빌링키 발급 응답 타입 (런타임 동적 import)
 interface PortOneBillingKeyResponse {
   billingKey?: string;
   code?: string;
   message?: string;
 }
 
+interface PlanBlueprint {
+  key: PlanKey;
+  name: string;
+  subtitle: string;
+  description: string;
+  period: string;
+  features: string[];
+  cta: string;
+  tone: "basic" | "recommended" | "premium" | "enterprise";
+  recommended: boolean;
+}
+
+function requestSalonContact() {
+  window.dispatchEvent(
+    new CustomEvent("hairfit:b2b-plan", {
+      detail: { planInterest: "salon" },
+    }),
+  );
+  window.setTimeout(() => {
+    document.getElementById("b2b-lead-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 0);
+}
+
 export function PricingPreview() {
   const t = useT();
-  const [pendingPlan, setPendingPlan] = useState<PaidPlanKey | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<PaymentPlanKey | null>(null);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const economics = getPricingEconomics();
   const suggestedTiers = getSuggestedPricingTiers();
@@ -33,132 +55,109 @@ export function PricingPreview() {
     suggestedTiers.map((tier) => [tier.key, tier]),
   );
 
-  const planBlueprint = [
+  const planBlueprint: PlanBlueprint[] = [
     {
       key: "free",
       name: "Free",
-      subtitle: t("pricing.free.subtitle"),
-      description: t("pricing.free.desc"),
-      period: t("pricing.packLabel"),
-      features: [t("pricing.free.f1"), t("pricing.free.f2"), t("pricing.free.f3")],
-      cta: t("pricing.free.cta"),
-      tone: "basic" as const,
+      subtitle: "무료 체험",
+      description: "내 얼굴에 어울리는 방향을 먼저 확인하는 입문 플랜입니다.",
+      period: "체험",
+      features: ["3x3 추천 보드 열람", "워터마크 포함 결과 2개", "패션 룩북 1회"],
+      cta: "무료로 시작",
+      tone: "basic",
       recommended: false,
     },
     {
       key: "basic",
       name: "Basic",
-      subtitle: t("pricing.basic.subtitle"),
-      description: t("pricing.basic.desc"),
+      subtitle: "가끔 스타일을 바꾸는 분",
+      description: "다음 미용실 방문 전 상담 이미지를 준비하기 좋습니다.",
       period: "/월",
-      features: [t("pricing.basic.f1"), t("pricing.basic.f2"), t("pricing.basic.f3"), t("pricing.basic.f4")],
-      cta: t("pricing.basic.cta"),
-      tone: "basic" as const,
+      features: ["워터마크 없는 헤어 결과 6개", "패션 룩북 1회", "상담용 이미지 저장", "크레딧 월 지급"],
+      cta: "Basic 구독",
+      tone: "basic",
       recommended: false,
     },
     {
       key: "standard",
       name: "Standard",
-      subtitle: t("pricing.standard.subtitle"),
-      description: t("pricing.standard.desc"),
+      subtitle: "자주 비교하고 저장하는 분",
+      description: "헤어와 패션 방향을 여러 번 비교하며 고르기 좋습니다.",
       period: "/월",
-      features: [
-        t("pricing.standard.f1"),
-        t("pricing.standard.f2"),
-        t("pricing.standard.f3"),
-        t("pricing.standard.f4"),
-        t("pricing.standard.f5"),
-      ],
-      cta: t("pricing.standard.cta"),
-      tone: "recommended" as const,
+      features: ["워터마크 없는 헤어 결과 16개", "패션 룩북 3회", "결과 히스토리 저장", "우선 추천 플랜"],
+      cta: "Standard 구독",
+      tone: "recommended",
       recommended: true,
     },
     {
       key: "pro",
       name: "Pro",
-      subtitle: t("pricing.pro.subtitle"),
-      description: t("pricing.pro.desc"),
+      subtitle: "헤어와 패션을 깊게 실험하는 분",
+      description: "다양한 스타일 실험과 상담 자료 준비를 안정적으로 지원합니다.",
       period: "/월",
-      features: [
-        t("pricing.pro.f1"),
-        t("pricing.pro.f2"),
-        t("pricing.pro.f3"),
-        t("pricing.pro.f4"),
-        t("pricing.pro.f5"),
-      ],
-      cta: t("pricing.pro.cta"),
-      tone: "premium" as const,
+      features: ["워터마크 없는 헤어 결과 40개", "패션 룩북 제한 없음", "상담 자료용 결과 관리", "넉넉한 월 크레딧"],
+      cta: "Pro 구독",
+      tone: "premium",
       recommended: false,
     },
     {
       key: "salon",
       name: "Salon",
-      subtitle: t("pricing.salon.subtitle"),
-      description: t("pricing.salon.desc"),
-      period: "/월",
-      features: [
-        t("pricing.salon.f1"),
-        t("pricing.salon.f2"),
-        t("pricing.salon.f3"),
-        t("pricing.salon.f4"),
-        t("pricing.salon.f5"),
-      ],
-      cta: t("pricing.salon.cta"),
-      tone: "enterprise" as const,
+      subtitle: "살롱 · 디자이너 · B2B",
+      description: "고객 상담 이미지와 기록 관리를 매장 운영 흐름에 맞춰 도입합니다.",
+      period: "맞춤 견적",
+      features: ["고객별 결과 관리", "매장 도입 상담", "팀 사용 규모 협의", "브랜드/운영 요구사항 반영"],
+      cta: "B2B 도입 문의",
+      tone: "enterprise",
       recommended: false,
     },
   ];
 
   const plans = planBlueprint.map((plan) => {
     const tier = tierByKey.get(plan.key);
-    if (!tier) {
-      return { ...plan, price: "₩0", credits: t("pricing.noCredits") };
+    if (!tier || plan.key === "salon") {
+      return {
+        ...plan,
+        price: plan.key === "salon" ? "문의" : "0원",
+        credits: plan.key === "salon" ? "엔터프라이즈 도입 상담" : "0 크레딧",
+      };
     }
+
     return {
       ...plan,
       price: tier.priceLabel,
-      credits: t("pricing.credits", { credits: tier.credits, styles: tier.estimatedStyles }),
+      credits: `${tier.credits} 크레딧 · 약 ${tier.estimatedStyles}개 결과`,
     };
   });
 
-  // ─── PortOne 빌링키 발급 → 구독 API 호출 ────────────────────────────
-
-  const startSubscription = async (planKey: PaidPlanKey) => {
+  const startSubscription = async (planKey: PaymentPlanKey) => {
     setPendingPlan(planKey);
     setStatusMsg(null);
 
     try {
-      // 동적 import: SSR에서 PortOne SDK 로드 방지
-      const PortOne = (
-        await import("@portone/browser-sdk/v2").catch(() => null)
-      )?.default;
-
+      const PortOne = (await import("@portone/browser-sdk/v2").catch(() => null))?.default;
       if (!PortOne) {
-        throw new Error("PortOne SDK를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.");
+        throw new Error("결제 모듈을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
       }
 
       const storeId = process.env.NEXT_PUBLIC_PORTONE_V2_STORE_ID;
       const channelKey = process.env.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY;
-
       if (!storeId || !channelKey) {
         throw new Error("결제 설정이 완료되지 않았습니다.");
       }
 
-      // 1. PortOne 빌링키 발급
       const issueResult = (await PortOne.requestIssueBillingKey({
         storeId,
         channelKey,
         billingKeyMethod: "CARD",
         issueId: `issue-${planKey}-${Date.now()}`,
-        issueName: `HariStyle ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} 월 구독`,
+        issueName: `HairFit ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} 구독`,
         customer: {
-          // 고객 ID는 서버에서 JWT로 확인하므로 여기서는 임시값
           customerId: `web-${Date.now()}`,
         },
       })) as PortOneBillingKeyResponse;
 
       if (!issueResult?.billingKey) {
-        // 사용자가 팝업을 닫은 경우
         if (issueResult?.code === "USER_CANCEL") {
           setPendingPlan(null);
           return;
@@ -166,7 +165,6 @@ export function PricingPreview() {
         throw new Error(issueResult?.message ?? "빌링키 발급에 실패했습니다.");
       }
 
-      // 2. 구독 API 호출
       const response = await fetch("/api/payments/subscribe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,30 +181,32 @@ export function PricingPreview() {
       }
 
       const result = (await response.json().catch(() => ({}))) as SubscribeResponseBody;
-
       if (!response.ok) {
         throw new Error(result.error ?? `구독 처리 실패 (${response.status})`);
       }
 
-      // 3. 성공 → 마이페이지로 이동
-      window.location.assign(
-        `/mypage?subscribed=${planKey}&credits=${result.credits ?? ""}`,
-      );
+      window.location.assign(`/mypage?subscribed=${planKey}&credits=${result.credits ?? ""}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "구독 처리 중 오류가 발생했습니다.";
-      console.error(`[pricing] ${planKey} 구독 실패:`, err);
+      console.error(`[pricing] ${planKey} subscription failed:`, err);
       setStatusMsg(msg);
     } finally {
       setPendingPlan(null);
     }
   };
 
-  const handlePlanClick = (planKey: string) => {
+  const handlePlanClick = (planKey: PlanKey) => {
     if (planKey === "free") {
       window.location.assign("/signup");
       return;
     }
-    void startSubscription(planKey as PaidPlanKey);
+
+    if (planKey === "salon") {
+      requestSalonContact();
+      return;
+    }
+
+    void startSubscription(planKey);
   };
 
   return (
@@ -217,11 +217,11 @@ export function PricingPreview() {
             {t("pricing.badge")}
           </p>
           <h2 className="text-2xl font-black tracking-tight text-stone-900 dark:text-white sm:text-3xl">
-            {t("pricing.title")}
+            필요한 만큼 선택하는 플랜
           </h2>
         </div>
         <p className="text-sm text-stone-600 dark:text-zinc-400">
-          {t("pricing.creditNote", { credits: economics.creditsPerStyle })}
+          헤어 결과 1개 생성에 {economics.creditsPerStyle} 크레딧이 사용됩니다.
         </p>
       </div>
 
@@ -231,12 +231,12 @@ export function PricingPreview() {
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 max-sm:max-h-[32rem] max-sm:overflow-y-auto max-sm:snap-y max-sm:snap-mandatory max-sm:overscroll-contain max-sm:pr-1">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {plans.map((plan) => (
           <article
             key={plan.name}
             className={cn(
-              "relative flex h-full flex-col rounded-2xl border p-4 transition-colors max-sm:min-h-[22rem] max-sm:snap-start",
+              "relative flex h-full flex-col rounded-2xl border p-4 transition-colors",
               plan.tone === "recommended" &&
                 "border-amber-300 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/10",
               plan.tone === "premium" &&
@@ -249,7 +249,7 @@ export function PricingPreview() {
           >
             {plan.recommended ? (
               <span className="absolute right-3 top-3 rounded-full bg-stone-900 px-2.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-stone-900">
-                {t("pricing.mostPopular")}
+                추천
               </span>
             ) : null}
 
@@ -271,7 +271,7 @@ export function PricingPreview() {
             </h3>
             <p
               className={cn(
-                "mt-1 min-h-[2.5rem] text-xs leading-relaxed",
+                "mt-1 min-h-[3.75rem] text-xs leading-relaxed",
                 plan.tone === "enterprise" ? "text-zinc-300" : "text-stone-600 dark:text-zinc-400",
               )}
             >
@@ -332,15 +332,9 @@ export function PricingPreview() {
               ))}
             </ul>
 
-            {/* 유료 플랜: 월 자동 결제 안내 */}
-            {plan.key !== "free" ? (
-              <p
-                className={cn(
-                  "mt-3 text-[10px]",
-                  plan.tone === "enterprise" ? "text-zinc-500" : "text-stone-400 dark:text-zinc-600",
-                )}
-              >
-                매월 자동 결제 · 언제든지 해지 가능
+            {plan.key !== "free" && plan.key !== "salon" ? (
+              <p className="mt-3 text-[10px] text-stone-400 dark:text-zinc-600">
+                매월 자동 결제 · 언제든 해지 가능
               </p>
             ) : null}
 

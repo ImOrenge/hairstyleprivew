@@ -22,6 +22,17 @@ interface LeadRow {
   last_contacted_at: string | null;
   created_at: string;
   updated_at: string;
+  plan_interest: string | null;
+  region: string | null;
+  shop_count: number | null;
+  seat_count: number | null;
+  monthly_clients: number | null;
+  current_tools: string | null;
+  desired_timeline: string | null;
+  budget_range: string | null;
+  source_page: string | null;
+  webhook_delivered: boolean;
+  webhook_error: string | null;
 }
 
 function escapeSearchValue(value: string) {
@@ -60,7 +71,7 @@ export async function GET(request: Request) {
   let query = context.supabase
     .from("b2b_leads")
     .select(
-      "id,company_name,contact_name,email,phone,message,stage,source,owner_admin_user_id,owner_note,last_contacted_at,created_at,updated_at",
+      "id,company_name,contact_name,email,phone,message,stage,source,owner_admin_user_id,owner_note,last_contacted_at,created_at,updated_at,plan_interest,region,shop_count,seat_count,monthly_clients,current_tools,desired_timeline,budget_range,source_page,webhook_delivered,webhook_error",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -68,7 +79,7 @@ export async function GET(request: Request) {
 
   if (q) {
     query = query.or(
-      `company_name.ilike.%${q}%,contact_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,message.ilike.%${q}%`,
+      `company_name.ilike.%${q}%,contact_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%,message.ilike.%${q}%,region.ilike.%${q}%,current_tools.ilike.%${q}%`,
     );
   }
 
