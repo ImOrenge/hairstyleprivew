@@ -35,6 +35,13 @@ type DemoProfile = {
 
 const DEMO_GENDERS: DemoGender[] = ["male", "female"];
 
+const SOCIAL_AVATAR_PLACEHOLDERS = [
+  "from-amber-300 via-orange-400 to-rose-400",
+  "from-sky-300 via-cyan-400 to-emerald-400",
+  "from-violet-300 via-fuchsia-400 to-pink-400",
+  "from-lime-300 via-green-400 to-teal-400",
+];
+
 const DEMO_PROFILES: Record<DemoGender, DemoProfile> = {
   male: {
     labelKey: "hero.gender.male",
@@ -187,6 +194,11 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
   const [activeDemoGender, setActiveDemoGender] = useState<DemoGender>("male");
   const titleLines = t("hero.title").split("\n");
   const activeDemo = DEMO_PROFILES[activeDemoGender];
+  const visibleAvatars = avatars.slice(0, 4);
+  const visibleAvatarSlots = Math.min(4, Math.max(userCount, visibleAvatars.length));
+  const placeholderAvatarCount = Math.max(0, visibleAvatarSlots - visibleAvatars.length);
+  const hiddenUserCount = Math.max(0, userCount - visibleAvatars.length - placeholderAvatarCount);
+  const avatarStackCount = visibleAvatars.length + placeholderAvatarCount + (hiddenUserCount > 0 ? 1 : 0);
 
   const workflowSteps = [
     { icon: Camera, label: t("hero.workflow.upload"), detail: t("hero.workflow.uploadDetail") },
@@ -228,12 +240,12 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
 
           {userCount > 0 && (
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <div className="flex gap-1.5 overflow-hidden">
-                {avatars.map((url, i) => (
+              <div className="flex -space-x-3 overflow-visible pl-1">
+                {visibleAvatars.map((url, i) => (
                   <div
                     key={`${url}-${i}`}
-                    className="relative inline-block h-10 w-10 overflow-hidden rounded-full border-2 border-stone-950 bg-zinc-800 shadow-xl transition-transform hover:scale-110"
-                    style={{ zIndex: avatars.length - i }}
+                    className="relative inline-block h-10 w-10 overflow-hidden rounded-full border-2 border-stone-950 bg-zinc-800 shadow-xl ring-1 ring-white/20 transition-transform hover:z-20 hover:scale-110"
+                    style={{ zIndex: avatarStackCount - i }}
                   >
                     <Image
                       src={url}
@@ -244,9 +256,23 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                     />
                   </div>
                 ))}
-                {userCount > avatars.length && (
-                  <div className="relative flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-950 bg-zinc-800 text-[10px] font-bold text-zinc-300 shadow-xl">
-                    +{userCount - avatars.length}
+                {Array.from({ length: placeholderAvatarCount }).map((_, i) => {
+                  const gradient = SOCIAL_AVATAR_PLACEHOLDERS[i % SOCIAL_AVATAR_PLACEHOLDERS.length];
+                  const zIndex = avatarStackCount - visibleAvatars.length - i;
+
+                  return (
+                    <div
+                      key={`placeholder-${i}`}
+                      className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-950 bg-gradient-to-br ${gradient} text-[11px] font-black text-white shadow-xl ring-1 ring-white/20 transition-transform hover:scale-110`}
+                      style={{ zIndex }}
+                    >
+                      HF
+                    </div>
+                  );
+                })}
+                {hiddenUserCount > 0 && (
+                  <div className="relative flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-950 bg-zinc-800 text-[10px] font-bold text-zinc-300 shadow-xl ring-1 ring-white/20">
+                    +{hiddenUserCount}
                   </div>
                 )}
               </div>

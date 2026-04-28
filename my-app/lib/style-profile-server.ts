@@ -53,11 +53,18 @@ export async function ensureCurrentUserProfile(userId: string, supabase: ServerS
     user?.username?.trim() ??
     null;
 
-  return supabase.rpc("ensure_user_profile", {
+  const result = await supabase.rpc("ensure_user_profile", {
     p_user_id: userId,
     p_email: email,
     p_display_name: displayName,
   });
+
+  const avatarUrl = user?.imageUrl?.trim();
+  if (!result.error && avatarUrl && !avatarUrl.includes("default-user-icon")) {
+    await supabase.from("users").update({ avatar_url: avatarUrl }).eq("id", userId);
+  }
+
+  return result;
 }
 
 function stringOrNull(value: unknown): string | null {
