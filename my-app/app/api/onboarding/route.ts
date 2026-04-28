@@ -5,6 +5,7 @@ import { ensureCurrentUserProfile, type ServerSupabaseLike } from "../../../lib/
 import { getSupabaseAdminClient } from "../../../lib/supabase";
 import {
   isAccountType,
+  isOnboardingAccountType,
   isMemberStyleTarget,
   isMemberStyleTone,
   normalizeAppPath,
@@ -108,7 +109,8 @@ export async function GET() {
     }
 
     const accountType = isAccountType(userRow?.account_type) ? userRow.account_type : null;
-    const onboardingComplete = Boolean(userRow?.onboarding_completed_at && accountType);
+    const onboardingComplete =
+      accountType === "admin" || Boolean(userRow?.onboarding_completed_at && accountType);
 
     if (onboardingComplete && accountType) {
       await syncClerkOnboardingMetadata(userId, accountType);
@@ -151,7 +153,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as OnboardingRequestBody;
-  const accountType = isAccountType(body.accountType) ? body.accountType : null;
+  const accountType = isOnboardingAccountType(body.accountType) ? body.accountType : null;
   if (!accountType) {
     return NextResponse.json({ error: "accountType is invalid" }, { status: 400 });
   }

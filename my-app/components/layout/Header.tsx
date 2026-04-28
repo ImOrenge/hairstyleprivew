@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useT } from "../../lib/i18n/useT";
+import { AdminNavLink } from "./AdminNavLink";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ThemeToggle } from "./ThemeToggle";
 import { HeaderAuthSlot } from "./HeaderAuthSlot";
@@ -37,6 +38,7 @@ export function Header() {
           <Link href="/salon/customers" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
             Salon CRM
           </Link>
+          <AdminNavLink />
 
           <div className="flex shrink-0 items-center gap-2">
             <HeaderAuthSlot />

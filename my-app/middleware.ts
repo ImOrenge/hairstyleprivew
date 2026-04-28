@@ -6,6 +6,7 @@ import { buildOnboardingRedirectUrl, normalizeAppPath, parseOnboardingMetadata }
 const { canUseClerkServer: hasClerkConfig } = getClerkConfigState();
 const isProtectedRoute = createRouteMatcher([
   "/onboarding(.*)",
+  "/admin(.*)",
   "/upload(.*)",
   "/generate(.*)",
   "/mypage(.*)",
@@ -18,6 +19,9 @@ const isProtectedRoute = createRouteMatcher([
 const isWebhookRoute = createRouteMatcher(["/api/payments/webhook"]);
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isOnboardingApiRoute = createRouteMatcher(["/api/onboarding(.*)"]);
+const isAdminPageRoute = createRouteMatcher(["/admin(.*)"]);
+const isAdminApiRoute = createRouteMatcher(["/api/admin(.*)"]);
+const isCatalogSecretAdminApiRoute = createRouteMatcher(["/api/admin/hairstyles(.*)"]);
 const isSalonRoute = createRouteMatcher(["/salon(.*)"]);
 const isMyPageRoute = createRouteMatcher(["/mypage"]);
 
@@ -38,9 +42,12 @@ const middleware = hasClerkConfig
       const user = await client.users.getUser(userId);
       const metadata = parseOnboardingMetadata(user.publicMetadata);
       const onboardingAllowed = isOnboardingRoute(req) || isOnboardingApiRoute(req);
+      const adminPageRequest = isAdminPageRoute(req);
+      const adminApiRequest = isAdminApiRoute(req) && !isCatalogSecretAdminApiRoute(req);
+      const adminRestrictedRequest = adminPageRequest || adminApiRequest;
 
       if (!metadata.onboardingComplete || !metadata.accountType) {
-        if (onboardingAllowed) {
+        if (onboardingAllowed || adminRestrictedRequest) {
           return NextResponse.next();
         }
 
@@ -50,6 +57,14 @@ const middleware = hasClerkConfig
       if (isOnboardingRoute(req)) {
         const redirectTo = normalizeAppPath(req.nextUrl.searchParams.get("return_url"), "/mypage");
         return NextResponse.redirect(new URL(redirectTo, req.url));
+      }
+
+      if (adminRestrictedRequest && metadata.accountType !== "admin") {
+        if (adminApiRequest) {
+          return NextResponse.json({ error: "Admin account required" }, { status: 403 });
+        }
+
+        return NextResponse.redirect(new URL("/mypage", req.url));
       }
 
       if (isSalonRoute(req) && metadata.accountType !== "salon_owner") {
