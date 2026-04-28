@@ -1,25 +1,50 @@
 "use client";
 
-import { ClerkProvider } from "@clerk/nextjs";
-import { ClerkAuthButtons } from "./ClerkAuthButtons";
-
-function getPublishableKey() {
-  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-  return typeof key === "string" && key.trim() ? key.trim() : null;
-}
+import Link from "next/link";
+import type { MouseEventHandler } from "react";
+import { useClerkAvailable } from "../providers/ClerkAvailabilityProvider";
+import { AuthLinks, ClerkAuthButtons, MobileClerkAuthButtons, MobileClerkSignupMenuLink } from "./ClerkAuthButtons";
+import { loginButtonClassName } from "./authButtonStyles";
 
 export function HeaderAuthSlot() {
-  const publishableKey = getPublishableKey();
-  const isLiveKeyOnLocalDev =
-    process.env.NODE_ENV !== "production" && publishableKey?.startsWith("pk_live_");
+  const hasClerkProvider = useClerkAvailable();
 
-  if (!publishableKey || isLiveKeyOnLocalDev) {
-    return <ClerkAuthButtons />;
+  if (!hasClerkProvider) {
+    return <AuthLinks />;
   }
 
-  return (
-    <ClerkProvider publishableKey={publishableKey}>
-      <ClerkAuthButtons />
-    </ClerkProvider>
-  );
+  return <ClerkAuthButtons />;
+}
+
+export function MobileHeaderAuthSlot() {
+  const hasClerkProvider = useClerkAvailable();
+
+  if (!hasClerkProvider) {
+    return (
+      <Link href="/login" className={loginButtonClassName}>
+        로그인
+      </Link>
+    );
+  }
+
+  return <MobileClerkAuthButtons />;
+}
+
+interface MobileSignupMenuLinkProps {
+  className: string;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
+}
+
+export function MobileSignupMenuLink({ className, onClick }: MobileSignupMenuLinkProps) {
+  const hasClerkProvider = useClerkAvailable();
+
+  if (!hasClerkProvider) {
+    return (
+      <Link href="/signup" onClick={onClick} className={className}>
+        회원가입
+      </Link>
+    );
+  }
+
+  return <MobileClerkSignupMenuLink className={className} onClick={onClick} />;
 }

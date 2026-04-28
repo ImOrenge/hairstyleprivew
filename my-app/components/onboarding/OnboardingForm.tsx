@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "../ui/Button";
 import {
   type AccountType,
+  type OnboardingAccountType,
   type MemberStyleTarget,
   type MemberStyleTone,
 } from "../../lib/onboarding";
@@ -50,7 +51,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<AccountType | null>(null);
+  const [selectedRole, setSelectedRole] = useState<OnboardingAccountType | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const [memberForm, setMemberForm] = useState({
@@ -88,7 +89,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
           return;
         }
 
-        if (data.accountType) {
+        if (data.accountType === "member" || data.accountType === "salon_owner") {
           setSelectedRole(data.accountType);
         }
 

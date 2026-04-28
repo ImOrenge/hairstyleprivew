@@ -1,60 +1,83 @@
 "use client";
 
+import { SignOutButton, useAuth, UserButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { useAuth, UserButton } from "@clerk/nextjs";
+import type { MouseEventHandler } from "react";
 import { useT } from "../../lib/i18n/useT";
 import { loginButtonClassName, signupButtonClassName } from "./authButtonStyles";
 
-/**
- * Handles auth buttons with graceful fallback.
- * - Clerk loading / error → plain link buttons (always visible)
- * - Clerk loaded, signed out → Clerk-powered buttons
- * - Clerk loaded, signed in → UserButton
- */
 export function ClerkAuthButtons() {
-    const t = useT();
-    const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
 
-    // Clerk loaded & user signed in → show avatar
-    if (isLoaded && isSignedIn) {
-        return <UserButton />;
-    }
+  if (isLoaded && isSignedIn) {
+    return <UserButton />;
+  }
 
-    // Clerk loaded & user NOT signed in → go to dedicated auth routes
-    if (isLoaded && !isSignedIn) {
-        return (
-            <>
-                <Link
-                    href="/login"
-                    className={loginButtonClassName}
-                >
-                    {t("nav.login")}
-                </Link>
-                <Link
-                    href="/signup"
-                    className={signupButtonClassName}
-                >
-                    {t("nav.signup")}
-                </Link>
-            </>
-        );
-    }
+  return <AuthLinks />;
+}
 
-    // Clerk NOT loaded (still loading or API error) → plain link fallback
+export function MobileClerkAuthButtons() {
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (isLoaded && isSignedIn) {
     return (
-        <>
-            <Link
-                href="/login"
-                className={loginButtonClassName}
-            >
-                {t("nav.login")}
-            </Link>
-            <Link
-                href="/signup"
-                className={signupButtonClassName}
-            >
-                {t("nav.signup")}
-            </Link>
-        </>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <Link
+          href="/mypage"
+          className="inline-flex min-w-[56px] items-center justify-center rounded-full border border-stone-300 px-3 py-2 text-xs font-semibold text-stone-900 transition hover:bg-stone-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 dark:border-zinc-700 dark:text-white dark:hover:bg-zinc-800"
+        >
+          프로필
+        </Link>
+        <SignOutButton>
+          <button
+            type="button"
+            className="inline-flex min-w-[68px] items-center justify-center rounded-full bg-stone-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 dark:bg-white dark:text-stone-950 dark:hover:bg-zinc-200"
+          >
+            로그아웃
+          </button>
+        </SignOutButton>
+      </div>
     );
+  }
+
+  return (
+    <Link href="/login" className={loginButtonClassName}>
+      로그인
+    </Link>
+  );
+}
+
+interface MobileSignupMenuLinkProps {
+  className: string;
+  onClick?: MouseEventHandler<HTMLAnchorElement>;
+}
+
+export function MobileClerkSignupMenuLink({ className, onClick }: MobileSignupMenuLinkProps) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const t = useT();
+
+  if (isLoaded && isSignedIn) {
+    return null;
+  }
+
+  return (
+    <Link href="/signup" onClick={onClick} className={className}>
+      {t("nav.signup")}
+    </Link>
+  );
+}
+
+export function AuthLinks() {
+  const t = useT();
+
+  return (
+    <>
+      <Link href="/login" className={loginButtonClassName}>
+        {t("nav.login")}
+      </Link>
+      <Link href="/signup" className={signupButtonClassName}>
+        {t("nav.signup")}
+      </Link>
+    </>
+  );
 }

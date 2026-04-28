@@ -14,12 +14,13 @@
     "cf:typegen": "wrangler types"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.37.3",
+    "@clerk/nextjs": "^6.39.2",
     "@google/generative-ai": "^0.24.1",
+    "@portone/browser-sdk": "^0.0.8",
     "@supabase/supabase-js": "^2.95.3",
     "framer-motion": "^12.34.0",
     "lucide-react": "^0.563.0",
-    "next": "16.1.6",
+    "next": "^16.2.4",
     "next-themes": "^0.4.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -29,15 +30,15 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@opennextjs/cloudflare": "^1.16.3",
+    "@opennextjs/cloudflare": "^1.17.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "^16.2.4",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "wrangler": "^4.63.0"
+    "wrangler": "^4.85.0"
   }
 }

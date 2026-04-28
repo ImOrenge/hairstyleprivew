@@ -163,65 +163,76 @@ export function useGenerate() {
         throw new Error("Recommendation response is incomplete.");
       }
 
-      const workingGrid = promptData.recommendations.map(toGeneratedVariant);
+      const generationId = promptData.generationId;
+      const analysis = promptData.analysis;
+      const recommendations = promptData.recommendations;
+
+      const workingGrid = recommendations.map(toGeneratedVariant);
       initializeRecommendationSession({
-        generationId: promptData.generationId,
-        analysisSummary: promptData.analysis,
+        generationId,
+        analysisSummary: analysis,
         recommendationGrid: workingGrid,
       });
 
       setPipelineState("building_grid", "Prepared a 3x3 recommendation grid.");
       setProgress(30);
 
+      const total = recommendations.length;
+      let settledCount = 0;
       let completedCount = 0;
 
-      for (const [index, candidate] of promptData.recommendations.entries()) {
-        if (!candidate.promptArtifactToken) {
-          updateRecommendationVariant(candidate.id, {
-            status: "failed",
-            error: "Missing prompt artifact token.",
-          });
-          continue;
-        }
-
+      for (const candidate of recommendations) {
         updateRecommendationVariant(candidate.id, {
-          status: "generating",
-          error: null,
+          status: candidate.promptArtifactToken ? "generating" : "failed",
+          error: candidate.promptArtifactToken ? null : "Missing prompt artifact token.",
         });
-        setPipelineState("generating_image", `Rendering ${candidate.label} (${index + 1}/9).`);
+      }
+      setPipelineState("generating_image", "Rendering all 9 hairstyle variants in parallel.");
 
-        try {
-          const result = await requestImageGeneration({
-            generationId: promptData.generationId,
-            variantIndex: index,
-            variantId: candidate.id,
-            catalogItemId: candidate.catalogItemId,
-            variantLabel: candidate.label,
-            prompt: candidate.prompt,
-            promptArtifactToken: candidate.promptArtifactToken,
-            imageDataUrl: referenceImageDataUrl,
-          });
-
-          completedCount += 1;
-          updateRecommendationVariant(candidate.id, {
-            status: "completed",
-            outputUrl: result.outputUrl,
-            generatedImagePath: result.generatedImagePath,
-            evaluation: result.evaluation,
-            error: null,
-            generatedAt: new Date().toISOString(),
-          });
-        } catch (error) {
-          updateRecommendationVariant(candidate.id, {
-            status: "failed",
-            error: toErrorMessage(error, "Variant generation failed."),
-          });
+      const generationTasks = recommendations.map((candidate, index) => {
+        if (!candidate.promptArtifactToken) {
+          settledCount += 1;
+          return Promise.resolve(null);
         }
 
-        const percent = Math.round(((index + 1) / promptData.recommendations.length) * 100);
-        setGridGenerationProgress(percent);
-        setProgress(30 + Math.round(percent * 0.6));
-      }
+        return requestImageGeneration({
+          generationId,
+          variantIndex: index,
+          variantId: candidate.id,
+          catalogItemId: candidate.catalogItemId,
+          variantLabel: candidate.label,
+          prompt: candidate.prompt,
+          promptArtifactToken: candidate.promptArtifactToken,
+          imageDataUrl: referenceImageDataUrl,
+        })
+          .then((result) => {
+            completedCount += 1;
+            updateRecommendationVariant(candidate.id, {
+              status: "completed",
+              outputUrl: result.outputUrl,
+              generatedImagePath: result.generatedImagePath,
+              evaluation: result.evaluation,
+              error: null,
+              generatedAt: new Date().toISOString(),
+            });
+            return result;
+          })
+          .catch((error) => {
+            updateRecommendationVariant(candidate.id, {
+              status: "failed",
+              error: toErrorMessage(error, "Variant generation failed."),
+            });
+            return null;
+          })
+          .finally(() => {
+            settledCount += 1;
+            const percent = Math.round((settledCount / total) * 100);
+            setGridGenerationProgress(percent);
+            setProgress(30 + Math.round(percent * 0.6));
+          });
+      });
+
+      await Promise.allSettled(generationTasks);
 
       setPipelineState("finalizing", "Finalizing the recommendation board.");
       setProgress(95);
@@ -234,8 +245,8 @@ export function useGenerate() {
       setProgress(100);
 
       return {
-        generationId: promptData.generationId,
-        analysis: promptData.analysis,
+        generationId,
+        analysis,
       };
     } catch (error) {
       const message = toErrorMessage(error, "The recommendation pipeline failed.");

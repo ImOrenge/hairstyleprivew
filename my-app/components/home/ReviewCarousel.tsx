@@ -1,26 +1,30 @@
 "use client";
 
-import { BarChart3, MessagesSquare, Scissors } from "lucide-react";
 import { useT } from "../../lib/i18n/useT";
+
+const STARS = "★★★★★";
 
 export function ReviewCarousel() {
   const t = useT();
 
-  const scenarios = [
+  const reviews = [
     {
-      icon: Scissors,
-      title: t("reviews.scenario.1.title"),
-      body: t("reviews.scenario.1.body"),
+      author: t("reviews.r1.author"),
+      role: t("reviews.r1.role"),
+      body: t("reviews.r1.body"),
+      result: t("reviews.r1.result"),
     },
     {
-      icon: MessagesSquare,
-      title: t("reviews.scenario.2.title"),
-      body: t("reviews.scenario.2.body"),
+      author: t("reviews.r2.author"),
+      role: t("reviews.r2.role"),
+      body: t("reviews.r2.body"),
+      result: t("reviews.r2.result"),
     },
     {
-      icon: BarChart3,
-      title: t("reviews.scenario.3.title"),
-      body: t("reviews.scenario.3.body"),
+      author: t("reviews.r3.author"),
+      role: t("reviews.r3.role"),
+      body: t("reviews.r3.body"),
+      result: t("reviews.r3.result"),
     },
   ];
 
@@ -32,44 +36,40 @@ export function ReviewCarousel() {
 
   return (
     <section className="rounded-3xl border border-stone-200/60 bg-stone-950 p-6 text-white shadow-xl transition-colors dark:border-zinc-800/60 sm:p-8">
-      <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">{t("reviews.badge")}</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t("reviews.title")}</h2>
-          <p className="mt-3 text-sm leading-6 text-stone-300">{t("reviews.subtitle")}</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">{t("reviews.badge")}</p>
+      <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t("reviews.title")}</h2>
+      <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-300">{t("reviews.subtitle")}</p>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            {metrics.map((metric) => (
-              <div key={metric.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-                <p className="text-2xl font-black">{metric.value}</p>
-                <p className="mt-1 text-xs font-semibold text-stone-300">{metric.label}</p>
+      {/* 실제 후기 카드 */}
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        {reviews.map((review) => (
+          <article
+            key={review.author}
+            className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-5"
+          >
+            <p className="text-sm text-amber-300" aria-label="별점 5점">{STARS}</p>
+            <p className="flex-1 text-sm leading-6 text-stone-200">&quot;{review.body}&quot;</p>
+            <div className="flex items-end justify-between gap-2">
+              <div>
+                <p className="text-sm font-bold text-white">{review.author}</p>
+                <p className="text-xs text-stone-400">{review.role}</p>
               </div>
-            ))}
-          </div>
-        </div>
+              <span className="shrink-0 rounded-full bg-amber-400/15 px-2.5 py-1 text-xs font-semibold text-amber-300">
+                {review.result}
+              </span>
+            </div>
+          </article>
+        ))}
+      </div>
 
-        <div className="grid gap-3">
-          {scenarios.map((scenario, index) => {
-            const Icon = scenario.icon;
-            return (
-              <article
-                key={scenario.title}
-                className="grid gap-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4 sm:grid-cols-[auto_1fr]"
-              >
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-400 text-stone-950">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-stone-500">
-                    {String(index + 1).padStart(2, "0")}
-                  </p>
-                  <h3 className="mt-1 text-base font-bold">{scenario.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-stone-300">{scenario.body}</p>
-                </div>
-              </article>
-            );
-          })}
-        </div>
+      {/* 제품 지표 */}
+      <div className="mt-6 grid grid-cols-3 gap-3">
+        {metrics.map((metric) => (
+          <div key={metric.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-center">
+            <p className="text-2xl font-black">{metric.value}</p>
+            <p className="mt-1 text-xs font-semibold text-stone-300">{metric.label}</p>
+          </div>
+        ))}
       </div>
     </section>
   );

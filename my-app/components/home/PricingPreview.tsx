@@ -6,18 +6,32 @@ import { cn } from "../../lib/utils";
 import { useT } from "../../lib/i18n/useT";
 
 type PlanKey = PricingTierKey;
+type PaidPlanKey = Exclude<PlanKey, "free">;
 
-interface CheckoutResponseBody {
-  checkoutUrl?: string;
+interface SubscribeResponseBody {
+  subscriptionId?: string;
+  plan?: string;
+  credits?: number;
+  periodEnd?: string;
   error?: string;
+}
+
+// PortOne 빌링키 발급 응답 타입 (런타임 동적 import)
+interface PortOneBillingKeyResponse {
+  billingKey?: string;
+  code?: string;
+  message?: string;
 }
 
 export function PricingPreview() {
   const t = useT();
-  const [pendingPlan, setPendingPlan] = useState<PlanKey | null>(null);
+  const [pendingPlan, setPendingPlan] = useState<PaidPlanKey | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const economics = getPricingEconomics();
   const suggestedTiers = getSuggestedPricingTiers();
-  const tierByKey = new Map<string, (typeof suggestedTiers)[number]>(suggestedTiers.map((tier) => [tier.key, tier]));
+  const tierByKey = new Map<string, (typeof suggestedTiers)[number]>(
+    suggestedTiers.map((tier) => [tier.key, tier]),
+  );
 
   const planBlueprint = [
     {
@@ -32,13 +46,30 @@ export function PricingPreview() {
       recommended: false,
     },
     {
-      key: "starter",
-      name: "Starter",
-      subtitle: t("pricing.starter.subtitle"),
-      description: t("pricing.starter.desc"),
-      period: t("pricing.packLabel"),
-      features: [t("pricing.starter.f1"), t("pricing.starter.f2"), t("pricing.starter.f3"), t("pricing.starter.f4")],
-      cta: t("pricing.starter.cta"),
+      key: "basic",
+      name: "Basic",
+      subtitle: t("pricing.basic.subtitle"),
+      description: t("pricing.basic.desc"),
+      period: "/월",
+      features: [t("pricing.basic.f1"), t("pricing.basic.f2"), t("pricing.basic.f3"), t("pricing.basic.f4")],
+      cta: t("pricing.basic.cta"),
+      tone: "basic" as const,
+      recommended: false,
+    },
+    {
+      key: "standard",
+      name: "Standard",
+      subtitle: t("pricing.standard.subtitle"),
+      description: t("pricing.standard.desc"),
+      period: "/월",
+      features: [
+        t("pricing.standard.f1"),
+        t("pricing.standard.f2"),
+        t("pricing.standard.f3"),
+        t("pricing.standard.f4"),
+        t("pricing.standard.f5"),
+      ],
+      cta: t("pricing.standard.cta"),
       tone: "recommended" as const,
       recommended: true,
     },
@@ -47,10 +78,33 @@ export function PricingPreview() {
       name: "Pro",
       subtitle: t("pricing.pro.subtitle"),
       description: t("pricing.pro.desc"),
-      period: t("pricing.packLabel"),
-      features: [t("pricing.pro.f1"), t("pricing.pro.f2"), t("pricing.pro.f3"), t("pricing.pro.f4")],
+      period: "/월",
+      features: [
+        t("pricing.pro.f1"),
+        t("pricing.pro.f2"),
+        t("pricing.pro.f3"),
+        t("pricing.pro.f4"),
+        t("pricing.pro.f5"),
+      ],
       cta: t("pricing.pro.cta"),
       tone: "premium" as const,
+      recommended: false,
+    },
+    {
+      key: "salon",
+      name: "Salon",
+      subtitle: t("pricing.salon.subtitle"),
+      description: t("pricing.salon.desc"),
+      period: "/월",
+      features: [
+        t("pricing.salon.f1"),
+        t("pricing.salon.f2"),
+        t("pricing.salon.f3"),
+        t("pricing.salon.f4"),
+        t("pricing.salon.f5"),
+      ],
+      cta: t("pricing.salon.cta"),
+      tone: "enterprise" as const,
       recommended: false,
     },
   ];
@@ -58,13 +112,8 @@ export function PricingPreview() {
   const plans = planBlueprint.map((plan) => {
     const tier = tierByKey.get(plan.key);
     if (!tier) {
-      return {
-        ...plan,
-        price: "₩0",
-        credits: t("pricing.noCredits"),
-      };
+      return { ...plan, price: "₩0", credits: t("pricing.noCredits") };
     }
-
     return {
       ...plan,
       price: tier.priceLabel,
@@ -72,106 +121,210 @@ export function PricingPreview() {
     };
   });
 
-  const startCheckout = async (planKey: Exclude<PlanKey, "free">) => {
+  // ─── PortOne 빌링키 발급 → 구독 API 호출 ────────────────────────────
+
+  const startSubscription = async (planKey: PaidPlanKey) => {
     setPendingPlan(planKey);
+    setStatusMsg(null);
 
     try {
-      const response = await fetch("/api/payments/checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // 동적 import: SSR에서 PortOne SDK 로드 방지
+      const PortOne = (
+        await import("@portone/browser-sdk/v2").catch(() => null)
+      )?.default;
+
+      if (!PortOne) {
+        throw new Error("PortOne SDK를 불러올 수 없습니다. 잠시 후 다시 시도해주세요.");
+      }
+
+      const storeId = process.env.NEXT_PUBLIC_PORTONE_V2_STORE_ID;
+      const channelKey = process.env.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY;
+
+      if (!storeId || !channelKey) {
+        throw new Error("결제 설정이 완료되지 않았습니다.");
+      }
+
+      // 1. PortOne 빌링키 발급
+      const issueResult = (await PortOne.requestIssueBillingKey({
+        storeId,
+        channelKey,
+        billingKeyMethod: "CARD",
+        issueId: `issue-${planKey}-${Date.now()}`,
+        issueName: `HariStyle ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} 월 구독`,
+        customer: {
+          // 고객 ID는 서버에서 JWT로 확인하므로 여기서는 임시값
+          customerId: `web-${Date.now()}`,
         },
-        body: JSON.stringify({ plan: planKey }),
+      })) as PortOneBillingKeyResponse;
+
+      if (!issueResult?.billingKey) {
+        // 사용자가 팝업을 닫은 경우
+        if (issueResult?.code === "USER_CANCEL") {
+          setPendingPlan(null);
+          return;
+        }
+        throw new Error(issueResult?.message ?? "빌링키 발급에 실패했습니다.");
+      }
+
+      // 2. 구독 API 호출
+      const response = await fetch("/api/payments/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: planKey,
+          billingKey: issueResult.billingKey,
+        }),
       });
 
-      const result = (await response.json().catch(() => ({}))) as CheckoutResponseBody;
       if (response.status === 401) {
         const returnPath = `${window.location.pathname}${window.location.search}`;
         window.location.assign(`/login?redirect_url=${encodeURIComponent(returnPath)}`);
         return;
       }
 
+      const result = (await response.json().catch(() => ({}))) as SubscribeResponseBody;
+
       if (!response.ok) {
-        throw new Error(result.error || `Checkout request failed (${response.status})`);
+        throw new Error(result.error ?? `구독 처리 실패 (${response.status})`);
       }
 
-      if (!result.checkoutUrl) {
-        throw new Error("Missing checkoutUrl from API response");
-      }
-
-      window.location.assign(result.checkoutUrl);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to start checkout";
-      console.error(`[pricing] ${planKey} checkout failed:`, error);
-      window.alert(message);
+      // 3. 성공 → 마이페이지로 이동
+      window.location.assign(
+        `/mypage?subscribed=${planKey}&credits=${result.credits ?? ""}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "구독 처리 중 오류가 발생했습니다.";
+      console.error(`[pricing] ${planKey} 구독 실패:`, err);
+      setStatusMsg(msg);
     } finally {
       setPendingPlan(null);
     }
   };
 
   const handlePlanClick = (planKey: string) => {
-    if (planKey === "starter" || planKey === "pro") {
-      void startCheckout(planKey);
-      return;
-    }
-
     if (planKey === "free") {
       window.location.assign("/signup");
       return;
     }
+    void startSubscription(planKey as PaidPlanKey);
   };
 
   return (
     <section className="rounded-3xl border border-stone-200/60 bg-white/90 p-6 shadow-xl backdrop-blur transition-colors dark:border-zinc-800/60 dark:bg-zinc-900/40 sm:p-8">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-600 dark:text-amber-500">{t("pricing.badge")}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-600 dark:text-amber-500">
+            {t("pricing.badge")}
+          </p>
           <h2 className="text-2xl font-black tracking-tight text-stone-900 dark:text-white sm:text-3xl">
             {t("pricing.title")}
           </h2>
         </div>
         <p className="text-sm text-stone-600 dark:text-zinc-400">
-          {t("pricing.creditNote", {
-            credits: economics.creditsPerStyle,
-          })}
+          {t("pricing.creditNote", { credits: economics.creditsPerStyle })}
         </p>
       </div>
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3 max-md:max-h-[32rem] max-md:overflow-y-auto max-md:snap-y max-md:snap-mandatory max-md:overscroll-contain max-md:pr-1">
+      {statusMsg ? (
+        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+          {statusMsg}
+        </div>
+      ) : null}
+
+      <div className="mt-6 grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 max-sm:max-h-[32rem] max-sm:overflow-y-auto max-sm:snap-y max-sm:snap-mandatory max-sm:overscroll-contain max-sm:pr-1">
         {plans.map((plan) => (
           <article
             key={plan.name}
             className={cn(
-              "relative flex h-full flex-col rounded-2xl border p-5 transition-colors max-md:min-h-[24rem] max-md:snap-start",
+              "relative flex h-full flex-col rounded-2xl border p-4 transition-colors max-sm:min-h-[22rem] max-sm:snap-start",
               plan.tone === "recommended" &&
-              "border-amber-300 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/10",
-              plan.tone === "premium" && "border-stone-900/10 bg-gradient-to-b from-stone-50 to-white dark:border-zinc-700/30 dark:from-zinc-800/40 dark:to-zinc-900/40",
-              plan.tone === "basic" && "border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/30",
+                "border-amber-300 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/10",
+              plan.tone === "premium" &&
+                "border-stone-900/10 bg-gradient-to-b from-stone-50 to-white dark:border-zinc-700/30 dark:from-zinc-800/40 dark:to-zinc-900/40",
+              plan.tone === "enterprise" &&
+                "border-stone-800/20 bg-gradient-to-b from-stone-900 to-stone-800 dark:border-zinc-600/40 dark:from-zinc-800 dark:to-zinc-900",
+              plan.tone === "basic" &&
+                "border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/30",
             )}
           >
             {plan.recommended ? (
-              <span className="absolute right-4 top-4 rounded-full bg-stone-900 px-3 py-1 text-xs font-semibold text-white dark:bg-white dark:text-stone-900">
+              <span className="absolute right-3 top-3 rounded-full bg-stone-900 px-2.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-stone-900">
                 {t("pricing.mostPopular")}
               </span>
             ) : null}
 
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500 dark:text-zinc-500">{plan.subtitle}</p>
-            <h3 className="mt-2 text-xl font-bold text-stone-900 dark:text-white">{plan.name}</h3>
-            <p className="mt-1 min-h-[3rem] text-sm text-stone-600 dark:text-zinc-400">{plan.description}</p>
+            <p
+              className={cn(
+                "text-[10px] font-semibold uppercase tracking-[0.16em]",
+                plan.tone === "enterprise" ? "text-zinc-400" : "text-stone-500 dark:text-zinc-500",
+              )}
+            >
+              {plan.subtitle}
+            </p>
+            <h3
+              className={cn(
+                "mt-1.5 text-lg font-bold",
+                plan.tone === "enterprise" ? "text-white" : "text-stone-900 dark:text-white",
+              )}
+            >
+              {plan.name}
+            </h3>
+            <p
+              className={cn(
+                "mt-1 min-h-[2.5rem] text-xs leading-relaxed",
+                plan.tone === "enterprise" ? "text-zinc-300" : "text-stone-600 dark:text-zinc-400",
+              )}
+            >
+              {plan.description}
+            </p>
 
-            <div className="mt-5 flex items-end gap-1">
-              <p className="text-3xl font-black tracking-tight text-stone-900 dark:text-white">{plan.price}</p>
-              <p className="pb-1 text-sm text-stone-500 dark:text-zinc-500">{plan.period}</p>
+            <div className="mt-4 flex items-end gap-1">
+              <p
+                className={cn(
+                  "text-2xl font-black tracking-tight",
+                  plan.tone === "enterprise" ? "text-white" : "text-stone-900 dark:text-white",
+                )}
+              >
+                {plan.price}
+              </p>
+              <p
+                className={cn(
+                  "pb-0.5 text-xs",
+                  plan.tone === "enterprise" ? "text-zinc-400" : "text-stone-500 dark:text-zinc-500",
+                )}
+              >
+                {plan.period}
+              </p>
             </div>
 
-            <p className="mt-2 w-fit rounded-full bg-stone-900 px-3 py-1 text-xs font-semibold text-white dark:bg-white dark:text-stone-900">
+            <p
+              className={cn(
+                "mt-2 w-fit rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
+                plan.tone === "enterprise"
+                  ? "bg-white/10 text-white"
+                  : "bg-stone-900 text-white dark:bg-white dark:text-stone-900",
+              )}
+            >
               {plan.credits}
             </p>
 
-            <ul className="mt-4 flex-1 space-y-2 text-sm text-stone-700 dark:text-zinc-300">
+            <ul className="mt-3 flex-1 space-y-1.5">
               {plan.features.map((feature) => (
-                <li key={feature} className="flex items-center gap-2">
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-stone-900 text-[10px] text-white dark:bg-white dark:text-stone-900">
+                <li
+                  key={feature}
+                  className={cn(
+                    "flex items-start gap-1.5 text-xs",
+                    plan.tone === "enterprise" ? "text-zinc-200" : "text-stone-700 dark:text-zinc-300",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[9px]",
+                      plan.tone === "enterprise"
+                        ? "bg-white/15 text-white"
+                        : "bg-stone-900 text-white dark:bg-white dark:text-stone-900",
+                    )}
+                  >
                     ✓
                   </span>
                   {feature}
@@ -179,17 +332,31 @@ export function PricingPreview() {
               ))}
             </ul>
 
+            {/* 유료 플랜: 월 자동 결제 안내 */}
+            {plan.key !== "free" ? (
+              <p
+                className={cn(
+                  "mt-3 text-[10px]",
+                  plan.tone === "enterprise" ? "text-zinc-500" : "text-stone-400 dark:text-zinc-600",
+                )}
+              >
+                매월 자동 결제 · 언제든지 해지 가능
+              </p>
+            ) : null}
+
             <button
               type="button"
               onClick={() => handlePlanClick(plan.key)}
               disabled={pendingPlan === plan.key}
               className={cn(
-                "mt-auto inline-flex w-full items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition",
+                "mt-4 inline-flex w-full items-center justify-center rounded-full px-3 py-2 text-xs font-semibold transition",
                 plan.tone === "recommended"
                   ? "bg-stone-900 text-white hover:bg-stone-700 dark:bg-white dark:text-stone-900 dark:hover:bg-zinc-200"
                   : plan.tone === "premium"
                     ? "bg-stone-800 text-white hover:bg-stone-700 dark:bg-zinc-700 dark:hover:bg-zinc-600"
-                    : "border border-stone-300 bg-white text-stone-900 hover:bg-stone-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700",
+                    : plan.tone === "enterprise"
+                      ? "bg-white text-stone-900 hover:bg-zinc-100"
+                      : "border border-stone-300 bg-white text-stone-900 hover:bg-stone-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700",
                 pendingPlan === plan.key && "cursor-not-allowed opacity-70",
               )}
             >

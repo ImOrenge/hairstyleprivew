@@ -17,6 +17,27 @@ interface StylingGenerateRequest {
   sessionId?: string;
 }
 
+type QueryError = { message: string } | null;
+
+interface LookupQueryResult {
+  data: Record<string, unknown> | null;
+  error: QueryError;
+}
+
+interface FreePlanLookupClient {
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        eq: (column: string, value: string) => {
+          limit: (count: number) => {
+            maybeSingle: () => Promise<LookupQueryResult>;
+          };
+        };
+      };
+    };
+  };
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -59,6 +80,40 @@ function extensionFromMime(mimeType: string) {
   return "png";
 }
 
+async function isFreePlanUser(supabase: ServerSupabaseLike, userId: string) {
+  const lookupClient = supabase as unknown as FreePlanLookupClient;
+  const { data: paidTx, error } = await lookupClient
+    .from("payment_transactions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "paid")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return !paidTx;
+}
+
+async function hasCompletedFashionGeneration(supabase: ServerSupabaseLike, userId: string) {
+  const lookupClient = supabase as unknown as FreePlanLookupClient;
+  const { data: completedSession, error } = await lookupClient
+    .from("styling_sessions")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("status", "completed")
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return Boolean(completedSession);
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
@@ -93,6 +148,17 @@ export async function POST(request: Request) {
   if (existingImagePath && session.status === "completed") {
     const imageUrl = await createSignedUrl(supabase, STYLING_RESULTS_BUCKET, existingImagePath);
     return NextResponse.json({ sessionId, imageUrl, imagePath: existingImagePath }, { status: 200 });
+  }
+
+  const freePlan = await isFreePlanUser(supabase, userId);
+  if (freePlan) {
+    const reachedFashionLimit = await hasCompletedFashionGeneration(supabase, userId);
+    if (reachedFashionLimit) {
+      return NextResponse.json(
+        { error: "무료 플랜은 패션 생성을 1회만 사용할 수 있습니다." },
+        { status: 403 },
+      );
+    }
   }
 
   const { data: profileRow, error: profileError } = await supabase

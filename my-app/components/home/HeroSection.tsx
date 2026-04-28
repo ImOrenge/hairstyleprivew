@@ -3,7 +3,7 @@
 import { CSSProperties, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Camera, CheckCircle2, Grid3X3, Sparkles } from "lucide-react";
+import { ArrowRight, Camera, CheckCircle2, Grid3X3, Shirt, Sparkles } from "lucide-react";
 import { Button } from "../ui/Button";
 import { useT } from "../../lib/i18n/useT";
 import type { TranslationKey } from "../../lib/i18n/locales/ko";
@@ -210,21 +210,18 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
           <p className="mt-4 max-w-xl text-sm leading-6 text-stone-200 sm:text-base">
             {t("hero.subtitle")}
           </p>
-          <p className="mt-3 max-w-xl text-xs font-semibold leading-5 text-stone-400 sm:text-sm">
-            {t("hero.supporting")}
-          </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-              <p className="text-2xl font-black">1</p>
+              <p className="text-2xl font-black">{t("hero.stat.photo.value")}</p>
               <p className="mt-1 text-xs font-semibold text-stone-300">{t("hero.stat.photo")}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-              <p className="text-2xl font-black">3x3</p>
+              <p className="text-2xl font-black">{t("hero.stat.grid.value")}</p>
               <p className="mt-1 text-xs font-semibold text-stone-300">{t("hero.stat.grid")}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-              <p className="text-2xl font-black">AI</p>
+              <p className="text-2xl font-black">{t("hero.stat.analysis.value")}</p>
               <p className="mt-1 text-xs font-semibold text-stone-300">{t("hero.stat.analysis")}</p>
             </div>
           </div>
@@ -267,6 +264,10 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
               </Button>
             </Link>
           </div>
+          <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-stone-400">
+            <Shirt className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+            {t("hero.fashionTeaser")}
+          </p>
         </div>
 
         <div className={styles.demoShell} aria-label={t("hero.demo.aria")}>
@@ -366,7 +367,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
               >
                 <Image
                   src={card.image}
-                  alt=""
+                  alt={`${t(card.titleKey)} ${t(card.bucketKey)} 헤어스타일 AI 미리보기`}
                   fill
                   className={styles.gridCardImage}
                   sizes="(max-width: 720px) 30vw, 150px"
