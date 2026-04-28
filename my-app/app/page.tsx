@@ -2,6 +2,7 @@ import dynamic from "next/dynamic";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Shirt } from "lucide-react";
+import { B2BLeadForm } from "../components/home/B2BLeadForm";
 import { FeatureShowcase } from "../components/home/FeatureShowcase";
 import { FashionDemoShowcase } from "../components/home/FashionDemoShowcase";
 import { HeroSection } from "../components/home/HeroSection";
@@ -284,16 +285,19 @@ export default async function HomePage() {
                 앞머리, 옆볼륨, 길이감처럼 말로 애매한 부분을 이미지로 먼저 보여주면 디자이너와 같은 방향을 더 빨리 잡을 수 있습니다.
               </p>
             </div>
-            <ul className="grid gap-3">
-              {salonUseCases.map((item) => (
-                <li
-                  key={item}
-                  className="rounded-2xl border border-amber-200/80 bg-white/70 px-4 py-3 text-sm font-bold leading-6 shadow-sm dark:border-amber-300/15 dark:bg-black/20"
-                >
-                  {item}
-                </li>
-              ))}
-            </ul>
+            <div className="grid gap-3">
+              <ul className="grid gap-3">
+                {salonUseCases.map((item) => (
+                  <li
+                    key={item}
+                    className="rounded-2xl border border-amber-200/80 bg-white/70 px-4 py-3 text-sm font-bold leading-6 shadow-sm dark:border-amber-300/15 dark:bg-black/20"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <B2BLeadForm />
+            </div>
           </div>
         </section>
 

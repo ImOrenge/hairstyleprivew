@@ -1,8 +1,10 @@
-export const ACCOUNT_TYPES = ["member", "salon_owner"] as const;
+export const ACCOUNT_TYPES = ["member", "salon_owner", "admin"] as const;
+export const ONBOARDING_ACCOUNT_TYPES = ["member", "salon_owner"] as const;
 export const MEMBER_STYLE_TARGETS = ["male", "female", "neutral"] as const;
 export const MEMBER_STYLE_TONES = ["natural", "trendy", "soft", "bold"] as const;
 
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
+export type OnboardingAccountType = (typeof ONBOARDING_ACCOUNT_TYPES)[number];
 export type MemberStyleTarget = (typeof MEMBER_STYLE_TARGETS)[number];
 export type MemberStyleTone = (typeof MEMBER_STYLE_TONES)[number];
 
@@ -14,6 +16,10 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 export function isAccountType(value: unknown): value is AccountType {
   return typeof value === "string" && ACCOUNT_TYPES.includes(value as AccountType);
+}
+
+export function isOnboardingAccountType(value: unknown): value is OnboardingAccountType {
+  return typeof value === "string" && ONBOARDING_ACCOUNT_TYPES.includes(value as OnboardingAccountType);
 }
 
 export function isMemberStyleTarget(value: unknown): value is MemberStyleTarget {

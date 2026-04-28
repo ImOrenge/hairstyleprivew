@@ -48,7 +48,7 @@ export function ReviewCarousel() {
             className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-5"
           >
             <p className="text-sm text-amber-300" aria-label="별점 5점">{STARS}</p>
-            <p className="flex-1 text-sm leading-6 text-stone-200">"{review.body}"</p>
+            <p className="flex-1 text-sm leading-6 text-stone-200">&quot;{review.body}&quot;</p>
             <div className="flex items-end justify-between gap-2">
               <div>
                 <p className="text-sm font-bold text-white">{review.author}</p>
