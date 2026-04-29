@@ -207,93 +207,104 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
   ];
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-stone-200/15 bg-stone-950 p-5 text-white shadow-2xl sm:p-8 lg:p-10">
-      <div className="grid gap-8 lg:grid-cols-[0.92fr_1.08fr] lg:items-center">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">{t("hero.badge")}</p>
-          <h1 className="mt-4 text-3xl font-black leading-tight tracking-tight sm:text-5xl">
-            {titleLines.map((line, i) => (
-              <span key={i}>
-                {i > 0 && <br />}
-                {line}
-              </span>
-            ))}
-          </h1>
-          <p className="mt-4 max-w-xl text-sm leading-6 text-stone-200 sm:text-base">
-            {t("hero.subtitle")}
-          </p>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-              <p className="text-2xl font-black">{t("hero.stat.photo.value")}</p>
-              <p className="mt-1 text-xs font-semibold text-stone-300">{t("hero.stat.photo")}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-              <p className="text-2xl font-black">{t("hero.stat.grid.value")}</p>
-              <p className="mt-1 text-xs font-semibold text-stone-300">{t("hero.stat.grid")}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-              <p className="text-2xl font-black">{t("hero.stat.analysis.value")}</p>
-              <p className="mt-1 text-xs font-semibold text-stone-300">{t("hero.stat.analysis")}</p>
-            </div>
+    <section className="relative overflow-hidden rounded-3xl border border-stone-200/15 bg-stone-950 p-5 text-white shadow-2xl sm:p-6 lg:p-8">
+      <div className="grid gap-6">
+        <div className="grid gap-7 lg:grid-cols-[minmax(0,1.28fr)_minmax(18rem,0.58fr)] lg:items-end xl:gap-8">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">{t("hero.badge")}</p>
+            <h1 className="mt-4 max-w-5xl text-3xl font-black leading-tight tracking-tight sm:text-4xl xl:text-5xl">
+              {titleLines.map((line, i) => (
+                <span key={i}>
+                  {i > 0 && <br />}
+                  {line}
+                </span>
+              ))}
+            </h1>
+            <p className="mt-5 max-w-4xl text-base font-semibold leading-7 text-stone-100 sm:text-lg sm:leading-8">
+              {t("hero.subtitle")}
+            </p>
           </div>
 
-          {userCount > 0 && (
-            <div className="mt-8 flex flex-wrap items-center gap-4">
-              <div className="flex -space-x-3 overflow-visible pl-1">
-                {visibleAvatars.map((url, i) => (
-                  <div
-                    key={`${url}-${i}`}
-                    className="relative inline-block h-10 w-10 overflow-hidden rounded-full border-2 border-stone-950 bg-zinc-800 shadow-xl ring-1 ring-white/20 transition-transform hover:z-20 hover:scale-110"
-                    style={{ zIndex: avatarStackCount - i }}
-                  >
-                    <Image
-                      src={url}
-                      alt="User avatar"
-                      fill
-                      className="object-cover"
-                      sizes="40px"
-                    />
-                  </div>
-                ))}
-                {Array.from({ length: placeholderAvatarCount }).map((_, i) => {
-                  const gradient = SOCIAL_AVATAR_PLACEHOLDERS[i % SOCIAL_AVATAR_PLACEHOLDERS.length];
-                  const zIndex = avatarStackCount - visibleAvatars.length - i;
-
-                  return (
-                    <div
-                      key={`placeholder-${i}`}
-                      className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-950 bg-gradient-to-br ${gradient} text-[11px] font-black text-white shadow-xl ring-1 ring-white/20 transition-transform hover:scale-110`}
-                      style={{ zIndex }}
-                    >
-                      HF
-                    </div>
-                  );
-                })}
-                {hiddenUserCount > 0 && (
-                  <div className="relative flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-950 bg-zinc-800 text-[10px] font-bold text-zinc-300 shadow-xl ring-1 ring-white/20">
-                    +{hiddenUserCount}
-                  </div>
-                )}
+          <div className="grid gap-4 rounded-3xl border border-white/10 bg-white/[0.055] p-4">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
+                <p className="text-xl font-black xl:text-2xl">{t("hero.stat.photo.value")}</p>
+                <p className="mt-1 text-[11px] font-semibold text-stone-300">{t("hero.stat.photo")}</p>
               </div>
-              <p className="text-sm font-bold tracking-tight text-white">
-                {t("hero.socialProof").replace("{{count}}", userCount.toLocaleString())}
-              </p>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
+                <p className="text-xl font-black xl:text-2xl">{t("hero.stat.grid.value")}</p>
+                <p className="mt-1 text-[11px] font-semibold text-stone-300">{t("hero.stat.grid")}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
+                <p className="text-xl font-black xl:text-2xl">{t("hero.stat.analysis.value")}</p>
+                <p className="mt-1 text-[11px] font-semibold text-stone-300">{t("hero.stat.analysis")}</p>
+              </div>
             </div>
-          )}
 
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link href="/upload">
-              <Button className="gap-2 bg-white px-5 py-3 text-zinc-900 hover:bg-zinc-200">
-                {t("hero.cta.start")}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </Link>
+            {userCount > 0 && (
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex -space-x-3 overflow-visible pl-1">
+                  {visibleAvatars.map((url, i) => (
+                    <div
+                      key={`${url}-${i}`}
+                      className="relative inline-block h-10 w-10 overflow-hidden rounded-full border-2 border-stone-950 bg-zinc-800 shadow-xl ring-1 ring-white/20 transition-transform hover:z-20 hover:scale-110"
+                      style={{ zIndex: avatarStackCount - i }}
+                    >
+                      <Image
+                        src={url}
+                        alt="User avatar"
+                        fill
+                        className="object-cover"
+                        sizes="40px"
+                      />
+                    </div>
+                  ))}
+                  {Array.from({ length: placeholderAvatarCount }).map((_, i) => {
+                    const gradient = SOCIAL_AVATAR_PLACEHOLDERS[i % SOCIAL_AVATAR_PLACEHOLDERS.length];
+                    const zIndex = avatarStackCount - visibleAvatars.length - i;
+
+                    return (
+                      <div
+                        key={`placeholder-${i}`}
+                        className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-950 bg-gradient-to-br ${gradient} text-[11px] font-black text-white shadow-xl ring-1 ring-white/20 transition-transform hover:scale-110`}
+                        style={{ zIndex }}
+                      >
+                        HF
+                      </div>
+                    );
+                  })}
+                  {hiddenUserCount > 0 && (
+                    <div className="relative flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-950 bg-zinc-800 text-[10px] font-bold text-zinc-300 shadow-xl ring-1 ring-white/20">
+                      +{hiddenUserCount}
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm font-bold tracking-tight text-white">
+                  {t("hero.socialProof").replace("{{count}}", userCount.toLocaleString())}
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-3">
+              <Link href="/upload">
+                <Button className="gap-2 bg-white px-5 py-3 text-zinc-900 hover:bg-zinc-200">
+                  {t("hero.cta.start")}
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </Link>
+              <Link
+                href="#home-demo"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/10"
+              >
+                {t("hero.cta.demo")}
+                <Grid3X3 className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-400">
+              <Shirt className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+              {t("hero.fashionTeaser")}
+            </p>
           </div>
-          <p className="mt-3 flex items-center gap-1.5 text-xs font-semibold text-stone-400">
-            <Shirt className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
-            {t("hero.fashionTeaser")}
-          </p>
         </div>
 
         <div className={styles.demoShell} aria-label={t("hero.demo.aria")}>
@@ -337,7 +348,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                 fill
                 priority
                 className={styles.photoImage}
-                sizes="(max-width: 1024px) 100vw, 340px"
+                sizes="(max-width: 1024px) 100vw, 360px"
               />
               <div className={styles.scanLine} aria-hidden="true" />
               <div className={styles.analysisCard}>
@@ -380,32 +391,34 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
             </div>
           </div>
 
-          <div className={styles.gridHeader}>
-            <span>{t("hero.demo.gridLabel")}</span>
-            <strong>{t("hero.demo.gridReady")}</strong>
-          </div>
-          <div className={styles.gridBoard}>
-            {activeDemo.cards.map((card, index) => (
-              <article
-                key={`${activeDemoGender}-${card.titleKey}`}
-                className={`${styles.gridCard} ${card.featured ? styles.gridCardFeatured : ""}`}
-                style={{ "--delay": `${index * 0.35}s` } as CSSProperties}
-              >
-                <Image
-                  src={card.image}
-                  alt={`${t(card.titleKey)} ${t(card.bucketKey)} 헤어스타일 AI 미리보기`}
-                  fill
-                  className={styles.gridCardImage}
-                  sizes="(max-width: 720px) 30vw, 150px"
-                />
-                <div className={styles.gridCardOverlay} />
-                <div className={styles.scoreBadge}>{card.score}</div>
-                <div className={styles.cardText}>
-                  <span>{t(card.bucketKey)} / {t(card.fitKey)}</span>
-                  <strong>{t(card.titleKey)}</strong>
-                </div>
-              </article>
-            ))}
+          <div className={styles.gridPanel}>
+            <div className={styles.gridHeader}>
+              <span>{t("hero.demo.gridLabel")}</span>
+              <strong>{t("hero.demo.gridReady")}</strong>
+            </div>
+            <div className={styles.gridBoard}>
+              {activeDemo.cards.map((card, index) => (
+                <article
+                  key={`${activeDemoGender}-${card.titleKey}`}
+                  className={`${styles.gridCard} ${card.featured ? styles.gridCardFeatured : ""}`}
+                  style={{ "--delay": `${index * 0.35}s` } as CSSProperties}
+                >
+                  <Image
+                    src={card.image}
+                    alt={`${t(card.titleKey)} ${t(card.bucketKey)} 헤어스타일 AI 미리보기`}
+                    fill
+                    className={styles.gridCardImage}
+                    sizes="(max-width: 720px) 30vw, (max-width: 1280px) 22vw, 260px"
+                  />
+                  <div className={styles.gridCardOverlay} />
+                  <div className={styles.scoreBadge}>{card.score}</div>
+                  <div className={styles.cardText}>
+                    <span>{t(card.bucketKey)} / {t(card.fitKey)}</span>
+                    <strong>{t(card.titleKey)}</strong>
+                  </div>
+                </article>
+              ))}
+            </div>
           </div>
         </div>
       </div>

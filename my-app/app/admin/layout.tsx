@@ -10,6 +10,7 @@ interface AdminLayoutProps {
 const adminLinks = [
   { href: "/admin/members", label: "회원관리" },
   { href: "/admin/b2b", label: "B2B" },
+  { href: "/admin/inbox", label: "Inbox" },
   { href: "/admin/reviews", label: "리뷰관리" },
   { href: "/admin/stats", label: "통계" },
 ];

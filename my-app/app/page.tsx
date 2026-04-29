@@ -172,7 +172,7 @@ function buildHomeJsonLd() {
         "@type": "Offer",
         price: "0",
         priceCurrency: "KRW",
-        description: "기장별 1개씩 3가지 헤어스타일 후보 미리보기",
+        description: "정면 사진 한 장으로 9가지 헤어 후보를 비교하고 선택한 헤어에 맞춘 패션 코디까지 확인",
       },
     },
     {
@@ -200,14 +200,14 @@ function buildHomeJsonLd() {
       "@type": "WebSite",
       name: structuredDataName,
       url: siteUrl,
-      description: "AI 헤어스타일 미리보기 서비스",
+      description: "AI 헤어스타일 미리보기와 헤어에 맞춘 패션 코디 추천 서비스",
       inLanguage: "ko-KR",
     },
     {
       "@context": "https://schema.org",
       "@type": "HowTo",
-      name: "AI 헤어스타일 미리보기 3단계",
-      description: "정면 사진으로 얼굴형에 맞는 헤어스타일을 AI가 추천하는 방법",
+      name: "AI 헤어스타일 미리보기와 패션 코디 추천 3단계",
+      description: "정면 사진으로 얼굴형에 맞는 헤어스타일을 비교하고 선택한 헤어에 맞춘 패션 코디로 이어가는 방법",
       step: homeWorkflow.map((item, index) => ({
         "@type": "HowToStep",
         position: index + 1,
@@ -250,16 +250,16 @@ function FinalCtaBlock() {
       className="rounded-3xl border border-stone-200/15 bg-stone-950 p-8 text-center text-white shadow-2xl sm:p-12"
     >
       <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
-        지금 내 얼굴로 확인해보세요
+        사진 한 장으로 내 스타일을 시작하세요
       </h2>
       <p className="mt-3 text-sm leading-6 text-stone-300 sm:text-base">
-        정면 사진 한 장이면 충분합니다. 어울리는 스타일을 무료로 먼저 확인해보세요.
+        9가지 헤어 후보를 먼저 비교하고, 선택한 헤어에 맞는 패션 코디까지 이어보세요.
       </p>
       <Link
         href="/upload"
         className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold text-stone-950 transition hover:bg-zinc-100"
       >
-        내 얼굴로 추천 받기
+        무료로 내 스타일 보기
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
     </section>
@@ -273,7 +273,7 @@ function MobileStickyCtaBar() {
         href="/upload"
         className="flex w-full items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-stone-800 dark:bg-white dark:text-stone-950 dark:hover:bg-zinc-100"
       >
-        무료로 시작하기
+        무료로 내 스타일 보기
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
     </div>
@@ -296,7 +296,7 @@ export default async function HomePage() {
         />
 
         {/* 1. Hero */}
-        <div id="home-hero" className="scroll-mt-24">
+        <div id="home-hero" className="-mx-2 scroll-mt-24 sm:-mx-4 lg:-mx-10 xl:-mx-16">
           <HeroSection userCount={userCount} avatars={avatars} />
         </div>
 
@@ -310,10 +310,10 @@ export default async function HomePage() {
               How HairFit Works
             </p>
             <h2 className="mt-3 text-2xl font-black tracking-tight text-stone-950 dark:text-white sm:text-3xl">
-              AI 헤어스타일 미리보기는 3단계면 충분합니다
+              사진 한 장으로 9가지 후보까지
             </h2>
             <p className="mt-3 text-sm leading-6 text-stone-600 dark:text-zinc-300 sm:text-base">
-              검색창에서 남의 사진을 오래 찾기보다, 내 얼굴 사진을 기준으로 어울리는 후보를 먼저 좁히고 상담용 이미지로 저장하세요.
+              업로드, 비교, 저장만 기억하면 됩니다. 패션 추천은 선택한 헤어 이후에 자연스럽게 이어집니다.
             </p>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -330,8 +330,8 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 3. 기능 소개 */}
-        <div className="scroll-mt-24">
+        {/* 3. 헤어+패션 차별점 */}
+        <div id="home-features" className="scroll-mt-24">
           <FeatureShowcase />
         </div>
 
@@ -345,13 +345,13 @@ export default async function HomePage() {
               얼굴형 헤어스타일 추천은 이런 기준으로 비교합니다
             </h2>
             <p className="mt-3 text-sm leading-6 text-stone-600 dark:text-zinc-300">
-              HairFit은 AI 헤어스타일 미리보기 결과를 단순 합성 이미지로 끝내지 않고, 실제 상담에서 설명하기 쉬운 기준으로 정리합니다.
+              HairFit은 AI 헤어스타일 미리보기 결과를 단순 합성 이미지로 끝내지 않고, 패션 코디와 상담 이미지로 이어가기 쉬운 기준으로 정리합니다.
             </p>
             <Link
               href="/upload"
               className="mt-6 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-stone-800 dark:bg-white dark:text-stone-950 dark:hover:bg-zinc-200"
             >
-              내 얼굴로 추천 받아보기
+              사진 한 장으로 시작하기
             </Link>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -367,60 +367,66 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 5. 상담 활용 */}
+        {/* 브리지: 헤어 후보 비교 → 패션 추천으로 이어지기 */}
         <section
-          id="home-salon"
-          className="scroll-mt-24 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-xl transition-colors dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-50 sm:p-8"
+          aria-labelledby="hair-to-fashion-bridge"
+          className="scroll-mt-24 overflow-hidden rounded-3xl border border-stone-200/15 bg-stone-950 p-6 text-white shadow-xl sm:p-8"
         >
-          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">
-                Salon Consultation
+              <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-amber-300">
+                <Shirt className="h-4 w-4" aria-hidden="true" />
+                Hair to Fashion
               </p>
-              <h2 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
-                미용실 상담 이미지는 설명 시간을 줄여줍니다
+              <h2 id="hair-to-fashion-bridge" className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
+                헤어를 고르는 순간, 패션 추천의 기준이 생깁니다
               </h2>
-              <p className="mt-3 text-sm leading-6 text-amber-900/85 dark:text-amber-50/80">
-                앞머리, 옆볼륨, 길이감처럼 말로 애매한 부분을 이미지로 먼저 보여주면 디자이너와 같은 방향을 더 빨리 잡을 수 있습니다.
+              <p className="mt-3 text-sm leading-6 text-stone-300 sm:text-base">
+                같은 옷도 헤어 길이와 볼륨에 따라 목선, 상체 비율, 전체 분위기가 달라집니다. HairFit은 먼저 어울리는 헤어 후보를 좁힌 뒤, 선택한 스타일을 기준으로 데일리·워크·데이트 코디 방향까지 이어줍니다.
               </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link
+                  href="#home-demo"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-stone-950 transition hover:bg-zinc-100"
+                >
+                  패션 추천 예시 보기
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+                <Link
+                  href="/upload"
+                  className="inline-flex items-center rounded-full border border-white/20 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+                >
+                  사진 한 장으로 시작
+                </Link>
+              </div>
             </div>
-            <div className="grid gap-3">
-              <ul className="grid gap-3">
-                {salonUseCases.map((item) => (
-                  <li
-                    key={item}
-                    className="rounded-2xl border border-amber-200/80 bg-white/70 px-4 py-3 text-sm font-bold leading-6 shadow-sm dark:border-amber-300/15 dark:bg-black/20"
-                  >
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              <B2BLeadForm />
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { label: "헤어 라인", body: "짧은 머리와 긴 레이어에 맞춰 목선과 상체 실루엣을 다르게 봅니다." },
+                { label: "무드 연결", body: "깔끔한 데일리, 워크, 데이트처럼 헤어가 주는 분위기를 착장 방향으로 옮깁니다." },
+                { label: "전신 균형", body: "체형 프로필과 상황을 함께 반영해 룩북 이미지로 확인합니다." },
+              ].map((item) => (
+                <article key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+                  <h3 className="text-sm font-black text-white">{item.label}</h3>
+                  <p className="mt-2 text-xs font-semibold leading-5 text-stone-300">{item.body}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* 브리지: 상담 이미지 저장 → 패션 추천으로 이어지기 */}
-        <div className="flex items-center gap-4" aria-hidden="true">
-          <div className="h-px flex-1 bg-stone-200 dark:bg-zinc-800" />
-          <div className="flex items-center gap-2 rounded-full border border-stone-200 bg-white px-5 py-2.5 text-sm font-bold text-stone-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-            <Shirt className="h-4 w-4 text-amber-500" aria-hidden="true" />
-            헤어스타일을 확정하면 — 패션 코디까지
-          </div>
-          <div className="h-px flex-1 bg-stone-200 dark:bg-zinc-800" />
-        </div>
-
-        {/* 6. 패션 데모 (헤어 플로우의 자연스러운 다음 단계) */}
+        {/* 5. 패션 데모 (헤어 플로우의 자연스러운 다음 단계) */}
         <div id="home-demo" className="scroll-mt-24">
           <FashionDemoShowcase />
         </div>
 
-        {/* 7. 가격 */}
+        {/* 6. 가격 */}
         <div id="home-pricing" className="scroll-mt-24">
           <PricingPreview />
         </div>
 
-        {/* 8. FAQ */}
+        {/* 7. FAQ */}
         <section
           id="home-faq"
           className="scroll-mt-24 rounded-3xl border border-stone-200/70 bg-white/95 p-6 shadow-xl transition-colors dark:border-zinc-800/60 dark:bg-zinc-900/50 sm:p-8"
@@ -446,10 +452,43 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* 9. 후기 (실제 후기 + 제품 지표) */}
+        {/* 8. 후기/신뢰 */}
         <div id="home-reviews" className="scroll-mt-24">
           <ReviewCarousel />
         </div>
+
+        {/* 9. 살롱/B2B 보조 전환 */}
+        <section
+          id="home-salon"
+          className="scroll-mt-24 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-xl transition-colors dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-50 sm:p-8"
+        >
+          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">
+                Salon Consultation
+              </p>
+              <h2 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
+                살롱에서도 상담 이미지로 활용할 수 있습니다
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-amber-900/85 dark:text-amber-50/80">
+                HairFit의 9가지 헤어 후보와 패션 코디 흐름은 고객이 원하는 분위기를 이미지로 정리하는 보조 자료로 활용할 수 있습니다.
+              </p>
+            </div>
+            <div className="grid gap-3">
+              <ul className="grid gap-3">
+                {salonUseCases.map((item) => (
+                  <li
+                    key={item}
+                    className="rounded-2xl border border-amber-200/80 bg-white/70 px-4 py-3 text-sm font-bold leading-6 shadow-sm dark:border-amber-300/15 dark:bg-black/20"
+                  >
+                    {item}
+                  </li>
+                ))}
+              </ul>
+              <B2BLeadForm />
+            </div>
+          </div>
+        </section>
 
         {/* 10. 마감 CTA */}
         <FinalCtaBlock />

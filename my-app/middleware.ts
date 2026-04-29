@@ -17,7 +17,10 @@ const isProtectedRoute = createRouteMatcher([
   "/api/(.*)",
 ]);
 
-const isWebhookRoute = createRouteMatcher(["/api/payments/webhook"]);
+const isWebhookRoute = createRouteMatcher([
+  "/api/payments/webhook",
+  "/api/email/inbound/cloudflare",
+]);
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isOnboardingApiRoute = createRouteMatcher(["/api/onboarding(.*)"]);
 const isAdminPageRoute = createRouteMatcher(["/admin(.*)"]);

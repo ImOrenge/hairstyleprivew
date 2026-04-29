@@ -1,7 +1,7 @@
 export const homeSeo = {
-  title: "AI 헤어스타일 미리보기 | 얼굴형 맞춤 9가지 추천 - HairFit",
+  title: "AI 헤어스타일 미리보기 | 얼굴형 맞춤 9가지 추천과 패션 코디 - HairFit",
   description:
-    "정면 사진 한 장으로 내 얼굴형에 맞는 남자·여자 헤어스타일 9가지를 AI가 추천합니다. 짧은 머리부터 긴 머리까지 3x3 보드로 비교하고, 미용실 상담 이미지로 저장해 헤어디자이너에게 정확히 전달하세요.",
+    "정면 사진 한 장으로 내 얼굴형에 맞는 남자·여자 헤어스타일 9가지를 AI가 추천합니다. 짧은 머리부터 긴 머리까지 3x3 보드로 비교하고, 선택한 헤어에 맞춘 패션 코디와 미용실 상담 이미지까지 이어보세요.",
   keywords: [
     "AI 헤어스타일 미리보기",
     "얼굴형 헤어스타일 추천",
@@ -23,39 +23,39 @@ export const homeSeo = {
     "AI 헤어 분석",
     "헤어스타일 AI 추천",
     "온라인 헤어스타일 테스트",
+    "헤어에 맞춘 패션 코디",
+    "AI 패션 코디 추천",
   ],
 };
 
 export const homeWorkflow = [
   {
     step: "01",
-    title: "정면 사진 한 장 업로드",
-    description:
-      "복잡한 설문보다 먼저 얼굴이 잘 보이는 사진을 올립니다. HairFit은 얼굴형과 두상 밸런스를 기준으로 추천 방향을 잡습니다.",
+    title: "사진 업로드",
+    description: "정면 사진 한 장이면 시작됩니다.",
   },
   {
     step: "02",
-    title: "짧은 머리부터 긴 머리까지 비교",
-    description:
-      "숏컷, 미디엄, 롱 스타일을 3x3 보드로 확인해 길이, 볼륨, 앞머리, 얼굴선 변화를 한 번에 비교합니다.",
+    title: "9가지 비교",
+    description: "길이와 볼륨 변화를 한 보드에서 봅니다.",
   },
   {
     step: "03",
-    title: "상담 이미지로 저장 — 패션 추천으로 이어지기",
-    description:
-      "마음에 드는 결과를 저장해 미용실에서 바로 보여주세요. 헤어스타일을 하나 확정하면 체형과 무드에 맞는 패션 코디 추천으로도 자연스럽게 이어집니다.",
+    title: "결과 저장",
+    description: "마음에 드는 헤어를 고르고 다음 추천으로 넘깁니다.",
   },
 ];
 
 export const homeNavItems = [
   { href: "#home-hero", label: "처음", shortLabel: "TOP" },
   { href: "#home-workflow", label: "사용 흐름", shortLabel: "01" },
-  { href: "#home-criteria", label: "추천 기준", shortLabel: "02" },
-  { href: "#home-salon", label: "상담 활용", shortLabel: "03" },
-  { href: "#home-demo", label: "스타일 데모", shortLabel: "04" },
+  { href: "#home-features", label: "차별점", shortLabel: "02" },
+  { href: "#home-criteria", label: "추천 기준", shortLabel: "03" },
+  { href: "#home-demo", label: "패션 코디", shortLabel: "04" },
   { href: "#home-pricing", label: "가격", shortLabel: "05" },
   { href: "#home-faq", label: "FAQ", shortLabel: "06" },
   { href: "#home-reviews", label: "후기", shortLabel: "07" },
+  { href: "#home-salon", label: "살롱 문의", shortLabel: "08" },
 ];
 
 export const recommendationCriteria = [
@@ -78,9 +78,9 @@ export const recommendationCriteria = [
 ];
 
 export const salonUseCases = [
-  "자르기 전 어울리는 길이를 먼저 확인하고 싶은 경우",
-  "펌이나 염색처럼 실패 부담이 큰 변화를 앞둔 경우",
-  "디자이너에게 원하는 볼륨, 앞머리, 얼굴선 보정을 정확히 설명하고 싶은 경우",
+  "고객이 고른 헤어 후보를 상담 이미지로 함께 확인하고 싶은 경우",
+  "펌이나 염색처럼 실패 부담이 큰 변화를 앞두고 참고 이미지를 정리해야 하는 경우",
+  "디자이너가 볼륨, 앞머리, 얼굴선 보정 방향을 더 구체적으로 확인해야 하는 경우",
 ];
 
 export const homeFaqs = [
@@ -98,6 +98,11 @@ export const homeFaqs = [
     question: "얼굴형 헤어스타일 추천 결과를 미용실에서 쓸 수 있나요?",
     answer:
       "마음에 드는 결과 이미지를 저장해 미용실 상담 때 보여줄 수 있습니다. 길이, 볼륨, 분위기를 말로 설명하는 시간을 줄이는 용도에 적합합니다.",
+  },
+  {
+    question: "헤어에 맞춘 패션 코디 추천은 어떻게 이어지나요?",
+    answer:
+      "9가지 헤어 후보 중 하나를 선택하면 체형 프로필과 원하는 상황, 무드를 기준으로 전신 코디 방향과 룩북 이미지를 확인할 수 있습니다.",
   },
   {
     question: "3x3 추천 보드는 무엇인가요?",

@@ -40,7 +40,7 @@ export function ReviewCarousel() {
       <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t("reviews.title")}</h2>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-300">{t("reviews.subtitle")}</p>
 
-      {/* 실제 후기 카드 */}
+      {/* 활용 시나리오 카드 */}
       <div className="mt-6 grid gap-4 lg:grid-cols-3">
         {reviews.map((review) => (
           <article
@@ -62,7 +62,7 @@ export function ReviewCarousel() {
         ))}
       </div>
 
-      {/* 제품 지표 */}
+      {/* 제품 활용 포인트 */}
       <div className="mt-6 grid grid-cols-3 gap-3">
         {metrics.map((metric) => (
           <div key={metric.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-center">

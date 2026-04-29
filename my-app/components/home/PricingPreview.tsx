@@ -59,55 +59,73 @@ export function PricingPreview() {
     {
       key: "free",
       name: "Free",
-      subtitle: "무료 체험",
-      description: "내 얼굴에 어울리는 방향을 먼저 확인하는 입문 플랜입니다.",
-      period: "체험",
-      features: ["3x3 추천 보드 열람", "워터마크 포함 결과 2개", "패션 룩북 1회"],
-      cta: "무료로 시작",
+      subtitle: t("pricing.free.subtitle"),
+      description: t("pricing.free.desc"),
+      period: t("pricing.freePeriod"),
+      features: [t("pricing.free.f1"), t("pricing.free.f2"), t("pricing.free.f3")],
+      cta: t("pricing.free.cta"),
       tone: "basic",
       recommended: false,
     },
     {
       key: "basic",
       name: "Basic",
-      subtitle: "가끔 스타일을 바꾸는 분",
-      description: "다음 미용실 방문 전 상담 이미지를 준비하기 좋습니다.",
-      period: "/월",
-      features: ["워터마크 없는 헤어 결과 6개", "패션 룩북 1회", "상담용 이미지 저장", "크레딧 월 지급"],
-      cta: "Basic 구독",
+      subtitle: t("pricing.basic.subtitle"),
+      description: t("pricing.basic.desc"),
+      period: t("pricing.perMonth"),
+      features: [t("pricing.basic.f1"), t("pricing.basic.f2"), t("pricing.basic.f3"), t("pricing.basic.f4")],
+      cta: t("pricing.basic.cta"),
       tone: "basic",
       recommended: false,
     },
     {
       key: "standard",
       name: "Standard",
-      subtitle: "자주 비교하고 저장하는 분",
-      description: "헤어와 패션 방향을 여러 번 비교하며 고르기 좋습니다.",
-      period: "/월",
-      features: ["워터마크 없는 헤어 결과 16개", "패션 룩북 3회", "결과 히스토리 저장", "우선 추천 플랜"],
-      cta: "Standard 구독",
+      subtitle: t("pricing.standard.subtitle"),
+      description: t("pricing.standard.desc"),
+      period: t("pricing.perMonth"),
+      features: [
+        t("pricing.standard.f1"),
+        t("pricing.standard.f2"),
+        t("pricing.standard.f3"),
+        t("pricing.standard.f4"),
+        t("pricing.standard.f5"),
+      ],
+      cta: t("pricing.standard.cta"),
       tone: "recommended",
       recommended: true,
     },
     {
       key: "pro",
       name: "Pro",
-      subtitle: "헤어와 패션을 깊게 실험하는 분",
-      description: "다양한 스타일 실험과 상담 자료 준비를 안정적으로 지원합니다.",
-      period: "/월",
-      features: ["워터마크 없는 헤어 결과 40개", "패션 룩북 제한 없음", "상담 자료용 결과 관리", "넉넉한 월 크레딧"],
-      cta: "Pro 구독",
+      subtitle: t("pricing.pro.subtitle"),
+      description: t("pricing.pro.desc"),
+      period: t("pricing.perMonth"),
+      features: [
+        t("pricing.pro.f1"),
+        t("pricing.pro.f2"),
+        t("pricing.pro.f3"),
+        t("pricing.pro.f4"),
+        t("pricing.pro.f5"),
+      ],
+      cta: t("pricing.pro.cta"),
       tone: "premium",
       recommended: false,
     },
     {
       key: "salon",
       name: "Salon",
-      subtitle: "살롱 · 디자이너 · B2B",
-      description: "고객 상담 이미지와 기록 관리를 매장 운영 흐름에 맞춰 도입합니다.",
-      period: "맞춤 견적",
-      features: ["고객별 결과 관리", "매장 도입 상담", "팀 사용 규모 협의", "브랜드/운영 요구사항 반영"],
-      cta: "B2B 도입 문의",
+      subtitle: t("pricing.salon.subtitle"),
+      description: t("pricing.salon.desc"),
+      period: t("pricing.salonPeriod"),
+      features: [
+        t("pricing.salon.f1"),
+        t("pricing.salon.f2"),
+        t("pricing.salon.f3"),
+        t("pricing.salon.f4"),
+        t("pricing.salon.f5"),
+      ],
+      cta: t("pricing.salon.cta"),
       tone: "enterprise",
       recommended: false,
     },
@@ -118,15 +136,18 @@ export function PricingPreview() {
     if (!tier || plan.key === "salon") {
       return {
         ...plan,
-        price: plan.key === "salon" ? "문의" : "0원",
-        credits: plan.key === "salon" ? "엔터프라이즈 도입 상담" : "0 크레딧",
+        price: plan.key === "salon" ? t("pricing.salonPrice") : "0원",
+        credits: plan.key === "salon" ? t("pricing.salonCredits") : t("pricing.noCredits"),
       };
     }
 
     return {
       ...plan,
       price: tier.priceLabel,
-      credits: `${tier.credits} 크레딧 · 약 ${tier.estimatedStyles}개 결과`,
+      credits:
+        plan.key === "free"
+          ? t("pricing.freeCredits", { credits: tier.credits, styles: tier.estimatedStyles })
+          : t("pricing.paidCredits", { credits: tier.credits, styles: tier.estimatedStyles }),
     };
   });
 
@@ -197,7 +218,7 @@ export function PricingPreview() {
 
   const handlePlanClick = (planKey: PlanKey) => {
     if (planKey === "free") {
-      window.location.assign("/signup");
+      window.location.assign("/upload");
       return;
     }
 
@@ -217,11 +238,11 @@ export function PricingPreview() {
             {t("pricing.badge")}
           </p>
           <h2 className="text-2xl font-black tracking-tight text-stone-900 dark:text-white sm:text-3xl">
-            필요한 만큼 선택하는 플랜
+            {t("pricing.title")}
           </h2>
         </div>
         <p className="text-sm text-stone-600 dark:text-zinc-400">
-          헤어 결과 1개 생성에 {economics.creditsPerStyle} 크레딧이 사용됩니다.
+          {t("pricing.creditNote", { credits: economics.creditsPerStyle })}
         </p>
       </div>
 
@@ -334,7 +355,7 @@ export function PricingPreview() {
 
             {plan.key !== "free" && plan.key !== "salon" ? (
               <p className="mt-3 text-[10px] text-stone-400 dark:text-zinc-600">
-                매월 자동 결제 · 언제든 해지 가능
+                {t("pricing.recurringNote")}
               </p>
             ) : null}
 

@@ -45,6 +45,7 @@ Optional:
 - `PRICING_PRO_PRICE_KRW` (default: `39000`, Pro Salon Pack 일회성 결제 가격)
 - `RESEND_API_KEY` (optional, payment success email notifications)
 - `RESEND_FROM_EMAIL` (optional, default: `HairFit <onboarding@resend.dev>`)
+- `INBOUND_EMAIL_SECRET` (required for Cloudflare Email Routing Worker -> app webhook)
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (required for B2B inquiry form CAPTCHA)
 - `TURNSTILE_SECRET_KEY` (required for server-side Cloudflare Turnstile validation)
 - `B2B_LEAD_WEBHOOK_URL` (optional, receives B2B lead JSON payloads)
@@ -95,6 +96,7 @@ Set these in Cloudflare Workers/Pages project settings (or Wrangler secrets):
 - `INTERNAL_API_SECRET`
 - `RESEND_API_KEY` (optional)
 - `RESEND_FROM_EMAIL` (optional)
+- `INBOUND_EMAIL_SECRET` (required for inbound support email storage)
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - `TURNSTILE_SECRET_KEY`
 - `B2B_LEAD_WEBHOOK_URL` (optional)
@@ -156,3 +158,18 @@ If the payment transaction ID exists, API should return `200` with `ledgerId`.
 If not, API may return `202` with an ignored reason, which still confirms signature verification path is working.
 
 For local Wrangler preview, copy `.dev.vars.example` to `.dev.vars` and fill values.
+
+## Cloudflare inbound email setup
+
+Resend remains the outbound email provider. Inbound support email is handled by a separate Cloudflare Email Routing Worker in `workers/email-router`.
+
+1. Deploy the app with `INBOUND_EMAIL_SECRET` set.
+2. Set the same secret on the email Worker:
+   `npx wrangler secret put INBOUND_EMAIL_SECRET --config workers/email-router/wrangler.jsonc`
+3. If you want failed app deliveries forwarded, set:
+   `npx wrangler secret put INBOUND_FALLBACK_EMAIL --config workers/email-router/wrangler.jsonc`
+4. Deploy the Worker:
+   `npm run email-worker:deploy`
+5. In Cloudflare Email Routing, onboard `hairfit.beauty`, then create the custom address `support` and route it to the `hairfit-email-router` Worker.
+
+The Worker posts parsed messages to `POST /api/email/inbound/cloudflare`. Admin users can review messages at `/admin/inbox`.
