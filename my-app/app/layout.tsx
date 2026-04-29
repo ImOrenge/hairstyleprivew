@@ -5,6 +5,7 @@ import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 import { AppClerkProvider } from "../components/providers/AppClerkProvider";
 import { LocaleSync } from "../components/layout/LocaleSync";
+import { PointerGlowProvider } from "../components/providers/PointerGlowProvider";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { inter, notoSansKR } from "../lib/fonts";
 import { homeSeo } from "../lib/home-content";
@@ -66,6 +67,7 @@ export default function RootLayout({
             scriptProps={{ "data-cfasync": "false" }}
           >
             <LocaleSync />
+            <PointerGlowProvider />
             <Header />
             <main>{children}</main>
             <Footer />

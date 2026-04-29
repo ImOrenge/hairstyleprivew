@@ -16,6 +16,8 @@
   --app-accent: #a8863a;
   --app-accent-strong: #80621e;
   --app-accent-soft: #eee4cf;
+  --app-glow-color: rgba(168, 134, 58, 0.52);
+  --app-glow-size: 190px;
   --app-ring: rgba(168, 134, 58, 0.38);
   --app-success: #047857;
   --app-success-bg: #e7f4ed;
@@ -62,6 +64,8 @@
   --app-accent: #d0b06a;
   --app-accent-strong: #e4ca8c;
   --app-accent-soft: #2a2418;
+  --app-glow-color: rgba(208, 176, 106, 0.72);
+  --app-glow-size: 220px;
   --app-ring: rgba(208, 176, 106, 0.44);
   --app-success: #34d399;
   --app-success-bg: #052e22;
@@ -288,6 +292,76 @@ textarea::placeholder {
 .app-muted,
 .hf-muted {
   color: var(--app-muted);
+}
+
+:where(
+  .app-panel,
+  .app-panel-muted,
+  .app-card,
+  .app-card-plain,
+  .app-inverse,
+  .app-inverse-card,
+  .app-inverse-card-strong,
+  .hf-panel,
+  .hf-panel-inverse
+) {
+  --glow-x: 50%;
+  --glow-y: 50%;
+  --glow-opacity: 0;
+  position: relative;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  :where(
+    .app-panel,
+    .app-panel-muted,
+    .app-card,
+    .app-card-plain,
+    .app-inverse,
+    .app-inverse-card,
+    .app-inverse-card-strong,
+    .hf-panel,
+    .hf-panel-inverse
+  )::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: 3;
+    border-radius: inherit;
+    padding: 1px;
+    background: radial-gradient(
+      circle var(--app-glow-size) at var(--glow-x) var(--glow-y),
+      var(--app-glow-color),
+      transparent 64%
+    );
+    opacity: var(--glow-opacity);
+    pointer-events: none;
+    transition: opacity 160ms ease;
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(
+    .app-panel,
+    .app-panel-muted,
+    .app-card,
+    .app-card-plain,
+    .app-inverse,
+    .app-inverse-card,
+    .app-inverse-card-strong,
+    .hf-panel,
+    .hf-panel-inverse
+  )::after {
+    display: none;
+  }
 }
 
 .bg-white {
