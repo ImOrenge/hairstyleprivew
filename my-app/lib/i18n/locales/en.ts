@@ -11,11 +11,11 @@ const en: Record<TranslationKey, string> = {
     // Footer
     "footer.privacy": "Privacy Policy",
     "footer.terms": "Terms of Service",
-    "footer.builtWith": "Built with Clerk, Polar, Supabase, and Gemini",
+    "footer.builtWith": "Built with Clerk, PortOne, Supabase, and Gemini",
 
     // Hero
     "hero.badge": "AI Hair + Fashion Styling",
-    "hero.title": "Choose hair on your face,\nthen carry it into fashion",
+    "hero.title": "Preview 9 hairstyles\nfrom one face photo",
     "hero.subtitle": "Upload one front-facing photo to compare 9 hairstyle ideas, then continue into outfit recommendations matched to the hair you choose. The first step is just one photo.",
     "hero.supporting": "Instead of copying a trend photo, start with options that fit your own features and prepare the length, volume, and mood you want to explain with an image.",
     "hero.socialProof": "+ {{count}} USERS",

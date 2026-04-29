@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "polar:webhook:test": "node scripts/send-polar-webhook-test.mjs",
+    "portone:webhook:test": "node scripts/send-portone-webhook-test.mjs",
     "email-worker:dev": "wrangler dev --config workers/email-router/wrangler.jsonc",
     "email-worker:deploy": "wrangler deploy --config workers/email-router/wrangler.jsonc",
     "cf:build": "opennextjs-cloudflare build",
@@ -30,6 +30,7 @@
     "react-dropzone": "^14.4.0",
     "resend": "^6.9.2",
     "sharp": "^0.34.5",
+    "standardwebhooks": "^1.0.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

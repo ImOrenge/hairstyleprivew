@@ -208,11 +208,11 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-stone-200/15 bg-stone-950 p-5 text-white shadow-2xl sm:p-6 lg:p-8">
-      <div className="grid gap-6">
+      <div className="grid gap-7">
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1.28fr)_minmax(18rem,0.58fr)] lg:items-end xl:gap-8">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">{t("hero.badge")}</p>
-            <h1 className="mt-4 max-w-5xl text-3xl font-black leading-tight tracking-tight sm:text-4xl xl:text-5xl">
+            <h1 className="mt-4 max-w-5xl break-keep text-[1.82rem] font-black leading-[1.15] tracking-tight sm:text-4xl xl:text-5xl">
               {titleLines.map((line, i) => (
                 <span key={i}>
                   {i > 0 && <br />}
@@ -225,8 +225,8 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
             </p>
           </div>
 
-          <div className="grid gap-4 rounded-3xl border border-white/10 bg-white/[0.055] p-4">
-            <div className="grid grid-cols-3 gap-2">
+          <div className="grid gap-4 rounded-none border-0 bg-transparent p-0 sm:rounded-3xl sm:border sm:border-white/10 sm:bg-white/[0.055] sm:p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-2">
               <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
                 <p className="text-xl font-black xl:text-2xl">{t("hero.stat.photo.value")}</p>
                 <p className="mt-1 text-[11px] font-semibold text-stone-300">{t("hero.stat.photo")}</p>
@@ -242,7 +242,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
             </div>
 
             {userCount > 0 && (
-              <div className="flex flex-wrap items-center gap-4">
+              <div className="hidden flex-wrap items-center gap-4 sm:flex">
                 <div className="flex -space-x-3 overflow-visible pl-1">
                   {visibleAvatars.map((url, i) => (
                     <div

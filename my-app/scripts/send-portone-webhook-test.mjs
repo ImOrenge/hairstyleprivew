@@ -51,12 +51,28 @@ function randomId(prefix) {
   return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function createWebhook(secret) {
+  try {
+    return new Webhook(secret);
+  } catch {
+    try {
+      return new Webhook(secret, { format: "raw" });
+    } catch (secondError) {
+      const message = secondError instanceof Error ? secondError.message : String(secondError);
+      console.error("Invalid PORTONE_V2_WEBHOOK_SECRET format.");
+      console.error("Use the PortOne V2 webhook signing secret value.");
+      console.error(`Details: ${message}`);
+      process.exit(2);
+    }
+  }
+}
+
 const envPath = resolve(process.cwd(), ".env.local");
 loadEnvFile(envPath);
 
-const webhookSecret = process.env.POLAR_WEBHOOK_SECRET?.trim();
+const webhookSecret = process.env.PORTONE_V2_WEBHOOK_SECRET?.trim();
 if (!webhookSecret) {
-  console.error("Missing POLAR_WEBHOOK_SECRET. Add it to .env.local or env vars.");
+  console.error("Missing PORTONE_V2_WEBHOOK_SECRET. Add it to .env.local or env vars.");
   process.exit(1);
 }
 
@@ -66,46 +82,25 @@ const endpoint = getArg(
   positional.find((arg) => arg.startsWith("http://") || arg.startsWith("https://")) ||
     "http://localhost:3000/api/payments/webhook",
 );
-const paymentTransactionId = getArg(
-  "paymentTxId",
-  positional.find((arg) => /^[0-9a-fA-F-]{36}$/.test(arg)) || "11111111-1111-1111-1111-111111111111",
-);
-const amount = Number.parseInt(getArg("amount", "10000"), 10);
-const currency = (getArg("currency", "KRW") || "KRW").toUpperCase();
-const customerId = getArg("customerId", "cus_test_webhook");
+const paymentId = getArg("paymentId", positional[0] || randomId("payment"));
+const storeId = getArg("storeId", "store_test");
+const transactionId = getArg("transactionId", randomId("tx"));
+const type = getArg("type", "Transaction.Paid");
 
 const event = {
-  type: "order.paid",
+  type,
+  timestamp: new Date().toISOString(),
   data: {
-    id: randomId("ord"),
-    customer_id: customerId,
-    amount: Number.isFinite(amount) ? amount : 10000,
-    currency,
-    metadata: {
-      payment_transaction_id: paymentTransactionId,
-    },
+    paymentId,
+    storeId,
+    transactionId,
   },
 };
 
 const payload = JSON.stringify(event);
 const webhookId = randomId("msg");
 const timestamp = new Date();
-let webhook;
-try {
-  webhook = new Webhook(webhookSecret);
-} catch (error) {
-  try {
-    webhook = new Webhook(webhookSecret, { format: "raw" });
-  } catch (secondError) {
-    const message = secondError instanceof Error ? secondError.message : String(secondError);
-    console.error("Invalid POLAR_WEBHOOK_SECRET format.");
-    console.error("Expected a valid Polar webhook secret value from your dashboard.");
-    console.error(`Details: ${message}`);
-    process.exit(2);
-  }
-}
-
-const signature = webhook.sign(webhookId, timestamp, payload);
+const signature = createWebhook(webhookSecret).sign(webhookId, timestamp, payload);
 
 let response;
 try {
@@ -121,12 +116,12 @@ try {
   });
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`[polar:webhook:test] request failed: ${message}`);
+  console.error(`[portone:webhook:test] request failed: ${message}`);
   process.exit(3);
 }
 
 const body = await response.text();
-console.log(`[polar:webhook:test] status=${response.status}`);
-console.log(`[polar:webhook:test] endpoint=${endpoint}`);
-console.log(`[polar:webhook:test] paymentTxId=${paymentTransactionId}`);
-console.log(`[polar:webhook:test] response=${body}`);
+console.log(`[portone:webhook:test] status=${response.status}`);
+console.log(`[portone:webhook:test] endpoint=${endpoint}`);
+console.log(`[portone:webhook:test] paymentId=${paymentId}`);
+console.log(`[portone:webhook:test] response=${body}`);

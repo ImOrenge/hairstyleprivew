@@ -7,10 +7,10 @@ const ko = {
 
     "footer.privacy": "개인정보처리방침",
     "footer.terms": "이용약관",
-    "footer.builtWith": "Clerk, Polar, Supabase, Gemini로 구축",
+    "footer.builtWith": "Clerk, PortOne, Supabase, Gemini로 구축",
 
     "hero.badge": "AI 헤어 + 패션 스타일링",
-    "hero.title": "내 얼굴로 헤어를 고르고,\n어울리는 패션까지 이어보세요",
+    "hero.title": "내 얼굴 사진 한 장으로\n어울리는 헤어스타일 9가지 미리보기",
     "hero.subtitle": "정면 사진 한 장으로 9가지 헤어 후보를 비교하고, 선택한 헤어에 맞는 패션 코디까지 이어보세요. 첫 단계는 사진 업로드만으로 충분합니다.",
     "hero.supporting": "트렌드 사진을 그대로 복사하기보다 내 특징에 맞는 방향부터 확인하고, 길이와 볼륨, 무드를 이미지로 정리해 상담에 활용하세요.",
     "hero.socialProof": "+ {{count}} USERS",

@@ -257,7 +257,7 @@ function FinalCtaBlock() {
       </p>
       <Link
         href="/upload"
-        className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold text-stone-950 transition hover:bg-zinc-100"
+        className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold !text-stone-950 transition hover:bg-zinc-100"
       >
         무료로 내 스타일 보기
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -271,7 +271,7 @@ function MobileStickyCtaBar() {
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur-sm lg:hidden dark:border-zinc-800 dark:bg-zinc-950/95">
       <Link
         href="/upload"
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-stone-800 dark:bg-white dark:text-stone-950 dark:hover:bg-zinc-100"
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-bold !text-white transition hover:bg-stone-800 dark:bg-white dark:!text-stone-950 dark:hover:bg-zinc-100"
       >
         무료로 내 스타일 보기
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -349,7 +349,7 @@ export default async function HomePage() {
             </p>
             <Link
               href="/upload"
-              className="mt-6 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-bold text-white transition hover:bg-stone-800 dark:bg-white dark:text-stone-950 dark:hover:bg-zinc-200"
+              className="mt-6 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-bold !text-white transition hover:bg-stone-800 dark:bg-white dark:!text-stone-950 dark:hover:bg-zinc-200"
             >
               사진 한 장으로 시작하기
             </Link>
@@ -387,7 +387,7 @@ export default async function HomePage() {
               <div className="mt-5 flex flex-wrap gap-3">
                 <Link
                   href="#home-demo"
-                  className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-stone-950 transition hover:bg-zinc-100"
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold !text-stone-950 transition hover:bg-zinc-100"
                 >
                   패션 추천 예시 보기
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />

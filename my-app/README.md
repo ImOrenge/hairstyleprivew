@@ -28,21 +28,19 @@ Optional:
 - `PROMPT_RESEARCH_MODEL` (default: `PROMPT_LLM_MODEL`, grounded deep-research stage)
 - `PROMPT_DEEP_RESEARCH_GROUNDING` (default: `true`, enables Google Search grounding in deep-research stage)
 - `GEMINI_IMAGE_MODEL` (default: `gemini-3-pro-image-preview`, Nano Banana Pro line)
-- `POLAR_SERVER` (`sandbox` or `production`, default: `production`)
-- `POLAR_PRODUCT_ID_STARTER` (Starter checkout에 사용할 Polar Product ID)
-- `POLAR_PRODUCT_ID_PRO` (Pro checkout에 사용할 Polar Product ID)
-- `POLAR_SUCCESS_URL` (optional, checkout 성공 후 리다이렉트 URL)
-- `PRICING_STYLE_COST_USD` (default: `0.16`, style 1회 원가 가정)
-- `PRICING_TARGET_MARGIN` (default: `0.4`, 목표 마진율)
-- `PRICING_CREDITS_PER_STYLE` (default: `5`, 스타일 1회당 크레딧 차감값)
-- `PRICING_USD_TO_KRW` (default: `1350`, USD/KRW 환율)
-- `PRICING_SAFETY_MULTIPLIER` (default: `1.06`, 안전 계수)
-- `PRICING_FREE_CREDITS` (default: `10`, 무료 체험 지급 크레딧)
-- `PRICING_FREE_PRICE_KRW` (default: `0`, 무료 체험 표시 가격)
-- `PRICING_STARTER_CREDITS` (default: `60`, Starter Pack 지급 크레딧)
-- `PRICING_STARTER_PRICE_KRW` (default: `9900`, Starter Pack 일회성 결제 가격)
-- `PRICING_PRO_CREDITS` (default: `250`, Pro Salon Pack 지급 크레딧)
-- `PRICING_PRO_PRICE_KRW` (default: `39000`, Pro Salon Pack 일회성 결제 가격)
+- `PORTONE_V2_API_SECRET` (required for PortOne billing key charges)
+- `PORTONE_V2_WEBHOOK_SECRET` (required for PortOne payment webhooks)
+- `PRICING_STYLE_COST_USD` (default: `0.16`, assumed cost per style)
+- `PRICING_TARGET_MARGIN` (default: `0.4`, target margin)
+- `PRICING_CREDITS_PER_STYLE` (default: `5`, credits charged per style)
+- `PRICING_USD_TO_KRW` (default: `1350`, USD/KRW exchange-rate assumption)
+- `PRICING_SAFETY_MULTIPLIER` (default: `1.06`, safety multiplier)
+- `PRICING_FREE_CREDITS` (default: `10`)
+- `PRICING_FREE_PRICE_KRW` (default: `0`)
+- `PRICING_STARTER_CREDITS` (default: `60`)
+- `PRICING_STARTER_PRICE_KRW` (default: `9900`)
+- `PRICING_PRO_CREDITS` (default: `250`)
+- `PRICING_PRO_PRICE_KRW` (default: `39000`)
 - `RESEND_API_KEY` (optional, payment success email notifications)
 - `RESEND_FROM_EMAIL` (optional, default: `HairFit <onboarding@resend.dev>`)
 - `INBOUND_EMAIL_SECRET` (required for Cloudflare Email Routing Worker -> app webhook)
@@ -84,15 +82,15 @@ npm run cf:deploy
 
 ## Cloudflare environment variables
 
-Set these in Cloudflare Workers/Pages project settings (or Wrangler secrets):
+Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `CLERK_SECRET_KEY`
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GOOGLE_API_KEY`
-- `POLAR_ACCESS_TOKEN`
-- `POLAR_WEBHOOK_SECRET`
+- `PORTONE_V2_API_SECRET`
+- `PORTONE_V2_WEBHOOK_SECRET`
 - `INTERNAL_API_SECRET`
 - `RESEND_API_KEY` (optional)
 - `RESEND_FROM_EMAIL` (optional)
@@ -105,57 +103,52 @@ Set these in Cloudflare Workers/Pages project settings (or Wrangler secrets):
 Clerk note:
 - In local development (`http://localhost:*`), use `pk_test_` / `sk_test_` keys.
 - `pk_live_` keys are domain-restricted and will not render Clerk widgets on localhost.
-- `POLAR_SERVER` (optional)
-- `POLAR_PRODUCT_ID_STARTER` (optional if request body sends `productId`)
-- `POLAR_PRODUCT_ID_PRO` (optional if request body sends `productId`)
-- `POLAR_SUCCESS_URL` (optional)
-- `PROMPT_LLM_MODEL` (optional)
-- `PROMPT_RESEARCH_MODEL` (optional)
-- `PROMPT_DEEP_RESEARCH_GROUNDING` (optional)
-- `GEMINI_IMAGE_MODEL` (optional)
-- `PRICING_STYLE_COST_USD` (optional)
-- `PRICING_TARGET_MARGIN` (optional)
-- `PRICING_CREDITS_PER_STYLE` (optional)
-- `PRICING_USD_TO_KRW` (optional)
-- `PRICING_SAFETY_MULTIPLIER` (optional)
-- `PRICING_FREE_CREDITS` (optional)
-- `PRICING_FREE_PRICE_KRW` (optional)
-- `PRICING_STARTER_CREDITS` (optional)
-- `PRICING_STARTER_PRICE_KRW` (optional)
-- `PRICING_PRO_CREDITS` (optional)
-- `PRICING_PRO_PRICE_KRW` (optional)
 
-## Polar payment routes
+Optional pricing and prompt env:
+- `PROMPT_LLM_MODEL`
+- `PROMPT_RESEARCH_MODEL`
+- `PROMPT_DEEP_RESEARCH_GROUNDING`
+- `GEMINI_IMAGE_MODEL`
+- `PRICING_STYLE_COST_USD`
+- `PRICING_TARGET_MARGIN`
+- `PRICING_CREDITS_PER_STYLE`
+- `PRICING_USD_TO_KRW`
+- `PRICING_SAFETY_MULTIPLIER`
+- `PRICING_FREE_CREDITS`
+- `PRICING_FREE_PRICE_KRW`
+- `PRICING_STARTER_CREDITS`
+- `PRICING_STARTER_PRICE_KRW`
+- `PRICING_PRO_CREDITS`
+- `PRICING_PRO_PRICE_KRW`
 
-- `POST /api/payments/checkout`
-  - Creates a pending `payment_transactions` row and returns `checkoutUrl`.
-  - Body example: `{"plan":"starter"}` grants 60 credits for ₩9,900, `{"plan":"pro"}` grants 250 credits for ₩39,000, or use `{"productId":"...","amount":4900,"creditsToGrant":25}` for a custom top-up.
-  - Polar products must be configured as one-time products with prices matching the plan amount in code.
+## PortOne payment routes
+
+- `POST /api/payments/subscribe`
+  - Charges a PortOne billing key, creates or updates the subscription, records `payment_transactions`, and grants credits.
 - `POST /api/payments/webhook`
-  - Verifies Standard Webhook signature headers and processes `order.paid` events.
-  - Updates `payment_transactions` to `paid` and calls `apply_payment_credits` RPC.
-  - Sends payment success email when `RESEND_API_KEY` is configured.
+  - Verifies PortOne V2 Standard Webhooks headers and processes `Transaction.Paid` and `Transaction.Failed`.
+  - Renewal payments advance the subscription period, grant credits, and optionally send renewal email when `RESEND_API_KEY` is configured.
 
-## Polar webhook setup
+## PortOne webhook setup
 
-1. In Polar dashboard, create a webhook endpoint with:
+1. In the PortOne dashboard, create a webhook endpoint with:
    - URL: `https://<your-domain>/api/payments/webhook`
-   - Event: `order.paid`
-2. Copy the webhook signing secret from Polar and set:
-   - `POLAR_WEBHOOK_SECRET=<secret from Polar dashboard>`
+   - Events: `Transaction.Paid`, `Transaction.Failed`
+2. Copy the webhook signing secret from PortOne and set:
+   - `PORTONE_V2_WEBHOOK_SECRET=<secret from PortOne dashboard>`
 3. Ensure runtime env has:
-   - `POLAR_ACCESS_TOKEN`
-   - `POLAR_WEBHOOK_SECRET`
-4. Deploy app, then send a Polar test event.
+   - `PORTONE_V2_API_SECRET`
+   - `PORTONE_V2_WEBHOOK_SECRET`
+4. Deploy app, then send a PortOne test event.
 
-Local signed webhook test (without Polar dashboard):
+Local signed webhook test without the PortOne dashboard:
 
 ```bash
-npm run polar:webhook:test -- --url=http://localhost:3000/api/payments/webhook --paymentTxId=<payment_transaction_id>
+npm run portone:webhook:test -- --url=http://localhost:3000/api/payments/webhook --paymentId=<provider_order_id>
 ```
 
-If the payment transaction ID exists, API should return `200` with `ledgerId`.
-If not, API may return `202` with an ignored reason, which still confirms signature verification path is working.
+If the payment ID exists in `payment_transactions.provider_order_id`, API should return `200`.
+If not, API may return `202` with an ignored reason, which still confirms the signature verification path is working.
 
 For local Wrangler preview, copy `.dev.vars.example` to `.dev.vars` and fill values.
 

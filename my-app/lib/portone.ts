@@ -2,6 +2,8 @@
 // 문서: https://developers.portone.io/api/rest-v2
 // Edge/Cloudflare Workers 호환 (crypto.subtle, fetch 사용)
 
+import { Webhook, WebhookVerificationError } from "standardwebhooks";
+
 const PORTONE_API_BASE = "https://api.portone.io";
 
 // ─── 타입 ─────────────────────────────────────────────────────────────────
@@ -59,15 +61,6 @@ function requireApiSecret(): string {
 
 function authHeader(): Record<string, string> {
   return { Authorization: `PortOne ${requireApiSecret()}` };
-}
-
-function uint8ToBase64(buf: ArrayBuffer): string {
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
 }
 
 function readHeader(
@@ -202,30 +195,44 @@ export async function verifyPortoneWebhook(
   const secret = process.env.PORTONE_V2_WEBHOOK_SECRET?.trim();
   if (!secret) throw new Error("Missing PORTONE_V2_WEBHOOK_SECRET");
 
-  const webhookId = readHeader(headers, "portone-webhook-id");
-  const webhookTimestamp = readHeader(headers, "portone-webhook-timestamp");
-  const webhookSignature = readHeader(headers, "portone-webhook-signature");
+  const webhookId =
+    readHeader(headers, "webhook-id") || readHeader(headers, "portone-webhook-id");
+  const webhookTimestamp =
+    readHeader(headers, "webhook-timestamp") ||
+    readHeader(headers, "portone-webhook-timestamp");
+  const webhookSignature =
+    readHeader(headers, "webhook-signature") ||
+    readHeader(headers, "portone-webhook-signature");
 
   if (!webhookId || !webhookTimestamp || !webhookSignature) {
     throw new Error("PortOne 웹훅 서명 헤더 누락");
   }
 
   // HMAC-SHA256 계산
-  const encoder = new TextEncoder();
-  const message = `${webhookId}.${webhookTimestamp}.${rawBody}`;
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signatureBuffer = await crypto.subtle.sign(
-    "HMAC",
-    cryptoKey,
-    encoder.encode(message),
-  );
-  const expectedSig = `v1,${uint8ToBase64(signatureBuffer)}`;
+  const normalizedHeaders = {
+    "webhook-id": webhookId,
+    "webhook-timestamp": webhookTimestamp,
+    "webhook-signature": webhookSignature,
+  };
+
+  let parsed: unknown;
+  try {
+    parsed = new Webhook(secret).verify(rawBody, normalizedHeaders);
+  } catch (error) {
+    try {
+      parsed = new Webhook(secret, { format: "raw" }).verify(rawBody, normalizedHeaders);
+    } catch (rawError) {
+      const reason =
+        rawError instanceof WebhookVerificationError || rawError instanceof Error
+          ? rawError.message
+          : error instanceof Error
+            ? error.message
+            : "unknown verification error";
+      throw new Error(`Invalid PortOne webhook signature: ${reason}`);
+    }
+  }
+
+  const expectedSig = webhookSignature.split(" ")[0] ?? "";
 
   // 헤더에 여러 서명이 올 수 있음 (공백 구분)
   const signatures = webhookSignature.split(" ").map((s) => s.trim());
@@ -241,7 +248,7 @@ export async function verifyPortoneWebhook(
   if (diffSec > 300) throw new Error("웹훅 타임스탬프 만료 (5분 초과)");
 
   // 페이로드 파싱
-  const parsed = JSON.parse(rawBody) as unknown;
+  parsed = JSON.parse(rawBody) as unknown;
   if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
     throw new Error("웹훅 페이로드 형식 오류");
   }

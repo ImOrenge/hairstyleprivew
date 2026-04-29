@@ -26,7 +26,7 @@
   {
     title: "4. 제3자 서비스 및 데이터 제공",
     items: [
-      "HairFit은 서비스 운영을 위해 Clerk (인증), Supabase (데이터베이스), Google Gemini (AI), Polar (결제) 서비스를 이용할 수 있습니다.",
+      "HairFit은 서비스 운영을 위해 Clerk (인증), Supabase (데이터베이스), Google Gemini (AI), PortOne (결제) 서비스를 이용할 수 있습니다.",
       "이용자의 개인정보를 제3자에게 판매하거나 무단으로 공유하지 않습니다.",
     ],
   },
@@ -87,4 +87,3 @@ export default function PrivacyPolicyPage() {
     </div>
   );
 }
-
