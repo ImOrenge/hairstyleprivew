@@ -2,6 +2,7 @@ import "server-only";
 
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { isDevClerkSalonUserId } from "./clerk";
 import { ensureCurrentUserProfile, type ServerSupabaseLike } from "./style-profile-server";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "./supabase";
 import type {
@@ -186,7 +187,7 @@ export async function getSalonOwnerContext() {
     return { ok: false as const, response: NextResponse.json({ error: error.message }, { status: 500 }) };
   }
 
-  if (data?.account_type !== "salon_owner") {
+  if (data?.account_type !== "salon_owner" && !isDevClerkSalonUserId(userId)) {
     return { ok: false as const, response: NextResponse.json({ error: "Salon owner account required" }, { status: 403 }) };
   }
 

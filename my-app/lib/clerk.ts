@@ -13,6 +13,10 @@ export type ClerkConfigState = {
   issue: ClerkConfigIssue;
 };
 
+function isLocalDevelopment() {
+  return process.env.NODE_ENV !== "production";
+}
+
 function readPublishableKey() {
   const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY;
   if (typeof key !== "string") {
@@ -68,7 +72,7 @@ export function getClerkConfigState(): ClerkConfigState {
   const secretKey = readSecretKey();
   const publishableKeyType = getPublishableKeyType(publishableKey);
   const secretKeyType = getSecretKeyType(secretKey);
-  const isLocalDevelopment = process.env.NODE_ENV !== "production";
+  const localDevelopment = isLocalDevelopment();
 
   const hasValidPublishableKey = Boolean(publishableKeyType) && !isPlaceholder(publishableKey);
   const hasValidSecretKey = Boolean(secretKeyType) && !isPlaceholder(secretKey);
@@ -94,11 +98,35 @@ export function getClerkConfigState(): ClerkConfigState {
     secretKey,
     publishableKeyType,
     secretKeyType,
-    isLocalDevelopment,
+    isLocalDevelopment: localDevelopment,
     canUseClerkFrontend,
     canUseClerkServer,
     issue,
   };
+}
+
+export function getDevClerkSalonUserIds() {
+  if (!isLocalDevelopment()) {
+    return [];
+  }
+
+  const raw = process.env.DEV_CLERK_SALON_USER_IDS?.trim() || process.env.DEV_CLERK_SALON_USER_ID?.trim();
+  if (!raw) {
+    return [];
+  }
+
+  return raw
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+export function isDevClerkSalonUserId(userId: string | null | undefined) {
+  if (!userId) {
+    return false;
+  }
+
+  return getDevClerkSalonUserIds().includes(userId);
 }
 
 export function isClerkConfigured() {

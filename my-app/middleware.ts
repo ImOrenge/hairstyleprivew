@@ -1,6 +1,6 @@
 import { clerkClient, clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
-import { buildSignInRedirectUrl, getClerkConfigState } from "./lib/clerk";
+import { buildSignInRedirectUrl, getClerkConfigState, isDevClerkSalonUserId } from "./lib/clerk";
 import { buildOnboardingRedirectUrl, normalizeAppPath, parseOnboardingMetadata } from "./lib/onboarding";
 
 const { canUseClerkServer: hasClerkConfig } = getClerkConfigState();
@@ -55,12 +55,15 @@ const clerkProtectedMiddleware = hasClerkConfig
       const client = await clerkClient();
       const user = await client.users.getUser(userId);
       const metadata = parseOnboardingMetadata(user.publicMetadata);
+      const isDevSalonOwner = isDevClerkSalonUserId(userId);
+      const effectiveAccountType = isDevSalonOwner ? "salon_owner" : metadata.accountType;
+      const effectiveOnboardingComplete = isDevSalonOwner || metadata.onboardingComplete;
       const onboardingAllowed = isOnboardingRoute(req) || isOnboardingApiRoute(req);
       const adminPageRequest = isAdminPageRoute(req);
       const adminApiRequest = isAdminApiRoute(req) && !isCatalogSecretAdminApiRoute(req);
       const adminRestrictedRequest = adminPageRequest || adminApiRequest;
 
-      if (!metadata.onboardingComplete || !metadata.accountType) {
+      if (!effectiveOnboardingComplete || !effectiveAccountType) {
         if (onboardingAllowed) {
           return NextResponse.next();
         }
@@ -77,11 +80,14 @@ const clerkProtectedMiddleware = hasClerkConfig
       }
 
       if (isOnboardingRoute(req)) {
-        const redirectTo = normalizeAppPath(req.nextUrl.searchParams.get("return_url"), "/mypage");
+        const redirectTo = normalizeAppPath(
+          req.nextUrl.searchParams.get("return_url"),
+          effectiveAccountType === "salon_owner" ? "/salon/customers" : "/mypage",
+        );
         return NextResponse.redirect(new URL(redirectTo, req.url));
       }
 
-      if (adminRestrictedRequest && metadata.accountType !== "admin") {
+      if (adminRestrictedRequest && effectiveAccountType !== "admin") {
         if (adminApiRequest) {
           return NextResponse.json({ error: "Admin account required" }, { status: 403 });
         }
@@ -89,11 +95,11 @@ const clerkProtectedMiddleware = hasClerkConfig
         return NextResponse.redirect(new URL("/mypage", req.url));
       }
 
-      if (isSalonRoute(req) && metadata.accountType !== "salon_owner") {
+      if (isSalonRoute(req) && effectiveAccountType !== "salon_owner") {
         return NextResponse.redirect(new URL("/mypage", req.url));
       }
 
-      if (isMyPageRoute(req) && metadata.accountType === "salon_owner") {
+      if (isMyPageRoute(req) && effectiveAccountType === "salon_owner") {
         return NextResponse.redirect(new URL("/salon/customers", req.url));
       }
     } catch (error) {
