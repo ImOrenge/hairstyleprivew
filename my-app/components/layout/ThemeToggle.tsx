@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { Moon, Sun } from "lucide-react";
@@ -14,19 +14,19 @@ export function ThemeToggle() {
         setMounted(true);
     }, []);
 
-    if (!mounted) return <div className="w-10 h-10" />;
+    if (!mounted) return <div className="h-10 w-10" />;
 
     return (
         <Button
             variant="secondary"
-            className="h-10 w-10 rounded-full bg-white/10 p-0 hover:bg-white/20 dark:bg-zinc-800/50 dark:hover:bg-zinc-700/50"
+            className="h-10 w-10 rounded-[var(--app-radius-control)] bg-[var(--app-surface)] p-0 hover:bg-[var(--app-surface-muted)]"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
             aria-label="Toggle theme"
         >
             {theme === "dark" ? (
-                <Sun className="h-[1.2rem] w-[1.2rem] text-yellow-500 transition-all" />
+                <Sun className="h-[1.2rem] w-[1.2rem] text-[var(--app-accent)] transition-all" />
             ) : (
-                <Moon className="h-[1.2rem] w-[1.2rem] text-slate-700 transition-all" />
+                <Moon className="h-[1.2rem] w-[1.2rem] text-[var(--app-text)] transition-all" />
             )}
         </Button>
     );

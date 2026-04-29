@@ -1,8 +1,9 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import type { ReactNode } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, CalendarDays, CheckCircle2, Clock, ExternalLink, Scissors, Sparkles, TriangleAlert } from "lucide-react";
+import { AppPage, Panel, SurfaceCard } from "../../../components/ui/Surface";
 import type { AftercareGuide, AftercareSectionKey } from "../../../lib/aftercare-guide-generator";
 import { buildSignInRedirectUrl } from "../../../lib/clerk";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../lib/supabase";
@@ -78,13 +79,13 @@ function nextVisitDate(serviceDate: string, days: number) {
 
 function InfoPill({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-white px-4 py-4">
-      <div className="flex items-center gap-2 text-xs font-bold uppercase text-stone-400">
+    <SurfaceCard className="px-4 py-4">
+      <div className="flex items-center gap-2 text-xs font-bold uppercase text-[var(--app-subtle)]">
         {icon}
         {label}
       </div>
-      <p className="mt-2 text-base font-bold text-stone-950">{value}</p>
-    </div>
+      <p className="mt-2 text-base font-bold text-[var(--app-text)]">{value}</p>
+    </SurfaceCard>
   );
 }
 
@@ -129,34 +130,34 @@ export default async function AftercareDetailPage({ params }: Params) {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-16 pt-8 sm:px-6">
+    <AppPage as="main" className="flex max-w-6xl flex-col gap-6 pb-16 pt-8">
       <div>
-        <Link href="/aftercare" className="inline-flex items-center gap-2 text-sm font-semibold text-stone-500 hover:text-stone-900">
+        <Link href="/aftercare" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-muted)] hover:text-[var(--app-text)]">
           <ArrowLeft className="h-4 w-4" />
           에프터케어 목록
         </Link>
       </div>
 
-      <section className="rounded-2xl border border-stone-200 bg-white px-6 py-6 shadow-[0_20px_70px_-48px_rgba(15,23,42,0.35)]">
+      <Panel as="section" className="px-6 py-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-xs font-bold uppercase text-emerald-600">Aftercare Guide</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-stone-950">
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)]">
               {guide.overview.headline || `${record.style_name} 에프터케어`}
             </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-600">{guide.overview.summary}</p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">{guide.overview.summary}</p>
           </div>
           {record.generation_id ? (
             <Link
               href={`/result/${record.generation_id}`}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-stone-900 px-4 text-sm font-bold text-white transition hover:bg-stone-800"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 text-sm font-bold text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
             >
               결과 다시 보기
               <ExternalLink className="h-4 w-4" />
             </Link>
           ) : null}
         </div>
-      </section>
+      </Panel>
 
       <section className="grid gap-4 md:grid-cols-3">
         <InfoPill
@@ -176,28 +177,28 @@ export default async function AftercareDetailPage({ params }: Params) {
         {SECTION_ORDER.map(({ key, label }) => {
           const section = guide.sections[key];
           return (
-            <article key={key} className="rounded-2xl border border-stone-200 bg-white p-5">
+            <SurfaceCard as="article" key={key} className="p-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-bold uppercase text-emerald-600">{label}</p>
-                  <h2 className="mt-1 text-xl font-black text-stone-950">{section.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-stone-600">{section.goal}</p>
+                  <h2 className="mt-1 text-xl font-black text-[var(--app-text)]">{section.title}</h2>
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{section.goal}</p>
                 </div>
-                <span className="rounded-full bg-emerald-50 p-2 text-emerald-700">
+                <span className="rounded-[var(--app-radius-control)] bg-[var(--app-success-bg)] p-2 text-[var(--app-success)]">
                   <Sparkles className="h-4 w-4" />
                 </span>
               </div>
 
-              <p className="mt-4 rounded-xl bg-stone-50 px-3 py-2 text-sm font-semibold text-stone-700">
+              <p className="mt-4 rounded-[var(--app-radius-control)] bg-[var(--app-surface)] px-3 py-2 text-sm font-semibold text-[var(--app-muted)]">
                 추천 타이밍: {section.timing}
               </p>
 
               <div className="mt-4">
-                <h3 className="text-sm font-bold text-stone-950">실행 순서</h3>
+                <h3 className="text-sm font-bold text-[var(--app-text)]">실행 순서</h3>
                 <ol className="mt-2 grid gap-2">
                   {section.steps.map((step, index) => (
-                    <li key={`${key}-step-${index}`} className="flex gap-3 rounded-xl bg-stone-50 px-3 py-3 text-sm leading-6 text-stone-700">
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white text-xs font-black text-stone-900 ring-1 ring-stone-200">
+                    <li key={`${key}-step-${index}`} className="flex gap-3 rounded-[var(--app-radius-control)] bg-[var(--app-surface)] px-3 py-3 text-sm leading-6 text-[var(--app-muted)]">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--app-radius-control)] bg-[var(--app-surface-muted)] text-xs font-black text-[var(--app-text)] ring-1 ring-[var(--app-border)]">
                         {index + 1}
                       </span>
                       {step}
@@ -208,48 +209,48 @@ export default async function AftercareDetailPage({ params }: Params) {
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div>
-                  <h3 className="text-sm font-bold text-stone-950">추천 제품</h3>
+                  <h3 className="text-sm font-bold text-[var(--app-text)]">추천 제품</h3>
                   <div className="mt-2 flex flex-wrap gap-2">
                     {section.products.map((product) => (
-                      <span key={product} className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                      <span key={product} className="rounded-[var(--app-radius-control)] bg-[var(--app-success-bg)] px-3 py-1 text-xs font-bold text-[var(--app-success)]">
                         {product}
                       </span>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-950">피해야 할 것</h3>
-                  <ul className="mt-2 grid gap-1 text-sm leading-6 text-stone-600">
+                  <h3 className="text-sm font-bold text-[var(--app-text)]">피해야 할 것</h3>
+                  <ul className="mt-2 grid gap-1 text-sm leading-6 text-[var(--app-muted)]">
                     {section.avoid.map((item) => (
                       <li key={item}>- {item}</li>
                     ))}
                   </ul>
                 </div>
               </div>
-            </article>
+            </SurfaceCard>
           );
         })}
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="rounded-2xl border border-stone-200 bg-white p-5">
-          <h2 className="text-xl font-black text-stone-950">관리 일정</h2>
+        <Panel className="p-5">
+          <h2 className="text-xl font-black text-[var(--app-text)]">관리 일정</h2>
           <div className="mt-4 grid gap-3">
             {guide.maintenanceSchedule.map((item) => (
-              <div key={`${item.label}-${item.dayOffset}`} className="flex gap-3 rounded-xl bg-stone-50 px-4 py-3">
-                <span className="w-14 shrink-0 text-sm font-black text-emerald-700">{item.label}</span>
-                <p className="text-sm leading-6 text-stone-700">{item.description}</p>
+              <div key={`${item.label}-${item.dayOffset}`} className="flex gap-3 rounded-[var(--app-radius-control)] bg-[var(--app-surface-muted)] px-4 py-3">
+                <span className="w-14 shrink-0 text-sm font-black text-[var(--app-success)]">{item.label}</span>
+                <p className="text-sm leading-6 text-[var(--app-muted)]">{item.description}</p>
               </div>
             ))}
           </div>
-        </div>
+        </Panel>
 
-        <aside className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+        <aside className="rounded-[var(--app-radius-panel)] border border-amber-500/35 bg-[var(--app-warning-bg)] p-5">
           <div className="flex items-center gap-2">
-            <TriangleAlert className="h-5 w-5 text-amber-700" />
-            <h2 className="text-lg font-black text-amber-950">주의사항</h2>
+            <TriangleAlert className="h-5 w-5 text-[var(--app-warning)]" />
+            <h2 className="text-lg font-black text-[var(--app-warning)]">주의사항</h2>
           </div>
-          <ul className="mt-4 grid gap-2 text-sm leading-6 text-amber-900">
+          <ul className="mt-4 grid gap-2 text-sm leading-6 text-[var(--app-warning)]">
             {asStringArray(guide.warnings).map((warning) => (
               <li key={warning}>- {warning}</li>
             ))}
@@ -257,17 +258,17 @@ export default async function AftercareDetailPage({ params }: Params) {
         </aside>
       </section>
 
-      <section className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="text-xl font-black text-stone-950">다음 액션</h2>
+      <Panel as="section" className="p-5">
+        <h2 className="text-xl font-black text-[var(--app-text)]">다음 액션</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {asStringArray(guide.recommendedNextActions).map((action) => (
-            <div key={action} className="flex gap-3 rounded-xl bg-stone-50 px-4 py-3 text-sm leading-6 text-stone-700">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+            <div key={action} className="flex gap-3 rounded-[var(--app-radius-control)] bg-[var(--app-surface-muted)] px-4 py-3 text-sm leading-6 text-[var(--app-muted)]">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--app-success)]" />
               {action}
             </div>
           ))}
         </div>
-      </section>
-    </main>
+      </Panel>
+    </AppPage>
   );
 }

@@ -1,3 +1,5 @@
+import { AppPage, Panel, SurfaceCard } from "../../components/ui/Surface";
+
 const sections = [
   {
     title: "1. 약관의 동의",
@@ -90,35 +92,38 @@ const sections = [
 
 export default function TermsOfServicePage() {
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-10 sm:py-12">
-      <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Legal</p>
-        <h1 className="text-3xl font-black tracking-tight text-stone-900 sm:text-4xl">이용 약관</h1>
-        <p className="text-sm text-stone-600">최종 수정일: 2026-02-12</p>
-      </header>
+    <AppPage as="main" className="max-w-4xl pb-16 pt-8">
+      <Panel as="header" className="p-5 sm:p-6">
+        <p className="app-kicker">Legal</p>
+        <h1 className="mt-3 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
+          이용 약관
+        </h1>
+        <p className="mt-2 text-sm text-[var(--app-muted)]">최종 수정일: 2026-02-12</p>
+      </Panel>
 
-      <section className="mt-6 space-y-3 rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-6 text-stone-700 sm:p-6">
+      <SurfaceCard as="section" className="mt-5 space-y-3 p-5 text-sm leading-6 text-[var(--app-muted)] sm:p-6">
         <p>
           본 이용 약관(&quot;약관&quot;)은 HairFit(&quot;서비스&quot;)의 이용 조건과 귀하와 회사 간의 권리 및 의무를 규정합니다.
           서비스를 이용함으로써 귀하는 본 약관에 동의하는 것으로 간주됩니다.
         </p>
-      </section>
+      </SurfaceCard>
 
       <div className="mt-5 space-y-4">
         {sections.map((section) => (
-          <section
+          <SurfaceCard
+            as="section"
             key={section.title}
-            className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-6 text-stone-700 sm:p-6"
+            className="p-5 text-sm leading-6 text-[var(--app-muted)] sm:p-6"
           >
-            <h2 className="text-base font-bold text-stone-900">{section.title}</h2>
+            <h2 className="text-base font-bold text-[var(--app-text)]">{section.title}</h2>
             <ul className="mt-3 list-disc space-y-1 pl-5">
               {section.items.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
-          </section>
+          </SurfaceCard>
         ))}
       </div>
-    </div>
+    </AppPage>
   );
 }

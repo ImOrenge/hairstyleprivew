@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Image from "next/image";
@@ -8,6 +8,7 @@ import type {
   HairDesignerBrief,
 } from "../../lib/recommendation-types";
 import { useResultTranslations } from "../../hooks/useResultTranslations";
+import { InverseCard, InverseSection } from "../ui/Surface";
 
 interface DesignerBriefCardProps {
   variant: GeneratedVariant | null;
@@ -110,7 +111,7 @@ export function DesignerBriefCard({
   ];
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-stone-900 bg-stone-950 text-white shadow-[0_30px_90px_-45px_rgba(0,0,0,0.8)]">
+    <InverseSection as="section" className="overflow-hidden">
       <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
         <div className="relative min-h-[280px] bg-stone-900">
           {hasRealOutput ? (
@@ -147,24 +148,24 @@ export function DesignerBriefCard({
             <button
               type="button"
               onClick={handleCopy}
-              className="rounded-full border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/20"
+              className="rounded-[var(--app-radius-control)] border border-white/15 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.04em] text-white transition hover:bg-white/20"
             >
               {copied ? "복사 완료" : "브리프 복사"}
             </button>
           </div>
 
-          <div className="rounded-3xl bg-white/10 p-4">
+          <InverseCard className="p-4">
             <p className="text-sm font-medium leading-7 text-stone-100">
               {translate(brief.consultationSummary) || brief.consultationSummary}
             </p>
             {hasTranslated(brief.consultationSummary) ? (
               <p className="mt-2 text-xs leading-6 text-stone-300">{brief.consultationSummary}</p>
             ) : null}
-          </div>
+          </InverseCard>
 
           <div className="grid gap-3">
             {sections.map((section) => (
-              <div key={section.label} className="rounded-3xl border border-white/10 bg-white/[0.06] p-4">
+              <InverseCard key={section.label} className="p-4">
                 <p className="text-[11px] font-black uppercase text-amber-200/75">{section.label}</p>
                 <p className="mt-2 text-sm leading-6 text-stone-100">
                   {translate(section.value) || section.value}
@@ -172,7 +173,7 @@ export function DesignerBriefCard({
                 {hasTranslated(section.value) ? (
                   <p className="mt-2 text-xs leading-5 text-stone-300">{section.value}</p>
                 ) : null}
-              </div>
+              </InverseCard>
             ))}
           </div>
 
@@ -181,7 +182,7 @@ export function DesignerBriefCard({
               <p className="text-[11px] font-black uppercase text-stone-400">주의 포인트</p>
               <ul className="mt-3 space-y-2">
                 {brief.cautionNotes.map((note, index) => (
-                  <li key={`${note}-${index}`} className="rounded-2xl bg-rose-200/10 px-3 py-2 text-xs leading-5 text-rose-50">
+                  <li key={`${note}-${index}`} className="border border-rose-200/10 bg-rose-200/10 px-3 py-2 text-xs leading-5 text-rose-50">
                     <p>{translate(note) || note}</p>
                     {hasTranslated(note) ? (
                       <p className="mt-1 text-[11px] text-rose-100/80">{note}</p>
@@ -195,7 +196,7 @@ export function DesignerBriefCard({
               <p className="text-[11px] font-black uppercase text-stone-400">상담 키워드</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {brief.salonKeywords.map((keyword, index) => (
-                  <span key={`${keyword}-${index}`} className="rounded-full bg-amber-200 px-3 py-1 text-xs font-black text-stone-950">
+                  <span key={`${keyword}-${index}`} className="border border-amber-200 bg-amber-200 px-3 py-1 text-xs font-black text-stone-950">
                     {keyword}
                   </span>
                 ))}
@@ -204,6 +205,6 @@ export function DesignerBriefCard({
           </div>
         </div>
       </div>
-    </section>
+    </InverseSection>
   );
 }

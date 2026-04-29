@@ -12,30 +12,30 @@ export function Header() {
   const t = useT();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-stone-200/60 bg-white/80 backdrop-blur transition-colors dark:border-zinc-800/60 dark:bg-zinc-950/80">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-4 sm:px-6">
+    <header className="sticky top-0 z-50 border-b border-[var(--app-border)] bg-[var(--app-surface)] transition-colors">
+      <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center justify-between gap-2 px-2 sm:px-3">
         <Link href="/" className="flex items-center gap-2">
           <Image
             src="/logo.png"
             alt="HairFit Logo"
             width={36}
             height={36}
-            className="h-9 w-auto object-contain transition-all dark:brightness-110"
+            className="h-8 w-auto object-contain transition-all dark:brightness-110"
           />
-          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">HairFit</span>
+          <span className="text-xl font-black tracking-tighter text-[var(--app-text)]">HairFit</span>
         </Link>
 
-        <nav className="hidden items-center gap-4 text-sm font-medium md:flex">
-          <Link href="/upload" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
+        <nav className="hidden items-center gap-4 text-sm font-semibold md:flex">
+          <Link href="/upload" className="text-[var(--app-muted)] hover:text-[var(--app-text)]">
             {t("nav.upload")}
           </Link>
-          <Link href="/generate" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
+          <Link href="/generate" className="text-[var(--app-muted)] hover:text-[var(--app-text)]">
             {t("nav.generate")}
           </Link>
-          <Link href="/mypage" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
+          <Link href="/mypage" className="text-[var(--app-muted)] hover:text-[var(--app-text)]">
             {t("nav.mypage")}
           </Link>
-          <Link href="/salon/customers" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
+          <Link href="/salon/customers" className="text-[var(--app-muted)] hover:text-[var(--app-text)]">
             Salon CRM
           </Link>
           <AdminNavLink label="Admin" />
@@ -43,7 +43,7 @@ export function Header() {
           <div className="flex shrink-0 items-center gap-2">
             <HeaderAuthSlot />
           </div>
-          <div className="flex items-center gap-1 border-l border-stone-200 pl-3 dark:border-zinc-800">
+          <div className="flex items-center gap-1 border-l border-[var(--app-border)] pl-3">
             <ThemeToggle />
             <LanguageSwitch />
           </div>
@@ -52,7 +52,7 @@ export function Header() {
         <div className="flex min-w-0 items-center gap-1.5 md:hidden">
           <Link
             href="/upload"
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-stone-950 px-4 text-xs font-black !text-white transition hover:bg-stone-800 dark:bg-white dark:!text-stone-950 dark:hover:bg-zinc-100"
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 text-xs font-black uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
           >
             {t("nav.upload")}
           </Link>

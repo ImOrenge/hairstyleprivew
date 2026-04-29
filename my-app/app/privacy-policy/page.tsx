@@ -1,4 +1,6 @@
-﻿const sections = [
+import { AppPage, Panel, SurfaceCard } from "../../components/ui/Surface";
+
+const sections = [
   {
     title: "1. 수집하는 개인정보 항목",
     items: [
@@ -55,35 +57,38 @@
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-10 sm:py-12">
-      <header className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-700">Legal</p>
-        <h1 className="text-3xl font-black tracking-tight text-stone-900 sm:text-4xl">개인정보 처리방침</h1>
-        <p className="text-sm text-stone-600">최종 수정일: 2026-02-12</p>
-      </header>
+    <AppPage as="main" className="max-w-4xl pb-16 pt-8">
+      <Panel as="header" className="p-5 sm:p-6">
+        <p className="app-kicker">Legal</p>
+        <h1 className="mt-3 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
+          개인정보 처리방침
+        </h1>
+        <p className="mt-2 text-sm text-[var(--app-muted)]">최종 수정일: 2026-02-12</p>
+      </Panel>
 
-      <section className="mt-6 space-y-3 rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-6 text-stone-700 sm:p-6">
+      <SurfaceCard as="section" className="mt-5 space-y-3 p-5 text-sm leading-6 text-[var(--app-muted)] sm:p-6">
         <p>
           HairFit(&quot;회사&quot;)은 이용자의 개인정보를 소중히 여기며, 관련 법령을 준수하기 위해 최선을 다하고 있습니다.
           본 방침은 회사가 어떤 정보를 수집하고, 어떻게 활용하며, 어떻게 보호하는지에 대해 설명합니다.
         </p>
-      </section>
+      </SurfaceCard>
 
       <div className="mt-5 space-y-4">
         {sections.map((section) => (
-          <section
+          <SurfaceCard
+            as="section"
             key={section.title}
-            className="rounded-2xl border border-stone-200 bg-white p-5 text-sm leading-6 text-stone-700 sm:p-6"
+            className="p-5 text-sm leading-6 text-[var(--app-muted)] sm:p-6"
           >
-            <h2 className="text-base font-bold text-stone-900">{section.title}</h2>
+            <h2 className="text-base font-bold text-[var(--app-text)]">{section.title}</h2>
             <ul className="mt-3 list-disc space-y-1 pl-5">
               {section.items.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
-          </section>
+          </SurfaceCard>
         ))}
       </div>
-    </div>
+    </AppPage>
   );
 }

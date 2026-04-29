@@ -1,12 +1,13 @@
-import nextDynamic from "next/dynamic";
+﻿import nextDynamic from "next/dynamic";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { clerkClient } from "@clerk/nextjs/server";
-import { ArrowRight, Shirt } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { B2BLeadForm } from "../components/home/B2BLeadForm";
 import { FeatureShowcase } from "../components/home/FeatureShowcase";
 import { FashionDemoShowcase } from "../components/home/FashionDemoShowcase";
 import { HeroSection } from "../components/home/HeroSection";
+import { AppPage, InverseSection, Panel, SurfaceCard } from "../components/ui/Surface";
 import { getClerkConfigState } from "../lib/clerk";
 import {
   homeFaqs,
@@ -21,11 +22,11 @@ import { getSiteUrl } from "../lib/site-url";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../lib/supabase";
 
 const PricingPreview = nextDynamic(() => import("../components/home/PricingPreview").then((mod) => mod.PricingPreview), {
-  loading: () => <div className="h-96 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />,
+  loading: () => <div className="h-96 animate-pulse border border-[var(--app-border)] bg-[var(--app-surface-muted)]" />,
 });
 
 const ReviewCarousel = nextDynamic(() => import("../components/home/ReviewCarousel").then((mod) => mod.ReviewCarousel), {
-  loading: () => <div className="h-64 animate-pulse rounded-3xl bg-zinc-100 dark:bg-zinc-800" />,
+  loading: () => <div className="h-64 animate-pulse border border-[var(--app-border)] bg-[var(--app-surface-muted)]" />,
 });
 
 const siteUrl = getSiteUrl();
@@ -224,15 +225,15 @@ function FloatingHomeNav() {
       aria-label="홈페이지 섹션 바로가기"
       className="fixed right-[max(1rem,calc((100vw-72rem)/2-6rem))] top-1/2 z-40 hidden -translate-y-1/2 min-[1360px]:flex"
     >
-      <div className="flex flex-col gap-1.5 rounded-full border border-stone-200/80 bg-white/90 p-2 shadow-2xl shadow-stone-950/15 backdrop-blur-xl dark:border-zinc-800/70 dark:bg-zinc-950/82 dark:shadow-black/35">
+      <div className="flex flex-col gap-1.5 border border-[var(--app-border)] bg-[var(--app-surface)] p-1.5 shadow-2xl">
         {homeNavItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className="group relative flex h-12 w-12 items-center justify-center rounded-full text-[0.68rem] font-black text-stone-500 transition hover:-translate-y-0.5 hover:bg-stone-950 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 dark:text-zinc-400 dark:hover:bg-white dark:hover:text-stone-950"
+            className="group relative flex h-11 w-11 items-center justify-center border border-transparent text-[0.68rem] font-black text-[var(--app-muted)] transition hover:border-[var(--app-border-strong)] hover:bg-[var(--app-text)] hover:text-[var(--app-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]"
           >
             <span aria-hidden="true">{item.shortLabel}</span>
-            <span className="pointer-events-none absolute right-14 top-1/2 hidden -translate-y-1/2 whitespace-nowrap rounded-full border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold text-stone-900 opacity-0 shadow-lg transition group-hover:block group-hover:opacity-100 group-focus-visible:block group-focus-visible:opacity-100 dark:border-zinc-800 dark:bg-zinc-950 dark:text-white">
+            <span className="pointer-events-none absolute right-14 top-1/2 hidden -translate-y-1/2 whitespace-nowrap border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-text)] opacity-0 shadow-lg transition group-hover:block group-hover:opacity-100 group-focus-visible:block group-focus-visible:opacity-100">
               {item.label}
             </span>
             <span className="sr-only">{item.label}</span>
@@ -245,33 +246,34 @@ function FloatingHomeNav() {
 
 function FinalCtaBlock() {
   return (
-    <section
+    <InverseSection
+      as="section"
       aria-label="서비스 시작하기"
-      className="rounded-3xl border border-stone-200/15 bg-stone-950 p-8 text-center text-white shadow-2xl sm:p-12"
+      className="p-8 text-center sm:p-10"
     >
       <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
         사진 한 장으로 내 스타일을 시작하세요
       </h2>
-      <p className="mt-3 text-sm leading-6 text-stone-300 sm:text-base">
+      <p className="app-inverse-muted mt-3 text-sm leading-6 sm:text-base">
         9가지 헤어 후보를 먼저 비교하고, 선택한 헤어에 맞는 패션 코디까지 이어보세요.
       </p>
       <Link
         href="/upload"
-        className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-sm font-bold !text-stone-950 transition hover:bg-zinc-100"
+        className="app-inverse-cta mt-7 inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold uppercase tracking-[0.04em] transition"
       >
         무료로 내 스타일 보기
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
-    </section>
+    </InverseSection>
   );
 }
 
 function MobileStickyCtaBar() {
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-stone-200 bg-white/95 px-4 py-3 backdrop-blur-sm lg:hidden dark:border-zinc-800 dark:bg-zinc-950/95">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-2 lg:hidden">
       <Link
         href="/upload"
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-stone-950 px-5 py-3 text-sm font-bold !text-white transition hover:bg-stone-800 dark:bg-white dark:!text-stone-950 dark:hover:bg-zinc-100"
+        className="flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
       >
         무료로 내 스타일 보기
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -286,7 +288,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-10 pb-24 sm:gap-10 sm:py-12 lg:pb-12">
+      <AppPage className="flex flex-col gap-6 pb-24 sm:gap-8 lg:pb-8">
         <FloatingHomeNav />
         <script
           type="application/ld+json"
@@ -296,203 +298,157 @@ export default async function HomePage() {
         />
 
         {/* 1. Hero */}
-        <div id="home-hero" className="-mx-2 scroll-mt-24 sm:-mx-4 lg:-mx-10 xl:-mx-16">
+        <div id="home-hero" className="scroll-mt-24">
           <HeroSection userCount={userCount} avatars={avatars} />
         </div>
 
-        {/* 2. 사용 흐름 */}
-        <section
+        {/* 2. Fashion Demo */}
+        <div id="home-fashion" className="scroll-mt-24">
+          <FashionDemoShowcase />
+        </div>
+
+        {/* 3. 사용 흐름 */}
+        <Panel
+          as="section"
           id="home-workflow"
-          className="scroll-mt-24 rounded-3xl border border-stone-200/70 bg-white/95 p-6 shadow-xl transition-colors dark:border-zinc-800/60 dark:bg-zinc-900/50 sm:p-8"
+          className="scroll-mt-24 p-5 sm:p-6"
         >
           <div className="max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-600 dark:text-amber-500">
+            <p className="app-kicker">
               How HairFit Works
             </p>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-stone-950 dark:text-white sm:text-3xl">
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
               사진 한 장으로 9가지 후보까지
             </h2>
-            <p className="mt-3 text-sm leading-6 text-stone-600 dark:text-zinc-300 sm:text-base">
+            <p className="mt-3 text-sm leading-6 text-[var(--app-muted)] sm:text-base">
               업로드, 비교, 저장만 기억하면 됩니다. 패션 추천은 선택한 헤어 이후에 자연스럽게 이어집니다.
             </p>
           </div>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {homeWorkflow.map((item) => (
-              <article
-                key={item.step}
-                className="rounded-2xl border border-stone-200 bg-stone-50 p-5 dark:border-zinc-800 dark:bg-zinc-950/55"
-              >
-                <p className="text-xs font-black tracking-[0.22em] text-amber-600 dark:text-amber-400">{item.step}</p>
-                <h3 className="mt-3 text-lg font-black text-stone-950 dark:text-white">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-zinc-300">{item.description}</p>
-              </article>
+              <SurfaceCard as="article" key={item.step} className="p-4">
+                <p className="text-xs font-black tracking-[0.22em] text-[var(--app-accent-strong)]">{item.step}</p>
+                <h3 className="mt-3 text-lg font-black text-[var(--app-text)]">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{item.description}</p>
+              </SurfaceCard>
             ))}
           </div>
-        </section>
+        </Panel>
 
-        {/* 3. 헤어+패션 차별점 */}
+        {/* 4. 헤어+패션 차별점 */}
         <div id="home-features" className="scroll-mt-24">
           <FeatureShowcase />
         </div>
 
-        {/* 4. 추천 기준 */}
+        {/* 5. 추천 기준 */}
         <section id="home-criteria" className="grid scroll-mt-24 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-3xl border border-stone-200/70 bg-white/95 p-6 shadow-xl transition-colors dark:border-zinc-800/60 dark:bg-zinc-900/50 sm:p-8">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-600 dark:text-amber-500">
+          <Panel className="p-5 sm:p-6">
+            <p className="app-kicker">
               Recommendation Criteria
             </p>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-stone-950 dark:text-white sm:text-3xl">
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
               얼굴형 헤어스타일 추천은 이런 기준으로 비교합니다
             </h2>
-            <p className="mt-3 text-sm leading-6 text-stone-600 dark:text-zinc-300">
+            <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
               HairFit은 AI 헤어스타일 미리보기 결과를 단순 합성 이미지로 끝내지 않고, 패션 코디와 상담 이미지로 이어가기 쉬운 기준으로 정리합니다.
             </p>
             <Link
               href="/upload"
-              className="mt-6 inline-flex rounded-full bg-stone-950 px-5 py-3 text-sm font-bold !text-white transition hover:bg-stone-800 dark:bg-white dark:!text-stone-950 dark:hover:bg-zinc-200"
+              className="mt-6 inline-flex rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
             >
               사진 한 장으로 시작하기
             </Link>
-          </div>
+          </Panel>
           <div className="grid gap-4 sm:grid-cols-2">
             {recommendationCriteria.map((item) => (
-              <article
+              <SurfaceCard
+                as="article"
                 key={item.title}
-                className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm transition-colors dark:border-zinc-800 dark:bg-zinc-900/70"
+                className="p-4 transition-colors"
               >
-                <h3 className="text-base font-black text-stone-950 dark:text-white">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-stone-600 dark:text-zinc-300">{item.description}</p>
-              </article>
+                <h3 className="text-base font-black text-[var(--app-text)]">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{item.description}</p>
+              </SurfaceCard>
             ))}
           </div>
         </section>
-
-        {/* 브리지: 헤어 후보 비교 → 패션 추천으로 이어지기 */}
-        <section
-          aria-labelledby="hair-to-fashion-bridge"
-          className="scroll-mt-24 overflow-hidden rounded-3xl border border-stone-200/15 bg-stone-950 p-6 text-white shadow-xl sm:p-8"
-        >
-          <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-            <div>
-              <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-amber-300">
-                <Shirt className="h-4 w-4" aria-hidden="true" />
-                Hair to Fashion
-              </p>
-              <h2 id="hair-to-fashion-bridge" className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
-                헤어를 고르는 순간, 패션 추천의 기준이 생깁니다
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-stone-300 sm:text-base">
-                같은 옷도 헤어 길이와 볼륨에 따라 목선, 상체 비율, 전체 분위기가 달라집니다. HairFit은 먼저 어울리는 헤어 후보를 좁힌 뒤, 선택한 스타일을 기준으로 데일리·워크·데이트 코디 방향까지 이어줍니다.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link
-                  href="#home-demo"
-                  className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold !text-stone-950 transition hover:bg-zinc-100"
-                >
-                  패션 추천 예시 보기
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-                <Link
-                  href="/upload"
-                  className="inline-flex items-center rounded-full border border-white/20 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10"
-                >
-                  사진 한 장으로 시작
-                </Link>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                { label: "헤어 라인", body: "짧은 머리와 긴 레이어에 맞춰 목선과 상체 실루엣을 다르게 봅니다." },
-                { label: "무드 연결", body: "깔끔한 데일리, 워크, 데이트처럼 헤어가 주는 분위기를 착장 방향으로 옮깁니다." },
-                { label: "전신 균형", body: "체형 프로필과 상황을 함께 반영해 룩북 이미지로 확인합니다." },
-              ].map((item) => (
-                <article key={item.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-                  <h3 className="text-sm font-black text-white">{item.label}</h3>
-                  <p className="mt-2 text-xs font-semibold leading-5 text-stone-300">{item.body}</p>
-                </article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 5. 패션 데모 (헤어 플로우의 자연스러운 다음 단계) */}
-        <div id="home-demo" className="scroll-mt-24">
-          <FashionDemoShowcase />
-        </div>
 
         {/* 6. 가격 */}
         <div id="home-pricing" className="scroll-mt-24">
           <PricingPreview />
         </div>
 
-        {/* 7. FAQ */}
-        <section
+        {/* 7. 후기/신뢰 */}
+        <div id="home-reviews" className="scroll-mt-24">
+          <ReviewCarousel />
+        </div>
+
+        {/* 8. FAQ */}
+        <Panel
+          as="section"
           id="home-faq"
-          className="scroll-mt-24 rounded-3xl border border-stone-200/70 bg-white/95 p-6 shadow-xl transition-colors dark:border-zinc-800/60 dark:bg-zinc-900/50 sm:p-8"
+          className="scroll-mt-24 p-5 sm:p-6"
         >
           <div className="max-w-3xl">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-600 dark:text-amber-500">FAQ</p>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-stone-950 dark:text-white sm:text-3xl">
+            <p className="app-kicker">FAQ</p>
+            <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
               AI 헤어스타일 미리보기를 시작하기 전 자주 묻는 질문
             </h2>
           </div>
           <div className="mt-6 grid gap-3">
             {homeFaqs.map((faq) => (
-              <details
+              <SurfaceCard
+                as="details"
                 key={faq.question}
-                className="group rounded-2xl border border-stone-200 bg-stone-50 p-5 open:bg-white dark:border-zinc-800 dark:bg-zinc-950/55 dark:open:bg-zinc-900"
+                className="group p-4 open:bg-[var(--app-surface)]"
               >
-                <summary className="cursor-pointer list-none text-base font-black text-stone-950 dark:text-white">
+                <summary className="cursor-pointer list-none text-base font-black text-[var(--app-text)]">
                   {faq.question}
                 </summary>
-                <p className="mt-3 text-sm leading-6 text-stone-600 dark:text-zinc-300">{faq.answer}</p>
-              </details>
+                <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">{faq.answer}</p>
+              </SurfaceCard>
             ))}
           </div>
-        </section>
-
-        {/* 8. 후기/신뢰 */}
-        <div id="home-reviews" className="scroll-mt-24">
-          <ReviewCarousel />
-        </div>
+        </Panel>
 
         {/* 9. 살롱/B2B 보조 전환 */}
-        <section
+        <Panel
+          as="section"
           id="home-salon"
-          className="scroll-mt-24 rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-950 shadow-xl transition-colors dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-50 sm:p-8"
+          className="scroll-mt-24 border-[var(--app-accent)] p-5 text-[var(--app-text)] sm:p-6"
         >
           <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-700 dark:text-amber-300">
+              <p className="app-kicker">
                 Salon Consultation
               </p>
               <h2 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
                 살롱에서도 상담 이미지로 활용할 수 있습니다
               </h2>
-              <p className="mt-3 text-sm leading-6 text-amber-900/85 dark:text-amber-50/80">
+              <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
                 HairFit의 9가지 헤어 후보와 패션 코디 흐름은 고객이 원하는 분위기를 이미지로 정리하는 보조 자료로 활용할 수 있습니다.
               </p>
             </div>
             <div className="grid gap-3">
               <ul className="grid gap-3">
                 {salonUseCases.map((item) => (
-                  <li
+                  <SurfaceCard
+                    as="li"
                     key={item}
-                    className="rounded-2xl border border-amber-200/80 bg-white/70 px-4 py-3 text-sm font-bold leading-6 shadow-sm dark:border-amber-300/15 dark:bg-black/20"
+                    className="px-4 py-3 text-sm font-bold leading-6"
                   >
                     {item}
-                  </li>
+                  </SurfaceCard>
                 ))}
               </ul>
               <B2BLeadForm />
             </div>
           </div>
-        </section>
+        </Panel>
 
         {/* 10. 마감 CTA */}
         <FinalCtaBlock />
-      </div>
+      </AppPage>
 
       {/* 모바일 고정 CTA 바 */}
       <MobileStickyCtaBar />

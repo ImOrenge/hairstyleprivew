@@ -1,4 +1,4 @@
-import { Button } from "../ui/Button";
+﻿import { Button } from "../ui/Button";
 
 interface FaceGuideOverlayProps {
   open: boolean;
@@ -12,12 +12,12 @@ export function FaceGuideOverlay({ open, onClose }: FaceGuideOverlayProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-6">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6">
-        <h3 className="text-lg font-semibold text-gray-900">사진 업로드 가이드</h3>
-        <p className="mt-2 text-sm text-gray-600">
+      <div className="app-panel w-full max-w-lg p-6">
+        <h3 className="text-lg font-semibold text-[var(--app-text)]">사진 업로드 가이드</h3>
+        <p className="mt-2 text-sm text-[var(--app-muted)]">
           정확한 생성 결과를 위해 아래 조건을 만족하는 사진을 권장합니다.
         </p>
-        <ul className="mt-4 space-y-2 text-sm text-gray-700">
+        <ul className="mt-4 space-y-2 text-sm text-[var(--app-muted)]">
           <li>- 정면 얼굴이 선명하게 보이는 사진</li>
           <li>- 머리 윤곽이 잘 보이도록 배경과 분리된 사진</li>
           <li>- 안경, 모자, 강한 뷰티 필터는 제거</li>

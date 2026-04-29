@@ -1,5 +1,26 @@
 import { SignIn } from "@clerk/nextjs";
+import { AppPage, Panel } from "../../../../components/ui/Surface";
 import { getClerkConfigState } from "../../../../lib/clerk";
+
+const clerkAppearance = {
+  variables: {
+    colorBackground: "var(--app-surface)",
+    colorText: "var(--app-text)",
+    colorTextSecondary: "var(--app-muted)",
+    colorPrimary: "var(--app-accent)",
+    colorInputBackground: "var(--app-surface-muted)",
+    colorInputText: "var(--app-text)",
+    borderRadius: "0.1875rem",
+  },
+  elements: {
+    cardBox: "border border-[var(--app-border)] bg-[var(--app-surface)] shadow-none",
+    headerTitle: "text-[var(--app-text)]",
+    headerSubtitle: "text-[var(--app-muted)]",
+    formButtonPrimary: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)] hover:bg-[var(--app-inverse-muted)]",
+    formFieldInput: "border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-text)]",
+    footerActionLink: "text-[var(--app-accent)]",
+  },
+} as const;
 
 export default function LoginPage() {
   const clerkConfig = getClerkConfigState();
@@ -12,16 +33,23 @@ export default function LoginPage() {
         : "Clerk 키가 설정되지 않았습니다. my-app/.env.local에 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY와 CLERK_SECRET_KEY를 설정해 주세요.";
 
     return (
-      <div className="mx-auto w-full max-w-xl px-6 py-10">
-        <h1 className="text-2xl font-bold">로그인</h1>
-        <p className="mt-3 text-sm text-gray-600">{reasonText}</p>
-      </div>
+      <AppPage as="main" className="max-w-xl pb-16 pt-8">
+        <Panel className="p-5 sm:p-6">
+          <h1 className="text-2xl font-bold text-[var(--app-text)]">로그인</h1>
+          <p className="mt-3 text-sm text-[var(--app-muted)]">{reasonText}</p>
+        </Panel>
+      </AppPage>
     );
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-md justify-center px-6 py-10">
-      <SignIn path="/login" signUpUrl="/signup" fallbackRedirectUrl="/onboarding" />
-    </div>
+    <AppPage as="main" className="flex max-w-md justify-center pb-16 pt-8">
+      <SignIn
+        path="/login"
+        signUpUrl="/signup"
+        fallbackRedirectUrl="/onboarding"
+        appearance={clerkAppearance}
+      />
+    </AppPage>
   );
 }

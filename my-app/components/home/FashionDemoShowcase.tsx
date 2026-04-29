@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import { useState } from "react";
 import { CheckCircle2, Layers3, Palette, Shirt, Sparkles } from "lucide-react";
+import { InverseCard, InverseSection } from "../ui/Surface";
 import { useT } from "../../lib/i18n/useT";
 import type { TranslationKey } from "../../lib/i18n/locales/ko";
 
@@ -142,20 +143,20 @@ export function FashionDemoShowcase() {
   };
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-stone-200/70 bg-stone-950 text-white shadow-2xl transition-colors dark:border-zinc-800/70">
+    <InverseSection as="section" className="overflow-hidden transition-colors">
       <div className="grid gap-0 lg:grid-cols-[0.88fr_1.12fr]">
-        <div className="flex flex-col justify-between gap-8 p-6 sm:p-8 lg:p-10">
+        <div className="flex flex-col justify-between gap-6 p-5 sm:p-6 lg:p-8">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-amber-300">{t("fashionDemo.badge")}</p>
-            <h2 className="mt-4 max-w-xl text-2xl font-black tracking-tight text-white sm:text-4xl">
+            <p className="app-inverse-kicker">{t("fashionDemo.badge")}</p>
+            <h2 className="mt-4 max-w-xl text-2xl font-black tracking-tight text-[var(--app-inverse-text)] sm:text-4xl">
               {t("fashionDemo.title")}
             </h2>
-            <p className="mt-4 max-w-xl text-sm leading-6 text-stone-300 sm:text-base">
+            <p className="app-inverse-muted mt-4 max-w-xl text-sm leading-6 sm:text-base">
               {t("fashionDemo.subtitle")}
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.06] p-1">
+          <InverseCard className="grid grid-cols-2 gap-1 p-1">
             {DEMO_GENDERS.map((gender) => {
               const isActive = activeGender === gender.id;
 
@@ -165,8 +166,10 @@ export function FashionDemoShowcase() {
                   type="button"
                   onClick={() => handleGenderChange(gender.id)}
                   className={[
-                    "min-h-11 rounded-xl px-4 text-sm font-black transition",
-                    isActive ? "bg-white text-stone-950 shadow-lg" : "text-stone-300 hover:bg-white/10 hover:text-white",
+                    "min-h-11 rounded-[var(--app-radius-control)] px-4 text-sm font-black uppercase tracking-[0.04em] transition",
+                    isActive
+                      ? "bg-[var(--app-inverse-text)] text-[var(--app-inverse)] shadow-lg"
+                      : "app-inverse-muted hover:bg-[color-mix(in_srgb,var(--app-inverse-text)_10%,transparent)] hover:text-[var(--app-inverse-text)]",
                   ].join(" ")}
                   aria-pressed={isActive}
                 >
@@ -174,7 +177,7 @@ export function FashionDemoShowcase() {
                 </button>
               );
             })}
-          </div>
+          </InverseCard>
 
           <div className="grid gap-3">
             {activeLooks.map((look, index) => {
@@ -186,14 +189,14 @@ export function FashionDemoShowcase() {
                   type="button"
                   onClick={() => setActiveId(look.id)}
                   className={[
-                    "group grid grid-cols-[4.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border p-3 text-left transition",
+                    "group grid grid-cols-[4.25rem_minmax(0,1fr)_auto] items-center gap-3 border p-3 text-left transition",
                     isActive
-                      ? "border-amber-300/70 bg-white text-stone-950 shadow-xl"
-                      : "border-white/10 bg-white/[0.06] text-white hover:border-white/25 hover:bg-white/[0.1]",
+                      ? "border-[var(--app-accent)] bg-[var(--app-inverse-text)] text-[var(--app-inverse)] shadow-xl"
+                      : "app-inverse-card text-[var(--app-inverse-text)] hover:border-[color-mix(in_srgb,var(--app-inverse-text)_25%,transparent)] hover:bg-[color-mix(in_srgb,var(--app-inverse-text)_10%,transparent)]",
                   ].join(" ")}
                   aria-pressed={isActive}
                 >
-                  <span className="relative h-16 overflow-hidden rounded-xl bg-stone-800">
+                  <span className="relative h-16 overflow-hidden rounded-[var(--app-radius-control)] bg-[var(--app-inverse-muted)]">
                     <Image
                       src={look.hairImage}
                       alt={`${t(look.hairLabelKey)} 헤어스타일 미리보기`}
@@ -206,18 +209,18 @@ export function FashionDemoShowcase() {
                     <span
                       className={[
                         "block text-xs font-black uppercase tracking-[0.16em]",
-                        isActive ? "text-amber-700" : "text-amber-300",
+                        isActive ? "text-[var(--app-accent-strong)]" : "text-[var(--app-accent)]",
                       ].join(" ")}
                     >
                       {String(index + 1).padStart(2, "0")} · {t(look.hairLabelKey)}
                     </span>
                     <span className="mt-1 block text-base font-black leading-5">{t(look.titleKey)}</span>
-                    <span className={isActive ? "mt-1 block text-xs font-semibold text-stone-600" : "mt-1 block text-xs font-semibold text-stone-400"}>
+                    <span className={isActive ? "mt-1 block text-xs font-semibold text-[var(--app-inverse-muted)]" : "app-inverse-subtle mt-1 block text-xs font-semibold"}>
                       {t(look.moodKey)}
                     </span>
                   </span>
                   <CheckCircle2
-                    className={isActive ? "h-5 w-5 text-emerald-600" : "h-5 w-5 text-white/25 transition group-hover:text-white/60"}
+                    className={isActive ? "h-5 w-5 text-emerald-600" : "h-5 w-5 text-[color-mix(in_srgb,var(--app-inverse-text)_25%,transparent)] transition group-hover:text-[color-mix(in_srgb,var(--app-inverse-text)_60%,transparent)]"}
                     aria-hidden="true"
                   />
                 </button>
@@ -233,18 +236,18 @@ export function FashionDemoShowcase() {
             ].map((step) => {
               const Icon = step.icon;
               return (
-                <div key={step.key} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-                  <Icon className="h-5 w-5 text-amber-300" aria-hidden="true" />
-                  <p className="mt-3 text-xs font-bold leading-5 text-stone-300">{t(step.key)}</p>
-                </div>
+                <InverseCard key={step.key} className="p-4">
+                  <Icon className="h-5 w-5 text-[var(--app-accent)]" aria-hidden="true" />
+                  <p className="app-inverse-muted mt-3 text-xs font-bold leading-5">{t(step.key)}</p>
+                </InverseCard>
               );
             })}
           </div>
         </div>
 
-        <div className="border-t border-white/10 bg-stone-100 p-4 text-stone-950 dark:bg-zinc-950 lg:border-l lg:border-t-0 sm:p-6">
+        <div className="border-t border-[color-mix(in_srgb,var(--app-inverse-text)_10%,transparent)] p-4 text-[var(--app-inverse-text)] lg:border-l lg:border-t-0 sm:p-5">
           <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)]">
-            <div className="relative min-h-[32rem] overflow-hidden rounded-3xl bg-stone-200 shadow-2xl sm:min-h-[40rem] lg:min-h-[43rem]">
+            <InverseCard className="relative min-h-[32rem] overflow-hidden sm:min-h-[40rem] lg:min-h-[43rem]">
               <Image
                 key={activeLook.image}
                 src={activeLook.image}
@@ -254,61 +257,61 @@ export function FashionDemoShowcase() {
                 className="object-cover object-top"
                 sizes="(max-width: 1024px) 100vw, 420px"
               />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/72 via-black/28 to-transparent p-5 text-white">
-                <p className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-bold backdrop-blur">
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/72 via-black/28 to-transparent p-5 text-[var(--app-inverse-text)]">
+                <p className="inline-flex items-center gap-2 border border-[color-mix(in_srgb,var(--app-inverse-text)_15%,transparent)] bg-[color-mix(in_srgb,var(--app-inverse-text)_15%,transparent)] px-3 py-1 text-xs font-bold">
                   <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
                   {t("fashionDemo.previewLabel")}
                 </p>
                 <h3 className="mt-3 text-xl font-black">{t(activeLook.titleKey)}</h3>
-                <p className="mt-1 text-sm font-semibold text-white/78">{t(activeLook.moodKey)}</p>
+                <p className="mt-1 text-sm font-semibold text-[color-mix(in_srgb,var(--app-inverse-text)_78%,transparent)]">{t(activeLook.moodKey)}</p>
               </div>
-            </div>
+            </InverseCard>
 
             <aside className="flex flex-col gap-4">
-              <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-700 dark:text-amber-400">
+              <InverseCard className="p-5">
+                <p className="app-inverse-kicker">
                   {t("fashionDemo.recommendationLabel")}
                 </p>
-                <h3 className="mt-3 text-2xl font-black tracking-tight text-stone-950 dark:text-white">
+                <h3 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-inverse-text)]">
                   {t(activeLook.titleKey)}
                 </h3>
-                <p className="mt-3 text-sm leading-6 text-stone-600 dark:text-zinc-300">{t(activeLook.summaryKey)}</p>
-              </div>
+                <p className="app-inverse-muted mt-3 text-sm leading-6">{t(activeLook.summaryKey)}</p>
+              </InverseCard>
 
-              <div className="rounded-3xl border border-stone-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-stone-400">
+              <InverseCard className="p-5">
+                <p className="app-inverse-subtle text-xs font-black uppercase tracking-[0.18em]">
                   {t("fashionDemo.paletteLabel")}
                 </p>
                 <div className="mt-4 flex gap-2">
                   {activeLook.palette.map((color) => (
                     <span
                       key={color}
-                      className="h-10 flex-1 rounded-full border border-black/10 dark:border-white/10"
+                      className="h-10 flex-1 border border-[color-mix(in_srgb,var(--app-inverse-text)_18%,transparent)]"
                       style={{ backgroundColor: color }}
                     />
                   ))}
                 </div>
-              </div>
+              </InverseCard>
 
               <div className="grid flex-1 gap-3">
                 {activeLook.items.map((itemKey) => (
-                  <div
+                  <InverseCard
                     key={itemKey}
-                    className="rounded-2xl border border-stone-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                    className="px-4 py-3"
                   >
-                    <p className="text-sm font-bold leading-6 text-stone-800 dark:text-zinc-100">{t(itemKey)}</p>
-                  </div>
+                    <p className="text-sm font-bold leading-6 text-[var(--app-inverse-text)]">{t(itemKey)}</p>
+                  </InverseCard>
                 ))}
               </div>
 
-              <div className="rounded-3xl border border-amber-200/70 bg-gradient-to-br from-amber-50 to-amber-100/60 p-5 text-amber-950 dark:border-amber-400/20 dark:from-amber-400/10 dark:to-amber-500/5 dark:text-amber-100">
-                <Shirt className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+              <InverseCard className="border-[var(--app-accent)] p-5">
+                <Shirt className="h-5 w-5 text-[var(--app-accent)]" aria-hidden="true" />
                 <p className="mt-2 text-sm font-bold leading-6">{t("fashionDemo.flowNote")}</p>
-              </div>
+              </InverseCard>
             </aside>
           </div>
         </div>
       </div>
-    </section>
+    </InverseSection>
   );
 }

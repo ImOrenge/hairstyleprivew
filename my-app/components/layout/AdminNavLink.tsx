@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useAuth, useUser } from "@clerk/nextjs";
 import Link from "next/link";
@@ -14,7 +14,7 @@ interface AdminNavLinkProps {
   label?: string;
 }
 
-const defaultClassName = "text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white";
+const defaultClassName = "text-[var(--app-muted)] hover:text-[var(--app-text)]";
 
 function AdminNavLinkWithClerk({
   className = defaultClassName,

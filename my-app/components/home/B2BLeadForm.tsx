@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/Button";
+import { SurfaceCard } from "../ui/Surface";
 
 type PlanInterest = "salon" | "pro" | "standard" | "basic" | "other";
 
@@ -176,9 +177,9 @@ export function B2BLeadForm() {
   }
 
   return (
-    <div
+    <SurfaceCard
       id="b2b-lead-form"
-      className="rounded-2xl border border-amber-200/80 bg-white/75 p-4 shadow-sm dark:border-amber-300/20 dark:bg-black/20"
+      className="p-4"
     >
       {siteKey ? (
         <Script
@@ -189,8 +190,8 @@ export function B2BLeadForm() {
       ) : null}
 
       <div className="flex flex-col gap-1">
-        <p className="text-sm font-black text-amber-950 dark:text-amber-100">B2B 도입 문의</p>
-        <p className="text-xs leading-5 text-amber-900/80 dark:text-amber-100/70">
+        <p className="text-sm font-black text-[var(--app-text)]">B2B 도입 문의</p>
+        <p className="text-xs leading-5 text-[var(--app-muted)]">
           살롱 운영 규모와 도입 목적을 알려주시면 엔터프라이즈 상담으로 연결합니다.
         </p>
       </div>
@@ -199,7 +200,7 @@ export function B2BLeadForm() {
         <select
           value={form.planInterest}
           onChange={(event) => updateField("planInterest", event.target.value as PlanInterest)}
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         >
           {planOptions.map((option) => (
             <option key={option.value} value={option.value}>
@@ -211,58 +212,58 @@ export function B2BLeadForm() {
           value={form.region}
           onChange={(event) => updateField("region", event.target.value)}
           placeholder="지역"
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         />
         <input
           value={form.companyName}
           onChange={(event) => updateField("companyName", event.target.value)}
           placeholder="살롱명 / 회사명"
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         />
         <input
           value={form.contactName}
           onChange={(event) => updateField("contactName", event.target.value)}
           placeholder="담당자명"
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         />
         <input
           value={form.email}
           onChange={(event) => updateField("email", event.target.value)}
           placeholder="이메일"
           type="email"
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         />
         <input
           value={form.phone}
           onChange={(event) => updateField("phone", event.target.value)}
           placeholder="연락처"
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         />
         <input
           value={form.shopCount}
           onChange={(event) => updateField("shopCount", event.target.value)}
           placeholder="지점 수"
           inputMode="numeric"
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         />
         <input
           value={form.seatCount}
           onChange={(event) => updateField("seatCount", event.target.value)}
           placeholder="디자이너 / 좌석 수"
           inputMode="numeric"
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         />
         <input
           value={form.monthlyClients}
           onChange={(event) => updateField("monthlyClients", event.target.value)}
           placeholder="월 상담 고객 수"
           inputMode="numeric"
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         />
         <select
           value={form.desiredTimeline}
           onChange={(event) => updateField("desiredTimeline", event.target.value)}
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500"
+          className="app-input h-10 px-3 text-sm"
         >
           <option value="">도입 희망 시점</option>
           <option value="immediately">즉시</option>
@@ -273,7 +274,7 @@ export function B2BLeadForm() {
         <select
           value={form.budgetRange}
           onChange={(event) => updateField("budgetRange", event.target.value)}
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500 sm:col-span-2"
+          className="app-input h-10 px-3 text-sm sm:col-span-2"
         >
           <option value="">예산 범위</option>
           <option value="under_100k">월 10만원 이하</option>
@@ -285,18 +286,18 @@ export function B2BLeadForm() {
           value={form.currentTools}
           onChange={(event) => updateField("currentTools", event.target.value)}
           placeholder="현재 사용하는 예약/CRM/상담 도구"
-          className="h-10 rounded-lg border border-amber-200 bg-white px-3 text-sm text-stone-900 outline-none focus:border-amber-500 sm:col-span-2"
+          className="app-input h-10 px-3 text-sm sm:col-span-2"
         />
         <textarea
           value={form.message}
           onChange={(event) => updateField("message", event.target.value)}
           rows={4}
           placeholder="도입 목적, 필요한 기능, 문의 내용을 적어주세요."
-          className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm text-stone-900 outline-none focus:border-amber-500 sm:col-span-2"
+          className="app-input px-3 py-2 text-sm sm:col-span-2"
         />
       </div>
 
-      <div className="mt-3 rounded-lg border border-amber-200 bg-white px-3 py-3">
+      <div className="mt-3 rounded-[var(--app-radius-control)] border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-3">
         {siteKey ? (
           <div ref={widgetContainerRef} />
         ) : (
@@ -306,7 +307,7 @@ export function B2BLeadForm() {
 
       <Button
         type="button"
-        className="mt-3 h-10 w-full rounded-lg px-4 text-sm"
+        className="mt-3 h-10 w-full rounded-[var(--app-radius-control)] px-4 text-sm"
         onClick={handleSubmit}
         disabled={isSubmitting || !siteKey || !turnstileToken}
       >
@@ -314,6 +315,6 @@ export function B2BLeadForm() {
       </Button>
       {error ? <p className="mt-2 text-xs font-semibold text-rose-700">{error}</p> : null}
       {success ? <p className="mt-2 text-xs font-semibold text-emerald-700">{success}</p> : null}
-    </div>
+    </SurfaceCard>
   );
 }

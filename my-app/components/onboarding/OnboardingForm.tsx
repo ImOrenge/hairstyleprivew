@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/Button";
+import { Panel, SurfaceCard } from "../ui/Surface";
 import {
   type AccountType,
   type OnboardingAccountType,
@@ -191,19 +192,19 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
 
   if (isLoading) {
     return (
-      <div className="rounded-[2rem] border border-stone-200 bg-white px-6 py-10 text-center text-sm text-stone-500">
+      <Panel className="px-6 py-10 text-center text-sm text-[var(--app-muted)]">
         가입 정보를 준비하고 있습니다...
-      </div>
+      </Panel>
     );
   }
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]">
+      <Panel as="section" className="p-6">
         <div className="space-y-2">
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-stone-400">Step 1</p>
-          <h2 className="text-2xl font-black tracking-tight text-stone-900">가입 유형을 선택해 주세요</h2>
-          <p className="text-sm leading-6 text-stone-600">
+          <p className="app-kicker">Step 1</p>
+          <h2 className="text-2xl font-black tracking-tight text-[var(--app-text)]">가입 유형을 선택해 주세요</h2>
+          <p className="text-sm leading-6 text-[var(--app-muted)]">
             선택한 역할에 따라 첫 설정 폼이 달라집니다. 완료 전에는 핵심 기능을 사용할 수 없습니다.
           </p>
         </div>
@@ -214,15 +215,15 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
             onClick={() => setSelectedRole("member")}
             className={`rounded-[1.75rem] border px-5 py-5 text-left transition ${
               selectedRole === "member"
-                ? "border-stone-900 bg-stone-900 text-white"
-                : "border-stone-200 bg-stone-50 text-stone-900 hover:border-stone-400"
+                ? "border-[var(--app-border-strong)] bg-[var(--app-inverse)] text-[var(--app-inverse-text)]"
+                : "app-card hover:border-[var(--app-border-strong)]"
             }`}
           >
-            <p className={`text-xs font-bold uppercase tracking-[0.16em] ${selectedRole === "member" ? "text-white/70" : "text-stone-400"}`}>
+            <p className={`text-xs font-bold uppercase tracking-[0.16em] ${selectedRole === "member" ? "text-white/70" : "text-[var(--app-subtle)]"}`}>
               일반 유저
             </p>
             <p className="mt-3 text-xl font-black">헤어 스타일 추천을 받는 사용자</p>
-            <p className={`mt-2 text-sm leading-6 ${selectedRole === "member" ? "text-white/80" : "text-stone-600"}`}>
+            <p className={`mt-2 text-sm leading-6 ${selectedRole === "member" ? "text-white/80" : "text-[var(--app-muted)]"}`}>
               닉네임과 스타일 선호만 먼저 설정하고 바로 업로드와 생성 흐름으로 이어집니다.
             </p>
           </button>
@@ -232,29 +233,29 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
             onClick={() => setSelectedRole("salon_owner")}
             className={`rounded-[1.75rem] border px-5 py-5 text-left transition ${
               selectedRole === "salon_owner"
-                ? "border-stone-900 bg-stone-900 text-white"
-                : "border-stone-200 bg-stone-50 text-stone-900 hover:border-stone-400"
+                ? "border-[var(--app-border-strong)] bg-[var(--app-inverse)] text-[var(--app-inverse-text)]"
+                : "app-card hover:border-[var(--app-border-strong)]"
             }`}
           >
-            <p className={`text-xs font-bold uppercase tracking-[0.16em] ${selectedRole === "salon_owner" ? "text-white/70" : "text-stone-400"}`}>
+            <p className={`text-xs font-bold uppercase tracking-[0.16em] ${selectedRole === "salon_owner" ? "text-white/70" : "text-[var(--app-subtle)]"}`}>
               헤어샵 운영자
             </p>
             <p className="mt-3 text-xl font-black">샵 정보를 등록하는 운영 계정</p>
-            <p className={`mt-2 text-sm leading-6 ${selectedRole === "salon_owner" ? "text-white/80" : "text-stone-600"}`}>
+            <p className={`mt-2 text-sm leading-6 ${selectedRole === "salon_owner" ? "text-white/80" : "text-[var(--app-muted)]"}`}>
               담당자와 샵 기본 정보를 등록해 이후 운영자 흐름에 사용할 수 있는 계정으로 분류합니다.
             </p>
           </button>
         </div>
-      </section>
+      </Panel>
 
       {selectedRole ? (
-        <section className="rounded-[2rem] border border-stone-200 bg-white p-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]">
+        <Panel as="section" className="p-6">
           <div className="space-y-2">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-stone-400">Step 2</p>
-            <h2 className="text-2xl font-black tracking-tight text-stone-900">
+            <p className="app-kicker">Step 2</p>
+            <h2 className="text-2xl font-black tracking-tight text-[var(--app-text)]">
               {selectedRole === "member" ? "일반 유저 프로필 설정" : "헤어샵 운영자 정보 등록"}
             </h2>
-            <p className="text-sm leading-6 text-stone-600">
+            <p className="text-sm leading-6 text-[var(--app-muted)]">
               {selectedRole === "member"
                 ? "서비스 추천 방향을 맞추기 위한 기본 선호 정보를 입력해 주세요."
                 : "운영자 계정 구분을 위한 기본 사업 정보를 입력해 주세요."}
@@ -263,7 +264,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
 
           {selectedRole === "member" ? (
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium text-stone-700 sm:col-span-2">
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)] sm:col-span-2">
                 닉네임
                 <input
                   value={memberForm.displayName}
@@ -271,11 +272,11 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                     setMemberForm((current) => ({ ...current, displayName: event.target.value }))
                   }
                   placeholder="서비스에서 사용할 이름"
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                  className="app-input px-3 py-2 text-sm"
                 />
               </label>
 
-              <label className="grid gap-2 text-sm font-medium text-stone-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
                 타겟 스타일
                 <select
                   value={memberForm.styleTarget}
@@ -285,7 +286,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                       styleTarget: event.target.value as MemberStyleTarget,
                     }))
                   }
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                  className="app-input px-3 py-2 text-sm"
                 >
                   {memberTargetOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -295,7 +296,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm font-medium text-stone-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
                 선호 스타일 톤
                 <select
                   value={memberForm.preferredStyleTone}
@@ -305,7 +306,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                       preferredStyleTone: event.target.value as MemberStyleTone,
                     }))
                   }
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                  className="app-input px-3 py-2 text-sm"
                 >
                   {memberToneOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -315,19 +316,19 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                 </select>
               </label>
 
-              <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4 sm:col-span-2">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">선호 톤 안내</p>
-                <p className="mt-2 text-sm leading-6 text-stone-600">
+              <SurfaceCard className="px-4 py-4 sm:col-span-2">
+                <p className="app-kicker">선호 톤 안내</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
                   {
                     memberToneOptions.find((option) => option.value === memberForm.preferredStyleTone)
                       ?.description
                   }
                 </p>
-              </div>
+              </SurfaceCard>
             </div>
           ) : (
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium text-stone-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
                 담당자명
                 <input
                   value={salonForm.managerName}
@@ -335,11 +336,11 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                     setSalonForm((current) => ({ ...current, managerName: event.target.value }))
                   }
                   placeholder="대표자 또는 담당자"
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                  className="app-input px-3 py-2 text-sm"
                 />
               </label>
 
-              <label className="grid gap-2 text-sm font-medium text-stone-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
                 샵명
                 <input
                   value={salonForm.shopName}
@@ -347,11 +348,11 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                     setSalonForm((current) => ({ ...current, shopName: event.target.value }))
                   }
                   placeholder="샵 또는 브랜드명"
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                  className="app-input px-3 py-2 text-sm"
                 />
               </label>
 
-              <label className="grid gap-2 text-sm font-medium text-stone-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
                 연락처
                 <input
                   value={salonForm.contactPhone}
@@ -359,11 +360,11 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                     setSalonForm((current) => ({ ...current, contactPhone: event.target.value }))
                   }
                   placeholder="010-1234-5678"
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                  className="app-input px-3 py-2 text-sm"
                 />
               </label>
 
-              <label className="grid gap-2 text-sm font-medium text-stone-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
                 지역
                 <input
                   value={salonForm.region}
@@ -371,11 +372,11 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                     setSalonForm((current) => ({ ...current, region: event.target.value }))
                   }
                   placeholder="서울 성수 / 부산 해운대"
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                  className="app-input px-3 py-2 text-sm"
                 />
               </label>
 
-              <label className="grid gap-2 text-sm font-medium text-stone-700">
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
                 인스타그램
                 <input
                   value={salonForm.instagramHandle}
@@ -383,11 +384,11 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                     setSalonForm((current) => ({ ...current, instagramHandle: event.target.value }))
                   }
                   placeholder="@shop_handle"
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                  className="app-input px-3 py-2 text-sm"
                 />
               </label>
 
-              <label className="grid gap-2 text-sm font-medium text-stone-700 sm:col-span-2">
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)] sm:col-span-2">
                 샵 소개
                 <textarea
                   value={salonForm.introduction}
@@ -396,7 +397,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                   }
                   rows={4}
                   placeholder="샵의 스타일 방향이나 핵심 서비스를 간단히 소개해 주세요."
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none focus:border-stone-900"
+                  className="app-input px-3 py-2 text-sm"
                 />
               </label>
             </div>
@@ -409,14 +410,14 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
           ) : null}
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-[var(--app-muted)]">
               저장이 완료되면 바로 {returnUrl === "/mypage" ? "마이페이지" : "이전 작업 흐름"}로 이동합니다.
             </p>
             <Button type="button" onClick={handleSubmit} disabled={!canSubmit || isSubmitting}>
               {isSubmitting ? "저장 중..." : "가입 정보 저장"}
             </Button>
           </div>
-        </section>
+        </Panel>
       ) : null}
     </div>
   );

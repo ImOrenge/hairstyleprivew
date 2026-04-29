@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -6,6 +6,7 @@ import { FaceGuideOverlay } from "../../components/upload/FaceGuideOverlay";
 import { UploadArea } from "../../components/upload/UploadArea";
 import { ValidationCheck } from "../../components/upload/ValidationCheck";
 import { Button } from "../../components/ui/Button";
+import { AppPage, Panel } from "../../components/ui/Surface";
 import { useUpload } from "../../hooks/useUpload";
 import { convertImageFileToWebp } from "../../lib/webp-client";
 import { useGenerationStore } from "../../store/useGenerationStore";
@@ -44,17 +45,17 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
+    <AppPage>
       <div className="flex min-h-[calc(100vh-190px)] items-center justify-center">
         <div className="w-full max-w-3xl space-y-4">
           <header className="space-y-1 text-center">
-            <h1 className="text-2xl font-bold text-gray-900">{t("upload.title")}</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-2xl font-black tracking-tight text-[var(--app-text)]">{t("upload.title")}</h1>
+            <p className="text-sm text-[var(--app-muted)]">
               {t("upload.subtitle")}
             </p>
           </header>
 
-          <section className="space-y-4 rounded-3xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+          <Panel as="section" className="space-y-4 p-4 sm:p-5">
             <div className="mx-auto w-full max-w-xl">
               <UploadArea onSelectFile={handleSelectFile} disabled={isUploading} previewUrl={previewUrl} />
             </div>
@@ -80,11 +81,11 @@ export default function UploadPage() {
                 <Button disabled>{t("upload.next")}</Button>
               )}
             </div>
-          </section>
+          </Panel>
         </div>
       </div>
 
       <FaceGuideOverlay open={guideOpen} onClose={() => setGuideOpen(false)} />
-    </div>
+    </AppPage>
   );
 }

@@ -48,14 +48,15 @@ export const homeWorkflow = [
 
 export const homeNavItems = [
   { href: "#home-hero", label: "처음", shortLabel: "TOP" },
-  { href: "#home-workflow", label: "사용 흐름", shortLabel: "01" },
-  { href: "#home-features", label: "차별점", shortLabel: "02" },
-  { href: "#home-criteria", label: "추천 기준", shortLabel: "03" },
-  { href: "#home-demo", label: "패션 코디", shortLabel: "04" },
-  { href: "#home-pricing", label: "가격", shortLabel: "05" },
-  { href: "#home-faq", label: "FAQ", shortLabel: "06" },
+  { href: "#home-demo", label: "AI 데모", shortLabel: "01" },
+  { href: "#home-fashion", label: "패션 코디", shortLabel: "02" },
+  { href: "#home-workflow", label: "사용 흐름", shortLabel: "03" },
+  { href: "#home-features", label: "차별점", shortLabel: "04" },
+  { href: "#home-criteria", label: "추천 기준", shortLabel: "05" },
+  { href: "#home-pricing", label: "가격", shortLabel: "06" },
   { href: "#home-reviews", label: "후기", shortLabel: "07" },
-  { href: "#home-salon", label: "살롱 문의", shortLabel: "08" },
+  { href: "#home-faq", label: "FAQ", shortLabel: "08" },
+  { href: "#home-salon", label: "살롱 문의", shortLabel: "09" },
 ];
 
 export const recommendationCriteria = [

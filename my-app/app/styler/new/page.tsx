@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { Check, Scissors, X } from "lucide-react";
 import { Button } from "../../../components/ui/Button";
+import { AppPage, Panel, SurfaceCard } from "../../../components/ui/Surface";
 import type { FashionGenre, FashionRecommendation, StyleProfile } from "../../../lib/fashion-types";
 import type { FaceAnalysisSummary, GeneratedVariant } from "../../../lib/recommendation-types";
 
@@ -147,8 +148,8 @@ function StepBadge({
       onClick={() => onClick(step.id)}
       disabled={!enabled}
       className={[
-        "rounded-2xl border px-4 py-4 text-left transition",
-        active ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-900",
+        "border px-4 py-4 text-left transition",
+        active ? "border-[var(--app-border-strong)] bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "app-card",
         complete && !active ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "",
         !enabled ? "cursor-not-allowed opacity-50" : "hover:border-stone-400",
       ].join(" ")}
@@ -157,13 +158,13 @@ function StepBadge({
         <span
           className={[
             "flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold",
-            active ? "bg-white/15 text-white" : complete ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700",
+            active ? "bg-white/15 text-white" : complete ? "bg-emerald-600 text-white" : "bg-[var(--app-surface-muted)] text-[var(--app-text)]",
           ].join(" ")}
         >
           {complete ? <Check className="h-4 w-4" /> : step.id}
         </span>
         <div>
-          <p className={active ? "text-xs font-bold uppercase text-white/70" : "text-xs font-bold uppercase text-stone-400"}>
+          <p className={active ? "text-xs font-bold uppercase text-white/70" : "text-xs font-bold uppercase text-[var(--app-subtle)]"}>
             {step.eyebrow}
           </p>
           <p className="mt-1 text-base font-semibold">{step.title}</p>
@@ -187,14 +188,14 @@ function OptionCard<T extends string>({
       type="button"
       onClick={() => onSelect(option.value)}
       className={[
-        "rounded-2xl border px-4 py-4 text-left transition",
+        "border px-4 py-4 text-left transition",
         selected
-          ? "border-stone-900 bg-stone-900 text-white shadow-[0_16px_40px_rgba(0,0,0,0.08)]"
-          : "border-stone-200 bg-white text-stone-900 hover:border-stone-400",
+          ? "border-[var(--app-border-strong)] bg-[var(--app-inverse)] text-[var(--app-inverse-text)] shadow-[0_16px_40px_rgba(0,0,0,0.08)]"
+          : "app-card hover:border-[var(--app-border-strong)]",
       ].join(" ")}
     >
-      <p className={selected ? "text-sm font-bold text-white" : "text-sm font-bold text-stone-900"}>{option.label}</p>
-      <p className={selected ? "mt-2 text-sm leading-5 text-white/80" : "mt-2 text-sm leading-5 text-stone-600"}>
+      <p className={selected ? "text-sm font-bold text-white" : "text-sm font-bold text-[var(--app-text)]"}>{option.label}</p>
+      <p className={selected ? "mt-2 text-sm leading-5 text-white/80" : "mt-2 text-sm leading-5 text-[var(--app-muted)]"}>
         {option.description}
       </p>
     </button>
@@ -203,10 +204,10 @@ function OptionCard<T extends string>({
 
 function FieldLabel({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-      <p className="text-xs font-bold uppercase text-stone-400">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-stone-900">{value}</p>
-    </div>
+    <SurfaceCard className="px-4 py-3">
+      <p className="app-kicker">{label}</p>
+      <p className="mt-2 text-sm font-semibold text-[var(--app-text)]">{value}</p>
+    </SurfaceCard>
   );
 }
 
@@ -252,7 +253,7 @@ function HairSelectionModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="hair-selection-title"
-        className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl"
+        className="app-panel flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden shadow-2xl"
       >
         <header className="flex items-start justify-between gap-4 border-b border-stone-200 px-5 py-4">
           <div>
@@ -604,23 +605,23 @@ function StylerNewContent() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-20 pt-8 sm:px-6">
+    <AppPage className="flex flex-col gap-6 pb-20 pt-8">
       <header className="space-y-2">
-        <p className="text-xs font-bold uppercase text-stone-400">패션 추천</p>
-        <h1 className="text-3xl font-black tracking-tight text-stone-900">헤어스타일에 맞춘 전신 코디 만들기</h1>
-        <p className="max-w-3xl text-sm leading-6 text-stone-600">
+        <p className="app-kicker">패션 추천</p>
+        <h1 className="text-3xl font-black tracking-tight text-[var(--app-text)]">헤어스타일에 맞춘 전신 코디 만들기</h1>
+        <p className="max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
           먼저 헤어스타일과 바디 프로필을 확인한 뒤, 원하는 패션 장르를 선택하면 AI 카탈로그 기반 코디와 룩북 이미지를 생성합니다.
         </p>
       </header>
 
-      <section className="rounded-3xl border border-stone-200 bg-white p-5 shadow-[0_24px_80px_rgba(15,23,42,0.06)]">
+      <Panel as="section" className="p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="space-y-1">
-            <p className="text-xs font-bold uppercase text-stone-400">선택한 헤어스타일</p>
-            <p className="text-xl font-bold text-stone-900">
+            <p className="app-kicker">선택한 헤어스타일</p>
+            <p className="text-xl font-bold text-[var(--app-text)]">
               {isLoadingVariant ? "헤어스타일을 불러오는 중..." : selectedVariant?.label || "선택된 헤어스타일 없음"}
             </p>
-            <p className="max-w-2xl text-sm leading-6 text-stone-600">
+            <p className="max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
               {selectedVariant?.reason || "빈 헤어스타일 영역을 눌러 최근 추천 결과에서 하나를 선택하세요."}
             </p>
           </div>
@@ -629,7 +630,7 @@ function StylerNewContent() {
             <button
               type="button"
               onClick={openHairModal}
-              className="relative aspect-[4/5] w-28 overflow-hidden rounded-2xl border border-stone-200 bg-stone-100 transition hover:border-stone-500"
+              className="app-card relative aspect-[4/5] w-28 overflow-hidden transition hover:border-[var(--app-border-strong)]"
               aria-label="헤어스타일 선택 모달 열기"
             >
               {selectedVariant?.outputUrl ? (
@@ -655,7 +656,7 @@ function StylerNewContent() {
             </div>
           </div>
         </div>
-      </section>
+      </Panel>
 
       <section className="grid gap-3 md:grid-cols-3">
         {stepDefinitions.map((step) => (
@@ -674,7 +675,7 @@ function StylerNewContent() {
       </section>
 
       {visibleStep === 1 ? (
-        <section className="rounded-3xl border border-stone-200 bg-white p-6">
+        <Panel as="section" className="p-6">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
             <div className="grid flex-1 gap-4 sm:grid-cols-2">
               <FieldLabel label="키" value={profile?.heightCm ? `${profile.heightCm} cm` : "-"} />
@@ -688,10 +689,10 @@ function StylerNewContent() {
             </div>
 
             <div className="w-full max-w-sm space-y-3">
-              <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+              <SurfaceCard className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <p className="text-xs font-bold uppercase text-stone-400">준비 상태</p>
-                  <p className="mt-1 text-sm font-semibold text-stone-900">
+                  <p className="app-kicker">준비 상태</p>
+                  <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">
                     {isLoadingProfile ? "프로필 확인 중" : stepOneReady ? "추천 준비 완료" : "추가 설정 필요"}
                   </p>
                 </div>
@@ -703,9 +704,9 @@ function StylerNewContent() {
                 >
                   {stepOneReady ? "준비됨" : "필요"}
                 </span>
-              </div>
+              </SurfaceCard>
 
-              <div className="relative aspect-[4/5] overflow-hidden rounded-3xl border border-stone-200 bg-stone-100">
+              <SurfaceCard className="relative aspect-[4/5] overflow-hidden">
                 {profile?.bodyPhotoUrl ? (
                   <img
                     src={profile.bodyPhotoUrl}
@@ -717,7 +718,7 @@ function StylerNewContent() {
                     룩북 생성을 위해 마이페이지에서 전신 참고 사진을 저장해 주세요.
                   </div>
                 )}
-              </div>
+              </SurfaceCard>
             </div>
           </div>
 
@@ -752,15 +753,15 @@ function StylerNewContent() {
               다음: 패션 장르 선택
             </Button>
           </div>
-        </section>
+        </Panel>
       ) : null}
 
       {visibleStep === 2 ? (
-        <section className="space-y-6 rounded-3xl border border-stone-200 bg-white p-6">
+        <Panel as="section" className="space-y-6 p-6">
           <div>
-            <p className="text-xs font-bold uppercase text-stone-400">2단계</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-900">추천받을 패션 장르를 선택하세요</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+            <p className="app-kicker">2단계</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-[var(--app-text)]">추천받을 패션 장르를 선택하세요</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
               AI가 저장한 주간 패션 카탈로그에서 선택한 장르에 맞는 코디 방향을 가져옵니다.
             </p>
           </div>
@@ -776,12 +777,12 @@ function StylerNewContent() {
             ))}
           </div>
 
-          <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
-            <p className="text-xs font-bold uppercase text-stone-400">선택한 방향</p>
-            <p className="mt-2 text-sm leading-6 text-stone-700">
+          <SurfaceCard className="px-4 py-4">
+            <p className="app-kicker">선택한 방향</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--app-text)]">
               {selectedGenre.label}: {selectedGenre.description}
             </p>
-          </div>
+          </SurfaceCard>
 
           {recommendError ? (
             <p className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -797,34 +798,34 @@ function StylerNewContent() {
               {isRecommending ? "추천 생성 중..." : "패션 추천 만들기"}
             </Button>
           </div>
-        </section>
+        </Panel>
       ) : null}
 
       {visibleStep === 3 ? (
-        <section className="space-y-6 rounded-3xl border border-stone-200 bg-white p-6">
+        <Panel as="section" className="space-y-6 p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <p className="text-xs font-bold uppercase text-stone-400">3단계</p>
-              <h2 className="mt-2 text-2xl font-black tracking-tight text-stone-900">
+              <p className="app-kicker">3단계</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-[var(--app-text)]">
                 {recommendation?.headline || "패션 추천 미리보기"}
               </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
                 {recommendation?.summary || "패션 추천을 먼저 만든 뒤 룩북 이미지를 생성할 수 있습니다."}
               </p>
             </div>
-            <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-              <p className="text-xs font-bold uppercase text-stone-400">장르</p>
-              <p className="mt-1 text-sm font-semibold text-stone-900">{selectedGenre.label}</p>
-            </div>
+            <SurfaceCard className="px-4 py-3">
+              <p className="app-kicker">장르</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--app-text)]">{selectedGenre.label}</p>
+            </SurfaceCard>
           </div>
 
           {stepThreeReady && recommendation ? (
             <>
               <div className="grid gap-4 lg:grid-cols-[0.62fr_1fr]">
-                <div className="rounded-3xl border border-stone-200 bg-stone-50 p-4">
-                  <p className="text-xs font-bold uppercase text-stone-400">선택한 헤어스타일</p>
+                <SurfaceCard className="p-4">
+                  <p className="app-kicker">선택한 헤어스타일</p>
                   <div className="mt-4 flex gap-4">
-                    <div className="relative aspect-[4/5] w-28 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+                    <SurfaceCard className="relative aspect-[4/5] w-28 overflow-hidden">
                       {selectedVariant?.outputUrl ? (
                         <img
                           src={selectedVariant.outputUrl}
@@ -836,22 +837,22 @@ function StylerNewContent() {
                           헤어 미리보기
                         </div>
                       )}
-                    </div>
+                    </SurfaceCard>
                     <div className="space-y-3">
                       <div>
-                        <p className="text-sm font-semibold text-stone-900">{selectedVariant?.label || "-"}</p>
-                        <p className="mt-1 text-sm leading-6 text-stone-600">{selectedVariant?.reason || "-"}</p>
+                        <p className="text-sm font-semibold text-[var(--app-text)]">{selectedVariant?.label || "-"}</p>
+                        <p className="mt-1 text-sm leading-6 text-[var(--app-muted)]">{selectedVariant?.reason || "-"}</p>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {(selectedVariant?.tags || []).slice(0, 4).map((tag) => (
-                          <span key={tag} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-stone-600">
+                          <span key={tag} className="app-chip px-3 py-1 text-xs font-medium">
                             {tag}
                           </span>
                         ))}
                       </div>
                     </div>
                   </div>
-                </div>
+                </SurfaceCard>
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <FieldLabel label="실루엣" value={recommendation.silhouette} />
@@ -862,25 +863,25 @@ function StylerNewContent() {
 
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 {recommendation.items.map((item) => (
-                  <article key={item.slot} className="rounded-2xl border border-stone-200 bg-white p-4">
-                    <p className="text-xs font-bold uppercase text-stone-400">{item.slot}</p>
-                    <h3 className="mt-2 text-base font-bold text-stone-900">{item.name}</h3>
-                    <p className="mt-2 text-sm leading-5 text-stone-600">{item.description}</p>
-                    <p className="mt-3 text-xs text-stone-500">{item.color} · {item.fit} · {item.material}</p>
-                  </article>
+                  <SurfaceCard as="article" key={item.slot} className="p-4">
+                    <p className="app-kicker">{item.slot}</p>
+                    <h3 className="mt-2 text-base font-bold text-[var(--app-text)]">{item.name}</h3>
+                    <p className="mt-2 text-sm leading-5 text-[var(--app-muted)]">{item.description}</p>
+                    <p className="mt-3 text-xs text-[var(--app-subtle)]">{item.color} · {item.fit} · {item.material}</p>
+                  </SurfaceCard>
                 ))}
               </div>
 
-              <div className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-4">
-                <p className="text-xs font-bold uppercase text-stone-400">스타일링 메모</p>
+              <SurfaceCard className="px-4 py-4">
+                <p className="app-kicker">스타일링 메모</p>
                 <div className="mt-3 grid gap-2">
                   {recommendation.stylingNotes.map((note) => (
-                    <p key={note} className="text-sm leading-6 text-stone-700">
+                    <p key={note} className="text-sm leading-6 text-[var(--app-text)]">
                       {note}
                     </p>
                   ))}
                 </div>
-              </div>
+              </SurfaceCard>
             </>
           ) : (
             <div className="rounded-3xl border border-dashed border-stone-300 bg-stone-50 px-6 py-10 text-center">
@@ -905,7 +906,7 @@ function StylerNewContent() {
               {isGenerating ? "룩북 생성 중..." : "룩북 이미지 생성"}
             </Button>
           </div>
-        </section>
+        </Panel>
       ) : null}
 
       <HairSelectionModal
@@ -917,13 +918,13 @@ function StylerNewContent() {
         onClose={() => setHairModalOpen(false)}
         onSelect={handleHairSelect}
       />
-    </div>
+    </AppPage>
   );
 }
 
 export default function StylerNewPage() {
   return (
-    <Suspense fallback={<div className="mx-auto max-w-4xl px-4 py-12 text-sm text-stone-500">패션 추천 화면을 불러오는 중입니다...</div>}>
+    <Suspense fallback={<AppPage className="max-w-4xl py-12 text-sm text-[var(--app-muted)]">패션 추천 화면을 불러오는 중입니다...</AppPage>}>
       <StylerNewContent />
     </Suspense>
   );

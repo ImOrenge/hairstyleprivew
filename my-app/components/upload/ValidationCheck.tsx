@@ -1,4 +1,4 @@
-import { UploadStatus, UploadValidationDetails } from "../../hooks/useUpload";
+﻿import { UploadStatus, UploadValidationDetails } from "../../hooks/useUpload";
 
 interface ValidationCheckProps {
   status: UploadStatus;
@@ -7,10 +7,10 @@ interface ValidationCheckProps {
 }
 
 const toneMap: Record<UploadStatus, string> = {
-  idle: "bg-gray-100 text-gray-700",
-  checking: "bg-blue-100 text-blue-700",
-  success: "bg-emerald-100 text-emerald-700",
-  error: "bg-rose-100 text-rose-700",
+  idle: "border border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-muted)]",
+  checking: "border border-[var(--app-accent)] bg-[var(--app-surface-muted)] text-[var(--app-text)]",
+  success: "border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  error: "border border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300",
 };
 
 function formatCheckState(value: boolean | null) {
@@ -26,7 +26,7 @@ export function ValidationCheck({ status, message, details }: ValidationCheckPro
     details.faceDetectionEngine === "FaceDetector" ? "FaceDetector" : "미사용";
 
   return (
-    <section className={`rounded-xl px-4 py-3 ${toneMap[status]}`}>
+    <section className={`rounded-[var(--app-radius-panel)] px-4 py-3 ${toneMap[status]}`}>
       <p className="text-sm font-medium">{message}</p>
       <div className="mt-3 grid gap-1 text-xs">
         <p>파일 형식: {formatCheckState(details.formatValid)}</p>

@@ -1,4 +1,4 @@
-import { CustomerDetailClient } from "../../../../components/salon/CustomerDetailClient";
+﻿import { CustomerDetailClient } from "../../../../components/salon/CustomerDetailClient";
 
 interface Props {
   params: Promise<{ id: string }>;

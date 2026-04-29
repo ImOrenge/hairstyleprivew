@@ -1,8 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useT } from "../../lib/i18n/useT";
-
-const STARS = "★★★★★";
+import { InverseCard, InverseSection } from "../ui/Surface";
 
 export function ReviewCarousel() {
   const t = useT();
@@ -34,43 +33,54 @@ export function ReviewCarousel() {
     { label: t("reviews.metrics.3.label"), value: t("reviews.metrics.3.value") },
   ];
 
+  const rollingReviews = [...reviews, ...reviews];
+
   return (
-    <section className="rounded-3xl border border-stone-200/60 bg-stone-950 p-6 text-white shadow-xl transition-colors dark:border-zinc-800/60 sm:p-8">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">{t("reviews.badge")}</p>
-      <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t("reviews.title")}</h2>
-      <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-300">{t("reviews.subtitle")}</p>
+    <InverseSection as="section" className="overflow-hidden p-5 sm:p-6">
+      <div className="grid gap-4 border-b border-[color-mix(in_srgb,var(--app-inverse-text)_12%,transparent)] pb-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.55fr)] lg:items-end">
+        <div>
+          <p className="app-inverse-kicker">{t("reviews.badge")}</p>
+          <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t("reviews.title")}</h2>
+          <p className="app-inverse-muted mt-3 max-w-2xl text-sm leading-6">{t("reviews.subtitle")}</p>
+        </div>
 
-      {/* 활용 시나리오 카드 */}
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        {reviews.map((review) => (
-          <article
-            key={review.author}
-            className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.06] p-5"
-          >
-            <p className="text-sm text-amber-300" aria-label="별점 5점">{STARS}</p>
-            <p className="flex-1 text-sm leading-6 text-stone-200">&quot;{review.body}&quot;</p>
-            <div className="flex items-end justify-between gap-2">
-              <div>
-                <p className="text-sm font-bold text-white">{review.author}</p>
-                <p className="text-xs text-stone-400">{review.role}</p>
-              </div>
-              <span className="shrink-0 rounded-full bg-amber-400/15 px-2.5 py-1 text-xs font-semibold text-amber-300">
-                {review.result}
-              </span>
+        <InverseCard className="grid grid-cols-3">
+          {metrics.map((metric) => (
+            <div key={metric.label} className="border-r border-[color-mix(in_srgb,var(--app-inverse-text)_12%,transparent)] p-3 text-center last:border-r-0">
+              <p className="text-2xl font-black">{metric.value}</p>
+              <p className="app-inverse-subtle mt-1 text-[11px] font-semibold uppercase tracking-[0.08em]">
+                {metric.label}
+              </p>
             </div>
-          </article>
-        ))}
+          ))}
+        </InverseCard>
       </div>
 
-      {/* 제품 활용 포인트 */}
-      <div className="mt-6 grid grid-cols-3 gap-3">
-        {metrics.map((metric) => (
-          <div key={metric.label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-center">
-            <p className="text-2xl font-black">{metric.value}</p>
-            <p className="mt-1 text-xs font-semibold text-stone-300">{metric.label}</p>
-          </div>
-        ))}
+      <div className="-mx-5 mt-5 overflow-x-auto sm:-mx-6" aria-label={t("reviews.title")}>
+        <div className="review-roll gap-3 px-5 sm:px-6">
+          {rollingReviews.map((review, index) => (
+            <InverseCard
+              as="article"
+              key={`${review.author}-${index}`}
+              className="flex min-h-56 w-[19rem] shrink-0 flex-col p-4 sm:w-[23rem]"
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--app-inverse-text)_10%,transparent)] pb-3">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--app-accent)]">5.0 Review</p>
+                <span className="border border-[var(--app-accent)] px-2 py-1 text-[11px] font-bold text-[var(--app-accent)]">
+                  {review.result}
+                </span>
+              </div>
+
+              <p className="mt-4 flex-1 text-sm leading-6 text-[var(--app-inverse-text)]">&quot;{review.body}&quot;</p>
+
+              <div className="mt-5 border-t border-[color-mix(in_srgb,var(--app-inverse-text)_10%,transparent)] pt-3">
+                <p className="text-sm font-black text-[var(--app-inverse-text)]">{review.author}</p>
+                <p className="app-inverse-subtle mt-1 text-xs font-semibold">{review.role}</p>
+              </div>
+            </InverseCard>
+          ))}
+        </div>
       </div>
-    </section>
+    </InverseSection>
   );
 }

@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import type { GeneratedVariant } from "../../lib/recommendation-types";
 import { useResultTranslations } from "../../hooks/useResultTranslations";
+import { Panel } from "../ui/Surface";
 
 interface VariantSwitcherGridProps {
   variants: GeneratedVariant[];
@@ -32,13 +33,13 @@ export function VariantSwitcherGrid({
   }
 
   return (
-    <section className="space-y-3">
+    <Panel as="section" className="space-y-3 p-5">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase text-stone-400">전체 후보</p>
-          <h2 className="mt-1 text-xl font-black text-stone-900">완성된 추천 헤어스타일을 전환해 비교하세요</h2>
+          <p className="app-kicker">전체 후보</p>
+          <h2 className="mt-1 text-xl font-black text-[var(--app-text)]">완성된 추천 헤어스타일을 전환해 비교하세요</h2>
         </div>
-        {isSwitching ? <p className="text-xs text-stone-500">선택을 업데이트하는 중...</p> : null}
+        {isSwitching ? <p className="text-xs text-[var(--app-muted)]">선택을 업데이트하는 중...</p> : null}
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -48,10 +49,10 @@ export function VariantSwitcherGrid({
             type="button"
             onClick={() => onSelect(variant)}
             disabled={!variant.outputUrl}
-            className={`overflow-hidden rounded-[1.5rem] border text-left transition ${
+            className={`app-card overflow-hidden text-left transition ${
               selectedVariantId === variant.id
-                ? "border-stone-900 shadow-[0_16px_40px_-28px_rgba(0,0,0,0.45)]"
-                : "border-stone-200 bg-white"
+                ? "border-[var(--app-border-strong)] shadow-[0_16px_40px_-28px_rgba(0,0,0,0.45)]"
+                : ""
             } disabled:cursor-not-allowed disabled:opacity-55`}
           >
             <div className="relative aspect-[4/5] bg-stone-100">
@@ -65,23 +66,23 @@ export function VariantSwitcherGrid({
                   className="object-cover"
                 />
               ) : (
-                <div className="flex h-full items-center justify-center px-6 text-center text-sm text-stone-500">
+                <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[var(--app-muted)]">
                   {variant.status === "failed" ? "생성 실패" : "렌더링 대기 중"}
                 </div>
               )}
             </div>
             <div className="space-y-2 p-4">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-base font-bold text-stone-900">{variant.label}</h3>
-                <span className="rounded-full bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-600">
+                <h3 className="text-base font-bold text-[var(--app-text)]">{variant.label}</h3>
+                <span className="app-chip px-2 py-1 text-[11px] font-semibold">
                   {variant.evaluation?.score ? `점수 ${variant.evaluation.score}` : formatStatus(variant.status)}
                 </span>
               </div>
-              <p className="text-sm text-stone-600">{translate(variant.reason) || variant.reason}</p>
+              <p className="text-sm text-[var(--app-muted)]">{translate(variant.reason) || variant.reason}</p>
             </div>
           </button>
         ))}
       </div>
-    </section>
+    </Panel>
   );
 }

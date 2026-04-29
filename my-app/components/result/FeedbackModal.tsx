@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/Button";
@@ -152,30 +152,30 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
 
       {open ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
-          <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-semibold text-stone-900">결과 리뷰 작성</h3>
-            <p className="mt-1 text-sm text-stone-600">
+          <div className="app-panel w-full max-w-md p-5">
+            <h3 className="text-lg font-semibold text-[var(--app-text)]">결과 리뷰 작성</h3>
+            <p className="mt-1 text-sm text-[var(--app-muted)]">
               결과에 대한 별점과 후기를 남겨 주시면 품질 개선에 반영합니다.
             </p>
 
             {loadingExisting ? (
-              <p className="mt-4 text-sm text-stone-600">기존 리뷰를 불러오는 중...</p>
+              <p className="mt-4 text-sm text-[var(--app-muted)]">기존 리뷰를 불러오는 중...</p>
             ) : (
               <>
                 {hasExistingReview ? (
-                  <p className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-700">
+                  <p className="mt-4 rounded-[var(--app-radius-control)] border border-[var(--app-accent)] bg-[var(--app-surface-muted)] px-3 py-2 text-sm text-[var(--app-text)]">
                     기존 리뷰가 있습니다. 수정 후 다시 저장할 수 있습니다.
                   </p>
                 ) : null}
 
                 {submitted ? (
-                  <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
+                  <div className="mt-4 rounded-[var(--app-radius-control)] border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
                     리뷰가 저장되었습니다.
                   </div>
                 ) : null}
 
                 <div className="mt-4">
-                  <p className="text-sm font-medium text-stone-700">별점</p>
+                  <p className="text-sm font-medium text-[var(--app-text)]">별점</p>
                   <div className="mt-2 flex items-center gap-1">
                     {STAR_VALUES.map((value) => {
                       const active = rating !== null && value <= rating;
@@ -186,7 +186,7 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
                           type="button"
                           onClick={() => setRating(value)}
                           className={`text-2xl leading-none transition ${
-                            active ? "text-amber-500" : "text-stone-300 hover:text-stone-500"
+                            active ? "text-[var(--app-accent)]" : "text-[var(--app-subtle)] hover:text-[var(--app-muted)]"
                           }`}
                           aria-label={`${value}점`}
                           disabled={submitting}
@@ -195,12 +195,12 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
                         </button>
                       );
                     })}
-                    <span className="ml-2 text-sm text-stone-600">{rating ? `${rating} / 5` : "선택 전"}</span>
+                    <span className="ml-2 text-sm text-[var(--app-muted)]">{rating ? `${rating} / 5` : "선택 전"}</span>
                   </div>
                 </div>
 
                 <div className="mt-4">
-                  <label htmlFor="review-comment" className="text-sm font-medium text-stone-700">
+                  <label htmlFor="review-comment" className="text-sm font-medium text-[var(--app-text)]">
                     후기
                   </label>
                   <textarea
@@ -210,10 +210,10 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
                     placeholder="예: 스타일이 자연스럽고 상담 전에 방향을 정하는 데 도움이 되었어요."
                     rows={4}
                     maxLength={800}
-                    className="mt-2 w-full resize-y rounded-xl border border-stone-300 px-3 py-2 text-sm text-stone-900 outline-none transition focus:border-stone-500 focus:ring-2 focus:ring-stone-300/60"
+                    className="app-input mt-2 w-full resize-y px-3 py-2 text-sm transition focus:ring-2 focus:ring-[var(--app-ring)]"
                     disabled={submitting}
                   />
-                  <p className="mt-1 text-right text-xs text-stone-500">{trimmedComment.length}/800</p>
+                  <p className="mt-1 text-right text-xs text-[var(--app-subtle)]">{trimmedComment.length}/800</p>
                 </div>
 
                 {error ? <p className="mt-2 text-sm text-rose-600">{error}</p> : null}

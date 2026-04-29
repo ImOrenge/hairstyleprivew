@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { motion } from "framer-motion";
 import { cn } from "../../lib/utils";
@@ -34,51 +34,51 @@ const STAGE_THEME: Record<
   }
 > = {
   idle: {
-    ring: "border-slate-300 border-t-slate-500",
-    text: "text-slate-700",
-    badge: "bg-slate-500 text-white",
+    ring: "border-[var(--app-border)] border-t-[var(--app-subtle)]",
+    text: "text-[var(--app-muted)]",
+    badge: "border border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-muted)]",
     spinnerDuration: 1.2,
   },
   validating: {
-    ring: "border-sky-200 border-t-sky-500",
-    text: "text-sky-700",
-    badge: "bg-sky-500 text-white",
+    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    text: "text-[var(--app-text)]",
+    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
     spinnerDuration: 1.1,
   },
   analyzing_face: {
-    ring: "border-indigo-200 border-t-indigo-500",
-    text: "text-indigo-700",
-    badge: "bg-indigo-500 text-white",
+    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    text: "text-[var(--app-text)]",
+    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
     spinnerDuration: 0.95,
   },
   building_grid: {
-    ring: "border-violet-200 border-t-violet-500",
-    text: "text-violet-700",
-    badge: "bg-violet-500 text-white",
+    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    text: "text-[var(--app-text)]",
+    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
     spinnerDuration: 0.92,
   },
   generating_image: {
-    ring: "border-emerald-200 border-t-emerald-500",
-    text: "text-emerald-700",
-    badge: "bg-emerald-500 text-white",
+    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    text: "text-[var(--app-text)]",
+    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
     spinnerDuration: 0.8,
   },
   finalizing: {
-    ring: "border-amber-200 border-t-amber-500",
-    text: "text-amber-700",
-    badge: "bg-amber-500 text-white",
+    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    text: "text-[var(--app-text)]",
+    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
     spinnerDuration: 1.05,
   },
   completed: {
-    ring: "border-emerald-200 border-t-emerald-500",
-    text: "text-emerald-700",
-    badge: "bg-emerald-600 text-white",
+    ring: "border-emerald-500/30 border-t-emerald-500",
+    text: "text-emerald-700 dark:text-emerald-300",
+    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
     spinnerDuration: 1,
   },
   failed: {
-    ring: "border-rose-200 border-t-rose-500",
-    text: "text-rose-700",
-    badge: "bg-rose-500 text-white",
+    ring: "border-rose-500/30 border-t-rose-500",
+    text: "text-rose-700 dark:text-rose-300",
+    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
     spinnerDuration: 1.2,
   },
 };
@@ -108,8 +108,8 @@ export function PipelineStatusIndicator({
   const spinnerSize = isOverlay ? "h-14 w-14" : "h-20 w-20";
   const iconSize = isOverlay ? "h-7 w-7" : "h-10 w-10";
   const containerClassName = isOverlay
-    ? "w-full rounded-[1.5rem] border border-white/15 bg-black/70 px-4 py-4 text-left text-white shadow-[0_18px_60px_-30px_rgba(0,0,0,0.7)] backdrop-blur-md"
-    : "flex h-full w-full flex-col items-center justify-center gap-5 rounded-2xl bg-white/78 px-6 py-8 text-center backdrop-blur-sm";
+    ? "w-full rounded-[var(--app-radius-panel)] border border-white/15 bg-black/70 px-4 py-4 text-left text-white shadow-[0_18px_60px_-30px_rgba(0,0,0,0.7)] backdrop-blur-md"
+    : "flex h-full w-full flex-col items-center justify-center gap-5 rounded-[var(--app-radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-6 py-8 text-center";
 
   return (
     <div className={cn(containerClassName, className)}>
@@ -123,7 +123,7 @@ export function PipelineStatusIndicator({
             className="relative"
           >
             <motion.div
-              className={cn(spinnerSize, "rounded-full border-4 border-emerald-200 bg-emerald-50")}
+              className={cn(spinnerSize, "rounded-full border-4 border-emerald-500/40 bg-emerald-500/10")}
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               transition={{ duration: 0.2 }}
@@ -147,7 +147,7 @@ export function PipelineStatusIndicator({
           </motion.div>
         ) : (
           <>
-            <motion.div className={cn(spinnerSize, "rounded-full border-4 border-slate-200")} />
+            <motion.div className={cn(spinnerSize, "rounded-full border-4 border-[var(--app-border)]")} />
             <motion.div
               className={cn(spinnerSize, "absolute rounded-full border-4 border-transparent", theme.ring)}
               animate={{ rotate: 360 }}
@@ -159,9 +159,9 @@ export function PipelineStatusIndicator({
 
       <div className={cn("space-y-1", isOverlay ? "flex-1" : "")}>
         <p className={cn("text-sm font-semibold", isOverlay ? "text-white" : theme.text)}>{message}</p>
-        <p className={cn("text-xs", isOverlay ? "text-white/70" : "text-gray-600")}>Current stage: {STAGE_LABELS[stage]}</p>
+        <p className={cn("text-xs", isOverlay ? "text-white/70" : "text-[var(--app-muted)]")}>Current stage: {STAGE_LABELS[stage]}</p>
         {!isFailed ? (
-          <p className={cn("text-[11px]", isOverlay ? "text-white/60" : "text-gray-500")}>
+          <p className={cn("text-[11px]", isOverlay ? "text-white/60" : "text-[var(--app-subtle)]")}>
             Progress {Math.max(0, Math.min(100, progress))}%
           </p>
         ) : null}
@@ -176,15 +176,15 @@ export function PipelineStatusIndicator({
           const className = isActive
             ? STAGE_THEME[value].badge
             : isDone
-              ? "bg-emerald-100 text-emerald-700"
+              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
               : isOverlay
                 ? "bg-white/10 text-white/70"
-                : "bg-gray-100 text-gray-500";
+                : "border border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-muted)]";
 
           return (
             <span
               key={value}
-              className={`rounded-full px-3 py-1 text-[11px] font-medium transition ${className}`}
+              className={`rounded-[var(--app-radius-control)] px-3 py-1 text-[11px] font-medium transition ${className}`}
             >
               {STAGE_LABELS[value]}
             </span>

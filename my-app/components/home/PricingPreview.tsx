@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { getPricingEconomics, getSuggestedPricingTiers, type PricingTierKey } from "../../lib/pricing-plan";
 import { cn } from "../../lib/utils";
 import { useT } from "../../lib/i18n/useT";
+import { Button } from "../ui/Button";
+import { Panel, SurfaceCard } from "../ui/Surface";
 
 type PlanKey = PricingTierKey;
 type PaymentPlanKey = Exclude<PlanKey, "free" | "salon">;
@@ -231,100 +233,81 @@ export function PricingPreview() {
   };
 
   return (
-    <section className="rounded-3xl border border-stone-200/60 bg-white/90 p-6 shadow-xl backdrop-blur transition-colors dark:border-zinc-800/60 dark:bg-zinc-900/40 sm:p-8">
+    <Panel as="section" className="p-5 transition-colors sm:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-600 dark:text-amber-500">
+          <p className="app-kicker">
             {t("pricing.badge")}
           </p>
-          <h2 className="text-2xl font-black tracking-tight text-stone-900 dark:text-white sm:text-3xl">
+          <h2 className="text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
             {t("pricing.title")}
           </h2>
         </div>
-        <p className="text-sm text-stone-600 dark:text-zinc-400">
+        <p className="text-sm text-[var(--app-muted)]">
           {t("pricing.creditNote", { credits: economics.creditsPerStyle })}
         </p>
       </div>
 
       {statusMsg ? (
-        <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-300">
+        <div className="mt-4 border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-[var(--app-danger)]">
           {statusMsg}
         </div>
       ) : null}
 
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {plans.map((plan) => (
-          <article
+          <SurfaceCard
+            as="article"
             key={plan.name}
             className={cn(
-              "relative flex h-full flex-col rounded-2xl border p-4 transition-colors",
+              "relative flex h-full flex-col p-4 transition-colors",
               plan.tone === "recommended" &&
-                "border-amber-300 bg-amber-50/50 dark:border-amber-500/30 dark:bg-amber-500/10",
+                "border-[var(--app-accent)]",
               plan.tone === "premium" &&
-                "border-stone-900/10 bg-gradient-to-b from-stone-50 to-white dark:border-zinc-700/30 dark:from-zinc-800/40 dark:to-zinc-900/40",
+                "border-[var(--app-border)]",
               plan.tone === "enterprise" &&
-                "border-stone-800/20 bg-gradient-to-b from-stone-900 to-stone-800 dark:border-zinc-600/40 dark:from-zinc-800 dark:to-zinc-900",
+                "border-[var(--app-border-strong)]",
               plan.tone === "basic" &&
-                "border-stone-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/30",
+                "border-[var(--app-border)]",
             )}
           >
             {plan.recommended ? (
-              <span className="absolute right-3 top-3 rounded-full bg-stone-900 px-2.5 py-0.5 text-[10px] font-semibold text-white dark:bg-white dark:text-stone-900">
+              <span className="absolute right-3 top-3 border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--app-inverse-text)]">
                 추천
               </span>
             ) : null}
 
             <p
-              className={cn(
-                "text-[10px] font-semibold uppercase tracking-[0.16em]",
-                plan.tone === "enterprise" ? "text-zinc-400" : "text-stone-500 dark:text-zinc-500",
-              )}
+              className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--app-subtle)]"
             >
               {plan.subtitle}
             </p>
             <h3
-              className={cn(
-                "mt-1.5 text-lg font-bold",
-                plan.tone === "enterprise" ? "text-white" : "text-stone-900 dark:text-white",
-              )}
+              className="mt-1.5 text-lg font-bold text-[var(--app-text)]"
             >
               {plan.name}
             </h3>
             <p
-              className={cn(
-                "mt-1 min-h-[3.75rem] text-xs leading-relaxed",
-                plan.tone === "enterprise" ? "text-zinc-300" : "text-stone-600 dark:text-zinc-400",
-              )}
+              className="mt-1 min-h-[3.75rem] text-xs leading-relaxed text-[var(--app-muted)]"
             >
               {plan.description}
             </p>
 
             <div className="mt-4 flex items-end gap-1">
               <p
-                className={cn(
-                  "text-2xl font-black tracking-tight",
-                  plan.tone === "enterprise" ? "text-white" : "text-stone-900 dark:text-white",
-                )}
+                className="text-2xl font-black tracking-tight text-[var(--app-text)]"
               >
                 {plan.price}
               </p>
               <p
-                className={cn(
-                  "pb-0.5 text-xs",
-                  plan.tone === "enterprise" ? "text-zinc-400" : "text-stone-500 dark:text-zinc-500",
-                )}
+                className="pb-0.5 text-xs text-[var(--app-subtle)]"
               >
                 {plan.period}
               </p>
             </div>
 
             <p
-              className={cn(
-                "mt-2 w-fit rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
-                plan.tone === "enterprise"
-                  ? "bg-white/10 text-white"
-                  : "bg-stone-900 text-white dark:bg-white dark:text-stone-900",
-              )}
+              className="mt-2 w-fit border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--app-inverse-text)]"
             >
               {plan.credits}
             </p>
@@ -333,18 +316,10 @@ export function PricingPreview() {
               {plan.features.map((feature) => (
                 <li
                   key={feature}
-                  className={cn(
-                    "flex items-start gap-1.5 text-xs",
-                    plan.tone === "enterprise" ? "text-zinc-200" : "text-stone-700 dark:text-zinc-300",
-                  )}
+                  className="flex items-start gap-1.5 text-xs text-[var(--app-muted)]"
                 >
                   <span
-                    className={cn(
-                      "mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-[9px]",
-                      plan.tone === "enterprise"
-                        ? "bg-white/15 text-white"
-                        : "bg-stone-900 text-white dark:bg-white dark:text-stone-900",
-                    )}
+                    className="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[var(--app-inverse)] text-[9px] text-[var(--app-inverse-text)]"
                   >
                     ✓
                   </span>
@@ -354,32 +329,26 @@ export function PricingPreview() {
             </ul>
 
             {plan.key !== "free" && plan.key !== "salon" ? (
-              <p className="mt-3 text-[10px] text-stone-400 dark:text-zinc-600">
+              <p className="mt-3 text-[10px] text-[var(--app-subtle)]">
                 {t("pricing.recurringNote")}
               </p>
             ) : null}
 
-            <button
+            <Button
               type="button"
               onClick={() => handlePlanClick(plan.key)}
               disabled={pendingPlan === plan.key}
+              variant={plan.tone === "basic" ? "secondary" : "primary"}
               className={cn(
-                "mt-4 inline-flex w-full items-center justify-center rounded-full px-3 py-2 text-xs font-semibold transition",
-                plan.tone === "recommended"
-                  ? "bg-stone-900 text-white hover:bg-stone-700 dark:bg-white dark:text-stone-900 dark:hover:bg-zinc-200"
-                  : plan.tone === "premium"
-                    ? "bg-stone-800 text-white hover:bg-stone-700 dark:bg-zinc-700 dark:hover:bg-zinc-600"
-                    : plan.tone === "enterprise"
-                      ? "bg-white text-stone-900 hover:bg-zinc-100"
-                      : "border border-stone-300 bg-white text-stone-900 hover:bg-stone-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:bg-zinc-700",
+                "mt-4 w-full px-3 py-2 text-xs",
                 pendingPlan === plan.key && "cursor-not-allowed opacity-70",
               )}
             >
               {pendingPlan === plan.key ? t("pricing.connecting") : plan.cta}
-            </button>
-          </article>
+            </Button>
+          </SurfaceCard>
         ))}
       </div>
-    </section>
+    </Panel>
   );
 }

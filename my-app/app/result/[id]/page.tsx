@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useParams, useSearchParams } from "next/navigation";
@@ -9,6 +9,7 @@ import { DesignerBriefCard } from "../../../components/result/DesignerBriefCard"
 import { FeedbackModal } from "../../../components/result/FeedbackModal";
 import { SelectedVariantCard } from "../../../components/result/SelectedVariantCard";
 import { VariantSwitcherGrid } from "../../../components/result/VariantSwitcherGrid";
+import { AppPage } from "../../../components/ui/Surface";
 import { type AIEvaluationResult } from "../../../lib/ai-evaluation";
 import type { GeneratedVariant, RecommendationSet } from "../../../lib/recommendation-types";
 import { convertImageSrcToWebpDataUrl } from "../../../lib/webp-client";
@@ -179,20 +180,20 @@ export default function ResultPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-32 pt-8 sm:px-6">
+    <AppPage className="flex flex-col gap-6 pb-32">
       <header className="space-y-2 text-center">
-        <p className="text-xs font-bold uppercase text-stone-400">선택한 헤어스타일</p>
-        <h1 className="text-3xl font-black tracking-tight text-stone-900">
+        <p className="app-kicker">선택한 헤어스타일</p>
+        <h1 className="text-3xl font-black tracking-tight text-[var(--app-text)]">
           {currentVariant?.label || "헤어 결과"}
         </h1>
-        <p className="mx-auto max-w-3xl text-sm leading-6 text-stone-600">
+        <p className="mx-auto max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
           {translate(currentVariant?.reason) ||
             "선택한 헤어 결과를 원본 사진과 비교하고, AI 분석과 디자이너 상담 브리프를 확인하세요."}
         </p>
       </header>
 
       {!hasRealOutput ? (
-        <p className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-center text-sm text-amber-800">
+        <p className="w-full border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
           결과 이미지를 아직 찾지 못했습니다. 선택한 스타일이 생성 중이거나 실패했을 수 있습니다.
         </p>
       ) : null}
@@ -236,6 +237,6 @@ export default function ResultPage() {
       <div className="flex w-full justify-center">
         <FeedbackModal generationId={id} />
       </div>
-    </div>
+    </AppPage>
   );
 }

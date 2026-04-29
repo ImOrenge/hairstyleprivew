@@ -1,4 +1,6 @@
-"use client";
+﻿"use client";
+
+import { SurfaceCard } from "../ui/Surface";
 
 interface ComparisonViewProps {
   beforeImage: string;
@@ -8,9 +10,10 @@ interface ComparisonViewProps {
 export function ComparisonView({ beforeImage, afterImage }: ComparisonViewProps) {
   return (
     <section className="mx-auto w-full max-w-2xl space-y-3">
-      <div
+      <SurfaceCard
+        as="div"
         tabIndex={0}
-        className="group relative aspect-[4/5] overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
+        className="group relative aspect-[4/5] overflow-hidden shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
       >
         <img src={afterImage} alt="생성 이미지" className="h-full w-full object-cover" />
 
@@ -19,10 +22,10 @@ export function ComparisonView({ beforeImage, afterImage }: ComparisonViewProps)
           <div className="absolute inset-0 bg-black/20" />
         </div>
 
-        <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/65 px-3 py-1 text-xs font-medium text-white">
+        <div className="pointer-events-none absolute left-3 top-3 border border-white/15 bg-black/75 px-3 py-1 text-xs font-medium text-white">
           생성 이미지
         </div>
-        <div className="pointer-events-none absolute right-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-medium text-gray-700 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100">
+        <div className="pointer-events-none absolute right-3 top-3 border border-black/10 bg-white/90 px-3 py-1 text-xs font-medium text-gray-700 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-visible:opacity-100">
           원본 오버레이
         </div>
 
@@ -31,7 +34,7 @@ export function ComparisonView({ beforeImage, afterImage }: ComparisonViewProps)
             마우스를 올리거나 포커스하면 원본 사진이 겹쳐 보여 차이를 바로 비교할 수 있습니다.
           </p>
         </div>
-      </div>
+      </SurfaceCard>
     </section>
   );
 }

@@ -1,10 +1,10 @@
-"use client";
+﻿"use client";
 
 import { CSSProperties, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Camera, CheckCircle2, Grid3X3, Shirt, Sparkles } from "lucide-react";
-import { Button } from "../ui/Button";
+import { InverseCard, InverseSection } from "../ui/Surface";
 import { useT } from "../../lib/i18n/useT";
 import type { TranslationKey } from "../../lib/i18n/locales/ko";
 import styles from "./HeroSection.module.css";
@@ -36,10 +36,10 @@ type DemoProfile = {
 const DEMO_GENDERS: DemoGender[] = ["male", "female"];
 
 const SOCIAL_AVATAR_PLACEHOLDERS = [
-  "from-amber-300 via-orange-400 to-rose-400",
-  "from-sky-300 via-cyan-400 to-emerald-400",
-  "from-violet-300 via-fuchsia-400 to-pink-400",
-  "from-lime-300 via-green-400 to-teal-400",
+  "from-[#d0b06a] via-[#82745a] to-[#191816]",
+  "from-[#f4f1e8] via-[#8b8375] to-[#191816]",
+  "from-[#b9aa8b] via-[#5f5a50] to-[#050505]",
+  "from-[#a8863a] via-[#3b3934] to-[#050505]",
 ];
 
 const DEMO_PROFILES: Record<DemoGender, DemoProfile> = {
@@ -207,12 +207,13 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
   ];
 
   return (
-    <section className="relative overflow-hidden rounded-3xl border border-stone-200/15 bg-stone-950 p-5 text-white shadow-2xl sm:p-6 lg:p-8">
-      <div className="grid gap-7">
-        <div className="grid gap-7 lg:grid-cols-[minmax(0,1.28fr)_minmax(18rem,0.58fr)] lg:items-end xl:gap-8">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-300">{t("hero.badge")}</p>
-            <h1 className="mt-4 max-w-5xl break-keep text-[1.82rem] font-black leading-[1.15] tracking-tight sm:text-4xl xl:text-5xl">
+    <InverseSection as="section" className="relative overflow-hidden p-0">
+      <div className="grid gap-0">
+        <div className="grid min-h-[calc(100vh-9rem)] content-center gap-8 border-b border-[color-mix(in_srgb,var(--app-inverse-text)_10%,transparent)] p-5 sm:p-7 lg:grid-cols-[minmax(0,1.12fr)_minmax(20rem,0.78fr)] lg:p-10 xl:gap-10">
+          <div className="min-w-0 self-center">
+            <p className="app-inverse-kicker">HairFit / Graphite Champagne</p>
+            <h1 className="mt-4 max-w-5xl break-keep text-[2.45rem] font-black leading-[1.02] tracking-tight sm:text-5xl xl:text-6xl">
+              <span className="mb-3 block text-[var(--app-accent)]">HairFit</span>
               {titleLines.map((line, i) => (
                 <span key={i}>
                   {i > 0 && <br />}
@@ -220,25 +221,52 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                 </span>
               ))}
             </h1>
-            <p className="mt-5 max-w-4xl text-base font-semibold leading-7 text-stone-100 sm:text-lg sm:leading-8">
+            <p className="app-inverse-muted mt-5 max-w-3xl text-base font-semibold leading-7 sm:text-lg sm:leading-8">
               {t("hero.subtitle")}
             </p>
+
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link
+                href="/upload"
+                className="app-inverse-cta inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold uppercase tracking-[0.04em] transition hover:opacity-90"
+              >
+                {t("hero.cta.start")}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+              <Link
+                href="#home-demo"
+                className="app-inverse-ghost inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold uppercase tracking-[0.04em] transition"
+              >
+                {t("hero.cta.demo")}
+                <Grid3X3 className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
           </div>
 
-          <div className="grid gap-4 rounded-none border-0 bg-transparent p-0 sm:rounded-3xl sm:border sm:border-white/10 sm:bg-white/[0.055] sm:p-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-2">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
+          <InverseCard className="grid content-between gap-4 p-4 sm:p-5">
+            <div>
+              <p className="app-inverse-kicker">Product Proof</p>
+              <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-inverse-text)]">
+                AI 헤어 분석에서 패션 룩북까지 이어지는 하나의 스타일 시스템
+              </h2>
+              <p className="app-inverse-muted mt-3 text-sm font-semibold leading-6">
+                얼굴형, 비율, 헤어 후보, 패션 방향을 같은 시각 언어로 연결합니다.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2">
+              <InverseCard className="p-3">
                 <p className="text-xl font-black xl:text-2xl">{t("hero.stat.photo.value")}</p>
-                <p className="mt-1 text-[11px] font-semibold text-stone-300">{t("hero.stat.photo")}</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
+                <p className="app-inverse-muted mt-1 text-[11px] font-semibold">{t("hero.stat.photo")}</p>
+              </InverseCard>
+              <InverseCard className="p-3">
                 <p className="text-xl font-black xl:text-2xl">{t("hero.stat.grid.value")}</p>
-                <p className="mt-1 text-[11px] font-semibold text-stone-300">{t("hero.stat.grid")}</p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3">
+                <p className="app-inverse-muted mt-1 text-[11px] font-semibold">{t("hero.stat.grid")}</p>
+              </InverseCard>
+              <InverseCard className="p-3">
                 <p className="text-xl font-black xl:text-2xl">{t("hero.stat.analysis.value")}</p>
-                <p className="mt-1 text-[11px] font-semibold text-stone-300">{t("hero.stat.analysis")}</p>
-              </div>
+                <p className="app-inverse-muted mt-1 text-[11px] font-semibold">{t("hero.stat.analysis")}</p>
+              </InverseCard>
             </div>
 
             {userCount > 0 && (
@@ -247,7 +275,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                   {visibleAvatars.map((url, i) => (
                     <div
                       key={`${url}-${i}`}
-                      className="relative inline-block h-10 w-10 overflow-hidden rounded-full border-2 border-stone-950 bg-zinc-800 shadow-xl ring-1 ring-white/20 transition-transform hover:z-20 hover:scale-110"
+                      className="relative inline-block h-10 w-10 overflow-hidden border-2 border-[var(--app-inverse)] bg-[var(--app-inverse-muted)] shadow-xl ring-1 ring-white/20 transition-transform hover:z-20 hover:scale-110"
                       style={{ zIndex: avatarStackCount - i }}
                     >
                       <Image
@@ -266,7 +294,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                     return (
                       <div
                         key={`placeholder-${i}`}
-                        className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-950 bg-gradient-to-br ${gradient} text-[11px] font-black text-white shadow-xl ring-1 ring-white/20 transition-transform hover:scale-110`}
+                        className={`relative inline-flex h-10 w-10 items-center justify-center border-2 border-[var(--app-inverse)] bg-gradient-to-br ${gradient} text-[11px] font-black text-[var(--app-inverse-text)] shadow-xl ring-1 ring-white/20 transition-transform hover:scale-110`}
                         style={{ zIndex }}
                       >
                         HF
@@ -274,39 +302,25 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                     );
                   })}
                   {hiddenUserCount > 0 && (
-                    <div className="relative flex h-10 w-10 items-center justify-center rounded-full border-2 border-stone-950 bg-zinc-800 text-[10px] font-bold text-zinc-300 shadow-xl ring-1 ring-white/20">
+                    <div className="app-inverse-subtle relative flex h-10 w-10 items-center justify-center border-2 border-[var(--app-inverse)] bg-[var(--app-inverse-muted)] text-[10px] font-bold shadow-xl ring-1 ring-white/20">
                       +{hiddenUserCount}
                     </div>
                   )}
                 </div>
-                <p className="text-sm font-bold tracking-tight text-white">
+                <p className="text-sm font-bold tracking-tight text-[var(--app-inverse-text)]">
                   {t("hero.socialProof").replace("{{count}}", userCount.toLocaleString())}
                 </p>
               </div>
             )}
 
-            <div className="flex flex-wrap gap-3">
-              <Link href="/upload">
-                <Button className="gap-2 bg-white px-5 py-3 text-zinc-900 hover:bg-zinc-200">
-                  {t("hero.cta.start")}
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </Link>
-              <Link
-                href="#home-demo"
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-medium text-white transition hover:bg-white/10"
-              >
-                {t("hero.cta.demo")}
-                <Grid3X3 className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </div>
-            <p className="flex items-center gap-1.5 text-xs font-semibold text-stone-400">
-              <Shirt className="h-3.5 w-3.5 shrink-0 text-amber-400" aria-hidden="true" />
+            <p className="app-inverse-subtle flex items-center gap-1.5 text-xs font-semibold">
+              <Shirt className="h-3.5 w-3.5 shrink-0 text-[var(--app-accent)]" aria-hidden="true" />
               {t("hero.fashionTeaser")}
             </p>
-          </div>
+          </InverseCard>
         </div>
 
+        <div className="p-3 sm:p-5" id="home-demo">
         <div className={styles.demoShell} aria-label={t("hero.demo.aria")}>
           <div className={styles.demoHeader}>
             <div>
@@ -421,7 +435,8 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </section>
+    </InverseSection>
   );
 }

@@ -1,9 +1,10 @@
-import Link from "next/link";
+﻿import Link from "next/link";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { StyleProfileForm } from "../../components/mypage/StyleProfileForm";
 import { Card } from "../../components/ui/Card";
+import { AppPage, Panel, SurfaceCard } from "../../components/ui/Surface";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
 import { getCreditsPerStyle } from "../../lib/pricing-plan";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
@@ -139,10 +140,10 @@ function getStatusTone(status: string | null | undefined): string {
   }
 
   if (normalized === "processing" || normalized === "running") {
-    return "bg-sky-50 text-sky-700 ring-1 ring-sky-200";
+    return "bg-[var(--app-accent-soft)] text-[var(--app-accent-strong)] ring-1 ring-[var(--app-accent)]";
   }
 
-  return "bg-stone-100 text-stone-700 ring-1 ring-stone-200";
+  return "bg-[var(--app-surface-muted)] text-[var(--app-text)] ring-1 ring-stone-200";
 }
 
 function getDisplayName(name: string | null | undefined, email: string): string {
@@ -179,11 +180,11 @@ function MetricCard({
   helper: string;
 }) {
   return (
-    <div className="rounded-[1.75rem] border border-stone-200/80 bg-white px-5 py-5 shadow-[0_20px_60px_-40px_rgba(15,23,42,0.18)]">
-      <p className="text-[11px] font-bold uppercase text-stone-400">{label}</p>
-      <p className="mt-3 text-3xl font-black tracking-tight text-stone-900">{value}</p>
-      <p className="mt-2 text-sm text-stone-500">{helper}</p>
-    </div>
+    <SurfaceCard className="px-5 py-5">
+      <p className="text-[11px] font-bold uppercase text-[var(--app-muted)]">{label}</p>
+      <p className="mt-3 text-3xl font-black tracking-tight text-[var(--app-text)]">{value}</p>
+      <p className="mt-2 text-sm text-[var(--app-muted)]">{helper}</p>
+    </SurfaceCard>
   );
 }
 
@@ -199,14 +200,14 @@ function QuickActionLink({
   return (
     <Link
       href={href}
-      className="group rounded-2xl border border-stone-200 bg-white px-4 py-4 transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-[0_16px_40px_-28px_rgba(15,23,42,0.3)]"
+      className="app-card group px-4 py-4 transition hover:-translate-y-0.5 hover:border-[var(--app-border-strong)]"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-stone-900">{label}</p>
-          <p className="mt-1 text-sm leading-5 text-stone-500">{description}</p>
+          <p className="text-sm font-semibold text-[var(--app-text)]">{label}</p>
+          <p className="mt-1 text-sm leading-5 text-[var(--app-muted)]">{description}</p>
         </div>
-        <span className="rounded-full bg-stone-100 p-2 text-stone-500 transition group-hover:bg-stone-900 group-hover:text-white">
+        <span className="rounded-[var(--app-radius-control)] bg-[var(--app-surface-muted)] p-2 text-[var(--app-muted)] transition group-hover:bg-stone-900 group-hover:text-white">
           <ArrowRight className="h-4 w-4" />
         </span>
       </div>
@@ -222,16 +223,16 @@ function ChecklistItem({
   ready: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl bg-stone-50 px-4 py-3">
-      <span className="text-sm font-medium text-stone-700">{label}</span>
+    <SurfaceCard className="flex items-center justify-between gap-3 px-4 py-3">
+      <span className="text-sm font-medium text-[var(--app-text)]">{label}</span>
       <span
-        className={`rounded-full px-3 py-1 text-xs font-bold ${
+        className={`rounded-[var(--app-radius-control)] px-3 py-1 text-xs font-bold ${
           ready ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
         }`}
       >
         {ready ? "준비됨" : "필요"}
       </span>
-    </div>
+    </SurfaceCard>
   );
 }
 
@@ -338,48 +339,48 @@ export default async function MyPage({
   const hasGenerationHistory = activityCount > 0;
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-16 pt-8 sm:px-6">
-      <section className="overflow-hidden rounded-[2rem] border border-stone-200/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(250,244,235,0.96))] px-6 py-6 shadow-[0_25px_80px_-45px_rgba(15,23,42,0.28)] sm:px-8">
+    <AppPage className="flex flex-col gap-6 pb-16">
+      <Panel as="section" className="overflow-hidden px-5 py-5 sm:px-6">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full bg-black px-3 py-1 text-xs font-bold uppercase text-white">
+              <span className="rounded-[var(--app-radius-control)] bg-black px-3 py-1 text-xs font-bold uppercase text-white">
                 마이 대시보드
               </span>
-              <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-semibold text-stone-700 ring-1 ring-stone-200">
+              <span className="rounded-[var(--app-radius-control)] bg-[var(--app-surface-muted)] px-3 py-1 text-xs font-semibold text-[var(--app-text)] ring-1 ring-stone-200">
                 {activePlan} 플랜
               </span>
             </div>
             <div>
-              <h1 className="text-3xl font-black tracking-tight text-stone-900 sm:text-4xl">
+              <h1 className="text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
                 {viewerName}님의 스타일 준비 상태입니다
               </h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600 sm:text-base">
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)] sm:text-base">
                 보유 크레딧, 최근 헤어 생성 기록, 패션 추천에 필요한 바디 프로필을 한 화면에서 확인하세요.
               </p>
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[320px]">
-            <div className="rounded-2xl border border-stone-200 bg-white/90 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase text-stone-400">현재 플랜</p>
-              <p className="mt-2 text-xl font-bold text-stone-900">{activePlan}</p>
-            </div>
-            <div className="rounded-2xl border border-stone-200 bg-white/90 px-4 py-4">
-              <p className="text-[11px] font-bold uppercase text-stone-400">생성 기준</p>
-              <p className="mt-2 text-xl font-bold text-stone-900">{creditsPerStyle} credits</p>
-              <p className="mt-1 text-xs text-stone-500">헤어스타일 1회 생성 기준</p>
-            </div>
+            <SurfaceCard className="px-4 py-4">
+              <p className="text-[11px] font-bold uppercase text-[var(--app-muted)]">현재 플랜</p>
+              <p className="mt-2 text-xl font-bold text-[var(--app-text)]">{activePlan}</p>
+            </SurfaceCard>
+            <SurfaceCard className="px-4 py-4">
+              <p className="text-[11px] font-bold uppercase text-[var(--app-muted)]">생성 기준</p>
+              <p className="mt-2 text-xl font-bold text-[var(--app-text)]">{creditsPerStyle} credits</p>
+              <p className="mt-1 text-xs text-[var(--app-muted)]">헤어스타일 1회 생성 기준</p>
+            </SurfaceCard>
           </div>
         </div>
 
         {payment === "success" ? (
-          <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          <div className="mt-6 rounded-[var(--app-radius-panel)] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
             결제가 확인되었습니다. 크레딧이 곧 반영됩니다.
             {checkoutId ? ` 체크아웃 ID: ${checkoutId}` : ""}
           </div>
         ) : null}
-      </section>
+      </Panel>
 
       <section className="grid gap-4 md:grid-cols-3">
         <MetricCard
@@ -404,7 +405,7 @@ export default async function MyPage({
           <Card
             title="바디 프로필 설정"
             description="전신 사진과 체형 정보를 저장해 헤어스타일 이후 패션 추천 흐름을 바로 시작할 수 있게 준비합니다."
-            className="rounded-[2rem] border-stone-200/80 px-6 py-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
+            className="px-6 py-6"
           >
             <StyleProfileForm variant="dashboard" />
           </Card>
@@ -412,45 +413,45 @@ export default async function MyPage({
           <Card
             title="최근 생성 기록"
             description="가장 최근 헤어 생성 결과를 빠르게 다시 열고 패션 추천으로 이어갈 수 있습니다."
-            className="rounded-[2rem] border-stone-200/80 px-6 py-6 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
+            className="px-6 py-6"
           >
             <div className="grid gap-3">
               {generations.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-5 py-8 text-center">
-                  <p className="text-sm font-semibold text-stone-900">아직 생성 기록이 없습니다.</p>
-                  <p className="mt-2 text-sm leading-6 text-stone-500">
+                <SurfaceCard className="border-dashed px-5 py-8 text-center">
+                  <p className="text-sm font-semibold text-[var(--app-text)]">아직 생성 기록이 없습니다.</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
                     첫 이미지를 업로드하고 AI 헤어 추천 보드를 만들어 보세요.
                   </p>
                   <div className="mt-4 flex justify-center">
                     <Link
                       href="/upload"
-                      className="inline-flex items-center gap-2 rounded-full bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-800"
+                      className="inline-flex items-center gap-2 rounded-[var(--app-radius-control)] bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-stone-800"
                     >
                       이미지 업로드 시작
                       <ArrowRight className="h-4 w-4" />
                     </Link>
                   </div>
-                </div>
+                </SurfaceCard>
               ) : (
                 generations.map((item) => (
                   <Link
                     key={item.id}
                     href={`/result/${item.id}`}
-                    className="group rounded-[1.5rem] border border-stone-200 bg-white px-4 py-4 transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-[0_18px_50px_-34px_rgba(15,23,42,0.3)]"
+                    className="app-card group px-4 py-4 transition hover:-translate-y-0.5 hover:border-[var(--app-border-strong)]"
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full px-3 py-1 text-xs font-bold ${getStatusTone(item.status)}`}>
+                          <span className={`rounded-[var(--app-radius-control)] px-3 py-1 text-xs font-bold ${getStatusTone(item.status)}`}>
                             {formatGenerationStatus(item.status)}
                           </span>
-                          <span className="text-xs font-medium text-stone-400">{formatDate(item.created_at)}</span>
+                          <span className="text-xs font-medium text-[var(--app-muted)]">{formatDate(item.created_at)}</span>
                         </div>
-                        <p className="mt-3 text-base font-semibold text-stone-900">{formatPrompt(item.prompt_used)}</p>
-                        <p className="mt-1 text-xs text-stone-500">{item.id}</p>
+                        <p className="mt-3 text-base font-semibold text-[var(--app-text)]">{formatPrompt(item.prompt_used)}</p>
+                        <p className="mt-1 text-xs text-[var(--app-muted)]">{item.id}</p>
                       </div>
 
-                      <div className="inline-flex items-center gap-2 self-start rounded-full bg-stone-100 px-3 py-2 text-sm font-medium text-stone-700 transition group-hover:bg-stone-900 group-hover:text-white">
+                      <div className="inline-flex items-center gap-2 self-start rounded-[var(--app-radius-control)] bg-[var(--app-surface-muted)] px-3 py-2 text-sm font-medium text-[var(--app-text)] transition group-hover:bg-stone-900 group-hover:text-white">
                         결과 보기
                         <ArrowRight className="h-4 w-4" />
                       </div>
@@ -466,7 +467,7 @@ export default async function MyPage({
           <Card
             title="빠른 실행"
             description="자주 쓰는 흐름으로 바로 이동합니다."
-            className="rounded-[2rem] border-stone-200/80 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
+            className=""
           >
             <div className="grid gap-3">
               <QuickActionLink
@@ -495,30 +496,30 @@ export default async function MyPage({
           <Card
             title="계정 요약"
             description="현재 사용 중인 플랜과 생성 기준을 확인합니다."
-            className="rounded-[2rem] border-stone-200/80 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
+            className=""
           >
-            <div className="grid gap-3 text-sm text-stone-700">
-              <div className="rounded-2xl bg-stone-50 px-4 py-3">
-                <p className="text-xs font-bold uppercase text-stone-400">활성 플랜</p>
-                <p className="mt-2 text-base font-semibold text-stone-900">{activePlan}</p>
-              </div>
-              <div className="rounded-2xl bg-stone-50 px-4 py-3">
-                <p className="text-xs font-bold uppercase text-stone-400">남은 크레딧</p>
-                <p className="mt-2 text-base font-semibold text-stone-900">{credits.toLocaleString("ko-KR")}</p>
-              </div>
-              <div className="rounded-2xl bg-stone-50 px-4 py-3">
-                <p className="text-xs font-bold uppercase text-stone-400">생성 기준</p>
-                <p className="mt-2 text-base font-semibold text-stone-900">
+            <div className="grid gap-3 text-sm text-[var(--app-text)]">
+              <SurfaceCard className="px-4 py-3">
+                <p className="text-xs font-bold uppercase text-[var(--app-muted)]">활성 플랜</p>
+                <p className="mt-2 text-base font-semibold text-[var(--app-text)]">{activePlan}</p>
+              </SurfaceCard>
+              <SurfaceCard className="px-4 py-3">
+                <p className="text-xs font-bold uppercase text-[var(--app-muted)]">남은 크레딧</p>
+                <p className="mt-2 text-base font-semibold text-[var(--app-text)]">{credits.toLocaleString("ko-KR")}</p>
+              </SurfaceCard>
+              <SurfaceCard className="px-4 py-3">
+                <p className="text-xs font-bold uppercase text-[var(--app-muted)]">생성 기준</p>
+                <p className="mt-2 text-base font-semibold text-[var(--app-text)]">
                   헤어스타일 1회당 {creditsPerStyle} credits
                 </p>
-              </div>
+              </SurfaceCard>
             </div>
           </Card>
 
           <Card
             title="준비 상태"
             description="패션 추천 흐름에 필요한 조건을 빠르게 확인합니다."
-            className="rounded-[2rem] border-stone-200/80 shadow-[0_24px_70px_-48px_rgba(15,23,42,0.3)]"
+            className=""
           >
             <div className="grid gap-3">
               <ChecklistItem label="바디 프로필 완성" ready={profileReady} />
@@ -528,6 +529,6 @@ export default async function MyPage({
           </Card>
         </aside>
       </div>
-    </div>
+    </AppPage>
   );
 }

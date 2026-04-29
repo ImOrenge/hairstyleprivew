@@ -1,9 +1,10 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { motion } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "../../../components/ui/Button";
+import { AppPage, Panel, SurfaceCard } from "../../../components/ui/Surface";
 import { useGenerate } from "../../../hooks/useGenerate";
 import type { GeneratedVariant, RecommendationSet } from "../../../lib/recommendation-types";
 import { useGenerationStore } from "../../../store/useGenerationStore";
@@ -18,7 +19,7 @@ function isRenderableVariant(variant: GeneratedVariant) {
 
 function scoreTone(score: number | null) {
   if (score === null) {
-    return "bg-stone-100 text-stone-600";
+    return "bg-[var(--app-surface-muted)] text-[var(--app-muted)]";
   }
 
   if (score >= 85) {
@@ -138,18 +139,18 @@ export default function GenerateBoardPage() {
   };
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-24 pt-8 sm:px-6">
+    <AppPage className="flex flex-col gap-6 pb-24">
       <header className="space-y-3">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-stone-400">Recommendation Board</p>
-        <div className="flex flex-col gap-4 rounded-[2rem] border border-stone-200 bg-white p-6 shadow-[0_20px_70px_-30px_rgba(0,0,0,0.25)] lg:flex-row lg:items-end lg:justify-between">
+        <p className="app-kicker">Recommendation Board</p>
+        <Panel className="flex flex-col gap-4 p-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <h1 className="text-3xl font-black tracking-tight text-stone-900">Nine tailored hairstyle directions</h1>
-            <p className="max-w-3xl text-sm leading-6 text-stone-600">
+            <h1 className="text-3xl font-black tracking-tight text-[var(--app-text)]">Nine tailored hairstyle directions</h1>
+            <p className="max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
               Review the full 3x3 board, retry failed renders, and open any finished card as a detailed result.
             </p>
             <div className="flex flex-wrap gap-2">
               {(activeSet?.analysis.volumeFocus || []).map((item) => (
-                <span key={item} className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-700">
+                <span key={item} className="app-chip px-3 py-1 text-xs font-medium">
                   {item}
                 </span>
               ))}
@@ -162,39 +163,39 @@ export default function GenerateBoardPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-stone-50 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">Ready</p>
-              <p className="mt-1 text-2xl font-black text-stone-900">{readyCount}</p>
-            </div>
-            <div className="rounded-2xl bg-stone-50 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">Completed</p>
-              <p className="mt-1 text-2xl font-black text-stone-900">{completedCount}</p>
-            </div>
-            <div className="rounded-2xl bg-stone-50 px-4 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">Failed</p>
-              <p className="mt-1 text-2xl font-black text-stone-900">{failedCount}</p>
-            </div>
+            <SurfaceCard className="px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">Ready</p>
+              <p className="mt-1 text-2xl font-black text-[var(--app-text)]">{readyCount}</p>
+            </SurfaceCard>
+            <SurfaceCard className="px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">Completed</p>
+              <p className="mt-1 text-2xl font-black text-[var(--app-text)]">{completedCount}</p>
+            </SurfaceCard>
+            <SurfaceCard className="px-4 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--app-muted)]">Failed</p>
+              <p className="mt-1 text-2xl font-black text-[var(--app-text)]">{failedCount}</p>
+            </SurfaceCard>
           </div>
-        </div>
+        </Panel>
       </header>
 
       {activeSet?.analysis ? (
         <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-[0_16px_55px_-35px_rgba(0,0,0,0.18)]">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">Analysis Summary</p>
-            <h2 className="mt-2 text-2xl font-black text-stone-900">{activeSet.analysis.faceShape}</h2>
-            <p className="mt-3 text-sm leading-6 text-stone-600">{activeSet.analysis.summary}</p>
-          </div>
+          <SurfaceCard className="p-5">
+            <p className="app-kicker">Analysis Summary</p>
+            <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">{activeSet.analysis.faceShape}</h2>
+            <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">{activeSet.analysis.summary}</p>
+          </SurfaceCard>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-[0_16px_55px_-35px_rgba(0,0,0,0.18)]">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">Head Balance</p>
-              <p className="mt-2 text-sm font-semibold leading-6 text-stone-800">{activeSet.analysis.balance}</p>
-            </div>
-            <div className="rounded-[1.75rem] border border-stone-200 bg-white p-5 shadow-[0_16px_55px_-35px_rgba(0,0,0,0.18)]">
-              <p className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400">Length Strategy</p>
-              <p className="mt-2 text-sm font-semibold leading-6 text-stone-800">{activeSet.analysis.bestLengthStrategy}</p>
-            </div>
+            <SurfaceCard className="p-5">
+              <p className="app-kicker">Head Balance</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--app-text)]">{activeSet.analysis.balance}</p>
+            </SurfaceCard>
+            <SurfaceCard className="p-5">
+              <p className="app-kicker">Length Strategy</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--app-text)]">{activeSet.analysis.bestLengthStrategy}</p>
+            </SurfaceCard>
           </div>
         </section>
       ) : null}
@@ -210,7 +211,7 @@ export default function GenerateBoardPage() {
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: Math.min(index * 0.03, 0.2) }}
-              className={`overflow-hidden rounded-[1.75rem] border bg-white shadow-[0_18px_55px_-35px_rgba(0,0,0,0.25)] ${
+              className={`app-card overflow-hidden shadow-[0_18px_55px_-35px_rgba(0,0,0,0.25)] ${
                 isSelected ? "border-stone-900" : "border-stone-200"
               }`}
             >
@@ -222,7 +223,7 @@ export default function GenerateBoardPage() {
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.9),_rgba(231,229,228,0.9))] p-8 text-center text-sm text-stone-500">
+                  <div className="flex h-full items-center justify-center bg-[var(--app-surface-muted)] p-8 text-center text-sm text-[var(--app-muted)]">
                     {variant.status === "failed"
                       ? "Variant failed. Retry to render this hairstyle."
                       : variant.status === "generating"
@@ -249,11 +250,11 @@ export default function GenerateBoardPage() {
               </div>
 
               <div className="space-y-4 p-5">
-                <p className="text-sm leading-6 text-stone-600">{variant.reason}</p>
+                <p className="text-sm leading-6 text-[var(--app-muted)]">{variant.reason}</p>
 
                 <div className="flex flex-wrap gap-2">
                   {variant.tags.map((tag) => (
-                    <span key={tag} className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-stone-600">
+                    <span key={tag} className="app-chip px-3 py-1 text-xs font-medium">
                       {tag}
                     </span>
                   ))}
@@ -287,6 +288,6 @@ export default function GenerateBoardPage() {
           );
         })}
       </section>
-    </div>
+    </AppPage>
   );
 }
