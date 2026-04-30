@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import {
   AFTERCARE_COLUMNS,
   CUSTOMER_COLUMNS,
+  GENERATION_SUMMARY_COLUMNS,
+  LINKED_MEMBER_COLUMNS,
   VISIT_COLUMNS,
   getSalonOwnerContext,
   loadOwnerCustomer,
   normalizeAftercareTask,
   normalizeCustomer,
+  normalizeGenerationSummary,
+  normalizeLinkedMember,
   normalizeVisit,
   parseNullableIso,
   runList,
@@ -74,11 +78,45 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: aftercareResult.error.message }, { status: 500 });
   }
 
+  let linkedMember = null;
+  let linkedMemberGenerations: ReturnType<typeof normalizeGenerationSummary>[] = [];
+
+  if (loaded.customer.linkedUserId) {
+    const [memberResult, generationResult] = await Promise.all([
+      context.supabase
+        .from("users")
+        .select(LINKED_MEMBER_COLUMNS)
+        .eq("id", loaded.customer.linkedUserId)
+        .maybeSingle<Record<string, unknown>>(),
+      runList<Record<string, unknown>>(
+        context.supabase
+          .from("generations")
+          .select(GENERATION_SUMMARY_COLUMNS)
+          .eq("user_id", loaded.customer.linkedUserId)
+          .order("created_at", { ascending: false })
+          .limit(5),
+      ),
+    ]);
+
+    if (memberResult.error) {
+      return NextResponse.json({ error: memberResult.error.message }, { status: 500 });
+    }
+
+    if (generationResult.error) {
+      return NextResponse.json({ error: generationResult.error.message }, { status: 500 });
+    }
+
+    linkedMember = normalizeLinkedMember(memberResult.data);
+    linkedMemberGenerations = (generationResult.data || []).map(normalizeGenerationSummary);
+  }
+
   return NextResponse.json(
     {
       customer: loaded.customer,
       visits: (visitsResult.data || []).map(normalizeVisit),
       aftercareTasks: (aftercareResult.data || []).map(normalizeAftercareTask),
+      linkedMember,
+      linkedMemberGenerations,
     },
     { status: 200 },
   );

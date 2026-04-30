@@ -11,6 +11,11 @@ import type {
   SalonAftercareTask,
   SalonCustomer,
   SalonCustomerSource,
+  SalonLinkedMember,
+  SalonMatchCandidate,
+  SalonMatchInvite,
+  SalonMatchStatus,
+  SalonMemberGenerationSummary,
   SalonVisit,
 } from "./salon-crm-types";
 
@@ -20,6 +25,12 @@ export const VISIT_COLUMNS =
   "id,owner_user_id,customer_id,visited_at,service_note,memo,next_recommended_visit_at,created_at,updated_at";
 export const AFTERCARE_COLUMNS =
   "id,owner_user_id,customer_id,channel,status,scheduled_for,template_key,note,completed_at,created_at,updated_at";
+export const MATCH_INVITE_COLUMNS =
+  "id,owner_user_id,code,active,expires_at,created_at,updated_at";
+export const MATCH_REQUEST_COLUMNS =
+  "id,owner_user_id,member_user_id,invite_id,status,linked_customer_id,created_at,updated_at";
+export const LINKED_MEMBER_COLUMNS = "id,email,display_name,avatar_url";
+export const GENERATION_SUMMARY_COLUMNS = "id,status,prompt_used,options,created_at";
 
 type QueryError = { message: string } | null;
 type QueryResult<T> = Promise<{ data: T | null; error: QueryError }>;
@@ -36,6 +47,7 @@ export interface SalonCrmSupabase {
 interface QueryBuilder extends PromiseLike<{ data: Record<string, unknown>[] | null; error: QueryError }> {
   eq: (column: string, value: unknown) => QueryBuilder;
   neq: (column: string, value: unknown) => QueryBuilder;
+  in: (column: string, values: unknown[]) => QueryBuilder;
   is: (column: string, value: unknown) => QueryBuilder;
   ilike: (column: string, value: string) => QueryBuilder;
   or: (filters: string) => QueryBuilder;
@@ -53,6 +65,7 @@ interface MutationBuilder {
 
 interface UpdateBuilder {
   eq: (column: string, value: unknown) => UpdateBuilder;
+  neq: (column: string, value: unknown) => UpdateBuilder;
   select: (columns: string) => {
     single: <T = Record<string, unknown>>() => QueryResult<T>;
   };
@@ -95,6 +108,10 @@ export function isAftercareChannel(value: unknown): value is SalonAftercareChann
 
 export function isAftercareStatus(value: unknown): value is SalonAftercareStatus {
   return value === "pending" || value === "done" || value === "canceled";
+}
+
+export function isSalonMatchStatus(value: unknown): value is SalonMatchStatus {
+  return value === "pending" || value === "linked" || value === "revoked";
 }
 
 function stringField(row: Record<string, unknown>, key: string): string {
@@ -155,6 +172,93 @@ export function normalizeAftercareTask(row: Record<string, unknown>): SalonAfter
     completedAt: nullableStringField(row, "completed_at"),
     createdAt: stringField(row, "created_at"),
     updatedAt: stringField(row, "updated_at"),
+  };
+}
+
+export function normalizeMatchInvite(row: Record<string, unknown>, inviteUrl?: string): SalonMatchInvite {
+  return {
+    id: stringField(row, "id"),
+    ownerUserId: stringField(row, "owner_user_id"),
+    code: stringField(row, "code"),
+    active: row.active === true,
+    expiresAt: nullableStringField(row, "expires_at"),
+    createdAt: stringField(row, "created_at"),
+    updatedAt: stringField(row, "updated_at"),
+    inviteUrl,
+  };
+}
+
+export function normalizeLinkedMember(row: Record<string, unknown> | null): SalonLinkedMember | null {
+  if (!row) {
+    return null;
+  }
+
+  const id = stringField(row, "id");
+  if (!id) {
+    return null;
+  }
+
+  const email = stringField(row, "email");
+  const displayName = nullableStringField(row, "display_name") || email || "HairFit member";
+
+  return {
+    id,
+    email,
+    displayName,
+    avatarUrl: nullableStringField(row, "avatar_url"),
+  };
+}
+
+export function normalizeMatchCandidate(
+  row: Record<string, unknown>,
+  memberRow: Record<string, unknown> | null,
+): SalonMatchCandidate | null {
+  const member = normalizeLinkedMember(memberRow);
+  if (!member) {
+    return null;
+  }
+
+  return {
+    id: stringField(row, "id"),
+    ownerUserId: stringField(row, "owner_user_id"),
+    memberUserId: stringField(row, "member_user_id"),
+    inviteId: nullableStringField(row, "invite_id"),
+    status: isSalonMatchStatus(row.status) ? row.status : "pending",
+    linkedCustomerId: nullableStringField(row, "linked_customer_id"),
+    createdAt: stringField(row, "created_at"),
+    updatedAt: stringField(row, "updated_at"),
+    member,
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+export function normalizeGenerationSummary(row: Record<string, unknown>): SalonMemberGenerationSummary {
+  const options = isRecord(row.options) ? row.options : {};
+  const recommendationSet = isRecord(options.recommendationSet) ? options.recommendationSet : null;
+  const selectedVariantId =
+    recommendationSet && typeof recommendationSet.selectedVariantId === "string"
+      ? recommendationSet.selectedVariantId
+      : null;
+  const variants = recommendationSet && Array.isArray(recommendationSet.variants)
+    ? recommendationSet.variants
+    : [];
+  const selectedVariant = variants.find((variant) => {
+    return isRecord(variant) && selectedVariantId && variant.id === selectedVariantId;
+  });
+  const fallbackVariant = variants.find((variant) => isRecord(variant));
+  const variant = isRecord(selectedVariant) ? selectedVariant : isRecord(fallbackVariant) ? fallbackVariant : null;
+  const styleLabel = variant && typeof variant.label === "string" ? variant.label : null;
+
+  return {
+    id: stringField(row, "id"),
+    status: stringField(row, "status") || "unknown",
+    promptUsed: nullableStringField(row, "prompt_used"),
+    styleLabel,
+    generatedImagePath: nullableStringField(row, "generated_image_path"),
+    createdAt: stringField(row, "created_at"),
   };
 }
 

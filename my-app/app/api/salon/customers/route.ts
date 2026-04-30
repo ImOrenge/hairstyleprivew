@@ -13,7 +13,6 @@ import {
 
 interface CreateCustomerRequest {
   source?: unknown;
-  linkedEmail?: unknown;
   name?: unknown;
   phone?: unknown;
   email?: unknown;
@@ -114,39 +113,17 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => ({}))) as CreateCustomerRequest;
   const source = isSalonCustomerSource(body.source) ? body.source : "manual";
-  const linkedEmail = trimString(body.linkedEmail, 160).toLowerCase();
   const name = trimString(body.name, 120);
   const phone = trimString(body.phone, 40);
   const email = trimString(body.email, 160).toLowerCase();
   const memo = trimString(body.memo, 1200);
   const nextFollowUpAt = parseNullableIso(body.nextFollowUpAt);
 
-  let linkedUserId: string | null = null;
-  let customerName = name;
-  let customerEmail = email;
+  const customerName = name;
+  const customerEmail = email;
 
   if (source === "linked_member") {
-    if (!linkedEmail) {
-      return NextResponse.json({ error: "linkedEmail is required" }, { status: 400 });
-    }
-
-    const { data: linkedUser, error } = await context.supabase
-      .from("users")
-      .select("id,email,display_name")
-      .eq("email", linkedEmail)
-      .maybeSingle<{ id?: string; email?: string | null; display_name?: string | null }>();
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    if (!linkedUser?.id) {
-      return NextResponse.json({ error: "Linked member not found" }, { status: 404 });
-    }
-
-    linkedUserId = linkedUser.id;
-    customerEmail = linkedUser.email || linkedEmail;
-    customerName = customerName || linkedUser.display_name || customerEmail;
+    return NextResponse.json({ error: "Use salon match requests to link members" }, { status: 400 });
   }
 
   if (!customerName) {
@@ -157,8 +134,8 @@ export async function POST(request: Request) {
     .from("salon_customers")
     .insert({
       owner_user_id: context.userId,
-      linked_user_id: linkedUserId,
-      source,
+      linked_user_id: null,
+      source: "manual",
       name: customerName,
       phone: phone || null,
       email: customerEmail || null,

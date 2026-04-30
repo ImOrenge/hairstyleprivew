@@ -2,9 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Clock3, LinkIcon, Plus, Search, UserRound } from "lucide-react";
+import { CheckCircle2, Clock3, Copy, LinkIcon, Plus, RefreshCw, Search, UserRound, UsersRound } from "lucide-react";
 import { Button } from "../ui/Button";
-import type { SalonAftercareTask, SalonCustomer, SalonCustomerSource } from "../../lib/salon-crm-types";
+import type {
+  SalonAftercareTask,
+  SalonCustomer,
+  SalonCustomerSource,
+  SalonMatchCandidate,
+  SalonMatchInvite,
+} from "../../lib/salon-crm-types";
 
 interface CustomerListResponse {
   customers?: SalonCustomer[];
@@ -15,6 +21,16 @@ interface CustomerListResponse {
     pendingAftercare: number;
     dueToday: number;
   };
+  error?: string;
+}
+
+interface MatchInviteResponse {
+  invite?: SalonMatchInvite | null;
+  error?: string;
+}
+
+interface MatchCandidateResponse {
+  candidates?: SalonMatchCandidate[];
   error?: string;
 }
 
@@ -53,10 +69,15 @@ export function CustomerListClient() {
   const [source, setSource] = useState<"all" | SalonCustomerSource>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInviteLoading, setIsInviteLoading] = useState(true);
+  const [isCandidateLoading, setIsCandidateLoading] = useState(true);
+  const [linkingRequestId, setLinkingRequestId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [invite, setInvite] = useState<SalonMatchInvite | null>(null);
+  const [matchQuery, setMatchQuery] = useState("");
+  const [candidates, setCandidates] = useState<SalonMatchCandidate[]>([]);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "failed">("idle");
   const [form, setForm] = useState({
-    source: "manual" as SalonCustomerSource,
-    linkedEmail: "",
     name: "",
     phone: "",
     email: "",
@@ -96,6 +117,71 @@ export function CustomerListClient() {
     setIsLoading(false);
   }
 
+  async function loadInvite() {
+    setIsInviteLoading(true);
+    const response = await fetch("/api/salon/matching/invite", { cache: "no-store" });
+    const data = (await response.json().catch(() => ({}))) as MatchInviteResponse;
+
+    if (response.ok) {
+      setInvite(data.invite || null);
+    } else {
+      setError(data.error || "초대 링크를 불러오지 못했습니다.");
+    }
+
+    setIsInviteLoading(false);
+  }
+
+  async function createInvite() {
+    setIsInviteLoading(true);
+    setError(null);
+
+    const response = await fetch("/api/salon/matching/invite", { method: "POST" });
+    const data = (await response.json().catch(() => ({}))) as MatchInviteResponse;
+
+    if (response.ok) {
+      setInvite(data.invite || null);
+      setCopyState("idle");
+    } else {
+      setError(data.error || "초대 링크를 만들지 못했습니다.");
+    }
+
+    setIsInviteLoading(false);
+  }
+
+  async function copyInviteUrl() {
+    if (!invite?.inviteUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(invite.inviteUrl);
+      setCopyState("copied");
+      window.setTimeout(() => setCopyState("idle"), 1800);
+    } catch {
+      setCopyState("failed");
+    }
+  }
+
+  async function loadCandidates() {
+    setIsCandidateLoading(true);
+
+    const params = new URLSearchParams({ status: "pending" });
+    if (matchQuery.trim()) {
+      params.set("q", matchQuery.trim());
+    }
+
+    const response = await fetch(`/api/salon/matches?${params.toString()}`, { cache: "no-store" });
+    const data = (await response.json().catch(() => ({}))) as MatchCandidateResponse;
+
+    if (response.ok) {
+      setCandidates(data.candidates || []);
+    } else {
+      setError(data.error || "매칭 후보를 불러오지 못했습니다.");
+    }
+
+    setIsCandidateLoading(false);
+  }
+
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       void loadCustomers();
@@ -103,6 +189,22 @@ export function CustomerListClient() {
 
     return () => window.clearTimeout(timeout);
   }, [listUrl]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadInvite();
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      void loadCandidates();
+    }, 180);
+
+    return () => window.clearTimeout(timeout);
+  }, [matchQuery]);
 
   async function handleSubmit() {
     if (isSubmitting) {
@@ -117,6 +219,7 @@ export function CustomerListClient() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ...form,
+        source: "manual",
         nextFollowUpAt: form.nextFollowUpAt || null,
       }),
     });
@@ -124,8 +227,6 @@ export function CustomerListClient() {
 
     if (response.ok) {
       setForm({
-        source: "manual",
-        linkedEmail: "",
         name: "",
         phone: "",
         email: "",
@@ -140,6 +241,29 @@ export function CustomerListClient() {
     }
 
     setIsSubmitting(false);
+  }
+
+  async function linkCandidate(candidate: SalonMatchCandidate) {
+    if (linkingRequestId) {
+      return;
+    }
+
+    setLinkingRequestId(candidate.id);
+    setError(null);
+
+    const response = await fetch(`/api/salon/matches/${candidate.id}/link`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = (await response.json().catch(() => ({}))) as { error?: string };
+
+    if (response.ok) {
+      await Promise.all([loadCustomers(), loadCandidates()]);
+    } else {
+      setError(data.error || "회원을 고객으로 연결하지 못했습니다.");
+    }
+
+    setLinkingRequestId(null);
   }
 
   return (
@@ -253,36 +377,113 @@ export function CustomerListClient() {
 
         <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
           <section className="rounded-md border border-stone-200 bg-white p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <LinkIcon className="h-4 w-4 text-stone-500" />
+                <h2 className="text-sm font-bold text-stone-950">회원 매칭 초대</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadInvite()}
+                disabled={isInviteLoading}
+                className="rounded-md border border-stone-300 p-2 text-stone-600 hover:bg-stone-50 disabled:opacity-50"
+                title="새로고침"
+              >
+                <RefreshCw className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3">
+              {invite?.inviteUrl ? (
+                <>
+                  <input
+                    value={invite.inviteUrl}
+                    readOnly
+                    className="h-10 rounded-md border border-stone-300 bg-stone-50 px-3 text-sm text-stone-700 outline-none"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" variant="secondary" onClick={() => void copyInviteUrl()}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      {copyState === "copied" ? "복사됨" : copyState === "failed" ? "복사 실패" : "복사"}
+                    </Button>
+                    <Button type="button" onClick={() => void createInvite()} disabled={isInviteLoading}>
+                      재발급
+                    </Button>
+                  </div>
+                  <p className="text-xs leading-5 text-stone-500">
+                    링크를 받은 회원이 수락하면 아래 매칭 후보에 표시됩니다.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm leading-6 text-stone-500">
+                    회원이 동의한 뒤에만 CRM 후보로 보이도록 초대 링크를 발급합니다.
+                  </p>
+                  <Button type="button" onClick={() => void createInvite()} disabled={isInviteLoading}>
+                    {isInviteLoading ? "확인 중..." : "초대 링크 만들기"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-md border border-stone-200 bg-white p-4">
+            <div className="flex items-center gap-2">
+              <UsersRound className="h-4 w-4 text-stone-500" />
+              <h2 className="text-sm font-bold text-stone-950">매칭 후보</h2>
+            </div>
+
+            <label className="relative mt-4 block">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+              <input
+                value={matchQuery}
+                onChange={(event) => setMatchQuery(event.target.value)}
+                placeholder="회원 이름, 이메일 검색"
+                className="h-10 w-full rounded-md border border-stone-300 bg-white pl-9 pr-3 text-sm outline-none focus:border-stone-950"
+              />
+            </label>
+
+            <div className="mt-4 grid gap-2">
+              {isCandidateLoading ? (
+                <p className="rounded-md border border-stone-200 px-3 py-4 text-center text-sm text-stone-500">
+                  후보 확인 중...
+                </p>
+              ) : null}
+              {!isCandidateLoading && candidates.length === 0 ? (
+                <p className="rounded-md border border-dashed border-stone-200 px-3 py-4 text-center text-sm text-stone-500">
+                  대기 중인 매칭 후보가 없습니다.
+                </p>
+              ) : null}
+              {candidates.map((candidate) => (
+                <div key={candidate.id} className="rounded-md border border-stone-200 px-3 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-stone-950">{candidate.member.displayName}</p>
+                    <p className="mt-1 truncate text-xs text-stone-500">{candidate.member.email || "-"}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    className="mt-3 w-full"
+                    disabled={linkingRequestId === candidate.id}
+                    onClick={() => void linkCandidate(candidate)}
+                  >
+                    {linkingRequestId === candidate.id ? "연결 중..." : "CRM 고객으로 연결"}
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-md border border-stone-200 bg-white p-4">
             <div className="flex items-center gap-2">
               <Plus className="h-4 w-4 text-stone-500" />
               <h2 className="text-sm font-bold text-stone-950">고객 등록</h2>
             </div>
 
             <div className="mt-4 grid gap-3">
-              <select
-                value={form.source}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, source: event.target.value as SalonCustomerSource }))
-                }
-                className="h-10 rounded-md border border-stone-300 bg-white px-3 text-sm outline-none focus:border-stone-950"
-              >
-                <option value="manual">수기 등록</option>
-                <option value="linked_member">기존 회원 연결</option>
-              </select>
-
-              {form.source === "linked_member" ? (
-                <input
-                  value={form.linkedEmail}
-                  onChange={(event) => setForm((current) => ({ ...current, linkedEmail: event.target.value }))}
-                  placeholder="연결할 회원 이메일"
-                  className="h-10 rounded-md border border-stone-300 px-3 text-sm outline-none focus:border-stone-950"
-                />
-              ) : null}
-
               <input
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                placeholder={form.source === "linked_member" ? "표시 이름(비우면 회원명 사용)" : "고객 이름"}
+                placeholder="고객 이름"
                 className="h-10 rounded-md border border-stone-300 px-3 text-sm outline-none focus:border-stone-950"
               />
               <input

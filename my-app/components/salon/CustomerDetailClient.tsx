@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Check, Clock3, MessageSquarePlus, ScissorsLineDashed } from "lucide-react";
+import { ArrowLeft, Check, Clock3, LinkIcon, MessageSquarePlus, ScissorsLineDashed, Sparkles } from "lucide-react";
 import { Button } from "../ui/Button";
 import type {
   SalonAftercareChannel,
   SalonAftercareTask,
   SalonCustomer,
+  SalonLinkedMember,
+  SalonMemberGenerationSummary,
   SalonVisit,
 } from "../../lib/salon-crm-types";
 
@@ -15,6 +17,8 @@ interface DetailResponse {
   customer?: SalonCustomer;
   visits?: SalonVisit[];
   aftercareTasks?: SalonAftercareTask[];
+  linkedMember?: SalonLinkedMember | null;
+  linkedMemberGenerations?: SalonMemberGenerationSummary[];
   error?: string;
 }
 
@@ -54,6 +58,8 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
   const [customer, setCustomer] = useState<SalonCustomer | null>(null);
   const [visits, setVisits] = useState<SalonVisit[]>([]);
   const [aftercareTasks, setAftercareTasks] = useState<SalonAftercareTask[]>([]);
+  const [linkedMember, setLinkedMember] = useState<SalonLinkedMember | null>(null);
+  const [linkedMemberGenerations, setLinkedMemberGenerations] = useState<SalonMemberGenerationSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -96,6 +102,8 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
       setCustomer(data.customer);
       setVisits(data.visits || []);
       setAftercareTasks(data.aftercareTasks || []);
+      setLinkedMember(data.linkedMember || null);
+      setLinkedMemberGenerations(data.linkedMemberGenerations || []);
       setProfileForm({
         name: data.customer.name,
         phone: data.customer.phone,
@@ -311,6 +319,19 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
               </Button>
             </div>
           </section>
+
+          {linkedMember ? (
+            <section className="rounded-md border border-stone-200 bg-white p-4">
+              <div className="flex items-center gap-2">
+                <LinkIcon className="h-4 w-4 text-emerald-600" />
+                <h2 className="text-sm font-bold text-stone-950">연결 회원</h2>
+              </div>
+              <div className="mt-4 rounded-md border border-emerald-100 bg-emerald-50 px-3 py-3">
+                <p className="truncate text-sm font-semibold text-emerald-950">{linkedMember.displayName}</p>
+                <p className="mt-1 truncate text-xs text-emerald-700">{linkedMember.email || "-"}</p>
+              </div>
+            </section>
+          ) : null}
         </aside>
 
         <main className="space-y-4">
@@ -363,6 +384,38 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
               </div>
             </div>
           </section>
+
+          {linkedMember ? (
+            <section className="rounded-md border border-stone-200 bg-white">
+              <div className="flex items-center gap-2 border-b border-stone-200 px-4 py-3">
+                <Sparkles className="h-4 w-4 text-stone-500" />
+                <h2 className="text-sm font-bold text-stone-950">최근 HairFit 생성 결과</h2>
+              </div>
+              <div className="divide-y divide-stone-100">
+                {linkedMemberGenerations.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-sm text-stone-500">
+                    연결 회원의 생성 결과가 아직 없습니다.
+                  </p>
+                ) : null}
+                {linkedMemberGenerations.map((item) => (
+                  <article key={item.id} className="px-4 py-4">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-stone-500">{formatDateTime(item.createdAt)}</p>
+                        <p className="mt-2 truncate text-sm font-semibold text-stone-950">
+                          {item.styleLabel || item.promptUsed || "헤어 생성 결과"}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-stone-500">{item.id}</p>
+                      </div>
+                      <span className="self-start rounded-md bg-stone-100 px-2 py-1 text-xs font-bold text-stone-600">
+                        {item.status}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="rounded-md border border-stone-200 bg-white">
             <div className="border-b border-stone-200 px-4 py-3">
