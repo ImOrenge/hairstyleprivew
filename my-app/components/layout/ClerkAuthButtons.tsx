@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { MouseEventHandler } from "react";
 import { useT } from "../../lib/i18n/useT";
 import { loginButtonClassName, signupButtonClassName } from "./authButtonStyles";
+import { useHeaderAccount } from "./HeaderAccountContext";
 
 export function ClerkAuthButtons() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -18,15 +19,16 @@ export function ClerkAuthButtons() {
 
 export function MobileClerkAuthButtons() {
   const { isLoaded, isSignedIn } = useAuth();
+  const { accountHomeHref, isRoleLoaded } = useHeaderAccount();
 
   if (isLoaded && isSignedIn) {
     return (
       <div className="flex min-w-0 items-center gap-1.5">
         <Link
-          href="/mypage"
+          href={isRoleLoaded ? accountHomeHref : "/onboarding"}
           className="inline-flex min-w-[56px] items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border)] px-3 py-2 text-xs font-semibold uppercase tracking-[0.04em] text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]"
         >
-          프로필
+          내 계정
         </Link>
         <SignOutButton>
           <button
