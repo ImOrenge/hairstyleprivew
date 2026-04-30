@@ -17,23 +17,21 @@ const GLOW_TARGET_SELECTOR = [
 export function PointerGlowProvider() {
   useEffect(() => {
     const canHover = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    if (!canHover.matches || reduceMotion.matches) {
+    if (!canHover.matches) {
       return;
     }
 
-    let activeSurface: HTMLElement | null = null;
+    const activeSurfaces = new Set<HTMLElement>();
     let frameId = 0;
     let latestEvent: PointerEvent | null = null;
+    const maxDistance = 680;
 
-    const clearActiveSurface = () => {
-      if (!activeSurface) {
-        return;
-      }
-
-      activeSurface.style.setProperty("--glow-opacity", "0");
-      activeSurface = null;
+    const clearSurfaces = () => {
+      activeSurfaces.forEach((surface) => {
+        surface.style.setProperty("--glow-opacity", "0");
+      });
+      activeSurfaces.clear();
     };
 
     const updateGlow = () => {
@@ -45,28 +43,49 @@ export function PointerGlowProvider() {
 
       const event = latestEvent;
       latestEvent = null;
-      const target = event.target instanceof Element ? event.target : null;
-      const surface = target?.closest(GLOW_TARGET_SELECTOR);
+      const surfaces = document.querySelectorAll<HTMLElement>(GLOW_TARGET_SELECTOR);
+      const nextActiveSurfaces = new Set<HTMLElement>();
 
-      if (!(surface instanceof HTMLElement)) {
-        clearActiveSurface();
-        return;
-      }
+      surfaces.forEach((surface) => {
+        const rect = surface.getBoundingClientRect();
+        const isNearViewport =
+          rect.bottom >= -maxDistance &&
+          rect.top <= window.innerHeight + maxDistance &&
+          rect.right >= -maxDistance &&
+          rect.left <= window.innerWidth + maxDistance;
 
-      if (surface !== activeSurface) {
-        clearActiveSurface();
-        activeSurface = surface;
-      }
+        if (!isNearViewport) {
+          surface.style.setProperty("--glow-opacity", "0");
+          return;
+        }
 
-      const rect = surface.getBoundingClientRect();
-      surface.style.setProperty("--glow-x", `${event.clientX - rect.left}px`);
-      surface.style.setProperty("--glow-y", `${event.clientY - rect.top}px`);
-      surface.style.setProperty("--glow-opacity", "1");
+        const nearestX = Math.min(Math.max(event.clientX, rect.left), rect.right);
+        const nearestY = Math.min(Math.max(event.clientY, rect.top), rect.bottom);
+        const distance = Math.hypot(event.clientX - nearestX, event.clientY - nearestY);
+        const intensity = Math.max(0, 1 - distance / maxDistance);
+
+        surface.style.setProperty("--glow-x", `${event.clientX - rect.left}px`);
+        surface.style.setProperty("--glow-y", `${event.clientY - rect.top}px`);
+        surface.style.setProperty("--glow-opacity", `${Math.pow(intensity, 1.15).toFixed(3)}`);
+
+        if (intensity > 0) {
+          nextActiveSurfaces.add(surface);
+        }
+      });
+
+      activeSurfaces.forEach((surface) => {
+        if (!nextActiveSurfaces.has(surface)) {
+          surface.style.setProperty("--glow-opacity", "0");
+        }
+      });
+
+      activeSurfaces.clear();
+      nextActiveSurfaces.forEach((surface) => activeSurfaces.add(surface));
     };
 
     const handlePointerMove = (event: PointerEvent) => {
       if (event.pointerType !== "mouse" && event.pointerType !== "pen") {
-        clearActiveSurface();
+        clearSurfaces();
         return;
       }
 
@@ -79,24 +98,24 @@ export function PointerGlowProvider() {
 
     const handlePointerOut = (event: PointerEvent) => {
       if (!event.relatedTarget) {
-        clearActiveSurface();
+        clearSurfaces();
       }
     };
 
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerout", handlePointerOut, { passive: true });
-    window.addEventListener("blur", clearActiveSurface);
+    window.addEventListener("blur", clearSurfaces);
 
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerout", handlePointerOut);
-      window.removeEventListener("blur", clearActiveSurface);
+      window.removeEventListener("blur", clearSurfaces);
 
       if (frameId) {
         window.cancelAnimationFrame(frameId);
       }
 
-      clearActiveSurface();
+      clearSurfaces();
     };
   }, []);
 
