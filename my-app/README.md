@@ -44,6 +44,7 @@ Optional:
 - `RESEND_API_KEY` (optional, payment success email notifications)
 - `RESEND_FROM_EMAIL` (optional, default: `HairFit <onboarding@resend.dev>`)
 - `INBOUND_EMAIL_SECRET` (required for Cloudflare Email Routing Worker -> app webhook)
+- `CLERK_SOCIAL_PROOF_SECRET_KEY` (optional, server-only `sk_live_` key for production-only landing user count)
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (required for B2B inquiry form CAPTCHA)
 - `TURNSTILE_SECRET_KEY` (required for server-side Cloudflare Turnstile validation)
 - `B2B_LEAD_WEBHOOK_URL` (optional, receives B2B lead JSON payloads)
@@ -95,6 +96,7 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `RESEND_API_KEY` (optional)
 - `RESEND_FROM_EMAIL` (optional)
 - `INBOUND_EMAIL_SECRET` (required for inbound support email storage)
+- `CLERK_SOCIAL_PROOF_SECRET_KEY` (optional; set only to a live Clerk secret key)
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - `TURNSTILE_SECRET_KEY`
 - `B2B_LEAD_WEBHOOK_URL` (optional)
@@ -103,6 +105,7 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 Clerk note:
 - In local development (`http://localhost:*`), use `pk_test_` / `sk_test_` keys.
 - `pk_live_` keys are domain-restricted and will not render Clerk widgets on localhost.
+- The landing user count reads only live Clerk data. In non-production environments, set `CLERK_SOCIAL_PROOF_SECRET_KEY=sk_live_...` if the production count should appear; test keys are ignored.
 
 Optional pricing and prompt env:
 - `PROMPT_LLM_MODEL`

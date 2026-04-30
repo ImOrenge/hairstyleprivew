@@ -28,7 +28,11 @@ function readPublishableKey() {
 }
 
 function readSecretKey() {
-  const key = process.env.CLERK_SECRET_KEY;
+  return readSecretKeyFromEnv("CLERK_SECRET_KEY");
+}
+
+function readSecretKeyFromEnv(name: string) {
+  const key = process.env[name];
   if (typeof key !== "string") {
     return null;
   }
@@ -131,6 +135,18 @@ export function isDevClerkSalonUserId(userId: string | null | undefined) {
 
 export function isClerkConfigured() {
   return getClerkConfigState().canUseClerkServer;
+}
+
+export function getProductionClerkSecretKey() {
+  const explicitProductionKey =
+    readSecretKeyFromEnv("CLERK_SOCIAL_PROOF_SECRET_KEY") ?? readSecretKeyFromEnv("CLERK_PRODUCTION_SECRET_KEY");
+  const candidate = explicitProductionKey ?? readSecretKey();
+
+  if (getSecretKeyType(candidate) !== "live" || isPlaceholder(candidate)) {
+    return null;
+  }
+
+  return candidate;
 }
 
 export function getClerkSignInPath() {

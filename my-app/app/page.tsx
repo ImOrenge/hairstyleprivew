@@ -1,14 +1,14 @@
 ﻿import nextDynamic from "next/dynamic";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { clerkClient } from "@clerk/nextjs/server";
+import { createClerkClient } from "@clerk/nextjs/server";
 import { ArrowRight } from "lucide-react";
 import { B2BLeadForm } from "../components/home/B2BLeadForm";
 import { FeatureShowcase } from "../components/home/FeatureShowcase";
 import { FashionDemoShowcase } from "../components/home/FashionDemoShowcase";
 import { HeroSection } from "../components/home/HeroSection";
 import { AppPage, InverseSection, Panel, SurfaceCard } from "../components/ui/Surface";
-import { getClerkConfigState } from "../lib/clerk";
+import { getProductionClerkSecretKey } from "../lib/clerk";
 import {
   homeFaqs,
   homeNavItems,
@@ -19,7 +19,6 @@ import {
   structuredDataName,
 } from "../lib/home-content";
 import { getSiteUrl } from "../lib/site-url";
-import { getSupabaseAdminClient, isSupabaseConfigured } from "../lib/supabase";
 
 const PricingPreview = nextDynamic(() => import("../components/home/PricingPreview").then((mod) => mod.PricingPreview), {
   loading: () => <div className="h-96 animate-pulse border border-[var(--app-border)] bg-[var(--app-surface-muted)]" />,
@@ -38,74 +37,18 @@ type HomeSocialProof = {
   avatars: string[];
 };
 
-async function loadSocialProofFromSupabase(): Promise<HomeSocialProof | null> {
-  if (!isSupabaseConfigured()) {
-    return null;
-  }
-
-  try {
-    const supabase = getSupabaseAdminClient();
-    const [{ count, error: countError }, { data: avatarRows, error: avatarError }] = await Promise.all([
-      supabase.from("users").select("id", { count: "exact", head: true }),
-      supabase
-        .from("users")
-        .select("avatar_url")
-        .not("avatar_url", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(6),
-    ]);
-
-    if (countError || avatarError) {
-      console.error("[home] Failed to fetch Supabase social proof:", countError ?? avatarError);
-      return null;
-    }
-
-    return {
-      userCount: count ?? 0,
-      avatars: (avatarRows ?? [])
-        .map((row) => (typeof row.avatar_url === "string" ? row.avatar_url : ""))
-        .filter((url) => url.length > 0),
-    };
-  } catch (error) {
-    console.error("[home] Failed to fetch Supabase social proof:", error);
-    return null;
-  }
-}
-
 async function loadHomeSocialProof(): Promise<HomeSocialProof> {
-  const supabaseSocialProof = await loadSocialProofFromSupabase();
-  const clerkSocialProof = await loadSocialProofFromClerk();
-
-  if (supabaseSocialProof && supabaseSocialProof.userCount > 0) {
-    if (supabaseSocialProof.avatars.length > 0) {
-      return supabaseSocialProof;
-    }
-
-    return {
-      userCount: supabaseSocialProof.userCount,
-      avatars: clerkSocialProof.avatars,
-    };
-  }
-
-  if (clerkSocialProof.userCount > 0 || clerkSocialProof.avatars.length > 0) {
-    return clerkSocialProof;
-  }
-
-  if (supabaseSocialProof) {
-    return supabaseSocialProof;
-  }
-
-  return { userCount: 0, avatars: [] };
+  return loadSocialProofFromProductionClerk();
 }
 
-async function loadSocialProofFromClerk(): Promise<HomeSocialProof> {
-  const clerkConfig = getClerkConfigState();
-  if (!clerkConfig.canUseClerkServer) {
+async function loadSocialProofFromProductionClerk(): Promise<HomeSocialProof> {
+  const productionSecretKey = getProductionClerkSecretKey();
+  if (!productionSecretKey) {
     return { userCount: 0, avatars: [] };
   }
 
   try {
-    const client = await clerkClient();
+    const client = createClerkClient({ secretKey: productionSecretKey });
     const [userCount, latestUsers] = await Promise.all([
       client.users.getCount(),
       client.users.getUserList({
@@ -121,7 +64,7 @@ async function loadSocialProofFromClerk(): Promise<HomeSocialProof> {
         .filter((url): url is string => Boolean(url) && !url.includes("default-user-icon")),
     };
   } catch (error) {
-    console.error("[home] Failed to fetch Clerk social proof:", error);
+    console.error("[home] Failed to fetch production Clerk social proof:", error);
     return { userCount: 0, avatars: [] };
   }
 }
