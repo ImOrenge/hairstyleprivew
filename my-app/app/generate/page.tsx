@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { PipelineStatusIndicator } from "../../components/generate/PipelineStatusIndicator";
 import { Button } from "../../components/ui/Button";
 import { AppPage, InverseCard, Panel, SurfaceCard } from "../../components/ui/Surface";
+import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
 import { useGenerate } from "../../hooks/useGenerate";
 import { useGenerationStore } from "../../store/useGenerationStore";
 
 export default function GeneratePage() {
   const router = useRouter();
+  const { isAdminReadOnly } = useAdminReadOnly();
   const { runGridPipeline, resetPipeline } = useGenerate();
   const previewUrl = useGenerationStore((state) => state.previewUrl);
   const imageHydrated = useGenerationStore((state) => state.imageHydrated);
@@ -51,6 +53,10 @@ export default function GeneratePage() {
   }, [generationId, pipelineStage, recommendationGrid, router]);
 
   const handleGenerate = async () => {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     hasRedirectedRef.current = false;
     clearRecommendationSession();
     resetPipeline();
@@ -68,6 +74,11 @@ export default function GeneratePage() {
   return (
     <AppPage className="flex flex-col gap-6 pb-24">
       <section className="space-y-4">
+        {isAdminReadOnly ? (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+            Admin read-only mode: use Admin screens for changes.
+          </div>
+        ) : null}
         <div className="space-y-2">
           <p className="app-kicker">Generate Progress</p>
           <h1 className="text-3xl font-black tracking-tight text-[var(--app-text)]">
@@ -167,7 +178,7 @@ export default function GeneratePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={handleGenerate} disabled={!previewUrl || isGenerating}>
+              <Button onClick={handleGenerate} disabled={!previewUrl || isGenerating || isAdminReadOnly}>
                 {generationId ? "Rebuild Grid" : "Generate Grid"}
               </Button>
               {!previewUrl ? (

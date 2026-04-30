@@ -1,10 +1,6 @@
 import "server-only";
 
-import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-import { isDevClerkSalonUserId } from "./clerk";
-import { ensureCurrentUserProfile, type ServerSupabaseLike } from "./style-profile-server";
-import { getSupabaseAdminClient, isSupabaseConfigured } from "./supabase";
+import { getApiContext } from "./rbac-server";
 import type {
   SalonAftercareChannel,
   SalonAftercareStatus,
@@ -262,40 +258,18 @@ export function normalizeGenerationSummary(row: Record<string, unknown>): SalonM
   };
 }
 
-export async function getSalonOwnerContext() {
-  const { userId } = await auth();
-  if (!userId) {
-    return { ok: false as const, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
+export async function getSalonOwnerContext(access: "read" | "write" = "write") {
+  const context = await getApiContext(access === "read" ? "salon:read" : "salon:write");
+  if (!context.ok) {
+    return context;
   }
 
-  if (!isSupabaseConfigured()) {
-    return {
-      ok: false as const,
-      response: NextResponse.json({ error: "Supabase is not configured" }, { status: 503 }),
-    };
-  }
-
-  const supabase = getSupabaseAdminClient() as unknown as SalonCrmSupabase & ServerSupabaseLike;
-  const ensured = await ensureCurrentUserProfile(userId, supabase);
-  if (ensured.error) {
-    return { ok: false as const, response: NextResponse.json({ error: ensured.error.message }, { status: 500 }) };
-  }
-
-  const { data, error } = await supabase
-    .from("users")
-    .select("account_type")
-    .eq("id", userId)
-    .maybeSingle<{ account_type?: string | null }>();
-
-  if (error) {
-    return { ok: false as const, response: NextResponse.json({ error: error.message }, { status: 500 }) };
-  }
-
-  if (data?.account_type !== "salon_owner" && !isDevClerkSalonUserId(userId)) {
-    return { ok: false as const, response: NextResponse.json({ error: "Salon owner account required" }, { status: 403 }) };
-  }
-
-  return { ok: true as const, userId, supabase };
+  return {
+    ok: true as const,
+    userId: context.userId,
+    actor: context.actor,
+    supabase: context.supabase as unknown as SalonCrmSupabase,
+  };
 }
 
 export async function loadOwnerCustomer(

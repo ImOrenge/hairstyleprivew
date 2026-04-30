@@ -32,7 +32,13 @@ function getNavItems(accountType: AccountType | null, t: ReturnType<typeof useT>
   }
 
   if (accountType === "admin") {
-    return [{ href: "/admin/stats", label: "Admin" }];
+    return [
+      { href: "/admin/stats", label: "Admin" },
+      { href: "/upload", label: t("nav.upload") },
+      { href: "/generate", label: t("nav.generate") },
+      { href: "/mypage", label: t("nav.mypage") },
+      { href: "/salon/customers", label: "Salon CRM" },
+    ];
   }
 
   return [{ href: "/onboarding", label: "계정 설정" }];

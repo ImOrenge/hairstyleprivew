@@ -33,7 +33,7 @@ interface PatchCustomerRequest {
 }
 
 export async function GET(_request: Request, { params }: Params) {
-  const context = await getSalonOwnerContext();
+  const context = await getSalonOwnerContext("read");
   if (!context.ok) {
     return context.response;
   }

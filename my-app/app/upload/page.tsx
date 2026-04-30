@@ -7,6 +7,7 @@ import { UploadArea } from "../../components/upload/UploadArea";
 import { ValidationCheck } from "../../components/upload/ValidationCheck";
 import { Button } from "../../components/ui/Button";
 import { AppPage, Panel } from "../../components/ui/Surface";
+import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
 import { useUpload } from "../../hooks/useUpload";
 import { convertImageFileToWebp } from "../../lib/webp-client";
 import { useGenerationStore } from "../../store/useGenerationStore";
@@ -14,6 +15,7 @@ import { useT } from "../../lib/i18n/useT";
 
 export default function UploadPage() {
   const t = useT();
+  const { isAdminReadOnly } = useAdminReadOnly();
   const [guideOpen, setGuideOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const { status, message, details, validateImage, resetValidation } = useUpload();
@@ -27,6 +29,10 @@ export default function UploadPage() {
   }, [hydrateOriginalImage]);
 
   const handleSelectFile = async (file: File) => {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     setIsUploading(true);
     try {
       const result = await validateImage(file);
@@ -56,8 +62,17 @@ export default function UploadPage() {
           </header>
 
           <Panel as="section" className="space-y-4 p-4 sm:p-5">
+            {isAdminReadOnly ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                Admin read-only mode: use Admin screens for changes.
+              </div>
+            ) : null}
             <div className="mx-auto w-full max-w-xl">
-              <UploadArea onSelectFile={handleSelectFile} disabled={isUploading} previewUrl={previewUrl} />
+              <UploadArea
+                onSelectFile={handleSelectFile}
+                disabled={isUploading || isAdminReadOnly}
+                previewUrl={previewUrl}
+              />
             </div>
             <ValidationCheck status={status} message={message} details={details} />
 
@@ -67,13 +82,13 @@ export default function UploadPage() {
                   {t("upload.guide")}
                 </Button>
                 {previewUrl ? (
-                  <Button type="button" variant="ghost" onClick={handleReset}>
+                  <Button type="button" variant="ghost" onClick={handleReset} disabled={isAdminReadOnly}>
                     {t("upload.reset")}
                   </Button>
                 ) : null}
               </div>
 
-              {previewUrl ? (
+              {previewUrl && !isAdminReadOnly ? (
                 <Link href="/generate">
                   <Button>{t("upload.next")}</Button>
                 </Link>

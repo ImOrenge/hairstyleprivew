@@ -27,7 +27,7 @@ function escapeSearchValue(value: string) {
 }
 
 export async function GET(request: Request) {
-  const context = await getSalonOwnerContext();
+  const context = await getSalonOwnerContext("read");
   if (!context.ok) {
     return context.response;
   }

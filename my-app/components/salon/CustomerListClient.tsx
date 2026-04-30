@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Clock3, Copy, LinkIcon, Plus, RefreshCw, Search, UserRound, UsersRound } from "lucide-react";
 import { Button } from "../ui/Button";
+import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
 import type {
   SalonAftercareTask,
   SalonCustomer,
@@ -62,6 +63,7 @@ function sourceLabel(source: SalonCustomerSource) {
 }
 
 export function CustomerListClient() {
+  const { isAdminReadOnly } = useAdminReadOnly();
   const [customers, setCustomers] = useState<SalonCustomer[]>([]);
   const [pendingAftercare, setPendingAftercare] = useState<SalonAftercareTask[]>([]);
   const [summary, setSummary] = useState(emptySummary);
@@ -132,6 +134,10 @@ export function CustomerListClient() {
   }
 
   async function createInvite() {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     setIsInviteLoading(true);
     setError(null);
 
@@ -207,7 +213,7 @@ export function CustomerListClient() {
   }, [matchQuery]);
 
   async function handleSubmit() {
-    if (isSubmitting) {
+    if (isSubmitting || isAdminReadOnly) {
       return;
     }
 
@@ -244,7 +250,7 @@ export function CustomerListClient() {
   }
 
   async function linkCandidate(candidate: SalonMatchCandidate) {
-    if (linkingRequestId) {
+    if (linkingRequestId || isAdminReadOnly) {
       return;
     }
 
@@ -292,6 +298,12 @@ export function CustomerListClient() {
           </div>
         </div>
       </header>
+
+      {isAdminReadOnly ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          Admin read-only mode: select a target from Admin members to make changes.
+        </div>
+      ) : null}
 
       {error ? (
         <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -406,7 +418,7 @@ export function CustomerListClient() {
                       <Copy className="mr-2 h-4 w-4" />
                       {copyState === "copied" ? "복사됨" : copyState === "failed" ? "복사 실패" : "복사"}
                     </Button>
-                    <Button type="button" onClick={() => void createInvite()} disabled={isInviteLoading}>
+                    <Button type="button" onClick={() => void createInvite()} disabled={isInviteLoading || isAdminReadOnly}>
                       재발급
                     </Button>
                   </div>
@@ -419,7 +431,7 @@ export function CustomerListClient() {
                   <p className="text-sm leading-6 text-stone-500">
                     회원이 동의한 뒤에만 CRM 후보로 보이도록 초대 링크를 발급합니다.
                   </p>
-                  <Button type="button" onClick={() => void createInvite()} disabled={isInviteLoading}>
+                  <Button type="button" onClick={() => void createInvite()} disabled={isInviteLoading || isAdminReadOnly}>
                     {isInviteLoading ? "확인 중..." : "초대 링크 만들기"}
                   </Button>
                 </>
@@ -463,7 +475,7 @@ export function CustomerListClient() {
                   <Button
                     type="button"
                     className="mt-3 w-full"
-                    disabled={linkingRequestId === candidate.id}
+                    disabled={linkingRequestId === candidate.id || isAdminReadOnly}
                     onClick={() => void linkCandidate(candidate)}
                   >
                     {linkingRequestId === candidate.id ? "연결 중..." : "CRM 고객으로 연결"}
@@ -479,7 +491,7 @@ export function CustomerListClient() {
               <h2 className="text-sm font-bold text-stone-950">고객 등록</h2>
             </div>
 
-            <div className="mt-4 grid gap-3">
+            <fieldset disabled={isAdminReadOnly} className="mt-4 grid gap-3 disabled:opacity-75">
               <input
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
@@ -527,10 +539,10 @@ export function CustomerListClient() {
                 />
                 카카오 알림 동의
               </label>
-              <Button type="button" onClick={handleSubmit} disabled={isSubmitting}>
+              <Button type="button" onClick={handleSubmit} disabled={isSubmitting || isAdminReadOnly}>
                 {isSubmitting ? "등록 중..." : "고객 등록"}
               </Button>
-            </div>
+            </fieldset>
           </section>
 
           <section className="rounded-md border border-stone-200 bg-white p-4">

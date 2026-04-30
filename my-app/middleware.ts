@@ -1,7 +1,13 @@
 import { clerkClient, clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { buildSignInRedirectUrl, getClerkConfigState, isDevClerkSalonUserId } from "./lib/clerk";
-import { buildOnboardingRedirectUrl, normalizeAppPath, parseOnboardingMetadata } from "./lib/onboarding";
+import {
+  buildOnboardingRedirectUrl,
+  isAccountType,
+  normalizeAppPath,
+  parseOnboardingMetadata,
+} from "./lib/onboarding";
 
 const { canUseClerkServer: hasClerkConfig } = getClerkConfigState();
 const isProtectedRoute = createRouteMatcher([
@@ -24,6 +30,7 @@ const isWebhookRoute = createRouteMatcher([
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isOnboardingApiRoute = createRouteMatcher(["/api/onboarding(.*)"]);
 const isAdminPageRoute = createRouteMatcher(["/admin(.*)"]);
+const isAdminNamespaceApiRoute = createRouteMatcher(["/api/admin(.*)"]);
 const isAdminApiRoute = createRouteMatcher(["/api/admin(.*)"]);
 const isCatalogSecretAdminApiRoute = createRouteMatcher([
   "/api/admin/hairstyles(.*)",
@@ -39,6 +46,42 @@ function clerkConfigRequiredResponse(req: NextRequest) {
   }
 
   return NextResponse.redirect(new URL("/login", req.url));
+}
+
+function isMutationRequest(req: NextRequest) {
+  return req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
+}
+
+async function loadDbOnboarding(userId: string) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRole) {
+    return null;
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, serviceRole, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    });
+    const { data, error } = await supabase
+      .from("users")
+      .select("account_type,onboarding_completed_at")
+      .eq("id", userId)
+      .maybeSingle<{ account_type?: string | null; onboarding_completed_at?: string | null }>();
+
+    if (error) {
+      console.error("[middleware] Failed to read DB role", error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error("[middleware] Failed to create Supabase role client", error);
+    return null;
+  }
 }
 
 const clerkProtectedMiddleware = hasClerkConfig
@@ -58,13 +101,20 @@ const clerkProtectedMiddleware = hasClerkConfig
       const client = await clerkClient();
       const user = await client.users.getUser(userId);
       const metadata = parseOnboardingMetadata(user.publicMetadata);
+      const dbOnboarding = await loadDbOnboarding(userId);
+      const dbAccountType = isAccountType(dbOnboarding?.account_type) ? dbOnboarding.account_type : null;
       const isDevSalonOwner = isDevClerkSalonUserId(userId);
-      const effectiveAccountType = isDevSalonOwner ? "salon_owner" : metadata.accountType;
-      const effectiveOnboardingComplete = isDevSalonOwner || metadata.onboardingComplete;
+      const effectiveAccountType = isDevSalonOwner ? "salon_owner" : dbAccountType ?? metadata.accountType;
+      const effectiveOnboardingComplete =
+        isDevSalonOwner ||
+        effectiveAccountType === "admin" ||
+        Boolean(dbOnboarding?.onboarding_completed_at && effectiveAccountType) ||
+        metadata.onboardingComplete;
       const onboardingAllowed = isOnboardingRoute(req) || isOnboardingApiRoute(req);
       const adminPageRequest = isAdminPageRoute(req);
       const adminApiRequest = isAdminApiRoute(req) && !isCatalogSecretAdminApiRoute(req);
       const adminRestrictedRequest = adminPageRequest || adminApiRequest;
+      const adminNamespaceApiRequest = isAdminNamespaceApiRoute(req);
 
       if (!effectiveOnboardingComplete || !effectiveAccountType) {
         if (onboardingAllowed) {
@@ -85,9 +135,20 @@ const clerkProtectedMiddleware = hasClerkConfig
       if (isOnboardingRoute(req)) {
         const redirectTo = normalizeAppPath(
           req.nextUrl.searchParams.get("return_url"),
-          effectiveAccountType === "salon_owner" ? "/salon/customers" : "/mypage",
+          effectiveAccountType === "admin"
+            ? "/admin/stats"
+            : effectiveAccountType === "salon_owner"
+              ? "/salon/customers"
+              : "/mypage",
         );
         return NextResponse.redirect(new URL(redirectTo, req.url));
+      }
+
+      if (isApiRequest && effectiveAccountType === "admin" && isMutationRequest(req) && !adminNamespaceApiRequest) {
+        return NextResponse.json(
+          { error: "Admin writes are only allowed through admin APIs" },
+          { status: 403 },
+        );
       }
 
       if (adminRestrictedRequest && effectiveAccountType !== "admin") {
@@ -98,7 +159,7 @@ const clerkProtectedMiddleware = hasClerkConfig
         return NextResponse.redirect(new URL("/mypage", req.url));
       }
 
-      if (isSalonRoute(req) && effectiveAccountType !== "salon_owner") {
+      if (isSalonRoute(req) && effectiveAccountType !== "salon_owner" && effectiveAccountType !== "admin") {
         return NextResponse.redirect(new URL("/mypage", req.url));
       }
 

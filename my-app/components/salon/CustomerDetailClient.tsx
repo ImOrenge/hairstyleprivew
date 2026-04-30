@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Clock3, LinkIcon, MessageSquarePlus, ScissorsLineDashed, Sparkles } from "lucide-react";
 import { Button } from "../ui/Button";
+import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
 import type {
   SalonAftercareChannel,
   SalonAftercareTask,
@@ -55,6 +56,7 @@ function toLocalInputValue(value: string | null) {
 }
 
 export function CustomerDetailClient({ customerId }: { customerId: string }) {
+  const { isAdminReadOnly } = useAdminReadOnly();
   const [customer, setCustomer] = useState<SalonCustomer | null>(null);
   const [visits, setVisits] = useState<SalonVisit[]>([]);
   const [aftercareTasks, setAftercareTasks] = useState<SalonAftercareTask[]>([]);
@@ -129,6 +131,10 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
   }, [customerId]);
 
   async function saveProfile() {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -149,6 +155,10 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
   }
 
   async function addVisit() {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     if (!visitForm.serviceNote.trim()) {
       setError("방문 기록 내용을 입력해 주세요.");
       return;
@@ -181,6 +191,10 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
   }
 
   async function addAftercare() {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     if (!aftercareForm.scheduledFor) {
       setError("사후관리 예정일을 입력해 주세요.");
       return;
@@ -207,6 +221,10 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
   }
 
   async function completeTask(taskId: string) {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -257,6 +275,12 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
         </div>
       </header>
 
+      {isAdminReadOnly ? (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          Admin read-only mode: select this salon in Admin to make changes.
+        </div>
+      ) : null}
+
       {error ? (
         <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
           {error}
@@ -267,7 +291,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
         <aside className="space-y-4">
           <section className="rounded-md border border-stone-200 bg-white p-4">
             <h2 className="text-sm font-bold text-stone-950">고객 정보</h2>
-            <div className="mt-4 grid gap-3">
+            <fieldset disabled={isAdminReadOnly} className="mt-4 grid gap-3 disabled:opacity-75">
               <input
                 value={profileForm.name}
                 onChange={(event) => setProfileForm((current) => ({ ...current, name: event.target.value }))}
@@ -314,10 +338,10 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
                 />
                 카카오 알림 동의
               </label>
-              <Button type="button" onClick={saveProfile} disabled={isSaving || isLoading}>
+              <Button type="button" onClick={saveProfile} disabled={isSaving || isLoading || isAdminReadOnly}>
                 저장
               </Button>
-            </div>
+            </fieldset>
           </section>
 
           {linkedMember ? (
@@ -340,7 +364,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
               <ScissorsLineDashed className="h-4 w-4 text-stone-500" />
               <h2 className="text-sm font-bold text-stone-950">방문 기록 추가</h2>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <fieldset disabled={isAdminReadOnly} className="mt-4 grid gap-3 md:grid-cols-2 disabled:opacity-75">
               <input
                 type="datetime-local"
                 value={visitForm.visitedAt}
@@ -378,11 +402,11 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
                 다음 추천일로 사후관리 생성
               </label>
               <div className="md:text-right">
-                <Button type="button" onClick={addVisit} disabled={isSaving}>
+                <Button type="button" onClick={addVisit} disabled={isSaving || isAdminReadOnly}>
                   방문 기록 추가
                 </Button>
               </div>
-            </div>
+            </fieldset>
           </section>
 
           {linkedMember ? (
@@ -445,7 +469,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
               <MessageSquarePlus className="h-4 w-4 text-stone-500" />
               <h2 className="text-sm font-bold text-stone-950">사후관리 추가</h2>
             </div>
-            <div className="mt-4 grid gap-3">
+            <fieldset disabled={isAdminReadOnly} className="mt-4 grid gap-3 disabled:opacity-75">
               <select
                 value={aftercareForm.channel}
                 onChange={(event) =>
@@ -477,10 +501,10 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
                 placeholder="사후관리 메모"
                 className="rounded-md border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-950"
               />
-              <Button type="button" onClick={addAftercare} disabled={isSaving}>
+              <Button type="button" onClick={addAftercare} disabled={isSaving || isAdminReadOnly}>
                 사후관리 추가
               </Button>
-            </div>
+            </fieldset>
           </section>
 
           <section className="rounded-md border border-stone-200 bg-white">
@@ -505,7 +529,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
                       <button
                         type="button"
                         onClick={() => void completeTask(task.id)}
-                        disabled={isSaving}
+                        disabled={isSaving || isAdminReadOnly}
                         className="rounded-md border border-stone-300 p-2 text-stone-700 hover:bg-stone-50 disabled:opacity-50"
                         title="완료"
                       >

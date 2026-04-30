@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/Button";
 import type { StyleProfile } from "../../lib/fashion-types";
+import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
 
 interface StyleProfileResponse {
   profile?: StyleProfile;
@@ -53,6 +54,7 @@ const exposureOptions = [
 export function StyleProfileForm({
   variant = "standalone",
 }: StyleProfileFormProps) {
+  const { isAdminReadOnly } = useAdminReadOnly();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<StyleProfile>(initialProfile);
   const [avoidText, setAvoidText] = useState("");
@@ -92,6 +94,10 @@ export function StyleProfileForm({
   };
 
   const handleSave = async () => {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     setMessage(null);
@@ -122,6 +128,10 @@ export function StyleProfileForm({
   };
 
   const handleUpload = async (file: File | null | undefined) => {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     if (!file) return;
 
     setIsUploading(true);
@@ -147,6 +157,10 @@ export function StyleProfileForm({
   };
 
   const handleDeletePhoto = async () => {
+    if (isAdminReadOnly) {
+      return;
+    }
+
     setIsUploading(true);
     setError(null);
     setMessage(null);
@@ -199,6 +213,12 @@ export function StyleProfileForm({
         </div>
       )}
 
+      {isAdminReadOnly ? (
+        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          Admin read-only mode: use Admin screens for changes.
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="mt-4 rounded-xl bg-stone-50 p-4 text-sm text-stone-500">바디 프로필을 불러오는 중입니다...</div>
       ) : (
@@ -217,15 +237,21 @@ export function StyleProfileForm({
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              disabled={isAdminReadOnly}
               className="hidden"
               onChange={(event) => void handleUpload(event.target.files?.[0])}
             />
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading || isAdminReadOnly}
+              >
                 {isUploading ? "업로드 중..." : profile.bodyPhotoPath ? "사진 교체" : "사진 업로드"}
               </Button>
               {profile.bodyPhotoPath ? (
-                <Button type="button" variant="ghost" onClick={handleDeletePhoto} disabled={isUploading}>
+                <Button type="button" variant="ghost" onClick={handleDeletePhoto} disabled={isUploading || isAdminReadOnly}>
                   삭제
                 </Button>
               ) : null}
@@ -235,7 +261,7 @@ export function StyleProfileForm({
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <fieldset disabled={isAdminReadOnly} className="grid gap-4 sm:grid-cols-2 disabled:opacity-75">
             <label className="grid gap-1 text-sm font-medium text-stone-700">
               키 (cm)
               <input
@@ -321,13 +347,13 @@ export function StyleProfileForm({
             </label>
 
             <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
-              <Button type="button" onClick={handleSave} disabled={isSaving}>
+              <Button type="button" onClick={handleSave} disabled={isSaving || isAdminReadOnly}>
                 {isSaving ? "저장 중..." : "바디 프로필 저장"}
               </Button>
               {message ? <p className="text-sm font-medium text-emerald-700">{message}</p> : null}
               {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
             </div>
-          </div>
+          </fieldset>
         </div>
       )}
     </>

@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/Button";
 
@@ -269,6 +270,12 @@ export default function AdminMembersPage() {
             <div className="flex items-center text-lg font-black text-stone-900">{member.credits || 0}</div>
 
             <div className="grid gap-2 sm:grid-cols-[100px_minmax(0,1fr)_96px]">
+              <Link
+                href={`/admin/members/${encodeURIComponent(member.id)}`}
+                className="inline-flex h-9 items-center justify-center rounded-lg border border-stone-300 px-3 text-xs font-semibold text-stone-800 transition hover:bg-stone-50 sm:col-span-3"
+              >
+                상세 열람
+              </Link>
               <input
                 value={creditDrafts[member.id]?.delta || ""}
                 onChange={(event) =>
