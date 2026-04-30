@@ -4,21 +4,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
-import { useT } from "../../lib/i18n/useT";
-import { AdminNavLink } from "./AdminNavLink";
+import { HeaderAccountProvider } from "./HeaderAccountContext";
+import { HeaderRoleNavLinks } from "./HeaderRoleNavLinks";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ThemeToggle } from "./ThemeToggle";
 import { HeaderAuthSlot, MobileHeaderAuthSlot, MobileSignupMenuLink } from "./HeaderAuthSlot";
 
 export function Header() {
-  const t = useT();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
   const mobileMenuLinkClassName =
     "rounded-lg px-3 py-2.5 text-stone-700 hover:bg-stone-100 hover:text-black dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-stone-200/60 bg-white/80 backdrop-blur transition-colors dark:border-zinc-800/60 dark:bg-zinc-950/80">
+    <HeaderAccountProvider>
+      <header className="sticky top-0 z-50 border-b border-stone-200/60 bg-white/80 backdrop-blur transition-colors dark:border-zinc-800/60 dark:bg-zinc-950/80">
       <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between gap-2 px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <Image
@@ -32,19 +32,7 @@ export function Header() {
         </Link>
 
         <nav className="hidden items-center gap-4 text-sm font-medium md:flex">
-          <Link href="/upload" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
-            {t("nav.upload")}
-          </Link>
-          <Link href="/generate" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
-            {t("nav.generate")}
-          </Link>
-          <Link href="/mypage" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
-            {t("nav.mypage")}
-          </Link>
-          <Link href="/salon/customers" className="text-stone-600 hover:text-black dark:text-zinc-400 dark:hover:text-white">
-            Salon CRM
-          </Link>
-          <AdminNavLink label="Admin" />
+          <HeaderRoleNavLinks />
 
           <div className="flex shrink-0 items-center gap-2">
             <HeaderAuthSlot />
@@ -72,32 +60,8 @@ export function Header() {
       {isMobileMenuOpen ? (
         <div className="border-t border-stone-200 bg-white px-4 py-3 shadow-lg dark:border-zinc-800 dark:bg-zinc-950 md:hidden">
           <nav className="mx-auto flex w-full max-w-6xl flex-col gap-1 text-sm font-semibold">
-            <Link
-              href="/upload"
-              onClick={closeMobileMenu}
-              className={mobileMenuLinkClassName}
-            >
-              {t("nav.upload")}
-            </Link>
-            <Link
-              href="/generate"
-              onClick={closeMobileMenu}
-              className={mobileMenuLinkClassName}
-            >
-              {t("nav.generate")}
-            </Link>
-            <Link
-              href="/salon/customers"
-              onClick={closeMobileMenu}
-              className={mobileMenuLinkClassName}
-            >
-              Salon CRM
-            </Link>
+            <HeaderRoleNavLinks className={mobileMenuLinkClassName} onClick={closeMobileMenu} />
             <MobileSignupMenuLink className={mobileMenuLinkClassName} onClick={closeMobileMenu} />
-            <AdminNavLink
-              label="Admin"
-              className={mobileMenuLinkClassName}
-            />
             <div className="mt-2 flex items-center justify-between border-t border-stone-200 px-3 pt-3 dark:border-zinc-800">
               <span className="text-xs font-bold uppercase text-stone-400">Settings</span>
               <div className="flex items-center gap-1">
@@ -108,6 +72,7 @@ export function Header() {
           </nav>
         </div>
       ) : null}
-    </header>
+      </header>
+    </HeaderAccountProvider>
   );
 }
