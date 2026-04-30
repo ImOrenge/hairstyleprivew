@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Script from "next/script";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "../ui/Button";
 import { SurfaceCard } from "../ui/Surface";
 
@@ -68,6 +68,18 @@ const planOptions: Array<{ value: PlanInterest; label: string }> = [
   { value: "other", label: "아직 미정" },
 ];
 
+function subscribeToHydration() {
+  return () => undefined;
+}
+
+function getHydratedSnapshot() {
+  return true;
+}
+
+function getServerHydrationSnapshot() {
+  return false;
+}
+
 function normalizeNumber(value: string) {
   const trimmed = value.trim();
   if (!trimmed) return null;
@@ -85,6 +97,11 @@ export function B2BLeadForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const hasHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getHydratedSnapshot,
+    getServerHydrationSnapshot,
+  );
 
   useEffect(() => {
     function handlePlanEvent(event: Event) {
@@ -309,7 +326,7 @@ export function B2BLeadForm() {
         type="button"
         className="mt-3 h-10 w-full rounded-[var(--app-radius-control)] px-4 text-sm"
         onClick={handleSubmit}
-        disabled={isSubmitting || !siteKey || !turnstileToken}
+        disabled={isSubmitting || (hasHydrated && (!siteKey || !turnstileToken))}
       >
         {isSubmitting ? "접수 중..." : "문의 보내기"}
       </Button>
