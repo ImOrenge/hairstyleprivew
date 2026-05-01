@@ -6,6 +6,13 @@ This repo now treats mobile porting as a repeatable loop instead of a one-time r
 npm run mobile:loop
 ```
 
+Run the web-app sync verifier before marking a route as verified:
+
+```bash
+npm run mobile:sync
+npm run mobile:sync:runtime
+```
+
 ## Loop
 
 1. Inventory the source web route and its API calls.
@@ -13,6 +20,13 @@ npm run mobile:loop
 3. Port the screen into the owning Expo app.
 4. Move reusable contracts into `packages/shared` and network calls into `packages/api-client`.
 5. Verify native behavior with the same state checklist before starting the next route.
+
+## Sync Verification
+
+- `npm run mobile:sync` checks the web route inventory, `docs/mobile-port-map.md`, native target files, and shared API client contracts.
+- `npm run mobile:sync:runtime` also checks local unauthenticated mobile API responses and Expo Metro status.
+- `npm run mobile:sync:report` writes `docs/mobile-sync-e2e-report.md` with the current sync result and Android manual E2E gate.
+- Only promote a route to `verified` after the Android development build matches the source web route for loading, empty, success, error, and unauthorized states.
 
 ## Apps
 
