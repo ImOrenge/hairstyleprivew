@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "baseUrl": ".",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2022",
+    "paths": {
+      "@hairfit/api-client": ["packages/api-client/src/index.ts"],
+      "@hairfit/config": ["packages/config/src/index.ts"],
+      "@hairfit/payments-portone": ["packages/payments-portone/src/index.ts"],
+      "@hairfit/shared": ["packages/shared/src/index.ts"],
+      "@hairfit/ui-native": ["packages/ui-native/src/index.tsx"]
+    }
+  }
+}

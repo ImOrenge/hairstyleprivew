@@ -11,6 +11,7 @@ export function ThemeToggle() {
 
     // Avoid hydration mismatch
     React.useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Theme is resolved on the client after hydration.
         setMounted(true);
     }, []);
 

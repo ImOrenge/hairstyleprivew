@@ -29,6 +29,7 @@ const isWebhookRoute = createRouteMatcher([
 ]);
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isOnboardingApiRoute = createRouteMatcher(["/api/onboarding(.*)"]);
+const isMobileBootstrapApiRoute = createRouteMatcher(["/api/mobile/me"]);
 const isAdminPageRoute = createRouteMatcher(["/admin(.*)"]);
 const isAdminNamespaceApiRoute = createRouteMatcher(["/api/admin(.*)"]);
 const isAdminApiRoute = createRouteMatcher(["/api/admin(.*)"]);
@@ -110,7 +111,7 @@ const clerkProtectedMiddleware = hasClerkConfig
         effectiveAccountType === "admin" ||
         Boolean(dbOnboarding?.onboarding_completed_at && effectiveAccountType) ||
         metadata.onboardingComplete;
-      const onboardingAllowed = isOnboardingRoute(req) || isOnboardingApiRoute(req);
+      const onboardingAllowed = isOnboardingRoute(req) || isOnboardingApiRoute(req) || isMobileBootstrapApiRoute(req);
       const adminPageRequest = isAdminPageRoute(req);
       const adminApiRequest = isAdminApiRoute(req) && !isCatalogSecretAdminApiRoute(req);
       const adminRestrictedRequest = adminPageRequest || adminApiRequest;

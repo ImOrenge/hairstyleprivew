@@ -47,6 +47,14 @@ function requestSalonContact() {
   }, 0);
 }
 
+function createPaymentId(prefix: string) {
+  const random =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  return `${prefix}-${random}`;
+}
+
 export function PricingPreview() {
   const t = useT();
   const [pendingPlan, setPendingPlan] = useState<PaymentPlanKey | null>(null);
@@ -173,10 +181,10 @@ export function PricingPreview() {
         storeId,
         channelKey,
         billingKeyMethod: "CARD",
-        issueId: `issue-${planKey}-${Date.now()}`,
+        issueId: createPaymentId(`issue-${planKey}`),
         issueName: `HairFit ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} 구독`,
         customer: {
-          customerId: `web-${Date.now()}`,
+          customerId: createPaymentId("web"),
         },
       })) as PortOneBillingKeyResponse;
 

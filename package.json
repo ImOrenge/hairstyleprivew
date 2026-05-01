@@ -1,4 +1,11 @@
 {
+  "name": "hairfit-monorepo",
+  "private": true,
+  "workspaces": [
+    "my-app",
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "npm --prefix my-app run dev",
     "build": "npm --prefix my-app run build",
@@ -6,6 +13,18 @@
     "cf:deploy": "npm --prefix my-app run cf:deploy",
     "cf:preview": "npm --prefix my-app run cf:preview",
     "lint": "npm --prefix my-app run lint",
-    "start": "npm --prefix my-app run start"
+    "lint:all": "npm --workspaces --if-present run lint",
+    "mobile:admin": "npm --workspace @hairfit/admin-mobile run start",
+    "mobile:customer": "npm --workspace @hairfit/customer-mobile run start",
+    "mobile:inventory": "node scripts/mobile-port-loop.mjs --inventory",
+    "mobile:loop": "node scripts/mobile-port-loop.mjs",
+    "mobile:salon": "npm --workspace @hairfit/salon-mobile run start",
+    "start": "npm --prefix my-app run start",
+    "typecheck": "npm --workspaces --if-present run typecheck"
+  },
+  "devDependencies": {
+    "@img/sharp-win32-x64": "^0.34.5",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.2.4",
+    "lightningcss-win32-x64-msvc": "^1.32.0"
   }
 }
