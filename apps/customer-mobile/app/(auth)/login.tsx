@@ -1,4 +1,4 @@
-import { useSignIn } from "@clerk/clerk-expo";
+import { useSSO, useSignIn } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { BodyText, Button, Heading, Kicker, Panel, Screen, Stack, TextField } from "@hairfit/ui-native";
@@ -15,9 +15,11 @@ function errorMessage(error: unknown) {
 export default function LoginScreen() {
   const router = useRouter();
   const { isLoaded, signIn, setActive } = useSignIn();
+  const { startSSOFlow } = useSSO();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [pending, setPending] = useState(false);
+  const [googlePending, setGooglePending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const submit = async () => {
@@ -45,6 +47,30 @@ export default function LoginScreen() {
     }
   };
 
+  const signInWithGoogle = async () => {
+    if (googlePending) return;
+    setGooglePending(true);
+    setMessage(null);
+
+    try {
+      const result = await startSSOFlow({
+        strategy: "oauth_google",
+      });
+
+      if (result.createdSessionId && result.setActive) {
+        await result.setActive({ session: result.createdSessionId });
+        router.replace("/");
+        return;
+      }
+
+      setMessage("Google sign-in was cancelled before a session was created.");
+    } catch (error) {
+      setMessage(errorMessage(error));
+    } finally {
+      setGooglePending(false);
+    }
+  };
+
   return (
     <Screen>
       <Stack>
@@ -55,6 +81,9 @@ export default function LoginScreen() {
 
       <Panel>
         <Stack>
+          <Button disabled={googlePending || pending} variant="secondary" onPress={signInWithGoogle}>
+            {googlePending ? "Opening Google..." : "Continue with Google"}
+          </Button>
           <TextField
             autoCapitalize="none"
             keyboardType="email-address"

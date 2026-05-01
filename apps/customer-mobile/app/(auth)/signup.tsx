@@ -1,4 +1,4 @@
-import { useSignUp } from "@clerk/clerk-expo";
+import { useSSO, useSignUp } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { BodyText, Button, Heading, Kicker, Panel, Screen, Stack, TextField } from "@hairfit/ui-native";
@@ -15,12 +15,14 @@ function errorMessage(error: unknown) {
 export default function SignupScreen() {
   const router = useRouter();
   const { isLoaded, signUp, setActive } = useSignUp();
+  const { startSSOFlow } = useSSO();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [needsCode, setNeedsCode] = useState(false);
   const [pending, setPending] = useState(false);
+  const [googlePending, setGooglePending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const completeSession = async (sessionId: string | null | undefined) => {
@@ -60,6 +62,31 @@ export default function SignupScreen() {
     }
   };
 
+  const continueWithGoogle = async () => {
+    if (googlePending) return;
+    setGooglePending(true);
+    setMessage(null);
+
+    try {
+      const result = await startSSOFlow({
+        strategy: "oauth_google",
+        unsafeMetadata: name.trim() ? { displayName: name.trim() } : undefined,
+      });
+
+      if (result.createdSessionId && result.setActive) {
+        await result.setActive({ session: result.createdSessionId });
+        router.replace("/onboarding");
+        return;
+      }
+
+      setMessage("Google sign-up was cancelled before a session was created.");
+    } catch (error) {
+      setMessage(errorMessage(error));
+    } finally {
+      setGooglePending(false);
+    }
+  };
+
   const verifyCode = async () => {
     if (!isLoaded || pending) return;
     setPending(true);
@@ -90,6 +117,9 @@ export default function SignupScreen() {
 
       <Panel>
         <Stack>
+          <Button disabled={googlePending || pending} variant="secondary" onPress={continueWithGoogle}>
+            {googlePending ? "Opening Google..." : "Continue with Google"}
+          </Button>
           <TextField label="Name" onChangeText={setName} placeholder="Your name" value={name} />
           <TextField
             autoCapitalize="none"
