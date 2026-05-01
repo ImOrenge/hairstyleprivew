@@ -17,16 +17,16 @@ Status values:
 | `/onboarding` | `apps/customer-mobile/app/onboarding.tsx` | ported | Member onboarding posts to existing `/api/onboarding`. |
 | `/upload` | `apps/customer-mobile/app/upload.tsx` | ported | Native image picker creates the data URL used by recommendation APIs. |
 | `/generate` | `apps/customer-mobile/app/generate.tsx` | ported | Calls `/api/prompts/generate` and `/api/generations/run`. |
-| `/generate/[id]` | `apps/customer-mobile/app/generate/[id].tsx` | inventory | 3x3 recommendation board. |
+| `/generate/[id]` | `apps/customer-mobile/app/generate/[id].tsx` | ported | 3x3 recommendation board, analysis summary, render retry, and result handoff. |
 | `/result/[id]` | `apps/customer-mobile/app/result/[id].tsx` | ported | Loads generation result and saves selected variant. |
-| `/styler/new` | `apps/customer-mobile/app/styler/new.tsx` | scaffolded | Fashion recommendation wizard staged for next iteration. |
-| `/styler/[id]` | `apps/customer-mobile/app/styler/[id].tsx` | inventory | Fashion result detail. |
+| `/styler/new` | `apps/customer-mobile/app/styler/new.tsx` | ported | Fashion recommendation wizard with profile, body photo, hair selection, genre, recommend, and generate states. |
+| `/styler/[id]` | `apps/customer-mobile/app/styler/[id].tsx` | ported | Fashion lookbook result detail. |
 | `/mypage` | `apps/customer-mobile/app/mypage.tsx` | ported | Mobile dashboard, generation history, and PortOne billing entry. |
 | `/payments/complete` | `apps/customer-mobile/app/payments/complete.tsx` | ported | Deep-link payment completion and server verification. |
-| `/aftercare` | `apps/customer-mobile/app/aftercare.tsx` | inventory | Hair care list. |
-| `/aftercare/[hairRecordId]` | `apps/customer-mobile/app/aftercare/[hairRecordId].tsx` | inventory | Hair care detail. |
-| `/privacy-policy` | `apps/customer-mobile/app/legal/privacy.tsx` | inventory | Native legal page from shared content. |
-| `/terms-of-service` | `apps/customer-mobile/app/legal/terms.tsx` | inventory | Native legal page from shared content. |
+| `/aftercare` | `apps/customer-mobile/app/aftercare.tsx` | ported | Hair care list through mobile aftercare API. |
+| `/aftercare/[hairRecordId]` | `apps/customer-mobile/app/aftercare/[hairRecordId].tsx` | ported | Hair care detail through mobile aftercare API. |
+| `/privacy-policy` | `apps/customer-mobile/app/legal/privacy.tsx` | ported | Native legal page from web legal structure. |
+| `/terms-of-service` | `apps/customer-mobile/app/legal/terms.tsx` | ported | Native legal page from web legal structure. |
 
 ## Salon App
 
@@ -56,7 +56,9 @@ Status values:
 | `/api/mobile/dashboard` | shared | ported | Role-aware customer, salon, and admin summary facade. |
 | `/api/mobile/payments/prepare` | shared | ported | Creates pending PortOne mobile payment transactions. |
 | `/api/mobile/payments/complete` | shared | ported | Verifies PortOne payment, updates subscription metadata, grants credits idempotently. |
+| `/api/mobile/aftercare` | customer | ported | Lists confirmed hair records for mobile aftercare. |
+| `/api/mobile/aftercare/[hairRecordId]` | customer | ported | Returns a confirmed hair record and guide JSON for mobile aftercare detail. |
 | Existing `/api/generations/*` | customer | ported | Customer mobile flow calls existing generation endpoints with Clerk bearer auth. |
-| Existing `/api/styling/*` | customer | inventory | Fashion recommendation and lookbook generation. |
+| Existing `/api/styling/*` | customer | ported | Fashion recommendation and lookbook generation. |
 | Existing `/api/salon/*` | salon | inventory | Salon CRM and matching. |
 | Existing `/api/admin/*` | admin | inventory | Admin operations. |

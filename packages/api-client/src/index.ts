@@ -1,11 +1,19 @@
 import type {
   GeneratedVariant,
+  HairstyleGenerationGroup,
+  MobileAftercareGuideResponse,
+  MobileAftercareListResponse,
   MobileBootstrap,
   MobileDashboard,
   MobilePaymentCompleteResponse,
   MobilePaymentPlan,
   MobilePaymentPrepareResponse,
   RecommendationSet,
+  ServiceType,
+  StyleProfile,
+  FashionGenre,
+  FashionRecommendation,
+  StylingSessionDetails,
 } from "@hairfit/shared";
 
 export interface HairfitApiClientOptions {
@@ -162,6 +170,105 @@ export class HairfitApiClient {
         method: "PATCH",
         body: JSON.stringify({ selectedVariantId }),
       },
+    );
+  }
+
+  getStyleProfile() {
+    return this.request<{ profile: StyleProfile }>("/api/style-profile");
+  }
+
+  updateStyleProfile(input: {
+    heightCm: number | string | null;
+    bodyShape: StyleProfile["bodyShape"];
+    topSize: string | null;
+    bottomSize: string | null;
+    fitPreference: StyleProfile["fitPreference"];
+    colorPreference?: string | null;
+    exposurePreference: StyleProfile["exposurePreference"];
+    avoidItems?: string[] | string | null;
+  }) {
+    return this.request<{ profile: StyleProfile }>("/api/style-profile", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  }
+
+  uploadBodyPhoto(file: { uri: string; name: string; type: string }) {
+    const formData = new FormData();
+    formData.append("file", file as unknown as Blob);
+    return this.request<{ profile: StyleProfile }>("/api/style-profile/body-photo", {
+      method: "POST",
+      body: formData,
+    });
+  }
+
+  getStylingHairstyles() {
+    return this.request<{ generations: HairstyleGenerationGroup[] }>("/api/styling/hairstyles");
+  }
+
+  recommendStyling(input: {
+    generationId: string;
+    selectedVariantId: string;
+    genre: FashionGenre;
+  }) {
+    return this.request<{
+      sessionId: string | null;
+      status: string;
+      recommendation: FashionRecommendation;
+      profile: StyleProfile;
+      selectedVariant: GeneratedVariant;
+    }>("/api/styling/recommend", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  generateStyling(sessionId: string) {
+    return this.request<{
+      sessionId: string;
+      imageUrl?: string | null;
+      imagePath?: string | null;
+      chargedCredits?: number;
+    }>("/api/styling/generate", {
+      method: "POST",
+      body: JSON.stringify({ sessionId }),
+    });
+  }
+
+  getStylingSession(sessionId: string) {
+    return this.request<{ session: StylingSessionDetails }>(
+      `/api/styling/${encodeURIComponent(sessionId)}`,
+    );
+  }
+
+  createHairRecord(input: {
+    generationId: string;
+    selectedVariantId: string;
+    serviceType: ServiceType;
+    serviceDate: string;
+  }) {
+    return this.request<{
+      hairRecordId: string;
+      aftercareGuideId: string;
+      styleName: string;
+      serviceType: ServiceType;
+      serviceDate: string;
+      nextVisitTargetDays: number;
+      careScheduledCount: number;
+      redirectTo: string;
+    }>("/api/hair-records", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  getAftercareRecords() {
+    return this.request<MobileAftercareListResponse>("/api/mobile/aftercare");
+  }
+
+  getAftercareGuide(hairRecordId: string) {
+    return this.request<MobileAftercareGuideResponse>(
+      `/api/mobile/aftercare/${encodeURIComponent(hairRecordId)}`,
     );
   }
 

@@ -72,6 +72,10 @@ export default function CustomerHomeScreen() {
             <Button onPress={() => router.push("/upload")}>Upload portrait</Button>
           )}
           <Button variant="secondary" onPress={() => router.push("/mypage")}>Open my page</Button>
+          <Button variant="secondary" onPress={() => router.push("/styler/new")}>Fashion styler</Button>
+          <Button variant="secondary" onPress={() => router.push("/aftercare")}>Aftercare</Button>
+          <Button variant="ghost" onPress={() => router.push("/legal/privacy")}>Privacy policy</Button>
+          <Button variant="ghost" onPress={() => router.push("/legal/terms")}>Terms of service</Button>
           {isSignedIn ? (
             <Button
               variant="ghost"

@@ -15,8 +15,10 @@ const reportPath =
 const runtimeEnabled = args.has("--runtime");
 const strictRuntime = args.has("--strict-runtime");
 const apiBaseUrl = readArgValue("--api-base-url") || process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
-const metroStatusUrl =
-  readArgValue("--metro-status-url") || process.env.MOBILE_METRO_STATUS_URL || "http://localhost:8084/status";
+const explicitMetroStatusUrl = readArgValue("--metro-status-url") || process.env.MOBILE_METRO_STATUS_URL || null;
+const metroStatusUrls = explicitMetroStatusUrl
+  ? [explicitMetroStatusUrl]
+  : ["http://localhost:8084/status", "http://localhost:8085/status"];
 
 const expectedApiContracts = [
   {
@@ -66,6 +68,60 @@ const expectedApiContracts = [
     file: "my-app/app/api/generations/[id]/route.ts",
     clientMethod: "getGeneration",
     clientPath: "/api/generations/",
+  },
+  {
+    route: "/api/style-profile",
+    file: "my-app/app/api/style-profile/route.ts",
+    clientMethod: "getStyleProfile",
+    clientPath: "/api/style-profile",
+  },
+  {
+    route: "/api/style-profile/body-photo",
+    file: "my-app/app/api/style-profile/body-photo/route.ts",
+    clientMethod: "uploadBodyPhoto",
+    clientPath: "/api/style-profile/body-photo",
+  },
+  {
+    route: "/api/styling/hairstyles",
+    file: "my-app/app/api/styling/hairstyles/route.ts",
+    clientMethod: "getStylingHairstyles",
+    clientPath: "/api/styling/hairstyles",
+  },
+  {
+    route: "/api/styling/recommend",
+    file: "my-app/app/api/styling/recommend/route.ts",
+    clientMethod: "recommendStyling",
+    clientPath: "/api/styling/recommend",
+  },
+  {
+    route: "/api/styling/generate",
+    file: "my-app/app/api/styling/generate/route.ts",
+    clientMethod: "generateStyling",
+    clientPath: "/api/styling/generate",
+  },
+  {
+    route: "/api/styling/[id]",
+    file: "my-app/app/api/styling/[id]/route.ts",
+    clientMethod: "getStylingSession",
+    clientPath: "/api/styling/",
+  },
+  {
+    route: "/api/hair-records",
+    file: "my-app/app/api/hair-records/route.ts",
+    clientMethod: "createHairRecord",
+    clientPath: "/api/hair-records",
+  },
+  {
+    route: "/api/mobile/aftercare",
+    file: "my-app/app/api/mobile/aftercare/route.ts",
+    clientMethod: "getAftercareRecords",
+    clientPath: "/api/mobile/aftercare",
+  },
+  {
+    route: "/api/mobile/aftercare/[hairRecordId]",
+    file: "my-app/app/api/mobile/aftercare/[hairRecordId]/route.ts",
+    clientMethod: "getAftercareGuide",
+    clientPath: "/api/mobile/aftercare/",
   },
 ];
 
@@ -301,8 +357,20 @@ async function checkRuntimeSmoke() {
     }
   }
 
-  const metro = await fetchWithTimeout(metroStatusUrl);
-  checks.push({ name: "expo metro status", url: metroStatusUrl, expectedStatus: 200, ...metro });
+  const metroAttempts = [];
+  for (const url of metroStatusUrls) {
+    const result = await fetchWithTimeout(url);
+    metroAttempts.push({ name: "expo metro status", url, expectedStatus: 200, ...result });
+    if (result.ok && result.status === 200 && result.text.includes("packager-status:running")) {
+      break;
+    }
+  }
+
+  const metro = metroAttempts.find(
+    (attempt) => attempt.ok && attempt.status === 200 && attempt.text.includes("packager-status:running"),
+  ) || metroAttempts[0];
+  checks.push(metro);
+
   if (!metro.ok) {
     const message = `Expo Metro status failed to connect: ${metro.error}`;
     if (strictRuntime) {
@@ -311,7 +379,8 @@ async function checkRuntimeSmoke() {
       warnings.push(message);
     }
   } else if (metro.status !== 200 || !metro.text.includes("packager-status:running")) {
-    const message = `Expo Metro status expected 200 packager-status:running but received ${metro.status}.`;
+    const attemptedUrls = metroAttempts.map((attempt) => attempt.url).join(", ");
+    const message = `Expo Metro status expected 200 packager-status:running but received ${metro.status}. Attempted: ${attemptedUrls}.`;
     if (strictRuntime) {
       errors.push(message);
     } else {

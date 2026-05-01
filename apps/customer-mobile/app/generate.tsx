@@ -28,7 +28,8 @@ export default function GenerateScreen() {
         imageDataUrl: flow.imageDataUrl,
         recommendations: result.recommendations,
       });
-      setMessage(`Created ${result.recommendations.length} recommendations. Render one variant to finish the result.`);
+      setMessage(`Created ${result.recommendations.length} recommendations.`);
+      router.push(`/generate/${result.generationId}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to create recommendations.");
     } finally {
@@ -68,11 +69,8 @@ export default function GenerateScreen() {
     <Screen>
       <Stack>
         <Kicker>Generate</Kicker>
-        <Heading>Create the recommendation board</Heading>
-        <BodyText>
-          Step one creates the 3x3 board. Step two renders a selected variant with the existing `/api/generations/run`
-          endpoint.
-        </BodyText>
+        <Heading>Nine tailored hairstyle directions</Heading>
+        <BodyText>Create the same 3x3 recommendation board as the web app, then render the cards you want to compare.</BodyText>
       </Stack>
 
       <Panel>

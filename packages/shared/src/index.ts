@@ -192,6 +192,129 @@ export type FashionGenre =
   | "formal"
   | "athleisure";
 
+export type FashionOccasion = "daily" | "work" | "date" | "formal";
+export type FashionMood = "minimal" | "trendy" | "soft" | "classic";
+export type BodyShape = "straight" | "hourglass" | "triangle" | "inverted_triangle" | "round";
+export type FitPreference = "regular" | "slim" | "relaxed" | "oversized";
+export type ExposurePreference = "low" | "balanced" | "bold";
+export type FashionItemSlot = "outer" | "top" | "bottom" | "shoes" | "accessory";
+export type ServiceType = "perm" | "color" | "cut" | "bleach" | "treatment" | "other";
+export type AftercareSectionKey = "dry" | "treatment" | "iron" | "styling";
+
+export interface StyleProfile {
+  userId: string;
+  heightCm: number | null;
+  bodyShape: BodyShape | null;
+  topSize: string | null;
+  bottomSize: string | null;
+  fitPreference: FitPreference | null;
+  colorPreference: string | null;
+  exposurePreference: ExposurePreference | null;
+  avoidItems: string[];
+  bodyPhotoPath: string | null;
+  bodyPhotoUrl?: string | null;
+  bodyPhotoConsentAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface FashionRecommendationItem {
+  slot: FashionItemSlot;
+  name: string;
+  description: string;
+  color: string;
+  fit: string;
+  material: string;
+  brandName: string | null;
+  productUrl: string | null;
+}
+
+export interface FashionRecommendation {
+  headline: string;
+  summary: string;
+  genre: FashionGenre;
+  occasion?: FashionOccasion;
+  mood?: FashionMood;
+  palette: string[];
+  silhouette: string;
+  items: FashionRecommendationItem[];
+  stylingNotes: string[];
+  catalogItemId?: string | null;
+  catalogCycleId?: string | null;
+  generatedAt: string;
+}
+
+export interface StylingSessionDetails {
+  id: string;
+  generationId: string;
+  selectedVariantId: string;
+  genre: FashionGenre | null;
+  occasion: string;
+  mood: string;
+  recommendation: FashionRecommendation;
+  status: string;
+  errorMessage: string | null;
+  creditsUsed: number;
+  generatedImagePath?: string | null;
+  imageUrl: string | null;
+  createdAt: string;
+  updatedAt?: string | null;
+}
+
+export interface HairstyleGenerationGroup {
+  id: string;
+  createdAt: string;
+  status: string;
+  selectedVariantId: string | null;
+  analysis: FaceAnalysisSummary;
+  variants: GeneratedVariant[];
+}
+
+export interface AftercareGuideSection {
+  title: string;
+  goal: string;
+  timing: string;
+  steps: string[];
+  products: string[];
+  avoid: string[];
+}
+
+export interface AftercareGuide {
+  overview: {
+    styleName: string;
+    serviceType: ServiceType;
+    headline: string;
+    summary: string;
+    serviceDate: string;
+  };
+  sections: Record<AftercareSectionKey, AftercareGuideSection>;
+  maintenanceSchedule: Array<{
+    dayOffset: number;
+    label: string;
+    description: string;
+  }>;
+  warnings: string[];
+  recommendedNextActions: string[];
+}
+
+export interface MobileAftercareRecord {
+  id: string;
+  generationId: string | null;
+  styleName: string;
+  serviceType: ServiceType | string;
+  serviceDate: string;
+  nextVisitTargetDays: number;
+  createdAt: string;
+}
+
+export interface MobileAftercareListResponse {
+  records: MobileAftercareRecord[];
+}
+
+export interface MobileAftercareGuideResponse {
+  record: MobileAftercareRecord;
+  guide: AftercareGuide;
+}
+
 export const mobileServices: Array<{
   key: MobileServiceKey;
   title: string;

@@ -66,6 +66,8 @@ export default function MyPageScreen() {
 
           <Button onPress={() => router.push("/billing")}>Buy credits with PortOne</Button>
           <Button variant="secondary" onPress={() => router.push("/upload")}>Create new hairstyle</Button>
+          <Button variant="secondary" onPress={() => router.push("/styler/new")}>Create fashion lookbook</Button>
+          <Button variant="secondary" onPress={() => router.push("/aftercare")}>Open aftercare</Button>
         </Stack>
       </Panel>
 

@@ -101,6 +101,62 @@ export function Stat({
   );
 }
 
+export function Row({
+  children,
+  style,
+}: {
+  children: ReactNode;
+  style?: ViewStyle;
+}) {
+  return <View style={[styles.row, style]}>{children}</View>;
+}
+
+export function Cluster({
+  children,
+  gap = spacing.xs,
+  style,
+}: {
+  children: ReactNode;
+  gap?: number;
+  style?: ViewStyle;
+}) {
+  return <View style={[styles.cluster, { gap }, style]}>{children}</View>;
+}
+
+export function Chip({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: "neutral" | "accent" | "success" | "danger";
+}) {
+  return (
+    <View
+      style={[
+        styles.chip,
+        tone === "accent" ? styles.chipAccent : null,
+        tone === "success" ? styles.chipSuccess : null,
+        tone === "danger" ? styles.chipDanger : null,
+      ]}
+    >
+      <Text
+        style={[
+          styles.chipText,
+          tone === "accent" ? styles.chipTextAccent : null,
+          tone === "success" ? styles.chipTextSuccess : null,
+          tone === "danger" ? styles.chipTextDanger : null,
+        ]}
+      >
+        {children}
+      </Text>
+    </View>
+  );
+}
+
+export function Divider() {
+  return <View style={styles.divider} />;
+}
+
 export function Button({
   children,
   disabled,
@@ -177,6 +233,51 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 15,
     lineHeight: 22,
+  },
+  row: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    justifyContent: "space-between",
+  },
+  cluster: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  chip: {
+    alignSelf: "flex-start",
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  chipAccent: {
+    backgroundColor: "#fff3df",
+  },
+  chipSuccess: {
+    backgroundColor: "#e8f7ef",
+  },
+  chipDanger: {
+    backgroundColor: "#fff0ee",
+  },
+  chipText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  chipTextAccent: {
+    color: colors.accent,
+  },
+  chipTextSuccess: {
+    color: colors.success,
+  },
+  chipTextDanger: {
+    color: colors.danger,
+  },
+  divider: {
+    backgroundColor: colors.border,
+    height: 1,
+    width: "100%",
   },
   field: {
     gap: spacing.xs,

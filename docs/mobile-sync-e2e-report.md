@@ -1,6 +1,6 @@
 # Mobile Web-App Sync Verification Report
 
-Generated: 2026-05-01T09:13:19.507Z
+Generated: 2026-05-01T10:55:00.095Z
 
 ## Verdict
 
@@ -8,17 +8,17 @@ AUTOMATED PASS
 
 ## Status Counts
 
-- inventory: 16
-- scaffolded: 2
-- ported: 16
+- inventory: 9
+- scaffolded: 1
+- ported: 26
 - verified: 0
 
 ## Static Sync Checks
 
 - Web page routes inventoried: 25
-- Active mobile targets checked: 13
-- API contracts checked: 8
-- Inventory routes without native files: 13
+- Active mobile targets checked: 19
+- API contracts checked: 17
+- Inventory routes without native files: 7
 
 ## Runtime Smoke
 
@@ -37,7 +37,7 @@ AUTOMATED PASS
 
 ## Notes
 
-- 13 inventory routes do not have native files yet.
+- 7 inventory routes do not have native files yet.
 
 ## Android E2E Manual Gate
 
@@ -50,12 +50,6 @@ AUTOMATED PASS
 
 ## Current Sync Gaps
 
-- /generate/[id] -> apps/customer-mobile/app/generate/[id].tsx
-- /styler/[id] -> apps/customer-mobile/app/styler/[id].tsx
-- /aftercare -> apps/customer-mobile/app/aftercare.tsx
-- /aftercare/[hairRecordId] -> apps/customer-mobile/app/aftercare/[hairRecordId].tsx
-- /privacy-policy -> apps/customer-mobile/app/legal/privacy.tsx
-- /terms-of-service -> apps/customer-mobile/app/legal/terms.tsx
 - /salon/customers/[id] -> apps/salon-mobile/app/customers/[id].tsx
 - /salon/match/[code] -> apps/salon-mobile/app/match/[code].tsx
 - /admin/members -> apps/admin-mobile/app/members/index.tsx

@@ -1,7 +1,7 @@
-import type { GeneratedVariant, RecommendationSet } from "@hairfit/shared";
-import { BodyText, Button, Card, Heading, Kicker, Panel, Screen, Stack } from "@hairfit/ui-native";
+import type { GeneratedVariant, RecommendationSet, ServiceType } from "@hairfit/shared";
+import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Screen, Stack, TextField } from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { useHairfitApi } from "../../lib/api";
 
@@ -16,14 +16,31 @@ function firstRenderableVariant(set: RecommendationSet | null) {
   return set?.variants.find((variant) => variant.outputUrl || variant.generatedImagePath) || null;
 }
 
+const serviceOptions: Array<{ value: ServiceType; label: string }> = [
+  { value: "cut", label: "Cut" },
+  { value: "perm", label: "Perm" },
+  { value: "color", label: "Color" },
+  { value: "bleach", label: "Bleach" },
+  { value: "treatment", label: "Treatment" },
+  { value: "other", label: "Other" },
+];
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function ResultDetailScreen() {
   const router = useRouter();
   const api = useHairfitApi();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, variant } = useLocalSearchParams<{ id: string; variant?: string }>();
   const generationId = typeof id === "string" ? id : "";
+  const variantFromRoute = typeof variant === "string" ? variant : "";
   const [detail, setDetail] = useState<GenerationDetail | null>(null);
   const [message, setMessage] = useState<string | null>("Loading result...");
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
+  const [serviceType, setServiceType] = useState<ServiceType>("cut");
+  const [serviceDate, setServiceDate] = useState(todayKey());
+  const [aftercarePending, setAftercarePending] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,8 +97,34 @@ export default function ResultDetailScreen() {
     }
   };
 
-  const primary = detail?.selectedVariant || firstRenderableVariant(detail?.recommendationSet ?? null);
+  const primary = useMemo(() => {
+    const variants = detail?.recommendationSet?.variants || [];
+    const routeSelected = variantFromRoute
+      ? variants.find((item) => item.id === variantFromRoute) || null
+      : null;
+    return routeSelected || detail?.selectedVariant || firstRenderableVariant(detail?.recommendationSet ?? null);
+  }, [detail, variantFromRoute]);
   const imageUrl = primary?.outputUrl || null;
+
+  const createAftercare = async () => {
+    if (!generationId || !primary?.id || aftercarePending) return;
+    setAftercarePending(true);
+    setMessage(null);
+    try {
+      const result = await api.createHairRecord({
+        generationId,
+        selectedVariantId: primary.id,
+        serviceType,
+        serviceDate,
+      });
+      setMessage(`Aftercare guide created for ${result.styleName}.`);
+      router.push(`/aftercare/${result.hairRecordId}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to create aftercare guide.");
+    } finally {
+      setAftercarePending(false);
+    }
+  };
 
   return (
     <Screen>
@@ -102,6 +145,11 @@ export default function ResultDetailScreen() {
               <Stack gap={10}>
                 <Kicker>Designer brief</Kicker>
                 <BodyText>{primary.reason}</BodyText>
+                <Cluster>
+                  {(primary.tags || []).slice(0, 6).map((tag) => (
+                    <Chip key={tag}>{tag}</Chip>
+                  ))}
+                </Cluster>
               </Stack>
             </Card>
           ) : null}
@@ -130,8 +178,39 @@ export default function ResultDetailScreen() {
             </Stack>
           ) : null}
 
+          <Panel>
+            <Stack>
+              <Kicker>Aftercare</Kicker>
+              <Heading>Confirm this style as a salon record</Heading>
+              <BodyText>Create the same aftercare guide used by the web result flow after a selected hairstyle is confirmed.</BodyText>
+              <Cluster>
+                {serviceOptions.map((option) => (
+                  <Button
+                    key={option.value}
+                    variant={serviceType === option.value ? "primary" : "secondary"}
+                    onPress={() => setServiceType(option.value)}
+                  >
+                    {option.label}
+                  </Button>
+                ))}
+              </Cluster>
+              <TextField label="Service date" onChangeText={setServiceDate} placeholder="YYYY-MM-DD" value={serviceDate} />
+              <Button disabled={!primary?.id || aftercarePending} onPress={createAftercare}>
+                {aftercarePending ? "Creating aftercare..." : "Create aftercare guide"}
+              </Button>
+            </Stack>
+          </Panel>
+
           {message ? <BodyText>{message}</BodyText> : null}
-          <Button onPress={() => router.push("/styler/new")}>Continue to fashion styler</Button>
+          <Button
+            disabled={!primary?.id}
+            onPress={() =>
+              router.push(`/styler/new?generationId=${encodeURIComponent(generationId)}&variant=${encodeURIComponent(primary?.id || "")}`)
+            }
+          >
+            Continue to fashion styler
+          </Button>
+          <Button variant="secondary" onPress={() => router.push(`/generate/${generationId}`)}>Open 3x3 board</Button>
           <Button variant="secondary" onPress={() => router.push("/mypage")}>Open my page</Button>
         </Stack>
       </Panel>
