@@ -63,7 +63,7 @@ function sourceLabel(source: SalonCustomerSource) {
 }
 
 export function CustomerListClient() {
-  const { isAdminReadOnly } = useAdminReadOnly();
+  const { isAdminReadOnly, isRoleLoaded } = useAdminReadOnly();
   const [customers, setCustomers] = useState<SalonCustomer[]>([]);
   const [pendingAftercare, setPendingAftercare] = useState<SalonAftercareTask[]>([]);
   const [summary, setSummary] = useState(emptySummary);
@@ -197,20 +197,46 @@ export function CustomerListClient() {
   }, [listUrl]);
 
   useEffect(() => {
+    if (!isRoleLoaded) {
+      return;
+    }
+
+    if (isAdminReadOnly) {
+      const timeout = window.setTimeout(() => {
+        setInvite(null);
+        setIsInviteLoading(false);
+      }, 0);
+
+      return () => window.clearTimeout(timeout);
+    }
+
     const timeout = window.setTimeout(() => {
       void loadInvite();
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, []);
+  }, [isAdminReadOnly, isRoleLoaded]);
 
   useEffect(() => {
+    if (!isRoleLoaded) {
+      return;
+    }
+
+    if (isAdminReadOnly) {
+      const timeout = window.setTimeout(() => {
+        setCandidates([]);
+        setIsCandidateLoading(false);
+      }, 0);
+
+      return () => window.clearTimeout(timeout);
+    }
+
     const timeout = window.setTimeout(() => {
       void loadCandidates();
     }, 180);
 
     return () => window.clearTimeout(timeout);
-  }, [matchQuery]);
+  }, [isAdminReadOnly, isRoleLoaded, matchQuery]);
 
   async function handleSubmit() {
     if (isSubmitting || isAdminReadOnly) {
@@ -279,7 +305,7 @@ export function CustomerListClient() {
           <p className="text-xs font-bold uppercase tracking-[0.16em] text-stone-400">Salon CRM</p>
           <h1 className="mt-2 text-2xl font-black tracking-normal text-stone-950">고객관리</h1>
         </div>
-        <div className="grid gap-2 sm:grid-cols-4 lg:min-w-[560px]">
+        <div className="grid grid-cols-2 gap-2 lg:min-w-[560px] lg:grid-cols-4">
           <div className="rounded-md border border-stone-200 bg-white px-3 py-2">
             <p className="text-xs text-stone-500">전체 고객</p>
             <p className="text-xl font-bold text-stone-950">{summary.totalCustomers}</p>
@@ -335,7 +361,7 @@ export function CustomerListClient() {
           </div>
 
           <div className="overflow-hidden rounded-md border border-stone-200 bg-white">
-            <div className="grid grid-cols-[1.2fr_0.9fr_0.8fr_0.8fr_88px] border-b border-stone-200 bg-stone-50 px-4 py-2 text-xs font-bold text-stone-500">
+            <div className="hidden grid-cols-[1.2fr_0.9fr_0.8fr_0.8fr_88px] border-b border-stone-200 bg-stone-50 px-4 py-2 text-xs font-bold text-stone-500 md:grid">
               <span>고객</span>
               <span>연락처</span>
               <span>최근 방문</span>
@@ -354,7 +380,7 @@ export function CustomerListClient() {
             {customers.map((customer) => (
               <div
                 key={customer.id}
-                className="grid grid-cols-1 gap-3 border-b border-stone-100 px-4 py-4 text-sm last:border-b-0 md:grid-cols-[1.2fr_0.9fr_0.8fr_0.8fr_88px] md:items-center"
+                className="mx-3 my-3 grid grid-cols-1 gap-3 rounded-md border border-stone-200 bg-white px-4 py-4 text-sm md:m-0 md:grid-cols-[1.2fr_0.9fr_0.8fr_0.8fr_88px] md:items-center md:rounded-none md:border-0 md:border-b md:border-stone-100 md:last:border-b-0"
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
@@ -368,13 +394,20 @@ export function CustomerListClient() {
                   <p className="mt-1 text-xs text-stone-500">{sourceLabel(customer.source)}</p>
                 </div>
                 <div className="min-w-0 text-stone-600">
+                  <p className="mb-1 text-[11px] font-black uppercase tracking-[0.12em] text-stone-400 md:hidden">연락처</p>
                   <p className="truncate">{customer.phone || "-"}</p>
                   <p className="truncate text-xs text-stone-400">{customer.email || "-"}</p>
                 </div>
-                <p className="text-stone-600">{formatDate(customer.lastVisitAt)}</p>
-                <div className="flex items-center gap-2 text-stone-600">
-                  <Clock3 className="h-4 w-4 text-stone-400" />
-                  <span>{formatDate(customer.nextFollowUpAt)}</span>
+                <div className="flex items-center justify-between gap-3 text-stone-600 md:block">
+                  <p className="text-[11px] font-black uppercase tracking-[0.12em] text-stone-400 md:hidden">최근 방문</p>
+                  <span>{formatDate(customer.lastVisitAt)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-stone-600 md:justify-start md:gap-2">
+                  <p className="text-[11px] font-black uppercase tracking-[0.12em] text-stone-400 md:hidden">사후관리</p>
+                  <span className="inline-flex items-center gap-2">
+                    <Clock3 className="h-4 w-4 text-stone-400" />
+                    {formatDate(customer.nextFollowUpAt)}
+                  </span>
                 </div>
                 <Link
                   href={`/salon/customers/${customer.id}`}
@@ -387,7 +420,7 @@ export function CustomerListClient() {
           </div>
         </main>
 
-        <aside className="space-y-6 xl:sticky xl:top-24 xl:self-start">
+        <aside className="grid gap-4 md:grid-cols-2 xl:sticky xl:top-24 xl:block xl:self-start xl:space-y-6">
           <section className="rounded-md border border-stone-200 bg-white p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">

@@ -15,6 +15,7 @@ const isProtectedRoute = createRouteMatcher([
   "/admin(.*)",
   "/aftercare(.*)",
   "/upload(.*)",
+  "/workspace(.*)",
   "/generate(.*)",
   "/mypage(.*)",
   "/result(.*)",
@@ -39,6 +40,7 @@ const isCatalogSecretAdminApiRoute = createRouteMatcher([
 ]);
 const isSalonRoute = createRouteMatcher(["/salon(.*)"]);
 const isMyPageRoute = createRouteMatcher(["/mypage"]);
+const isWorkspaceRoute = createRouteMatcher(["/workspace(.*)"]);
 
 function clerkConfigRequiredResponse(req: NextRequest) {
   const url = new URL(req.url);
@@ -85,8 +87,12 @@ async function loadDbOnboarding(userId: string) {
   }
 }
 
-const clerkProtectedMiddleware = hasClerkConfig
+const clerkAppMiddleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
+    if (!isProtectedRoute(req) || isWebhookRoute(req)) {
+      return NextResponse.next();
+    }
+
     const { userId } = await auth();
     const returnBackPath = `${req.nextUrl.pathname}${req.nextUrl.search}`;
     const isApiRequest = req.nextUrl.pathname.startsWith("/api/");
@@ -140,7 +146,7 @@ const clerkProtectedMiddleware = hasClerkConfig
             ? "/admin/stats"
             : effectiveAccountType === "salon_owner"
               ? "/salon/customers"
-              : "/mypage",
+              : "/workspace",
         );
         return NextResponse.redirect(new URL(redirectTo, req.url));
       }
@@ -157,15 +163,23 @@ const clerkProtectedMiddleware = hasClerkConfig
           return NextResponse.json({ error: "Admin account required" }, { status: 403 });
         }
 
-        return NextResponse.redirect(new URL("/mypage", req.url));
+        return NextResponse.redirect(new URL("/workspace", req.url));
       }
 
       if (isSalonRoute(req) && effectiveAccountType !== "salon_owner" && effectiveAccountType !== "admin") {
-        return NextResponse.redirect(new URL("/mypage", req.url));
+        return NextResponse.redirect(new URL("/workspace", req.url));
       }
 
       if (isMyPageRoute(req) && effectiveAccountType === "salon_owner") {
         return NextResponse.redirect(new URL("/salon/customers", req.url));
+      }
+
+      if (isWorkspaceRoute(req) && effectiveAccountType === "salon_owner") {
+        return NextResponse.redirect(new URL("/salon/customers", req.url));
+      }
+
+      if (isWorkspaceRoute(req) && effectiveAccountType === "admin") {
+        return NextResponse.redirect(new URL("/admin/stats", req.url));
       }
     } catch (error) {
       console.error("[middleware] Failed to read onboarding metadata", error);
@@ -175,13 +189,9 @@ const clerkProtectedMiddleware = hasClerkConfig
   })
   : null;
 
-const middleware = hasClerkConfig && clerkProtectedMiddleware
+const middleware = hasClerkConfig && clerkAppMiddleware
   ? (req: NextRequest, event: NextFetchEvent) => {
-      if (!isProtectedRoute(req) || isWebhookRoute(req)) {
-        return NextResponse.next();
-      }
-
-      return clerkProtectedMiddleware(req, event);
+      return clerkAppMiddleware(req, event);
     }
   : (req: NextRequest) => {
       if (!isProtectedRoute(req) || isWebhookRoute(req)) {

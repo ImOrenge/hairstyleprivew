@@ -50,7 +50,7 @@ export function getRoleHomeHref(accountType: RbacRole | null) {
   }
 
   if (accountType === "member") {
-    return "/mypage";
+    return "/workspace";
   }
 
   return "/onboarding";

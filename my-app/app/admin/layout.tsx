@@ -1,6 +1,6 @@
 ﻿import type { ReactNode } from "react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AdminSectionNav } from "../../components/layout/AdminSectionNav";
 import { requireAdminPageAccess } from "../../lib/admin-auth";
 
 interface AdminLayoutProps {
@@ -22,33 +22,13 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   }
 
   return (
-    <div className="app-page flex gap-5">
+    <div className="app-page flex flex-col gap-4 lg:flex-row lg:gap-5">
       <aside className="app-panel sticky top-20 hidden h-fit min-w-[210px] p-4 lg:block">
         <p className="app-kicker">Admin</p>
-        <nav className="mt-4 grid gap-1.5">
-          {adminLinks.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-[var(--app-radius-control)] border border-transparent px-3 py-2 text-sm font-semibold text-[var(--app-text)] hover:border-[var(--app-border)] hover:bg-[var(--app-surface-muted)]"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <AdminSectionNav links={adminLinks} variant="rail" />
       </aside>
       <div className="min-w-0 flex-1">
-        <nav className="app-panel mb-4 grid grid-cols-2 gap-2 p-3 lg:hidden">
-          {adminLinks.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="rounded-[var(--app-radius-control)] border border-[var(--app-border)] px-3 py-2 text-center text-sm font-semibold text-[var(--app-text)]"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <AdminSectionNav links={adminLinks} variant="tabs" />
         {children}
       </div>
     </div>

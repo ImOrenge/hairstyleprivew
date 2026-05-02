@@ -139,7 +139,7 @@ export function ActionToolbar({
   const handleRegenerate = () => {
     clearLatestResult();
     clearRecommendationSession();
-    router.push("/generate");
+    router.push("/workspace");
   };
 
   const handleViewEvaluation = () => {

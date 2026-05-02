@@ -219,7 +219,7 @@ export default function AdminMembersPage() {
       ) : null}
 
       <section className="rounded-2xl border border-stone-200 bg-white">
-        <div className="grid grid-cols-[1.1fr_1fr_0.8fr_1.6fr] gap-3 border-b border-stone-200 bg-stone-50 px-4 py-3 text-xs font-bold text-stone-500">
+        <div className="hidden grid-cols-[1.1fr_1fr_0.8fr_1.6fr] gap-3 border-b border-stone-200 bg-stone-50 px-4 py-3 text-xs font-bold text-stone-500 md:grid">
           <span>회원</span>
           <span>권한</span>
           <span>크레딧</span>
@@ -234,7 +234,7 @@ export default function AdminMembersPage() {
         {members.map((member) => (
           <div
             key={member.id}
-            className="grid grid-cols-1 gap-3 border-b border-stone-100 px-4 py-4 last:border-b-0 md:grid-cols-[1.1fr_1fr_0.8fr_1.6fr]"
+            className="mx-3 my-3 grid grid-cols-1 gap-4 rounded-xl border border-stone-200 bg-white px-4 py-4 last:border-b-0 md:m-0 md:grid-cols-[1.1fr_1fr_0.8fr_1.6fr] md:gap-3 md:rounded-none md:border-0 md:border-b md:border-stone-100"
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-stone-950">{member.display_name || "-"}</p>
@@ -243,6 +243,7 @@ export default function AdminMembersPage() {
             </div>
 
             <div className="grid gap-2">
+              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-stone-400 md:hidden">권한</p>
               <select
                 value={roleDrafts[member.id] || "member"}
                 onChange={(event) =>
@@ -267,9 +268,13 @@ export default function AdminMembersPage() {
               </Button>
             </div>
 
-            <div className="flex items-center text-lg font-black text-stone-900">{member.credits || 0}</div>
+            <div className="flex items-center justify-between gap-3 md:block">
+              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-stone-400 md:hidden">크레딧</p>
+              <span className="text-lg font-black text-stone-900">{member.credits || 0}</span>
+            </div>
 
             <div className="grid gap-2 sm:grid-cols-[100px_minmax(0,1fr)_96px]">
+              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-stone-400 sm:col-span-3 md:hidden">액션</p>
               <Link
                 href={`/admin/members/${encodeURIComponent(member.id)}`}
                 className="inline-flex h-9 items-center justify-center rounded-lg border border-stone-300 px-3 text-xs font-semibold text-stone-800 transition hover:bg-stone-50 sm:col-span-3"

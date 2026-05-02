@@ -103,7 +103,7 @@ export default function GeneratePage() {
               </div>
             ) : (
               <div className="flex h-full items-center justify-center px-6 text-center text-sm text-[var(--app-muted)]">
-                Upload a portrait at /upload to start the recommendation grid.
+                워크스페이스에서 사진을 업로드하면 추천 보드를 시작할 수 있습니다.
               </div>
             )}
 
@@ -182,8 +182,8 @@ export default function GeneratePage() {
                 {generationId ? "Rebuild Grid" : "Generate Grid"}
               </Button>
               {!previewUrl ? (
-                <Link href="/upload" className="text-sm font-medium text-[var(--app-text)] underline underline-offset-4 dark:text-[var(--app-muted)]">
-                  Upload a portrait
+                <Link href="/workspace" className="text-sm font-medium text-[var(--app-text)] underline underline-offset-4 dark:text-[var(--app-muted)]">
+                  워크스페이스 열기
                 </Link>
               ) : null}
             </div>

@@ -59,7 +59,7 @@ function getAccountHomeHref(accountType: AccountType | null, onboardingComplete:
     return "/admin/stats";
   }
 
-  return "/mypage";
+  return "/workspace";
 }
 
 function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {

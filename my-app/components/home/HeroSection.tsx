@@ -227,7 +227,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
 
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
-                href="/upload"
+                href="/workspace"
                 className="app-inverse-cta inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold uppercase tracking-[0.04em] transition hover:opacity-90"
               >
                 {t("hero.cta.start")}

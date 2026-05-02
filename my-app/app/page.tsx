@@ -1,14 +1,16 @@
 ﻿import nextDynamic from "next/dynamic";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClerkClient } from "@clerk/nextjs/server";
+import { auth, createClerkClient } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { B2BLeadForm } from "../components/home/B2BLeadForm";
 import { FeatureShowcase } from "../components/home/FeatureShowcase";
 import { FashionDemoShowcase } from "../components/home/FashionDemoShowcase";
 import { HeroSection } from "../components/home/HeroSection";
 import { AppPage, InverseSection, Panel, SurfaceCard } from "../components/ui/Surface";
-import { getProductionClerkSecretKey } from "../lib/clerk";
+import { resolveSignedInAccountHomeHref } from "../lib/account-home-server";
+import { getClerkConfigState, getProductionClerkSecretKey } from "../lib/clerk";
 import {
   homeFaqs,
   homeNavItems,
@@ -201,7 +203,7 @@ function FinalCtaBlock() {
         9가지 헤어 후보를 먼저 비교하고, 선택한 헤어에 맞는 패션 코디까지 이어보세요.
       </p>
       <Link
-        href="/upload"
+        href="/workspace"
         className="app-inverse-cta mt-7 inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold uppercase tracking-[0.04em] transition"
       >
         무료로 내 스타일 보기
@@ -215,7 +217,7 @@ function MobileStickyCtaBar() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-2 lg:hidden">
       <Link
-        href="/upload"
+        href="/workspace"
         className="flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
       >
         무료로 내 스타일 보기
@@ -226,6 +228,13 @@ function MobileStickyCtaBar() {
 }
 
 export default async function HomePage() {
+  if (getClerkConfigState().canUseClerkServer) {
+    const { userId } = await auth();
+    if (userId) {
+      redirect(await resolveSignedInAccountHomeHref(userId));
+    }
+  }
+
   const jsonLd = buildHomeJsonLd();
   const { userCount, avatars } = await loadHomeSocialProof();
 
@@ -296,7 +305,7 @@ export default async function HomePage() {
               HairFit은 AI 헤어스타일 미리보기 결과를 단순 합성 이미지로 끝내지 않고, 패션 코디와 상담 이미지로 이어가기 쉬운 기준으로 정리합니다.
             </p>
             <Link
-              href="/upload"
+              href="/workspace"
               className="mt-6 inline-flex rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
             >
               사진 한 장으로 시작하기

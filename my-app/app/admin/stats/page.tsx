@@ -93,7 +93,7 @@ export default function AdminStatsPage() {
         <h1 className="mt-2 text-2xl font-black text-stone-950">통계</h1>
         <p className="mt-2 text-sm text-stone-600">운영 지표를 최근 기간 기준으로 집계합니다.</p>
 
-        <div className="mt-4 inline-flex rounded-xl border border-stone-200 bg-stone-50 p-1">
+        <div className="mt-4 flex w-full overflow-x-auto rounded-xl border border-stone-200 bg-stone-50 p-1 sm:inline-flex sm:w-auto">
           {rangeOptions.map((option) => (
             <button
               key={option}
@@ -106,7 +106,7 @@ export default function AdminStatsPage() {
                 setError(null);
                 setRange(option);
               }}
-              className={`rounded-lg px-3 py-1.5 text-sm font-semibold ${
+              className={`shrink-0 rounded-lg px-3 py-1.5 text-sm font-semibold ${
                 option === range ? "bg-stone-900 text-white" : "text-stone-600"
               }`}
             >
@@ -128,7 +128,7 @@ export default function AdminStatsPage() {
 
       {!isLoading && stats ? (
         <>
-          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <div className="rounded-2xl border border-stone-200 bg-white p-4">
               <p className="text-sm text-stone-500">신규 회원</p>
               <p className="mt-2 text-2xl font-black text-stone-950">{stats.kpis.newUsers}</p>
@@ -153,7 +153,7 @@ export default function AdminStatsPage() {
               <p className="text-sm text-stone-500">숨김 리뷰</p>
               <p className="mt-2 text-2xl font-black text-stone-950">{stats.kpis.hiddenReviews}</p>
             </div>
-            <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:col-span-2">
+            <div className="col-span-2 rounded-2xl border border-stone-200 bg-white p-4">
               <p className="text-sm text-stone-500">B2B 리드</p>
               <p className="mt-2 text-2xl font-black text-stone-950">{stats.kpis.b2bLeads}</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-5">

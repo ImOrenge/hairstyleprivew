@@ -228,7 +228,7 @@ export function PricingPreview() {
 
   const handlePlanClick = (planKey: PlanKey) => {
     if (planKey === "free") {
-      window.location.assign("/upload");
+      window.location.assign("/workspace");
       return;
     }
 

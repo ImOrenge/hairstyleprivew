@@ -182,7 +182,7 @@ export default function AdminB2BPage() {
           </select>
         </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-5">
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
           {STAGES.map((stage) => (
             <div key={stage} className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm">
               <p className="font-semibold text-stone-700">{stage}</p>
@@ -218,7 +218,7 @@ export default function AdminB2BPage() {
                   접수: {formatDate(lead.created_at)} / 소스: {lead.source}
                 </p>
               </div>
-              <div className="w-full max-w-[220px]">
+              <div className="w-full sm:max-w-[220px]">
                 <select
                   value={drafts[lead.id]?.stage || lead.stage}
                   onChange={(event) =>

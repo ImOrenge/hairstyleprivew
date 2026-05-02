@@ -75,7 +75,7 @@ export default async function AftercarePage() {
             </p>
           </div>
           <Link
-            href="/upload"
+            href="/workspace"
             className="inline-flex h-11 items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 text-sm font-bold text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
           >
             새 스타일 만들기
@@ -92,7 +92,7 @@ export default async function AftercarePage() {
             헤어 결과 페이지에서 마음에 드는 스타일을 시술 확정하면 에프터케어 가이드가 생성됩니다.
           </p>
           <Link
-            href="/generate"
+            href="/workspace"
             className="mt-5 inline-flex h-11 items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 text-sm font-bold text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
           >
             결과 만들러 가기

@@ -259,7 +259,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
             {customer?.isLinkedMember ? "HairFit 회원 연결 고객" : "수기 등록 고객"}
           </p>
         </div>
-        <div className="grid gap-2 sm:grid-cols-3 md:min-w-[420px]">
+        <div className="grid grid-cols-2 gap-2 md:min-w-[420px] md:grid-cols-3">
           <div className="rounded-md border border-stone-200 bg-white px-3 py-2">
             <p className="text-xs text-stone-500">방문 기록</p>
             <p className="text-xl font-bold text-stone-950">{visits.length}</p>
@@ -268,7 +268,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
             <p className="text-xs text-stone-500">대기 사후관리</p>
             <p className="text-xl font-bold text-stone-950">{pendingTasks.length}</p>
           </div>
-          <div className="rounded-md border border-stone-200 bg-white px-3 py-2">
+          <div className="col-span-2 rounded-md border border-stone-200 bg-white px-3 py-2 md:col-span-1">
             <p className="text-xs text-stone-500">다음 연락</p>
             <p className="text-sm font-bold text-stone-950">{formatDateTime(customer?.nextFollowUpAt || null)}</p>
           </div>
