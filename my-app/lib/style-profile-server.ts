@@ -2,7 +2,7 @@ import "server-only";
 
 import { currentUser } from "@clerk/nextjs/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { StyleProfile } from "./fashion-types";
+import type { PersonalColorResult, PersonalColorSwatch, StyleProfile } from "./fashion-types";
 
 export const BODY_PHOTO_BUCKET = "profile-body-photos";
 export const STYLING_RESULTS_BUCKET = "styling-results";
@@ -75,6 +75,101 @@ function numberOrNull(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function recordOrNull(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function normalizePersonalColorTone(value: unknown): PersonalColorResult["tone"] | null {
+  return value === "warm" || value === "cool" || value === "neutral" ? value : null;
+}
+
+function normalizePersonalColorContrast(value: unknown): PersonalColorResult["contrast"] | null {
+  return value === "low" || value === "medium" || value === "high" ? value : null;
+}
+
+function normalizeConfidence(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.min(1, value))
+    : 0.6;
+}
+
+function normalizeSwatches(value: unknown): PersonalColorSwatch[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const record = recordOrNull(item);
+      if (!record) {
+        return null;
+      }
+
+      const nameKo = stringOrNull(record.nameKo);
+      const nameEn = stringOrNull(record.nameEn);
+      const hex = stringOrNull(record.hex)?.toUpperCase() ?? null;
+      const reason = stringOrNull(record.reason);
+      if (!nameKo || !nameEn || !hex || !/^#[0-9A-F]{6}$/.test(hex)) {
+        return null;
+      }
+
+      return { nameKo, nameEn, hex, reason: reason ?? "" };
+    })
+    .filter((item): item is PersonalColorSwatch => item !== null);
+}
+
+function normalizeStringList(value: unknown, limit: number) {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, limit)
+    : [];
+}
+
+function normalizePersonalColorResult(
+  row: Record<string, unknown> | null,
+): StyleProfile["personalColor"] {
+  if (!row) {
+    return null;
+  }
+
+  const result = recordOrNull(row.personal_color_result);
+  const tone = normalizePersonalColorTone(result?.tone ?? row.personal_color_tone);
+  const contrast = normalizePersonalColorContrast(result?.contrast ?? row.personal_color_contrast);
+  const diagnosedAt = stringOrNull(result?.diagnosedAt) ?? stringOrNull(row.personal_color_diagnosed_at);
+  const model = stringOrNull(result?.model) ?? stringOrNull(row.personal_color_model);
+
+  if (!result || !tone || !contrast || !diagnosedAt || !model) {
+    return null;
+  }
+
+  return {
+    tone,
+    contrast,
+    confidence: normalizeConfidence(result.confidence),
+    bestColors: normalizeSwatches(result.bestColors).slice(0, 6),
+    avoidColors: normalizeSwatches(result.avoidColors).slice(0, 6),
+    stylingPalette: normalizeStringList(result.stylingPalette, 8),
+    hairColorHints: normalizeStringList(result.hairColorHints, 5),
+    summary: stringOrNull(result.summary) ?? "",
+    diagnosedAt,
+    model,
+  };
+}
+
 export function normalizeStyleProfile(row: Record<string, unknown> | null, userId: string): StyleProfile {
   return {
     userId,
@@ -88,6 +183,7 @@ export function normalizeStyleProfile(row: Record<string, unknown> | null, userI
     avoidItems: Array.isArray(row?.avoid_items)
       ? row.avoid_items.filter((item): item is string => typeof item === "string")
       : [],
+    personalColor: normalizePersonalColorResult(row),
     bodyPhotoPath: stringOrNull(row?.body_photo_path),
     bodyPhotoConsentAt: stringOrNull(row?.body_photo_consent_at),
     updatedAt: stringOrNull(row?.updated_at),

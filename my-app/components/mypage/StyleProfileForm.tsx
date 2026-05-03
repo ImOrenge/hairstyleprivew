@@ -2,11 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/Button";
-import type { StyleProfile } from "../../lib/fashion-types";
+import type { PersonalColorResult, StyleProfile } from "../../lib/fashion-types";
 import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
 
 interface StyleProfileResponse {
   profile?: StyleProfile;
+  error?: string;
+}
+
+interface PersonalColorResponse {
+  personalColor?: PersonalColorResult;
   error?: string;
 }
 
@@ -24,6 +29,7 @@ const initialProfile: StyleProfile = {
   colorPreference: "",
   exposurePreference: "balanced",
   avoidItems: [],
+  personalColor: null,
   bodyPhotoPath: null,
   bodyPhotoUrl: null,
   bodyPhotoConsentAt: null,
@@ -51,16 +57,65 @@ const exposureOptions = [
   ["bold", "과감"],
 ] as const;
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("이미지를 읽지 못했습니다."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatTone(value?: string | null) {
+  if (value === "warm") return "웜톤";
+  if (value === "cool") return "쿨톤";
+  if (value === "neutral") return "뉴트럴";
+  return "-";
+}
+
+function formatContrast(value?: string | null) {
+  if (value === "low") return "낮은 대비";
+  if (value === "high") return "높은 대비";
+  if (value === "medium") return "중간 대비";
+  return "-";
+}
+
+function ColorSwatches({ colors }: { colors: PersonalColorResult["bestColors"] }) {
+  if (!colors.length) {
+    return <p className="text-xs text-stone-500">저장된 색상이 없습니다.</p>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {colors.map((color) => (
+        <span
+          key={`${color.nameEn}-${color.hex}`}
+          className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-semibold text-stone-700"
+        >
+          <span
+            aria-hidden="true"
+            className="h-4 w-4 rounded-full border border-black/10"
+            style={{ backgroundColor: color.hex }}
+          />
+          {color.nameKo}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function StyleProfileForm({
   variant = "standalone",
 }: StyleProfileFormProps) {
   const { isAdminReadOnly } = useAdminReadOnly();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const colorInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<StyleProfile>(initialProfile);
   const [avoidText, setAvoidText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isAnalyzingColor, setIsAnalyzingColor] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -156,6 +211,42 @@ export function StyleProfileForm({
     setIsUploading(false);
   };
 
+  const handleAnalyzePersonalColor = async (file: File | null | undefined) => {
+    if (isAdminReadOnly) {
+      return;
+    }
+
+    if (!file) return;
+
+    setIsAnalyzingColor(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      const referenceImageDataUrl = await fileToDataUrl(file);
+      const response = await fetch("/api/personal-color/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referenceImageDataUrl }),
+      });
+      const data = (await response.json().catch(() => ({}))) as PersonalColorResponse;
+
+      if (response.ok && data.personalColor) {
+        setProfile((current) => ({ ...current, personalColor: data.personalColor || null }));
+        setMessage("퍼스널컬러 진단 결과를 저장했습니다.");
+      } else {
+        setError(data.error || "퍼스널컬러 진단에 실패했습니다.");
+      }
+    } catch (analyzeError) {
+      setError(analyzeError instanceof Error ? analyzeError.message : "퍼스널컬러 진단에 실패했습니다.");
+    } finally {
+      setIsAnalyzingColor(false);
+      if (colorInputRef.current) {
+        colorInputRef.current.value = "";
+      }
+    }
+  };
+
   const handleDeletePhoto = async () => {
     if (isAdminReadOnly) {
       return;
@@ -241,6 +332,14 @@ export function StyleProfileForm({
               className="hidden"
               onChange={(event) => void handleUpload(event.target.files?.[0])}
             />
+            <input
+              ref={colorInputRef}
+              type="file"
+              accept="image/*"
+              disabled={isAdminReadOnly}
+              className="hidden"
+              onChange={(event) => void handleAnalyzePersonalColor(event.target.files?.[0])}
+            />
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -259,6 +358,50 @@ export function StyleProfileForm({
             <p className="text-xs leading-5 text-stone-500">
               전신 참고 사진은 비공개로 저장되며, 패션 룩북 생성 시 서명 URL을 통해서만 사용됩니다.
             </p>
+
+            <div className="rounded-2xl border border-stone-200 bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase text-stone-400">Personal Color</p>
+                  <p className="mt-1 text-sm font-semibold text-stone-900">
+                    {profile.personalColor
+                      ? `${formatTone(profile.personalColor.tone)} · ${formatContrast(profile.personalColor.contrast)}`
+                      : "진단 결과 없음"}
+                  </p>
+                </div>
+                <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${profile.personalColor ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-500"}`}>
+                  {profile.personalColor ? "저장됨" : "미진단"}
+                </span>
+              </div>
+
+              {profile.personalColor ? (
+                <div className="mt-3 space-y-3">
+                  <p className="text-sm leading-6 text-stone-600">{profile.personalColor.summary}</p>
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-stone-500">추천 색상</p>
+                    <ColorSwatches colors={profile.personalColor.bestColors} />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-bold text-stone-500">피해야 할 색상</p>
+                    <ColorSwatches colors={profile.personalColor.avoidColors} />
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm leading-6 text-stone-600">
+                  얼굴 정면 사진으로 톤과 대비를 분석해 패션 추천 팔레트에 반영합니다.
+                </p>
+              )}
+
+              <Button
+                type="button"
+                variant="secondary"
+                className="mt-4"
+                onClick={() => colorInputRef.current?.click()}
+                disabled={isAnalyzingColor || isAdminReadOnly}
+              >
+                {isAnalyzingColor ? "진단 중..." : profile.personalColor ? "퍼스널컬러 재진단" : "퍼스널컬러 진단"}
+              </Button>
+            </div>
           </div>
 
           <fieldset disabled={isAdminReadOnly} className="grid gap-4 sm:grid-cols-2 disabled:opacity-75">

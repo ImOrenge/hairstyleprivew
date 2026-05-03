@@ -4,6 +4,7 @@ import type { GeneratedVariant, RecommendationSet } from "../../../../lib/recomm
 import type { FashionGenre, FashionMood, FashionOccasion, FashionRecommendation, StyleProfile } from "../../../../lib/fashion-types";
 import { ensureFashionCatalogAvailable, selectFashionCatalogItem } from "../../../../lib/fashion-catalog";
 import { generateFashionRecommendation, isFashionGenre } from "../../../../lib/fashion-recommendation-generator";
+import { getOpenAIImageModel } from "../../../../lib/openai-image";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 import {
   ensureCurrentUserProfile,
@@ -161,8 +162,8 @@ export async function POST(request: Request) {
       recommendation,
       status: "recommended",
       credits_used: 0,
-      model_provider: "gemini",
-      model_name: process.env.GEMINI_IMAGE_MODEL || "gemini-3-pro-image-preview",
+      model_provider: "openai",
+      model_name: getOpenAIImageModel(),
     })
     .select("id,status,created_at")
     .single();

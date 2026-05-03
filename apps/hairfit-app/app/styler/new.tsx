@@ -51,6 +51,12 @@ function formatLength(value?: string | null) {
   return "-";
 }
 
+function formatPersonalColor(profile: StyleProfile | null) {
+  const result = profile?.personalColor;
+  if (!result) return "No diagnosis";
+  return `${result.tone} tone / ${result.contrast} contrast`;
+}
+
 function profileReady(profile: StyleProfile | null) {
   return Boolean(
     profile?.heightCm &&
@@ -413,6 +419,7 @@ export default function NewStylerScreen() {
           <Cluster>
             <FieldPill label="Length" value={formatLength(selectedVariant?.lengthBucket)} />
             <FieldPill label="Correction" value={selectedVariant?.correctionFocus || "-"} />
+            <FieldPill label="Personal color" value={formatPersonalColor(profile)} />
           </Cluster>
           <Button variant="secondary" onPress={openHairModal}>Choose or change hairstyle</Button>
         </Stack>
@@ -430,6 +437,7 @@ export default function NewStylerScreen() {
             <Kicker>Profile check</Kicker>
             <Heading>{isLoadingProfile ? "Checking profile..." : stepOneReady ? "Recommendation ready" : "Complete profile details"}</Heading>
             <BodyText>The web flow requires height, body shape, sizes, fit preference, exposure preference, body photo, and a selected hairstyle.</BodyText>
+            <FieldPill label="Personal color status" value={formatPersonalColor(profile)} />
 
             <TextField keyboardType="numeric" label="Height cm" onChangeText={setHeightCm} value={heightCm} />
             <TextField label="Top size" onChangeText={setTopSize} placeholder="M, 95, etc." value={topSize} />

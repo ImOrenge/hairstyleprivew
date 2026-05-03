@@ -1,7 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { dataUrlToBuffer, runGeminiOutfitGeneration } from "../../../../lib/gemini-outfit-image";
 import type { FashionRecommendation } from "../../../../lib/fashion-types";
+import {
+  dataUrlToBuffer,
+  getOpenAIImageModel,
+  runOpenAIOutfitGeneration,
+} from "../../../../lib/openai-image";
 import type { GeneratedVariant, RecommendationSet } from "../../../../lib/recommendation-types";
 import {
   countUserCompletedFashionGenerations,
@@ -257,7 +261,7 @@ export async function POST(request: Request) {
       BODY_PHOTO_BUCKET,
       profile.bodyPhotoPath,
     );
-    const result = await runGeminiOutfitGeneration({
+    const result = await runOpenAIOutfitGeneration({
       bodyImageDataUrl,
       hairImageDataUrl: selectedVariant.outputUrl,
       recommendation,
@@ -290,8 +294,8 @@ export async function POST(request: Request) {
         generated_image_path: objectPath,
         credits_used: Number(session.credits_used || 0) + creditCost,
         error_message: null,
-        model_provider: "gemini",
-        model_name: process.env.GEMINI_IMAGE_MODEL || "gemini-3-pro-image-preview",
+        model_provider: "openai",
+        model_name: getOpenAIImageModel(),
       })
       .eq("id", sessionId);
 

@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useAuth, useUser } from "@clerk/clerk-expo";
+import type { PersonalColorResult } from "@hairfit/shared";
 import { useRouter } from "expo-router";
 import { BodyText, Button, Card, Heading, Kicker, Panel, Screen, Stack } from "@hairfit/ui-native";
+import { useHairfitApi } from "../lib/api";
 import { useGenerationFlow } from "../lib/generation-flow";
 
 type AccountType = "member" | "salon_owner" | "admin" | null;
@@ -44,6 +46,7 @@ function readMetadataValue(source: unknown, key: "accountType") {
 
 export default function UploadScreen() {
   const router = useRouter();
+  const api = useHairfitApi();
   const { isLoaded, isSignedIn, sessionClaims } = useAuth();
   const { user } = useUser();
   const accountType = normalizeAccountType(
@@ -52,6 +55,9 @@ export default function UploadScreen() {
   const flow = useGenerationFlow();
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [message, setMessage] = useState("Choose a clear front-facing portrait.");
+  const [personalColor, setPersonalColor] = useState<PersonalColorResult | null>(null);
+  const [isLoadingPersonalColor, setIsLoadingPersonalColor] = useState(false);
+  const [isAnalyzingPersonalColor, setIsAnalyzingPersonalColor] = useState(false);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -63,6 +69,37 @@ export default function UploadScreen() {
       router.replace("/salon/customers");
     }
   }, [accountType, isLoaded, isSignedIn, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPersonalColor() {
+      if (!isLoaded || !isSignedIn || accountType === "salon_owner") {
+        return;
+      }
+
+      setIsLoadingPersonalColor(true);
+      try {
+        const result = await api.getStyleProfile();
+        if (!cancelled) {
+          setPersonalColor(result.profile.personalColor);
+        }
+      } catch {
+        if (!cancelled) {
+          setPersonalColor(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingPersonalColor(false);
+        }
+      }
+    }
+
+    void loadPersonalColor();
+    return () => {
+      cancelled = true;
+    };
+  }, [accountType, api, isLoaded, isSignedIn]);
 
   if (isLoaded && !isSignedIn) {
     return (
@@ -111,6 +148,24 @@ export default function UploadScreen() {
     setMessage("Portrait is ready. Continue to create the 3x3 recommendation board.");
   };
 
+  const analyzePersonalColor = async () => {
+    if (!flow.imageDataUrl || isAnalyzingPersonalColor) {
+      return;
+    }
+
+    setIsAnalyzingPersonalColor(true);
+    setMessage("Analyzing personal color...");
+    try {
+      const result = await api.analyzePersonalColor(flow.imageDataUrl);
+      setPersonalColor(result.personalColor);
+      setMessage("Personal color result was saved for styling recommendations.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to analyze personal color.");
+    } finally {
+      setIsAnalyzingPersonalColor(false);
+    }
+  };
+
   return (
     <Screen>
       <Stack>
@@ -127,6 +182,29 @@ export default function UploadScreen() {
           <Card>
             <BodyText>{message}</BodyText>
           </Card>
+          {imageUri && !isLoadingPersonalColor && !personalColor ? (
+            <Card>
+              <Stack>
+                <Kicker>Personal Color</Kicker>
+                <Heading style={{ fontSize: 20, lineHeight: 26 }}>First personal color diagnosis</Heading>
+                <BodyText>Analyze warm/cool tone and contrast now, then use it in fashion styling.</BodyText>
+                <Button disabled={isAnalyzingPersonalColor} onPress={analyzePersonalColor}>
+                  {isAnalyzingPersonalColor ? "Analyzing..." : "Start first diagnosis"}
+                </Button>
+              </Stack>
+            </Card>
+          ) : null}
+          {imageUri && personalColor ? (
+            <Card>
+              <Stack>
+                <Kicker>Personal Color Saved</Kicker>
+                <BodyText>
+                  {personalColor.tone} tone / {personalColor.contrast} contrast
+                </BodyText>
+                <BodyText>{personalColor.summary}</BodyText>
+              </Stack>
+            </Card>
+          ) : null}
           <Button onPress={pickImage}>Choose photo</Button>
           <Button disabled={!flow.imageDataUrl} onPress={() => router.push("/generate")}>
             Continue to generation

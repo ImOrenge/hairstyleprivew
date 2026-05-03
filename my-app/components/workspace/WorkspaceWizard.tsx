@@ -24,6 +24,7 @@ import { Panel, SurfaceCard } from "../ui/Surface";
 import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
 import { useGenerate } from "../../hooks/useGenerate";
 import { useUpload } from "../../hooks/useUpload";
+import type { PersonalColorResult } from "../../lib/fashion-types";
 import type { GeneratedVariant } from "../../lib/recommendation-types";
 import { cn } from "../../lib/utils";
 import { convertImageFileToWebp } from "../../lib/webp-client";
@@ -95,6 +96,65 @@ function statusTone(status: GeneratedVariant["status"]) {
   if (status === "failed") return "bg-rose-100 text-rose-700";
   if (status === "generating") return "bg-[var(--app-accent-soft)] text-[var(--app-accent-strong)]";
   return "bg-[var(--app-surface-muted)] text-[var(--app-muted)]";
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("이미지를 읽지 못했습니다."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function formatTone(value?: string | null) {
+  if (value === "warm") return "웜톤";
+  if (value === "cool") return "쿨톤";
+  if (value === "neutral") return "뉴트럴";
+  return "-";
+}
+
+function formatContrast(value?: string | null) {
+  if (value === "low") return "낮은 대비";
+  if (value === "high") return "높은 대비";
+  if (value === "medium") return "중간 대비";
+  return "-";
+}
+
+function PersonalColorSwatches({ colors }: { colors: PersonalColorResult["bestColors"] }) {
+  if (!colors.length) {
+    return null;
+  }
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2">
+      {colors.slice(0, 5).map((color) => (
+        <span
+          key={`${color.nameEn}-${color.hex}`}
+          className="inline-flex items-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 py-1 text-xs font-bold text-[var(--app-text)]"
+        >
+          <span
+            aria-hidden="true"
+            className="h-4 w-4 rounded-full border border-black/10"
+            style={{ backgroundColor: color.hex }}
+          />
+          {color.nameKo}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+interface PersonalColorAnalyzeResponse {
+  personalColor?: PersonalColorResult;
+  error?: string;
+}
+
+interface StyleProfileResponse {
+  profile?: {
+    personalColor?: PersonalColorResult | null;
+  };
+  error?: string;
 }
 
 function StepButton({
@@ -408,6 +468,7 @@ export function WorkspaceWizard() {
   const { validateImage, resetValidation } = useUpload();
 
   const previewUrl = useGenerationStore((state) => state.previewUrl);
+  const originalImage = useGenerationStore((state) => state.originalImage);
   const isGenerating = useGenerationStore((state) => state.isGenerating);
   const progress = useGenerationStore((state) => state.progress);
   const pipelineStage = useGenerationStore((state) => state.pipelineStage);
@@ -435,10 +496,41 @@ export function WorkspaceWizard() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [mobileStepsOpen, setMobileStepsOpen] = useState(false);
+  const [personalColor, setPersonalColor] = useState<PersonalColorResult | null>(null);
+  const [isLoadingPersonalColor, setIsLoadingPersonalColor] = useState(true);
+  const [isAnalyzingPersonalColor, setIsAnalyzingPersonalColor] = useState(false);
+  const [personalColorError, setPersonalColorError] = useState<string | null>(null);
 
   useEffect(() => {
     void hydrateOriginalImage();
   }, [hydrateOriginalImage]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadPersonalColor() {
+      setIsLoadingPersonalColor(true);
+      try {
+        const response = await fetch("/api/style-profile", { cache: "no-store" });
+        const data = (await response.json().catch(() => ({}))) as StyleProfileResponse;
+        if (!active) return;
+
+        if (response.ok) {
+          setPersonalColor(data.profile?.personalColor || null);
+          setPersonalColorError(null);
+        }
+      } finally {
+        if (active) {
+          setIsLoadingPersonalColor(false);
+        }
+      }
+    }
+
+    void loadPersonalColor();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const completedCount = recommendationGrid.filter((variant) => variant.status === "completed").length;
   const failedCount = recommendationGrid.filter((variant) => variant.status === "failed").length;
@@ -479,7 +571,7 @@ export function WorkspaceWizard() {
         setOriginalImage(webpFile);
         clearRecommendationSession();
         resetPipeline();
-        setCurrentStep("generate");
+        setCurrentStep(personalColor ? "generate" : "upload");
       }
     } finally {
       setIsUploading(false);
@@ -492,7 +584,37 @@ export function WorkspaceWizard() {
     resetPipeline();
     resetValidation();
     setActionError(null);
+    setPersonalColorError(null);
     setCurrentStep("upload");
+  };
+
+  const handleAnalyzePersonalColor = async () => {
+    if (!originalImage || isAnalyzingPersonalColor || isAdminReadOnly) return;
+
+    setIsAnalyzingPersonalColor(true);
+    setPersonalColorError(null);
+    setActionError(null);
+
+    try {
+      const referenceImageDataUrl = await fileToDataUrl(originalImage);
+      const response = await fetch("/api/personal-color/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ referenceImageDataUrl }),
+      });
+      const data = (await response.json().catch(() => ({}))) as PersonalColorAnalyzeResponse;
+
+      if (!response.ok || !data.personalColor) {
+        throw new Error(data.error || "퍼스널컬러 진단에 실패했습니다.");
+      }
+
+      setPersonalColor(data.personalColor);
+      setCurrentStep("generate");
+    } catch (error) {
+      setPersonalColorError(error instanceof Error ? error.message : "퍼스널컬러 진단에 실패했습니다.");
+    } finally {
+      setIsAnalyzingPersonalColor(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -658,6 +780,58 @@ export function WorkspaceWizard() {
               disabled={isUploading || isAdminReadOnly}
               previewUrl={previewUrl}
             />
+            {previewUrl && !isLoadingPersonalColor && !personalColor ? (
+              <SurfaceCard className="mt-4 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--app-radius-control)] bg-[var(--app-accent-soft)] text-[var(--app-accent-strong)]">
+                    <Sparkles className="h-5 w-5" aria-hidden="true" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black text-[var(--app-text)]">첫 퍼스널컬러 진단</p>
+                    <p className="mt-1 text-sm leading-5 text-[var(--app-muted)]">
+                      업로드한 얼굴 사진으로 웜/쿨톤과 대비감을 분석해 이후 패션 추천 팔레트에 반영합니다.
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        onClick={handleAnalyzePersonalColor}
+                        disabled={isAnalyzingPersonalColor || isAdminReadOnly}
+                      >
+                        {isAnalyzingPersonalColor ? "진단 중..." : "첫 퍼스널컬러 진단"}
+                      </Button>
+                      <Button type="button" variant="secondary" onClick={() => setCurrentStep("generate")}>
+                        헤어 생성으로 계속
+                      </Button>
+                    </div>
+                    {personalColorError ? (
+                      <p className="mt-3 text-sm font-semibold text-rose-600">{personalColorError}</p>
+                    ) : null}
+                  </div>
+                </div>
+              </SurfaceCard>
+            ) : null}
+            {previewUrl && personalColor ? (
+              <SurfaceCard className="mt-4 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="app-kicker">Personal Color</p>
+                    <p className="mt-1 text-sm font-black text-[var(--app-text)]">
+                      {formatTone(personalColor.tone)} · {formatContrast(personalColor.contrast)}
+                    </p>
+                    <p className="mt-1 text-sm leading-5 text-[var(--app-muted)]">
+                      저장된 진단 결과를 스타일 추천에 사용합니다.
+                    </p>
+                  </div>
+                  <span className="rounded-[var(--app-radius-control)] bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+                    저장됨
+                  </span>
+                </div>
+                <PersonalColorSwatches colors={personalColor.bestColors} />
+                <Button type="button" className="mt-4" onClick={() => setCurrentStep("generate")}>
+                  헤어 생성으로 계속
+                </Button>
+              </SurfaceCard>
+            ) : null}
           </div>
         </Panel>
       ) : null}

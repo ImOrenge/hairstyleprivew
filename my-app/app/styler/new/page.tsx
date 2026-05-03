@@ -124,6 +124,14 @@ function formatExposure(value?: string | null) {
   return "-";
 }
 
+function formatPersonalColor(profile?: StyleProfile | null) {
+  const result = profile?.personalColor;
+  if (!result) return "미진단";
+  const tone = result.tone === "warm" ? "웜톤" : result.tone === "cool" ? "쿨톤" : "뉴트럴";
+  const contrast = result.contrast === "low" ? "낮은 대비" : result.contrast === "high" ? "높은 대비" : "중간 대비";
+  return `${tone} · ${contrast}`;
+}
+
 function isStepComplete(step: WizardStep, currentStep: WizardStep) {
   return currentStep > step;
 }
@@ -684,6 +692,7 @@ function StylerNewContent() {
               <FieldLabel label="하의 사이즈" value={profile?.bottomSize || "-"} />
               <FieldLabel label="선호 핏" value={formatFit(profile?.fitPreference)} />
               <FieldLabel label="노출 선호" value={formatExposure(profile?.exposurePreference)} />
+              <FieldLabel label="퍼스널컬러" value={formatPersonalColor(profile)} />
               <FieldLabel label="전신 사진" value={profile?.bodyPhotoPath ? "저장됨" : "필요"} />
               <FieldLabel label="선택 헤어" value={selectedVariant?.label || "필요"} />
             </div>

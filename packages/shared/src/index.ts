@@ -224,6 +224,28 @@ export type ExposurePreference = "low" | "balanced" | "bold";
 export type FashionItemSlot = "outer" | "top" | "bottom" | "shoes" | "accessory";
 export type ServiceType = "perm" | "color" | "cut" | "bleach" | "treatment" | "other";
 export type AftercareSectionKey = "dry" | "treatment" | "iron" | "styling";
+export type PersonalColorTone = "warm" | "cool" | "neutral";
+export type PersonalColorContrast = "low" | "medium" | "high";
+
+export interface PersonalColorSwatch {
+  nameKo: string;
+  nameEn: string;
+  hex: string;
+  reason: string;
+}
+
+export interface PersonalColorResult {
+  tone: PersonalColorTone;
+  contrast: PersonalColorContrast;
+  confidence: number;
+  bestColors: PersonalColorSwatch[];
+  avoidColors: PersonalColorSwatch[];
+  stylingPalette: string[];
+  hairColorHints: string[];
+  summary: string;
+  diagnosedAt: string;
+  model: string;
+}
 
 export interface StyleProfile {
   userId: string;
@@ -235,6 +257,7 @@ export interface StyleProfile {
   colorPreference: string | null;
   exposurePreference: ExposurePreference | null;
   avoidItems: string[];
+  personalColor: PersonalColorResult | null;
   bodyPhotoPath: string | null;
   bodyPhotoUrl?: string | null;
   bodyPhotoConsentAt: string | null;

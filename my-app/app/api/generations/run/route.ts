@@ -1,7 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { runAIEvaluation } from "../../../../lib/ai-evaluation";
-import { getGeminiImageModel, runGeminiImageGeneration } from "../../../../lib/gemini-image";
+import { getOpenAIImageModel, runOpenAIImageGeneration } from "../../../../lib/openai-image";
 import {
   countUserCompletedHairResults,
   formatLimitError,
@@ -378,8 +378,8 @@ export async function POST(request: Request) {
         status: "processing",
         error_message: null,
         prompt_used: prompt,
-        model_provider: "gemini",
-        model_name: getGeminiImageModel(),
+        model_provider: "openai",
+        model_name: getOpenAIImageModel(),
         credits_used: creditCost,
         options: {
           ...existingOptions,
@@ -390,7 +390,7 @@ export async function POST(request: Request) {
       })
       .eq("id", generationId);
 
-    const result = await runGeminiImageGeneration({
+    const result = await runOpenAIImageGeneration({
       prompt,
       productRequirements: productRequirements || undefined,
       researchReport: researchReport || undefined,
@@ -436,8 +436,8 @@ export async function POST(request: Request) {
         error_message: null,
         generated_image_path: primaryVariant?.generatedImagePath || null,
         prompt_used: primaryVariant?.prompt || prompt,
-        model_provider: "gemini",
-        model_name: getGeminiImageModel(),
+        model_provider: "openai",
+        model_name: getOpenAIImageModel(),
         credits_used: creditCost,
         options: {
           ...existingOptions,

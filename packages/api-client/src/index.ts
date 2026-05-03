@@ -8,6 +8,7 @@ import type {
   MobilePaymentCompleteResponse,
   MobilePaymentPlan,
   MobilePaymentPrepareResponse,
+  PersonalColorResult,
   RecommendationSet,
   ServiceType,
   StyleProfile,
@@ -176,6 +177,13 @@ export class HairfitApiClient {
 
   getStyleProfile() {
     return this.request<{ profile: StyleProfile }>("/api/style-profile");
+  }
+
+  analyzePersonalColor(referenceImageDataUrl: string) {
+    return this.request<{ personalColor: PersonalColorResult }>("/api/personal-color/analyze", {
+      method: "POST",
+      body: JSON.stringify({ referenceImageDataUrl }),
+    });
   }
 
   updateStyleProfile(input: {
