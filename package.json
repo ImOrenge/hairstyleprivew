@@ -24,10 +24,5 @@
     "mobile:ios": "npm --workspace @hairfit/app run ios --",
     "start": "npm --prefix my-app run start",
     "typecheck": "npm --workspaces --if-present run typecheck"
-  },
-  "devDependencies": {
-    "@img/sharp-win32-x64": "^0.34.5",
-    "@tailwindcss/oxide-win32-x64-msvc": "^4.2.4",
-    "lightningcss-win32-x64-msvc": "^1.32.0"
   }
 }
