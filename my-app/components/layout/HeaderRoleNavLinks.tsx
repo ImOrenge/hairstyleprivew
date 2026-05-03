@@ -21,7 +21,7 @@ const defaultClassName = "text-[var(--app-muted)] hover:text-[var(--app-text)]";
 function getNavItems(accountType: AccountType | null, t: ReturnType<typeof useT>): HeaderNavItem[] {
   if (accountType === "member") {
     return [
-      { href: "/workspace", label: "워크스페이스" },
+      { href: "/home", label: "홈" },
       { href: "/mypage", label: t("nav.mypage") },
     ];
   }
@@ -33,6 +33,7 @@ function getNavItems(accountType: AccountType | null, t: ReturnType<typeof useT>
   if (accountType === "admin") {
     return [
       { href: "/admin/stats", label: "Admin" },
+      { href: "/home", label: "고객 홈" },
       { href: "/mypage", label: t("nav.mypage") },
       { href: "/salon/customers", label: "Salon CRM" },
     ];

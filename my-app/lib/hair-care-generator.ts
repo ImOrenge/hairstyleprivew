@@ -137,7 +137,7 @@ bodyHtml 규칙:
 - 최상위 div는 max-width:600px, margin:0 auto, font-family:-apple-system,Arial,sans-serif 사용
 - 핵심 내용은 ul/li 또는 짧은 문단으로 구성
 - CTA 링크는 href="{{CTA_URL}}"를 사용
-- 마지막에 HariStyle 스타일 케어 알림 푸터 포함
+- 마지막에 HairStyle 스타일 케어 알림 푸터 포함
 `.trim();
 }
 
@@ -161,7 +161,7 @@ async function generateSingleContent(
     dayOffset: schedule.dayOffset,
     subject: typeof parsed.subject === "string" && parsed.subject.trim()
       ? parsed.subject.trim()
-      : `[HariStyle] ${input.styleName} ${schedule.label}`,
+      : `[HairStyle] ${input.styleName} ${schedule.label}`,
     bodyHtml: typeof parsed.bodyHtml === "string" && parsed.bodyHtml.trim()
       ? parsed.bodyHtml.trim()
       : buildFallbackContent(input, schedule).bodyHtml,
@@ -184,13 +184,13 @@ function buildFallbackContent(input: GenerateHairCareInput, schedule: ScheduleIt
   return {
     contentType: schedule.contentType,
     dayOffset: schedule.dayOffset,
-    subject: `[HariStyle] ${input.styleName} ${schedule.label}`,
+    subject: `[HairStyle] ${input.styleName} ${schedule.label}`,
     bodyHtml: `<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7">
       <h2 style="font-size:20px;font-weight:700;margin:0 0 12px">${escapeHtml(schedule.label)}</h2>
       <p>${escapeHtml(input.styleName)} 에프터케어 가이드를 준비했습니다.</p>
       <ul style="padding-left:18px;margin:8px 0">${steps}</ul>
       <a href="{{CTA_URL}}" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600;margin-top:16px">에프터케어 확인하기</a>
-      <p style="margin-top:24px;font-size:12px;color:#9ca3af">HariStyle · 스타일 케어 알림</p>
+      <p style="margin-top:24px;font-size:12px;color:#9ca3af">HairStyle · 스타일 케어 알림</p>
     </div>`,
   };
 }

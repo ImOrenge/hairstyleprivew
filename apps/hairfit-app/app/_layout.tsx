@@ -80,7 +80,7 @@ function getAccountHomePath(me: MobileBootstrap | null) {
     return "/salon/customers";
   }
 
-  return "/workspace";
+  return "/";
 }
 
 function getMenuItems({
@@ -117,7 +117,8 @@ function getMenuItems({
   }
 
   return [
-    { label: "워크스페이스", path: "/workspace" },
+    { label: "홈", path: "/" },
+    { label: "헤어 생성", path: "/upload" },
     { label: "마이페이지", path: "/mypage" },
   ];
 }

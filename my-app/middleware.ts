@@ -14,6 +14,7 @@ const isProtectedRoute = createRouteMatcher([
   "/onboarding(.*)",
   "/admin(.*)",
   "/aftercare(.*)",
+  "/home(.*)",
   "/upload(.*)",
   "/workspace(.*)",
   "/generate(.*)",
@@ -40,6 +41,7 @@ const isCatalogSecretAdminApiRoute = createRouteMatcher([
   "/api/admin/fashion(.*)",
 ]);
 const isSalonRoute = createRouteMatcher(["/salon(.*)"]);
+const isHomeRoute = createRouteMatcher(["/home(.*)"]);
 const isMyPageRoute = createRouteMatcher(["/mypage"]);
 const isWorkspaceRoute = createRouteMatcher(["/workspace(.*)"]);
 
@@ -186,7 +188,7 @@ const clerkAppMiddleware = hasClerkConfig
             ? "/admin/stats"
             : effectiveAccountType === "salon_owner"
               ? "/salon/customers"
-              : "/workspace",
+              : "/home",
         );
         return NextResponse.redirect(new URL(redirectTo, req.url));
       }
@@ -206,11 +208,15 @@ const clerkAppMiddleware = hasClerkConfig
           return withMobileCors(req, NextResponse.json({ error: "Admin account required" }, { status: 403 }));
         }
 
-        return NextResponse.redirect(new URL("/workspace", req.url));
+        return NextResponse.redirect(new URL("/home", req.url));
       }
 
       if (isSalonRoute(req) && effectiveAccountType !== "salon_owner" && effectiveAccountType !== "admin") {
-        return NextResponse.redirect(new URL("/workspace", req.url));
+        return NextResponse.redirect(new URL("/home", req.url));
+      }
+
+      if (isHomeRoute(req) && effectiveAccountType === "salon_owner") {
+        return NextResponse.redirect(new URL("/salon/customers", req.url));
       }
 
       if (isMyPageRoute(req) && effectiveAccountType === "salon_owner") {
@@ -221,9 +227,6 @@ const clerkAppMiddleware = hasClerkConfig
         return NextResponse.redirect(new URL("/salon/customers", req.url));
       }
 
-      if (isWorkspaceRoute(req) && effectiveAccountType === "admin") {
-        return NextResponse.redirect(new URL("/admin/stats", req.url));
-      }
     } catch (error) {
       console.error("[middleware] Failed to read onboarding metadata", error);
     }

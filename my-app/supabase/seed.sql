@@ -460,7 +460,7 @@ values
     '22222222-2222-4222-8222-222222222221'::uuid,
     'dry_guide',
     1,
-    '[HariStyle] 볼륨펌 D+1 드라이 체크',
+    '[HairStyle] 볼륨펌 D+1 드라이 체크',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>소프트 레이어드 볼륨펌 D+1</h2><p>오늘은 컬이 자리 잡는 날입니다. 샴푸는 늦추고 두피부터 중간 바람으로 말려 뿌리 볼륨을 살려주세요.</p><ul><li>젖은 상태로 묶지 않기</li><li>얼굴 주변 레이어는 바깥 방향으로 식혀 고정하기</li><li><a href="{{CTA_URL}}">에프터케어 가이드 보기</a></li></ul></div>$html$,
     '2026-04-29T10:00:00+09:00'::timestamptz
   ),
@@ -470,7 +470,7 @@ values
     '22222222-2222-4222-8222-222222222221'::uuid,
     'day3_care',
     3,
-    '[HariStyle] 볼륨펌 D+3 수분 케어',
+    '[HairStyle] 볼륨펌 D+3 수분 케어',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>소프트 레이어드 볼륨펌 D+3</h2><p>수분 트리트먼트를 시작해도 좋은 시점입니다. 모발 중간부터 끝까지 바르고 뿌리에는 무겁게 바르지 마세요.</p><ul><li>주 2회 트리트먼트</li><li>컬 크림은 끝부분에 소량만</li><li><a href="{{CTA_URL}}">전체 루틴 확인</a></li></ul></div>$html$,
     '2026-05-01T10:00:00+09:00'::timestamptz
   ),
@@ -480,7 +480,7 @@ values
     '22222222-2222-4222-8222-222222222221'::uuid,
     'week1_tip',
     7,
-    '[HariStyle] 볼륨펌 1주차 스타일링 팁',
+    '[HairStyle] 볼륨펌 1주차 스타일링 팁',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>소프트 레이어드 볼륨펌 1주차</h2><p>눌리는 구간과 부스스한 끝부분을 확인해 아침 루틴을 고정하세요. 물 스프레이와 약한 바람만으로 컬을 다시 살릴 수 있습니다.</p><ul><li>고데기는 필요한 구간만 저온 사용</li><li>빗질은 끝 엉킴만 정리</li><li><a href="{{CTA_URL}}">스타일링 단계 보기</a></li></ul></div>$html$,
     '2026-05-05T10:00:00+09:00'::timestamptz
   ),
@@ -490,7 +490,7 @@ values
     '22222222-2222-4222-8222-222222222221'::uuid,
     'month1_revisit',
     30,
-    '[HariStyle] 볼륨펌 30일차 점검',
+    '[HairStyle] 볼륨펌 30일차 점검',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>소프트 레이어드 볼륨펌 30일차</h2><p>뿌리 볼륨과 얼굴 주변 레이어 흐름을 점검하세요. 앞머리나 끝부분이 무거워졌다면 보정 컷 상담을 권장합니다.</p><ul><li>정면과 측면 사진 비교</li><li>컬 탄력과 끝 건조함 확인</li><li><a href="{{CTA_URL}}">재방문 기준 보기</a></li></ul></div>$html$,
     '2026-05-28T10:00:00+09:00'::timestamptz
   ),
@@ -500,7 +500,7 @@ values
     '22222222-2222-4222-8222-222222222221'::uuid,
     'month1_trend',
     45,
-    '[HariStyle] 볼륨펌 45일차 스타일 제안',
+    '[HairStyle] 볼륨펌 45일차 스타일 제안',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>소프트 레이어드 볼륨펌 45일차</h2><p>컬이 자연스럽게 풀리는 시점에는 레이어 결을 살린 내추럴 웨이브 스타일이 잘 어울립니다.</p><ul><li>무거운 오일보다는 가벼운 세럼</li><li>정수리 볼륨 보정</li><li><a href="{{CTA_URL}}">다음 스타일 방향 보기</a></li></ul></div>$html$,
     '2026-06-12T10:00:00+09:00'::timestamptz
   ),
@@ -510,7 +510,7 @@ values
     '22222222-2222-4222-8222-222222222221'::uuid,
     'month3_cta',
     90,
-    '[HariStyle] 볼륨펌 90일차 재상담 알림',
+    '[HairStyle] 볼륨펌 90일차 재상담 알림',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>소프트 레이어드 볼륨펌 90일차</h2><p>펌 탄력이 줄어드는 시점입니다. 현재 길이와 볼륨 변화를 기준으로 다음 스타일을 상담해보세요.</p><ul><li>컬 유지 상태 확인</li><li>뿌리 볼륨 재시술 여부 상담</li><li><a href="{{CTA_URL}}">에프터케어 기록 열기</a></li></ul></div>$html$,
     '2026-07-27T10:00:00+09:00'::timestamptz
   ),
@@ -520,7 +520,7 @@ values
     '22222222-2222-4222-8222-222222222222'::uuid,
     'dry_guide',
     1,
-    '[HariStyle] 애쉬 브라운 D+1 컬러 보호',
+    '[HairStyle] 애쉬 브라운 D+1 컬러 보호',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>애쉬 브라운 톤다운 컬러 D+1</h2><p>첫 샴푸는 미지근한 물과 컬러 전용 제품으로 짧게 진행하세요. 드라이는 낮은 온도 바람으로 빠르게 마무리합니다.</p><ul><li>뜨거운 물 피하기</li><li>젖은 모발 세게 비비지 않기</li><li><a href="{{CTA_URL}}">컬러 케어 가이드 보기</a></li></ul></div>$html$,
     '2026-03-23T10:00:00+09:00'::timestamptz
   ),
@@ -530,7 +530,7 @@ values
     '22222222-2222-4222-8222-222222222222'::uuid,
     'day3_care',
     3,
-    '[HariStyle] 애쉬 브라운 D+3 트리트먼트',
+    '[HairStyle] 애쉬 브라운 D+3 트리트먼트',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>애쉬 브라운 톤다운 컬러 D+3</h2><p>끝부분 퇴색을 늦추기 위해 약산성 트리트먼트를 시작하세요. 헹굼은 짧게, 물 온도는 낮게 유지합니다.</p><ul><li>딥 클렌징 샴푸 피하기</li><li>UV 보호 미스트 사용</li><li><a href="{{CTA_URL}}">관리 루틴 확인</a></li></ul></div>$html$,
     '2026-03-25T10:00:00+09:00'::timestamptz
   ),
@@ -540,7 +540,7 @@ values
     '22222222-2222-4222-8222-222222222222'::uuid,
     'week1_tip',
     7,
-    '[HariStyle] 애쉬 브라운 1주차 톤 체크',
+    '[HairStyle] 애쉬 브라운 1주차 톤 체크',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>애쉬 브라운 톤다운 컬러 1주차</h2><p>자연광에서 노란 기가 올라오는지 확인하세요. 보색 샴푸는 매일보다 필요한 날에만 사용하는 편이 안전합니다.</p><ul><li>자연광 사진 비교</li><li>고온 고데기 줄이기</li><li><a href="{{CTA_URL}}">주의사항 보기</a></li></ul></div>$html$,
     '2026-03-29T10:00:00+09:00'::timestamptz
   ),
@@ -550,7 +550,7 @@ values
     '22222222-2222-4222-8222-222222222222'::uuid,
     'month1_revisit',
     30,
-    '[HariStyle] 애쉬 브라운 30일차 리터치 체크',
+    '[HairStyle] 애쉬 브라운 30일차 리터치 체크',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>애쉬 브라운 톤다운 컬러 30일차</h2><p>뿌리 자람과 전체 톤 균일도를 확인하세요. 톤이 밝아졌다면 리터치 상담을 잡는 것이 좋습니다.</p><ul><li>뿌리 경계 확인</li><li>끝부분 건조함 점검</li><li><a href="{{CTA_URL}}">재방문 기준 보기</a></li></ul></div>$html$,
     '2026-04-21T10:00:00+09:00'::timestamptz
   ),
@@ -560,7 +560,7 @@ values
     '22222222-2222-4222-8222-222222222222'::uuid,
     'month1_trend',
     45,
-    '[HariStyle] 애쉬 브라운 45일차 톤 보정 제안',
+    '[HairStyle] 애쉬 브라운 45일차 톤 보정 제안',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>애쉬 브라운 톤다운 컬러 45일차</h2><p>애쉬 톤이 빠지기 쉬운 시점입니다. 차분한 브라운을 유지하려면 톤 보정 상담을 추천합니다.</p><ul><li>보색 샴푸 빈도 조절</li><li>UV 노출 줄이기</li><li><a href="{{CTA_URL}}">다음 컬러 방향 보기</a></li></ul></div>$html$,
     '2026-05-06T10:00:00+09:00'::timestamptz
   ),
@@ -570,7 +570,7 @@ values
     '22222222-2222-4222-8222-222222222222'::uuid,
     'month3_cta',
     90,
-    '[HariStyle] 애쉬 브라운 90일차 새 컬러 상담',
+    '[HairStyle] 애쉬 브라운 90일차 새 컬러 상담',
     $html$<div style="max-width:600px;margin:0 auto;font-family:-apple-system,Arial,sans-serif;color:#111827;line-height:1.7"><h2>애쉬 브라운 톤다운 컬러 90일차</h2><p>전체 톤이 많이 변했다면 다음 시즌 컬러를 설계하기 좋은 시점입니다. 현재 사진과 선호 톤을 함께 준비하세요.</p><ul><li>현재 톤 사진 준비</li><li>원하는 밝기 정리</li><li><a href="{{CTA_URL}}">에프터케어 기록 열기</a></li></ul></div>$html$,
     '2026-06-20T10:00:00+09:00'::timestamptz
   )

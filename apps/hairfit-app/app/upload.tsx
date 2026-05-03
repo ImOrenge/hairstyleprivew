@@ -59,11 +59,6 @@ export default function UploadScreen() {
       return;
     }
 
-    if (isLoaded && isSignedIn && accountType === "admin") {
-      router.replace("/admin/stats");
-      return;
-    }
-
     if (isLoaded && isSignedIn && accountType === "salon_owner") {
       router.replace("/salon/customers");
     }

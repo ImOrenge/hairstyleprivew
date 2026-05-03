@@ -115,7 +115,7 @@ async function fetchGoogleNewsDocuments(query: string) {
       cache: "no-store",
       signal: controller.signal,
       headers: {
-        "User-Agent": "HariStylePreviewCatalogBot/1.0",
+        "User-Agent": "HairStylePreviewCatalogBot/1.0",
       },
     });
 

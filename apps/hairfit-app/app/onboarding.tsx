@@ -31,7 +31,7 @@ export default function OnboardingScreen() {
         styleTarget,
         preferredStyleTone,
       });
-      router.replace("/upload");
+      router.replace("/");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Onboarding failed.");
     } finally {

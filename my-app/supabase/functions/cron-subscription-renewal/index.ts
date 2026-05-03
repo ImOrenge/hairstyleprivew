@@ -12,7 +12,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PORTONE_V2_API_SECRET = Deno.env.get("PORTONE_V2_API_SECRET")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM_EMAIL =
-  Deno.env.get("RESEND_FROM_EMAIL") ?? "HariStyle <onboarding@resend.dev>";
+  Deno.env.get("RESEND_FROM_EMAIL") ?? "HairStyle <onboarding@resend.dev>";
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
 
 // ─── PortOne V2 래퍼 ────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ async function sendRenewalEmail(
   const html = `
   <div style="font-family:-apple-system,Arial,sans-serif;line-height:1.7;color:#111827;max-width:600px;margin:0 auto">
     <h2 style="font-size:20px;font-weight:700;margin:0 0 12px">구독이 갱신되었어요</h2>
-    <p style="margin:0 0 14px">HariStyle ${planLabel} 구독이 자동 갱신되어 크레딧이 충전되었습니다.</p>
+    <p style="margin:0 0 14px">HairStyle ${planLabel} 구독이 자동 갱신되어 크레딧이 충전되었습니다.</p>
     <ul style="padding-left:18px;margin:0 0 16px">
       <li><strong>플랜:</strong> ${planLabel}</li>
       <li><strong>충전 크레딧:</strong> +${creditsGranted.toLocaleString("ko-KR")}</li>
@@ -108,7 +108,7 @@ async function sendRenewalEmail(
     body: JSON.stringify({
       from: RESEND_FROM_EMAIL,
       to,
-      subject: `[HariStyle] ${planLabel} 구독이 갱신되었습니다 (+${creditsGranted.toLocaleString("ko-KR")} credits)`,
+      subject: `[HairStyle] ${planLabel} 구독이 갱신되었습니다 (+${creditsGranted.toLocaleString("ko-KR")} credits)`,
       html,
     }),
   }).catch((e: unknown) => console.error("[cron-renewal] email error:", e));
@@ -175,7 +175,7 @@ Deno.serve(async () => {
   for (const sub of subscriptions) {
     const paymentId = `renewal-${sub.subscription_id}-${Date.now()}`;
     const orderName =
-      `HariStyle ${sub.plan_key.charAt(0).toUpperCase() + sub.plan_key.slice(1)} - 월 구독`;
+      `HairStyle ${sub.plan_key.charAt(0).toUpperCase() + sub.plan_key.slice(1)} - 월 구독`;
 
     try {
       // 1. PortOne 빌링키 결제

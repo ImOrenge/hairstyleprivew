@@ -124,7 +124,7 @@ async function fetchGoogleNewsDocuments(query: string, genre: FashionGenre) {
       cache: "no-store",
       signal: controller.signal,
       headers: {
-        "User-Agent": "HariStylePreviewFashionCatalogBot/1.0",
+        "User-Agent": "HairStylePreviewFashionCatalogBot/1.0",
       },
     });
 

@@ -120,14 +120,14 @@ export function ActionToolbar({
       const blob = await response.blob();
       const objectUrl = URL.createObjectURL(blob);
       const ext = inferExtensionFromUrl(outputImageUrl) || inferExtensionFromMime(blob.type);
-      const filename = `haristyle-${id}.${ext}`;
+      const filename = `hairstyle-${id}.${ext}`;
 
       triggerDownload(objectUrl, filename);
       URL.revokeObjectURL(objectUrl);
     } catch {
       try {
         const ext = inferExtensionFromUrl(outputImageUrl) || "png";
-        triggerDownload(outputImageUrl, `haristyle-${id}.${ext}`);
+        triggerDownload(outputImageUrl, `hairstyle-${id}.${ext}`);
       } catch {
         setDownloadError("다운로드에 실패했습니다. 잠시 후 다시 시도해 주세요.");
       }

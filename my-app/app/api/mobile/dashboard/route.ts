@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireMobileService, type MobileServiceKey } from "../../../../lib/mobile-auth";
+import { loadCustomerHomeDashboard } from "../../../../lib/customer-home-data";
 
 const SERVICE_KEYS = ["customer", "salon", "admin"] as const;
 
@@ -27,24 +28,6 @@ interface MobileDashboardSupabase {
   from: <T = Record<string, unknown>>(table: string) => {
     select: (columns: string) => QueryBuilder<T>;
   };
-}
-
-interface GenerationRow {
-  id?: unknown;
-  status?: unknown;
-  prompt_used?: unknown;
-  generated_image_path?: unknown;
-  options?: unknown;
-  created_at?: unknown;
-}
-
-interface PaymentRow {
-  id?: unknown;
-  status?: unknown;
-  amount?: unknown;
-  credits_to_grant?: unknown;
-  paid_at?: unknown;
-  created_at?: unknown;
 }
 
 interface CustomerRow {
@@ -91,22 +74,6 @@ function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function selectedVariantLabel(options: unknown) {
-  const recommendationSet = isRecord(options) && isRecord(options.recommendationSet)
-    ? options.recommendationSet
-    : null;
-  const variants = Array.isArray(recommendationSet?.variants) ? recommendationSet.variants : [];
-  const selectedId = text(recommendationSet?.selectedVariantId);
-  const selected = variants.find((item) => isRecord(item) && selectedId && item.id === selectedId);
-  const fallback = variants.find((item) => isRecord(item));
-  const variant = isRecord(selected) ? selected : isRecord(fallback) ? fallback : null;
-  return nullableText(variant?.label);
-}
-
 function dateKey(value: string) {
   return value.slice(0, 10);
 }
@@ -126,46 +93,7 @@ async function loadCustomerDashboard(
   userId: string,
   bootstrap: { credits: number; planKey: string | null },
 ) {
-  const [generationsRes, paymentsRes] = await Promise.all([
-    supabase
-      .from<GenerationRow>("generations")
-      .select("id,status,prompt_used,generated_image_path,options,created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(5),
-    supabase
-      .from<PaymentRow>("payment_transactions")
-      .select("id,status,amount,credits_to_grant,paid_at,created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(5),
-  ]);
-
-  const error = generationsRes.error || paymentsRes.error;
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return {
-    credits: bootstrap.credits,
-    planKey: bootstrap.planKey,
-    recentGenerations: (generationsRes.data || []).map((row) => ({
-      id: text(row.id),
-      status: text(row.status) || "unknown",
-      promptUsed: nullableText(row.prompt_used),
-      generatedImagePath: nullableText(row.generated_image_path),
-      selectedVariantLabel: selectedVariantLabel(row.options),
-      createdAt: text(row.created_at),
-    })),
-    recentPayments: (paymentsRes.data || []).map((row) => ({
-      id: text(row.id),
-      status: text(row.status) || "unknown",
-      amountKrw: numberValue(row.amount),
-      creditsToGrant: numberValue(row.credits_to_grant),
-      paidAt: nullableText(row.paid_at),
-      createdAt: text(row.created_at),
-    })),
-  };
+  return loadCustomerHomeDashboard(supabase as never, userId, bootstrap);
 }
 
 async function loadSalonDashboard(supabase: MobileDashboardSupabase, userId: string) {

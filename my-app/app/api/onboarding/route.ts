@@ -3,6 +3,11 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { ensureCurrentUserProfile, type ServerSupabaseLike } from "../../../lib/style-profile-server";
 import { getSupabaseAdminClient } from "../../../lib/supabase";
+import { sendWelcomeEmail } from "../../../lib/resend";
+import {
+  BusinessVerificationError,
+  verifyBusinessRegistration,
+} from "../../../lib/nts-business-verification";
 import {
   isAccountType,
   isOnboardingAccountType,
@@ -21,6 +26,11 @@ interface OnboardingUserRow {
   display_name: string | null;
 }
 
+interface OnboardingWelcomeUserRow {
+  email: string | null;
+  welcome_email_sent_at: string | null;
+}
+
 interface MemberProfileRow {
   display_name: string | null;
   style_target: MemberStyleTarget | null;
@@ -34,6 +44,12 @@ interface SalonProfileRow {
   region: string | null;
   instagram_handle: string | null;
   introduction: string | null;
+  business_registration_number: string | null;
+  business_started_on: string | null;
+  business_representative_name: string | null;
+  business_status_code: string | null;
+  business_status_label: string | null;
+  business_verified_at: string | null;
 }
 
 interface OnboardingRequestBody {
@@ -47,6 +63,9 @@ interface OnboardingRequestBody {
   region?: unknown;
   instagramHandle?: unknown;
   introduction?: unknown;
+  businessRegistrationNumber?: unknown;
+  businessStartedOn?: unknown;
+  businessRepresentativeName?: unknown;
   returnUrl?: unknown;
 }
 
@@ -62,6 +81,54 @@ async function syncClerkOnboardingMetadata(userId: string, accountType: AccountT
 
 function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
+
+function isDeliverableEmail(email: string | null | undefined): email is string {
+  return Boolean(
+    email &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) &&
+      !email.toLowerCase().endsWith("@placeholder.local"),
+  );
+}
+
+async function sendWelcomeEmailOnce({
+  supabase,
+  userId,
+  email,
+  displayName,
+  accountType,
+}: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  userId: string;
+  email: string | null | undefined;
+  displayName: string | null;
+  accountType: "member" | "salon_owner";
+}) {
+  if (!isDeliverableEmail(email)) {
+    console.warn(`[onboarding] Skipping welcome email for ${userId} (missing deliverable email)`);
+    return;
+  }
+
+  const result = await sendWelcomeEmail({
+    to: email,
+    displayName,
+    accountType,
+  });
+
+  if (result.error) {
+    console.error("[onboarding] Welcome email send failed:", result.error);
+    return;
+  }
+
+  const { error: markError } = await supabase
+    .from("users")
+    .update({ welcome_email_sent_at: new Date().toISOString() })
+    .eq("id", userId)
+    .is("welcome_email_sent_at", null);
+
+  if (markError) {
+    console.error("[onboarding] Failed to mark welcome email as sent:", markError);
+  }
 }
 
 export async function GET() {
@@ -100,7 +167,7 @@ export async function GET() {
 
     const { data: salonProfile, error: salonError } = await supabase
       .from("salon_profiles")
-      .select("manager_name, shop_name, contact_phone, region, instagram_handle, introduction")
+      .select("manager_name, shop_name, contact_phone, region, instagram_handle, introduction, business_registration_number, business_started_on, business_representative_name, business_status_code, business_status_label, business_verified_at")
       .eq("user_id", userId)
       .maybeSingle<SalonProfileRow>();
 
@@ -135,6 +202,12 @@ export async function GET() {
               region: salonProfile.region ?? "",
               instagramHandle: salonProfile.instagram_handle ?? "",
               introduction: salonProfile.introduction ?? "",
+              businessRegistrationNumber: salonProfile.business_registration_number ?? "",
+              businessStartedOn: salonProfile.business_started_on ?? "",
+              businessRepresentativeName: salonProfile.business_representative_name ?? "",
+              businessStatusCode: salonProfile.business_status_code ?? "",
+              businessStatusLabel: salonProfile.business_status_label ?? "",
+              businessVerifiedAt: salonProfile.business_verified_at ?? "",
             }
           : null,
       },
@@ -160,7 +233,7 @@ export async function POST(request: Request) {
 
   const returnUrl = normalizeAppPath(
     typeof body.returnUrl === "string" ? body.returnUrl : null,
-    "/mypage",
+    "/home",
   );
 
   try {
@@ -171,6 +244,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: ensured.error.message }, { status: 500 });
     }
 
+    const { data: welcomeUser, error: welcomeUserError } = await supabase
+      .from("users")
+      .select("email, welcome_email_sent_at")
+      .eq("id", userId)
+      .maybeSingle<OnboardingWelcomeUserRow>();
+
+    if (welcomeUserError) {
+      return NextResponse.json({ error: welcomeUserError.message }, { status: 500 });
+    }
+
+    const shouldSendWelcomeEmail = !welcomeUser?.welcome_email_sent_at;
+    let welcomeDisplayName: string | null = null;
     const completedAt = new Date().toISOString();
 
     if (accountType === "member") {
@@ -189,6 +274,8 @@ export async function POST(request: Request) {
       if (!isMemberStyleTone(preferredStyleTone)) {
         return NextResponse.json({ error: "선호 스타일 톤을 선택해 주세요." }, { status: 400 });
       }
+
+      welcomeDisplayName = displayName;
 
       const { error: memberError } = await supabase.from("member_profiles").upsert(
         {
@@ -234,10 +321,30 @@ export async function POST(request: Request) {
       const region = trimText(body.region, 80);
       const instagramHandle = trimText(body.instagramHandle, 120);
       const introduction = trimText(body.introduction, 400);
+      const businessRegistrationNumber = trimText(body.businessRegistrationNumber, 40);
+      const businessStartedOn = trimText(body.businessStartedOn, 20);
+      const businessRepresentativeName = trimText(body.businessRepresentativeName, 80);
 
       if (!managerName || !shopName || !contactPhone || !region) {
         return NextResponse.json({ error: "운영자 기본 정보를 모두 입력해 주세요." }, { status: 400 });
       }
+
+      let verifiedBusiness: Awaited<ReturnType<typeof verifyBusinessRegistration>>;
+      try {
+        verifiedBusiness = await verifyBusinessRegistration({
+          businessRegistrationNumber,
+          businessStartedOn,
+          businessRepresentativeName,
+        });
+      } catch (error) {
+        if (error instanceof BusinessVerificationError) {
+          return NextResponse.json({ error: error.message }, { status: error.status });
+        }
+
+        throw error;
+      }
+
+      welcomeDisplayName = shopName;
 
       const { error: salonError } = await supabase.from("salon_profiles").upsert(
         {
@@ -248,6 +355,12 @@ export async function POST(request: Request) {
           region,
           instagram_handle: instagramHandle || null,
           introduction: introduction || null,
+          business_registration_number: verifiedBusiness.businessRegistrationNumber,
+          business_started_on: verifiedBusiness.businessStartedOn,
+          business_representative_name: verifiedBusiness.businessRepresentativeName,
+          business_status_code: verifiedBusiness.businessStatusCode,
+          business_status_label: verifiedBusiness.businessStatusLabel,
+          business_verified_at: completedAt,
         },
         { onConflict: "user_id" },
       );
@@ -280,6 +393,16 @@ export async function POST(request: Request) {
     }
 
     await syncClerkOnboardingMetadata(userId, accountType);
+
+    if (shouldSendWelcomeEmail) {
+      await sendWelcomeEmailOnce({
+        supabase,
+        userId,
+        email: welcomeUser?.email,
+        displayName: welcomeDisplayName,
+        accountType,
+      });
+    }
 
     return NextResponse.json(
       {

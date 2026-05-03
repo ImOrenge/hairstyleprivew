@@ -280,8 +280,8 @@ export const PLAN_CREDITS: Record<string, number> = {
 };
 
 export const PLAN_ORDER_NAME: Record<string, string> = {
-  basic:    "HariStyle Basic - 월 구독",
-  standard: "HariStyle Standard - 월 구독",
-  pro:      "HariStyle Pro - 월 구독",
-  salon:    "HariStyle Salon - 월 구독",
+  basic:    "HairStyle Basic - 월 구독",
+  standard: "HairStyle Standard - 월 구독",
+  pro:      "HairStyle Pro - 월 구독",
+  salon:    "HairStyle Salon - 월 구독",
 };

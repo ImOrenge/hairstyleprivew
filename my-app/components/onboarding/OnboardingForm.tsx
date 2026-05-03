@@ -13,6 +13,7 @@ import {
 
 interface OnboardingFormProps {
   returnUrl: string;
+  forcedAccountType?: OnboardingAccountType;
 }
 
 interface OnboardingResponse {
@@ -30,6 +31,12 @@ interface OnboardingResponse {
     region?: string;
     instagramHandle?: string;
     introduction?: string;
+    businessRegistrationNumber?: string;
+    businessStartedOn?: string;
+    businessRepresentativeName?: string;
+    businessStatusCode?: string;
+    businessStatusLabel?: string;
+    businessVerifiedAt?: string;
   } | null;
   redirectTo?: string;
   error?: string;
@@ -48,11 +55,11 @@ const memberTargetOptions: Array<{ value: MemberStyleTarget; label: string }> = 
   { value: "neutral", label: "중립" },
 ];
 
-export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
+export function OnboardingForm({ returnUrl, forcedAccountType }: OnboardingFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<OnboardingAccountType | null>(null);
+  const [selectedRole, setSelectedRole] = useState<OnboardingAccountType | null>(forcedAccountType ?? null);
   const [error, setError] = useState<string | null>(null);
 
   const [memberForm, setMemberForm] = useState({
@@ -68,6 +75,9 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
     region: "",
     instagramHandle: "",
     introduction: "",
+    businessRegistrationNumber: "",
+    businessStartedOn: "",
+    businessRepresentativeName: "",
   });
 
   useEffect(() => {
@@ -90,7 +100,9 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
           return;
         }
 
-        if (data.accountType === "member" || data.accountType === "salon_owner") {
+        if (forcedAccountType) {
+          setSelectedRole(forcedAccountType);
+        } else if (data.accountType === "member" || data.accountType === "salon_owner") {
           setSelectedRole(data.accountType);
         }
 
@@ -110,6 +122,9 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
             region: data.salonProfile.region || "",
             instagramHandle: data.salonProfile.instagramHandle || "",
             introduction: data.salonProfile.introduction || "",
+            businessRegistrationNumber: data.salonProfile.businessRegistrationNumber || "",
+            businessStartedOn: data.salonProfile.businessStartedOn || "",
+            businessRepresentativeName: data.salonProfile.businessRepresentativeName || "",
           });
         }
       } else {
@@ -124,7 +139,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
     return () => {
       active = false;
     };
-  }, [returnUrl, router]);
+  }, [forcedAccountType, returnUrl, router]);
 
   const canSubmit = useMemo(() => {
     if (selectedRole === "member") {
@@ -136,7 +151,10 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
         salonForm.managerName.trim() &&
           salonForm.shopName.trim() &&
           salonForm.contactPhone.trim() &&
-          salonForm.region.trim(),
+          salonForm.region.trim() &&
+          salonForm.businessRegistrationNumber.trim() &&
+          salonForm.businessStartedOn.trim() &&
+          salonForm.businessRepresentativeName.trim(),
       );
     }
 
@@ -168,6 +186,9 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
             region: salonForm.region,
             instagramHandle: salonForm.instagramHandle,
             introduction: salonForm.introduction,
+            businessRegistrationNumber: salonForm.businessRegistrationNumber,
+            businessStartedOn: salonForm.businessStartedOn,
+            businessRepresentativeName: salonForm.businessRepresentativeName,
             returnUrl,
           };
 
@@ -203,12 +224,31 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
       <Panel as="section" className="p-6">
         <div className="space-y-2">
           <p className="app-kicker">Step 1</p>
-          <h2 className="text-2xl font-black tracking-tight text-[var(--app-text)]">가입 유형을 선택해 주세요</h2>
+          <h2 className="text-2xl font-black tracking-tight text-[var(--app-text)]">
+            {forcedAccountType ? "가입 유형이 설정되었습니다" : "가입 유형을 선택해 주세요"}
+          </h2>
           <p className="text-sm leading-6 text-[var(--app-muted)]">
-            선택한 역할에 따라 첫 설정 폼이 달라집니다. 완료 전에는 핵심 기능을 사용할 수 없습니다.
+            {forcedAccountType
+              ? "선택한 가입 경로에 맞춰 필요한 정보만 입력합니다."
+              : "선택한 역할에 따라 첫 설정 폼이 달라집니다. 완료 전에는 핵심 기능을 사용할 수 없습니다."}
           </p>
         </div>
 
+        {forcedAccountType ? (
+          <SurfaceCard className="mt-6 px-4 py-4">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--app-subtle)]">
+              {forcedAccountType === "member" ? "일반 유저" : "B2B 운영자"}
+            </p>
+            <p className="mt-2 text-lg font-black text-[var(--app-text)]">
+              {forcedAccountType === "member" ? "개인 이용자 가입" : "살롱 운영자 가입"}
+            </p>
+            <p className="mt-1 text-sm leading-6 text-[var(--app-muted)]">
+              {forcedAccountType === "member"
+                ? "개인 이용자 프로필을 저장하면 바로 스타일 추천 흐름을 사용할 수 있습니다."
+                : "사업자 인증을 통과해야 운영자 계정이 활성화되고 Salon CRM에 접근할 수 있습니다."}
+            </p>
+          </SurfaceCard>
+        ) : (
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <button
             type="button"
@@ -246,6 +286,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
             </p>
           </button>
         </div>
+        )}
       </Panel>
 
       {selectedRole ? (
@@ -376,6 +417,51 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
                 />
               </label>
 
+              <SurfaceCard className="px-4 py-4 sm:col-span-2">
+                <p className="app-kicker">Business Verification</p>
+                <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
+                  사업자등록번호, 개업일자, 대표자명이 국세청 등록정보와 일치하고 계속사업자로 확인되어야 가입이 완료됩니다.
+                </p>
+              </SurfaceCard>
+
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
+                사업자등록번호
+                <input
+                  value={salonForm.businessRegistrationNumber}
+                  onChange={(event) =>
+                    setSalonForm((current) => ({ ...current, businessRegistrationNumber: event.target.value }))
+                  }
+                  placeholder="123-45-67890"
+                  inputMode="numeric"
+                  maxLength={12}
+                  className="app-input px-3 py-2 text-sm"
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
+                개업일자
+                <input
+                  value={salonForm.businessStartedOn}
+                  onChange={(event) =>
+                    setSalonForm((current) => ({ ...current, businessStartedOn: event.target.value }))
+                  }
+                  type="date"
+                  className="app-input px-3 py-2 text-sm"
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm font-medium text-[var(--app-text)] sm:col-span-2">
+                대표자명
+                <input
+                  value={salonForm.businessRepresentativeName}
+                  onChange={(event) =>
+                    setSalonForm((current) => ({ ...current, businessRepresentativeName: event.target.value }))
+                  }
+                  placeholder="사업자등록증의 대표자명"
+                  className="app-input px-3 py-2 text-sm"
+                />
+              </label>
+
               <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
                 인스타그램
                 <input
@@ -411,7 +497,7 @@ export function OnboardingForm({ returnUrl }: OnboardingFormProps) {
 
           <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-[var(--app-muted)]">
-              저장이 완료되면 바로 {returnUrl === "/mypage" ? "마이페이지" : "이전 작업 흐름"}로 이동합니다.
+              저장이 완료되면 바로 {returnUrl === "/home" ? "홈" : returnUrl === "/mypage" ? "마이페이지" : "이전 작업 흐름"}로 이동합니다.
             </p>
             <Button type="button" onClick={handleSubmit} disabled={!canSubmit || isSubmitting}>
               {isSubmitting ? "저장 중..." : "가입 정보 저장"}

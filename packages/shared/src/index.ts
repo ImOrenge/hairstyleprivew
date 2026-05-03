@@ -26,7 +26,11 @@ export interface MobileDashboardGeneration {
   status: string;
   promptUsed: string | null;
   generatedImagePath: string | null;
+  selectedVariantId: string | null;
   selectedVariantLabel: string | null;
+  selectedVariantImageUrl: string | null;
+  completedVariantCount: number;
+  totalVariantCount: number;
   createdAt: string;
 }
 
@@ -39,11 +43,31 @@ export interface MobileDashboardPayment {
   createdAt: string;
 }
 
+export interface MobileDashboardStylingSession {
+  id: string;
+  generationId: string;
+  selectedVariantId: string;
+  genre: string | null;
+  occasion: string | null;
+  mood: string | null;
+  headline: string | null;
+  summary: string | null;
+  status: string;
+  errorMessage: string | null;
+  creditsUsed: number;
+  generatedImagePath: string | null;
+  imageUrl: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 export interface MobileCustomerDashboard {
   credits: number;
   planKey: string | null;
+  styleProfileReady: boolean;
   recentGenerations: MobileDashboardGeneration[];
   recentPayments: MobileDashboardPayment[];
+  recentStylingSessions: MobileDashboardStylingSession[];
 }
 
 export interface MobileSalonDashboard {

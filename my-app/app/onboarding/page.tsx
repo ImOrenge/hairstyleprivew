@@ -26,7 +26,7 @@ export default async function OnboardingPage({
   }
 
   const resolvedSearchParams = (await searchParams) ?? {};
-  const returnUrl = normalizeAppPath(pickFirst(resolvedSearchParams.return_url), "/mypage");
+  const returnUrl = normalizeAppPath(pickFirst(resolvedSearchParams.return_url), "/home");
   const clerkUser = await currentUser();
   const metadata = parseOnboardingMetadata(clerkUser?.publicMetadata);
 

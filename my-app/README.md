@@ -42,7 +42,7 @@ Optional:
 - `PRICING_PRO_CREDITS` (default: `250`)
 - `PRICING_PRO_PRICE_KRW` (default: `39000`)
 - `RESEND_API_KEY` (optional, payment success email notifications)
-- `RESEND_FROM_EMAIL` (optional, default: `HairFit <onboarding@resend.dev>`)
+- `RESEND_FROM_EMAIL` (optional, default: `HairStyle <onboarding@resend.dev>`)
 - `INBOUND_EMAIL_SECRET` (required for Cloudflare Email Routing Worker -> app webhook)
 - `CLERK_SOCIAL_PROOF_SECRET_KEY` (optional, server-only `sk_live_` key for production-only landing user count)
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (required for B2B inquiry form CAPTCHA)

@@ -6,6 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   CalendarDays,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   ClipboardCheck,
   ImagePlus,
@@ -16,9 +18,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { PipelineStatusIndicator } from "../generate/PipelineStatusIndicator";
-import { FaceGuideOverlay } from "../upload/FaceGuideOverlay";
 import { UploadArea } from "../upload/UploadArea";
-import { ValidationCheck } from "../upload/ValidationCheck";
 import { Button } from "../ui/Button";
 import { Panel, SurfaceCard } from "../ui/Surface";
 import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
@@ -150,6 +150,100 @@ function StatTile({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-bold uppercase text-[var(--app-muted)]">{label}</p>
       <p className="mt-2 text-2xl font-black text-[var(--app-text)]">{value}</p>
     </SurfaceCard>
+  );
+}
+
+function MobileStepOverlay({
+  canOpenGenerate,
+  canOpenSelect,
+  currentStep,
+  isOpen,
+  onStepClick,
+  onToggle,
+}: {
+  canOpenGenerate: boolean;
+  canOpenSelect: boolean;
+  currentStep: WizardStep;
+  isOpen: boolean;
+  onStepClick: (step: WizardStep) => void;
+  onToggle: () => void;
+}) {
+  const activeIndex = Math.max(
+    steps.findIndex((step) => step.id === currentStep),
+    0,
+  );
+  const activeStep = steps[activeIndex] || steps[0];
+  const ActiveIcon = activeStep.icon;
+  const activeProgress = Math.round(((activeIndex + 1) / steps.length) * 100);
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-40 md:hidden">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/55 to-transparent" />
+      <div className="relative mx-auto max-w-xl px-3 pb-[calc(env(safe-area-inset-bottom)+12px)]">
+        <div className="overflow-hidden rounded-t-[var(--app-radius-panel)] border border-[var(--app-border-strong)] bg-[var(--app-surface)] shadow-2xl">
+          {isOpen ? (
+            <div className="border-b border-[var(--app-border)] p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="app-kicker">Wizard</p>
+                  <p className="mt-1 text-sm font-black text-[var(--app-text)]">진행 단계</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onToggle}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border)] text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)]"
+                  aria-label="진행 단계 접기"
+                >
+                  <ChevronDown className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {steps.map((step) => (
+                  <StepButton
+                    key={step.id}
+                    currentStep={currentStep}
+                    enabled={step.id === "upload" || (step.id === "generate" && canOpenGenerate) || (step.id === "select" && canOpenSelect)}
+                    onClick={onStepClick}
+                    step={step}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={onToggle}
+            className="flex w-full items-center gap-3 px-4 py-3 text-left"
+            aria-expanded={isOpen}
+            aria-label={isOpen ? "진행 단계 접기" : "진행 단계 펼치기"}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-text)]">
+              <ActiveIcon className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center justify-between gap-3">
+                <span className="truncate text-sm font-black text-[var(--app-text)]">{activeStep.label}</span>
+                <span className="shrink-0 text-xs font-black text-[var(--app-muted)]">
+                  {activeIndex + 1}/{steps.length}
+                </span>
+              </span>
+              <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-[var(--app-surface-muted)]">
+                <span
+                  className="block h-full rounded-full bg-[var(--app-accent-strong)] transition-all"
+                  style={{ width: `${activeProgress}%` }}
+                />
+              </span>
+            </span>
+            {isOpen ? (
+              <ChevronDown className="h-5 w-5 shrink-0 text-[var(--app-muted)]" aria-hidden="true" />
+            ) : (
+              <ChevronUp className="h-5 w-5 shrink-0 text-[var(--app-muted)]" aria-hidden="true" />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -311,7 +405,7 @@ export function WorkspaceWizard() {
   const router = useRouter();
   const { isAdminReadOnly } = useAdminReadOnly();
   const { runGridPipeline, resetPipeline } = useGenerate();
-  const { status, message, details, validateImage, resetValidation } = useUpload();
+  const { validateImage, resetValidation } = useUpload();
 
   const previewUrl = useGenerationStore((state) => state.previewUrl);
   const isGenerating = useGenerationStore((state) => state.isGenerating);
@@ -332,7 +426,6 @@ export function WorkspaceWizard() {
   const clearLatestResult = useGenerationStore((state) => state.clearLatestResult);
 
   const [currentStep, setCurrentStep] = useState<WizardStep>("upload");
-  const [guideOpen, setGuideOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingSelection, setIsSavingSelection] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -341,6 +434,7 @@ export function WorkspaceWizard() {
   const [serviceDate, setServiceDate] = useState(getTodayValue);
   const [isConfirming, setIsConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [mobileStepsOpen, setMobileStepsOpen] = useState(false);
 
   useEffect(() => {
     void hydrateOriginalImage();
@@ -358,14 +452,17 @@ export function WorkspaceWizard() {
 
   const handleStepClick = (step: WizardStep) => {
     if (step === "upload") {
+      setMobileStepsOpen(false);
       setCurrentStep(step);
       return;
     }
     if (step === "generate" && canOpenGenerate) {
+      setMobileStepsOpen(false);
       setCurrentStep(step);
       return;
     }
     if (step === "select" && canOpenSelect) {
+      setMobileStepsOpen(false);
       setCurrentStep(step);
     }
   };
@@ -510,7 +607,7 @@ export function WorkspaceWizard() {
         </div>
       </Panel>
 
-      <section className="grid gap-2 md:grid-cols-3">
+      <section className="hidden gap-2 md:grid md:grid-cols-3">
         {steps.map((step) => (
           <StepButton
             key={step.id}
@@ -521,6 +618,15 @@ export function WorkspaceWizard() {
           />
         ))}
       </section>
+
+      <MobileStepOverlay
+        canOpenGenerate={canOpenGenerate}
+        canOpenSelect={canOpenSelect}
+        currentStep={currentStep}
+        isOpen={mobileStepsOpen}
+        onStepClick={handleStepClick}
+        onToggle={() => setMobileStepsOpen((open) => !open)}
+      />
 
       {currentStep === "upload" ? (
         <Panel as="section" className="grid gap-5 p-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:p-5">
@@ -537,17 +643,13 @@ export function WorkspaceWizard() {
                 관리자 읽기 전용 모드입니다. 생성은 고객 계정에서 진행하세요.
               </div>
             ) : null}
-            <ValidationCheck status={status} message={message} details={details} />
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" onClick={() => setGuideOpen(true)}>
-                사진 가이드
-              </Button>
-              {previewUrl ? (
+            {previewUrl ? (
+              <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="ghost" onClick={handleResetPhoto}>
                   사진 다시 선택
                 </Button>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="mx-auto w-full max-w-xl">
@@ -739,7 +841,6 @@ export function WorkspaceWizard() {
         </section>
       ) : null}
 
-      <FaceGuideOverlay open={guideOpen} onClose={() => setGuideOpen(false)} />
       <ServiceConfirmDialog
         error={confirmError}
         isOpen={isConfirmOpen}
