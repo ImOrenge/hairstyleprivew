@@ -3,7 +3,11 @@ import { redirect } from "next/navigation";
 import { OnboardingForm } from "../../components/onboarding/OnboardingForm";
 import { AppPage } from "../../components/ui/Surface";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
-import { normalizeAppPath, parseOnboardingMetadata } from "../../lib/onboarding";
+import {
+  isOnboardingAccountType,
+  normalizeAppPath,
+  parseOnboardingMetadata,
+} from "../../lib/onboarding";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -20,13 +24,20 @@ export default async function OnboardingPage({
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
+  const resolvedSearchParams = (await searchParams) ?? {};
+  const requestedAccountType = pickFirst(resolvedSearchParams.account_type);
+  const forcedAccountType = isOnboardingAccountType(requestedAccountType) ? requestedAccountType : undefined;
+  const defaultReturnUrl = forcedAccountType === "salon_owner" ? "/salon/customers" : "/home";
+  const returnUrl = normalizeAppPath(pickFirst(resolvedSearchParams.return_url), defaultReturnUrl);
+  const signInTarget = forcedAccountType
+    ? `/onboarding?account_type=${encodeURIComponent(forcedAccountType)}&return_url=${encodeURIComponent(returnUrl)}`
+    : "/onboarding";
+
   const { userId } = await auth();
   if (!userId) {
-    redirect(buildSignInRedirectUrl("/onboarding"));
+    redirect(buildSignInRedirectUrl(signInTarget));
   }
 
-  const resolvedSearchParams = (await searchParams) ?? {};
-  const returnUrl = normalizeAppPath(pickFirst(resolvedSearchParams.return_url), "/home");
   const clerkUser = await currentUser();
   const metadata = parseOnboardingMetadata(clerkUser?.publicMetadata);
 
@@ -46,7 +57,7 @@ export default async function OnboardingPage({
         </p>
       </header>
 
-      <OnboardingForm returnUrl={returnUrl} />
+      <OnboardingForm returnUrl={returnUrl} forcedAccountType={forcedAccountType} />
     </AppPage>
   );
 }

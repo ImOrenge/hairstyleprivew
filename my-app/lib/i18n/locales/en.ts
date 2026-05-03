@@ -192,7 +192,7 @@ const en: Record<TranslationKey, string> = {
     "pricing.pro.f5": "Credits valid for 365 days",
     "pricing.salon.subtitle": "Salon & designer",
     "pricing.salon.desc": "For salons that regularly prepare consultation images and manage client records.",
-    "pricing.salon.cta": "Contact B2B",
+    "pricing.salon.cta": "B2B sign up",
     "pricing.salon.f1": "100 watermark-free results",
     "pricing.salon.f2": "Per-client result management (CRM)",
     "pricing.salon.f3": "Salon branding on exports",

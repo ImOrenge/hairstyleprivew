@@ -4,7 +4,6 @@ import Link from "next/link";
 import { auth, createClerkClient } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { B2BLeadForm } from "../components/home/B2BLeadForm";
 import { FeatureShowcase } from "../components/home/FeatureShowcase";
 import { FashionDemoShowcase } from "../components/home/FashionDemoShowcase";
 import { HeroSection } from "../components/home/HeroSection";
@@ -393,7 +392,21 @@ export default async function HomePage() {
                   </SurfaceCard>
                 ))}
               </ul>
-              <B2BLeadForm />
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Link
+                  href="/b2b/signup"
+                  className="inline-flex items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
+                >
+                  B2B 회원가입
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+                <Link
+                  href="/b2b/contact"
+                  className="inline-flex items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border)] bg-[var(--app-surface)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] text-[var(--app-text)] transition hover:border-[var(--app-border-strong)] hover:bg-[var(--app-surface-muted)]"
+                >
+                  도입 문의
+                </Link>
+              </div>
             </div>
           </div>
         </Panel>

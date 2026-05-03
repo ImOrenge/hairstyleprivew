@@ -171,7 +171,7 @@ export async function verifyBusinessRegistration({
   const validateItem = validateResult.data?.[0];
 
   if (validateResult.status_code !== "OK" || !validateItem) {
-    throw new BusinessVerificationError("사업자 진위확인 요청을 처리하지 못했습니다. 입력값을 확인해 주세요.");
+    throw new BusinessVerificationError("사업자 진위확인 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.", 503);
   }
 
   if (validateItem.valid !== "01") {
@@ -186,7 +186,7 @@ export async function verifyBusinessRegistration({
   const statusItem = statusResult.data?.[0];
 
   if (statusResult.status_code !== "OK" || !statusItem) {
-    throw new BusinessVerificationError("사업자 상태조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    throw new BusinessVerificationError("사업자 상태조회 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.", 503);
   }
 
   const statusCode = statusItem.b_stt_cd || validateItem.status?.b_stt_cd || "";

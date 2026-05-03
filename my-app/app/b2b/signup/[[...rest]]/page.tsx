@@ -22,7 +22,7 @@ const clerkAppearance = {
   },
 } as const;
 
-export default function SignupPage() {
+export default function B2BSignupPage() {
   const clerkConfig = getClerkConfigState();
   const hasClerkKey = clerkConfig.canUseClerkFrontend;
 
@@ -35,7 +35,7 @@ export default function SignupPage() {
     return (
       <AppPage as="main" className="max-w-xl pb-16 pt-8">
         <Panel className="p-5 sm:p-6">
-          <h1 className="text-2xl font-bold text-[var(--app-text)]">회원가입</h1>
+          <h1 className="text-2xl font-bold text-[var(--app-text)]">B2B 회원가입</h1>
           <p className="mt-3 text-sm text-[var(--app-muted)]">{reasonText}</p>
         </Panel>
       </AppPage>
@@ -45,9 +45,9 @@ export default function SignupPage() {
   return (
     <AppPage as="main" className="flex max-w-md justify-center pb-16 pt-8">
       <SignUp
-        path="/signup"
+        path="/b2b/signup"
         signInUrl="/login"
-        fallbackRedirectUrl="/onboarding?account_type=member&return_url=%2Fhome"
+        fallbackRedirectUrl="/onboarding?account_type=salon_owner&return_url=%2Fsalon%2Fcustomers"
         appearance={clerkAppearance}
       />
     </AppPage>

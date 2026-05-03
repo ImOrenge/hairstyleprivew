@@ -36,17 +36,6 @@ interface PlanBlueprint {
   recommended: boolean;
 }
 
-function requestSalonContact() {
-  window.dispatchEvent(
-    new CustomEvent("hairfit:b2b-plan", {
-      detail: { planInterest: "salon" },
-    }),
-  );
-  window.setTimeout(() => {
-    document.getElementById("b2b-lead-form")?.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, 0);
-}
-
 function createPaymentId(prefix: string) {
   const random =
     typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -233,7 +222,7 @@ export function PricingPreview() {
     }
 
     if (planKey === "salon") {
-      requestSalonContact();
+      window.location.assign("/b2b/signup");
       return;
     }
 

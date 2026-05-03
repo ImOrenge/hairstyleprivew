@@ -1,6 +1,6 @@
 
-> my-app@0.1.0 dev
-> next dev --webpack -p 3001
+> my-app@0.2.2 dev
+> next dev --webpack --port 3001
 
 ▲ Next.js 16.2.4 (webpack)
 - Local:         http://localhost:3001

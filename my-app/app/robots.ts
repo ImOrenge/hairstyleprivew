@@ -17,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
         "/styler/",
         "/login",
         "/signup",
+        "/b2b/signup",
         "/onboarding",
       ],
     },

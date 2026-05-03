@@ -184,7 +184,7 @@ const ko = {
     "pricing.pro.f5": "크레딧 유효기간 365일",
     "pricing.salon.subtitle": "살롱·디자이너용",
     "pricing.salon.desc": "고객 상담 이미지를 자주 준비하고 기록을 관리해야 하는 살롱",
-    "pricing.salon.cta": "B2B 도입 문의",
+    "pricing.salon.cta": "B2B 회원가입",
     "pricing.salon.f1": "워터마크 없는 결과 100회",
     "pricing.salon.f2": "고객별 결과 분류 관리",
     "pricing.salon.f3": "살롱 브랜딩 출력",

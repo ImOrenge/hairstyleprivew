@@ -47,6 +47,7 @@ Optional:
 - `CLERK_SOCIAL_PROOF_SECRET_KEY` (optional, server-only `sk_live_` key for production-only landing user count)
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (required for B2B inquiry form CAPTCHA)
 - `TURNSTILE_SECRET_KEY` (required for server-side Cloudflare Turnstile validation)
+- `NTS_BUSINESS_SERVICE_KEY` (required for B2B signup business registration verification)
 - `B2B_LEAD_WEBHOOK_URL` (optional, receives B2B lead JSON payloads)
 - `B2B_LEAD_WEBHOOK_SECRET` (optional, signs B2B lead webhook payloads)
 
@@ -99,6 +100,7 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `CLERK_SOCIAL_PROOF_SECRET_KEY` (optional; set only to a live Clerk secret key)
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - `TURNSTILE_SECRET_KEY`
+- `NTS_BUSINESS_SERVICE_KEY`
 - `B2B_LEAD_WEBHOOK_URL` (optional)
 - `B2B_LEAD_WEBHOOK_SECRET` (optional)
 
