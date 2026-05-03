@@ -4,6 +4,8 @@ home-header-check.png
 node_modules/
 apps/*/node_modules/
 apps/*/.expo/
+apps/hairfit-app/android/
+.android-release/
 .expo/
 .eas/
 npm-debug.log*
