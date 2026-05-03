@@ -342,6 +342,6 @@ export const initialMobileRoutePorts: MobileRoutePort[] = [
   { webRoute: "/upload", mobileRoute: "/upload", service: "customer", status: "scaffolded", notes: "Image picker flow" },
   { webRoute: "/generate", mobileRoute: "/generate", service: "customer", status: "scaffolded", notes: "Pipeline entry" },
   { webRoute: "/mypage", mobileRoute: "/mypage", service: "customer", status: "scaffolded", notes: "Dashboard" },
-  { webRoute: "/salon/customers", mobileRoute: "/customers", service: "salon", status: "scaffolded", notes: "CRM list" },
-  { webRoute: "/admin/stats", mobileRoute: "/stats", service: "admin", status: "scaffolded", notes: "KPI view" },
+  { webRoute: "/salon/customers", mobileRoute: "/salon/customers", service: "salon", status: "scaffolded", notes: "CRM list" },
+  { webRoute: "/admin/stats", mobileRoute: "/admin/stats", service: "admin", status: "scaffolded", notes: "KPI view" },
 ];

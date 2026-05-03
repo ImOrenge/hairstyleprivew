@@ -30,6 +30,7 @@ const isWebhookRoute = createRouteMatcher([
 ]);
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isOnboardingApiRoute = createRouteMatcher(["/api/onboarding(.*)"]);
+const isMobileApiRoute = createRouteMatcher(["/api/mobile(.*)"]);
 const isMobileBootstrapApiRoute = createRouteMatcher(["/api/mobile/me"]);
 const isAdminPageRoute = createRouteMatcher(["/admin(.*)"]);
 const isAdminNamespaceApiRoute = createRouteMatcher(["/api/admin(.*)"]);
@@ -53,6 +54,40 @@ function clerkConfigRequiredResponse(req: NextRequest) {
 
 function isMutationRequest(req: NextRequest) {
   return req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
+}
+
+function getMobileCorsHeaders(req: NextRequest) {
+  const headers = new Headers();
+  const origin = req.headers.get("origin");
+
+  if (origin && /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)) {
+    headers.set("Access-Control-Allow-Origin", origin);
+    headers.set("Access-Control-Allow-Credentials", "true");
+    headers.set("Vary", "Origin");
+  }
+
+  headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  headers.set("Access-Control-Max-Age", "600");
+  return headers;
+}
+
+function withMobileCors(req: NextRequest, response: NextResponse) {
+  if (!isMobileApiRoute(req)) {
+    return response;
+  }
+
+  getMobileCorsHeaders(req).forEach((value, key) => {
+    response.headers.set(key, value);
+  });
+  return response;
+}
+
+function mobileCorsPreflight(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: getMobileCorsHeaders(req),
+  });
 }
 
 async function loadDbOnboarding(userId: string) {
@@ -89,16 +124,21 @@ async function loadDbOnboarding(userId: string) {
 
 const clerkAppMiddleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
-    if (!isProtectedRoute(req) || isWebhookRoute(req)) {
-      return NextResponse.next();
+    if (isMobileApiRoute(req) && req.method === "OPTIONS") {
+      return mobileCorsPreflight(req);
     }
 
-    const { userId } = await auth();
+    if (!isProtectedRoute(req) || isWebhookRoute(req)) {
+      return withMobileCors(req, NextResponse.next());
+    }
+
+    const authObject = isMobileApiRoute(req) ? await auth({ acceptsToken: "session_token" }) : await auth();
+    const { userId } = authObject;
     const returnBackPath = `${req.nextUrl.pathname}${req.nextUrl.search}`;
     const isApiRequest = req.nextUrl.pathname.startsWith("/api/");
     if (!userId) {
       if (isApiRequest) {
-        return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        return withMobileCors(req, NextResponse.json({ error: "Authentication required" }, { status: 401 }));
       }
 
       return NextResponse.redirect(new URL(buildSignInRedirectUrl(returnBackPath), req.url));
@@ -129,11 +169,11 @@ const clerkAppMiddleware = hasClerkConfig
         }
 
         if (adminApiRequest) {
-          return NextResponse.json({ error: "Admin account required" }, { status: 403 });
+          return withMobileCors(req, NextResponse.json({ error: "Admin account required" }, { status: 403 }));
         }
 
         if (isApiRequest) {
-          return NextResponse.json({ error: "Onboarding required" }, { status: 403 });
+          return withMobileCors(req, NextResponse.json({ error: "Onboarding required" }, { status: 403 }));
         }
 
         return NextResponse.redirect(new URL(buildOnboardingRedirectUrl(returnBackPath), req.url));
@@ -152,15 +192,18 @@ const clerkAppMiddleware = hasClerkConfig
       }
 
       if (isApiRequest && effectiveAccountType === "admin" && isMutationRequest(req) && !adminNamespaceApiRequest) {
-        return NextResponse.json(
-          { error: "Admin writes are only allowed through admin APIs" },
-          { status: 403 },
+        return withMobileCors(
+          req,
+          NextResponse.json(
+            { error: "Admin writes are only allowed through admin APIs" },
+            { status: 403 },
+          ),
         );
       }
 
       if (adminRestrictedRequest && effectiveAccountType !== "admin") {
         if (adminApiRequest) {
-          return NextResponse.json({ error: "Admin account required" }, { status: 403 });
+          return withMobileCors(req, NextResponse.json({ error: "Admin account required" }, { status: 403 }));
         }
 
         return NextResponse.redirect(new URL("/workspace", req.url));
@@ -185,7 +228,7 @@ const clerkAppMiddleware = hasClerkConfig
       console.error("[middleware] Failed to read onboarding metadata", error);
     }
 
-    return NextResponse.next();
+    return withMobileCors(req, NextResponse.next());
   })
   : null;
 
@@ -194,11 +237,15 @@ const middleware = hasClerkConfig && clerkAppMiddleware
       return clerkAppMiddleware(req, event);
     }
   : (req: NextRequest) => {
-      if (!isProtectedRoute(req) || isWebhookRoute(req)) {
-        return NextResponse.next();
+      if (isMobileApiRoute(req) && req.method === "OPTIONS") {
+        return mobileCorsPreflight(req);
       }
 
-      return clerkConfigRequiredResponse(req);
+      if (!isProtectedRoute(req) || isWebhookRoute(req)) {
+        return withMobileCors(req, NextResponse.next());
+      }
+
+      return withMobileCors(req, clerkConfigRequiredResponse(req));
     };
 
 export default middleware;

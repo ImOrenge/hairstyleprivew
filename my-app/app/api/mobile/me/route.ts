@@ -1,11 +1,18 @@
-import { NextResponse } from "next/server";
-import { getMobileApiContext } from "../../../../lib/mobile-auth";
+import {
+  getMobileApiContext,
+  mobileCorsPreflightResponse,
+  mobileJsonResponse,
+} from "../../../../lib/mobile-auth";
 
-export async function GET() {
-  const context = await getMobileApiContext();
+export function OPTIONS(request: Request) {
+  return mobileCorsPreflightResponse(request);
+}
+
+export async function GET(request: Request) {
+  const context = await getMobileApiContext(request);
   if (!context.ok) {
     return context.response;
   }
 
-  return NextResponse.json(context.bootstrap, { status: 200 });
+  return mobileJsonResponse(request, context.bootstrap, { status: 200 });
 }

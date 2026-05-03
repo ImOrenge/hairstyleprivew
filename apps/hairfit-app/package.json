@@ -1,0 +1,42 @@
+{
+  "name": "@hairfit/app",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "android": "node ../../scripts/expo-start-with-env.mjs --android",
+    "ios": "node ../../scripts/expo-start-with-env.mjs --ios",
+    "start": "node ../../scripts/expo-start-with-env.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "web": "node ../../scripts/expo-start-with-env.mjs --web"
+  },
+  "dependencies": {
+    "@clerk/clerk-expo": "^2.19.31",
+    "@hairfit/api-client": "0.0.0",
+    "@hairfit/config": "0.0.0",
+    "@hairfit/payments-portone": "0.0.0",
+    "@hairfit/shared": "0.0.0",
+    "@hairfit/ui-native": "0.0.0",
+    "@portone/react-native-sdk": "^0.6.0",
+    "expo": "^55.0.18",
+    "expo-constants": "^55.0.15",
+    "expo-image-picker": "^55.0.19",
+    "expo-intent-launcher": "~55.0.12",
+    "expo-linking": "^55.0.14",
+    "expo-router": "^55.0.13",
+    "expo-secure-store": "^55.0.13",
+    "expo-status-bar": "^55.0.5",
+    "expo-web-browser": "^55.0.14",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "react-native": "0.83.6",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-screens": "~4.23.0",
+    "react-native-web": "^0.21.2",
+    "react-native-webview": "13.16.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14",
+    "typescript": "^5"
+  }
+}

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getActivePlan } from "./plan-entitlements";
 import { ensureCurrentUserProfile, type ServerSupabaseLike } from "./style-profile-server";
@@ -29,6 +29,37 @@ interface MobileUserRow {
   email: string | null;
 }
 
+function getMobileCorsHeaders(request?: Request) {
+  const headers = new Headers();
+  const origin = request?.headers.get("origin");
+
+  if (origin && /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(origin)) {
+    headers.set("Access-Control-Allow-Origin", origin);
+    headers.set("Access-Control-Allow-Credentials", "true");
+    headers.set("Vary", "Origin");
+  }
+
+  headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  headers.set("Access-Control-Max-Age", "600");
+  return headers;
+}
+
+export function mobileCorsPreflightResponse(request: Request) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: getMobileCorsHeaders(request),
+  });
+}
+
+export function mobileJsonResponse(request: Request | undefined, body: unknown, init?: ResponseInit) {
+  const response = NextResponse.json(body, init);
+  getMobileCorsHeaders(request).forEach((value, key) => {
+    response.headers.set(key, value);
+  });
+  return response;
+}
+
 function servicesForAccount(accountType: AccountType | null): MobileServiceKey[] {
   if (accountType === "admin") {
     return ["customer", "salon", "admin"];
@@ -53,19 +84,19 @@ function forbiddenForService(service: MobileServiceKey) {
   return "Member account required";
 }
 
-export async function getMobileApiContext() {
-  const { userId } = await auth();
+export async function getMobileApiContext(request?: Request) {
+  const { userId } = await auth({ acceptsToken: "session_token" });
   if (!userId) {
     return {
       ok: false as const,
-      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      response: mobileJsonResponse(request, { error: "Unauthorized" }, { status: 401 }),
     };
   }
 
   if (!isSupabaseConfigured()) {
     return {
       ok: false as const,
-      response: NextResponse.json({ error: "Supabase is not configured" }, { status: 503 }),
+      response: mobileJsonResponse(request, { error: "Supabase is not configured" }, { status: 503 }),
     };
   }
 
@@ -75,7 +106,7 @@ export async function getMobileApiContext() {
   if (ensured.error) {
     return {
       ok: false as const,
-      response: NextResponse.json({ error: ensured.error.message }, { status: 500 }),
+      response: mobileJsonResponse(request, { error: ensured.error.message }, { status: 500 }),
     };
   }
 
@@ -85,13 +116,16 @@ export async function getMobileApiContext() {
       .select("account_type,onboarding_completed_at,credits,display_name,email")
       .eq("id", userId)
       .maybeSingle<MobileUserRow>(),
-    currentUser(),
+    (async () => {
+      const client = await clerkClient();
+      return client.users.getUser(userId).catch(() => null);
+    })(),
   ]);
 
   if (error) {
     return {
       ok: false as const,
-      response: NextResponse.json({ error: error.message }, { status: 500 }),
+      response: mobileJsonResponse(request, { error: error.message }, { status: 500 }),
     };
   }
 

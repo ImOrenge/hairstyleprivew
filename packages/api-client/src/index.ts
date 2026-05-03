@@ -45,7 +45,7 @@ export class HairfitApiClient {
 
   constructor(options: HairfitApiClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, "");
-    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.fetchImpl = options.fetchImpl ?? ((input, init) => fetch(input, init));
     this.getAuthToken = options.getAuthToken;
   }
 
@@ -69,6 +69,7 @@ export class HairfitApiClient {
     }
 
     const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+      credentials: "include",
       ...options,
       headers,
     });

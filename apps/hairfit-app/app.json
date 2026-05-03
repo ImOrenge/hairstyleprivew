@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "HairFit",
+    "slug": "hairfit-app",
+    "scheme": "hairfit",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "bundleIdentifier": "com.hairfit.app"
+    },
+    "android": {
+      "package": "com.hairfit.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "@portone/react-native-sdk/plugin"
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}

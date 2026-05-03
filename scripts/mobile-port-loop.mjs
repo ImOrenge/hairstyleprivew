@@ -2,18 +2,49 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const appRoot = path.join(root, "my-app", "app");
+const webAppRoot = path.join(root, "my-app", "app");
+const nativeAppRoot = path.join(root, "apps", "hairfit-app");
 
 const requiredFiles = [
-  "docs/mobile-porting-loop.md",
   "docs/mobile-port-map.md",
-  "apps/customer-mobile/package.json",
-  "apps/salon-mobile/package.json",
-  "apps/admin-mobile/package.json",
+  "apps/hairfit-app/package.json",
+  "apps/hairfit-app/app.json",
+  "apps/hairfit-app/app/index.tsx",
+  "apps/hairfit-app/app/admin/index.tsx",
+  "apps/hairfit-app/app/admin/stats.tsx",
+  "apps/hairfit-app/app/salon/index.tsx",
+  "apps/hairfit-app/app/salon/customers/index.tsx",
   "packages/shared/package.json",
   "packages/api-client/package.json",
   "packages/ui-native/package.json",
   "packages/payments-portone/package.json",
+];
+
+const parityRoutes = [
+  {
+    service: "shared",
+    route: "/",
+    target: "apps/hairfit-app/app/index.tsx",
+    focus: "role-aware service entry from MobileBootstrap.services",
+  },
+  {
+    service: "customer",
+    route: "/mypage",
+    target: "apps/hairfit-app/app/mypage.tsx",
+    focus: "2-column metrics, section tabs, usage/payment cards",
+  },
+  {
+    service: "salon",
+    route: "/salon/customers",
+    target: "apps/hairfit-app/app/salon/customers/index.tsx",
+    focus: "CRM summary metrics, search/filter, customer cards, matching/aftercare panels",
+  },
+  {
+    service: "admin",
+    route: "/admin/stats",
+    target: "apps/hairfit-app/app/admin/stats.tsx",
+    focus: "range controls, KPI grid, B2B lead card, daily trend",
+  },
 ];
 
 function walk(dir, matcher, acc = []) {
@@ -35,21 +66,17 @@ function walk(dir, matcher, acc = []) {
 }
 
 function normalizeRoute(filePath, marker) {
-  const relative = path.relative(appRoot, filePath).replaceAll(path.sep, "/");
+  const relative = path.relative(webAppRoot, filePath).replaceAll(path.sep, "/");
   const withoutMarker = relative.slice(0, -marker.length);
   const parts = withoutMarker
     .split("/")
     .filter(Boolean)
     .filter((part) => !(part.startsWith("(") && part.endsWith(")")));
 
-  if (parts.length === 0) {
-    return "/";
-  }
-
-  return `/${parts.join("/")}`;
+  return parts.length === 0 ? "/" : `/${parts.join("/")}`;
 }
 
-function ownerForRoute(route) {
+function serviceForRoute(route) {
   if (route.startsWith("/admin")) {
     return "admin";
   }
@@ -59,7 +86,7 @@ function ownerForRoute(route) {
   return "customer";
 }
 
-function ownerForApi(route) {
+function serviceForApi(route) {
   if (route.startsWith("/api/admin")) {
     return "admin";
   }
@@ -76,19 +103,19 @@ function printTable(title, rows) {
   console.log(`\n${title}`);
   console.log("-".repeat(title.length));
   for (const row of rows) {
-    console.log(`${row.owner.padEnd(8)} ${row.route}`);
+    console.log(`${row.service.padEnd(8)} ${row.route}`);
   }
 }
 
-const pages = walk(appRoot, (file) => file.endsWith("page.tsx"))
+const pages = walk(webAppRoot, (file) => file.endsWith("page.tsx"))
   .map((file) => normalizeRoute(file, "page.tsx"))
   .sort()
-  .map((route) => ({ route, owner: ownerForRoute(route) }));
+  .map((route) => ({ route, service: serviceForRoute(route) }));
 
-const apis = walk(path.join(appRoot, "api"), (file) => file.endsWith("route.ts"))
+const apis = walk(path.join(webAppRoot, "api"), (file) => file.endsWith("route.ts"))
   .map((file) => `/api/${normalizeRoute(file, "route.ts").replace(/^\/api\/?/, "")}`)
   .sort()
-  .map((route) => ({ route, owner: ownerForApi(route) }));
+  .map((route) => ({ route, service: serviceForApi(route) }));
 
 if (process.argv.includes("--inventory")) {
   printTable("Web page route inventory", pages);
@@ -101,13 +128,18 @@ const missing = requiredFiles.filter((file) => !existsSync(path.join(root, file)
 printTable("Web page route inventory", pages);
 printTable("API route inventory", apis);
 
-console.log("\nMobile porting loop");
-console.log("-------------------");
-console.log("1. Pick one web route from the inventory.");
-console.log("2. Capture current web behavior and API calls.");
-console.log("3. Port the native screen into the owning Expo app.");
-console.log("4. Wire the shared API client and role-aware navigation.");
-console.log("5. Verify empty, loading, success, error, and unauthorized states.");
+console.log("\nUnified native app");
+console.log("------------------");
+console.log(`Target: ${path.relative(root, nativeAppRoot).replaceAll(path.sep, "/")}`);
+console.log("Expo workspace: @hairfit/app");
+console.log("Deep links keep the Next.js route shape for customer, salon, and admin screens.");
+
+console.log("\nNext.js mobile parity loop");
+console.log("--------------------------");
+for (const item of parityRoutes) {
+  console.log(`${item.service.padEnd(8)} ${item.route} -> ${item.target}`);
+  console.log(`         ${item.focus}`);
+}
 
 if (missing.length > 0) {
   console.error("\nMissing mobile porting assets:");
@@ -117,4 +149,4 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
-console.log("\nLoop assets are present.");
+console.log("\nUnified app assets are present.");

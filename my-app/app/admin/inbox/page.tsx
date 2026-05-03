@@ -6,6 +6,12 @@ import { Button } from "../../../components/ui/Button";
 const STATUSES = ["new", "read", "archived"] as const;
 type EmailStatus = (typeof STATUSES)[number];
 
+const statusLabels: Record<EmailStatus, string> = {
+  new: "신규",
+  read: "읽음",
+  archived: "보관됨",
+};
+
 interface AttachmentMeta {
   filename?: string | null;
   contentType?: string | null;
@@ -107,7 +113,7 @@ export default function AdminInboxPage() {
     const response = await fetch(listUrl, { cache: "no-store" });
     const data = (await response.json().catch(() => ({}))) as InboxResponse;
     if (!response.ok) {
-      setError(data.error || "Failed to load inbound emails.");
+      setError(data.error || "수신 메일을 불러오지 못했습니다.");
       setIsLoading(false);
       return;
     }
@@ -147,7 +153,7 @@ export default function AdminInboxPage() {
     });
     const data = (await response.json().catch(() => ({}))) as { email?: InboundEmail; error?: string };
     if (!response.ok || !data.email) {
-      setError(data.error || "Failed to update inbound email.");
+      setError(data.error || "수신 메일 상태 업데이트에 실패했습니다.");
       setBusyId(null);
       return;
     }
@@ -166,15 +172,15 @@ export default function AdminInboxPage() {
   return (
     <div className="space-y-4 pb-10">
       <header className="rounded-2xl border border-stone-200 bg-white p-5">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">Admin Inbox</p>
-        <h1 className="mt-2 text-2xl font-black text-stone-950">Inbound email</h1>
-        <p className="mt-2 text-sm text-stone-600">Total {total} messages routed from Cloudflare Email Routing.</p>
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">관리자 메일함</p>
+        <h1 className="mt-2 text-2xl font-black text-stone-950">수신 메일</h1>
+        <p className="mt-2 text-sm text-stone-600">Cloudflare Email Routing으로 들어온 메일 {total}건</p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search sender, recipient, subject, preview"
+            placeholder="보낸 사람 / 받는 사람 / 제목 / 미리보기 검색"
             className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
           />
           <select
@@ -182,10 +188,10 @@ export default function AdminInboxPage() {
             onChange={(event) => setStatusFilter(event.target.value as "all" | EmailStatus)}
             className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
           >
-            <option value="all">All statuses</option>
+            <option value="all">전체 상태</option>
             {STATUSES.map((status) => (
               <option key={status} value={status}>
-                {status}
+                {statusLabels[status]}
               </option>
             ))}
           </select>
@@ -194,7 +200,7 @@ export default function AdminInboxPage() {
         <div className="mt-4 grid gap-2 sm:grid-cols-3">
           {STATUSES.map((status) => (
             <div key={status} className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm">
-              <p className="font-semibold text-stone-700">{status}</p>
+              <p className="font-semibold text-stone-700">{statusLabels[status]}</p>
               <p className="text-lg font-black text-stone-900">
                 {statusSummary.find((item) => item.status === status)?.count || 0}
               </p>
@@ -212,10 +218,14 @@ export default function AdminInboxPage() {
       <section className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
         <div className="space-y-2">
           {isLoading ? (
-            <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">Loading messages...</p>
+            <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">
+              메일을 불러오는 중...
+            </p>
           ) : null}
           {!isLoading && emails.length === 0 ? (
-            <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">No inbound emails yet.</p>
+            <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">
+              아직 수신 메일이 없습니다.
+            </p>
           ) : null}
 
           {emails.map((email) => (
@@ -235,11 +245,11 @@ export default function AdminInboxPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-stone-950">{email.subject || "(no subject)"}</p>
+                  <p className="truncate text-sm font-black text-stone-950">{email.subject || "(제목 없음)"}</p>
                   <p className="mt-1 truncate text-xs text-stone-500">{email.header_from || email.envelope_from}</p>
                 </div>
                 <span className="rounded-full border border-stone-200 px-2 py-1 text-[11px] font-bold uppercase text-stone-500">
-                  {email.status}
+                  {statusLabels[email.status]}
                 </span>
               </div>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-stone-600">{email.body_preview || "-"}</p>
@@ -256,12 +266,15 @@ export default function AdminInboxPage() {
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">
                     {selectedEmail.provider}
                   </p>
-                  <h2 className="mt-2 text-2xl font-black text-stone-950">{selectedEmail.subject || "(no subject)"}</h2>
+                  <h2 className="mt-2 text-2xl font-black text-stone-950">
+                    {selectedEmail.subject || "(제목 없음)"}
+                  </h2>
                   <p className="mt-2 text-sm text-stone-600">
-                    From {selectedEmail.header_from || selectedEmail.envelope_from}
+                    보낸 사람 {selectedEmail.header_from || selectedEmail.envelope_from}
                   </p>
                   <p className="mt-1 text-xs text-stone-400">
-                    To {selectedEmail.header_to.join(", ") || selectedEmail.envelope_to} / {formatDate(selectedEmail.received_at)}
+                    받는 사람 {selectedEmail.header_to.join(", ") || selectedEmail.envelope_to} /{" "}
+                    {formatDate(selectedEmail.received_at)}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -272,7 +285,7 @@ export default function AdminInboxPage() {
                     disabled={busyId === selectedEmail.id}
                     onClick={() => void updateEmail(selectedEmail.id, { status: "read" })}
                   >
-                    Mark read
+                    읽음 처리
                   </Button>
                   <Button
                     type="button"
@@ -281,29 +294,29 @@ export default function AdminInboxPage() {
                     disabled={busyId === selectedEmail.id}
                     onClick={() => void updateEmail(selectedEmail.id, { status: "archived" })}
                   >
-                    Archive
+                    보관
                   </Button>
                 </div>
               </div>
 
               <div className="grid gap-2 rounded-xl border border-stone-100 bg-stone-50 px-3 py-3 text-xs text-stone-600 md:grid-cols-2">
                 <p>
-                  <span className="font-bold text-stone-900">Envelope from</span>
+                  <span className="font-bold text-stone-900">봉투 발신자</span>
                   <br />
                   {selectedEmail.envelope_from}
                 </p>
                 <p>
-                  <span className="font-bold text-stone-900">Envelope to</span>
+                  <span className="font-bold text-stone-900">봉투 수신자</span>
                   <br />
                   {selectedEmail.envelope_to}
                 </p>
                 <p>
-                  <span className="font-bold text-stone-900">Message ID</span>
+                  <span className="font-bold text-stone-900">메시지 ID</span>
                   <br />
                   {selectedEmail.message_id || "-"}
                 </p>
                 <p>
-                  <span className="font-bold text-stone-900">Raw size</span>
+                  <span className="font-bold text-stone-900">원본 크기</span>
                   <br />
                   {formatBytes(selectedEmail.raw_size)}
                 </p>
@@ -311,11 +324,11 @@ export default function AdminInboxPage() {
 
               {selectedEmail.attachments.length ? (
                 <div className="rounded-xl border border-stone-100 bg-stone-50 px-3 py-3">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-stone-400">Attachments</p>
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-stone-400">첨부파일</p>
                   <ul className="mt-2 grid gap-1 text-sm text-stone-700">
                     {selectedEmail.attachments.map((attachment, index) => (
                       <li key={`${attachment.filename || "attachment"}-${index}`}>
-                        {attachment.filename || "(unnamed)"} / {attachment.contentType || "unknown"} /{" "}
+                        {attachment.filename || "(이름 없음)"} / {attachment.contentType || "알 수 없음"} /{" "}
                         {formatBytes(attachment.size || 0)}
                       </li>
                     ))}
@@ -324,7 +337,7 @@ export default function AdminInboxPage() {
               ) : null}
 
               <pre className="max-h-[440px] overflow-auto whitespace-pre-wrap rounded-xl border border-stone-100 bg-stone-50 p-4 text-sm leading-6 text-stone-800">
-                {detailText || "No body content."}
+                {detailText || "본문 내용이 없습니다."}
               </pre>
 
               <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)_96px]">
@@ -337,7 +350,7 @@ export default function AdminInboxPage() {
                 >
                   {STATUSES.map((status) => (
                     <option key={status} value={status}>
-                      {status}
+                      {statusLabels[status]}
                     </option>
                   ))}
                 </select>
@@ -345,7 +358,7 @@ export default function AdminInboxPage() {
                   rows={3}
                   value={selection.note}
                   onChange={(event) => setSelection((current) => ({ ...current, note: event.target.value }))}
-                  placeholder="Admin note"
+                  placeholder="관리자 메모"
                   className="rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
                 />
                 <Button
@@ -354,12 +367,12 @@ export default function AdminInboxPage() {
                   disabled={busyId === selectedEmail.id}
                   onClick={() => void updateEmail(selectedEmail.id, { status: selection.status, adminNote: selection.note })}
                 >
-                  Save
+                  저장
                 </Button>
               </div>
             </div>
           ) : (
-            <p className="py-12 text-center text-sm text-stone-500">Select a message.</p>
+            <p className="py-12 text-center text-sm text-stone-500">메일을 선택하세요.</p>
           )}
         </article>
       </section>

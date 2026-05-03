@@ -2,9 +2,14 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import path from "node:path";
 
 const root = process.cwd();
-const appRoot = path.join(root, "my-app", "app");
+const webAppRoot = path.join(root, "my-app", "app");
+const nativeAppRoot = path.join(root, "apps", "hairfit-app");
 const mapPath = path.join(root, "docs", "mobile-port-map.md");
 const apiClientPath = path.join(root, "packages", "api-client", "src", "index.ts");
+const nativeUiPath = path.join(root, "packages", "ui-native", "src", "index.tsx");
+const rootPackagePath = path.join(root, "package.json");
+const nativePackagePath = path.join(nativeAppRoot, "package.json");
+const nativeAppJsonPath = path.join(nativeAppRoot, "app.json");
 
 const args = new Set(process.argv.slice(2));
 const reportArgIndex = process.argv.indexOf("--report");
@@ -16,17 +21,37 @@ const runtimeEnabled = args.has("--runtime");
 const strictRuntime = args.has("--strict-runtime");
 const apiBaseUrl = readArgValue("--api-base-url") || process.env.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
 const explicitMetroStatusUrl = readArgValue("--metro-status-url") || process.env.MOBILE_METRO_STATUS_URL || null;
-const metroStatusUrls = explicitMetroStatusUrl
-  ? [explicitMetroStatusUrl]
-  : ["http://localhost:8084/status", "http://localhost:8085/status"];
+const metroStatusUrls = explicitMetroStatusUrl ? [explicitMetroStatusUrl] : ["http://localhost:8084/status"];
+
+const expectedAppIdentity = {
+  packageName: "@hairfit/app",
+  slug: "hairfit-app",
+  scheme: "hairfit",
+  bundleIdentifier: "com.hairfit.app",
+  androidPackage: "com.hairfit.app",
+};
+
+const removedAppDirs = ["apps/customer-mobile", "apps/admin-mobile", "apps/salon-mobile"];
+
+const expectedRoutes = [
+  { route: "/", file: "apps/hairfit-app/app/index.tsx", markers: ["getMobileMe", "MobileBootstrap", "/salon/customers", "/admin"] },
+  { route: "/mypage", file: "apps/hairfit-app/app/mypage.tsx", markers: ['getMobileDashboard("customer")'] },
+  { route: "/salon", file: "apps/hairfit-app/app/salon/index.tsx", markers: ['getMobileDashboard("salon")', 'router.push("/salon/customers")'] },
+  {
+    route: "/salon/customers",
+    file: "apps/hairfit-app/app/salon/customers/index.tsx",
+    markers: ['getMobileDashboard("salon")', 'useState<"all" | "manual" | "linked_member">', "filteredCustomers"],
+  },
+  { route: "/admin", file: "apps/hairfit-app/app/admin/index.tsx", markers: ['getMobileDashboard("admin")', 'router.push("/admin/stats")'] },
+  {
+    route: "/admin/stats",
+    file: "apps/hairfit-app/app/admin/stats.tsx",
+    markers: ['getMobileDashboard("admin")', "daily.slice(-7)", "maxDaily", "DimensionValue"],
+  },
+];
 
 const expectedApiContracts = [
-  {
-    route: "/api/mobile/me",
-    file: "my-app/app/api/mobile/me/route.ts",
-    clientMethod: "getMobileMe",
-    clientPath: "/api/mobile/me",
-  },
+  { route: "/api/mobile/me", file: "my-app/app/api/mobile/me/route.ts", clientMethod: "getMobileMe", clientPath: "/api/mobile/me" },
   {
     route: "/api/mobile/dashboard",
     file: "my-app/app/api/mobile/dashboard/route.ts",
@@ -45,12 +70,7 @@ const expectedApiContracts = [
     clientMethod: "completeMobilePayment",
     clientPath: "/api/mobile/payments/complete",
   },
-  {
-    route: "/api/onboarding",
-    file: "my-app/app/api/onboarding/route.ts",
-    clientMethod: "submitOnboarding",
-    clientPath: "/api/onboarding",
-  },
+  { route: "/api/onboarding", file: "my-app/app/api/onboarding/route.ts", clientMethod: "submitOnboarding", clientPath: "/api/onboarding" },
   {
     route: "/api/prompts/generate",
     file: "my-app/app/api/prompts/generate/route.ts",
@@ -63,74 +83,35 @@ const expectedApiContracts = [
     clientMethod: "runGeneration",
     clientPath: "/api/generations/run",
   },
-  {
-    route: "/api/generations/[id]",
-    file: "my-app/app/api/generations/[id]/route.ts",
-    clientMethod: "getGeneration",
-    clientPath: "/api/generations/",
-  },
-  {
-    route: "/api/style-profile",
-    file: "my-app/app/api/style-profile/route.ts",
-    clientMethod: "getStyleProfile",
-    clientPath: "/api/style-profile",
-  },
-  {
-    route: "/api/style-profile/body-photo",
-    file: "my-app/app/api/style-profile/body-photo/route.ts",
-    clientMethod: "uploadBodyPhoto",
-    clientPath: "/api/style-profile/body-photo",
-  },
-  {
-    route: "/api/styling/hairstyles",
-    file: "my-app/app/api/styling/hairstyles/route.ts",
-    clientMethod: "getStylingHairstyles",
-    clientPath: "/api/styling/hairstyles",
-  },
-  {
-    route: "/api/styling/recommend",
-    file: "my-app/app/api/styling/recommend/route.ts",
-    clientMethod: "recommendStyling",
-    clientPath: "/api/styling/recommend",
-  },
-  {
-    route: "/api/styling/generate",
-    file: "my-app/app/api/styling/generate/route.ts",
-    clientMethod: "generateStyling",
-    clientPath: "/api/styling/generate",
-  },
-  {
-    route: "/api/styling/[id]",
-    file: "my-app/app/api/styling/[id]/route.ts",
-    clientMethod: "getStylingSession",
-    clientPath: "/api/styling/",
-  },
-  {
-    route: "/api/hair-records",
-    file: "my-app/app/api/hair-records/route.ts",
-    clientMethod: "createHairRecord",
-    clientPath: "/api/hair-records",
-  },
-  {
-    route: "/api/mobile/aftercare",
-    file: "my-app/app/api/mobile/aftercare/route.ts",
-    clientMethod: "getAftercareRecords",
-    clientPath: "/api/mobile/aftercare",
-  },
-  {
-    route: "/api/mobile/aftercare/[hairRecordId]",
-    file: "my-app/app/api/mobile/aftercare/[hairRecordId]/route.ts",
-    clientMethod: "getAftercareGuide",
-    clientPath: "/api/mobile/aftercare/",
-  },
+  { route: "/api/mobile/aftercare", file: "my-app/app/api/mobile/aftercare/route.ts", clientMethod: "getAftercareRecords", clientPath: "/api/mobile/aftercare" },
+];
+
+const expectedUiMarkers = [
+  'background: "#f6f5f1"',
+  'surface: "#ffffff"',
+  'text: "#191816"',
+  'accent: "#a8863a"',
+  'background: "#050505"',
+  "function MetricGrid",
+  "function MetricTile",
+  'width: "47%"',
+  "minWidth: 142",
+  "borderRadius: radii.panel",
 ];
 
 function readArgValue(name) {
   const index = process.argv.indexOf(name);
-  if (index < 0) {
-    return null;
-  }
-  return process.argv[index + 1] || null;
+  return index < 0 ? null : process.argv[index + 1] || null;
+}
+
+function readText(filePath) {
+  return existsSync(filePath) ? readFileSync(filePath, "utf8") : null;
+}
+
+function readJson(filePath) {
+  const text = readText(filePath);
+  if (!text) return null;
+  return JSON.parse(text);
 }
 
 function walk(dir, matcher, acc = []) {
@@ -152,55 +133,36 @@ function walk(dir, matcher, acc = []) {
 }
 
 function normalizeRoute(filePath, marker) {
-  const relative = path.relative(appRoot, filePath).replaceAll(path.sep, "/");
+  const relative = path.relative(webAppRoot, filePath).replaceAll(path.sep, "/");
   const withoutMarker = relative.slice(0, -marker.length);
   const parts = withoutMarker
     .split("/")
     .filter(Boolean)
     .filter((part) => !(part.startsWith("(") && part.endsWith(")")));
 
-  if (parts.length === 0) {
-    return "/";
-  }
-
-  return `/${parts.join("/")}`;
+  return parts.length === 0 ? "/" : `/${parts.join("/")}`;
 }
 
 function parsePortMap() {
-  if (!existsSync(mapPath)) {
+  const text = readText(mapPath);
+  if (text === null) {
     return { rows: [], missing: true };
   }
 
   const rows = [];
-  let section = "";
-  const text = readFileSync(mapPath, "utf8");
-  const rowPattern = /^\|\s*(?<source>[^|]+?)\s*\|\s*(?<target>[^|]+?)\s*\|\s*(?<status>[^|]+?)\s*\|(?<notes>.*)\|$/;
+  const rowPattern = /^\|\s*(?<source>[^|]+?)\s*\|\s*(?<target>[^|]+?)\s*\|\s*(?<service>[^|]+?)\s*\|\s*(?<status>[^|]+?)\s*\|(?<notes>.*)\|$/;
 
   for (const line of text.split(/\r?\n/)) {
-    if (line.startsWith("## ")) {
-      section = line.replace(/^##\s+/, "").trim();
-      continue;
-    }
-
     const match = line.match(rowPattern);
-    if (!match?.groups) {
-      continue;
-    }
+    if (!match?.groups) continue;
 
     const source = stripCell(match.groups.source);
     const target = stripCell(match.groups.target);
+    const service = stripCell(match.groups.service);
     const status = stripCell(match.groups.status);
-    if (status === "---" || source === "Web route" || source === "API area") {
-      continue;
-    }
+    if (source === "Web route" || source === "---" || status === "---") continue;
 
-    rows.push({
-      section,
-      source,
-      target,
-      status,
-      notes: match.groups.notes.trim(),
-    });
+    rows.push({ source, target, service, status, notes: match.groups.notes.trim() });
   }
 
   return { rows, missing: false };
@@ -208,86 +170,97 @@ function parsePortMap() {
 
 function stripCell(value) {
   const trimmed = value.trim();
-  if (trimmed.startsWith("`") && trimmed.endsWith("`")) {
-    return trimmed.slice(1, -1);
-  }
-  return trimmed;
-}
-
-function pageInventory() {
-  return walk(appRoot, (file) => file.endsWith("page.tsx"))
-    .map((file) => normalizeRoute(file, "page.tsx"))
-    .sort();
+  return trimmed.startsWith("`") && trimmed.endsWith("`") ? trimmed.slice(1, -1) : trimmed;
 }
 
 function statusCounts(rows) {
   return rows.reduce(
     (acc, row) => {
-      if (row.status in acc) {
-        acc[row.status] += 1;
-      }
+      if (row.status in acc) acc[row.status] += 1;
       return acc;
     },
     { inventory: 0, scaffolded: 0, ported: 0, verified: 0 },
   );
 }
 
-function routeRows(rows) {
-  return rows.filter((row) => row.source.startsWith("/") && !row.source.startsWith("/api/"));
-}
-
-function apiRows(rows) {
-  return rows.filter((row) => row.source.includes("/api/"));
-}
-
 function checkStaticSync() {
-  const { rows, missing } = parsePortMap();
-  const pages = pageInventory();
-  const apiClientText = existsSync(apiClientPath) ? readFileSync(apiClientPath, "utf8") : "";
   const errors = [];
   const warnings = [];
   const notes = [];
+  const checks = [];
+  const map = parsePortMap();
+  const rows = map.rows;
+  const counts = statusCounts(rows);
+  const rootPackage = readJson(rootPackagePath);
+  const nativePackage = readJson(nativePackagePath);
+  const nativeAppJson = readJson(nativeAppJsonPath);
+  const rootPackageText = readText(rootPackagePath) ?? "";
+  const apiClientText = readText(apiClientPath) ?? "";
+  const nativeUiText = readText(nativeUiPath) ?? "";
+  const pages = walk(webAppRoot, (file) => file.endsWith("page.tsx")).map((file) => normalizeRoute(file, "page.tsx"));
 
-  if (missing) {
-    errors.push("docs/mobile-port-map.md is missing.");
+  if (map.missing) errors.push("docs/mobile-port-map.md is missing.");
+  if (!existsSync(nativeAppRoot)) errors.push("Unified native app directory is missing: apps/hairfit-app.");
+
+  for (const dir of removedAppDirs) {
+    const ok = !existsSync(path.join(root, dir));
+    checks.push({ label: `${dir} removed`, ok });
+    if (!ok) errors.push(`Removed split app directory still exists: ${dir}`);
   }
 
-  const mappedRoutes = new Set(routeRows(rows).map((row) => row.source));
-  const unmappedPages = pages.filter((route) => !mappedRoutes.has(route));
-  if (unmappedPages.length > 0) {
-    errors.push(`Unmapped web routes: ${unmappedPages.join(", ")}`);
+  if (nativePackage?.name !== expectedAppIdentity.packageName) {
+    errors.push(`Native package name must be ${expectedAppIdentity.packageName}.`);
+  }
+  if (nativeAppJson?.expo?.slug !== expectedAppIdentity.slug) {
+    errors.push(`Expo slug must be ${expectedAppIdentity.slug}.`);
+  }
+  if (nativeAppJson?.expo?.scheme !== expectedAppIdentity.scheme) {
+    errors.push(`Expo scheme must remain ${expectedAppIdentity.scheme}.`);
+  }
+  if (nativeAppJson?.expo?.ios?.bundleIdentifier !== expectedAppIdentity.bundleIdentifier) {
+    errors.push(`iOS bundleIdentifier must be ${expectedAppIdentity.bundleIdentifier}.`);
+  }
+  if (nativeAppJson?.expo?.android?.package !== expectedAppIdentity.androidPackage) {
+    errors.push(`Android package must be ${expectedAppIdentity.androidPackage}.`);
   }
 
-  const extraMappedRoutes = [...mappedRoutes].filter((route) => !pages.includes(route));
-  if (extraMappedRoutes.length > 0) {
-    warnings.push(`Routes in the mobile map but not in the current web page inventory: ${extraMappedRoutes.join(", ")}`);
+  for (const marker of ["@hairfit/admin-mobile", "@hairfit/customer-mobile", "@hairfit/salon-mobile", "mobile:admin", "mobile:customer", "mobile:salon"]) {
+    if (rootPackageText.includes(marker)) {
+      errors.push(`Root package still references split mobile app marker: ${marker}`);
+    }
   }
 
-  const targetChecks = routeRows(rows)
-    .filter((row) => row.target.startsWith("apps/"))
-    .map((row) => ({
-      ...row,
-      exists: existsSync(path.join(root, row.target)),
-    }));
-  const missingActiveTargets = targetChecks.filter((row) => row.status !== "inventory" && !row.exists);
-  if (missingActiveTargets.length > 0) {
-    errors.push(
-      `Active mobile targets missing: ${missingActiveTargets.map((row) => `${row.source} -> ${row.target}`).join(", ")}`,
-    );
+  if (rootPackage?.scripts?.mobile !== "npm --workspace @hairfit/app run start --") {
+    errors.push("Root mobile script must run @hairfit/app.");
+  }
+  if (rootPackage?.scripts?.["mobile:android"] !== "npm --workspace @hairfit/app run android --") {
+    errors.push("Root mobile:android script must run @hairfit/app.");
+  }
+  if (rootPackage?.scripts?.["mobile:ios"] !== "npm --workspace @hairfit/app run ios --") {
+    errors.push("Root mobile:ios script must run @hairfit/app.");
   }
 
-  const staleInventoryTargets = targetChecks.filter((row) => row.status === "inventory" && row.exists);
-  if (staleInventoryTargets.length > 0) {
-    warnings.push(
-      `Inventory rows with existing native files: ${staleInventoryTargets
-        .map((row) => `${row.source} -> ${row.target}`)
-        .join(", ")}`,
-    );
+  for (const contract of expectedRoutes) {
+    const fullPath = path.join(root, contract.file);
+    const text = readText(fullPath);
+    const exists = text !== null;
+    checks.push({ label: `${contract.route} route exists`, ok: exists });
+    if (!exists) {
+      errors.push(`Missing native route file: ${contract.file}`);
+      continue;
+    }
+
+    for (const marker of contract.markers) {
+      const ok = text.includes(marker);
+      checks.push({ label: `${contract.route} includes ${marker}`, ok });
+      if (!ok) errors.push(`${contract.file} is missing marker: ${marker}`);
+    }
   }
 
-  const missingInventoryTargets = targetChecks.filter((row) => row.status === "inventory" && !row.exists);
-  if (missingInventoryTargets.length > 0) {
-    notes.push(`${missingInventoryTargets.length} inventory routes do not have native files yet.`);
+  for (const row of rows.filter((row) => row.source.startsWith("/") && !row.source.startsWith("/api/") && row.status !== "inventory")) {
+    const ok = existsSync(path.join(root, row.target));
+    checks.push({ label: `${row.source} mapped target exists`, ok });
+    if (!ok) errors.push(`Active mobile target missing: ${row.source} -> ${row.target}`);
   }
 
   for (const contract of expectedApiContracts) {
@@ -302,21 +275,26 @@ function checkStaticSync() {
     }
   }
 
-  const counts = statusCounts(rows);
+  for (const marker of expectedUiMarkers) {
+    const ok = nativeUiText.includes(marker);
+    checks.push({ label: `native UI marker ${marker}`, ok });
+    if (!ok) errors.push(`Native UI package missing marker: ${marker}`);
+  }
+
+  const mapText = readText(mapPath) ?? "";
+  for (const marker of removedAppDirs) {
+    if (mapText.includes(marker)) {
+      errors.push(`Mobile port map still references removed app directory: ${marker}`);
+    }
+  }
+
   if (counts.verified === 0) {
     warnings.push("No mobile route is marked verified yet. Runtime E2E evidence is still required before promoting rows.");
   }
 
-  return {
-    errors,
-    warnings,
-    notes,
-    rows,
-    pages,
-    counts,
-    targetChecks,
-    apiRows: apiRows(rows),
-  };
+  notes.push(`Web page routes inventoried: ${pages.length}`);
+
+  return { errors, warnings, notes, checks, rows, counts, pages };
 }
 
 async function fetchWithTimeout(url, timeoutMs = 10_000) {
@@ -337,17 +315,12 @@ async function checkRuntimeSmoke() {
   const checks = [];
   const errors = [];
   const warnings = [];
+  const base = apiBaseUrl.replace(/\/+$/, "");
 
-  const unauthApiChecks = [
-    { name: "mobile me unauth", url: `${apiBaseUrl.replace(/\/+$/, "")}/api/mobile/me`, expectedStatus: 401 },
-    {
-      name: "customer dashboard unauth",
-      url: `${apiBaseUrl.replace(/\/+$/, "")}/api/mobile/dashboard?service=customer`,
-      expectedStatus: 401,
-    },
-  ];
-
-  for (const check of unauthApiChecks) {
+  for (const check of [
+    { name: "mobile me unauth", url: `${base}/api/mobile/me`, expectedStatus: 401 },
+    { name: "customer dashboard unauth", url: `${base}/api/mobile/dashboard?service=customer`, expectedStatus: 401 },
+  ]) {
     const result = await fetchWithTimeout(check.url);
     checks.push({ ...check, ...result });
     if (!result.ok) {
@@ -366,58 +339,35 @@ async function checkRuntimeSmoke() {
     }
   }
 
-  const metro = metroAttempts.find(
-    (attempt) => attempt.ok && attempt.status === 200 && attempt.text.includes("packager-status:running"),
-  ) || metroAttempts[0];
+  const metro =
+    metroAttempts.find((attempt) => attempt.ok && attempt.status === 200 && attempt.text.includes("packager-status:running")) ||
+    metroAttempts[0];
   checks.push(metro);
 
   if (!metro.ok) {
     const message = `Expo Metro status failed to connect: ${metro.error}`;
-    if (strictRuntime) {
-      errors.push(message);
-    } else {
-      warnings.push(message);
-    }
+    if (strictRuntime) errors.push(message);
+    else warnings.push(message);
   } else if (metro.status !== 200 || !metro.text.includes("packager-status:running")) {
-    const attemptedUrls = metroAttempts.map((attempt) => attempt.url).join(", ");
-    const message = `Expo Metro status expected 200 packager-status:running but received ${metro.status}. Attempted: ${attemptedUrls}.`;
-    if (strictRuntime) {
-      errors.push(message);
-    } else {
-      warnings.push(message);
-    }
+    const message = `Expo Metro status expected 200 packager-status:running but received ${metro.status}.`;
+    if (strictRuntime) errors.push(message);
+    else warnings.push(message);
   }
 
   return { checks, errors, warnings };
 }
 
 function formatList(items, empty = "None") {
-  if (items.length === 0) {
-    return `- ${empty}`;
-  }
-  return items.map((item) => `- ${item}`).join("\n");
+  return items.length === 0 ? `- ${empty}` : items.map((item) => `- ${item}`).join("\n");
 }
 
 function formatReport(staticResult, runtimeResult) {
-  const activeTargets = staticResult.targetChecks.filter((row) => row.status !== "inventory");
-  const missingInventoryTargets = staticResult.targetChecks.filter((row) => row.status === "inventory" && !row.exists);
-  const runtimeLines = runtimeResult
-    ? runtimeResult.checks.map((check) => {
-        if (!check.ok) {
-          return `- ${check.name}: failed (${check.error})`;
-        }
-        return `- ${check.name}: ${check.status}`;
-      })
-    : ["- Not run. Use `npm run mobile:sync:runtime` for local API and Metro smoke checks."];
-
-  const verdict =
-    staticResult.errors.length === 0 && (!runtimeResult || runtimeResult.errors.length === 0)
-      ? runtimeResult
-        ? "AUTOMATED PASS"
-        : "STATIC PASS"
-      : "FAIL";
-  const allWarnings = runtimeResult ? [...staticResult.warnings, ...runtimeResult.warnings] : staticResult.warnings;
   const allErrors = runtimeResult ? [...staticResult.errors, ...runtimeResult.errors] : staticResult.errors;
+  const allWarnings = runtimeResult ? [...staticResult.warnings, ...runtimeResult.warnings] : staticResult.warnings;
+  const runtimeLines = runtimeResult
+    ? runtimeResult.checks.map((check) => (check.ok ? `- ${check.name}: ${check.status}` : `- ${check.name}: failed (${check.error})`))
+    : ["- Not run. Use `npm run mobile:sync:runtime` for local API and Metro smoke checks."];
+  const verdict = allErrors.length === 0 ? (runtimeResult ? "AUTOMATED PASS" : "STATIC PASS") : "FAIL";
 
   return `# Mobile Web-App Sync Verification Report
 
@@ -436,10 +386,9 @@ ${verdict}
 
 ## Static Sync Checks
 
+- Native target: apps/hairfit-app
 - Web page routes inventoried: ${staticResult.pages.length}
-- Active mobile targets checked: ${activeTargets.length}
-- API contracts checked: ${expectedApiContracts.length}
-- Inventory routes without native files: ${missingInventoryTargets.length}
+- Checks passed: ${staticResult.checks.filter((check) => check.ok).length}/${staticResult.checks.length}
 
 ## Runtime Smoke
 
@@ -456,22 +405,6 @@ ${formatList(allWarnings)}
 ## Notes
 
 ${formatList(staticResult.notes)}
-
-## Android E2E Manual Gate
-
-- Build/install an Android development build for customer, salon, and admin apps.
-- Create new customer, salon, and admin test accounts through the mobile auth screens.
-- Promote the salon and admin accounts from an existing admin session before validating their apps.
-- Validate customer flow: signup, onboarding, mobile me, upload, recommendations, generation run, result selection, my page.
-- Validate role gates: customer receives 403 for salon/admin dashboards, salon receives 403 for admin, admin can access customer/salon/admin services.
-- PortOne external SDK return is excluded from this run; only prepare/complete server contracts are in scope when explicitly tested.
-
-## Current Sync Gaps
-
-${formatList(
-  missingInventoryTargets.map((row) => `${row.source} -> ${row.target}`),
-  "No inventory gaps without native files.",
-)}
 `;
 }
 
@@ -481,42 +414,32 @@ function printSummary(staticResult, runtimeResult) {
 
   console.log("Mobile web-app sync verification");
   console.log("--------------------------------");
+  console.log("Native target: apps/hairfit-app");
   console.log(
     `Status: inventory=${staticResult.counts.inventory}, scaffolded=${staticResult.counts.scaffolded}, ported=${staticResult.counts.ported}, verified=${staticResult.counts.verified}`,
   );
-  console.log(`Web page routes: ${staticResult.pages.length}`);
-  console.log(`API contracts checked: ${expectedApiContracts.length}`);
+  console.log(`Checks passed: ${staticResult.checks.filter((check) => check.ok).length}/${staticResult.checks.length}`);
 
   if (runtimeResult) {
     console.log("\nRuntime smoke");
     for (const check of runtimeResult.checks) {
-      if (check.ok) {
-        console.log(`- ${check.name}: ${check.status}`);
-      } else {
-        console.log(`- ${check.name}: failed (${check.error})`);
-      }
+      console.log(check.ok ? `- ${check.name}: ${check.status}` : `- ${check.name}: failed (${check.error})`);
     }
   }
 
   if (staticResult.notes.length > 0) {
     console.log("\nNotes");
-    for (const note of staticResult.notes) {
-      console.log(`- ${note}`);
-    }
+    for (const note of staticResult.notes) console.log(`- ${note}`);
   }
 
   if (allWarnings.length > 0) {
     console.log("\nWarnings");
-    for (const warning of allWarnings) {
-      console.log(`- ${warning}`);
-    }
+    for (const warning of allWarnings) console.log(`- ${warning}`);
   }
 
   if (allErrors.length > 0) {
     console.error("\nErrors");
-    for (const error of allErrors) {
-      console.error(`- ${error}`);
-    }
+    for (const error of allErrors) console.error(`- ${error}`);
   }
 }
 
@@ -532,7 +455,6 @@ if (reportPath) {
   console.log(`\nReport written to ${path.relative(root, reportPath).replaceAll(path.sep, "/")}`);
 }
 
-const hasErrors = staticResult.errors.length > 0 || (runtimeResult?.errors.length ?? 0) > 0;
-if (hasErrors) {
+if (staticResult.errors.length > 0 || (runtimeResult?.errors.length ?? 0) > 0) {
   process.exit(1);
 }
