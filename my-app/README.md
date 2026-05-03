@@ -87,6 +87,7 @@ npm run cf:deploy
 Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `CLERK_SECRET_KEY`
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_PUBLISHABLE_KEY` (recommended for Cloudflare production runtime; use the same `pk_live_...` value)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -107,6 +108,7 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 Clerk note:
 - In local development (`http://localhost:*`), use `pk_test_` / `sk_test_` keys.
 - `pk_live_` keys are domain-restricted and will not render Clerk widgets on localhost.
+- Production builds must use `pk_live_` / `sk_live_` keys. The app treats Clerk test keys as unconfigured when `NODE_ENV=production` so deployments cannot silently run against a development Clerk instance. On Cloudflare, set `CLERK_PUBLISHABLE_KEY=pk_live_...` so the runtime can override a local test `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` from `.env.local`.
 - The landing user count reads only live Clerk data. In non-production environments, set `CLERK_SOCIAL_PROOF_SECRET_KEY=sk_live_...` if the production count should appear; test keys are ignored.
 
 Optional pricing and prompt env:
