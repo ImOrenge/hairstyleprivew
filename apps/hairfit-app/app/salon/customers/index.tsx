@@ -71,8 +71,11 @@ export default function SalonCustomersScreen() {
         setError(null);
         const [me, result] = await Promise.all([api.getMobileMe(), api.getMobileDashboard("salon")]);
         if (!cancelled && result.service === "salon") {
-          setIsAdminReadOnly(me.accountType === "admin");
           setDashboard(result);
+          setIsAdminReadOnly(false);
+          if (me.accountType === "admin") {
+            setError("Salon owner account required");
+          }
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -164,7 +167,7 @@ export default function SalonCustomersScreen() {
         <Stack>
           {isLoading ? <BodyText style={{ textAlign: "center" }}>불러오는 중...</BodyText> : null}
 
-          {!isLoading && !error && filteredCustomers.length === 0 ? (
+          {!isLoading && filteredCustomers.length === 0 ? (
             <BodyText style={{ textAlign: "center" }}>등록된 고객이 없습니다.</BodyText>
           ) : null}
 

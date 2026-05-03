@@ -20,6 +20,10 @@ import { View, type DimensionValue } from "react-native";
 import { useHairfitApi } from "../../lib/api";
 import { AdminTabs } from "../../lib/admin-ui";
 
+type RangeDays = 7 | 30 | 90;
+
+const rangeOptions: RangeDays[] = [7, 30, 90];
+
 function formatKrw(value: number) {
   return value.toLocaleString("ko-KR");
 }
@@ -29,6 +33,7 @@ export default function AdminStatsScreen() {
   const api = useHairfitApi();
   const { isLoaded, isSignedIn } = useAuth();
   const [dashboard, setDashboard] = useState<Extract<MobileDashboard, { service: "admin" }> | null>(null);
+  const [range, setRange] = useState<RangeDays>(30);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +52,7 @@ export default function AdminStatsScreen() {
       try {
         setIsLoading(true);
         setError(null);
-        const result = await api.getMobileDashboard("admin");
+        const result = await api.getMobileDashboard("admin", { range });
         if (!cancelled && result.service === "admin") {
           setDashboard(result);
         }
@@ -67,13 +72,18 @@ export default function AdminStatsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [api, isLoaded, isSignedIn]);
+  }, [api, isLoaded, isSignedIn, range]);
 
   const kpis = dashboard?.admin.kpis;
   const daily = dashboard?.admin.daily ?? [];
   const maxDaily = useMemo(() => {
     if (!daily.length) return 1;
-    return Math.max(1, ...daily.map((row) => Math.max(row.newUsers, row.generationsCompleted, row.paidOrders)));
+    return Math.max(
+      1,
+      ...daily.map((row) =>
+        Math.max(row.newUsers, row.generationsCompleted, row.reviews, row.b2bLeads, row.paidOrders),
+      ),
+    );
   }, [daily]);
 
   return (
@@ -86,9 +96,18 @@ export default function AdminStatsScreen() {
           <Heading>통계</Heading>
           <BodyText>운영 지표를 최근 기간 기준으로 집계합니다.</BodyText>
           <Cluster>
-            <Chip>최근 7일</Chip>
-            <Chip tone="accent">최근 30일</Chip>
-            <Chip>최근 90일</Chip>
+            {rangeOptions.map((option) => (
+              <Button
+                key={option}
+                variant={option === range ? "primary" : "secondary"}
+                onPress={() => {
+                  if (option === range) return;
+                  setRange(option);
+                }}
+              >
+                최근 {option}일
+              </Button>
+            ))}
           </Cluster>
         </Stack>
       </Panel>
@@ -107,7 +126,7 @@ export default function AdminStatsScreen() {
             <MetricTile label="매출 (KRW)" value={formatKrw(kpis?.revenueKrw ?? 0)} />
             <MetricTile label="완료 생성" value={kpis?.generationsCompleted ?? 0} />
             <MetricTile label="리뷰 작성" value={kpis?.reviewsSubmitted ?? 0} />
-            <MetricTile label="숨김 리뷰" value={0} />
+            <MetricTile label="숨김 리뷰" value={kpis?.hiddenReviews ?? 0} />
           </MetricGrid>
 
           {error ? (
@@ -126,8 +145,8 @@ export default function AdminStatsScreen() {
               <BodyText>B2B 리드</BodyText>
               <Heading>{kpis?.b2bLeads ?? 0}</Heading>
               <MetricGrid>
-                {["new", "qualified", "negotiation", "contracted", "dropped"].map((stage) => (
-                  <MetricTile key={stage} label={stage} value={0} />
+                {(dashboard?.admin.leadStages ?? []).map((stage) => (
+                  <MetricTile key={stage.stage} label={stage.stage} value={stage.count} />
                 ))}
               </MetricGrid>
             </Stack>
@@ -137,8 +156,14 @@ export default function AdminStatsScreen() {
             <Stack>
               <Heading>일별 추이</Heading>
               {daily.length ? (
-                daily.slice(-7).map((day) => {
-                  const maxForRow = Math.max(day.newUsers, day.generationsCompleted, day.paidOrders);
+                daily.map((day) => {
+                  const maxForRow = Math.max(
+                    day.newUsers,
+                    day.generationsCompleted,
+                    day.reviews,
+                    day.b2bLeads,
+                    day.paidOrders,
+                  );
                   const width = `${Math.max(2, (maxForRow / maxDaily) * 100)}%` as DimensionValue;
 
                   return (
@@ -148,7 +173,7 @@ export default function AdminStatsScreen() {
                           <Chip>{day.date}</Chip>
                         </Cluster>
                         <BodyText>
-                          회원 {day.newUsers} · 생성 {day.generationsCompleted} · 리뷰 0 · B2B 0
+                          회원 {day.newUsers} · 생성 {day.generationsCompleted} · 리뷰 {day.reviews} · B2B {day.b2bLeads}
                         </BodyText>
                         <View style={{ backgroundColor: "#34322c", borderRadius: 999, height: 8 }}>
                           <View style={{ backgroundColor: "#f4f1e8", borderRadius: 999, height: 8, width }} />

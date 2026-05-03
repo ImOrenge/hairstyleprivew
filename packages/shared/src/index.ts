@@ -88,20 +88,28 @@ export interface MobileSalonDashboard {
 }
 
 export interface MobileAdminDashboard {
+  rangeDays: 7 | 30 | 90;
   kpis: {
     newUsers: number;
     paidOrders: number;
     revenueKrw: number;
     generationsCompleted: number;
     reviewsSubmitted: number;
+    hiddenReviews: number;
     b2bLeads: number;
   };
   daily: Array<{
     date: string;
     newUsers: number;
     generationsCompleted: number;
+    reviews: number;
+    b2bLeads: number;
     paidOrders: number;
     revenueKrw: number;
+  }>;
+  leadStages: Array<{
+    stage: "new" | "qualified" | "negotiation" | "contracted" | "dropped";
+    count: number;
   }>;
 }
 

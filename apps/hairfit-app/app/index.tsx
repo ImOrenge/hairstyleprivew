@@ -237,7 +237,8 @@ function CustomerHome({
   message: string | null;
 }) {
   const router = useRouter();
-  const cta = buildCta(customer);
+  const secondaryCta = buildCta(customer);
+  const showSecondaryCta = secondaryCta.route !== "/upload";
   const selectedHair = findSelectedHair(customer);
   const hairItems = (customer?.recentGenerations ?? []).slice(0, 3);
   const stylingItems = (customer?.recentStylingSessions ?? []).slice(0, 3);
@@ -279,10 +280,18 @@ function CustomerHome({
 
       <Panel style={styles.ctaPanel}>
         <Stack>
-          <Kicker>{cta.kicker}</Kicker>
-          <Heading>{cta.title}</Heading>
-          <BodyText style={styles.ctaText}>{cta.description}</BodyText>
-          <Button onPress={() => router.push(cta.route)}>{cta.button}</Button>
+          <Kicker>헤어스타일 생성</Kicker>
+          <Heading>사진 업로드로 새 헤어 만들기</Heading>
+          <BodyText style={styles.ctaText}>정면 사진 한 장으로 3x3 헤어 추천 보드를 바로 시작하세요.</BodyText>
+          <Button onPress={() => router.push("/upload")}>사진 업로드</Button>
+          <Button variant="secondary" onPress={() => router.push("/personal-color?source=upload")}>
+            퍼스널컬러 진단
+          </Button>
+          {showSecondaryCta ? (
+            <Button variant="secondary" onPress={() => router.push(secondaryCta.route)}>
+              {secondaryCta.title}
+            </Button>
+          ) : null}
         </Stack>
       </Panel>
 

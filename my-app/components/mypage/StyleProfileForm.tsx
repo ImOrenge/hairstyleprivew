@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/Button";
 import type { PersonalColorResult, StyleProfile } from "../../lib/fashion-types";
@@ -7,11 +8,6 @@ import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
 
 interface StyleProfileResponse {
   profile?: StyleProfile;
-  error?: string;
-}
-
-interface PersonalColorResponse {
-  personalColor?: PersonalColorResult;
   error?: string;
 }
 
@@ -57,15 +53,6 @@ const exposureOptions = [
   ["bold", "과감"],
 ] as const;
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("이미지를 읽지 못했습니다."));
-    reader.readAsDataURL(file);
-  });
-}
-
 function formatTone(value?: string | null) {
   if (value === "warm") return "웜톤";
   if (value === "cool") return "쿨톤";
@@ -109,13 +96,11 @@ export function StyleProfileForm({
 }: StyleProfileFormProps) {
   const { isAdminReadOnly } = useAdminReadOnly();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const colorInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<StyleProfile>(initialProfile);
   const [avoidText, setAvoidText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [isAnalyzingColor, setIsAnalyzingColor] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -211,42 +196,6 @@ export function StyleProfileForm({
     setIsUploading(false);
   };
 
-  const handleAnalyzePersonalColor = async (file: File | null | undefined) => {
-    if (isAdminReadOnly) {
-      return;
-    }
-
-    if (!file) return;
-
-    setIsAnalyzingColor(true);
-    setError(null);
-    setMessage(null);
-
-    try {
-      const referenceImageDataUrl = await fileToDataUrl(file);
-      const response = await fetch("/api/personal-color/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ referenceImageDataUrl }),
-      });
-      const data = (await response.json().catch(() => ({}))) as PersonalColorResponse;
-
-      if (response.ok && data.personalColor) {
-        setProfile((current) => ({ ...current, personalColor: data.personalColor || null }));
-        setMessage("퍼스널컬러 진단 결과를 저장했습니다.");
-      } else {
-        setError(data.error || "퍼스널컬러 진단에 실패했습니다.");
-      }
-    } catch (analyzeError) {
-      setError(analyzeError instanceof Error ? analyzeError.message : "퍼스널컬러 진단에 실패했습니다.");
-    } finally {
-      setIsAnalyzingColor(false);
-      if (colorInputRef.current) {
-        colorInputRef.current.value = "";
-      }
-    }
-  };
-
   const handleDeletePhoto = async () => {
     if (isAdminReadOnly) {
       return;
@@ -332,14 +281,6 @@ export function StyleProfileForm({
               className="hidden"
               onChange={(event) => void handleUpload(event.target.files?.[0])}
             />
-            <input
-              ref={colorInputRef}
-              type="file"
-              accept="image/*"
-              disabled={isAdminReadOnly}
-              className="hidden"
-              onChange={(event) => void handleAnalyzePersonalColor(event.target.files?.[0])}
-            />
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -392,15 +333,18 @@ export function StyleProfileForm({
                 </p>
               )}
 
-              <Button
-                type="button"
-                variant="secondary"
-                className="mt-4"
-                onClick={() => colorInputRef.current?.click()}
-                disabled={isAnalyzingColor || isAdminReadOnly}
-              >
-                {isAnalyzingColor ? "진단 중..." : profile.personalColor ? "퍼스널컬러 재진단" : "퍼스널컬러 진단"}
-              </Button>
+              {isAdminReadOnly ? (
+                <Button type="button" variant="secondary" className="mt-4" disabled>
+                  {profile.personalColor ? "퍼스널컬러 재진단" : "퍼스널컬러 진단"}
+                </Button>
+              ) : (
+                <Link
+                  href="/personal-color?source=mypage&returnTo=%2Fmypage%3Ftab%3Dbody-profile"
+                  className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-900 transition hover:border-stone-900 hover:bg-stone-50"
+                >
+                  {profile.personalColor ? "퍼스널컬러 재진단" : "퍼스널컬러 진단"}
+                </Link>
+              )}
             </div>
           </div>
 

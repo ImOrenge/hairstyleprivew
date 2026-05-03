@@ -15,7 +15,6 @@ import {
   Screen,
   Stack,
 } from "@hairfit/ui-native";
-import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -26,11 +25,11 @@ type MyPageTabId = "usage" | "plan" | "aftercare" | "body-profile" | "account";
 const tabIds: MyPageTabId[] = ["usage", "plan", "aftercare", "body-profile", "account"];
 
 const tabs: Array<{ id: MyPageTabId; label: string }> = [
-  { id: "usage", label: "Usage" },
-  { id: "plan", label: "Plan" },
-  { id: "aftercare", label: "Aftercare" },
-  { id: "body-profile", label: "Profile" },
-  { id: "account", label: "Account" },
+  { id: "usage", label: "사용기록" },
+  { id: "plan", label: "플랜/결제" },
+  { id: "aftercare", label: "에프터케어" },
+  { id: "body-profile", label: "바디프로필" },
+  { id: "account", label: "계정" },
 ];
 
 function normalizeTab(value: unknown): MyPageTabId {
@@ -56,31 +55,32 @@ function formatKrw(value: number) {
 }
 
 function formatPlanLabel(planKey: string | null | undefined) {
-  if (!planKey) return "Free";
-  if (planKey === "starter") return "Starter";
-  if (planKey === "pro") return "Pro";
+  if (!planKey) return "무료";
+  if (planKey === "free") return "무료";
+  if (planKey === "starter") return "스타터";
+  if (planKey === "pro") return "프로";
   return planKey.charAt(0).toUpperCase() + planKey.slice(1);
 }
 
 function statusLabel(value: string | null | undefined) {
   const status = value?.toLowerCase();
-  if (status === "completed") return "Completed";
-  if (status === "failed" || status === "error") return "Failed";
-  if (status === "processing" || status === "running") return "Processing";
-  if (status === "queued" || status === "pending") return "Queued";
-  return value || "Unknown";
+  if (status === "completed") return "완료";
+  if (status === "failed" || status === "error") return "실패";
+  if (status === "processing" || status === "running") return "생성 중";
+  if (status === "queued" || status === "pending") return "대기 중";
+  return value || "상태 확인 중";
 }
 
 function displayName(me: MobileBootstrap | null) {
   const name = me?.displayName?.trim();
   if (name) return name;
   const emailName = me?.email?.split("@")[0]?.trim();
-  return emailName || "HairFit user";
+  return emailName || "HairFit 사용자";
 }
 
 function formatPersonalColor(result: PersonalColorResult | null | undefined) {
-  if (!result) return "No diagnosis";
-  return `${result.tone} tone / ${result.contrast} contrast`;
+  if (!result) return "진단 없음";
+  return `${result.tone} 톤 / ${result.contrast} 대비`;
 }
 
 function TabNavigation({ activeTab }: { activeTab: MyPageTabId }) {
@@ -113,13 +113,13 @@ function UsagePanel({
   return (
     <Panel>
       <Stack>
-        <Heading style={styles.panelHeading}>Recent usage</Heading>
-        <BodyText>Recent hairstyle generations and processing states.</BodyText>
+        <Heading style={styles.panelHeading}>최근 사용기록</Heading>
+        <BodyText>최근 헤어 생성 기록과 현재 처리 상태입니다.</BodyText>
         {generations.length === 0 ? (
           <Card style={{ borderStyle: "dashed", paddingVertical: 28 }}>
             <Stack gap={8}>
-              <BodyText style={styles.centerStrong}>No generation history yet.</BodyText>
-              <BodyText style={styles.centerText}>Create a board from the workspace to see it here.</BodyText>
+              <BodyText style={styles.centerStrong}>아직 생성 기록이 없습니다.</BodyText>
+              <BodyText style={styles.centerText}>워크스페이스에서 첫 보드를 만들면 여기에 표시됩니다.</BodyText>
             </Stack>
           </Card>
         ) : (
@@ -130,10 +130,10 @@ function UsagePanel({
                   <Chip tone={item.status === "completed" ? "success" : "neutral"}>{statusLabel(item.status)}</Chip>
                   <Chip>{formatDate(item.createdAt)}</Chip>
                 </Cluster>
-                <BodyText style={styles.strongText}>{item.promptUsed || "Untitled generation"}</BodyText>
+                <BodyText style={styles.strongText}>{item.promptUsed || "제목 없는 생성 결과"}</BodyText>
                 <BodyText>{item.id}</BodyText>
                 <Button variant="secondary" onPress={() => router.push(`/result/${item.id}`)}>
-                  Open
+                  열기
                 </Button>
               </Stack>
             </Card>
@@ -154,22 +154,22 @@ function PlanPanel({
   return (
     <Panel>
       <Stack>
-        <Heading style={styles.panelHeading}>Plan and payments</Heading>
-        <BodyText>Current plan and recent payment history.</BodyText>
+        <Heading style={styles.panelHeading}>플랜 및 결제</Heading>
+        <BodyText>현재 플랜과 최근 결제 내역입니다.</BodyText>
         <Card>
-          <BodyText>Active plan</BodyText>
+          <BodyText>활성 플랜</BodyText>
           <Heading>{activePlan}</Heading>
         </Card>
         {payments.length === 0 ? (
           <Card style={{ borderStyle: "dashed" }}>
-            <BodyText>No payment history.</BodyText>
+            <BodyText>결제 기록이 없습니다.</BodyText>
           </Card>
         ) : (
           payments.map((payment) => (
             <Card key={payment.id}>
               <BodyText style={styles.strongText}>{formatKrw(payment.amountKrw)}</BodyText>
               <BodyText>
-                {payment.status} / {payment.creditsToGrant.toLocaleString("ko-KR")} credits
+                {payment.status} / {payment.creditsToGrant.toLocaleString("ko-KR")} 크레딧
               </BodyText>
               <BodyText>{formatDate(payment.paidAt ?? payment.createdAt)}</BodyText>
             </Card>
@@ -181,14 +181,19 @@ function PlanPanel({
 }
 
 function AftercarePanel() {
+  const router = useRouter();
+
   return (
     <Panel>
       <Stack>
-        <Heading style={styles.panelHeading}>Aftercare</Heading>
-        <BodyText>Recent confirmed hair service records.</BodyText>
+        <Heading style={styles.panelHeading}>에프터케어</Heading>
+        <BodyText>최근 확정한 헤어 시술 기록입니다.</BodyText>
         <Card style={{ borderStyle: "dashed" }}>
-          <BodyText>No aftercare records yet.</BodyText>
+          <BodyText>아직 에프터케어 기록이 없습니다.</BodyText>
         </Card>
+        <Button variant="secondary" onPress={() => router.push("/aftercare")}>
+          에프터케어 보기
+        </Button>
       </Stack>
     </Panel>
   );
@@ -196,7 +201,7 @@ function AftercarePanel() {
 
 function ColorSwatchList({ colors }: { colors: PersonalColorResult["bestColors"] }) {
   if (!colors.length) {
-    return <BodyText>No colors saved.</BodyText>;
+    return <BodyText>저장된 색상이 없습니다.</BodyText>;
   }
 
   return (
@@ -213,9 +218,9 @@ function ColorSwatchList({ colors }: { colors: PersonalColorResult["bestColors"]
 
 function BodyProfilePanel() {
   const api = useHairfitApi();
+  const router = useRouter();
   const [profile, setProfile] = useState<StyleProfile | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [isAnalyzingColor, setIsAnalyzingColor] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -231,7 +236,7 @@ function BodyProfilePanel() {
         }
       } catch (error) {
         if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : "Failed to load style profile.");
+          setMessage(error instanceof Error ? error.message : "바디프로필을 불러오지 못했습니다.");
         }
       } finally {
         if (!cancelled) {
@@ -246,61 +251,21 @@ function BodyProfilePanel() {
     };
   }, [api]);
 
-  const analyzePersonalColor = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setMessage("Photo library permission is required.");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [4, 5],
-      base64: true,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.9,
-    });
-
-    if (result.canceled) {
-      setMessage("Personal color photo selection was cancelled.");
-      return;
-    }
-
-    const asset = result.assets[0];
-    if (!asset?.base64) {
-      setMessage("Could not read the selected photo.");
-      return;
-    }
-
-    setIsAnalyzingColor(true);
-    setMessage("Analyzing personal color...");
-    try {
-      const mimeType = asset.mimeType || "image/jpeg";
-      const analyzed = await api.analyzePersonalColor(`data:${mimeType};base64,${asset.base64}`);
-      setProfile((current) => (current ? { ...current, personalColor: analyzed.personalColor } : current));
-      setMessage("Personal color result was saved.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to analyze personal color.");
-    } finally {
-      setIsAnalyzingColor(false);
-    }
-  };
-
   const personalColor = profile?.personalColor ?? null;
 
   return (
     <Panel>
       <Stack>
-        <Heading style={styles.panelHeading}>Body profile settings</Heading>
-        <BodyText>Saved body profile and personal color guidance are used for fashion styling.</BodyText>
-        {isLoadingProfile ? <BodyText>Loading style profile...</BodyText> : null}
+        <Heading style={styles.panelHeading}>바디프로필 설정</Heading>
+        <BodyText>저장된 체형 정보와 참고 사진은 패션 추천에 사용됩니다.</BodyText>
+        {isLoadingProfile ? <BodyText>바디 프로필을 불러오는 중입니다...</BodyText> : null}
         {message ? <BodyText>{message}</BodyText> : null}
         <Card>
           <Stack>
             <Kicker>Personal Color</Kicker>
             <Heading style={{ fontSize: 20, lineHeight: 26 }}>{formatPersonalColor(personalColor)}</Heading>
             <BodyText>
-              {personalColor?.summary || "Upload a clear face photo to save personal color guidance for styling."}
+              {personalColor?.summary || "선명한 얼굴 사진을 업로드해 스타일링에 사용할 퍼스널 컬러 정보를 저장하세요."}
             </BodyText>
             {personalColor ? (
               <Stack>
@@ -310,8 +275,8 @@ function BodyProfilePanel() {
                 <ColorSwatchList colors={personalColor.avoidColors} />
               </Stack>
             ) : null}
-            <Button disabled={isAnalyzingColor} onPress={analyzePersonalColor}>
-              {isAnalyzingColor ? "Analyzing..." : personalColor ? "Re-diagnose personal color" : "Diagnose personal color"}
+            <Button onPress={() => router.push("/personal-color?source=mypage")}>
+              {personalColor ? "퍼스널 컬러 다시 진단" : "퍼스널 컬러 진단"}
             </Button>
           </Stack>
         </Card>
@@ -324,8 +289,8 @@ function AccountPanel({ me }: { me: MobileBootstrap | null }) {
   return (
     <Panel>
       <Stack>
-        <Heading style={styles.panelHeading}>Account</Heading>
-        <BodyText>Basic customer account information.</BodyText>
+        <Heading style={styles.panelHeading}>계정</Heading>
+        <BodyText>로그인된 고객 계정의 기본 정보입니다.</BodyText>
         <Card>
           <BodyText style={styles.strongText}>{displayName(me)}</BodyText>
           <BodyText>{me?.email || "-"}</BodyText>
@@ -353,7 +318,7 @@ export default function MyPageScreen() {
       if (!isLoaded) return;
       if (!isSignedIn) {
         setDashboard(null);
-        setError("Sign in to view usage, plan, aftercare, and profile settings.");
+        setError("로그인하면 사용기록, 플랜, 에프터케어, 바디프로필 설정을 확인할 수 있습니다.");
         setIsLoading(false);
         return;
       }
@@ -368,7 +333,7 @@ export default function MyPageScreen() {
         }
       } catch (loadError) {
         if (!cancelled) {
-          setError(loadError instanceof Error ? loadError.message : "Failed to load dashboard.");
+          setError(loadError instanceof Error ? loadError.message : "대시보드를 불러오지 못했습니다.");
         }
       } finally {
         if (!cancelled) {
@@ -405,10 +370,10 @@ export default function MyPageScreen() {
       <Panel>
         <Stack>
           <Kicker>My Page</Kicker>
-          <Heading>Account dashboard</Heading>
-          <BodyText>{viewerName}'s usage, plan, aftercare, and body profile settings.</BodyText>
+          <Heading>계정 대시보드</Heading>
+          <BodyText>{viewerName}님의 사용기록, 플랜, 사용량, 에프터케어, 바디프로필 설정을 탭으로 확인하세요.</BodyText>
           <Button variant="secondary" onPress={() => router.push("/workspace")}>
-            Open workspace
+            워크스페이스 열기
           </Button>
         </Stack>
       </Panel>
@@ -421,15 +386,15 @@ export default function MyPageScreen() {
 
       {isLoading ? (
         <Card>
-          <BodyText>Loading...</BodyText>
+          <BodyText>불러오는 중...</BodyText>
         </Card>
       ) : null}
 
       <MetricGrid>
-        <MetricTile label="Credits" value={credits.toLocaleString("ko-KR")} helper={`Hair generations about ${estimatedStyles}`} />
-        <MetricTile label="Plan" value={activePlan} helper="Active subscription" />
-        <MetricTile label="Used" value={usedCredits.toLocaleString("ko-KR")} helper="Recent credit use" />
-        <MetricTile label="Profile" value={customer?.styleProfileReady ? "Ready" : "Needed"} helper="Fashion styling setup" />
+        <MetricTile label="크레딧" value={credits.toLocaleString("ko-KR")} helper={`헤어 생성 약 ${estimatedStyles.toLocaleString("ko-KR")}회 가능`} />
+        <MetricTile label="플랜" value={activePlan} helper="활성 구독 정보 없음" />
+        <MetricTile label="사용량" value={usedCredits.toLocaleString("ko-KR")} helper="최근 생성 기록에서 사용한 크레딧" />
+        <MetricTile label="바디프로필" value={customer?.styleProfileReady ? "준비됨" : "필요"} helper="아래 프로필을 완성하세요" />
       </MetricGrid>
 
       <TabNavigation activeTab={activeTab} />

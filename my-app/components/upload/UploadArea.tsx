@@ -5,14 +5,21 @@ import { useDropzone } from "react-dropzone";
 import { Button } from "../ui/Button";
 import { useRef } from "react";
 import { useT } from "../../lib/i18n/useT";
+import { FaceScanOverlay } from "../personal-color/PersonalColorDiagnosisProgress";
 
 interface UploadAreaProps {
   onSelectFile: (file: File) => void;
   disabled?: boolean;
   previewUrl?: string | null;
+  scanOverlay?: boolean;
 }
 
-export function UploadArea({ onSelectFile, disabled = false, previewUrl = null }: UploadAreaProps) {
+export function UploadArea({
+  onSelectFile,
+  disabled = false,
+  previewUrl = null,
+  scanOverlay = false,
+}: UploadAreaProps) {
   const t = useT();
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -73,6 +80,7 @@ export function UploadArea({ onSelectFile, disabled = false, previewUrl = null }
             className="absolute inset-0 object-cover"
           />
           <div className="absolute inset-0 bg-stone-900/10 backdrop-blur-[2px]" />
+          <FaceScanOverlay active={scanOverlay} />
         </>
       ) : null}
 

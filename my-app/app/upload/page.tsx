@@ -81,6 +81,11 @@ export default function UploadPage() {
                 <Button type="button" variant="secondary" onClick={() => setGuideOpen(true)}>
                   {t("upload.guide")}
                 </Button>
+                <Link href="/personal-color?source=upload&returnTo=%2Fworkspace&nextStep=generate">
+                  <Button type="button" variant="secondary">
+                    퍼스널컬러 진단
+                  </Button>
+                </Link>
                 {previewUrl ? (
                   <Button type="button" variant="ghost" onClick={handleReset} disabled={isAdminReadOnly}>
                     {t("upload.reset")}

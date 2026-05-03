@@ -7,6 +7,7 @@ import {
   Clock3,
   CreditCard,
   Grid3X3,
+  ImagePlus,
   Shirt,
   Sparkles,
   UserRound,
@@ -169,18 +170,16 @@ function MetricCard({
   value: string;
 }) {
   return (
-    <SurfaceCard className="px-4 py-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.08em] text-[var(--app-muted)]">{label}</p>
-          <p className="mt-2 text-2xl font-black text-[var(--app-text)]">{value}</p>
-          <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">{helper}</p>
-        </div>
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--app-radius-control)] bg-[var(--app-surface-muted)] text-[var(--app-text)]">
-          <Icon className="h-4 w-4" aria-hidden="true" />
-        </span>
+    <div className="min-w-0 px-3 py-3 sm:px-4">
+      <div className="flex items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-[11px] font-black uppercase tracking-[0.08em] text-[var(--app-muted)]">
+          {label}
+        </p>
+        <Icon className="h-4 w-4 shrink-0 text-[var(--app-muted)]" aria-hidden="true" />
       </div>
-    </SurfaceCard>
+      <p className="mt-1 truncate text-xl font-black text-[var(--app-text)] sm:text-2xl">{value}</p>
+      <p className="mt-1 hidden truncate text-xs leading-5 text-[var(--app-muted)] sm:block">{helper}</p>
+    </div>
   );
 }
 
@@ -266,8 +265,9 @@ export default async function CustomerHomePage() {
   }
 
   const { dashboard, viewerName } = await loadDashboard(userId);
-  const cta = buildCta(dashboard);
-  const CtaIcon = cta.icon;
+  const secondaryCta = buildCta(dashboard);
+  const showSecondaryCta = secondaryCta.href !== "/workspace";
+  const CtaIcon = ImagePlus;
   const hairItems = dashboard.recentGenerations.slice(0, 3);
   const stylingItems = dashboard.recentStylingSessions.slice(0, 3);
   const selectedHair = findSelectedHair(dashboard);
@@ -291,42 +291,60 @@ export default async function CustomerHomePage() {
         </div>
       </Panel>
 
-      <section className="grid gap-3 sm:grid-cols-3">
-        <MetricCard
-          helper="헤어와 룩북 생성에 사용됩니다"
-          icon={CreditCard}
-          label="크레딧"
-          value={dashboard.credits.toLocaleString("ko-KR")}
-        />
-        <MetricCard
-          helper={dashboard.planKey ? "현재 활성 플랜" : "활성 구독 정보 없음"}
-          icon={Sparkles}
-          label="플랜"
-          value={dashboard.planKey || "free"}
-        />
-        <MetricCard
-          helper={dashboard.styleProfileReady ? "패션 추천 준비 완료" : "패션 추천 전 바디 프로필 필요"}
-          icon={UserRound}
-          label="바디 프로필"
-          value={dashboard.styleProfileReady ? "준비됨" : "필요"}
-        />
-      </section>
+      <Panel as="section" className="overflow-hidden p-0">
+        <div className="grid grid-cols-3 divide-x divide-[var(--app-border)]">
+          <MetricCard
+            helper="헤어와 룩북 생성에 사용됩니다"
+            icon={CreditCard}
+            label="크레딧"
+            value={dashboard.credits.toLocaleString("ko-KR")}
+          />
+          <MetricCard
+            helper={dashboard.planKey ? "현재 활성 플랜" : "활성 구독 정보 없음"}
+            icon={Sparkles}
+            label="플랜"
+            value={dashboard.planKey || "free"}
+          />
+          <MetricCard
+            helper={dashboard.styleProfileReady ? "패션 추천 준비 완료" : "패션 추천 전 바디 프로필 필요"}
+            icon={UserRound}
+            label="바디 프로필"
+            value={dashboard.styleProfileReady ? "준비됨" : "필요"}
+          />
+        </div>
+      </Panel>
 
       <Panel as="section" className="overflow-hidden p-0">
         <div className="grid gap-0 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <div className="flex min-h-64 flex-col justify-between bg-[var(--app-inverse)] p-5 text-[var(--app-inverse-text)] sm:p-6">
             <div>
-              <p className="app-inverse-kicker">{cta.eyebrow}</p>
-              <h2 className="mt-3 max-w-xl text-3xl font-black tracking-tight sm:text-4xl">{cta.title}</h2>
-              <p className="app-inverse-muted mt-3 max-w-xl text-sm leading-6 sm:text-base">{cta.description}</p>
+              <p className="app-inverse-kicker">헤어스타일 생성</p>
+              <h2 className="mt-3 max-w-xl text-3xl font-black tracking-tight sm:text-4xl">사진 업로드로 새 헤어 만들기</h2>
+              <p className="app-inverse-muted mt-3 max-w-xl text-sm leading-6 sm:text-base">
+                정면 사진 한 장으로 3x3 헤어 추천 보드를 바로 시작하세요.
+              </p>
             </div>
             <Link
-              href={cta.href}
+              href="/workspace"
               className="app-inverse-cta mt-6 inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] transition sm:w-auto"
             >
-              시작하기
+              사진 업로드
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
+            <Link
+              href="/personal-color?source=upload&returnTo=%2Fworkspace&nextStep=generate"
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] text-[var(--app-inverse-text)] transition hover:bg-white/15 sm:w-auto"
+            >
+              퍼스널컬러 진단
+            </Link>
+            {showSecondaryCta ? (
+              <Link
+                href={secondaryCta.href}
+                className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-white/25 bg-white/10 px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] text-[var(--app-inverse-text)] transition hover:bg-white/15 sm:w-auto"
+              >
+                {secondaryCta.title}
+              </Link>
+            ) : null}
           </div>
           <div className="grid content-center gap-4 p-5 sm:p-6">
             <div className="flex h-14 w-14 items-center justify-center rounded-[var(--app-radius-control)] bg-[var(--app-surface-muted)] text-[var(--app-text)]">

@@ -57,7 +57,6 @@ export default function UploadScreen() {
   const [message, setMessage] = useState("Choose a clear front-facing portrait.");
   const [personalColor, setPersonalColor] = useState<PersonalColorResult | null>(null);
   const [isLoadingPersonalColor, setIsLoadingPersonalColor] = useState(false);
-  const [isAnalyzingPersonalColor, setIsAnalyzingPersonalColor] = useState(false);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -100,6 +99,12 @@ export default function UploadScreen() {
       cancelled = true;
     };
   }, [accountType, api, isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (!imageUri && flow.imageDataUrl) {
+      setImageUri(flow.imageDataUrl);
+    }
+  }, [flow.imageDataUrl, imageUri]);
 
   if (isLoaded && !isSignedIn) {
     return (
@@ -148,23 +153,8 @@ export default function UploadScreen() {
     setMessage("Portrait is ready. Continue to create the 3x3 recommendation board.");
   };
 
-  const analyzePersonalColor = async () => {
-    if (!flow.imageDataUrl || isAnalyzingPersonalColor) {
-      return;
-    }
-
-    setIsAnalyzingPersonalColor(true);
-    setMessage("Analyzing personal color...");
-    try {
-      const result = await api.analyzePersonalColor(flow.imageDataUrl);
-      setPersonalColor(result.personalColor);
-      setMessage("Personal color result was saved for styling recommendations.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to analyze personal color.");
-    } finally {
-      setIsAnalyzingPersonalColor(false);
-    }
-  };
+  const previewSource = imageUri || flow.imageDataUrl;
+  const hasUploadImage = Boolean(previewSource);
 
   return (
     <Screen>
@@ -177,19 +167,23 @@ export default function UploadScreen() {
       <Panel>
         <Stack>
           <View style={styles.preview}>
-            {imageUri ? <Image source={{ uri: imageUri }} style={styles.image} /> : <BodyText>No preview yet</BodyText>}
+            {previewSource ? <Image source={{ uri: previewSource }} style={styles.image} /> : <BodyText>No preview yet</BodyText>}
           </View>
           <Card>
             <BodyText>{message}</BodyText>
           </Card>
-          {imageUri && !isLoadingPersonalColor && !personalColor ? (
+          {!isLoadingPersonalColor && !personalColor ? (
             <Card>
               <Stack>
                 <Kicker>Personal Color</Kicker>
                 <Heading style={{ fontSize: 20, lineHeight: 26 }}>First personal color diagnosis</Heading>
-                <BodyText>Analyze warm/cool tone and contrast now, then use it in fashion styling.</BodyText>
-                <Button disabled={isAnalyzingPersonalColor} onPress={analyzePersonalColor}>
-                  {isAnalyzingPersonalColor ? "Analyzing..." : "Start first diagnosis"}
+                <BodyText>
+                  {hasUploadImage
+                    ? "Analyze the selected portrait, then use warm/cool tone and contrast in fashion styling."
+                    : "You can choose a face photo on the diagnosis page if no portrait is selected yet."}
+                </BodyText>
+                <Button onPress={() => router.push("/personal-color?source=upload")}>
+                  Start first diagnosis
                 </Button>
               </Stack>
             </Card>
@@ -224,6 +218,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: "center",
     overflow: "hidden",
+    position: "relative",
     width: "100%",
   },
   image: {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -98,15 +98,6 @@ function statusTone(status: GeneratedVariant["status"]) {
   return "bg-[var(--app-surface-muted)] text-[var(--app-muted)]";
 }
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("이미지를 읽지 못했습니다."));
-    reader.readAsDataURL(file);
-  });
-}
-
 function formatTone(value?: string | null) {
   if (value === "warm") return "웜톤";
   if (value === "cool") return "쿨톤";
@@ -143,11 +134,6 @@ function PersonalColorSwatches({ colors }: { colors: PersonalColorResult["bestCo
       ))}
     </div>
   );
-}
-
-interface PersonalColorAnalyzeResponse {
-  personalColor?: PersonalColorResult;
-  error?: string;
 }
 
 interface StyleProfileResponse {
@@ -463,12 +449,12 @@ function ServiceConfirmDialog({
 
 export function WorkspaceWizard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAdminReadOnly } = useAdminReadOnly();
   const { runGridPipeline, resetPipeline } = useGenerate();
   const { validateImage, resetValidation } = useUpload();
 
   const previewUrl = useGenerationStore((state) => state.previewUrl);
-  const originalImage = useGenerationStore((state) => state.originalImage);
   const isGenerating = useGenerationStore((state) => state.isGenerating);
   const progress = useGenerationStore((state) => state.progress);
   const pipelineStage = useGenerationStore((state) => state.pipelineStage);
@@ -486,7 +472,9 @@ export function WorkspaceWizard() {
   const setSelectedVariantId = useGenerationStore((state) => state.setSelectedVariantId);
   const clearLatestResult = useGenerationStore((state) => state.clearLatestResult);
 
-  const [currentStep, setCurrentStep] = useState<WizardStep>("upload");
+  const [currentStep, setCurrentStep] = useState<WizardStep>(
+    searchParams.get("nextStep") === "generate" ? "generate" : "upload",
+  );
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingSelection, setIsSavingSelection] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -498,8 +486,6 @@ export function WorkspaceWizard() {
   const [mobileStepsOpen, setMobileStepsOpen] = useState(false);
   const [personalColor, setPersonalColor] = useState<PersonalColorResult | null>(null);
   const [isLoadingPersonalColor, setIsLoadingPersonalColor] = useState(true);
-  const [isAnalyzingPersonalColor, setIsAnalyzingPersonalColor] = useState(false);
-  const [personalColorError, setPersonalColorError] = useState<string | null>(null);
 
   useEffect(() => {
     void hydrateOriginalImage();
@@ -517,7 +503,6 @@ export function WorkspaceWizard() {
 
         if (response.ok) {
           setPersonalColor(data.profile?.personalColor || null);
-          setPersonalColorError(null);
         }
       } finally {
         if (active) {
@@ -584,37 +569,7 @@ export function WorkspaceWizard() {
     resetPipeline();
     resetValidation();
     setActionError(null);
-    setPersonalColorError(null);
     setCurrentStep("upload");
-  };
-
-  const handleAnalyzePersonalColor = async () => {
-    if (!originalImage || isAnalyzingPersonalColor || isAdminReadOnly) return;
-
-    setIsAnalyzingPersonalColor(true);
-    setPersonalColorError(null);
-    setActionError(null);
-
-    try {
-      const referenceImageDataUrl = await fileToDataUrl(originalImage);
-      const response = await fetch("/api/personal-color/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ referenceImageDataUrl }),
-      });
-      const data = (await response.json().catch(() => ({}))) as PersonalColorAnalyzeResponse;
-
-      if (!response.ok || !data.personalColor) {
-        throw new Error(data.error || "퍼스널컬러 진단에 실패했습니다.");
-      }
-
-      setPersonalColor(data.personalColor);
-      setCurrentStep("generate");
-    } catch (error) {
-      setPersonalColorError(error instanceof Error ? error.message : "퍼스널컬러 진단에 실패했습니다.");
-    } finally {
-      setIsAnalyzingPersonalColor(false);
-    }
   };
 
   const handleGenerate = async () => {
@@ -792,20 +747,20 @@ export function WorkspaceWizard() {
                       업로드한 얼굴 사진으로 웜/쿨톤과 대비감을 분석해 이후 패션 추천 팔레트에 반영합니다.
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
+                      <Link
+                        href="/personal-color?source=upload&returnTo=%2Fworkspace&nextStep=generate"
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 py-2 text-sm font-bold uppercase tracking-[0.04em] text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
+                      >
+                        첫 퍼스널컬러 진단
+                      </Link>
                       <Button
                         type="button"
-                        onClick={handleAnalyzePersonalColor}
-                        disabled={isAnalyzingPersonalColor || isAdminReadOnly}
+                        variant="secondary"
+                        onClick={() => setCurrentStep("generate")}
                       >
-                        {isAnalyzingPersonalColor ? "진단 중..." : "첫 퍼스널컬러 진단"}
-                      </Button>
-                      <Button type="button" variant="secondary" onClick={() => setCurrentStep("generate")}>
                         헤어 생성으로 계속
                       </Button>
                     </div>
-                    {personalColorError ? (
-                      <p className="mt-3 text-sm font-semibold text-rose-600">{personalColorError}</p>
-                    ) : null}
                   </div>
                 </div>
               </SurfaceCard>

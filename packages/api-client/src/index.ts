@@ -91,8 +91,13 @@ export class HairfitApiClient {
     return this.request<MobileBootstrap>("/api/mobile/me");
   }
 
-  getMobileDashboard(service: "customer" | "salon" | "admin") {
-    return this.request<MobileDashboard>(`/api/mobile/dashboard?service=${encodeURIComponent(service)}`);
+  getMobileDashboard(service: "customer" | "salon" | "admin", options: { range?: 7 | 30 | 90 } = {}) {
+    const params = new URLSearchParams({ service });
+    if (options.range) {
+      params.set("range", String(options.range));
+    }
+
+    return this.request<MobileDashboard>(`/api/mobile/dashboard?${params.toString()}`);
   }
 
   submitOnboarding(input: {
