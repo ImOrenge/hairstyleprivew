@@ -35,13 +35,37 @@ interface GenerationApiResponse {
   evaluation?: GeneratedVariant["evaluation"];
   chargedCredits?: number;
   error?: string;
+  code?: string;
   status?: number;
+  requiredCredits?: number;
 }
 
 const GENERATION_MAX_CONCURRENCY = 3;
 const GENERATION_LAUNCH_GAP_MS = 1500;
 const VARIANT_MAX_ATTEMPTS = 2;
 const VARIANT_RETRY_DELAY_MS = 3000;
+const INSUFFICIENT_CREDITS_CODE = "INSUFFICIENT_CREDITS";
+const INSUFFICIENT_CREDITS_MESSAGE =
+  "크레딧이 부족합니다. 크레딧을 충전한 뒤 다시 시도해 주세요.";
+
+class GenerationApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+  readonly requiredCredits?: number;
+
+  constructor(input: {
+    message: string;
+    status: number;
+    code?: string;
+    requiredCredits?: number;
+  }) {
+    super(input.message);
+    this.name = "GenerationApiError";
+    this.status = input.status;
+    this.code = input.code;
+    this.requiredCredits = input.requiredCredits;
+  }
+}
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,6 +103,10 @@ function summarizeVariantFailures(errors: string[]) {
     return "All recommendation variants failed.";
   }
 
+  if (uniqueErrors.includes(INSUFFICIENT_CREDITS_MESSAGE)) {
+    return INSUFFICIENT_CREDITS_MESSAGE;
+  }
+
   return `All recommendation variants failed. First error: ${uniqueErrors[0]}`;
 }
 
@@ -86,11 +114,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function toErrorMessage(error: unknown, fallback: string) {
+function rawErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) {
     return error.message;
   }
   return fallback;
+}
+
+function isInsufficientCreditsError(error: unknown) {
+  if (error instanceof GenerationApiError) {
+    const message = error.message.toLowerCase();
+    return (
+      error.code === INSUFFICIENT_CREDITS_CODE ||
+      (error.status === 409 &&
+        (message.includes("insufficient credits") ||
+          message.includes("credit") ||
+          message.includes("크레딧")))
+    );
+  }
+
+  return false;
+}
+
+function toErrorMessage(error: unknown, fallback: string) {
+  if (isInsufficientCreditsError(error)) {
+    return INSUFFICIENT_CREDITS_MESSAGE;
+  }
+
+  return rawErrorMessage(error, fallback);
+}
+
+function pushUniqueFailure(errors: string[], message: string) {
+  if (!errors.includes(message)) {
+    errors.push(message);
+  }
 }
 
 function fileToDataUrl(file: File): Promise<string> {
@@ -164,10 +221,34 @@ export function useGenerate() {
       const apiError = typeof result.error === "string" ? result.error : "";
       if (!response.ok) {
         const status = typeof result.status === "number" ? result.status : response.status;
+        const code = typeof result.code === "string" ? result.code : undefined;
+        const requiredCredits =
+          typeof result.requiredCredits === "number" ? result.requiredCredits : undefined;
+        const normalizedApiError = apiError.toLowerCase();
+        if (
+          code === INSUFFICIENT_CREDITS_CODE ||
+          (status === 409 &&
+            (normalizedApiError.includes("insufficient credits") ||
+              normalizedApiError.includes("credit") ||
+              apiError.includes("크레딧")))
+        ) {
+          throw new GenerationApiError({
+            message: INSUFFICIENT_CREDITS_MESSAGE,
+            status,
+            code: INSUFFICIENT_CREDITS_CODE,
+            requiredCredits,
+          });
+        }
+
         const fallback = responseText.trim()
           ? `Failed to generate hairstyle variant. HTTP ${status}: ${responseText.slice(0, 180)}`
           : `Failed to generate hairstyle variant. HTTP ${status}`;
-        throw new Error(apiError ? `${apiError} (HTTP ${status})` : fallback);
+        throw new GenerationApiError({
+          message: apiError ? `${apiError} (HTTP ${status})` : fallback,
+          status,
+          code,
+          requiredCredits,
+        });
       }
 
       if (!result.id || !result.variantId) {
@@ -247,6 +328,7 @@ export function useGenerate() {
       const total = recommendations.length;
       let settledCount = 0;
       let completedCount = 0;
+      let insufficientCreditsSeen = false;
       const failedMessages: string[] = [];
 
       for (const candidate of recommendations) {
@@ -310,6 +392,16 @@ export function useGenerate() {
               return;
             } catch (error) {
               const message = toErrorMessage(error, "Variant generation failed.");
+              if (isInsufficientCreditsError(error)) {
+                insufficientCreditsSeen = true;
+                pushUniqueFailure(failedMessages, message);
+                updateRecommendationVariant(candidate.id, {
+                  status: "failed",
+                  error: message,
+                });
+                return;
+              }
+
               if (attempt < VARIANT_MAX_ATTEMPTS) {
                 updateRecommendationVariant(candidate.id, {
                   status: "generating",
@@ -319,7 +411,7 @@ export function useGenerate() {
                 continue;
               }
 
-              failedMessages.push(message);
+              pushUniqueFailure(failedMessages, message);
               updateRecommendationVariant(candidate.id, {
                 status: "failed",
                 error: message,
@@ -335,6 +427,9 @@ export function useGenerate() {
       setProgress(95);
 
       if (completedCount === 0) {
+        if (insufficientCreditsSeen) {
+          throw new Error(INSUFFICIENT_CREDITS_MESSAGE);
+        }
         throw new Error(summarizeVariantFailures(failedMessages));
       }
 

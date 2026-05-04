@@ -57,6 +57,9 @@ interface SupabaseRunClient {
 
 const uuidV4LikeRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const INSUFFICIENT_CREDITS_CODE = "INSUFFICIENT_CREDITS";
+const INSUFFICIENT_CREDITS_MESSAGE =
+  "크레딧이 부족합니다. 크레딧을 충전한 뒤 다시 시도해 주세요.";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -393,7 +396,15 @@ async function handlePost(request: Request) {
 
       if (consumeError) {
         if (consumeError.message.toLowerCase().includes("insufficient credits")) {
-          return NextResponse.json({ error: "Insufficient credits" }, { status: 409 });
+          return NextResponse.json(
+            {
+              error: INSUFFICIENT_CREDITS_MESSAGE,
+              code: INSUFFICIENT_CREDITS_CODE,
+              status: 409,
+              requiredCredits: creditCost,
+            },
+            { status: 409 },
+          );
         }
 
         if (!isDuplicateRecommendationChargeError(consumeError)) {
