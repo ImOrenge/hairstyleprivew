@@ -315,9 +315,9 @@ function VariantCard({
         disabled ? "cursor-not-allowed opacity-60" : "hover:-translate-y-0.5 hover:border-[var(--app-border-strong)]",
       )}
     >
-      <div className="relative aspect-[4/5] bg-[var(--app-surface-muted)]">
+      <div className="relative aspect-[3/5] bg-[var(--app-surface-muted)]">
         {variant.outputUrl ? (
-          <img src={variant.outputUrl} alt={variant.label} className="h-full w-full object-cover" />
+          <img src={variant.outputUrl} alt={variant.label} className="h-full w-full object-contain" />
         ) : (
           <div className="flex h-full items-center justify-center px-4 text-center text-sm text-[var(--app-muted)]">
             {variant.status === "failed" ? variant.error || "생성에 실패했습니다" : "미리보기 준비 중"}
@@ -794,11 +794,11 @@ export function WorkspaceWizard() {
       {currentStep === "generate" ? (
         <Panel as="section" className="overflow-hidden">
           <div className="grid gap-0 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-            <div className="relative min-h-[420px] bg-[var(--app-surface-muted)]">
+            <div className="relative min-h-[560px] bg-[var(--app-surface-muted)] lg:min-h-[640px]">
               {previewUrl ? (
-                <img src={previewUrl} alt="업로드한 정면 사진" className="absolute inset-0 h-full w-full object-cover" />
+                <img src={previewUrl} alt="업로드한 정면 사진" className="absolute inset-0 h-full w-full object-contain" />
               ) : (
-                <div className="flex min-h-[420px] items-center justify-center px-6 text-center text-sm text-[var(--app-muted)]">
+                <div className="flex min-h-[560px] items-center justify-center px-6 text-center text-sm text-[var(--app-muted)] lg:min-h-[640px]">
                   먼저 사진을 업로드하세요.
                 </div>
               )}

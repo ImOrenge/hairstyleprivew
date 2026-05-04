@@ -218,7 +218,7 @@ export default function GenerateBoardScreen() {
               <Stack>
                 <View style={styles.preview}>
                   {imageUrl ? (
-                    <Image source={{ uri: imageUrl }} style={styles.image} />
+                    <Image resizeMode="contain" source={{ uri: imageUrl }} style={styles.image} />
                   ) : (
                     <BodyText>
                       {variant.status === "failed"
@@ -273,7 +273,7 @@ export default function GenerateBoardScreen() {
 const styles = StyleSheet.create({
   preview: {
     alignItems: "center",
-    aspectRatio: 4 / 5,
+    aspectRatio: 3 / 5,
     backgroundColor: "#eee8de",
     borderRadius: 8,
     justifyContent: "center",

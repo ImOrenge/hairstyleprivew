@@ -27,59 +27,41 @@ const STAGE_LABELS: Record<PipelineStage, string> = {
 const STAGE_THEME: Record<
   PipelineStage,
   {
-    ring: string;
+    accent: string;
     text: string;
-    badge: string;
-    spinnerDuration: number;
   }
 > = {
   idle: {
-    ring: "border-[var(--app-border)] border-t-[var(--app-subtle)]",
+    accent: "text-[var(--app-subtle)]",
     text: "text-[var(--app-muted)]",
-    badge: "border border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-muted)]",
-    spinnerDuration: 1.2,
   },
   validating: {
-    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    accent: "text-[var(--app-accent-strong)]",
     text: "text-[var(--app-text)]",
-    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
-    spinnerDuration: 1.1,
   },
   analyzing_face: {
-    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    accent: "text-[var(--app-accent-strong)]",
     text: "text-[var(--app-text)]",
-    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
-    spinnerDuration: 0.95,
   },
   building_grid: {
-    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    accent: "text-[var(--app-accent-strong)]",
     text: "text-[var(--app-text)]",
-    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
-    spinnerDuration: 0.92,
   },
   generating_image: {
-    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    accent: "text-[var(--app-accent-strong)]",
     text: "text-[var(--app-text)]",
-    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
-    spinnerDuration: 0.8,
   },
   finalizing: {
-    ring: "border-[var(--app-border)] border-t-[var(--app-accent)]",
+    accent: "text-[var(--app-accent-strong)]",
     text: "text-[var(--app-text)]",
-    badge: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]",
-    spinnerDuration: 1.05,
   },
   completed: {
-    ring: "border-emerald-500/30 border-t-emerald-500",
+    accent: "text-emerald-500",
     text: "text-emerald-700 dark:text-emerald-300",
-    badge: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-    spinnerDuration: 1,
   },
   failed: {
-    ring: "border-rose-500/30 border-t-rose-500",
+    accent: "text-rose-500",
     text: "text-rose-700 dark:text-rose-300",
-    badge: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
-    spinnerDuration: 1.2,
   },
 };
 
@@ -105,8 +87,15 @@ export function PipelineStatusIndicator({
   const isFailed = stage === "failed";
   const theme = STAGE_THEME[stage];
   const isOverlay = mode === "overlay";
-  const spinnerSize = isOverlay ? "h-14 w-14" : "h-20 w-20";
+  const circleSize = isOverlay ? "h-16 w-16" : "h-24 w-24";
   const iconSize = isOverlay ? "h-7 w-7" : "h-10 w-10";
+  const normalizedProgress = Math.max(0, Math.min(100, progress));
+  const displayProgress = isCompleted ? 100 : stage === "idle" ? 0 : Math.round(normalizedProgress);
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
+  const strokeOffset = circumference * (1 - displayProgress / 100);
+  const trackClassName = isOverlay ? "text-white/20" : "text-[var(--app-border)]";
+  const progressClassName = isOverlay && !isCompleted && !isFailed ? "text-white" : theme.accent;
   const containerClassName = isOverlay
     ? "w-full rounded-[var(--app-radius-panel)] border border-white/15 bg-black/70 px-4 py-4 text-left text-white shadow-[0_18px_60px_-30px_rgba(0,0,0,0.7)] backdrop-blur-md"
     : "flex h-full w-full flex-col items-center justify-center gap-5 rounded-[var(--app-radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-6 py-8 text-center";
@@ -114,80 +103,99 @@ export function PipelineStatusIndicator({
   return (
     <div className={cn(containerClassName, className)}>
       <div className={cn("flex gap-4", isOverlay ? "items-start" : "flex-col items-center justify-center gap-5")}>
-      <div className="relative flex items-center justify-center">
-        {isCompleted ? (
-          <motion.div
-            initial={{ scale: 0.78, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 16 }}
-            className="relative"
-          >
-            <motion.div
-              className={cn(spinnerSize, "rounded-full border-4 border-emerald-500/40 bg-emerald-500/10")}
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              transition={{ duration: 0.2 }}
-            />
-            <motion.svg
-              viewBox="0 0 24 24"
-              className={cn("absolute inset-0 m-auto text-emerald-600", iconSize)}
+        <motion.div
+          className="relative flex shrink-0 items-center justify-center"
+          initial={{ scale: 0.96, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+        >
+          <svg aria-hidden="true" viewBox="0 0 100 100" className={cn(circleSize, "-rotate-90")}>
+            <circle
+              className={trackClassName}
+              cx="50"
+              cy="50"
               fill="none"
+              r={radius}
               stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <motion.path
-                d="M5 12l4 4L19 7"
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.35, ease: "easeOut", delay: 0.08 }}
-              />
-            </motion.svg>
-          </motion.div>
-        ) : (
-          <>
-            <motion.div className={cn(spinnerSize, "rounded-full border-4 border-[var(--app-border)]")} />
-            <motion.div
-              className={cn(spinnerSize, "absolute rounded-full border-4 border-transparent", theme.ring)}
-              animate={{ rotate: 360 }}
-              transition={{ repeat: Infinity, duration: theme.spinnerDuration, ease: "linear" }}
+              strokeWidth="8"
             />
-          </>
-        )}
+            <motion.circle
+              className={progressClassName}
+              cx="50"
+              cy="50"
+              fill="none"
+              r={radius}
+              stroke="currentColor"
+              strokeDasharray={circumference}
+              strokeDashoffset={strokeOffset}
+              strokeLinecap="round"
+              strokeWidth="8"
+              initial={false}
+              animate={{ strokeDashoffset: strokeOffset }}
+              transition={{ duration: 0.45, ease: "easeOut" }}
+            />
+          </svg>
+          <div className="absolute inset-0 flex items-center justify-center">
+            {isCompleted ? (
+              <motion.svg
+                viewBox="0 0 24 24"
+                className={cn("text-emerald-600", iconSize)}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <motion.path
+                  d="M5 12l4 4L19 7"
+                  initial={{ pathLength: 0 }}
+                  animate={{ pathLength: 1 }}
+                  transition={{ duration: 0.35, ease: "easeOut", delay: 0.08 }}
+                />
+              </motion.svg>
+            ) : isFailed ? (
+              <span className={cn("font-black", isOverlay ? "text-xl text-rose-300" : "text-2xl text-rose-600")}>!</span>
+            ) : (
+              <span className={cn("font-black tabular-nums", isOverlay ? "text-sm text-white" : "text-lg text-[var(--app-text)]")}>
+                {displayProgress}%
+              </span>
+            )}
+          </div>
+        </motion.div>
+
+        <div className={cn("space-y-1", isOverlay ? "flex-1" : "")}>
+          <p className={cn("text-sm font-semibold", isOverlay ? "text-white" : theme.text)}>{message}</p>
+          <p className={cn("text-xs", isOverlay ? "text-white/70" : "text-[var(--app-muted)]")}>Current stage: {STAGE_LABELS[stage]}</p>
+          {!isFailed ? (
+            <p className={cn("text-[11px]", isOverlay ? "text-white/60" : "text-[var(--app-subtle)]")}>
+              Progress {displayProgress}%
+            </p>
+          ) : null}
+          {error ? <p className={cn("text-xs", isOverlay ? "text-rose-300" : "text-rose-600")}>{error}</p> : null}
+        </div>
       </div>
 
-      <div className={cn("space-y-1", isOverlay ? "flex-1" : "")}>
-        <p className={cn("text-sm font-semibold", isOverlay ? "text-white" : theme.text)}>{message}</p>
-        <p className={cn("text-xs", isOverlay ? "text-white/70" : "text-[var(--app-muted)]")}>Current stage: {STAGE_LABELS[stage]}</p>
-        {!isFailed ? (
-          <p className={cn("text-[11px]", isOverlay ? "text-white/60" : "text-[var(--app-subtle)]")}>
-            Progress {Math.max(0, Math.min(100, progress))}%
-          </p>
-        ) : null}
-        {error ? <p className={cn("text-xs", isOverlay ? "text-rose-300" : "text-rose-600")}>{error}</p> : null}
-      </div>
-      </div>
-
-      <div className={cn("flex flex-wrap gap-2", isOverlay ? "mt-4 items-center" : "items-center justify-center")}>
+      <div className={cn("grid grid-cols-6 gap-2", isOverlay ? "mt-4" : "w-full max-w-md")}>
         {STAGE_ORDER.map((value, index) => {
           const isDone = currentIndex >= 0 && index < currentIndex;
           const isActive = value === stage;
-          const className = isActive
-            ? STAGE_THEME[value].badge
+          const dotClassName = isActive
+            ? isOverlay
+              ? "bg-white text-black"
+              : "bg-[var(--app-inverse)]"
             : isDone
-              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+              ? "bg-emerald-500"
               : isOverlay
-                ? "bg-white/10 text-white/70"
-                : "border border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-muted)]";
+                ? "bg-white/25"
+                : "bg-[var(--app-border)]";
 
           return (
-            <span
-              key={value}
-              className={`rounded-[var(--app-radius-control)] px-3 py-1 text-[11px] font-medium transition ${className}`}
-            >
-              {STAGE_LABELS[value]}
-            </span>
+            <div key={value} className="flex min-w-0 flex-col items-center gap-1">
+              <span className={cn("h-2.5 w-2.5 rounded-full transition", dotClassName)} />
+              <span className={cn("w-full truncate text-center text-[10px] leading-3", isOverlay ? "text-white/65" : "text-[var(--app-muted)]")}>
+                {STAGE_LABELS[value]}
+              </span>
+            </div>
           );
         })}
       </div>

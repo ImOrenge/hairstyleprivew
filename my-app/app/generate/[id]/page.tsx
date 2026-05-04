@@ -215,12 +215,12 @@ export default function GenerateBoardPage() {
                 isSelected ? "border-stone-900" : "border-stone-200"
               }`}
             >
-              <div className="relative aspect-[4/5] overflow-hidden bg-stone-100">
+              <div className="relative aspect-[3/5] overflow-hidden bg-stone-100">
                 {variant.outputUrl ? (
                   <img
                     src={variant.outputUrl}
                     alt={variant.label}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                   />
                 ) : (
                   <div className="flex h-full items-center justify-center bg-[var(--app-surface-muted)] p-8 text-center text-sm text-[var(--app-muted)]">

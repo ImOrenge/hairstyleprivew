@@ -137,7 +137,7 @@ export default function ResultDetailScreen() {
       <Panel>
         <Stack>
           <View style={styles.preview}>
-            {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.image} /> : <BodyText>No rendered image yet</BodyText>}
+            {imageUrl ? <Image resizeMode="contain" source={{ uri: imageUrl }} style={styles.image} /> : <BodyText>No rendered image yet</BodyText>}
           </View>
 
           {primary ? (
@@ -221,7 +221,7 @@ export default function ResultDetailScreen() {
 const styles = StyleSheet.create({
   preview: {
     alignItems: "center",
-    aspectRatio: 4 / 5,
+    aspectRatio: 3 / 5,
     backgroundColor: "#eee8de",
     borderRadius: 8,
     justifyContent: "center",

@@ -90,12 +90,12 @@ export default function GeneratePage() {
         </div>
 
         <Panel className="overflow-hidden">
-          <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--app-surface-muted)] sm:aspect-[5/6] lg:aspect-[4/5]">
+          <div className="relative aspect-[3/5] w-full overflow-hidden bg-[var(--app-surface-muted)] sm:aspect-[4/5] lg:aspect-[3/5]">
             {previewUrl ? (
               <img
                 src={previewUrl}
                 alt="Uploaded portrait"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-contain"
               />
             ) : !imageHydrated ? (
               <div className="flex h-full items-center justify-center text-sm text-[var(--app-muted)]">
