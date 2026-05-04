@@ -34,7 +34,7 @@ interface SupabaseRunClient {
   rpc: (
     fn: string,
     params: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
   from: (table: string) => {
     select: (columns: string) => {
       eq: (column: string, value: string) => {
@@ -51,9 +51,6 @@ interface SupabaseRunClient {
           };
         };
       };
-    };
-    update: (values: Record<string, unknown>) => {
-      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
     };
   };
 }
@@ -182,32 +179,8 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
   };
 }
 
-function deriveGenerationStatus(variants: GeneratedVariant[]): "queued" | "processing" | "completed" | "failed" {
-  if (variants.some((variant) => variant.status === "queued" || variant.status === "generating")) {
-    return "processing";
-  }
-
-  if (variants.some((variant) => variant.status === "completed")) {
-    return "completed";
-  }
-
-  return "failed";
-}
-
 function isCompletedVariant(variant: GeneratedVariant) {
   return variant.status === "completed" && Boolean(variant.outputUrl || variant.generatedImagePath);
-}
-
-function selectPrimaryVariant(set: RecommendationSet): GeneratedVariant | null {
-  const selected = set.selectedVariantId
-    ? set.variants.find((variant) => variant.id === set.selectedVariantId)
-    : null;
-
-  if (selected && selected.generatedImagePath) {
-    return selected;
-  }
-
-  return set.variants.find((variant) => variant.generatedImagePath) || null;
 }
 
 async function ensureUserProfile(userId: string, supabase: SupabaseRunClient) {
@@ -232,6 +205,65 @@ async function ensureUserProfile(userId: string, supabase: SupabaseRunClient) {
   } catch (syncError) {
     console.warn("[generations/run] Auto-sync failed", syncError);
   }
+}
+
+function isDuplicateRecommendationChargeError(error: { message: string; code?: string }) {
+  const message = error.message.toLowerCase();
+  return (
+    error.code === "23505" ||
+    message.includes("idx_credit_ledger_unique_recommendation_grid_usage") ||
+    (message.includes("duplicate key") && message.includes("recommendation_grid_usage"))
+  );
+}
+
+function statusFromError(error: unknown) {
+  if (isObject(error) && typeof error.statusCode === "number") {
+    const statusCode = error.statusCode;
+    if (statusCode >= 400 && statusCode <= 599) {
+      return statusCode;
+    }
+  }
+
+  return 500;
+}
+
+async function mergeRecommendationVariant(
+  supabase: SupabaseRunClient,
+  input: {
+    generationId: string;
+    variantId: string;
+    variantPatch: Record<string, unknown>;
+    errorMessage?: string | null;
+    promptUsed?: string | null;
+    modelProvider?: string | null;
+    modelName?: string | null;
+    creditsUsed?: number | null;
+    catalogCycleId?: string | null;
+    analysis?: RecommendationSet["analysis"] | null;
+    creditChargedAt?: string | null;
+    creditChargeAmount?: number | null;
+  },
+) {
+  const { data, error } = await supabase.rpc("merge_generation_recommendation_variant", {
+    p_generation_id: input.generationId,
+    p_variant_id: input.variantId,
+    p_variant_patch: input.variantPatch,
+    p_error_message: input.errorMessage ?? null,
+    p_prompt_used: input.promptUsed ?? null,
+    p_model_provider: input.modelProvider ?? null,
+    p_model_name: input.modelName ?? null,
+    p_credits_used: input.creditsUsed ?? null,
+    p_catalog_cycle_id: input.catalogCycleId ?? null,
+    p_analysis: input.analysis ?? null,
+    p_credit_charged_at: input.creditChargedAt ?? null,
+    p_credit_charge_amount: input.creditChargeAmount ?? null,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return normalizeRecommendationSet(data);
 }
 
 export async function POST(request: Request) {
@@ -335,13 +367,18 @@ export async function POST(request: Request) {
 
   const creditCost = recommendationSet.creditChargeAmount ?? getCreditsPerStyle();
   let chargedCredits = 0;
+  let creditChargedAt: string | null = null;
+  let creditChargeAmount: number | null = null;
+  const modelName = getOpenAIImageModel();
+  const catalogCycleId = recommendationSet.catalogCycleId ?? targetVariant.catalogCycleId ?? null;
 
   try {
     if (!recommendationSet.creditChargedAt) {
+      const chargeTimestamp = new Date().toISOString();
       const consumeMetadata = {
         source: "api/generations/run",
         generationId,
-        chargedAt: new Date().toISOString(),
+        chargedAt: chargeTimestamp,
         mode: "recommendation-grid",
       };
 
@@ -358,37 +395,33 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: "Insufficient credits" }, { status: 409 });
         }
 
-        return NextResponse.json({ error: consumeError.message }, { status: 500 });
+        if (!isDuplicateRecommendationChargeError(consumeError)) {
+          return NextResponse.json({ error: consumeError.message }, { status: 500 });
+        }
       }
 
-      recommendationSet.creditChargedAt = new Date().toISOString();
-      recommendationSet.creditChargeAmount = creditCost;
-      chargedCredits = creditCost;
+      creditChargedAt = chargeTimestamp;
+      creditChargeAmount = creditCost;
+      chargedCredits = consumeError ? 0 : creditCost;
     }
 
-    recommendationSet.variants[resolvedVariantIndex] = {
-      ...targetVariant,
-      status: "generating",
-      error: null,
-    };
-
-    await supabase
-      .from("generations")
-      .update({
-        status: "processing",
-        error_message: null,
-        prompt_used: prompt,
-        model_provider: "openai",
-        model_name: getOpenAIImageModel(),
-        credits_used: creditCost,
-        options: {
-          ...existingOptions,
-          catalogCycleId: recommendationSet.catalogCycleId ?? targetVariant.catalogCycleId ?? null,
-          analysis: recommendationSet.analysis,
-          recommendationSet,
-        },
-      })
-      .eq("id", generationId);
+    await mergeRecommendationVariant(supabase, {
+      generationId,
+      variantId: targetVariant.id,
+      variantPatch: {
+        status: "generating",
+        error: null,
+      },
+      errorMessage: null,
+      promptUsed: prompt,
+      modelProvider: "openai",
+      modelName,
+      creditsUsed: creditCost,
+      catalogCycleId,
+      analysis: recommendationSet.analysis,
+      creditChargedAt,
+      creditChargeAmount,
+    });
 
     const result = await runOpenAIImageGeneration({
       prompt,
@@ -417,36 +450,26 @@ export async function POST(request: Request) {
     }
 
     const generatedImagePath = createInlineGeneratedImagePath(result.id);
-    recommendationSet.variants[resolvedVariantIndex] = {
-      ...targetVariant,
-      status: "completed",
-      outputUrl,
-      generatedImagePath,
-      evaluation,
-      error: null,
-      generatedAt: new Date().toISOString(),
-    };
 
-    const primaryVariant = selectPrimaryVariant(recommendationSet);
-
-    await supabase
-      .from("generations")
-      .update({
-        status: deriveGenerationStatus(recommendationSet.variants),
-        error_message: null,
-        generated_image_path: primaryVariant?.generatedImagePath || null,
-        prompt_used: primaryVariant?.prompt || prompt,
-        model_provider: "openai",
-        model_name: getOpenAIImageModel(),
-        credits_used: creditCost,
-        options: {
-          ...existingOptions,
-          catalogCycleId: recommendationSet.catalogCycleId ?? primaryVariant?.catalogCycleId ?? null,
-          analysis: recommendationSet.analysis,
-          recommendationSet,
-        },
-      })
-      .eq("id", generationId);
+    await mergeRecommendationVariant(supabase, {
+      generationId,
+      variantId: targetVariant.id,
+      variantPatch: {
+        status: "completed",
+        outputUrl,
+        generatedImagePath,
+        evaluation,
+        error: null,
+        generatedAt: new Date().toISOString(),
+      },
+      errorMessage: null,
+      promptUsed: prompt,
+      modelProvider: "openai",
+      modelName,
+      creditsUsed: creditCost,
+      catalogCycleId,
+      analysis: recommendationSet.analysis,
+    });
 
     return NextResponse.json(
       {
@@ -465,30 +488,25 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
 
-    recommendationSet.variants[resolvedVariantIndex] = {
-      ...targetVariant,
-      status: "failed",
-      error: message,
-      outputUrl: null,
-      generatedImagePath: null,
-      evaluation: null,
-      generatedAt: null,
-    };
+    await mergeRecommendationVariant(supabase, {
+      generationId,
+      variantId: targetVariant.id,
+      variantPatch: {
+        status: "failed",
+        error: message,
+        outputUrl: null,
+        generatedImagePath: null,
+        evaluation: null,
+        generatedAt: null,
+      },
+      errorMessage: message,
+      catalogCycleId,
+      analysis: recommendationSet.analysis,
+    }).catch((mergeError) => {
+      console.error("[generations/run] Failed to persist variant failure", mergeError);
+    });
 
-    await supabase
-      .from("generations")
-      .update({
-        status: deriveGenerationStatus(recommendationSet.variants),
-        error_message: message,
-        options: {
-          ...existingOptions,
-          catalogCycleId: recommendationSet.catalogCycleId ?? null,
-          analysis: recommendationSet.analysis,
-          recommendationSet,
-        },
-      })
-      .eq("id", generationId);
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status = statusFromError(error);
+    return NextResponse.json({ error: message, status }, { status });
   }
 }

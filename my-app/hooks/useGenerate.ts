@@ -35,6 +35,42 @@ interface GenerationApiResponse {
   evaluation?: GeneratedVariant["evaluation"];
   chargedCredits?: number;
   error?: string;
+  status?: number;
+}
+
+const GENERATION_MAX_CONCURRENCY = 3;
+const GENERATION_LAUNCH_GAP_MS = 1500;
+const VARIANT_MAX_ATTEMPTS = 2;
+const VARIANT_RETRY_DELAY_MS = 3000;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runStaggeredPool<T>(
+  items: T[],
+  worker: (item: T, index: number) => Promise<void>,
+) {
+  const activeTasks = new Set<Promise<void>>();
+
+  for (const [index, item] of items.entries()) {
+    while (activeTasks.size >= GENERATION_MAX_CONCURRENCY) {
+      await Promise.race(activeTasks);
+    }
+
+    const task = worker(item, index)
+      .catch(() => undefined)
+      .finally(() => {
+        activeTasks.delete(task);
+      });
+    activeTasks.add(task);
+
+    if (index < items.length - 1) {
+      await sleep(GENERATION_LAUNCH_GAP_MS);
+    }
+  }
+
+  await Promise.allSettled(activeTasks);
 }
 
 function summarizeVariantFailures(errors: string[]) {
@@ -44,6 +80,10 @@ function summarizeVariantFailures(errors: string[]) {
   }
 
   return `All recommendation variants failed. First error: ${uniqueErrors[0]}`;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function toErrorMessage(error: unknown, fallback: string) {
@@ -111,9 +151,16 @@ export function useGenerate() {
         body: JSON.stringify(payload),
       });
 
-      const result = (await response.json().catch(() => ({}))) as GenerationApiResponse;
-      if (!response.ok || !result.id || !result.variantId) {
-        throw new Error(result.error || "Failed to generate hairstyle variant.");
+      const parsed = (await response.json().catch(() => null)) as unknown;
+      const result = isRecord(parsed) ? (parsed as GenerationApiResponse) : {};
+      const apiError = typeof result.error === "string" ? result.error : "";
+      if (!response.ok) {
+        const status = typeof result.status === "number" ? result.status : response.status;
+        throw new Error(apiError ? `${apiError} (HTTP ${status})` : `Failed to generate hairstyle variant. HTTP ${status}`);
+      }
+
+      if (!result.id || !result.variantId) {
+        throw new Error(apiError || "Generation response is missing required identifiers.");
       }
 
       const webpOutputUrl = result.outputUrl
@@ -202,7 +249,7 @@ export function useGenerate() {
 
       setPipelineState("generating_image", "Rendering the 3x3 hairstyle variants.");
 
-      for (const [index, candidate] of recommendations.entries()) {
+      await runStaggeredPool(recommendations, async (candidate, index) => {
         const finishVariant = () => {
           settledCount += 1;
           const percent = Math.round((settledCount / total) * 100);
@@ -213,47 +260,65 @@ export function useGenerate() {
         if (!candidate.promptArtifactToken) {
           failedMessages.push("Missing prompt artifact token.");
           finishVariant();
-          continue;
+          return;
         }
 
-        setPipelineState("generating_image", `Rendering hairstyle variant ${index + 1} of ${total}.`);
-        updateRecommendationVariant(candidate.id, {
-          status: "generating",
-          error: null,
-        });
-
         try {
-          const result = await requestImageGeneration({
-            generationId,
-            variantIndex: index,
-            variantId: candidate.id,
-            catalogItemId: candidate.catalogItemId,
-            variantLabel: candidate.label,
-            prompt: candidate.prompt,
-            promptArtifactToken: candidate.promptArtifactToken,
-            imageDataUrl: referenceImageDataUrl,
-          });
+          for (let attempt = 1; attempt <= VARIANT_MAX_ATTEMPTS; attempt += 1) {
+            const isRetry = attempt > 1;
+            setPipelineState(
+              "generating_image",
+              `${isRetry ? "Retrying" : "Rendering"} hairstyle variant ${index + 1} of ${total}.`,
+            );
+            updateRecommendationVariant(candidate.id, {
+              status: "generating",
+              error: null,
+            });
 
-          completedCount += 1;
-          updateRecommendationVariant(candidate.id, {
-            status: "completed",
-            outputUrl: result.outputUrl,
-            generatedImagePath: result.generatedImagePath,
-            evaluation: result.evaluation,
-            error: null,
-            generatedAt: new Date().toISOString(),
-          });
-        } catch (error) {
-          const message = toErrorMessage(error, "Variant generation failed.");
-          failedMessages.push(message);
-          updateRecommendationVariant(candidate.id, {
-            status: "failed",
-            error: message,
-          });
+            try {
+              const result = await requestImageGeneration({
+                generationId,
+                variantIndex: index,
+                variantId: candidate.id,
+                catalogItemId: candidate.catalogItemId,
+                variantLabel: candidate.label,
+                prompt: candidate.prompt,
+                promptArtifactToken: candidate.promptArtifactToken,
+                imageDataUrl: referenceImageDataUrl,
+              });
+
+              completedCount += 1;
+              updateRecommendationVariant(candidate.id, {
+                status: "completed",
+                outputUrl: result.outputUrl,
+                generatedImagePath: result.generatedImagePath,
+                evaluation: result.evaluation,
+                error: null,
+                generatedAt: new Date().toISOString(),
+              });
+              return;
+            } catch (error) {
+              const message = toErrorMessage(error, "Variant generation failed.");
+              if (attempt < VARIANT_MAX_ATTEMPTS) {
+                updateRecommendationVariant(candidate.id, {
+                  status: "generating",
+                  error: `Attempt ${attempt} failed: ${message}. Retrying...`,
+                });
+                await sleep(VARIANT_RETRY_DELAY_MS);
+                continue;
+              }
+
+              failedMessages.push(message);
+              updateRecommendationVariant(candidate.id, {
+                status: "failed",
+                error: message,
+              });
+            }
+          }
         } finally {
           finishVariant();
         }
-      }
+      });
 
       setPipelineState("finalizing", "Finalizing the recommendation board.");
       setProgress(95);
