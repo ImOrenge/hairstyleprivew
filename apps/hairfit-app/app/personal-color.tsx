@@ -12,7 +12,6 @@ import {
   Stack,
   colors,
 } from "@hairfit/ui-native";
-import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
@@ -23,6 +22,7 @@ import {
 } from "../components/PersonalColorDiagnosisProgress";
 import { useHairfitApi } from "../lib/api";
 import { useGenerationFlow } from "../lib/generation-flow";
+import { pickImageWithPermission, type NativePhotoSource } from "../lib/native-image-picker";
 
 type PersonalColorSource = "upload" | "mypage";
 
@@ -84,25 +84,26 @@ export default function PersonalColorScreen() {
     return flow.imageDataUrl ? "/generate" : "/upload";
   }, [flow.imageDataUrl, source]);
 
-  const pickImage = async () => {
+  const pickImage = async (photoSource: NativePhotoSource) => {
     if (isAnalyzing) return;
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setMessage("Photo library permission is required.");
-      return;
-    }
-
-    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+    const picker = await pickImageWithPermission(photoSource, {
       allowsEditing: true,
       aspect: [4, 5],
       base64: true,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       quality: 0.9,
     });
 
+    if (picker.type !== "result") {
+      setMessage(picker.message);
+      return;
+    }
+
+    const { result: pickerResult } = picker;
+
     if (pickerResult.canceled) {
-      setMessage("Image selection was cancelled.");
+      setMessage(photoSource === "camera" ? "Photo capture was cancelled." : "Image selection was cancelled.");
       return;
     }
 
@@ -200,8 +201,11 @@ export default function PersonalColorScreen() {
                 <BodyText>
                   The analysis compares warm/cool balance, contrast, best colors, and avoid colors for styling use.
                 </BodyText>
-                <Button disabled={isAnalyzing} onPress={pickImage}>
-                  {imageUri ? "Change photo" : "Choose photo"}
+                <Button disabled={isAnalyzing} onPress={() => pickImage("camera")}>
+                  {imageUri ? "Take new photo" : "Take photo"}
+                </Button>
+                <Button disabled={isAnalyzing} variant="secondary" onPress={() => pickImage("library")}>
+                  {imageUri ? "Choose another from library" : "Choose from library"}
                 </Button>
                 <Button disabled={!imageDataUrl || isAnalyzing} onPress={analyze}>
                   {isAnalyzing ? "Analyzing..." : "Start diagnosis"}
@@ -221,8 +225,11 @@ export default function PersonalColorScreen() {
                 <Button onPress={() => router.push(returnPath)}>
                   {source === "upload" ? "Continue to generation" : "Back to body profile"}
                 </Button>
-                <Button variant="secondary" disabled={isAnalyzing} onPress={pickImage}>
-                  Choose another photo
+                <Button variant="secondary" disabled={isAnalyzing} onPress={() => pickImage("camera")}>
+                  Take another photo
+                </Button>
+                <Button variant="secondary" disabled={isAnalyzing} onPress={() => pickImage("library")}>
+                  Choose another from library
                 </Button>
               </Stack>
             </Card>

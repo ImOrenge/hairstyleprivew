@@ -21,11 +21,11 @@ import {
   Stack,
   TextField,
 } from "@hairfit/ui-native";
-import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Image, Modal, Pressable, StyleSheet, View } from "react-native";
 import { useHairfitApi } from "../../lib/api";
+import { pickImageWithPermission, type NativePhotoSource } from "../../lib/native-image-picker";
 
 type WizardStep = 1 | 2 | 3;
 
@@ -293,22 +293,25 @@ export default function NewStylerScreen() {
     }
   };
 
-  const uploadBodyPhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setMessage("Photo library permission is required.");
-      return;
-    }
+  const uploadBodyPhoto = async (source: NativePhotoSource) => {
+    if (isUploadingPhoto) return;
 
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const picker = await pickImageWithPermission(source, {
       allowsEditing: true,
       aspect: [3, 4],
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       quality: 0.9,
     });
 
+    if (picker.type !== "result") {
+      setMessage(picker.message);
+      return;
+    }
+
+    const { result } = picker;
+
     if (result.canceled) {
-      setMessage("Body photo selection was cancelled.");
+      setMessage(source === "camera" ? "Body photo capture was cancelled." : "Body photo selection was cancelled.");
       return;
     }
 
@@ -480,8 +483,11 @@ export default function NewStylerScreen() {
               </Card>
             )}
 
-            <Button disabled={isUploadingPhoto} variant="secondary" onPress={uploadBodyPhoto}>
-              {isUploadingPhoto ? "Uploading body photo..." : profile?.bodyPhotoPath ? "Replace body photo" : "Upload body photo"}
+            <Button disabled={isUploadingPhoto} variant="secondary" onPress={() => uploadBodyPhoto("camera")}>
+              {isUploadingPhoto ? "Uploading body photo..." : profile?.bodyPhotoPath ? "Retake body photo" : "Take body photo"}
+            </Button>
+            <Button disabled={isUploadingPhoto} variant="secondary" onPress={() => uploadBodyPhoto("library")}>
+              {isUploadingPhoto ? "Uploading body photo..." : profile?.bodyPhotoPath ? "Replace from library" : "Upload from library"}
             </Button>
             <Button disabled={isSavingProfile} onPress={saveProfile}>
               {isSavingProfile ? "Saving profile..." : "Save profile"}

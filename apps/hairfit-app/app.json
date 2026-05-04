@@ -15,6 +15,14 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "$(PRODUCT_NAME)에서 스타일 추천 사진을 선택하기 위해 사진 라이브러리 접근 권한이 필요합니다.",
+          "cameraPermission": "$(PRODUCT_NAME)에서 스타일 추천 사진을 촬영하기 위해 카메라 접근 권한이 필요합니다.",
+          "microphonePermission": false
+        }
+      ],
       "@portone/react-native-sdk/plugin"
     ],
     "extra": {

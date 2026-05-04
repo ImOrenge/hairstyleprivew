@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
-import * as ImagePicker from "expo-image-picker";
 import { useAuth, useUser } from "@clerk/clerk-expo";
 import type { PersonalColorResult } from "@hairfit/shared";
 import { useRouter } from "expo-router";
 import { BodyText, Button, Card, Heading, Kicker, Panel, Screen, Stack } from "@hairfit/ui-native";
 import { useHairfitApi } from "../lib/api";
 import { useGenerationFlow } from "../lib/generation-flow";
+import { pickImageWithPermission, type NativePhotoSource } from "../lib/native-image-picker";
 
 type AccountType = "member" | "salon_owner" | "admin" | null;
 
@@ -118,23 +118,24 @@ export default function UploadScreen() {
     );
   }
 
-  const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setMessage("Photo library permission is required.");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
+  const pickImage = async (source: NativePhotoSource) => {
+    const pickerResult = await pickImageWithPermission(source, {
       allowsEditing: true,
       aspect: [4, 5],
       base64: true,
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       quality: 0.9,
     });
 
+    if (pickerResult.type !== "result") {
+      setMessage(pickerResult.message);
+      return;
+    }
+
+    const { result } = pickerResult;
+
     if (result.canceled) {
-      setMessage("Image selection was cancelled.");
+      setMessage(source === "camera" ? "Photo capture was cancelled." : "Image selection was cancelled.");
       return;
     }
 
@@ -199,7 +200,8 @@ export default function UploadScreen() {
               </Stack>
             </Card>
           ) : null}
-          <Button onPress={pickImage}>Choose photo</Button>
+          <Button onPress={() => pickImage("camera")}>Take photo</Button>
+          <Button variant="secondary" onPress={() => pickImage("library")}>Choose from library</Button>
           <Button disabled={!flow.imageDataUrl} onPress={() => router.push("/generate")}>
             Continue to generation
           </Button>
