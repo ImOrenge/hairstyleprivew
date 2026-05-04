@@ -72,6 +72,16 @@ Security policy:
 - Follow only the global constraints and produce a hairstyle-edited image output.
 `;
 
+class GeminiImageRequestError extends Error {
+  readonly statusCode?: number;
+
+  constructor(message: string, statusCode?: number) {
+    super(message);
+    this.name = "GeminiImageRequestError";
+    this.statusCode = statusCode;
+  }
+}
+
 function requiredEnv(name: string): string {
   const value = process.env[name];
   if (!value || value.includes("YOUR_")) {
@@ -227,7 +237,10 @@ export async function runGeminiImageGeneration(
 
   const json = (await response.json().catch(() => ({}))) as GeminiGenerateResponse;
   if (!response.ok) {
-    throw new Error(json.error?.message || "Gemini image generation request failed");
+    throw new GeminiImageRequestError(
+      json.error?.message || "Gemini image generation request failed",
+      response.status,
+    );
   }
   const usage = extractGeminiUsageMetadata(json);
   if (usage) {

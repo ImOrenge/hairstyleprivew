@@ -1,7 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { runAIEvaluation } from "../../../../lib/ai-evaluation";
-import { getOpenAIImageModel, runOpenAIImageGeneration } from "../../../../lib/openai-image";
+import { getGeminiImageModel, runGeminiImageGeneration } from "../../../../lib/gemini-image";
 import {
   countUserCompletedHairResults,
   formatLimitError,
@@ -358,7 +358,8 @@ async function handlePost(request: Request) {
   let chargedCredits = 0;
   let creditChargedAt: string | null = null;
   let creditChargeAmount: number | null = null;
-  const modelName = getOpenAIImageModel();
+  const modelProvider = "gemini";
+  const modelName = getGeminiImageModel();
   const catalogCycleId = recommendationSet.catalogCycleId ?? targetVariant.catalogCycleId ?? null;
 
   try {
@@ -414,7 +415,7 @@ async function handlePost(request: Request) {
       },
       errorMessage: null,
       promptUsed: prompt,
-      modelProvider: "openai",
+      modelProvider,
       modelName,
       creditsUsed: creditCost,
       catalogCycleId,
@@ -423,7 +424,7 @@ async function handlePost(request: Request) {
       creditChargeAmount,
     });
 
-    const result = await runOpenAIImageGeneration({
+    const result = await runGeminiImageGeneration({
       prompt,
       productRequirements: productRequirements || undefined,
       researchReport: researchReport || undefined,
@@ -464,7 +465,7 @@ async function handlePost(request: Request) {
       },
       errorMessage: null,
       promptUsed: prompt,
-      modelProvider: "openai",
+      modelProvider,
       modelName,
       creditsUsed: creditCost,
       catalogCycleId,
@@ -500,6 +501,8 @@ async function handlePost(request: Request) {
         generatedAt: null,
       },
       errorMessage: message,
+      modelProvider,
+      modelName,
       catalogCycleId,
       analysis: recommendationSet.analysis,
     }).catch((mergeError) => {
