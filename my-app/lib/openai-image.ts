@@ -40,11 +40,27 @@ interface OpenAIImageResponse {
   usage?: unknown;
   error?: {
     message?: string;
+    code?: string;
+    type?: string;
   };
 }
 
 const DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-2";
 const DEFAULT_IMAGE_SIZE = "1024x1536";
+const IMAGE_EDIT_MAX_ATTEMPTS = 3;
+const IMAGE_EDIT_RETRY_BASE_DELAY_MS = 1200;
+
+class OpenAIImageRequestError extends Error {
+  readonly statusCode?: number;
+  readonly code?: string;
+
+  constructor(message: string, statusCode?: number, code?: string) {
+    super(message);
+    this.name = "OpenAIImageRequestError";
+    this.statusCode = statusCode;
+    this.code = code;
+  }
+}
 
 const IMAGE_GENERATION_AGENT_INSTRUCTION = `
 You are the hairstyle image-generation agent.
@@ -130,7 +146,42 @@ function toImageOutput(response: OpenAIImageResponse): string | null {
   return image.url || null;
 }
 
-async function runImageEdit(input: {
+function isRetryableImageError(error: unknown) {
+  if (error instanceof OpenAIImageRequestError) {
+    return (
+      error.statusCode === 408 ||
+      error.statusCode === 409 ||
+      error.statusCode === 429 ||
+      error.statusCode === 500 ||
+      error.statusCode === 502 ||
+      error.statusCode === 503 ||
+      error.statusCode === 504
+    );
+  }
+
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    return (
+      message.includes("fetch failed") ||
+      message.includes("network") ||
+      message.includes("timeout") ||
+      message.includes("timed out") ||
+      message.includes("econnreset")
+    );
+  }
+
+  return false;
+}
+
+function retryDelayMs(attempt: number) {
+  return IMAGE_EDIT_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runImageEditOnce(input: {
   prompt: string;
   images: Array<{ dataUrl: string; filename: string }>;
 }) {
@@ -158,7 +209,11 @@ async function runImageEdit(input: {
 
   const json = (await response.json().catch(() => ({}))) as OpenAIImageResponse;
   if (!response.ok) {
-    throw new Error(json.error?.message || "OpenAI image edit request failed");
+    throw new OpenAIImageRequestError(
+      json.error?.message || "OpenAI image edit request failed",
+      response.status,
+      json.error?.code || json.error?.type,
+    );
   }
 
   const outputUrl = toImageOutput(json);
@@ -172,6 +227,35 @@ async function runImageEdit(input: {
     usage: json.usage ?? null,
     model,
   };
+}
+
+async function runImageEdit(input: {
+  prompt: string;
+  images: Array<{ dataUrl: string; filename: string }>;
+}) {
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= IMAGE_EDIT_MAX_ATTEMPTS; attempt += 1) {
+    try {
+      return await runImageEditOnce(input);
+    } catch (error) {
+      lastError = error;
+      if (attempt >= IMAGE_EDIT_MAX_ATTEMPTS || !isRetryableImageError(error)) {
+        throw error;
+      }
+
+      const delay = retryDelayMs(attempt);
+      console.warn("[openai-image-retry]", {
+        attempt,
+        nextAttempt: attempt + 1,
+        delay,
+        error: error instanceof Error ? error.message : "Unknown image generation error",
+      });
+      await sleep(delay);
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("OpenAI image edit request failed");
 }
 
 export async function runOpenAIImageGeneration(

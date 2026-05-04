@@ -36,7 +36,7 @@ interface VerifyPromptArtifactTokenResult {
 }
 
 const TOKEN_HEADER = { alg: "HS256", typ: "JWT" } as const;
-const TOKEN_TTL_SECONDS = 10 * 60;
+const TOKEN_TTL_SECONDS = 60 * 60;
 
 function toBase64Url(value: string): string {
   return Buffer.from(value, "utf8")

@@ -37,6 +37,15 @@ interface GenerationApiResponse {
   error?: string;
 }
 
+function summarizeVariantFailures(errors: string[]) {
+  const uniqueErrors = Array.from(new Set(errors.map((item) => item.trim()).filter(Boolean)));
+  if (uniqueErrors.length === 0) {
+    return "All recommendation variants failed.";
+  }
+
+  return `All recommendation variants failed. First error: ${uniqueErrors[0]}`;
+}
+
 function toErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) {
     return error.message;
@@ -180,65 +189,77 @@ export function useGenerate() {
       const total = recommendations.length;
       let settledCount = 0;
       let completedCount = 0;
+      const failedMessages: string[] = [];
 
       for (const candidate of recommendations) {
-        updateRecommendationVariant(candidate.id, {
-          status: candidate.promptArtifactToken ? "generating" : "failed",
-          error: candidate.promptArtifactToken ? null : "Missing prompt artifact token.",
-        });
-      }
-      setPipelineState("generating_image", "Rendering all 9 hairstyle variants in parallel.");
-
-      const generationTasks = recommendations.map((candidate, index) => {
         if (!candidate.promptArtifactToken) {
+          updateRecommendationVariant(candidate.id, {
+            status: "failed",
+            error: "Missing prompt artifact token.",
+          });
+        }
+      }
+
+      setPipelineState("generating_image", "Rendering the 3x3 hairstyle variants.");
+
+      for (const [index, candidate] of recommendations.entries()) {
+        const finishVariant = () => {
           settledCount += 1;
-          return Promise.resolve(null);
+          const percent = Math.round((settledCount / total) * 100);
+          setGridGenerationProgress(percent);
+          setProgress(30 + Math.round(percent * 0.6));
+        };
+
+        if (!candidate.promptArtifactToken) {
+          failedMessages.push("Missing prompt artifact token.");
+          finishVariant();
+          continue;
         }
 
-        return requestImageGeneration({
-          generationId,
-          variantIndex: index,
-          variantId: candidate.id,
-          catalogItemId: candidate.catalogItemId,
-          variantLabel: candidate.label,
-          prompt: candidate.prompt,
-          promptArtifactToken: candidate.promptArtifactToken,
-          imageDataUrl: referenceImageDataUrl,
-        })
-          .then((result) => {
-            completedCount += 1;
-            updateRecommendationVariant(candidate.id, {
-              status: "completed",
-              outputUrl: result.outputUrl,
-              generatedImagePath: result.generatedImagePath,
-              evaluation: result.evaluation,
-              error: null,
-              generatedAt: new Date().toISOString(),
-            });
-            return result;
-          })
-          .catch((error) => {
-            updateRecommendationVariant(candidate.id, {
-              status: "failed",
-              error: toErrorMessage(error, "Variant generation failed."),
-            });
-            return null;
-          })
-          .finally(() => {
-            settledCount += 1;
-            const percent = Math.round((settledCount / total) * 100);
-            setGridGenerationProgress(percent);
-            setProgress(30 + Math.round(percent * 0.6));
-          });
-      });
+        setPipelineState("generating_image", `Rendering hairstyle variant ${index + 1} of ${total}.`);
+        updateRecommendationVariant(candidate.id, {
+          status: "generating",
+          error: null,
+        });
 
-      await Promise.allSettled(generationTasks);
+        try {
+          const result = await requestImageGeneration({
+            generationId,
+            variantIndex: index,
+            variantId: candidate.id,
+            catalogItemId: candidate.catalogItemId,
+            variantLabel: candidate.label,
+            prompt: candidate.prompt,
+            promptArtifactToken: candidate.promptArtifactToken,
+            imageDataUrl: referenceImageDataUrl,
+          });
+
+          completedCount += 1;
+          updateRecommendationVariant(candidate.id, {
+            status: "completed",
+            outputUrl: result.outputUrl,
+            generatedImagePath: result.generatedImagePath,
+            evaluation: result.evaluation,
+            error: null,
+            generatedAt: new Date().toISOString(),
+          });
+        } catch (error) {
+          const message = toErrorMessage(error, "Variant generation failed.");
+          failedMessages.push(message);
+          updateRecommendationVariant(candidate.id, {
+            status: "failed",
+            error: message,
+          });
+        } finally {
+          finishVariant();
+        }
+      }
 
       setPipelineState("finalizing", "Finalizing the recommendation board.");
       setProgress(95);
 
       if (completedCount === 0) {
-        throw new Error("All recommendation variants failed.");
+        throw new Error(summarizeVariantFailures(failedMessages));
       }
 
       setPipelineState("completed", "Your 3x3 hairstyle recommendation grid is ready.");
