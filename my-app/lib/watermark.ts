@@ -1,11 +1,10 @@
-import sharp from "sharp";
-
 /**
  * Applies a watermark to the center of an image.
  * @param base64DataUrl The original image as a base64 data URL.
  * @returns The watermarked image as a base64 data URL.
  */
 export async function applyWatermark(base64DataUrl: string): Promise<string> {
+    const sharp = (await import("sharp")).default;
     const match = base64DataUrl.match(/^data:([^;]+);base64,(.+)$/);
     if (!match) {
         throw new Error("Invalid base64 data URL");
