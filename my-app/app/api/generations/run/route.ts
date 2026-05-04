@@ -266,7 +266,7 @@ async function mergeRecommendationVariant(
   return normalizeRecommendationSet(data);
 }
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -354,17 +354,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Catalog item mismatch" }, { status: 400 });
   }
 
-  const entitlement = await getPlanEntitlement(supabase, userId);
-  if (!isCompletedVariant(targetVariant) && entitlement.maxHairResults !== null) {
-    const completedHairResults = await countUserCompletedHairResults(supabase, userId);
-    if (completedHairResults >= entitlement.maxHairResults) {
-      return NextResponse.json(
-        { error: formatLimitError("hair", entitlement), plan: entitlement.key },
-        { status: 403 },
-      );
-    }
-  }
-
   const creditCost = recommendationSet.creditChargeAmount ?? getCreditsPerStyle();
   let chargedCredits = 0;
   let creditChargedAt: string | null = null;
@@ -373,6 +362,17 @@ export async function POST(request: Request) {
   const catalogCycleId = recommendationSet.catalogCycleId ?? targetVariant.catalogCycleId ?? null;
 
   try {
+    const entitlement = await getPlanEntitlement(supabase, userId);
+    if (!isCompletedVariant(targetVariant) && entitlement.maxHairResults !== null) {
+      const completedHairResults = await countUserCompletedHairResults(supabase, userId);
+      if (completedHairResults >= entitlement.maxHairResults) {
+        return NextResponse.json(
+          { error: formatLimitError("hair", entitlement), plan: entitlement.key },
+          { status: 403 },
+        );
+      }
+    }
+
     if (!recommendationSet.creditChargedAt) {
       const chargeTimestamp = new Date().toISOString();
       const consumeMetadata = {
@@ -507,6 +507,17 @@ export async function POST(request: Request) {
     });
 
     const status = statusFromError(error);
+    return NextResponse.json({ error: message, status }, { status });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    return await handlePost(request);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected error";
+    const status = statusFromError(error);
+    console.error("[generations/run] Unhandled route error", error);
     return NextResponse.json({ error: message, status }, { status });
   }
 }

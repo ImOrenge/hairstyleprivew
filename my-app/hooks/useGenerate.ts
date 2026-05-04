@@ -151,12 +151,23 @@ export function useGenerate() {
         body: JSON.stringify(payload),
       });
 
-      const parsed = (await response.json().catch(() => null)) as unknown;
+      const responseText = await response.text().catch(() => "");
+      let parsed: unknown = null;
+      if (responseText) {
+        try {
+          parsed = JSON.parse(responseText) as unknown;
+        } catch {
+          parsed = null;
+        }
+      }
       const result = isRecord(parsed) ? (parsed as GenerationApiResponse) : {};
       const apiError = typeof result.error === "string" ? result.error : "";
       if (!response.ok) {
         const status = typeof result.status === "number" ? result.status : response.status;
-        throw new Error(apiError ? `${apiError} (HTTP ${status})` : `Failed to generate hairstyle variant. HTTP ${status}`);
+        const fallback = responseText.trim()
+          ? `Failed to generate hairstyle variant. HTTP ${status}: ${responseText.slice(0, 180)}`
+          : `Failed to generate hairstyle variant. HTTP ${status}`;
+        throw new Error(apiError ? `${apiError} (HTTP ${status})` : fallback);
       }
 
       if (!result.id || !result.variantId) {

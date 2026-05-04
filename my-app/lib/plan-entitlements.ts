@@ -49,6 +49,10 @@ export const PLAN_ENTITLEMENTS: Record<ActivePlanKey, PlanEntitlement> = {
 };
 
 interface SupabaseEntitlementClient {
+  rpc?: (
+    fn: string,
+    params: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
   from: (table: string) => {
     select: (columns: string) => {
       eq: (column: string, value: string) => unknown;
@@ -186,6 +190,20 @@ export async function countUserCompletedHairResults(
   supabase: SupabaseEntitlementClient,
   userId: string,
 ): Promise<number> {
+  if (typeof supabase.rpc === "function") {
+    const { data, error } = await supabase.rpc("count_user_completed_hair_results", {
+      p_user_id: userId,
+    });
+
+    if (!error && typeof data === "number") {
+      return data;
+    }
+
+    if (error && !error.message.toLowerCase().includes("could not find")) {
+      throw new Error(error.message);
+    }
+  }
+
   const query = supabase.from("generations").select("options,status").eq("user_id", userId);
   const { data, error } = await returns<GenerationRow[]>(query);
   if (error) {
