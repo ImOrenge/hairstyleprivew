@@ -10,7 +10,9 @@ import {
   UserRound,
 } from "lucide-react";
 import { getCreditsPerStyle } from "../../lib/pricing-plan";
+import type { MemberStyleTarget } from "../../lib/onboarding";
 import { AppPage, Panel, SurfaceCard } from "../ui/Surface";
+import { MemberGenderForm } from "./MemberGenderForm";
 import { StyleProfileForm } from "./StyleProfileForm";
 
 export type MyPageTabId = "usage" | "plan" | "aftercare" | "body-profile" | "account";
@@ -63,6 +65,10 @@ export interface SubscriptionRow {
   current_period_end: string | null;
 }
 
+export interface MemberProfileRow {
+  style_target?: MemberStyleTarget | null;
+}
+
 interface QueryState {
   checkoutId: string;
   payment: string;
@@ -75,6 +81,7 @@ interface MyPageDashboardTabsProps {
   generations: GenerationRow[];
   hairRecords: HairRecordRow[];
   payments: PaymentTransactionRow[];
+  memberProfile: MemberProfileRow | null;
   profile: UserProfileRow | null;
   queryState: QueryState;
   styleProfile: UserStyleProfileRow | null;
@@ -506,9 +513,11 @@ function BodyProfilePanel() {
 
 function AccountPanel({
   email,
+  memberProfile,
   viewerName,
 }: {
   email: string;
+  memberProfile: MemberProfileRow | null;
   viewerName: string;
 }) {
   return (
@@ -531,6 +540,7 @@ function AccountPanel({
           </div>
         </div>
       </SurfaceCard>
+      <MemberGenderForm initialStyleTarget={memberProfile?.style_target ?? null} />
     </Panel>
   );
 }
@@ -542,6 +552,7 @@ function ActiveTabPanel({
   generations,
   hairRecords,
   payments,
+  memberProfile,
   viewerName,
 }: {
   activePlan: string;
@@ -550,6 +561,7 @@ function ActiveTabPanel({
   generations: GenerationRow[];
   hairRecords: HairRecordRow[];
   payments: PaymentTransactionRow[];
+  memberProfile: MemberProfileRow | null;
   viewerName: string;
 }) {
   if (activeTab === "plan") {
@@ -565,7 +577,7 @@ function ActiveTabPanel({
   }
 
   if (activeTab === "account") {
-    return <AccountPanel email={email} viewerName={viewerName} />;
+    return <AccountPanel email={email} memberProfile={memberProfile} viewerName={viewerName} />;
   }
 
   return <UsagePanel generations={generations} />;
@@ -577,6 +589,7 @@ export function MyPageDashboardTabs({
   generations,
   hairRecords,
   payments,
+  memberProfile,
   profile,
   queryState,
   styleProfile,
@@ -660,6 +673,7 @@ export function MyPageDashboardTabs({
         generations={generations}
         hairRecords={hairRecords}
         payments={payments}
+        memberProfile={memberProfile}
         viewerName={viewerName}
       />
     </AppPage>

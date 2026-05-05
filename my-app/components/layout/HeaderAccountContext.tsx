@@ -70,7 +70,7 @@ function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {
 
   const metadataAccountType = normalizeAccountType(user?.publicMetadata?.accountType);
   const metadataOnboardingComplete = Boolean(
-    user?.publicMetadata?.onboardingComplete === true && metadataAccountType,
+    user?.publicMetadata?.onboardingComplete === true && metadataAccountType && metadataAccountType !== "member",
   );
 
   useEffect(() => {

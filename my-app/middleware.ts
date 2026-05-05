@@ -5,6 +5,8 @@ import { buildSignInRedirectUrl, getClerkConfigState, isDevClerkSalonUserId } fr
 import {
   buildOnboardingRedirectUrl,
   isAccountType,
+  isMemberStyleTarget,
+  MEMBER_GENDER_REQUIRED_CODE,
   normalizeAppPath,
   parseOnboardingMetadata,
 } from "./lib/onboarding";
@@ -33,6 +35,8 @@ const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isOnboardingApiRoute = createRouteMatcher(["/api/onboarding(.*)"]);
 const isMobileApiRoute = createRouteMatcher(["/api/mobile(.*)"]);
 const isMobileBootstrapApiRoute = createRouteMatcher(["/api/mobile/me"]);
+const isMemberProfileApiRoute = createRouteMatcher(["/api/member-profile"]);
+const isPromptGenerateApiRoute = createRouteMatcher(["/api/prompts/generate"]);
 const isAdminPageRoute = createRouteMatcher(["/admin(.*)"]);
 const isAdminNamespaceApiRoute = createRouteMatcher(["/api/admin(.*)"]);
 const isAdminApiRoute = createRouteMatcher(["/api/admin(.*)"]);
@@ -69,13 +73,13 @@ function getMobileCorsHeaders(req: NextRequest) {
   }
 
   headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
   headers.set("Access-Control-Max-Age", "600");
   return headers;
 }
 
 function withMobileCors(req: NextRequest, response: NextResponse) {
-  if (!isMobileApiRoute(req)) {
+  if (!isMobileApiRoute(req) && !isMemberProfileApiRoute(req)) {
     return response;
   }
 
@@ -117,7 +121,25 @@ async function loadDbOnboarding(userId: string) {
       return null;
     }
 
-    return data;
+    if (!data) {
+      return null;
+    }
+
+    const { data: memberProfile, error: memberError } = await supabase
+      .from("member_profiles")
+      .select("style_target")
+      .eq("user_id", userId)
+      .maybeSingle<{ style_target?: string | null }>();
+
+    if (memberError) {
+      console.error("[middleware] Failed to read DB member profile", memberError);
+      return null;
+    }
+
+    return {
+      ...data,
+      member_style_target: memberProfile?.style_target ?? null,
+    };
   } catch (error) {
     console.error("[middleware] Failed to create Supabase role client", error);
     return null;
@@ -126,7 +148,7 @@ async function loadDbOnboarding(userId: string) {
 
 const clerkAppMiddleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
-    if (isMobileApiRoute(req) && req.method === "OPTIONS") {
+    if ((isMobileApiRoute(req) || isMemberProfileApiRoute(req)) && req.method === "OPTIONS") {
       return mobileCorsPreflight(req);
     }
 
@@ -134,7 +156,10 @@ const clerkAppMiddleware = hasClerkConfig
       return withMobileCors(req, NextResponse.next());
     }
 
-    const authObject = isMobileApiRoute(req) ? await auth({ acceptsToken: "session_token" }) : await auth();
+    const authObject =
+      isMobileApiRoute(req) || isMemberProfileApiRoute(req)
+        ? await auth({ acceptsToken: "session_token" })
+        : await auth();
     const { userId } = authObject;
     const returnBackPath = `${req.nextUrl.pathname}${req.nextUrl.search}`;
     const isApiRequest = req.nextUrl.pathname.startsWith("/api/");
@@ -152,14 +177,27 @@ const clerkAppMiddleware = hasClerkConfig
       const metadata = parseOnboardingMetadata(user.publicMetadata);
       const dbOnboarding = await loadDbOnboarding(userId);
       const dbAccountType = isAccountType(dbOnboarding?.account_type) ? dbOnboarding.account_type : null;
+      const dbMemberStyleTarget = isMemberStyleTarget(dbOnboarding?.member_style_target)
+        ? dbOnboarding.member_style_target
+        : null;
       const isDevSalonOwner = isDevClerkSalonUserId(userId);
       const effectiveAccountType = isDevSalonOwner ? "salon_owner" : dbAccountType ?? metadata.accountType;
+      const dbOnboardingComplete =
+        effectiveAccountType === "admin" ||
+        Boolean(
+          dbOnboarding?.onboarding_completed_at &&
+            (effectiveAccountType === "salon_owner" ||
+              (effectiveAccountType === "member" && dbMemberStyleTarget)),
+        );
       const effectiveOnboardingComplete =
         isDevSalonOwner ||
-        effectiveAccountType === "admin" ||
-        Boolean(dbOnboarding?.onboarding_completed_at && effectiveAccountType) ||
-        metadata.onboardingComplete;
-      const onboardingAllowed = isOnboardingRoute(req) || isOnboardingApiRoute(req) || isMobileBootstrapApiRoute(req);
+        dbOnboardingComplete ||
+        (!dbOnboarding && Boolean(metadata.onboardingComplete && effectiveAccountType));
+      const onboardingAllowed =
+        isOnboardingRoute(req) ||
+        isOnboardingApiRoute(req) ||
+        isMobileBootstrapApiRoute(req) ||
+        isMemberProfileApiRoute(req);
       const adminPageRequest = isAdminPageRoute(req);
       const adminApiRequest = isAdminApiRoute(req) && !isCatalogSecretAdminApiRoute(req);
       const adminRestrictedRequest = adminPageRequest || adminApiRequest;
@@ -172,6 +210,20 @@ const clerkAppMiddleware = hasClerkConfig
 
         if (adminApiRequest) {
           return withMobileCors(req, NextResponse.json({ error: "Admin account required" }, { status: 403 }));
+        }
+
+        if (isPromptGenerateApiRoute(req)) {
+          return withMobileCors(
+            req,
+            NextResponse.json(
+              {
+                error: "회원정보에서 성별을 선택한 뒤 헤어스타일을 생성해 주세요.",
+                code: MEMBER_GENDER_REQUIRED_CODE,
+                redirectTo: buildOnboardingRedirectUrl("/generate"),
+              },
+              { status: 428 },
+            ),
+          );
         }
 
         if (isApiRequest) {
@@ -240,7 +292,7 @@ const middleware = hasClerkConfig && clerkAppMiddleware
       return clerkAppMiddleware(req, event);
     }
   : (req: NextRequest) => {
-      if (isMobileApiRoute(req) && req.method === "OPTIONS") {
+      if ((isMobileApiRoute(req) || isMemberProfileApiRoute(req)) && req.method === "OPTIONS") {
         return mobileCorsPreflight(req);
       }
 

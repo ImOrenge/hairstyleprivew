@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-expo";
-import type { MobileBootstrap, MobileDashboard, PersonalColorResult, StyleProfile } from "@hairfit/shared";
+import type { MemberStyleTarget, MobileBootstrap, MobileDashboard, PersonalColorResult, StyleProfile } from "@hairfit/shared";
 import {
   BodyText,
   Button,
@@ -19,6 +19,11 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { useHairfitApi } from "../lib/api";
+
+const genderOptions: Array<{ value: MemberStyleTarget; label: string }> = [
+  { value: "male", label: "남성" },
+  { value: "female", label: "여성" },
+];
 
 type MyPageTabId = "usage" | "plan" | "aftercare" | "body-profile" | "account";
 
@@ -286,6 +291,34 @@ function BodyProfilePanel() {
 }
 
 function AccountPanel({ me }: { me: MobileBootstrap | null }) {
+  const api = useHairfitApi();
+  const [styleTarget, setStyleTarget] = useState<MemberStyleTarget | null>(me?.styleTarget ?? null);
+  const [savedStyleTarget, setSavedStyleTarget] = useState<MemberStyleTarget | null>(me?.styleTarget ?? null);
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setStyleTarget(me?.styleTarget ?? null);
+    setSavedStyleTarget(me?.styleTarget ?? null);
+  }, [me?.styleTarget]);
+
+  const saveGender = async () => {
+    if (!styleTarget || pending) return;
+    setPending(true);
+    setMessage(null);
+
+    try {
+      const result = await api.updateMemberProfile({ styleTarget });
+      setSavedStyleTarget(result.profile.styleTarget);
+      setStyleTarget(result.profile.styleTarget);
+      setMessage("성별 정보가 저장되었습니다.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "성별 저장에 실패했습니다.");
+    } finally {
+      setPending(false);
+    }
+  };
+
   return (
     <Panel>
       <Stack>
@@ -294,6 +327,27 @@ function AccountPanel({ me }: { me: MobileBootstrap | null }) {
         <Card>
           <BodyText style={styles.strongText}>{displayName(me)}</BodyText>
           <BodyText>{me?.email || "-"}</BodyText>
+        </Card>
+        <Card>
+          <Stack gap={10}>
+            <Kicker>성별</Kicker>
+            <BodyText>현재 성별: {savedStyleTarget === "male" ? "남성" : savedStyleTarget === "female" ? "여성" : "미입력"}</BodyText>
+            <Cluster>
+              {genderOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={styleTarget === option.value ? "primary" : "secondary"}
+                  onPress={() => setStyleTarget(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </Cluster>
+            <Button disabled={!styleTarget || pending} onPress={saveGender}>
+              {pending ? "저장 중..." : "성별 저장"}
+            </Button>
+            {message ? <BodyText>{message}</BodyText> : null}
+          </Stack>
         </Card>
       </Stack>
     </Panel>

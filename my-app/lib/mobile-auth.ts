@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { getActivePlan } from "./plan-entitlements";
 import { ensureCurrentUserProfile, type ServerSupabaseLike } from "./style-profile-server";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "./supabase";
-import { isAccountType, type AccountType } from "./onboarding";
+import { isAccountType, isMemberStyleTarget, type AccountType, type MemberStyleTarget } from "./onboarding";
 
 type SupabaseAdminClient = ReturnType<typeof getSupabaseAdminClient>;
 export type MobileServiceKey = "customer" | "salon" | "admin";
@@ -15,6 +15,7 @@ interface MobileBootstrap {
   email: string | null;
   displayName: string | null;
   accountType: AccountType | null;
+  styleTarget: MemberStyleTarget | null;
   onboardingComplete: boolean;
   credits: number;
   planKey: string | null;
@@ -29,6 +30,10 @@ interface MobileUserRow {
   email: string | null;
 }
 
+interface MobileMemberProfileRow {
+  style_target: unknown;
+}
+
 function getMobileCorsHeaders(request?: Request) {
   const headers = new Headers();
   const origin = request?.headers.get("origin");
@@ -40,7 +45,7 @@ function getMobileCorsHeaders(request?: Request) {
   }
 
   headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
   headers.set("Access-Control-Max-Age", "600");
   return headers;
 }
@@ -110,12 +115,17 @@ export async function getMobileApiContext(request?: Request) {
     };
   }
 
-  const [{ data, error }, clerkUser] = await Promise.all([
+  const [{ data, error }, { data: memberProfile, error: memberProfileError }, clerkUser] = await Promise.all([
     supabase
       .from("users")
       .select("account_type,onboarding_completed_at,credits,display_name,email")
       .eq("id", userId)
       .maybeSingle<MobileUserRow>(),
+    supabase
+      .from("member_profiles")
+      .select("style_target")
+      .eq("user_id", userId)
+      .maybeSingle<MobileMemberProfileRow>(),
     (async () => {
       const client = await clerkClient();
       return client.users.getUser(userId).catch(() => null);
@@ -130,8 +140,20 @@ export async function getMobileApiContext(request?: Request) {
   }
 
   const accountType = isAccountType(data?.account_type) ? data.account_type : null;
+  if (memberProfileError) {
+    return {
+      ok: false as const,
+      response: mobileJsonResponse(request, { error: memberProfileError.message }, { status: 500 }),
+    };
+  }
+
+  const styleTarget = isMemberStyleTarget(memberProfile?.style_target) ? memberProfile.style_target : null;
   const onboardingComplete =
-    accountType === "admin" || Boolean(accountType && data?.onboarding_completed_at);
+    accountType === "admin" ||
+    Boolean(
+      data?.onboarding_completed_at &&
+        (accountType === "salon_owner" || (accountType === "member" && styleTarget)),
+    );
   const email =
     clerkUser?.primaryEmailAddress?.emailAddress?.trim() ||
     clerkUser?.emailAddresses?.[0]?.emailAddress?.trim() ||
@@ -150,6 +172,7 @@ export async function getMobileApiContext(request?: Request) {
     email,
     displayName,
     accountType,
+    styleTarget,
     onboardingComplete,
     credits: Number.isInteger(data?.credits) ? Number(data?.credits) : 0,
     planKey,

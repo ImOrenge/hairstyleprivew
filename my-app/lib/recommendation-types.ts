@@ -3,6 +3,7 @@ import type { AIEvaluationResult } from "./ai-evaluation";
 export type RecommendationLengthBucket = "short" | "medium" | "long";
 export type RecommendationCorrectionFocus = "crown" | "temple" | "jawline";
 export type RecommendationVariantStatus = "queued" | "generating" | "completed" | "failed";
+export type MemberStyleTarget = "male" | "female";
 export type HairstyleCatalogStatus = "active" | "archived";
 export type HairstyleCatalogCycleStatus = "running" | "succeeded" | "failed";
 
@@ -71,6 +72,7 @@ export interface HairstyleCatalogRow {
   promptTemplate: string;
   negativePrompt: string;
   promptTemplateVersion: string;
+  styleTargets: MemberStyleTarget[];
   status: HairstyleCatalogStatus;
   sourceCycleId: string;
   createdAt: string;
@@ -79,6 +81,7 @@ export interface HairstyleCatalogRow {
 
 export interface CatalogSelectionContext {
   analysis: FaceAnalysisSummary;
+  styleTarget: MemberStyleTarget;
   faceShapeTags: string[];
   volumeFocusTags: string[];
   avoidTags: string[];
@@ -100,6 +103,7 @@ export interface RecommendationCandidate {
   catalogCycleId?: string;
   selectionScore?: number;
   promptTemplateVersion?: string;
+  styleTarget?: MemberStyleTarget;
 }
 
 export interface CatalogBackedRecommendationCandidate extends RecommendationCandidate {
@@ -124,6 +128,7 @@ export interface RecommendationSet {
   analysis: FaceAnalysisSummary;
   variants: GeneratedVariant[];
   selectedVariantId: string | null;
+  styleTarget?: MemberStyleTarget | null;
   catalogCycleId?: string | null;
   creditChargedAt?: string | null;
   creditChargeAmount?: number | null;

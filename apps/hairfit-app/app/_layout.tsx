@@ -136,7 +136,8 @@ function AppProviders() {
   const metadataOnboardingComplete = Boolean(
     (user?.publicMetadata?.onboardingComplete === true ||
       readMetadataValue(sessionClaims, "onboardingComplete") === true) &&
-      metadataAccountType,
+      metadataAccountType &&
+      metadataAccountType !== "member",
   );
   const userEmail =
     user?.primaryEmailAddress?.emailAddress?.trim() ||
@@ -153,6 +154,7 @@ function AppProviders() {
       email: userEmail,
       displayName: userDisplayName,
       accountType: metadataAccountType,
+      styleTarget: null,
       onboardingComplete: metadataOnboardingComplete,
       credits: 0,
       planKey: null,

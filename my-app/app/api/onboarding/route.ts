@@ -69,12 +69,16 @@ interface OnboardingRequestBody {
   returnUrl?: unknown;
 }
 
-async function syncClerkOnboardingMetadata(userId: string, accountType: AccountType) {
+async function syncClerkOnboardingMetadata(
+  userId: string,
+  accountType: AccountType,
+  onboardingComplete: boolean,
+) {
   const client = await clerkClient();
   await client.users.updateUserMetadata(userId, {
     publicMetadata: {
       accountType,
-      onboardingComplete: true,
+      onboardingComplete,
     },
   });
 }
@@ -176,11 +180,18 @@ export async function GET() {
     }
 
     const accountType = isAccountType(userRow?.account_type) ? userRow.account_type : null;
+    const memberStyleTarget = isMemberStyleTarget(memberProfile?.style_target)
+      ? memberProfile.style_target
+      : null;
     const onboardingComplete =
-      accountType === "admin" || Boolean(userRow?.onboarding_completed_at && accountType);
+      accountType === "admin" ||
+      Boolean(
+        userRow?.onboarding_completed_at &&
+          (accountType === "salon_owner" || (accountType === "member" && memberStyleTarget)),
+      );
 
-    if (onboardingComplete && accountType) {
-      await syncClerkOnboardingMetadata(userId, accountType);
+    if (accountType) {
+      await syncClerkOnboardingMetadata(userId, accountType, onboardingComplete);
     }
 
     return NextResponse.json(
@@ -190,7 +201,7 @@ export async function GET() {
         memberProfile: memberProfile
           ? {
               displayName: memberProfile.display_name ?? userRow?.display_name ?? "",
-              styleTarget: memberProfile.style_target ?? "neutral",
+              styleTarget: memberStyleTarget,
               preferredStyleTone: memberProfile.preferred_style_tone ?? "natural",
             }
           : null,
@@ -268,7 +279,7 @@ export async function POST(request: Request) {
       }
 
       if (!isMemberStyleTarget(styleTarget)) {
-        return NextResponse.json({ error: "타겟 스타일을 선택해 주세요." }, { status: 400 });
+        return NextResponse.json({ error: "성별을 선택해 주세요." }, { status: 400 });
       }
 
       if (!isMemberStyleTone(preferredStyleTone)) {
@@ -392,7 +403,7 @@ export async function POST(request: Request) {
       }
     }
 
-    await syncClerkOnboardingMetadata(userId, accountType);
+    await syncClerkOnboardingMetadata(userId, accountType, true);
 
     if (shouldSendWelcomeEmail) {
       await sendWelcomeEmailOnce({

@@ -6,12 +6,14 @@ import {
   normalizeMyPageTab,
   type GenerationRow,
   type HairRecordRow,
+  type MemberProfileRow,
   type PaymentTransactionRow,
   type SubscriptionRow,
   type UserProfileRow,
   type UserStyleProfileRow,
 } from "../../components/mypage/MyPageDashboardTabs";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
+import { isMemberStyleTarget } from "../../lib/onboarding";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -85,6 +87,7 @@ export default async function MyPage({
   let profile: UserProfileRow | null = null;
   let generations: GenerationRow[] = [];
   let payments: PaymentTransactionRow[] = [];
+  let memberProfile: MemberProfileRow | null = null;
   let styleProfile: UserStyleProfileRow | null = null;
   let hairRecords: HairRecordRow[] = [];
   let subscription: SubscriptionRow | null = null;
@@ -105,6 +108,7 @@ export default async function MyPage({
     const [
       generationResult,
       paymentResult,
+      memberProfileResult,
       styleProfileResult,
       hairRecordResult,
       subscriptionResult,
@@ -121,6 +125,11 @@ export default async function MyPage({
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(6),
+      supabase
+        .from<MemberProfileRow>("member_profiles")
+        .select("style_target")
+        .eq("user_id", userId)
+        .maybeSingle(),
       supabase
         .from<UserStyleProfileRow>("user_style_profiles")
         .select("height_cm,body_shape,top_size,bottom_size,fit_preference,exposure_preference,body_photo_path")
@@ -143,6 +152,13 @@ export default async function MyPage({
 
     if (!generationResult.error && generationResult.data) generations = generationResult.data;
     if (!paymentResult.error && paymentResult.data) payments = paymentResult.data;
+    if (!memberProfileResult.error) {
+      memberProfile = {
+        style_target: isMemberStyleTarget(memberProfileResult.data?.style_target)
+          ? memberProfileResult.data.style_target
+          : null,
+      };
+    }
     if (!styleProfileResult.error) styleProfile = styleProfileResult.data;
     if (!hairRecordResult.error && hairRecordResult.data) hairRecords = hairRecordResult.data;
     if (!subscriptionResult.error) subscription = subscriptionResult.data;
@@ -157,6 +173,7 @@ export default async function MyPage({
       generations={generations}
       hairRecords={hairRecords}
       payments={payments}
+      memberProfile={memberProfile}
       profile={profile}
       queryState={{
         checkoutId,

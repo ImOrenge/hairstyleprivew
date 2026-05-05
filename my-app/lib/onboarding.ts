@@ -1,7 +1,8 @@
 export const ACCOUNT_TYPES = ["member", "salon_owner", "admin"] as const;
 export const ONBOARDING_ACCOUNT_TYPES = ["member", "salon_owner"] as const;
-export const MEMBER_STYLE_TARGETS = ["male", "female", "neutral"] as const;
+export const MEMBER_STYLE_TARGETS = ["male", "female"] as const;
 export const MEMBER_STYLE_TONES = ["natural", "trendy", "soft", "bold"] as const;
+export const MEMBER_GENDER_REQUIRED_CODE = "MEMBER_GENDER_REQUIRED" as const;
 
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 export type OnboardingAccountType = (typeof ONBOARDING_ACCOUNT_TYPES)[number];

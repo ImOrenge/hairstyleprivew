@@ -23,6 +23,9 @@ interface RecommendationApiResponse {
   creditsRequired?: number;
   model?: string;
   promptVersion?: string;
+  styleTarget?: "male" | "female";
+  code?: string;
+  redirectTo?: string;
   error?: string;
 }
 
@@ -304,6 +307,9 @@ export function useGenerate() {
 
       const promptData = (await promptResponse.json().catch(() => ({}))) as RecommendationApiResponse;
       if (!promptResponse.ok) {
+        if (promptData.code === "MEMBER_GENDER_REQUIRED" && promptData.redirectTo) {
+          window.location.assign(promptData.redirectTo);
+        }
         throw new Error(promptData.error || "Failed to build hairstyle recommendations.");
       }
 

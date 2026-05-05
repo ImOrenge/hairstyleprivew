@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getSupabaseAdminClient } from "./supabase";
 import {
+  HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
   buildCatalogRowsForCycle,
   buildKoreanWeeklyStyleQueries,
   type BlueprintTrendSignal,
@@ -13,6 +14,7 @@ import type {
   HairstyleCatalogCycle,
   HairstyleCatalogSourceSummary,
   HairstyleCatalogRow,
+  MemberStyleTarget,
   RecommendationCorrectionFocus,
   RecommendationLengthBucket,
 } from "./recommendation-types";
@@ -204,6 +206,19 @@ function tokenize(value: string): string[] {
     .filter(Boolean);
 }
 
+function isMemberStyleTarget(value: unknown): value is MemberStyleTarget {
+  return value === "male" || value === "female";
+}
+
+function normalizeStyleTargets(raw: unknown): MemberStyleTarget[] {
+  if (!Array.isArray(raw)) {
+    return ["male", "female"];
+  }
+
+  const targets = raw.filter(isMemberStyleTarget);
+  return targets.length > 0 ? Array.from(new Set(targets)) : ["male", "female"];
+}
+
 function normalizeCatalogRow(raw: Record<string, unknown>): HairstyleCatalogRow | null {
   const id = typeof raw.id === "string" ? raw.id : "";
   const slug = typeof raw.slug === "string" ? raw.slug : "";
@@ -260,6 +275,7 @@ function normalizeCatalogRow(raw: Record<string, unknown>): HairstyleCatalogRow 
     promptTemplate,
     negativePrompt,
     promptTemplateVersion,
+    styleTargets: normalizeStyleTargets(raw.style_targets),
     status,
     sourceCycleId,
     createdAt,
@@ -376,7 +392,7 @@ async function loadCatalogRows(
   const response = await ((supabase
     .from("hairstyle_catalog")
     .select(
-      "id,slug,name_ko,description,market,length_bucket,silhouette,texture,bang_type,volume_focus_tags,face_shape_fit_tags,avoid_tags,trend_score,freshness_score,prompt_template,negative_prompt,prompt_template_version,status,source_cycle_id,created_at,updated_at",
+      "id,slug,name_ko,description,market,length_bucket,silhouette,texture,bang_type,volume_focus_tags,face_shape_fit_tags,avoid_tags,trend_score,freshness_score,prompt_template,negative_prompt,prompt_template_version,style_targets,status,source_cycle_id,created_at,updated_at",
     )
     .eq("source_cycle_id", cycleId)) as unknown as Promise<{
     data: Array<Record<string, unknown>> | null;
@@ -484,12 +500,19 @@ function deriveCorrectionFocusFromRow(row: HairstyleCatalogRow): RecommendationC
   return "crown";
 }
 
-function composePrompt(row: HairstyleCatalogRow, analysis: FaceAnalysisSummary) {
+function composePrompt(row: HairstyleCatalogRow, analysis: FaceAnalysisSummary, styleTarget: MemberStyleTarget) {
+  const genderDirection =
+    styleTarget === "male"
+      ? "Korean men's hairstyle direction"
+      : "Korean women's hairstyle direction";
+
   return [
     "reference photo hair edit",
     "same person as the reference photo",
     "change only the hairstyle and natural hair color",
+    genderDirection,
     "keep face, skin tone, identity, expression, camera angle, background, and clothing unchanged",
+    "do not change the person's gender or identity",
     row.promptTemplate,
     `suited for ${analysis.faceShape}`,
     `head balance: ${analysis.balance}`,
@@ -528,9 +551,13 @@ function derivePreferredLengthBuckets(analysis: FaceAnalysisSummary): Recommenda
   return result;
 }
 
-export function buildCatalogSelectionContext(analysis: FaceAnalysisSummary): CatalogSelectionContext {
+export function buildCatalogSelectionContext(
+  analysis: FaceAnalysisSummary,
+  styleTarget: MemberStyleTarget,
+): CatalogSelectionContext {
   return {
     analysis,
+    styleTarget,
     faceShapeTags: Array.from(new Set([
       ...tokenize(analysis.faceShape),
       ...tokenize(analysis.headShape),
@@ -593,7 +620,7 @@ function buildTopNine(rows: HairstyleCatalogRow[], context: CatalogSelectionCont
     rank: index + 1,
     label: row.nameKo,
     reason: buildReason(row, context),
-    prompt: composePrompt(row, context.analysis),
+    prompt: composePrompt(row, context.analysis, context.styleTarget),
     negativePrompt: row.negativePrompt,
     tags: [row.lengthBucket, row.silhouette, row.texture, row.bangType, ...row.volumeFocusTags].filter(Boolean),
     lengthBucket: row.lengthBucket,
@@ -602,6 +629,7 @@ function buildTopNine(rows: HairstyleCatalogRow[], context: CatalogSelectionCont
     catalogCycleId: cycleId,
     selectionScore: score,
     promptTemplateVersion: row.promptTemplateVersion,
+    styleTarget: context.styleTarget,
   }));
 }
 
@@ -782,6 +810,7 @@ async function rebuildCatalogWithMode(
       prompt_template: row.promptTemplate,
       negative_prompt: row.negativePrompt,
       prompt_template_version: row.promptTemplateVersion,
+      style_targets: row.styleTargets,
       status: row.status,
       source_cycle_id: row.sourceCycleId,
     }));
@@ -904,12 +933,43 @@ export async function ensureCatalogAvailable(mode: CatalogRebuildMode = "auto"):
   };
 }
 
-export async function generateCatalogBackedRecommendationSet(referenceImageDataUrl: string) {
-  const { cycle: latestCycle, rows } = await ensureCatalogAvailable();
+function filterRowsForStyleTarget(rows: HairstyleCatalogRow[], styleTarget: MemberStyleTarget) {
+  return rows.filter((row) => row.styleTargets.includes(styleTarget));
+}
+
+function needsStyleTargetCatalogRefresh(rows: HairstyleCatalogRow[]) {
+  return (
+    rows.length < 9 ||
+    rows.some((row) => row.promptTemplateVersion !== HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION)
+  );
+}
+
+export async function generateCatalogBackedRecommendationSet(
+  referenceImageDataUrl: string,
+  styleTarget: MemberStyleTarget,
+) {
+  let { cycle: latestCycle, rows } = await ensureCatalogAvailable();
+  let targetRows = filterRowsForStyleTarget(rows, styleTarget);
+
+  if (needsStyleTargetCatalogRefresh(targetRows)) {
+    const rebuildResult = await rebuildWeeklyHairstyleCatalog();
+    const rebuiltCycle = await getLatestSuccessfulCatalogCycle();
+    if (!rebuiltCycle || rebuiltCycle.cycleId !== rebuildResult.cycleId) {
+      throw new Error("Gender-specific hairstyle catalog rebuild did not produce a usable cycle.");
+    }
+
+    latestCycle = rebuiltCycle;
+    rows = await listCatalogRowsForCycle(rebuiltCycle.cycleId);
+    targetRows = filterRowsForStyleTarget(rows, styleTarget);
+  }
+
+  if (targetRows.length < 9) {
+    throw new Error(`Not enough ${styleTarget} hairstyle catalog rows are available.`);
+  }
 
   const analysisRun = await analyzeFaceForCatalog(referenceImageDataUrl);
-  const selectionContext = buildCatalogSelectionContext(analysisRun.analysis);
-  const recommendations = buildTopNine(rows, selectionContext, latestCycle.cycleId);
+  const selectionContext = buildCatalogSelectionContext(analysisRun.analysis, styleTarget);
+  const recommendations = buildTopNine(targetRows, selectionContext, latestCycle.cycleId);
 
   if (recommendations.length === 0) {
     throw new Error("No catalog-backed recommendations could be selected.");

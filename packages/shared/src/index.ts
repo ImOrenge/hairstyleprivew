@@ -15,6 +15,7 @@ export interface MobileBootstrap {
   email: string | null;
   displayName: string | null;
   accountType: "member" | "salon_owner" | "admin" | null;
+  styleTarget: MemberStyleTarget | null;
   onboardingComplete: boolean;
   credits: number;
   planKey: string | null;
@@ -179,6 +180,7 @@ export interface FaceAnalysisSummary {
 export type RecommendationLengthBucket = "short" | "medium" | "long";
 export type RecommendationCorrectionFocus = "crown" | "temple" | "jawline";
 export type RecommendationVariantStatus = "queued" | "generating" | "completed" | "failed";
+export type MemberStyleTarget = "male" | "female";
 
 export interface GeneratedVariant {
   id: string;
@@ -195,6 +197,7 @@ export interface GeneratedVariant {
   catalogCycleId?: string;
   selectionScore?: number;
   promptTemplateVersion?: string;
+  styleTarget?: MemberStyleTarget;
   status: RecommendationVariantStatus;
   outputUrl: string | null;
   generatedImagePath: string | null;
@@ -209,6 +212,7 @@ export interface RecommendationSet {
   analysis: FaceAnalysisSummary;
   variants: GeneratedVariant[];
   selectedVariantId: string | null;
+  styleTarget?: MemberStyleTarget | null;
   catalogCycleId?: string | null;
   creditChargedAt?: string | null;
   creditChargeAmount?: number | null;

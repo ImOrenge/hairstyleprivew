@@ -114,6 +114,7 @@ function normalizeVariant(raw: unknown): GeneratedVariant | null {
   const status = raw.status;
   const lengthBucket = raw.lengthBucket;
   const correctionFocus = raw.correctionFocus;
+  const styleTarget = raw.styleTarget;
 
   if (
     !id ||
@@ -142,6 +143,7 @@ function normalizeVariant(raw: unknown): GeneratedVariant | null {
     catalogCycleId: typeof raw.catalogCycleId === "string" ? raw.catalogCycleId : undefined,
     selectionScore: typeof raw.selectionScore === "number" ? raw.selectionScore : undefined,
     promptTemplateVersion: typeof raw.promptTemplateVersion === "string" ? raw.promptTemplateVersion : undefined,
+    styleTarget: styleTarget === "male" || styleTarget === "female" ? styleTarget : undefined,
     status,
     outputUrl: typeof raw.outputUrl === "string" ? raw.outputUrl : null,
     generatedImagePath: typeof raw.generatedImagePath === "string" ? raw.generatedImagePath : null,
@@ -176,6 +178,7 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
     analysis: analysis as unknown as RecommendationSet["analysis"],
     variants,
     selectedVariantId: typeof raw.selectedVariantId === "string" ? raw.selectedVariantId : null,
+    styleTarget: raw.styleTarget === "male" || raw.styleTarget === "female" ? raw.styleTarget : null,
     catalogCycleId: typeof raw.catalogCycleId === "string" ? raw.catalogCycleId : null,
     creditChargedAt: typeof raw.creditChargedAt === "string" ? raw.creditChargedAt : null,
     creditChargeAmount: typeof raw.creditChargeAmount === "number" ? raw.creditChargeAmount : null,

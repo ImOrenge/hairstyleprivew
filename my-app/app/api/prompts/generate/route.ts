@@ -1,6 +1,11 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { generateDesignerBriefs } from "../../../../lib/designer-brief-generator";
+import {
+  buildOnboardingRedirectUrl,
+  isMemberStyleTarget,
+  MEMBER_GENDER_REQUIRED_CODE,
+} from "../../../../lib/onboarding";
 import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { createPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
 import { generateRecommendationSet } from "../../../../lib/recommendation-generator";
@@ -12,6 +17,10 @@ import { getSupabaseAdminClient } from "../../../../lib/supabase";
 
 interface GenerateRecommendationsRequest {
   referenceImageDataUrl?: string;
+}
+
+interface MemberProfileRow {
+  style_target: unknown;
 }
 
 function createInlineOriginalImagePath(userId: string): string {
@@ -47,6 +56,14 @@ export async function POST(request: Request) {
             }>;
           };
         };
+        select: (columns: string) => {
+          eq: (column: string, value: string) => {
+            maybeSingle: <T = Record<string, unknown>>() => Promise<{
+              data: T | null;
+              error: { message: string; code?: string } | null;
+            }>;
+          };
+        };
       };
       rpc: (
         fn: string,
@@ -75,7 +92,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: ensureProfileError.message }, { status: 500 });
     }
 
-    const generated = await generateRecommendationSet(referenceImageDataUrl);
+    const { data: memberProfile, error: memberProfileError } = await supabase
+      .from("member_profiles")
+      .select("style_target")
+      .eq("user_id", userId)
+      .maybeSingle<MemberProfileRow>();
+
+    if (memberProfileError) {
+      return NextResponse.json({ error: memberProfileError.message }, { status: 500 });
+    }
+
+    const styleTarget = isMemberStyleTarget(memberProfile?.style_target) ? memberProfile.style_target : null;
+    if (!styleTarget) {
+      return NextResponse.json(
+        {
+          error: "회원정보에서 성별을 선택한 뒤 헤어스타일을 생성해 주세요.",
+          code: MEMBER_GENDER_REQUIRED_CODE,
+          redirectTo: buildOnboardingRedirectUrl("/generate"),
+        },
+        { status: 428 },
+      );
+    }
+
+    const generated = await generateRecommendationSet(referenceImageDataUrl, styleTarget);
     const designerBriefs = await generateDesignerBriefs({
       analysis: generated.analysis,
       candidates: generated.recommendations,
@@ -103,6 +142,7 @@ export async function POST(request: Request) {
       analysis: generated.analysis,
       variants,
       selectedVariantId: null,
+      styleTarget,
       catalogCycleId: generated.catalogCycleId,
       creditChargedAt: null,
       creditChargeAmount: creditsRequired,
@@ -121,6 +161,7 @@ export async function POST(request: Request) {
           promptVersion: generated.promptVersion,
           promptModel: generated.model,
           promptSource: "recommendation-grid-api",
+          styleTarget,
         },
         status: "queued",
         credits_used: creditsRequired,
@@ -160,6 +201,7 @@ export async function POST(request: Request) {
         creditsRequired,
         model: generated.model,
         promptVersion: generated.promptVersion,
+        styleTarget,
       },
       { status: 200 },
     );

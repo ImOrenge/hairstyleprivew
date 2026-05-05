@@ -1,8 +1,11 @@
 import type {
   HairstyleCatalogRow,
+  MemberStyleTarget,
   RecommendationCorrectionFocus,
   RecommendationLengthBucket,
 } from "./recommendation-types";
+
+export const HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v3";
 
 export interface HairstyleCatalogBlueprint {
   slug: string;
@@ -19,6 +22,7 @@ export interface HairstyleCatalogBlueprint {
   promptTemplate: string;
   negativePrompt: string;
   promptTemplateVersion: string;
+  styleTargets?: MemberStyleTarget[];
   trendKeywords: string[];
   baselineTrendScore: number;
   baselineFreshnessScore: number;
@@ -53,6 +57,40 @@ const DEFAULT_NEGATIVE_PROMPT = [
   "head tilt",
   "looking away",
 ].join(", ");
+
+const FEMALE_ONLY_SLUGS = new Set([
+  "soft-pixie-temple-balance",
+  "rounded-jawline-bob-frame",
+  "see-through-hush-balance",
+  "medium-c-curl-contour",
+  "long-soft-lift-layer",
+  "long-curtain-flow",
+  "long-s-curl-frame",
+  "tassel-bob-sharp-line",
+]);
+
+const MALE_ONLY_SLUGS = new Set([
+  "leaf-cut-back-flow",
+  "guile-cut-side-volume",
+  "two-block-soft-volume",
+  "comma-hair-temple-balance",
+  "down-perm-clean-crop",
+  "ivy-league-crown-lift",
+  "dandy-cut-side-balance",
+  "wolf-layer-mullet-flow",
+]);
+
+function resolveStyleTargets(slug: string): MemberStyleTarget[] {
+  if (FEMALE_ONLY_SLUGS.has(slug)) {
+    return ["female"];
+  }
+
+  if (MALE_ONLY_SLUGS.has(slug)) {
+    return ["male"];
+  }
+
+  return ["male", "female"];
+}
 
 export function buildKoreanWeeklyStyleQueries(referenceDate = new Date()) {
   const year = referenceDate.getFullYear();
@@ -313,6 +351,126 @@ export const KOREAN_HAIRSTYLE_BLUEPRINTS: HairstyleCatalogBlueprint[] = [
     baselineTrendScore: 62,
     baselineFreshnessScore: 58,
   },
+  {
+    slug: "two-block-soft-volume",
+    nameKo: "투블럭 소프트 볼륨",
+    description: "옆머리는 단정하게 정리하고 상단 볼륨을 살려 두상 균형을 만드는 남성형 투블럭.",
+    lengthBucket: "short",
+    correctionFocus: "crown",
+    silhouette: "two block",
+    texture: "soft volume",
+    bangType: "natural fringe",
+    volumeFocusTags: ["crown", "top-volume"],
+    faceShapeFitTags: ["round", "oval", "square"],
+    avoidTags: ["flat-top", "wide-side"],
+    promptTemplate:
+      "men's two-block haircut, clean side control, soft lifted top volume, natural fringe, natural black hair",
+    negativePrompt: DEFAULT_NEGATIVE_PROMPT,
+    promptTemplateVersion: "catalog-v2",
+    trendKeywords: ["투블럭", "남자 투블럭", "two block cut", "two-block"],
+    baselineTrendScore: 65,
+    baselineFreshnessScore: 61,
+  },
+  {
+    slug: "comma-hair-temple-balance",
+    nameKo: "쉼표머리 템플 밸런스",
+    description: "앞머리 곡선과 관자 부근 볼륨으로 얼굴 상단 인상을 부드럽게 보정하는 남성형 스타일.",
+    lengthBucket: "medium",
+    correctionFocus: "temple",
+    silhouette: "comma hair",
+    texture: "soft curve",
+    bangType: "comma fringe",
+    volumeFocusTags: ["temple", "side-balance"],
+    faceShapeFitTags: ["long", "oval", "heart"],
+    avoidTags: ["heavy-forehead-cover"],
+    promptTemplate:
+      "men's comma hair, curved fringe with temple balance, soft side volume, clean natural texture, natural dark brown hair",
+    negativePrompt: DEFAULT_NEGATIVE_PROMPT,
+    promptTemplateVersion: "catalog-v2",
+    trendKeywords: ["쉼표머리", "남자 쉼표머리", "comma hair", "comma fringe"],
+    baselineTrendScore: 64,
+    baselineFreshnessScore: 60,
+  },
+  {
+    slug: "down-perm-clean-crop",
+    nameKo: "다운펌 클린 크롭",
+    description: "뜨는 옆머리를 눌러 깔끔한 실루엣을 만들고 정수리 볼륨만 남기는 남성형 크롭.",
+    lengthBucket: "short",
+    correctionFocus: "crown",
+    silhouette: "clean crop",
+    texture: "down perm",
+    bangType: "short fringe",
+    volumeFocusTags: ["crown", "side-control"],
+    faceShapeFitTags: ["round", "square", "oval"],
+    avoidTags: ["very-long-face"],
+    promptTemplate:
+      "men's clean crop with down perm, controlled sides, short neat fringe, lifted crown volume, natural black hair",
+    negativePrompt: DEFAULT_NEGATIVE_PROMPT,
+    promptTemplateVersion: "catalog-v2",
+    trendKeywords: ["다운펌", "남자 다운펌", "clean crop", "crop cut"],
+    baselineTrendScore: 66,
+    baselineFreshnessScore: 62,
+  },
+  {
+    slug: "ivy-league-crown-lift",
+    nameKo: "아이비리그 크라운 리프트",
+    description: "짧고 단정한 라인에 정수리 리프트를 더해 세련된 인상을 만드는 남성형 아이비리그 컷.",
+    lengthBucket: "short",
+    correctionFocus: "crown",
+    silhouette: "ivy league",
+    texture: "clean texture",
+    bangType: "short side part",
+    volumeFocusTags: ["crown", "top-volume"],
+    faceShapeFitTags: ["oval", "round", "square"],
+    avoidTags: ["flat-top"],
+    promptTemplate:
+      "men's ivy league haircut, short clean side part, lifted crown, refined natural texture, natural black hair",
+    negativePrompt: DEFAULT_NEGATIVE_PROMPT,
+    promptTemplateVersion: "catalog-v2",
+    trendKeywords: ["아이비리그컷", "남자 아이비리그", "ivy league cut"],
+    baselineTrendScore: 61,
+    baselineFreshnessScore: 57,
+  },
+  {
+    slug: "dandy-cut-side-balance",
+    nameKo: "댄디컷 사이드 밸런스",
+    description: "앞머리와 옆머리 흐름을 단정하게 맞춰 부드러운 인상을 주는 남성형 댄디컷.",
+    lengthBucket: "medium",
+    correctionFocus: "temple",
+    silhouette: "dandy cut",
+    texture: "smooth flow",
+    bangType: "soft fringe",
+    volumeFocusTags: ["temple", "side-softness"],
+    faceShapeFitTags: ["long", "oval", "diamond"],
+    avoidTags: ["wide-cheekbone-emphasis"],
+    promptTemplate:
+      "men's dandy cut, soft fringe, balanced side flow near the temples, smooth natural texture, natural dark hair",
+    negativePrompt: DEFAULT_NEGATIVE_PROMPT,
+    promptTemplateVersion: "catalog-v2",
+    trendKeywords: ["댄디컷", "남자 댄디컷", "dandy cut"],
+    baselineTrendScore: 63,
+    baselineFreshnessScore: 59,
+  },
+  {
+    slug: "wolf-layer-mullet-flow",
+    nameKo: "울프 레이어 뒷흐름",
+    description: "뒷머리 레이어와 상단 볼륨으로 긴 얼굴형과 두상 흐름을 보정하는 남성형 울프 레이어.",
+    lengthBucket: "long",
+    correctionFocus: "jawline",
+    silhouette: "wolf layer",
+    texture: "layered flow",
+    bangType: "center fringe",
+    volumeFocusTags: ["jawline", "back-balance"],
+    faceShapeFitTags: ["long", "oval", "angular"],
+    avoidTags: ["very-round-short-face"],
+    promptTemplate:
+      "men's wolf layer mullet, layered back flow, soft center fringe, controlled jawline balance, natural black hair",
+    negativePrompt: DEFAULT_NEGATIVE_PROMPT,
+    promptTemplateVersion: "catalog-v2",
+    trendKeywords: ["울프컷", "남자 울프컷", "wolf cut", "mullet layer"],
+    baselineTrendScore: 58,
+    baselineFreshnessScore: 55,
+  },
 ];
 
 function clampScore(value: number, min: number, max: number) {
@@ -343,7 +501,8 @@ export function buildCatalogRowsForCycle(
       freshnessScore: clampScore(signal?.freshnessScore ?? item.baselineFreshnessScore, 20, 99),
       promptTemplate: item.promptTemplate,
       negativePrompt: item.negativePrompt,
-      promptTemplateVersion: item.promptTemplateVersion,
+      promptTemplateVersion: HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
+      styleTargets: item.styleTargets ?? resolveStyleTargets(item.slug),
       status: "active",
       sourceCycleId: cycleId,
       createdAt: nowIso,

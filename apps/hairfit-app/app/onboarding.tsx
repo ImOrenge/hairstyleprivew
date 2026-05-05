@@ -4,10 +4,13 @@ import { useState } from "react";
 import { BodyText, Button, Card, Heading, Kicker, Panel, Screen, Stack, TextField } from "@hairfit/ui-native";
 import { useHairfitApi } from "../lib/api";
 
-const targetOptions = ["male", "female", "neutral"] as const;
+const targetOptions = [
+  { value: "male", label: "남성" },
+  { value: "female", label: "여성" },
+] as const;
 const toneOptions = ["natural", "trendy", "soft", "bold"] as const;
 
-type StyleTarget = (typeof targetOptions)[number];
+type StyleTarget = (typeof targetOptions)[number]["value"];
 type StyleTone = (typeof toneOptions)[number];
 
 export default function OnboardingScreen() {
@@ -15,13 +18,13 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const { user } = useUser();
   const [displayName, setDisplayName] = useState(user?.fullName || user?.firstName || "");
-  const [styleTarget, setStyleTarget] = useState<StyleTarget>("neutral");
+  const [styleTarget, setStyleTarget] = useState<StyleTarget | null>(null);
   const [preferredStyleTone, setPreferredStyleTone] = useState<StyleTone>("natural");
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   const submit = async () => {
-    if (!displayName.trim() || pending) return;
+    if (!displayName.trim() || !styleTarget || pending) return;
     setPending(true);
     setMessage(null);
 
@@ -53,14 +56,14 @@ export default function OnboardingScreen() {
 
           <Card>
             <Stack gap={10}>
-              <Kicker>Style target</Kicker>
+              <Kicker>성별</Kicker>
               {targetOptions.map((option) => (
                 <Button
-                  key={option}
-                  variant={styleTarget === option ? "primary" : "secondary"}
-                  onPress={() => setStyleTarget(option)}
+                  key={option.value}
+                  variant={styleTarget === option.value ? "primary" : "secondary"}
+                  onPress={() => setStyleTarget(option.value)}
                 >
-                  {option}
+                  {option.label}
                 </Button>
               ))}
             </Stack>
@@ -82,7 +85,7 @@ export default function OnboardingScreen() {
           </Card>
 
           {message ? <BodyText>{message}</BodyText> : null}
-          <Button disabled={!displayName.trim() || pending} onPress={submit}>
+          <Button disabled={!displayName.trim() || !styleTarget || pending} onPress={submit}>
             {pending ? "Saving..." : "Save and continue"}
           </Button>
         </Stack>

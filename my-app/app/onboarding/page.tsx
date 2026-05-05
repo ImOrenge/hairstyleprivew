@@ -1,4 +1,4 @@
-﻿import { auth, currentUser } from "@clerk/nextjs/server";
+﻿import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { OnboardingForm } from "../../components/onboarding/OnboardingForm";
 import { AppPage } from "../../components/ui/Surface";
@@ -6,7 +6,6 @@ import { buildSignInRedirectUrl } from "../../lib/clerk";
 import {
   isOnboardingAccountType,
   normalizeAppPath,
-  parseOnboardingMetadata,
 } from "../../lib/onboarding";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -36,13 +35,6 @@ export default async function OnboardingPage({
   const { userId } = await auth();
   if (!userId) {
     redirect(buildSignInRedirectUrl(signInTarget));
-  }
-
-  const clerkUser = await currentUser();
-  const metadata = parseOnboardingMetadata(clerkUser?.publicMetadata);
-
-  if (metadata.onboardingComplete && metadata.accountType) {
-    redirect(returnUrl);
   }
 
   return (

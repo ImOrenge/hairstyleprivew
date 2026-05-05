@@ -21,7 +21,7 @@ interface OnboardingResponse {
   accountType: AccountType | null;
   memberProfile?: {
     displayName?: string;
-    styleTarget?: MemberStyleTarget;
+    styleTarget?: MemberStyleTarget | null;
     preferredStyleTone?: MemberStyleTone;
   } | null;
   salonProfile?: {
@@ -50,9 +50,8 @@ const memberToneOptions: Array<{ value: MemberStyleTone; label: string; descript
 ];
 
 const memberTargetOptions: Array<{ value: MemberStyleTarget; label: string }> = [
-  { value: "male", label: "남성형" },
-  { value: "female", label: "여성형" },
-  { value: "neutral", label: "중립" },
+  { value: "male", label: "남성" },
+  { value: "female", label: "여성" },
 ];
 
 export function OnboardingForm({ returnUrl, forcedAccountType }: OnboardingFormProps) {
@@ -62,9 +61,13 @@ export function OnboardingForm({ returnUrl, forcedAccountType }: OnboardingFormP
   const [selectedRole, setSelectedRole] = useState<OnboardingAccountType | null>(forcedAccountType ?? null);
   const [error, setError] = useState<string | null>(null);
 
-  const [memberForm, setMemberForm] = useState({
+  const [memberForm, setMemberForm] = useState<{
+    displayName: string;
+    styleTarget: MemberStyleTarget | "";
+    preferredStyleTone: MemberStyleTone;
+  }>({
     displayName: "",
-    styleTarget: "neutral" as MemberStyleTarget,
+    styleTarget: "",
     preferredStyleTone: "natural" as MemberStyleTone,
   });
 
@@ -109,7 +112,7 @@ export function OnboardingForm({ returnUrl, forcedAccountType }: OnboardingFormP
         if (data.memberProfile) {
           setMemberForm({
             displayName: data.memberProfile.displayName || "",
-            styleTarget: data.memberProfile.styleTarget || "neutral",
+            styleTarget: data.memberProfile.styleTarget || "",
             preferredStyleTone: data.memberProfile.preferredStyleTone || "natural",
           });
         }
@@ -143,7 +146,7 @@ export function OnboardingForm({ returnUrl, forcedAccountType }: OnboardingFormP
 
   const canSubmit = useMemo(() => {
     if (selectedRole === "member") {
-      return Boolean(memberForm.displayName.trim());
+      return Boolean(memberForm.displayName.trim() && memberForm.styleTarget);
     }
 
     if (selectedRole === "salon_owner") {
@@ -318,7 +321,7 @@ export function OnboardingForm({ returnUrl, forcedAccountType }: OnboardingFormP
               </label>
 
               <label className="grid gap-2 text-sm font-medium text-[var(--app-text)]">
-                타겟 스타일
+                성별
                 <select
                   value={memberForm.styleTarget}
                   onChange={(event) =>
@@ -329,6 +332,7 @@ export function OnboardingForm({ returnUrl, forcedAccountType }: OnboardingFormP
                   }
                   className="app-input px-3 py-2 text-sm"
                 >
+                  <option value="">성별을 선택해 주세요</option>
                   {memberTargetOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}

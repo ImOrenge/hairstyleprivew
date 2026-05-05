@@ -15,6 +15,7 @@ import type {
   FashionGenre,
   FashionRecommendation,
   StylingSessionDetails,
+  MemberStyleTarget,
 } from "@hairfit/shared";
 
 export interface HairfitApiClientOptions {
@@ -102,7 +103,7 @@ export class HairfitApiClient {
 
   submitOnboarding(input: {
     displayName: string;
-    styleTarget: "male" | "female" | "neutral";
+    styleTarget: MemberStyleTarget;
     preferredStyleTone: "natural" | "trendy" | "soft" | "bold";
   }) {
     return this.request<{
@@ -130,9 +131,33 @@ export class HairfitApiClient {
       creditsRequired: number;
       model: string;
       promptVersion: string;
+      styleTarget: MemberStyleTarget;
     }>("/api/prompts/generate", {
       method: "POST",
       body: JSON.stringify({ referenceImageDataUrl }),
+    });
+  }
+
+  getMemberProfile() {
+    return this.request<{
+      profile: {
+        displayName: string;
+        styleTarget: MemberStyleTarget | null;
+        preferredStyleTone: "natural" | "trendy" | "soft" | "bold";
+      };
+    }>("/api/member-profile");
+  }
+
+  updateMemberProfile(input: { styleTarget: MemberStyleTarget }) {
+    return this.request<{
+      profile: {
+        displayName: string;
+        styleTarget: MemberStyleTarget;
+        preferredStyleTone: "natural" | "trendy" | "soft" | "bold";
+      };
+    }>("/api/member-profile", {
+      method: "PATCH",
+      body: JSON.stringify(input),
     });
   }
 

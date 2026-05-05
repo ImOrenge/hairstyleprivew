@@ -1,4 +1,5 @@
 import type { GeneratedVariant } from "@hairfit/shared";
+import { HairfitApiError } from "@hairfit/api-client";
 import { BodyText, Button, Card, Heading, Kicker, Panel, Screen, Stack } from "@hairfit/ui-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
@@ -7,6 +8,15 @@ import { useGenerationFlow } from "../lib/generation-flow";
 
 function variantTitle(variant: GeneratedVariant, index: number) {
   return variant.label || `Recommendation ${index + 1}`;
+}
+
+function readRedirectTo(payload: unknown) {
+  if (!payload || typeof payload !== "object" || !("redirectTo" in payload)) {
+    return null;
+  }
+
+  const redirectTo = (payload as { redirectTo?: unknown }).redirectTo;
+  return typeof redirectTo === "string" && redirectTo.trim() ? redirectTo : null;
 }
 
 export default function GenerateScreen() {
@@ -31,6 +41,13 @@ export default function GenerateScreen() {
       setMessage(`Created ${result.recommendations.length} recommendations.`);
       router.push(`/generate/${result.generationId}`);
     } catch (error) {
+      if (error instanceof HairfitApiError) {
+        const redirectTo = readRedirectTo(error.payload);
+        if (redirectTo) {
+          router.push(redirectTo);
+          return;
+        }
+      }
       setMessage(error instanceof Error ? error.message : "Failed to create recommendations.");
     } finally {
       setPending(null);
