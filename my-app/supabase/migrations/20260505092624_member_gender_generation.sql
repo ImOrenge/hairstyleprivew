@@ -1,6 +1,6 @@
 update public.member_profiles
 set style_target = null
-where style_target = 'neutral'::public.member_style_target;
+where style_target = 'neutral';
 
 alter table public.member_profiles
   alter column style_target drop not null;
@@ -12,7 +12,7 @@ alter table public.member_profiles
   add constraint member_profiles_style_target_gender_check
   check (
     style_target is null
-    or style_target in ('male'::public.member_style_target, 'female'::public.member_style_target)
+    or style_target in ('male', 'female')
   );
 
 alter table public.hairstyle_catalog
