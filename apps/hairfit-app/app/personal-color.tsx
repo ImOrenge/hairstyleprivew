@@ -4,7 +4,6 @@ import {
   BodyText,
   Button,
   Card,
-  Cluster,
   Heading,
   Kicker,
   Panel,
@@ -21,6 +20,7 @@ import {
   PersonalColorDiagnosisProgress,
   PersonalColorSwatchAnalysisColumn,
 } from "../components/PersonalColorDiagnosisProgress";
+import { PersonalColorResultDetails } from "../components/PersonalColorResultDetails";
 import { useHairfitApi } from "../lib/api";
 import { useGenerationFlow } from "../lib/generation-flow";
 
@@ -29,28 +29,6 @@ type PersonalColorSource = "upload" | "mypage";
 function normalizeSource(value: unknown): PersonalColorSource {
   const first = Array.isArray(value) ? value[0] : value;
   return first === "mypage" ? "mypage" : "upload";
-}
-
-function formatPersonalColor(result: PersonalColorResult | null) {
-  if (!result) return "No diagnosis yet";
-  return `${result.tone} tone / ${result.contrast} contrast`;
-}
-
-function ColorSwatchList({ colors: swatches }: { colors: PersonalColorResult["bestColors"] }) {
-  if (!swatches.length) {
-    return <BodyText>No colors saved.</BodyText>;
-  }
-
-  return (
-    <Cluster>
-      {swatches.slice(0, 6).map((swatch) => (
-        <View key={`${swatch.nameEn}-${swatch.hex}`} style={styles.swatchChip}>
-          <View style={[styles.swatchDot, { backgroundColor: swatch.hex }]} />
-          <BodyText style={styles.swatchText}>{swatch.nameKo}</BodyText>
-        </View>
-      ))}
-    </Cluster>
-  );
 }
 
 export default function PersonalColorScreen() {
@@ -80,7 +58,7 @@ export default function PersonalColorScreen() {
   }, [flow.imageDataUrl, imageDataUrl, source]);
 
   const returnPath = useMemo(() => {
-    if (source === "mypage") return "/mypage?tab=body-profile";
+    if (source === "mypage") return "/mypage?tab=personal-color";
     return flow.imageDataUrl ? "/generate" : "/upload";
   }, [flow.imageDataUrl, source]);
 
@@ -209,23 +187,17 @@ export default function PersonalColorScreen() {
               </Stack>
             </Card>
           ) : (
-            <Card>
+            <Stack>
+              <PersonalColorResultDetails result={result} />
               <Stack>
-                <Kicker>Diagnosis saved</Kicker>
-                <Heading style={styles.resultHeading}>{formatPersonalColor(result)}</Heading>
-                <BodyText>{result.summary}</BodyText>
-                <Kicker>Best colors</Kicker>
-                <ColorSwatchList colors={result.bestColors} />
-                <Kicker>Avoid colors</Kicker>
-                <ColorSwatchList colors={result.avoidColors} />
                 <Button onPress={() => router.push(returnPath)}>
-                  {source === "upload" ? "Continue to generation" : "Back to body profile"}
+                  {source === "upload" ? "Continue to generation" : "Back to personal color"}
                 </Button>
                 <Button variant="secondary" disabled={isAnalyzing} onPress={pickImage}>
                   Choose another photo
                 </Button>
               </Stack>
-            </Card>
+            </Stack>
           )}
 
           <Button variant="secondary" onPress={() => router.push(returnPath)} disabled={isAnalyzing}>
@@ -264,32 +236,5 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     position: "relative",
     width: "100%",
-  },
-  resultHeading: {
-    fontSize: 22,
-    lineHeight: 28,
-  },
-  swatchChip: {
-    alignItems: "center",
-    backgroundColor: "#fffdf8",
-    borderColor: "#ded6ca",
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  swatchDot: {
-    borderColor: "rgba(0,0,0,0.12)",
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 16,
-    width: 16,
-  },
-  swatchText: {
-    color: "#181411",
-    fontSize: 12,
-    fontWeight: "800",
   },
 });

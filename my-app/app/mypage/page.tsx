@@ -13,7 +13,9 @@ import {
   type UserStyleProfileRow,
 } from "../../components/mypage/MyPageDashboardTabs";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
+import type { PersonalColorResult } from "../../lib/fashion-types";
 import { isMemberStyleTarget } from "../../lib/onboarding";
+import { normalizeStyleProfile } from "../../lib/style-profile-server";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -88,7 +90,7 @@ export default async function MyPage({
   let generations: GenerationRow[] = [];
   let payments: PaymentTransactionRow[] = [];
   let memberProfile: MemberProfileRow | null = null;
-  let styleProfile: UserStyleProfileRow | null = null;
+  let personalColor: PersonalColorResult | null = null;
   let hairRecords: HairRecordRow[] = [];
   let subscription: SubscriptionRow | null = null;
 
@@ -132,7 +134,7 @@ export default async function MyPage({
         .maybeSingle(),
       supabase
         .from<UserStyleProfileRow>("user_style_profiles")
-        .select("height_cm,body_shape,top_size,bottom_size,fit_preference,exposure_preference,body_photo_path")
+        .select("height_cm,body_shape,top_size,bottom_size,fit_preference,exposure_preference,body_photo_path,personal_color_tone,personal_color_contrast,personal_color_result,personal_color_model,personal_color_diagnosed_at")
         .eq("user_id", userId)
         .maybeSingle(),
       supabase
@@ -159,7 +161,9 @@ export default async function MyPage({
           : null,
       };
     }
-    if (!styleProfileResult.error) styleProfile = styleProfileResult.data;
+    if (!styleProfileResult.error) {
+      personalColor = normalizeStyleProfile(styleProfileResult.data as Record<string, unknown> | null, userId).personalColor;
+    }
     if (!hairRecordResult.error && hairRecordResult.data) hairRecords = hairRecordResult.data;
     if (!subscriptionResult.error) subscription = subscriptionResult.data;
   }
@@ -174,13 +178,13 @@ export default async function MyPage({
       hairRecords={hairRecords}
       payments={payments}
       memberProfile={memberProfile}
+      personalColor={personalColor}
       profile={profile}
       queryState={{
         checkoutId,
         payment,
         subscribed,
       }}
-      styleProfile={styleProfile}
       subscription={subscription}
       viewerName={viewerName}
     />

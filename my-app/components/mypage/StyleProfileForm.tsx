@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/Button";
-import type { PersonalColorResult, StyleProfile } from "../../lib/fashion-types";
+import type { StyleProfile } from "../../lib/fashion-types";
 import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
 
 interface StyleProfileResponse {
@@ -65,30 +65,6 @@ function formatContrast(value?: string | null) {
   if (value === "high") return "높은 대비";
   if (value === "medium") return "중간 대비";
   return "-";
-}
-
-function ColorSwatches({ colors }: { colors: PersonalColorResult["bestColors"] }) {
-  if (!colors.length) {
-    return <p className="text-xs text-stone-500">저장된 색상이 없습니다.</p>;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {colors.map((color) => (
-        <span
-          key={`${color.nameEn}-${color.hex}`}
-          className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-white px-2.5 py-1 text-xs font-semibold text-stone-700"
-        >
-          <span
-            aria-hidden="true"
-            className="h-4 w-4 rounded-full border border-black/10"
-            style={{ backgroundColor: color.hex }}
-          />
-          {color.nameKo}
-        </span>
-      ))}
-    </div>
-  );
 }
 
 export function StyleProfileForm({
@@ -318,14 +294,9 @@ export function StyleProfileForm({
               {profile.personalColor ? (
                 <div className="mt-3 space-y-3">
                   <p className="text-sm leading-6 text-stone-600">{profile.personalColor.summary}</p>
-                  <div>
-                    <p className="mb-2 text-xs font-bold text-stone-500">추천 색상</p>
-                    <ColorSwatches colors={profile.personalColor.bestColors} />
-                  </div>
-                  <div>
-                    <p className="mb-2 text-xs font-bold text-stone-500">피해야 할 색상</p>
-                    <ColorSwatches colors={profile.personalColor.avoidColors} />
-                  </div>
+                  <p className="text-xs leading-5 text-stone-500">
+                    색상별 상세 근거와 컬러 조합은 마이페이지의 퍼스널컬러 탭에서 확인하세요.
+                  </p>
                 </div>
               ) : (
                 <p className="mt-3 text-sm leading-6 text-stone-600">
@@ -339,7 +310,7 @@ export function StyleProfileForm({
                 </Button>
               ) : (
                 <Link
-                  href="/personal-color?source=mypage&returnTo=%2Fmypage%3Ftab%3Dbody-profile"
+                  href="/personal-color?source=mypage&returnTo=%2Fmypage%3Ftab%3Dpersonal-color"
                   className="mt-4 inline-flex min-h-11 items-center justify-center rounded-xl border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-900 transition hover:border-stone-900 hover:bg-stone-50"
                 >
                   {profile.personalColor ? "퍼스널컬러 재진단" : "퍼스널컬러 진단"}

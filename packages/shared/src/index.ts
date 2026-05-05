@@ -238,15 +238,28 @@ export type ServiceType = "perm" | "color" | "cut" | "bleach" | "treatment" | "o
 export type AftercareSectionKey = "dry" | "treatment" | "iron" | "styling";
 export type PersonalColorTone = "warm" | "cool" | "neutral";
 export type PersonalColorContrast = "low" | "medium" | "high";
+export type PersonalColorDetailVersion = "color-detail-v1";
+
+export interface PersonalColorCombination {
+  title: string;
+  hexes: string[];
+  reason: string;
+}
 
 export interface PersonalColorSwatch {
   nameKo: string;
   nameEn: string;
   hex: string;
   reason: string;
+  recommendationReason?: string;
+  nonRecommendationReason?: string;
+  meaning?: string;
+  stylingTip?: string;
+  colorCombinations?: PersonalColorCombination[];
 }
 
 export interface PersonalColorResult {
+  detailVersion?: PersonalColorDetailVersion;
   tone: PersonalColorTone;
   contrast: PersonalColorContrast;
   confidence: number;

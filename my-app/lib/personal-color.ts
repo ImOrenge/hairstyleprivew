@@ -1,5 +1,7 @@
 import type {
+  PersonalColorCombination,
   PersonalColorContrast,
+  PersonalColorDetailVersion,
   PersonalColorResult,
   PersonalColorSwatch,
   PersonalColorTone,
@@ -24,6 +26,7 @@ interface OpenAIResponsesResponse {
 }
 
 interface RawPersonalColorResult {
+  detailVersion?: unknown;
   tone?: unknown;
   contrast?: unknown;
   confidence?: unknown;
@@ -35,6 +38,7 @@ interface RawPersonalColorResult {
 }
 
 const DEFAULT_OPENAI_VISION_MODEL = "gpt-5.4-mini";
+const PERSONAL_COLOR_DETAIL_VERSION: PersonalColorDetailVersion = "color-detail-v1";
 
 export const PERSONAL_COLOR_COMPARISON_PALETTE: PersonalColorSwatch[] = [
   { nameKo: "아이보리", nameEn: "Ivory", hex: "#F6E8D7", reason: "warm light neutral" },
@@ -54,6 +58,8 @@ export const PERSONAL_COLOR_COMPARISON_PALETTE: PersonalColorSwatch[] = [
   { nameKo: "네이비", nameEn: "Navy", hex: "#182642", reason: "cool deep neutral" },
   { nameKo: "초콜릿 브라운", nameEn: "Chocolate Brown", hex: "#4D3426", reason: "warm deep neutral" },
 ];
+const PERSONAL_COLOR_PALETTE_HEXES = PERSONAL_COLOR_COMPARISON_PALETTE.map((swatch) => swatch.hex);
+const PERSONAL_COLOR_PALETTE_HEX_SET = new Set(PERSONAL_COLOR_PALETTE_HEXES);
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -95,6 +101,46 @@ function toShortString(value: unknown, maxLength: number) {
   return typeof value === "string" && value.trim() ? value.trim().slice(0, maxLength) : "";
 }
 
+function normalizeHexList(value: unknown, limit: number) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim().toUpperCase())
+        .filter((item) => PERSONAL_COLOR_PALETTE_HEX_SET.has(item)),
+    ),
+  ).slice(0, limit);
+}
+
+function normalizeColorCombinations(value: unknown, limit: number): PersonalColorCombination[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        return null;
+      }
+
+      const source = item as Record<string, unknown>;
+      const title = toShortString(source.title, 40);
+      const hexes = normalizeHexList(source.hexes, 4);
+      const reason = toShortString(source.reason, 160);
+      if (!title || hexes.length < 2 || !reason) {
+        return null;
+      }
+
+      return { title, hexes, reason };
+    })
+    .filter((item): item is PersonalColorCombination => item !== null)
+    .slice(0, limit);
+}
+
 function normalizeSwatches(value: unknown, limit: number): PersonalColorSwatch[] {
   if (!Array.isArray(value)) {
     return [];
@@ -109,12 +155,30 @@ function normalizeSwatches(value: unknown, limit: number): PersonalColorSwatch[]
       const nameKo = toShortString(source.nameKo, 40);
       const nameEn = toShortString(source.nameEn, 40);
       const hex = toShortString(source.hex, 16).toUpperCase();
-      const reason = toShortString(source.reason, 120);
+      const reason = toShortString(source.reason, 160);
       if (!nameKo || !nameEn || !/^#[0-9A-F]{6}$/.test(hex)) {
         return null;
       }
 
-      return { nameKo, nameEn, hex, reason };
+      const colorCombinations = normalizeColorCombinations(source.colorCombinations, 3);
+      const swatch: PersonalColorSwatch = {
+        nameKo,
+        nameEn,
+        hex,
+        reason,
+      };
+      const recommendationReason = toShortString(source.recommendationReason, 220);
+      const nonRecommendationReason = toShortString(source.nonRecommendationReason, 220);
+      const meaning = toShortString(source.meaning, 180);
+      const stylingTip = toShortString(source.stylingTip, 220);
+
+      if (recommendationReason) swatch.recommendationReason = recommendationReason;
+      if (nonRecommendationReason) swatch.nonRecommendationReason = nonRecommendationReason;
+      if (meaning) swatch.meaning = meaning;
+      if (stylingTip) swatch.stylingTip = stylingTip;
+      if (colorCombinations.length) swatch.colorCombinations = colorCombinations;
+
+      return swatch;
     })
     .filter((item): item is PersonalColorSwatch => item !== null)
     .slice(0, limit);
@@ -163,22 +227,40 @@ function fallbackSwatches(tone: PersonalColorTone, contrast: PersonalColorContra
   };
 }
 
+function swatchHasDetail(swatch: PersonalColorSwatch) {
+  return Boolean(
+    swatch.recommendationReason &&
+      swatch.nonRecommendationReason &&
+      swatch.meaning &&
+      swatch.stylingTip &&
+      swatch.colorCombinations?.length,
+  );
+}
+
 function normalizePersonalColor(raw: RawPersonalColorResult, model: string): PersonalColorResult {
   const tone = isTone(raw.tone) ? raw.tone : "neutral";
   const contrast = isContrast(raw.contrast) ? raw.contrast : "medium";
   const fallback = fallbackSwatches(tone, contrast);
   const bestColors = normalizeSwatches(raw.bestColors, 6);
   const avoidColors = normalizeSwatches(raw.avoidColors, 6);
+  const resolvedBestColors = bestColors.length ? bestColors : fallback.bestColors;
+  const resolvedAvoidColors = avoidColors.length ? avoidColors : fallback.avoidColors;
+  const hasDetailedSwatches =
+    raw.detailVersion === PERSONAL_COLOR_DETAIL_VERSION &&
+    resolvedBestColors.length > 0 &&
+    resolvedAvoidColors.length > 0 &&
+    resolvedBestColors.every(swatchHasDetail) &&
+    resolvedAvoidColors.every(swatchHasDetail);
   const stylingPalette = normalizeStringList(raw.stylingPalette, 8, 16)
     .map((value) => value.toUpperCase())
     .filter((value) => /^#[0-9A-F]{6}$/.test(value));
 
-  return {
+  const normalized: PersonalColorResult = {
     tone,
     contrast,
     confidence: clampConfidence(raw.confidence),
-    bestColors: bestColors.length ? bestColors : fallback.bestColors,
-    avoidColors: avoidColors.length ? avoidColors : fallback.avoidColors,
+    bestColors: resolvedBestColors,
+    avoidColors: resolvedAvoidColors,
     stylingPalette: stylingPalette.length ? stylingPalette : fallback.stylingPalette,
     hairColorHints: normalizeStringList(raw.hairColorHints, 5, 80),
     summary:
@@ -187,12 +269,18 @@ function normalizePersonalColor(raw: RawPersonalColorResult, model: string): Per
     diagnosedAt: new Date().toISOString(),
     model,
   };
+  if (hasDetailedSwatches) {
+    normalized.detailVersion = PERSONAL_COLOR_DETAIL_VERSION;
+  }
+
+  return normalized;
 }
 
 const personalColorJsonSchema = {
   type: "object",
   additionalProperties: false,
   required: [
+    "detailVersion",
     "tone",
     "contrast",
     "confidence",
@@ -203,6 +291,7 @@ const personalColorJsonSchema = {
     "summary",
   ],
   properties: {
+    detailVersion: { type: "string", enum: [PERSONAL_COLOR_DETAIL_VERSION] },
     tone: { type: "string", enum: ["warm", "cool", "neutral"] },
     contrast: { type: "string", enum: ["low", "medium", "high"] },
     confidence: { type: "number", minimum: 0, maximum: 1 },
@@ -213,12 +302,46 @@ const personalColorJsonSchema = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["nameKo", "nameEn", "hex", "reason"],
+        required: [
+          "nameKo",
+          "nameEn",
+          "hex",
+          "reason",
+          "recommendationReason",
+          "nonRecommendationReason",
+          "meaning",
+          "stylingTip",
+          "colorCombinations",
+        ],
         properties: {
           nameKo: { type: "string" },
           nameEn: { type: "string" },
-          hex: { type: "string" },
+          hex: { type: "string", enum: PERSONAL_COLOR_PALETTE_HEXES },
           reason: { type: "string" },
+          recommendationReason: { type: "string" },
+          nonRecommendationReason: { type: "string" },
+          meaning: { type: "string" },
+          stylingTip: { type: "string" },
+          colorCombinations: {
+            type: "array",
+            minItems: 2,
+            maxItems: 3,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["title", "hexes", "reason"],
+              properties: {
+                title: { type: "string" },
+                hexes: {
+                  type: "array",
+                  minItems: 2,
+                  maxItems: 4,
+                  items: { type: "string", enum: PERSONAL_COLOR_PALETTE_HEXES },
+                },
+                reason: { type: "string" },
+              },
+            },
+          },
         },
       },
     },
@@ -229,12 +352,46 @@ const personalColorJsonSchema = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["nameKo", "nameEn", "hex", "reason"],
+        required: [
+          "nameKo",
+          "nameEn",
+          "hex",
+          "reason",
+          "recommendationReason",
+          "nonRecommendationReason",
+          "meaning",
+          "stylingTip",
+          "colorCombinations",
+        ],
         properties: {
           nameKo: { type: "string" },
           nameEn: { type: "string" },
-          hex: { type: "string" },
+          hex: { type: "string", enum: PERSONAL_COLOR_PALETTE_HEXES },
           reason: { type: "string" },
+          recommendationReason: { type: "string" },
+          nonRecommendationReason: { type: "string" },
+          meaning: { type: "string" },
+          stylingTip: { type: "string" },
+          colorCombinations: {
+            type: "array",
+            minItems: 2,
+            maxItems: 3,
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["title", "hexes", "reason"],
+              properties: {
+                title: { type: "string" },
+                hexes: {
+                  type: "array",
+                  minItems: 2,
+                  maxItems: 4,
+                  items: { type: "string", enum: PERSONAL_COLOR_PALETTE_HEXES },
+                },
+                reason: { type: "string" },
+              },
+            },
+          },
         },
       },
     },
@@ -242,7 +399,7 @@ const personalColorJsonSchema = {
       type: "array",
       minItems: 4,
       maxItems: 8,
-      items: { type: "string" },
+      items: { type: "string", enum: PERSONAL_COLOR_PALETTE_HEXES },
     },
     hairColorHints: {
       type: "array",
@@ -273,13 +430,22 @@ Process:
 2. Estimate low, medium, or high contrast from face, hair, and feature contrast.
 3. Compare the face against the fixed palette below and score which swatches are most harmonious.
 4. Return best colors, colors to avoid, a styling palette for outfit recommendations, hair color hints, and a concise Korean summary.
+5. For every bestColors and avoidColors swatch, provide detailed Korean styling information:
+   - recommendationReason: why this color can work for the diagnosis.
+   - nonRecommendationReason: when this color may look wrong or why it should be used carefully.
+   - meaning: the visual/emotional meaning of the color in styling.
+   - stylingTip: practical outfit, makeup, hair, or accessory usage guidance.
+   - colorCombinations: 2-3 outfit palette combinations using only fixed palette hex values.
 
 Fixed comparison palette:
 ${palette}
 
 Rules:
+- Return detailVersion exactly as "${PERSONAL_COLOR_DETAIL_VERSION}".
 - Choose bestColors and avoidColors only from the fixed palette.
 - stylingPalette must use hex values from the fixed palette.
+- colorCombinations hexes must use only hex values from the fixed palette.
+- Keep detailed Korean text practical and concise: 1 sentence per detail field, no long essays.
 - Avoid sensitive claims about race, disease, skin condition, age, or attractiveness.
 - Mention uncertainty when the photo lighting may affect the result.
 `.trim();

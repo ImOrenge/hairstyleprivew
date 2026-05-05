@@ -2,10 +2,16 @@ import "server-only";
 
 import { currentUser } from "@clerk/nextjs/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { PersonalColorResult, PersonalColorSwatch, StyleProfile } from "./fashion-types";
+import type {
+  PersonalColorCombination,
+  PersonalColorResult,
+  PersonalColorSwatch,
+  StyleProfile,
+} from "./fashion-types";
 
 export const BODY_PHOTO_BUCKET = "profile-body-photos";
 export const STYLING_RESULTS_BUCKET = "styling-results";
+const PERSONAL_COLOR_DETAIL_VERSION = "color-detail-v1";
 
 type QueryError = { message: string } | null;
 
@@ -108,6 +114,38 @@ function normalizeConfidence(value: unknown) {
     : 0.6;
 }
 
+function normalizeColorCombinations(value: unknown): PersonalColorCombination[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      const record = recordOrNull(item);
+      if (!record) {
+        return null;
+      }
+
+      const title = stringOrNull(record.title);
+      const reason = stringOrNull(record.reason);
+      const hexes = Array.isArray(record.hexes)
+        ? record.hexes
+            .filter((hex): hex is string => typeof hex === "string")
+            .map((hex) => hex.trim().toUpperCase())
+            .filter((hex) => /^#[0-9A-F]{6}$/.test(hex))
+            .slice(0, 4)
+        : [];
+
+      if (!title || !reason || hexes.length < 2) {
+        return null;
+      }
+
+      return { title, hexes, reason };
+    })
+    .filter((item): item is PersonalColorCombination => item !== null)
+    .slice(0, 3);
+}
+
 function normalizeSwatches(value: unknown): PersonalColorSwatch[] {
   if (!Array.isArray(value)) {
     return [];
@@ -128,7 +166,25 @@ function normalizeSwatches(value: unknown): PersonalColorSwatch[] {
         return null;
       }
 
-      return { nameKo, nameEn, hex, reason: reason ?? "" };
+      const recommendationReason = stringOrNull(record.recommendationReason);
+      const nonRecommendationReason = stringOrNull(record.nonRecommendationReason);
+      const meaning = stringOrNull(record.meaning);
+      const stylingTip = stringOrNull(record.stylingTip);
+      const colorCombinations = normalizeColorCombinations(record.colorCombinations);
+      const swatch: PersonalColorSwatch = {
+        nameKo,
+        nameEn,
+        hex,
+        reason: reason ?? "",
+      };
+
+      if (recommendationReason) swatch.recommendationReason = recommendationReason;
+      if (nonRecommendationReason) swatch.nonRecommendationReason = nonRecommendationReason;
+      if (meaning) swatch.meaning = meaning;
+      if (stylingTip) swatch.stylingTip = stylingTip;
+      if (colorCombinations.length) swatch.colorCombinations = colorCombinations;
+
+      return swatch;
     })
     .filter((item): item is PersonalColorSwatch => item !== null);
 }
@@ -137,6 +193,16 @@ function normalizeStringList(value: unknown, limit: number) {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, limit)
     : [];
+}
+
+function swatchHasDetail(swatch: PersonalColorSwatch) {
+  return Boolean(
+    swatch.recommendationReason &&
+      swatch.nonRecommendationReason &&
+      swatch.meaning &&
+      swatch.stylingTip &&
+      swatch.colorCombinations?.length,
+  );
 }
 
 function normalizePersonalColorResult(
@@ -156,18 +222,32 @@ function normalizePersonalColorResult(
     return null;
   }
 
-  return {
+  const bestColors = normalizeSwatches(result.bestColors).slice(0, 6);
+  const avoidColors = normalizeSwatches(result.avoidColors).slice(0, 6);
+  const hasDetails =
+    result.detailVersion === PERSONAL_COLOR_DETAIL_VERSION &&
+    bestColors.length > 0 &&
+    avoidColors.length > 0 &&
+    bestColors.every(swatchHasDetail) &&
+    avoidColors.every(swatchHasDetail);
+
+  const personalColor: PersonalColorResult = {
     tone,
     contrast,
     confidence: normalizeConfidence(result.confidence),
-    bestColors: normalizeSwatches(result.bestColors).slice(0, 6),
-    avoidColors: normalizeSwatches(result.avoidColors).slice(0, 6),
+    bestColors,
+    avoidColors,
     stylingPalette: normalizeStringList(result.stylingPalette, 8),
     hairColorHints: normalizeStringList(result.hairColorHints, 5),
     summary: stringOrNull(result.summary) ?? "",
     diagnosedAt,
     model,
   };
+  if (hasDetails) {
+    personalColor.detailVersion = PERSONAL_COLOR_DETAIL_VERSION;
+  }
+
+  return personalColor;
 }
 
 export function normalizeStyleProfile(row: Record<string, unknown> | null, userId: string): StyleProfile {

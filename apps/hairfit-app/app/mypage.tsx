@@ -17,7 +17,8 @@ import {
 } from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { StyleSheet } from "react-native";
+import { PersonalColorResultDetails } from "../components/PersonalColorResultDetails";
 import { useHairfitApi } from "../lib/api";
 
 const genderOptions: Array<{ value: MemberStyleTarget; label: string }> = [
@@ -25,14 +26,15 @@ const genderOptions: Array<{ value: MemberStyleTarget; label: string }> = [
   { value: "female", label: "여성" },
 ];
 
-type MyPageTabId = "usage" | "plan" | "aftercare" | "body-profile" | "account";
+type MyPageTabId = "usage" | "plan" | "aftercare" | "personal-color" | "body-profile" | "account";
 
-const tabIds: MyPageTabId[] = ["usage", "plan", "aftercare", "body-profile", "account"];
+const tabIds: MyPageTabId[] = ["usage", "plan", "aftercare", "personal-color", "body-profile", "account"];
 
 const tabs: Array<{ id: MyPageTabId; label: string }> = [
   { id: "usage", label: "사용기록" },
   { id: "plan", label: "플랜/결제" },
   { id: "aftercare", label: "에프터케어" },
+  { id: "personal-color", label: "퍼스널컬러" },
   { id: "body-profile", label: "바디프로필" },
   { id: "account", label: "계정" },
 ];
@@ -85,7 +87,10 @@ function displayName(me: MobileBootstrap | null) {
 
 function formatPersonalColor(result: PersonalColorResult | null | undefined) {
   if (!result) return "진단 없음";
-  return `${result.tone} 톤 / ${result.contrast} 대비`;
+  const tone = result.tone === "warm" ? "웜톤" : result.tone === "cool" ? "쿨톤" : "뉴트럴";
+  const contrast =
+    result.contrast === "high" ? "높은 대비" : result.contrast === "low" ? "낮은 대비" : "중간 대비";
+  return `${tone} / ${contrast}`;
 }
 
 function TabNavigation({ activeTab }: { activeTab: MyPageTabId }) {
@@ -204,23 +209,6 @@ function AftercarePanel() {
   );
 }
 
-function ColorSwatchList({ colors }: { colors: PersonalColorResult["bestColors"] }) {
-  if (!colors.length) {
-    return <BodyText>저장된 색상이 없습니다.</BodyText>;
-  }
-
-  return (
-    <Cluster>
-      {colors.slice(0, 6).map((color) => (
-        <View key={`${color.nameEn}-${color.hex}`} style={styles.swatchChip}>
-          <View style={[styles.swatchDot, { backgroundColor: color.hex }]} />
-          <BodyText style={styles.swatchText}>{color.nameKo}</BodyText>
-        </View>
-      ))}
-    </Cluster>
-  );
-}
-
 function BodyProfilePanel() {
   const api = useHairfitApi();
   const router = useRouter();
@@ -272,19 +260,75 @@ function BodyProfilePanel() {
             <BodyText>
               {personalColor?.summary || "선명한 얼굴 사진을 업로드해 스타일링에 사용할 퍼스널 컬러 정보를 저장하세요."}
             </BodyText>
-            {personalColor ? (
-              <Stack>
-                <Kicker>Best colors</Kicker>
-                <ColorSwatchList colors={personalColor.bestColors} />
-                <Kicker>Avoid colors</Kicker>
-                <ColorSwatchList colors={personalColor.avoidColors} />
-              </Stack>
-            ) : null}
-            <Button onPress={() => router.push("/personal-color?source=mypage")}>
-              {personalColor ? "퍼스널 컬러 다시 진단" : "퍼스널 컬러 진단"}
+            <Button onPress={() => router.push("/mypage?tab=personal-color")}>
+              퍼스널컬러 탭 보기
             </Button>
           </Stack>
         </Card>
+      </Stack>
+    </Panel>
+  );
+}
+
+function PersonalColorPanel() {
+  const api = useHairfitApi();
+  const router = useRouter();
+  const [profile, setProfile] = useState<StyleProfile | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProfile() {
+      setIsLoadingProfile(true);
+      try {
+        const result = await api.getStyleProfile();
+        if (!cancelled) {
+          setProfile(result.profile);
+          setMessage(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMessage(error instanceof Error ? error.message : "퍼스널 컬러 결과를 불러오지 못했습니다.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoadingProfile(false);
+        }
+      }
+    }
+
+    void loadProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
+
+  const personalColor = profile?.personalColor ?? null;
+
+  return (
+    <Panel>
+      <Stack>
+        <Heading style={styles.panelHeading}>퍼스널 컬러</Heading>
+        <BodyText>추천 색상, 주의 색상, 컬러 조합과 스타일링 근거를 확인합니다.</BodyText>
+        {isLoadingProfile ? <BodyText>퍼스널 컬러 결과를 불러오는 중입니다...</BodyText> : null}
+        {message ? <BodyText>{message}</BodyText> : null}
+        {!personalColor ? (
+          <Card style={{ borderStyle: "dashed" }}>
+            <Stack>
+              <BodyText style={styles.centerStrong}>저장된 퍼스널 컬러 진단이 없습니다.</BodyText>
+              <BodyText style={styles.centerText}>
+                선명한 정면 얼굴 사진으로 진단하면 색상별 추천근거, 비추천근거, 컬러조합과 의미가 저장됩니다.
+              </BodyText>
+            </Stack>
+          </Card>
+        ) : (
+          <PersonalColorResultDetails result={personalColor} />
+        )}
+        <Button onPress={() => router.push("/personal-color?source=mypage")}>
+          {personalColor ? "퍼스널 컬러 다시 진단" : "퍼스널 컬러 진단"}
+        </Button>
       </Stack>
     </Panel>
   );
@@ -414,6 +458,7 @@ export default function MyPageScreen() {
       return <PlanPanel activePlan={activePlan} payments={customer?.recentPayments ?? []} />;
     }
     if (activeTab === "aftercare") return <AftercarePanel />;
+    if (activeTab === "personal-color") return <PersonalColorPanel />;
     if (activeTab === "body-profile") return <BodyProfilePanel />;
     if (activeTab === "account") return <AccountPanel me={me} />;
     return <UsagePanel generations={customer?.recentGenerations ?? []} />;
@@ -425,7 +470,7 @@ export default function MyPageScreen() {
         <Stack>
           <Kicker>My Page</Kicker>
           <Heading>계정 대시보드</Heading>
-          <BodyText>{viewerName}님의 사용기록, 플랜, 사용량, 에프터케어, 바디프로필 설정을 탭으로 확인하세요.</BodyText>
+          <BodyText>{viewerName}님의 사용기록, 플랜, 사용량, 에프터케어, 퍼스널컬러, 바디프로필 설정을 탭으로 확인하세요.</BodyText>
           <Button variant="secondary" onPress={() => router.push("/workspace")}>
             워크스페이스 열기
           </Button>
@@ -473,29 +518,6 @@ const styles = StyleSheet.create({
   },
   strongText: {
     color: "#f4f1e8",
-    fontWeight: "800",
-  },
-  swatchChip: {
-    alignItems: "center",
-    backgroundColor: "#fffdf8",
-    borderColor: "#ded6ca",
-    borderRadius: 999,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  swatchDot: {
-    borderColor: "rgba(0,0,0,0.12)",
-    borderRadius: 999,
-    borderWidth: 1,
-    height: 16,
-    width: 16,
-  },
-  swatchText: {
-    color: "#181411",
-    fontSize: 12,
     fontWeight: "800",
   },
 });

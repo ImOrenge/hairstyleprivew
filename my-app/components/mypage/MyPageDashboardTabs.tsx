@@ -4,6 +4,7 @@ import {
   ArrowRight,
   CalendarDays,
   CreditCard,
+  Palette,
   Scissors,
   Shirt,
   Sparkles,
@@ -11,11 +12,13 @@ import {
 } from "lucide-react";
 import { getCreditsPerStyle } from "../../lib/pricing-plan";
 import type { MemberStyleTarget } from "../../lib/onboarding";
+import type { PersonalColorResult } from "../../lib/fashion-types";
+import { PersonalColorResultDetails } from "../personal-color/PersonalColorResultDetails";
 import { AppPage, Panel, SurfaceCard } from "../ui/Surface";
 import { MemberGenderForm } from "./MemberGenderForm";
 import { StyleProfileForm } from "./StyleProfileForm";
 
-export type MyPageTabId = "usage" | "plan" | "aftercare" | "body-profile" | "account";
+export type MyPageTabId = "usage" | "plan" | "aftercare" | "personal-color" | "body-profile" | "account";
 
 export interface UserProfileRow {
   credits?: number | null;
@@ -82,14 +85,14 @@ interface MyPageDashboardTabsProps {
   hairRecords: HairRecordRow[];
   payments: PaymentTransactionRow[];
   memberProfile: MemberProfileRow | null;
+  personalColor: PersonalColorResult | null;
   profile: UserProfileRow | null;
   queryState: QueryState;
-  styleProfile: UserStyleProfileRow | null;
   subscription: SubscriptionRow | null;
   viewerName: string;
 }
 
-const tabIds: MyPageTabId[] = ["usage", "plan", "aftercare", "body-profile", "account"];
+const tabIds: MyPageTabId[] = ["usage", "plan", "aftercare", "personal-color", "body-profile", "account"];
 
 const tabs: Array<{
   description: string;
@@ -114,6 +117,12 @@ const tabs: Array<{
     label: "에프터케어",
     description: "시술 기록",
     icon: Scissors,
+  },
+  {
+    id: "personal-color",
+    label: "퍼스널컬러",
+    description: "컬러 상세 분석",
+    icon: Palette,
   },
   {
     id: "body-profile",
@@ -220,17 +229,12 @@ export function getDisplayName(name: string | null | undefined, email: string): 
   return emailName || "HairFit 사용자";
 }
 
-function isProfileReady(profile: UserStyleProfileRow | null): boolean {
-  if (!profile) return false;
-  return Boolean(
-    profile.height_cm &&
-      profile.body_shape &&
-      profile.top_size &&
-      profile.bottom_size &&
-      profile.fit_preference &&
-      profile.exposure_preference &&
-      profile.body_photo_path,
-  );
+function formatPersonalColor(result: PersonalColorResult | null): string {
+  if (!result) return "미진단";
+  const tone = result.tone === "warm" ? "웜톤" : result.tone === "cool" ? "쿨톤" : "뉴트럴";
+  const contrast =
+    result.contrast === "high" ? "높은 대비" : result.contrast === "low" ? "낮은 대비" : "중간 대비";
+  return `${tone} / ${contrast}`;
 }
 
 function nextVisitDate(record: HairRecordRow): string {
@@ -511,6 +515,47 @@ function BodyProfilePanel() {
   );
 }
 
+function PersonalColorPanel({ personalColor }: { personalColor: PersonalColorResult | null }) {
+  return (
+    <Panel
+      id="mypage-panel-personal-color"
+      role="tabpanel"
+      aria-labelledby="mypage-tab-personal-color"
+      as="section"
+      className="p-4 sm:p-5"
+    >
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <SectionHeader
+          title="퍼스널 컬러"
+          description="추천 색상, 주의 색상, 컬러 조합과 스타일링 근거를 확인합니다."
+        />
+        <Link
+          href="/personal-color?source=mypage&returnTo=/mypage?tab=personal-color"
+          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 py-2 text-sm font-bold uppercase tracking-[0.04em] text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
+        >
+          {personalColor ? "퍼스널 컬러 다시 진단" : "퍼스널 컬러 진단"}
+          <Palette className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </div>
+
+      <div className="mt-4">
+        {!personalColor ? (
+          <SurfaceCard className="border-dashed px-5 py-8 text-center">
+            <p className="text-sm font-bold text-[var(--app-text)]">저장된 퍼스널 컬러 진단이 없습니다.</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
+              선명한 정면 얼굴 사진으로 진단하면 색상별 추천근거, 비추천근거, 컬러조합과 의미가 저장됩니다.
+            </p>
+          </SurfaceCard>
+        ) : (
+          <SurfaceCard className="p-4">
+            <PersonalColorResultDetails result={personalColor} />
+          </SurfaceCard>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 function AccountPanel({
   email,
   memberProfile,
@@ -553,6 +598,7 @@ function ActiveTabPanel({
   hairRecords,
   payments,
   memberProfile,
+  personalColor,
   viewerName,
 }: {
   activePlan: string;
@@ -562,6 +608,7 @@ function ActiveTabPanel({
   hairRecords: HairRecordRow[];
   payments: PaymentTransactionRow[];
   memberProfile: MemberProfileRow | null;
+  personalColor: PersonalColorResult | null;
   viewerName: string;
 }) {
   if (activeTab === "plan") {
@@ -574,6 +621,10 @@ function ActiveTabPanel({
 
   if (activeTab === "body-profile") {
     return <BodyProfilePanel />;
+  }
+
+  if (activeTab === "personal-color") {
+    return <PersonalColorPanel personalColor={personalColor} />;
   }
 
   if (activeTab === "account") {
@@ -590,9 +641,9 @@ export function MyPageDashboardTabs({
   hairRecords,
   payments,
   memberProfile,
+  personalColor,
   profile,
   queryState,
-  styleProfile,
   subscription,
   viewerName,
 }: MyPageDashboardTabsProps) {
@@ -603,7 +654,7 @@ export function MyPageDashboardTabs({
   const creditsPerStyle = getCreditsPerStyle();
   const estimatedStyles = creditsPerStyle > 0 ? Math.floor(credits / creditsPerStyle) : 0;
   const usedCredits = generations.reduce((sum, item) => sum + Math.max(0, item.credits_used ?? 0), 0);
-  const profileReady = isProfileReady(styleProfile);
+  const personalColorStatus = formatPersonalColor(personalColor);
 
   return (
     <AppPage className="flex flex-col gap-4 pb-16 sm:gap-5">
@@ -615,7 +666,7 @@ export function MyPageDashboardTabs({
               계정 대시보드
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
-              {viewerName}님의 사용기록, 플랜, 사용량, 에프터케어, 바디프로필 설정을 탭으로 확인하세요.
+              {viewerName}님의 사용기록, 플랜, 에프터케어, 퍼스널컬러, 바디프로필 설정을 탭으로 확인하세요.
             </p>
           </div>
           <Link
@@ -657,10 +708,10 @@ export function MyPageDashboardTabs({
           helper="최근 생성 기록에서 사용한 크레딧"
         />
         <MetricCard
-          icon={Shirt}
-          label="바디프로필"
-          value={profileReady ? "준비됨" : "필요"}
-          helper={profileReady ? "패션 추천에 저장된 프로필을 사용합니다" : "아래 프로필을 완성하세요"}
+          icon={Palette}
+          label="퍼스널컬러"
+          value={personalColorStatus}
+          helper={personalColor?.detailVersion === "color-detail-v1" ? "색상별 상세 분석 저장됨" : "새 진단으로 상세 분석을 저장하세요"}
         />
       </section>
 
@@ -674,6 +725,7 @@ export function MyPageDashboardTabs({
         hairRecords={hairRecords}
         payments={payments}
         memberProfile={memberProfile}
+        personalColor={personalColor}
         viewerName={viewerName}
       />
     </AppPage>

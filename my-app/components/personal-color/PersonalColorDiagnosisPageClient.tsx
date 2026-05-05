@@ -14,6 +14,7 @@ import {
   PersonalColorDiagnosisProgress,
   PersonalColorSwatchAnalysisColumn,
 } from "./PersonalColorDiagnosisProgress";
+import { PersonalColorResultDetails } from "./PersonalColorResultDetails";
 
 type PersonalColorSource = "upload" | "mypage";
 
@@ -42,7 +43,7 @@ function appendQuery(path: string, key: string, value: string) {
 }
 
 function getSafeReturnTo(value: string | null, source: PersonalColorSource, nextStep: string | null) {
-  const fallback = source === "mypage" ? "/mypage?tab=body-profile" : "/workspace";
+  const fallback = source === "mypage" ? "/mypage?tab=personal-color" : "/workspace";
   const normalized = value && value.startsWith("/") && !value.startsWith("//") ? value : fallback;
 
   if (source === "upload" && nextStep === "generate" && !normalized.includes("nextStep=")) {
@@ -64,36 +65,6 @@ function formatContrast(value?: string | null) {
   if (value === "high") return "높은 대비";
   if (value === "medium") return "중간 대비";
   return "-";
-}
-
-function ColorSwatches({
-  colors,
-  emptyLabel = "저장된 색상이 없습니다.",
-}: {
-  colors: PersonalColorResult["bestColors"];
-  emptyLabel?: string;
-}) {
-  if (!colors.length) {
-    return <p className="text-sm text-[var(--app-muted)]">{emptyLabel}</p>;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {colors.map((color) => (
-        <span
-          key={`${color.nameEn}-${color.hex}`}
-          className="inline-flex items-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border)] bg-[var(--app-surface)] px-2.5 py-1 text-xs font-bold text-[var(--app-text)]"
-        >
-          <span
-            aria-hidden="true"
-            className="h-4 w-4 rounded-full border border-black/10"
-            style={{ backgroundColor: color.hex }}
-          />
-          {color.nameKo}
-        </span>
-      ))}
-    </div>
-  );
 }
 
 export function PersonalColorDiagnosisPageClient() {
@@ -318,22 +289,14 @@ export function PersonalColorDiagnosisPageClient() {
                   <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">
                     {formatTone(personalColor.tone)} · {formatContrast(personalColor.contrast)}
                   </h2>
-                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{personalColor.summary}</p>
                 </div>
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--app-radius-control)] bg-emerald-100 text-emerald-700">
                   <CheckCircle2 className="h-5 w-5" aria-hidden="true" />
                 </span>
               </div>
 
-              <div className="mt-5 grid gap-4">
-                <div>
-                  <p className="mb-2 text-xs font-bold uppercase text-[var(--app-muted)]">추천 색상</p>
-                  <ColorSwatches colors={personalColor.bestColors} />
-                </div>
-                <div>
-                  <p className="mb-2 text-xs font-bold uppercase text-[var(--app-muted)]">피해야 할 색상</p>
-                  <ColorSwatches colors={personalColor.avoidColors} />
-                </div>
+              <div className="mt-5">
+                <PersonalColorResultDetails result={personalColor} />
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2">
@@ -341,7 +304,7 @@ export function PersonalColorDiagnosisPageClient() {
                   href={returnTo}
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 py-2 text-sm font-bold uppercase tracking-[0.04em] text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
                 >
-                  {isUploadSource ? "헤어 생성으로 돌아가기" : "마이페이지로 돌아가기"}
+                  {isUploadSource ? "헤어 생성으로 돌아가기" : "퍼스널컬러 탭으로 돌아가기"}
                 </Link>
                 <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()} disabled={isAnalyzing}>
                   다른 사진 선택
