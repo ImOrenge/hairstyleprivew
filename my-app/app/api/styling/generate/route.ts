@@ -164,7 +164,7 @@ export async function POST(request: Request) {
     const completedFashionGenerations = await countUserCompletedFashionGenerations(supabase, userId);
     if (completedFashionGenerations >= entitlement.maxFashionGenerations) {
       return NextResponse.json(
-        { error: formatLimitError("fashion", entitlement), plan: entitlement.key },
+        { error: formatLimitError(entitlement), plan: entitlement.key },
         { status: 403 },
       );
     }

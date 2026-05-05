@@ -2,11 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { runAIEvaluation } from "../../../../lib/ai-evaluation";
 import { getGeminiImageModel, runGeminiImageGeneration } from "../../../../lib/gemini-image";
-import {
-  countUserCompletedHairResults,
-  formatLimitError,
-  getPlanEntitlement,
-} from "../../../../lib/plan-entitlements";
+import { getPlanEntitlement } from "../../../../lib/plan-entitlements";
 import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { verifyPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
 import type {
@@ -183,10 +179,6 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
     creditChargedAt: typeof raw.creditChargedAt === "string" ? raw.creditChargedAt : null,
     creditChargeAmount: typeof raw.creditChargeAmount === "number" ? raw.creditChargeAmount : null,
   };
-}
-
-function isCompletedVariant(variant: GeneratedVariant) {
-  return variant.status === "completed" && Boolean(variant.outputUrl || variant.generatedImagePath);
 }
 
 async function ensureUserProfile(userId: string, supabase: SupabaseRunClient) {
@@ -370,15 +362,6 @@ async function handlePost(request: Request) {
 
   try {
     const entitlement = await getPlanEntitlement(supabase, userId);
-    if (!isCompletedVariant(targetVariant) && entitlement.maxHairResults !== null) {
-      const completedHairResults = await countUserCompletedHairResults(supabase, userId);
-      if (completedHairResults >= entitlement.maxHairResults) {
-        return NextResponse.json(
-          { error: formatLimitError("hair", entitlement), plan: entitlement.key },
-          { status: 403 },
-        );
-      }
-    }
 
     if (!recommendationSet.creditChargedAt) {
       const chargeTimestamp = new Date().toISOString();

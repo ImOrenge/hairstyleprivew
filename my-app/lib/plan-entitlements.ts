@@ -5,7 +5,6 @@ export type ActivePlanKey = "free" | "basic" | "standard" | "pro" | "salon";
 export interface PlanEntitlement {
   key: ActivePlanKey;
   label: string;
-  maxHairResults: number | null;
   maxFashionGenerations: number | null;
   watermarkHairResults: boolean;
 }
@@ -14,35 +13,30 @@ export const PLAN_ENTITLEMENTS: Record<ActivePlanKey, PlanEntitlement> = {
   free: {
     key: "free",
     label: "Free",
-    maxHairResults: 9,
     maxFashionGenerations: 1,
     watermarkHairResults: true,
   },
   basic: {
     key: "basic",
     label: "Basic",
-    maxHairResults: 6,
     maxFashionGenerations: 1,
     watermarkHairResults: false,
   },
   standard: {
     key: "standard",
     label: "Standard",
-    maxHairResults: 16,
     maxFashionGenerations: 3,
     watermarkHairResults: false,
   },
   pro: {
     key: "pro",
     label: "Pro",
-    maxHairResults: 40,
     maxFashionGenerations: null,
     watermarkHairResults: false,
   },
   salon: {
     key: "salon",
     label: "Salon",
-    maxHairResults: 100,
     maxFashionGenerations: null,
     watermarkHairResults: false,
   },
@@ -69,11 +63,6 @@ interface SubscriptionRow {
 interface PaymentTransactionRow {
   credits_to_grant?: unknown;
   metadata?: unknown;
-}
-
-interface GenerationRow {
-  options?: unknown;
-  status?: unknown;
 }
 
 interface StylingSessionRow {
@@ -117,22 +106,6 @@ function inferPlanFromPayment(row: PaymentTransactionRow): Exclude<ActivePlanKey
   if (credits >= 200) return "pro";
   if (credits >= 80) return "standard";
   return "basic";
-}
-
-function getRecommendationSet(raw: unknown) {
-  if (!isObject(raw)) return null;
-  const set = raw.recommendationSet;
-  if (!isObject(set) || !Array.isArray(set.variants)) return null;
-  return set as { variants: Array<Record<string, unknown>> };
-}
-
-function countCompletedVariants(row: GenerationRow) {
-  const set = getRecommendationSet(row.options);
-  if (!set) {
-    return row.status === "completed" ? 1 : 0;
-  }
-
-  return set.variants.filter((variant) => variant.status === "completed" && Boolean(variant.outputUrl)).length;
 }
 
 async function returns<T>(query: unknown): Promise<{ data: T | null; error: { message: string } | null }> {
@@ -186,33 +159,6 @@ export async function getPlanEntitlement(
   return PLAN_ENTITLEMENTS[plan];
 }
 
-export async function countUserCompletedHairResults(
-  supabase: SupabaseEntitlementClient,
-  userId: string,
-): Promise<number> {
-  if (typeof supabase.rpc === "function") {
-    const { data, error } = await supabase.rpc("count_user_completed_hair_results", {
-      p_user_id: userId,
-    });
-
-    if (!error && typeof data === "number") {
-      return data;
-    }
-
-    if (error && !error.message.toLowerCase().includes("could not find")) {
-      throw new Error(error.message);
-    }
-  }
-
-  const query = supabase.from("generations").select("options,status").eq("user_id", userId);
-  const { data, error } = await returns<GenerationRow[]>(query);
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data || []).reduce((sum, row) => sum + countCompletedVariants(row), 0);
-}
-
 export async function countUserCompletedFashionGenerations(
   supabase: SupabaseEntitlementClient,
   userId: string,
@@ -230,10 +176,6 @@ export async function countUserCompletedFashionGenerations(
   return (data || []).length;
 }
 
-export function formatLimitError(feature: "hair" | "fashion", entitlement: PlanEntitlement) {
-  if (feature === "hair") {
-    return `${entitlement.label} 플랜은 헤어 결과를 최대 ${entitlement.maxHairResults}개까지 생성할 수 있습니다.`;
-  }
-
+export function formatLimitError(entitlement: PlanEntitlement) {
   return `${entitlement.label} 플랜은 패션 룩북을 최대 ${entitlement.maxFashionGenerations}개까지 생성할 수 있습니다.`;
 }
