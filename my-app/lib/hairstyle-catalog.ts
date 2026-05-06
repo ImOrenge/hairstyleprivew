@@ -30,15 +30,25 @@ Allowed JSON schema:
   "faceShape": "short string",
   "headShape": "short string",
   "foreheadExposure": "short string",
+  "observedPartingShape": "short string",
+  "recommendedPartingShape": "short string",
+  "partingStrategy": "short string",
   "balance": "short string",
   "bestLengthStrategy": "short string",
   "volumeFocus": ["short string"],
   "avoidNotes": ["short string"],
   "summary": "one sentence"
 }
+
+Rules:
+- Read the current visible parting separately from the recommended parting direction.
+- observedPartingShape should use concise hair terms such as center part, left side part, right side part, soft off-center part, curtain part, or bangs/no clear parting.
+- recommendedPartingShape must consider face shape, forehead exposure, hairline, temple balance, jawline balance, and crown volume.
+- If the visible parting is unclear, covered by bangs, or not reliable, recommend a conservative soft off-center parting unless full bangs are clearly the better fit.
+- partingStrategy should explain the recommended parting in one short generation-safe phrase.
 `;
 
-export const RECOMMENDATION_PROMPT_VERSION = "catalog-backed-grid-v1";
+export const RECOMMENDATION_PROMPT_VERSION = "catalog-backed-grid-v2";
 
 export type CatalogRebuildMode = "auto" | "researched" | "seeded";
 type CatalogSourceMode = "researched-weekly" | "seeded-weekly";
@@ -47,6 +57,27 @@ const CATALOG_MARKET = "kr";
 const CATALOG_BOOTSTRAP_MAX_POLLS = 8;
 const CATALOG_BOOTSTRAP_POLL_MS = 500;
 const UNIQUE_CONSTRAINT_VIOLATION_CODE = "23505";
+const DEFAULT_OBSERVED_PARTING = "soft off-center parting";
+const DEFAULT_RECOMMENDED_PARTING = "soft off-center parting";
+const DEFAULT_PARTING_STRATEGY =
+  "Use a conservative soft off-center parting to balance forehead exposure and side volume.";
+const PARTING_MATCH_TOKENS = new Set([
+  "bang",
+  "bangs",
+  "center",
+  "comma",
+  "curtain",
+  "forehead",
+  "fringe",
+  "left",
+  "middle",
+  "off",
+  "open",
+  "part",
+  "parting",
+  "right",
+  "side",
+]);
 
 interface QueryError {
   message: string;
@@ -166,6 +197,11 @@ function normalizeAnalysis(raw: unknown): FaceAnalysisSummary | null {
   const faceShape = typeof raw.faceShape === "string" ? cleanText(raw.faceShape) : "";
   const headShape = typeof raw.headShape === "string" ? cleanText(raw.headShape) : "";
   const foreheadExposure = typeof raw.foreheadExposure === "string" ? cleanText(raw.foreheadExposure) : "";
+  const observedPartingShape =
+    typeof raw.observedPartingShape === "string" ? cleanText(raw.observedPartingShape) : "";
+  const recommendedPartingShape =
+    typeof raw.recommendedPartingShape === "string" ? cleanText(raw.recommendedPartingShape) : "";
+  const partingStrategy = typeof raw.partingStrategy === "string" ? cleanText(raw.partingStrategy) : "";
   const balance = typeof raw.balance === "string" ? cleanText(raw.balance) : "";
   const bestLengthStrategy = typeof raw.bestLengthStrategy === "string" ? cleanText(raw.bestLengthStrategy) : "";
   const summary = typeof raw.summary === "string" ? cleanText(raw.summary) : "";
@@ -178,6 +214,9 @@ function normalizeAnalysis(raw: unknown): FaceAnalysisSummary | null {
     faceShape,
     headShape,
     foreheadExposure: foreheadExposure || "balanced forehead exposure",
+    observedPartingShape: observedPartingShape || DEFAULT_OBSERVED_PARTING,
+    recommendedPartingShape: recommendedPartingShape || DEFAULT_RECOMMENDED_PARTING,
+    partingStrategy: partingStrategy || DEFAULT_PARTING_STRATEGY,
     balance,
     bestLengthStrategy: bestLengthStrategy || "medium lengths with controlled volume",
     volumeFocus: volumeFocus.length > 0 ? volumeFocus : ["crown", "temple"],
@@ -191,6 +230,9 @@ function buildFallbackAnalysis(): FaceAnalysisSummary {
     faceShape: "balanced oval",
     headShape: "symmetrical frontal head shape",
     foreheadExposure: "moderate forehead exposure",
+    observedPartingShape: DEFAULT_OBSERVED_PARTING,
+    recommendedPartingShape: DEFAULT_RECOMMENDED_PARTING,
+    partingStrategy: DEFAULT_PARTING_STRATEGY,
     balance: "balanced proportions that suit controlled volume",
     bestLengthStrategy: "medium to long cuts with soft face framing",
     volumeFocus: ["crown", "temple", "jawline"],
@@ -204,6 +246,10 @@ function tokenize(value: string): string[] {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter(Boolean);
+}
+
+function tokenizeParting(value: string): string[] {
+  return tokenize(value).filter((token) => PARTING_MATCH_TOKENS.has(token));
 }
 
 function isMemberStyleTarget(value: unknown): value is MemberStyleTarget {
@@ -517,6 +563,9 @@ function composePrompt(row: HairstyleCatalogRow, analysis: FaceAnalysisSummary, 
     `suited for ${analysis.faceShape}`,
     `head balance: ${analysis.balance}`,
     `best length strategy: ${analysis.bestLengthStrategy}`,
+    `observed parting: ${analysis.observedPartingShape}`,
+    `recommended parting direction: ${analysis.recommendedPartingShape}`,
+    `parting strategy: ${analysis.partingStrategy}`,
   ]
     .map(cleanText)
     .filter(Boolean)
@@ -563,6 +612,11 @@ export function buildCatalogSelectionContext(
       ...tokenize(analysis.headShape),
     ])),
     volumeFocusTags: Array.from(new Set(analysis.volumeFocus.flatMap(tokenize))),
+    partingPreferenceTags: Array.from(new Set([
+      ...tokenizeParting(analysis.recommendedPartingShape),
+      ...tokenizeParting(analysis.partingStrategy),
+      ...tokenizeParting(analysis.observedPartingShape),
+    ])),
     avoidTags: Array.from(new Set(analysis.avoidNotes.flatMap(tokenize))),
     preferredLengthBuckets: derivePreferredLengthBuckets(analysis),
   };
@@ -574,9 +628,15 @@ function scoreCatalogRow(row: HairstyleCatalogRow, context: CatalogSelectionCont
   const faceMatches = row.faceShapeFitTags.filter((tag) => context.faceShapeTags.includes(tag)).length;
   const volumeMatches = row.volumeFocusTags.filter((tag) => context.volumeFocusTags.includes(tag)).length;
   const avoidMatches = row.avoidTags.filter((tag) => context.avoidTags.includes(tag)).length;
+  const rowPartingTags = Array.from(new Set([
+    ...tokenizeParting(row.bangType),
+    ...tokenizeParting(row.promptTemplate),
+  ]));
+  const partingMatches = rowPartingTags.filter((tag) => context.partingPreferenceTags.includes(tag)).length;
 
   score += faceMatches * 12;
   score += volumeMatches * 8;
+  score += Math.min(partingMatches, 3) * 2;
   score -= avoidMatches * 10;
 
   const preferredIndex = context.preferredLengthBuckets.indexOf(row.lengthBucket);

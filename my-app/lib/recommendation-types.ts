@@ -26,6 +26,9 @@ export interface FaceAnalysisSummary {
   faceShape: string;
   headShape: string;
   foreheadExposure: string;
+  observedPartingShape: string;
+  recommendedPartingShape: string;
+  partingStrategy: string;
   balance: string;
   bestLengthStrategy: string;
   volumeFocus: string[];
@@ -84,6 +87,7 @@ export interface CatalogSelectionContext {
   styleTarget: MemberStyleTarget;
   faceShapeTags: string[];
   volumeFocusTags: string[];
+  partingPreferenceTags: string[];
   avoidTags: string[];
   preferredLengthBuckets: RecommendationLengthBucket[];
 }

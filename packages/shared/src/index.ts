@@ -170,6 +170,9 @@ export interface FaceAnalysisSummary {
   faceShape: string;
   headShape: string;
   foreheadExposure: string;
+  observedPartingShape: string;
+  recommendedPartingShape: string;
+  partingStrategy: string;
   balance: string;
   bestLengthStrategy: string;
   volumeFocus: string[];
