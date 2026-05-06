@@ -41,6 +41,9 @@ export function Header() {
           <HeaderBrandLink />
 
           <nav className="hidden items-center gap-4 text-sm font-semibold md:flex">
+            <Link href="/support" className="text-[var(--app-muted)] hover:text-[var(--app-text)]">
+              고객지원
+            </Link>
             <HeaderRoleNavLinks />
 
             <div className="flex shrink-0 items-center gap-2">
@@ -69,6 +72,9 @@ export function Header() {
         {isMobileMenuOpen ? (
           <div className="border-t border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.10)] md:hidden">
             <nav className="mx-auto flex w-full max-w-[82rem] flex-col gap-1 text-sm font-semibold">
+              <Link href="/support" className={mobileMenuLinkClassName} onClick={closeMobileMenu}>
+                고객지원
+              </Link>
               <HeaderRoleNavLinks className={mobileMenuLinkClassName} onClick={closeMobileMenu} />
               <MobileSignupMenuLink className={mobileMenuLinkClassName} onClick={closeMobileMenu} />
               <div className="mt-2 flex items-center justify-between border-t border-[var(--app-border)] px-3 pt-3">

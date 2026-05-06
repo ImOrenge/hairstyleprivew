@@ -11,7 +11,6 @@ import { AppPage, InverseSection, Panel, SurfaceCard } from "../components/ui/Su
 import { resolveSignedInAccountHomeHref } from "../lib/account-home-server";
 import { getClerkConfigState, getProductionClerkSecretKey } from "../lib/clerk";
 import {
-  homeFaqs,
   homeNavItems,
   homeSeo,
   homeWorkflow,
@@ -20,6 +19,7 @@ import {
   structuredDataName,
 } from "../lib/home-content";
 import { getSiteUrl } from "../lib/site-url";
+import { loadPublishedSupportFaqs } from "../lib/support-server";
 
 const PricingPreview = nextDynamic(() => import("../components/home/PricingPreview").then((mod) => mod.PricingPreview), {
   loading: () => <div className="h-96 animate-pulse border border-[var(--app-border)] bg-[var(--app-surface-muted)]" />,
@@ -102,7 +102,7 @@ export const metadata: Metadata = {
   },
 };
 
-function buildHomeJsonLd() {
+function buildHomeJsonLd(faqs: Array<{ question: string; answer: string }>) {
   return [
     {
       "@context": "https://schema.org",
@@ -131,7 +131,7 @@ function buildHomeJsonLd() {
     {
       "@context": "https://schema.org",
       "@type": "FAQPage",
-      mainEntity: homeFaqs.map((faq) => ({
+      mainEntity: faqs.map((faq) => ({
         "@type": "Question",
         name: faq.question,
         acceptedAnswer: {
@@ -234,7 +234,8 @@ export default async function HomePage() {
     }
   }
 
-  const jsonLd = buildHomeJsonLd();
+  const faqs = await loadPublishedSupportFaqs();
+  const jsonLd = buildHomeJsonLd(faqs);
   const { userCount, avatars } = await loadHomeSocialProof();
 
   return (
@@ -347,7 +348,7 @@ export default async function HomePage() {
             </h2>
           </div>
           <div className="mt-6 grid gap-3">
-            {homeFaqs.map((faq) => (
+            {faqs.map((faq) => (
               <SurfaceCard
                 as="details"
                 key={faq.question}

@@ -17,6 +17,9 @@ export function Footer() {
           <Link href="/terms-of-service" className="underline-offset-4 hover:underline">
             {t("footer.terms")}
           </Link>
+          <Link href="/support" className="underline-offset-4 hover:underline">
+            고객지원
+          </Link>
           <Link
             href="/b2b/signup"
             className="rounded-[var(--app-radius-control)] border border-[var(--app-border)] px-2.5 py-1 text-xs font-bold text-[var(--app-text)] transition hover:border-[var(--app-border-strong)] hover:bg-[var(--app-surface-muted)]"

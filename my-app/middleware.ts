@@ -31,6 +31,11 @@ const isWebhookRoute = createRouteMatcher([
   "/api/payments/webhook",
   "/api/email/inbound/cloudflare",
 ]);
+const isPublicSupportApiRoute = createRouteMatcher([
+  "/api/support/faqs",
+  "/api/support/posts",
+  "/api/support/posts/(.*)",
+]);
 const isOnboardingRoute = createRouteMatcher(["/onboarding(.*)"]);
 const isOnboardingApiRoute = createRouteMatcher(["/api/onboarding(.*)"]);
 const isMobileApiRoute = createRouteMatcher(["/api/mobile(.*)"]);
@@ -152,7 +157,7 @@ const clerkAppMiddleware = hasClerkConfig
       return mobileCorsPreflight(req);
     }
 
-    if (!isProtectedRoute(req) || isWebhookRoute(req)) {
+    if (!isProtectedRoute(req) || isWebhookRoute(req) || (isPublicSupportApiRoute(req) && !isMutationRequest(req))) {
       return withMobileCors(req, NextResponse.next());
     }
 
@@ -296,7 +301,7 @@ const middleware = hasClerkConfig && clerkAppMiddleware
         return mobileCorsPreflight(req);
       }
 
-      if (!isProtectedRoute(req) || isWebhookRoute(req)) {
+      if (!isProtectedRoute(req) || isWebhookRoute(req) || (isPublicSupportApiRoute(req) && !isMutationRequest(req))) {
         return withMobileCors(req, NextResponse.next());
       }
 
