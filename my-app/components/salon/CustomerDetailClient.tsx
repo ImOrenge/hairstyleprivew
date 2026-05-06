@@ -72,6 +72,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
     memo: "",
     consentSms: false,
     consentKakao: false,
+    styleTarget: "" as "" | "male" | "female",
     nextFollowUpAt: "",
   });
   const [visitForm, setVisitForm] = useState({
@@ -113,6 +114,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
         memo: data.customer.memo,
         consentSms: data.customer.consentSms,
         consentKakao: data.customer.consentKakao,
+        styleTarget: data.customer.styleTarget || "",
         nextFollowUpAt: toLocalInputValue(data.customer.nextFollowUpAt),
       });
     } else {
@@ -259,7 +261,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
             {customer?.isLinkedMember ? "HairFit 회원 연결 고객" : "수기 등록 고객"}
           </p>
         </div>
-        <div className="grid grid-cols-2 gap-2 md:min-w-[420px] md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 md:min-w-[560px] md:grid-cols-4">
           <div className="rounded-md border border-stone-200 bg-white px-3 py-2">
             <p className="text-xs text-stone-500">방문 기록</p>
             <p className="text-xl font-bold text-stone-950">{visits.length}</p>
@@ -272,6 +274,17 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
             <p className="text-xs text-stone-500">다음 연락</p>
             <p className="text-sm font-bold text-stone-950">{formatDateTime(customer?.nextFollowUpAt || null)}</p>
           </div>
+          <Link
+            href={`/salon/customers/${customerId}/workspace`}
+            className={`col-span-2 inline-flex min-h-12 items-center justify-center rounded-md border px-3 py-2 text-center text-xs font-black uppercase tracking-[0.04em] transition md:col-span-1 ${
+              isAdminReadOnly
+                ? "pointer-events-none border-amber-200 bg-amber-50 text-amber-700 opacity-70"
+                : "border-stone-950 bg-stone-950 text-white hover:bg-stone-800"
+            }`}
+            aria-disabled={isAdminReadOnly}
+          >
+            헤어 워크스페이스 열기
+          </Link>
         </div>
       </header>
 
@@ -315,6 +328,17 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
                 onChange={(event) => setProfileForm((current) => ({ ...current, nextFollowUpAt: event.target.value }))}
                 className="h-10 rounded-md border border-stone-300 px-3 text-sm outline-none focus:border-stone-950"
               />
+              <select
+                value={profileForm.styleTarget}
+                onChange={(event) =>
+                  setProfileForm((current) => ({ ...current, styleTarget: event.target.value as "" | "male" | "female" }))
+                }
+                className="h-10 rounded-md border border-stone-300 bg-white px-3 text-sm outline-none focus:border-stone-950"
+              >
+                <option value="">헤어 생성 타깃 미선택</option>
+                <option value="male">남성 헤어</option>
+                <option value="female">여성 헤어</option>
+              </select>
               <textarea
                 value={profileForm.memo}
                 onChange={(event) => setProfileForm((current) => ({ ...current, memo: event.target.value }))}
@@ -452,6 +476,28 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
               {visits.map((visit) => (
                 <article key={visit.id} className="px-4 py-4">
                   <p className="text-xs font-semibold text-stone-500">{formatDateTime(visit.visitedAt)}</p>
+                  {visit.styleLabel || visit.generationId ? (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {visit.styleLabel ? (
+                        <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
+                          {visit.styleLabel}
+                        </span>
+                      ) : null}
+                      {visit.serviceType ? (
+                        <span className="rounded-md bg-stone-100 px-2 py-1 text-xs font-bold text-stone-600">
+                          {visit.serviceType}
+                        </span>
+                      ) : null}
+                      {visit.generationId ? (
+                        <Link
+                          href={`/result/${visit.generationId}${visit.selectedVariantId ? `?variant=${encodeURIComponent(visit.selectedVariantId)}` : ""}`}
+                          className="rounded-md border border-stone-300 px-2 py-1 text-xs font-bold text-stone-700 hover:bg-stone-50"
+                        >
+                          결과 보기
+                        </Link>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <p className="mt-2 whitespace-pre-wrap text-sm font-medium text-stone-950">{visit.serviceNote}</p>
                   {visit.memo ? <p className="mt-2 whitespace-pre-wrap text-sm text-stone-600">{visit.memo}</p> : null}
                   {visit.nextRecommendedVisitAt ? (

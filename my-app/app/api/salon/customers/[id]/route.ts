@@ -6,6 +6,7 @@ import {
   LINKED_MEMBER_COLUMNS,
   VISIT_COLUMNS,
   getSalonOwnerContext,
+  isSalonCustomerStyleTarget,
   loadOwnerCustomer,
   normalizeAftercareTask,
   normalizeCustomer,
@@ -28,6 +29,7 @@ interface PatchCustomerRequest {
   memo?: unknown;
   consentSms?: unknown;
   consentKakao?: unknown;
+  styleTarget?: unknown;
   nextFollowUpAt?: unknown;
   archived?: unknown;
 }
@@ -168,6 +170,16 @@ export async function PATCH(request: Request, { params }: Params) {
 
   if (typeof body.consentKakao === "boolean") {
     updates.consent_kakao = body.consentKakao;
+  }
+
+  if (body.styleTarget !== undefined) {
+    if (body.styleTarget === null || body.styleTarget === "") {
+      updates.style_target = null;
+    } else if (isSalonCustomerStyleTarget(body.styleTarget)) {
+      updates.style_target = body.styleTarget;
+    } else {
+      return NextResponse.json({ error: "styleTarget must be male or female" }, { status: 400 });
+    }
   }
 
   if (body.nextFollowUpAt !== undefined) {

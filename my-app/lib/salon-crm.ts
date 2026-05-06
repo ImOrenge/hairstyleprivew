@@ -7,18 +7,20 @@ import type {
   SalonAftercareTask,
   SalonCustomer,
   SalonCustomerSource,
+  SalonCustomerStyleTarget,
   SalonLinkedMember,
   SalonMatchCandidate,
   SalonMatchInvite,
   SalonMatchStatus,
   SalonMemberGenerationSummary,
+  SalonServiceType,
   SalonVisit,
 } from "./salon-crm-types";
 
 export const CUSTOMER_COLUMNS =
-  "id,owner_user_id,linked_user_id,source,name,phone,email,memo,consent_sms,consent_kakao,last_visit_at,next_follow_up_at,archived_at,created_at,updated_at";
+  "id,owner_user_id,linked_user_id,source,name,phone,email,memo,consent_sms,consent_kakao,style_target,photo_generation_consent_at,last_visit_at,next_follow_up_at,archived_at,created_at,updated_at";
 export const VISIT_COLUMNS =
-  "id,owner_user_id,customer_id,visited_at,service_note,memo,next_recommended_visit_at,created_at,updated_at";
+  "id,owner_user_id,customer_id,generation_id,selected_variant_id,style_label,service_type,designer_brief,visited_at,service_note,memo,next_recommended_visit_at,created_at,updated_at";
 export const AFTERCARE_COLUMNS =
   "id,owner_user_id,customer_id,channel,status,scheduled_for,template_key,note,completed_at,created_at,updated_at";
 export const MATCH_INVITE_COLUMNS =
@@ -98,6 +100,14 @@ export function isSalonCustomerSource(value: unknown): value is SalonCustomerSou
   return value === "manual" || value === "linked_member";
 }
 
+export function isSalonCustomerStyleTarget(value: unknown): value is SalonCustomerStyleTarget {
+  return value === "male" || value === "female";
+}
+
+export function isSalonServiceType(value: unknown): value is SalonServiceType {
+  return value === "perm" || value === "color" || value === "cut" || value === "bleach" || value === "treatment" || value === "other";
+}
+
 export function isAftercareChannel(value: unknown): value is SalonAftercareChannel {
   return value === "sms" || value === "kakao" || value === "phone" || value === "manual";
 }
@@ -123,6 +133,7 @@ function nullableStringField(row: Record<string, unknown>, key: string): string 
 export function normalizeCustomer(row: Record<string, unknown>): SalonCustomer {
   const linkedUserId = nullableStringField(row, "linked_user_id");
   const source = isSalonCustomerSource(row.source) ? row.source : "manual";
+  const styleTarget = isSalonCustomerStyleTarget(row.style_target) ? row.style_target : null;
 
   return {
     id: stringField(row, "id"),
@@ -134,6 +145,8 @@ export function normalizeCustomer(row: Record<string, unknown>): SalonCustomer {
     memo: stringField(row, "memo"),
     consentSms: row.consent_sms === true,
     consentKakao: row.consent_kakao === true,
+    styleTarget,
+    photoGenerationConsentAt: nullableStringField(row, "photo_generation_consent_at"),
     lastVisitAt: nullableStringField(row, "last_visit_at"),
     nextFollowUpAt: nullableStringField(row, "next_follow_up_at"),
     archivedAt: nullableStringField(row, "archived_at"),
@@ -144,9 +157,16 @@ export function normalizeCustomer(row: Record<string, unknown>): SalonCustomer {
 }
 
 export function normalizeVisit(row: Record<string, unknown>): SalonVisit {
+  const designerBrief = isRecord(row.designer_brief) ? row.designer_brief : null;
+
   return {
     id: stringField(row, "id"),
     customerId: stringField(row, "customer_id"),
+    generationId: nullableStringField(row, "generation_id"),
+    selectedVariantId: nullableStringField(row, "selected_variant_id"),
+    styleLabel: nullableStringField(row, "style_label"),
+    serviceType: isSalonServiceType(row.service_type) ? row.service_type : null,
+    designerBrief,
     visitedAt: stringField(row, "visited_at"),
     serviceNote: stringField(row, "service_note"),
     memo: stringField(row, "memo"),

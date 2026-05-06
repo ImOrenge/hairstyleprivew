@@ -2,6 +2,8 @@ export type SalonCustomerSource = "manual" | "linked_member";
 export type SalonAftercareChannel = "sms" | "kakao" | "phone" | "manual";
 export type SalonAftercareStatus = "pending" | "done" | "canceled";
 export type SalonMatchStatus = "pending" | "linked" | "revoked";
+export type SalonCustomerStyleTarget = "male" | "female";
+export type SalonServiceType = "perm" | "color" | "cut" | "bleach" | "treatment" | "other";
 
 export interface SalonCustomer {
   id: string;
@@ -13,6 +15,8 @@ export interface SalonCustomer {
   memo: string;
   consentSms: boolean;
   consentKakao: boolean;
+  styleTarget: SalonCustomerStyleTarget | null;
+  photoGenerationConsentAt: string | null;
   lastVisitAt: string | null;
   nextFollowUpAt: string | null;
   archivedAt: string | null;
@@ -24,6 +28,11 @@ export interface SalonCustomer {
 export interface SalonVisit {
   id: string;
   customerId: string;
+  generationId: string | null;
+  selectedVariantId: string | null;
+  styleLabel: string | null;
+  serviceType: SalonServiceType | null;
+  designerBrief: Record<string, unknown> | null;
   visitedAt: string;
   serviceNote: string;
   memo: string;

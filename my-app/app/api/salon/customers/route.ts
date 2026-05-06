@@ -3,6 +3,7 @@ import {
   CUSTOMER_COLUMNS,
   AFTERCARE_COLUMNS,
   getSalonOwnerContext,
+  isSalonCustomerStyleTarget,
   isSalonCustomerSource,
   normalizeAftercareTask,
   normalizeCustomer,
@@ -19,6 +20,7 @@ interface CreateCustomerRequest {
   memo?: unknown;
   consentSms?: unknown;
   consentKakao?: unknown;
+  styleTarget?: unknown;
   nextFollowUpAt?: unknown;
 }
 
@@ -118,6 +120,7 @@ export async function POST(request: Request) {
   const email = trimString(body.email, 160).toLowerCase();
   const memo = trimString(body.memo, 1200);
   const nextFollowUpAt = parseNullableIso(body.nextFollowUpAt);
+  const styleTarget = isSalonCustomerStyleTarget(body.styleTarget) ? body.styleTarget : null;
 
   const customerName = name;
   const customerEmail = email;
@@ -142,6 +145,7 @@ export async function POST(request: Request) {
       memo: memo || null,
       consent_sms: body.consentSms === true,
       consent_kakao: body.consentKakao === true,
+      style_target: styleTarget,
       next_follow_up_at: nextFollowUpAt,
     })
     .select(CUSTOMER_COLUMNS)
