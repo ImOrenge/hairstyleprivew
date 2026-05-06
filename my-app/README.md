@@ -44,6 +44,8 @@ Optional:
 - `RESEND_API_KEY` (optional, payment success email notifications)
 - `RESEND_FROM_EMAIL` (optional, default: `HairStyle <onboarding@resend.dev>`)
 - `INBOUND_EMAIL_SECRET` (required for Cloudflare Email Routing Worker -> app webhook)
+- `BUSINESS_INBOUND_EMAIL` (optional, default: `busyness@hairfit.beauty`)
+- `SUPPORT_INBOUND_EMAIL` (optional, default: `support@hairfit.beauty`)
 - `CLERK_SOCIAL_PROOF_SECRET_KEY` (optional, server-only `sk_live_` key for production-only landing user count)
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (required for B2B inquiry form CAPTCHA)
 - `TURNSTILE_SECRET_KEY` (required for server-side Cloudflare Turnstile validation)
@@ -98,6 +100,8 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `RESEND_API_KEY` (optional)
 - `RESEND_FROM_EMAIL` (optional)
 - `INBOUND_EMAIL_SECRET` (required for inbound support email storage)
+- `BUSINESS_INBOUND_EMAIL` (optional, default: `busyness@hairfit.beauty`)
+- `SUPPORT_INBOUND_EMAIL` (optional, default: `support@hairfit.beauty`)
 - `CLERK_SOCIAL_PROOF_SECRET_KEY` (optional; set only to a live Clerk secret key)
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`
 - `TURNSTILE_SECRET_KEY`
@@ -170,6 +174,6 @@ Resend remains the outbound email provider. Inbound support email is handled by 
    `npx wrangler secret put INBOUND_FALLBACK_EMAIL --config workers/email-router/wrangler.jsonc`
 4. Deploy the Worker:
    `npm run email-worker:deploy`
-5. In Cloudflare Email Routing, onboard `hairfit.beauty`, then create the custom address `support` and route it to the `hairfit-email-router` Worker.
+5. In Cloudflare Email Routing, onboard `hairfit.beauty`, then create custom addresses `support` and `busyness` and route both to the `hairfit-email-router` Worker.
 
-The Worker posts parsed messages to `POST /api/email/inbound/cloudflare`. Admin users can review messages at `/admin/inbox`.
+The Worker posts parsed messages to `POST /api/email/inbound/cloudflare`. Emails to `busyness@hairfit.beauty` are tagged as the business mailbox. Admin users can review and filter messages at `/admin/inbox`.

@@ -4,12 +4,43 @@ interface Env {
   APP_INBOUND_EMAIL_URL: string;
   INBOUND_EMAIL_SECRET: string;
   INBOUND_FALLBACK_EMAIL?: string;
+  BUSINESS_INBOUND_EMAIL?: string;
+  SUPPORT_INBOUND_EMAIL?: string;
 }
 
 interface EmailAddressLike {
   name?: string;
   address?: string;
   group?: EmailAddressLike[];
+}
+
+const DEFAULT_BUSINESS_INBOUND_EMAIL = "busyness@hairfit.beauty";
+const DEFAULT_SUPPORT_INBOUND_EMAIL = "support@hairfit.beauty";
+
+type InboundMailbox = "support" | "business" | "general";
+
+function normalizeEmail(value: string | undefined) {
+  return (value || "").trim().toLowerCase();
+}
+
+function configuredAddress(value: string | undefined, fallback: string) {
+  return normalizeEmail(value) || fallback;
+}
+
+function resolveMailbox(recipient: string, env: Env): InboundMailbox {
+  const normalizedRecipient = normalizeEmail(recipient);
+  const businessAddress = configuredAddress(env.BUSINESS_INBOUND_EMAIL, DEFAULT_BUSINESS_INBOUND_EMAIL);
+  const supportAddress = configuredAddress(env.SUPPORT_INBOUND_EMAIL, DEFAULT_SUPPORT_INBOUND_EMAIL);
+
+  if (normalizedRecipient === businessAddress) {
+    return "business";
+  }
+
+  if (normalizedRecipient === supportAddress) {
+    return "support";
+  }
+
+  return "general";
 }
 
 function formatAddress(address: Address | EmailAddressLike | undefined): string {
@@ -70,8 +101,10 @@ export default {
       });
       const text = parsed.text || "";
       const html = parsed.html || "";
+      const mailbox = resolveMailbox(message.to, env);
       const payload = {
         provider: "cloudflare",
+        mailbox,
         messageId: parsed.messageId || message.headers.get("message-id") || null,
         envelope: {
           from: message.from,

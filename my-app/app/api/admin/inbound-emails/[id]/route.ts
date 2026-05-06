@@ -53,7 +53,7 @@ export async function PATCH(request: Request, { params }: Params) {
     .update(updates)
     .eq("id", emailId)
     .select(
-      "id,provider,message_id,envelope_from,envelope_to,header_from,header_to,subject,text_body,html_body,body_preview,attachments,status,admin_note,in_reply_to,reference_ids,raw_size,received_at,created_at,updated_at",
+      "id,provider,mailbox,message_id,envelope_from,envelope_to,header_from,header_to,subject,text_body,html_body,body_preview,attachments,status,admin_note,in_reply_to,reference_ids,raw_size,received_at,created_at,updated_at",
     )
     .maybeSingle();
 

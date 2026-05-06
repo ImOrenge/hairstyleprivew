@@ -4,12 +4,22 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/Button";
 
 const STATUSES = ["new", "read", "archived"] as const;
+const MAILBOXES = ["support", "business", "general"] as const;
 type EmailStatus = (typeof STATUSES)[number];
+type InboundMailbox = (typeof MAILBOXES)[number];
+
+const BUSINESS_INBOUND_EMAIL = "busyness@hairfit.beauty";
 
 const statusLabels: Record<EmailStatus, string> = {
   new: "신규",
   read: "읽음",
   archived: "보관됨",
+};
+
+const mailboxLabels: Record<InboundMailbox, string> = {
+  support: "지원",
+  business: "비즈니스",
+  general: "일반",
 };
 
 interface AttachmentMeta {
@@ -23,6 +33,7 @@ interface AttachmentMeta {
 interface InboundEmail {
   id: string;
   provider: string;
+  mailbox: InboundMailbox;
   message_id: string | null;
   envelope_from: string;
   envelope_to: string;
@@ -52,7 +63,13 @@ interface InboxResponse {
   emails?: InboundEmail[];
   total?: number;
   statusSummary?: StatusSummary[];
+  mailboxSummary?: MailboxSummary[];
   error?: string;
+}
+
+interface MailboxSummary {
+  mailbox: InboundMailbox;
+  count: number;
 }
 
 function formatDate(value: string | null) {
@@ -77,9 +94,11 @@ function formatBytes(value: number) {
 export default function AdminInboxPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | EmailStatus>("all");
+  const [mailboxFilter, setMailboxFilter] = useState<"all" | InboundMailbox>("all");
   const [emails, setEmails] = useState<InboundEmail[]>([]);
   const [total, setTotal] = useState(0);
   const [statusSummary, setStatusSummary] = useState<StatusSummary[]>([]);
+  const [mailboxSummary, setMailboxSummary] = useState<MailboxSummary[]>([]);
   const [selection, setSelection] = useState<{ id: string | null; status: EmailStatus; note: string }>({
     id: null,
     status: "new",
@@ -97,9 +116,12 @@ export default function AdminInboxPage() {
     if (statusFilter !== "all") {
       params.set("status", statusFilter);
     }
+    if (mailboxFilter !== "all") {
+      params.set("mailbox", mailboxFilter);
+    }
     params.set("limit", "120");
     return `/api/admin/inbound-emails?${params.toString()}`;
-  }, [query, statusFilter]);
+  }, [mailboxFilter, query, statusFilter]);
 
   const selectedEmail = useMemo(
     () => emails.find((email) => email.id === selection.id) ?? emails[0] ?? null,
@@ -122,6 +144,7 @@ export default function AdminInboxPage() {
     setEmails(nextEmails);
     setTotal(data.total || nextEmails.length);
     setStatusSummary(data.statusSummary || []);
+    setMailboxSummary(data.mailboxSummary || []);
     setSelection((current) => {
       const nextEmail =
         (current.id ? nextEmails.find((email) => email.id === current.id) : null) ?? nextEmails[0] ?? null;
@@ -174,9 +197,11 @@ export default function AdminInboxPage() {
       <header className="rounded-2xl border border-stone-200 bg-white p-5">
         <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">관리자 메일함</p>
         <h1 className="mt-2 text-2xl font-black text-stone-950">수신 메일</h1>
-        <p className="mt-2 text-sm text-stone-600">Cloudflare Email Routing으로 들어온 메일 {total}건</p>
+        <p className="mt-2 text-sm text-stone-600">
+          Cloudflare Email Routing으로 들어온 메일 {total}건 · 비즈니스 수신 {BUSINESS_INBOUND_EMAIL}
+        </p>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px]">
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
@@ -195,14 +220,34 @@ export default function AdminInboxPage() {
               </option>
             ))}
           </select>
+          <select
+            value={mailboxFilter}
+            onChange={(event) => setMailboxFilter(event.target.value as "all" | InboundMailbox)}
+            className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
+          >
+            <option value="all">전체 수신함</option>
+            {MAILBOXES.map((mailbox) => (
+              <option key={mailbox} value={mailbox}>
+                {mailboxLabels[mailbox]}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
+        <div className="mt-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
           {STATUSES.map((status) => (
             <div key={status} className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm">
               <p className="font-semibold text-stone-700">{statusLabels[status]}</p>
               <p className="text-lg font-black text-stone-900">
                 {statusSummary.find((item) => item.status === status)?.count || 0}
+              </p>
+            </div>
+          ))}
+          {MAILBOXES.map((mailbox) => (
+            <div key={mailbox} className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm">
+              <p className="font-semibold text-stone-700">{mailboxLabels[mailbox]}</p>
+              <p className="text-lg font-black text-stone-900">
+                {mailboxSummary.find((item) => item.mailbox === mailbox)?.count || 0}
               </p>
             </div>
           ))}
@@ -249,7 +294,7 @@ export default function AdminInboxPage() {
                   <p className="mt-1 truncate text-xs text-stone-500">{email.header_from || email.envelope_from}</p>
                 </div>
                 <span className="rounded-full border border-stone-200 px-2 py-1 text-[11px] font-bold uppercase text-stone-500">
-                  {statusLabels[email.status]}
+                  {mailboxLabels[email.mailbox]} · {statusLabels[email.status]}
                 </span>
               </div>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-stone-600">{email.body_preview || "-"}</p>
@@ -264,7 +309,7 @@ export default function AdminInboxPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">
-                    {selectedEmail.provider}
+                    {selectedEmail.provider} · {mailboxLabels[selectedEmail.mailbox]}
                   </p>
                   <h2 className="mt-2 text-2xl font-black text-stone-950">
                     {selectedEmail.subject || "(제목 없음)"}
@@ -300,6 +345,11 @@ export default function AdminInboxPage() {
               </div>
 
               <div className="grid gap-2 rounded-xl border border-stone-100 bg-stone-50 px-3 py-3 text-xs text-stone-600 md:grid-cols-2">
+                <p>
+                  <span className="font-bold text-stone-900">수신함</span>
+                  <br />
+                  {mailboxLabels[selectedEmail.mailbox]}
+                </p>
                 <p>
                   <span className="font-bold text-stone-900">봉투 발신자</span>
                   <br />

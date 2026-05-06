@@ -19,6 +19,7 @@ interface InboundAttachmentInput {
 
 interface InboundEmailPayload {
   provider?: unknown;
+  mailbox?: unknown;
   messageId?: unknown;
   envelope?: {
     from?: unknown;
@@ -47,6 +48,10 @@ interface ExistingEmailRow {
 const INBOUND_SECRET_HEADER = "x-hairfit-inbound-secret";
 const MAX_TEXT_LENGTH = 200_000;
 const MAX_HTML_LENGTH = 500_000;
+const MAILBOXES = ["support", "business", "general"] as const;
+type InboundMailbox = (typeof MAILBOXES)[number];
+const DEFAULT_BUSINESS_INBOUND_EMAIL = "busyness@hairfit.beauty";
+const DEFAULT_SUPPORT_INBOUND_EMAIL = "support@hairfit.beauty";
 
 function trimText(value: unknown, maxLength: number) {
   if (typeof value !== "string") {
@@ -102,6 +107,31 @@ function parseRawSize(value: unknown) {
   return Math.floor(rawSize);
 }
 
+function isInboundMailbox(value: unknown): value is InboundMailbox {
+  return typeof value === "string" && MAILBOXES.includes(value as InboundMailbox);
+}
+
+function configuredAddress(envValue: string | undefined, fallback: string) {
+  return envValue?.trim().toLowerCase() || fallback;
+}
+
+function resolveMailbox(value: unknown, envelopeTo: string): InboundMailbox {
+  const explicit = trimText(value, 40).toLowerCase();
+  if (isInboundMailbox(explicit)) {
+    return explicit;
+  }
+
+  if (envelopeTo === configuredAddress(process.env.BUSINESS_INBOUND_EMAIL, DEFAULT_BUSINESS_INBOUND_EMAIL)) {
+    return "business";
+  }
+
+  if (envelopeTo === configuredAddress(process.env.SUPPORT_INBOUND_EMAIL, DEFAULT_SUPPORT_INBOUND_EMAIL)) {
+    return "support";
+  }
+
+  return "general";
+}
+
 function parseAttachments(value: unknown): JsonValue[] {
   if (!Array.isArray(value)) {
     return [];
@@ -151,6 +181,7 @@ export async function POST(request: Request) {
   const provider = trimText(body.provider, 40) || "cloudflare";
   const envelopeFrom = trimText(body.envelope?.from, 320).toLowerCase();
   const envelopeTo = trimText(body.envelope?.to, 320).toLowerCase();
+  const mailbox = resolveMailbox(body.mailbox, envelopeTo);
   const headerFrom = trimText(body.headers?.from, 500) || null;
   const headerTo = toTextArray(body.headers?.to);
   const messageId = trimText(body.headers?.messageId, 500) || trimText(body.messageId, 500) || null;
@@ -198,6 +229,7 @@ export async function POST(request: Request) {
     .from("inbound_emails")
     .insert({
       provider,
+      mailbox,
       message_id: messageId,
       envelope_from: envelopeFrom,
       envelope_to: envelopeTo,

@@ -10,6 +10,8 @@
     "enabled": true
   },
   "vars": {
-    "APP_INBOUND_EMAIL_URL": "https://hairfit.beauty/api/email/inbound/cloudflare"
+    "APP_INBOUND_EMAIL_URL": "https://hairfit.beauty/api/email/inbound/cloudflare",
+    "BUSINESS_INBOUND_EMAIL": "busyness@hairfit.beauty",
+    "SUPPORT_INBOUND_EMAIL": "support@hairfit.beauty"
   }
 }

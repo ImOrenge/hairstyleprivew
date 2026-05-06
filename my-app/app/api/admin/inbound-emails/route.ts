@@ -3,11 +3,14 @@ import { getAdminApiContext } from "../../../../lib/admin-auth";
 import { trimText } from "../../../../lib/onboarding";
 
 const EMAIL_STATUSES = ["new", "read", "archived"] as const;
+const MAILBOXES = ["support", "business", "general"] as const;
 type EmailStatus = (typeof EMAIL_STATUSES)[number];
+type InboundMailbox = (typeof MAILBOXES)[number];
 
 interface InboundEmailRow {
   id: string;
   provider: string;
+  mailbox: InboundMailbox;
   message_id: string | null;
   envelope_from: string;
   envelope_to: string;
@@ -45,6 +48,10 @@ function isEmailStatus(value: unknown): value is EmailStatus {
   return typeof value === "string" && EMAIL_STATUSES.includes(value as EmailStatus);
 }
 
+function isInboundMailbox(value: unknown): value is InboundMailbox {
+  return typeof value === "string" && MAILBOXES.includes(value as InboundMailbox);
+}
+
 export async function GET(request: Request) {
   const context = await getAdminApiContext();
   if (!context.ok) {
@@ -54,12 +61,13 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const q = escapeSearchValue(trimText(url.searchParams.get("q"), 120));
   const status = url.searchParams.get("status");
+  const mailbox = url.searchParams.get("mailbox");
   const limit = parseLimit(url.searchParams.get("limit"));
 
   let query = context.supabase
     .from("inbound_emails")
     .select(
-      "id,provider,message_id,envelope_from,envelope_to,header_from,header_to,subject,text_body,html_body,body_preview,attachments,status,admin_note,in_reply_to,reference_ids,raw_size,received_at,created_at,updated_at",
+      "id,provider,mailbox,message_id,envelope_from,envelope_to,header_from,header_to,subject,text_body,html_body,body_preview,attachments,status,admin_note,in_reply_to,reference_ids,raw_size,received_at,created_at,updated_at",
       { count: "exact" },
     )
     .order("received_at", { ascending: false })
@@ -75,15 +83,24 @@ export async function GET(request: Request) {
     query = query.eq("status", status);
   }
 
+  if (isInboundMailbox(mailbox)) {
+    query = query.eq("mailbox", mailbox);
+  }
+
   const { data, error, count } = await query.returns<InboundEmailRow[]>();
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const { data: statusRows, error: statusError } = await context.supabase
+  let statusQuery = context.supabase
     .from("inbound_emails")
-    .select("status")
-    .returns<Array<{ status: EmailStatus }>>();
+    .select("status");
+
+  if (isInboundMailbox(mailbox)) {
+    statusQuery = statusQuery.eq("mailbox", mailbox);
+  }
+
+  const { data: statusRows, error: statusError } = await statusQuery.returns<Array<{ status: EmailStatus }>>();
 
   if (statusError) {
     return NextResponse.json({ error: statusError.message }, { status: 500 });
@@ -94,11 +111,31 @@ export async function GET(request: Request) {
     count: (statusRows || []).filter((item) => item.status === key).length,
   }));
 
+  let mailboxQuery = context.supabase
+    .from("inbound_emails")
+    .select("mailbox");
+
+  if (isEmailStatus(status)) {
+    mailboxQuery = mailboxQuery.eq("status", status);
+  }
+
+  const { data: mailboxRows, error: mailboxError } = await mailboxQuery.returns<Array<{ mailbox: InboundMailbox }>>();
+
+  if (mailboxError) {
+    return NextResponse.json({ error: mailboxError.message }, { status: 500 });
+  }
+
+  const mailboxSummary = MAILBOXES.map((key) => ({
+    mailbox: key,
+    count: (mailboxRows || []).filter((item) => item.mailbox === key).length,
+  }));
+
   return NextResponse.json(
     {
       emails: data || [],
       total: count ?? (data || []).length,
       statusSummary,
+      mailboxSummary,
       limit,
     },
     { status: 200 },
