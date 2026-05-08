@@ -292,7 +292,7 @@ const clerkAppMiddleware = hasClerkConfig
   })
   : null;
 
-const middleware = hasClerkConfig && clerkAppMiddleware
+const proxy = hasClerkConfig && clerkAppMiddleware
   ? (req: NextRequest, event: NextFetchEvent) => {
       return clerkAppMiddleware(req, event);
     }
@@ -308,7 +308,7 @@ const middleware = hasClerkConfig && clerkAppMiddleware
       return withMobileCors(req, clerkConfigRequiredResponse(req));
     };
 
-export default middleware;
+export default proxy;
 
 export const config = {
   matcher: [

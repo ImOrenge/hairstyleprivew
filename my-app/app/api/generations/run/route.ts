@@ -1,7 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { runAIEvaluation } from "../../../../lib/ai-evaluation";
 import { getGeminiImageModel, runGeminiImageGeneration } from "../../../../lib/gemini-image";
+import { uploadGenerationResultImage } from "../../../../lib/generation-image-storage";
 import { getPlanEntitlement } from "../../../../lib/plan-entitlements";
 import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { verifyPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
@@ -49,6 +51,7 @@ interface SupabaseRunClient {
       };
     };
   };
+  storage: SupabaseClient["storage"];
 }
 
 const uuidV4LikeRegex =
@@ -59,11 +62,6 @@ const INSUFFICIENT_CREDITS_MESSAGE =
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function createInlineGeneratedImagePath(providerRunId: string): string {
-  const safeId = providerRunId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  return `inline-output://${safeId}`;
 }
 
 function normalizeDesignerBrief(raw: unknown): HairDesignerBrief | null {
@@ -447,14 +445,26 @@ async function handlePost(request: Request) {
       console.error("[generations/run] AI evaluation failed", evaluationError);
     }
 
-    const generatedImagePath = createInlineGeneratedImagePath(result.id);
+    if (!outputUrl) {
+      throw new Error("Image generation completed without an output image");
+    }
+
+    const storedImage = await uploadGenerationResultImage(supabase, {
+      userId,
+      generationId,
+      variantId: targetVariant.id,
+      imageDataUrl: outputUrl,
+      previousPath: targetVariant.generatedImagePath,
+    });
+    const generatedImagePath = storedImage.path;
+    const signedOutputUrl = storedImage.signedUrl || outputUrl;
 
     await mergeRecommendationVariant(supabase, {
       generationId,
       variantId: targetVariant.id,
       variantPatch: {
         status: "completed",
-        outputUrl,
+        outputUrl: null,
         generatedImagePath,
         evaluation,
         error: null,
@@ -476,7 +486,7 @@ async function handlePost(request: Request) {
         variantIndex: resolvedVariantIndex,
         catalogItemId: targetVariant.catalogItemId || null,
         catalogCycleId: targetVariant.catalogCycleId || recommendationSet.catalogCycleId || null,
-        outputUrl,
+        outputUrl: signedOutputUrl,
         evaluation,
         generatedImagePath,
         chargedCredits,

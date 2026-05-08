@@ -145,7 +145,7 @@ export default async function MyPage({
         .limit(5),
       supabase
         .from<SubscriptionRow>("user_subscriptions")
-        .select("plan_key,status,current_period_end")
+        .select("plan_key,status,current_period_end,cancel_at_period_end,canceled_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(1)

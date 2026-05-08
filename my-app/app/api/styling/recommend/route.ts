@@ -113,7 +113,7 @@ export async function POST(request: Request) {
   if (!selectedVariant) {
     return NextResponse.json({ error: "선택한 헤어스타일을 찾을 수 없습니다." }, { status: 404 });
   }
-  if (!selectedVariant.outputUrl) {
+  if (!selectedVariant.outputUrl && !selectedVariant.generatedImagePath) {
     return NextResponse.json({ error: "선택한 헤어스타일 이미지가 아직 준비되지 않았습니다." }, { status: 409 });
   }
 

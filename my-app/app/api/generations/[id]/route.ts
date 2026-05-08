@@ -1,5 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveGenerationImageUrl } from "../../../../lib/generation-image-storage";
 import type { RecommendationSet } from "../../../../lib/recommendation-types";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 
@@ -55,6 +57,7 @@ async function loadGeneration(userId: string, id: string) {
         eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
       };
     };
+    storage: SupabaseClient["storage"];
   };
 
   const { data, error } = await supabase
@@ -79,6 +82,34 @@ async function loadGeneration(userId: string, id: string) {
   return { data, supabase };
 }
 
+async function withSignedVariantUrls(
+  supabase: { storage: SupabaseClient["storage"] },
+  recommendationSet: RecommendationSet | null,
+): Promise<RecommendationSet | null> {
+  if (!recommendationSet) {
+    return null;
+  }
+
+  const variants = await Promise.all(
+    recommendationSet.variants.map(async (variant) => ({
+      ...variant,
+      outputUrl:
+        (await resolveGenerationImageUrl(supabase, {
+          outputUrl: variant.outputUrl,
+          generatedImagePath: variant.generatedImagePath,
+        }).catch((error) => {
+          console.error("[generations/id] Failed to sign generation image", error);
+          return null;
+        })) ?? variant.outputUrl ?? null,
+    })),
+  );
+
+  return {
+    ...recommendationSet,
+    variants,
+  };
+}
+
 export async function GET(_request: Request, { params }: Params) {
   const { userId } = await auth();
   if (!userId) {
@@ -95,9 +126,10 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: loaded.error }, { status: loaded.status });
   }
 
-  const recommendationSet = normalizeRecommendationSet(
+  const rawRecommendationSet = normalizeRecommendationSet(
     isObject(loaded.data.options) ? loaded.data.options.recommendationSet : null,
   );
+  const recommendationSet = await withSignedVariantUrls(loaded.supabase, rawRecommendationSet);
   const selectedVariant = recommendationSet?.selectedVariantId
     ? recommendationSet.variants.find((variant) => variant.id === recommendationSet.selectedVariantId) || null
     : recommendationSet?.variants.find((variant) => variant.generatedImagePath) || null;

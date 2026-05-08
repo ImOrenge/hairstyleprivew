@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Clock3, LinkIcon, MessageSquarePlus, ScissorsLineDashed, Sparkles } from "lucide-react";
 import { Button } from "../ui/Button";
 import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
@@ -94,7 +94,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
     [aftercareTasks],
   );
 
-  async function loadDetails() {
+  const loadDetails = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -122,7 +122,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
     }
 
     setIsLoading(false);
-  }
+  }, [customerId]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -130,7 +130,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, [customerId]);
+  }, [loadDetails]);
 
   async function saveProfile() {
     if (isAdminReadOnly) {

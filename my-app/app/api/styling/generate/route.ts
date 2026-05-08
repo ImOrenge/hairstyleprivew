@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { FashionRecommendation } from "../../../../lib/fashion-types";
+import { downloadGenerationImageDataUrl } from "../../../../lib/generation-image-storage";
 import {
   dataUrlToBuffer,
   getOpenAIImageModel,
@@ -216,7 +217,7 @@ export async function POST(request: Request) {
     (variant) => variant.id === session.selected_variant_id,
   ) || null;
 
-  if (!selectedVariant?.outputUrl) {
+  if (!selectedVariant?.outputUrl && !selectedVariant?.generatedImagePath) {
     return NextResponse.json({ error: "선택한 헤어스타일 이미지가 아직 준비되지 않았습니다." }, { status: 409 });
   }
 
@@ -261,9 +262,17 @@ export async function POST(request: Request) {
       BODY_PHOTO_BUCKET,
       profile.bodyPhotoPath,
     );
+    const hairImageDataUrl = await downloadGenerationImageDataUrl(supabase, {
+      outputUrl: selectedVariant.outputUrl,
+      generatedImagePath: selectedVariant.generatedImagePath,
+    });
+    if (!hairImageDataUrl) {
+      throw new Error("선택한 헤어스타일 이미지를 불러오지 못했습니다.");
+    }
+
     const result = await runOpenAIOutfitGeneration({
       bodyImageDataUrl,
-      hairImageDataUrl: selectedVariant.outputUrl,
+      hairImageDataUrl,
       recommendation,
       profile,
       hairVariant: selectedVariant,

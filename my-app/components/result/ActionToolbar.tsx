@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ClipboardCheck, Download, FileText, RefreshCw, Scissors, Share2, Shirt } from "lucide-react";
+import { CalendarDays, ClipboardCheck, Download, FileDown, FileText, RefreshCw, Scissors, Share2, Shirt } from "lucide-react";
 import { useGenerationStore } from "../../store/useGenerationStore";
 import { Button } from "../ui/Button";
 
@@ -68,6 +68,8 @@ export function ActionToolbar({
 
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [serviceType, setServiceType] = useState<ServiceOptionValue>("cut");
@@ -133,6 +135,40 @@ export function ActionToolbar({
       }
     } finally {
       setIsDownloading(false);
+    }
+  };
+
+  const handleExportPackage = async () => {
+    if (!selectedVariantId || isExporting) return;
+
+    setIsExporting(true);
+    setExportError(null);
+
+    try {
+      const response = await fetch(`/api/generations/${encodeURIComponent(id)}/export`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ selectedVariantId }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error || "상담 시트를 생성하지 못했습니다.");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const disposition = response.headers.get("content-disposition") || "";
+      const filenameMatch = disposition.match(/filename="?([^"]+)"?/i);
+      const filename = filenameMatch?.[1] || `hairfit-consultation-${id}.html`;
+      triggerDownload(objectUrl, filename);
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : "상담 시트를 생성하지 못했습니다.");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -226,6 +262,16 @@ export function ActionToolbar({
 
             <Button
               variant="secondary"
+              onClick={handleExportPackage}
+              disabled={!selectedVariantId || isExporting}
+              className="flex h-11 min-w-[110px] items-center justify-center gap-2 rounded-[var(--app-radius-control)] sm:min-w-[130px]"
+            >
+              <FileDown className={isExporting ? "h-4 w-4 animate-pulse" : "h-4 w-4"} />
+              <span className="text-sm font-semibold">{isExporting ? "생성 중" : "상담 시트"}</span>
+            </Button>
+
+            <Button
+              variant="secondary"
               onClick={handleStartStyler}
               disabled={!selectedVariantId}
               className="flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-[var(--app-radius-control)] sm:min-w-[150px]"
@@ -255,6 +301,11 @@ export function ActionToolbar({
           {downloadError ? (
             <p className="mt-2 text-center text-xs font-semibold text-rose-500">
               {downloadError}
+            </p>
+          ) : null}
+          {exportError ? (
+            <p className="mt-2 text-center text-xs font-semibold text-rose-500">
+              {exportError}
             </p>
           ) : null}
         </div>

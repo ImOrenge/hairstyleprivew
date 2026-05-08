@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Clock3, Copy, LinkIcon, Plus, RefreshCw, Search, UserRound, UsersRound } from "lucide-react";
 import { Button } from "../ui/Button";
 import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
@@ -101,7 +101,7 @@ export function CustomerListClient() {
     return search ? `/api/salon/customers?${search}` : "/api/salon/customers";
   }, [query, source]);
 
-  async function loadCustomers() {
+  const loadCustomers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -117,9 +117,9 @@ export function CustomerListClient() {
     }
 
     setIsLoading(false);
-  }
+  }, [listUrl]);
 
-  async function loadInvite() {
+  const loadInvite = useCallback(async () => {
     setIsInviteLoading(true);
     const response = await fetch("/api/salon/matching/invite", { cache: "no-store" });
     const data = (await response.json().catch(() => ({}))) as MatchInviteResponse;
@@ -131,7 +131,7 @@ export function CustomerListClient() {
     }
 
     setIsInviteLoading(false);
-  }
+  }, []);
 
   async function createInvite() {
     if (isAdminReadOnly) {
@@ -168,7 +168,7 @@ export function CustomerListClient() {
     }
   }
 
-  async function loadCandidates() {
+  const loadCandidates = useCallback(async () => {
     setIsCandidateLoading(true);
 
     const params = new URLSearchParams({ status: "pending" });
@@ -186,7 +186,7 @@ export function CustomerListClient() {
     }
 
     setIsCandidateLoading(false);
-  }
+  }, [matchQuery]);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -194,7 +194,7 @@ export function CustomerListClient() {
     }, 180);
 
     return () => window.clearTimeout(timeout);
-  }, [listUrl]);
+  }, [loadCustomers]);
 
   useEffect(() => {
     if (!isRoleLoaded) {
@@ -215,7 +215,7 @@ export function CustomerListClient() {
     }, 0);
 
     return () => window.clearTimeout(timeout);
-  }, [isAdminReadOnly, isRoleLoaded]);
+  }, [isAdminReadOnly, isRoleLoaded, loadInvite]);
 
   useEffect(() => {
     if (!isRoleLoaded) {
@@ -236,7 +236,7 @@ export function CustomerListClient() {
     }, 180);
 
     return () => window.clearTimeout(timeout);
-  }, [isAdminReadOnly, isRoleLoaded, matchQuery]);
+  }, [isAdminReadOnly, isRoleLoaded, loadCandidates]);
 
   async function handleSubmit() {
     if (isSubmitting || isAdminReadOnly) {

@@ -17,6 +17,7 @@ import { PersonalColorResultDetails } from "../personal-color/PersonalColorResul
 import { AppPage, Panel, SurfaceCard } from "../ui/Surface";
 import { MemberGenderForm } from "./MemberGenderForm";
 import { StyleProfileForm } from "./StyleProfileForm";
+import { SubscriptionCancelButton } from "./SubscriptionCancelButton";
 
 export type MyPageTabId = "usage" | "plan" | "aftercare" | "personal-color" | "body-profile" | "account";
 
@@ -66,6 +67,8 @@ export interface SubscriptionRow {
   plan_key: string | null;
   status: string | null;
   current_period_end: string | null;
+  cancel_at_period_end?: boolean | null;
+  canceled_at?: string | null;
 }
 
 export interface MemberProfileRow {
@@ -160,6 +163,10 @@ function isActiveSubscription(subscription: SubscriptionRow | null) {
 
   const end = new Date(subscription.current_period_end);
   return Number.isNaN(end.getTime()) || end.getTime() >= Date.now();
+}
+
+function isCancellationScheduled(subscription: SubscriptionRow | null) {
+  return Boolean(subscription?.cancel_at_period_end);
 }
 
 function formatPlanLabel(planKey: string | null): string {
@@ -402,10 +409,15 @@ function UsagePanel({ generations }: { generations: GenerationRow[] }) {
 function PlanPanel({
   activePlan,
   payments,
+  subscription,
 }: {
   activePlan: string;
   payments: PaymentTransactionRow[];
+  subscription: SubscriptionRow | null;
 }) {
+  const activeSubscription = isActiveSubscription(subscription);
+  const cancellationScheduled = isCancellationScheduled(subscription);
+
   return (
     <Panel
       id="mypage-panel-plan"
@@ -419,6 +431,20 @@ function PlanPanel({
         <SurfaceCard className="px-4 py-3">
           <p className="text-xs font-bold uppercase text-[var(--app-muted)]">활성 플랜</p>
           <p className="mt-2 text-2xl font-black text-[var(--app-text)]">{activePlan}</p>
+          <div className="mt-3 grid gap-2 text-xs leading-5 text-[var(--app-muted)]">
+            <p>상태: {subscription?.status || "구독 없음"}</p>
+            <p>현재 기간 종료: {formatDay(subscription?.current_period_end)}</p>
+            {cancellationScheduled ? (
+              <p className="font-semibold text-rose-600">
+                해지 예약됨: {formatDay(subscription?.canceled_at ?? subscription?.current_period_end)}
+              </p>
+            ) : null}
+          </div>
+          {activeSubscription && !cancellationScheduled ? (
+            <div className="mt-4">
+              <SubscriptionCancelButton />
+            </div>
+          ) : null}
         </SurfaceCard>
 
         <div className="grid gap-3">
@@ -599,6 +625,7 @@ function ActiveTabPanel({
   payments,
   memberProfile,
   personalColor,
+  subscription,
   viewerName,
 }: {
   activePlan: string;
@@ -609,10 +636,11 @@ function ActiveTabPanel({
   payments: PaymentTransactionRow[];
   memberProfile: MemberProfileRow | null;
   personalColor: PersonalColorResult | null;
+  subscription: SubscriptionRow | null;
   viewerName: string;
 }) {
   if (activeTab === "plan") {
-    return <PlanPanel activePlan={activePlan} payments={payments} />;
+    return <PlanPanel activePlan={activePlan} payments={payments} subscription={subscription} />;
   }
 
   if (activeTab === "aftercare") {
@@ -726,6 +754,7 @@ export function MyPageDashboardTabs({
         payments={payments}
         memberProfile={memberProfile}
         personalColor={personalColor}
+        subscription={subscription}
         viewerName={viewerName}
       />
     </AppPage>
