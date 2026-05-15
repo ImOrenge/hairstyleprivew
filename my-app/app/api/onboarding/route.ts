@@ -111,18 +111,27 @@ function logOnboardingWarning(stage: string, context: OnboardingLogContext) {
   });
 }
 
+async function readAuthenticatedUserId(route: OnboardingRoute) {
+  try {
+    const { userId } = await auth();
+    return userId;
+  } catch (error) {
+    logOnboardingError("auth", error, { route, status: 401 });
+    return null;
+  }
+}
+
 async function ensureOnboardingUserProfile(
   userId: string,
   supabase: ServerSupabaseLike,
   route: OnboardingRoute,
 ) {
-  let user: Awaited<ReturnType<typeof currentUser>>;
+  let user: Awaited<ReturnType<typeof currentUser>> | null = null;
 
   try {
     user = await currentUser();
   } catch (error) {
     logOnboardingError("current_user", error, { route, userId });
-    throw error;
   }
 
   const fallbackEmail = `${userId}@placeholder.local`;
@@ -172,9 +181,10 @@ async function syncClerkOnboardingMetadata(
         onboardingComplete,
       },
     });
+    return true;
   } catch (error) {
     logOnboardingError("clerk_metadata_update", error, { route, userId, accountType, status: 500 });
-    throw error;
+    return false;
   }
 }
 
@@ -232,7 +242,7 @@ async function sendWelcomeEmailOnce({
 }
 
 export async function GET() {
-  const { userId } = await auth();
+  const userId = await readAuthenticatedUserId("GET");
   if (!userId) {
     return unauthorized("GET");
   }
@@ -242,7 +252,7 @@ export async function GET() {
     const ensured = await ensureOnboardingUserProfile(userId, supabase as unknown as ServerSupabaseLike, "GET");
 
     if (ensured.error) {
-      return NextResponse.json({ error: ensured.error.message }, { status: 500 });
+      logOnboardingWarning("ensure_user_profile_degraded_get", { route: "GET", userId, status: 200 });
     }
 
     const { data: userRow, error: userError } = await supabase
@@ -253,32 +263,50 @@ export async function GET() {
 
     if (userError) {
       logOnboardingError("supabase_users_select", userError, { route: "GET", userId, status: 500 });
-      return NextResponse.json({ error: userError.message }, { status: 500 });
-    }
-
-    const { data: memberProfile, error: memberError } = await supabase
-      .from("member_profiles")
-      .select("display_name, style_target, preferred_style_tone")
-      .eq("user_id", userId)
-      .maybeSingle<MemberProfileRow>();
-
-    if (memberError) {
-      logOnboardingError("supabase_member_profile_select", memberError, { route: "GET", userId, status: 500 });
-      return NextResponse.json({ error: memberError.message }, { status: 500 });
-    }
-
-    const { data: salonProfile, error: salonError } = await supabase
-      .from("salon_profiles")
-      .select("manager_name, shop_name, contact_phone, region, instagram_handle, introduction, business_registration_number, business_started_on, business_representative_name, business_status_code, business_status_label, business_verified_at")
-      .eq("user_id", userId)
-      .maybeSingle<SalonProfileRow>();
-
-    if (salonError) {
-      logOnboardingError("supabase_salon_profile_select", salonError, { route: "GET", userId, status: 500 });
-      return NextResponse.json({ error: salonError.message }, { status: 500 });
+      return NextResponse.json(
+        {
+          onboardingComplete: false,
+          accountType: null,
+          memberProfile: null,
+          salonProfile: null,
+          degraded: true,
+        },
+        { status: 200 },
+      );
     }
 
     const accountType = isAccountType(userRow?.account_type) ? userRow.account_type : null;
+    let memberProfile: MemberProfileRow | null = null;
+    let salonProfile: SalonProfileRow | null = null;
+
+    if (!accountType || accountType === "member") {
+      const { data, error } = await supabase
+        .from("member_profiles")
+        .select("display_name, style_target, preferred_style_tone")
+        .eq("user_id", userId)
+        .maybeSingle<MemberProfileRow>();
+
+      if (error) {
+        logOnboardingError("supabase_member_profile_select", error, { route: "GET", userId, status: 500 });
+      } else {
+        memberProfile = data;
+      }
+    }
+
+    if (!accountType || accountType === "salon_owner") {
+      const { data, error } = await supabase
+        .from("salon_profiles")
+        .select("manager_name, shop_name, contact_phone, region, instagram_handle, introduction, business_registration_number, business_started_on, business_representative_name, business_status_code, business_status_label, business_verified_at")
+        .eq("user_id", userId)
+        .maybeSingle<SalonProfileRow>();
+
+      if (error) {
+        logOnboardingError("supabase_salon_profile_select", error, { route: "GET", userId, status: 500 });
+      } else {
+        salonProfile = data;
+      }
+    }
+
     const memberStyleTarget = isMemberStyleTarget(memberProfile?.style_target)
       ? memberProfile.style_target
       : null;
@@ -325,13 +353,21 @@ export async function GET() {
     );
   } catch (error) {
     logOnboardingError("onboarding_get_unexpected", error, { route: "GET", userId, status: 500 });
-    const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        onboardingComplete: false,
+        accountType: null,
+        memberProfile: null,
+        salonProfile: null,
+        degraded: true,
+      },
+      { status: 200 },
+    );
   }
 }
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
+  const userId = await readAuthenticatedUserId("POST");
   if (!userId) {
     return unauthorized("POST");
   }
@@ -352,7 +388,7 @@ export async function POST(request: Request) {
     const ensured = await ensureOnboardingUserProfile(userId, supabase as unknown as ServerSupabaseLike, "POST");
 
     if (ensured.error) {
-      return NextResponse.json({ error: ensured.error.message }, { status: 500 });
+      logOnboardingWarning("ensure_user_profile_degraded_post", { route: "POST", userId, accountType, status: 200 });
     }
 
     const { data: welcomeUser, error: welcomeUserError } = await supabase
@@ -548,13 +584,17 @@ export async function POST(request: Request) {
     await syncClerkOnboardingMetadata(userId, accountType, true, "POST");
 
     if (shouldSendWelcomeEmail) {
-      await sendWelcomeEmailOnce({
-        supabase,
-        userId,
-        email: welcomeUser?.email,
-        displayName: welcomeDisplayName,
-        accountType,
-      });
+      try {
+        await sendWelcomeEmailOnce({
+          supabase,
+          userId,
+          email: welcomeUser?.email,
+          displayName: welcomeDisplayName,
+          accountType,
+        });
+      } catch (error) {
+        logOnboardingError("welcome_email_unexpected", error, { route: "POST", userId, accountType, status: 200 });
+      }
     }
 
     return NextResponse.json(
