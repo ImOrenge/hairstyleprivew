@@ -10,12 +10,19 @@ type LocalizedClerkProviderProps = {
   publishableKey: string;
 };
 
+const clerkRedirects = {
+  signInUrl: "/login",
+  signUpUrl: "/signup",
+  signInFallbackRedirectUrl: "/onboarding",
+  signUpFallbackRedirectUrl: "/onboarding?account_type=member&return_url=%2Fhome",
+} as const;
+
 export function LocalizedClerkProvider({ children, publishableKey }: LocalizedClerkProviderProps) {
   const locale = useLocaleStore((state) => state.locale);
   const localization = locale === "ko" ? koreanClerkLocalization : undefined;
 
   return (
-    <ClerkProvider publishableKey={publishableKey} localization={localization}>
+    <ClerkProvider publishableKey={publishableKey} localization={localization} {...clerkRedirects}>
       {children}
     </ClerkProvider>
   );

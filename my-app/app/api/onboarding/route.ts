@@ -1,7 +1,6 @@
-import { auth } from "@clerk/nextjs/server";
-import { clerkClient } from "@clerk/nextjs/server";
+import { auth, clerkClient, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { ensureCurrentUserProfile, type ServerSupabaseLike } from "../../../lib/style-profile-server";
+import type { ServerSupabaseLike } from "../../../lib/style-profile-server";
 import { getSupabaseAdminClient } from "../../../lib/supabase";
 import { sendWelcomeEmail } from "../../../lib/resend";
 import {
@@ -69,21 +68,118 @@ interface OnboardingRequestBody {
   returnUrl?: unknown;
 }
 
+type OnboardingRoute = "GET" | "POST";
+
+type OnboardingLogContext = {
+  route: OnboardingRoute;
+  userId?: string;
+  accountType?: AccountType | null;
+  status?: number;
+};
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return "Unexpected error";
+}
+
+function logOnboardingError(stage: string, error: unknown, context: OnboardingLogContext) {
+  console.error("[onboarding]", {
+    stage,
+    ...context,
+    error: errorMessage(error),
+  });
+}
+
+function logOnboardingWarning(stage: string, context: OnboardingLogContext) {
+  console.warn("[onboarding]", {
+    stage,
+    ...context,
+  });
+}
+
+async function ensureOnboardingUserProfile(
+  userId: string,
+  supabase: ServerSupabaseLike,
+  route: OnboardingRoute,
+) {
+  let user: Awaited<ReturnType<typeof currentUser>>;
+
+  try {
+    user = await currentUser();
+  } catch (error) {
+    logOnboardingError("current_user", error, { route, userId });
+    throw error;
+  }
+
+  const fallbackEmail = `${userId}@placeholder.local`;
+  const email =
+    user?.primaryEmailAddress?.emailAddress?.trim() ??
+    user?.emailAddresses?.[0]?.emailAddress?.trim() ??
+    fallbackEmail;
+  const displayName =
+    user?.fullName?.trim() ??
+    user?.firstName?.trim() ??
+    user?.username?.trim() ??
+    null;
+
+  const result = await supabase.rpc("ensure_user_profile", {
+    p_user_id: userId,
+    p_email: email,
+    p_display_name: displayName,
+  });
+
+  if (result.error) {
+    logOnboardingError("ensure_user_profile", result.error, { route, userId, status: 500 });
+    return result;
+  }
+
+  const avatarUrl = user?.imageUrl?.trim();
+  if (avatarUrl && !avatarUrl.includes("default-user-icon")) {
+    const { error } = await supabase.from("users").update({ avatar_url: avatarUrl }).eq("id", userId);
+    if (error) {
+      logOnboardingError("supabase_users_avatar_update", error, { route, userId, status: 500 });
+    }
+  }
+
+  return result;
+}
+
 async function syncClerkOnboardingMetadata(
   userId: string,
   accountType: AccountType,
   onboardingComplete: boolean,
+  route: OnboardingRoute,
 ) {
-  const client = await clerkClient();
-  await client.users.updateUserMetadata(userId, {
-    publicMetadata: {
-      accountType,
-      onboardingComplete,
-    },
-  });
+  try {
+    const client = await clerkClient();
+    await client.users.updateUserMetadata(userId, {
+      publicMetadata: {
+        accountType,
+        onboardingComplete,
+      },
+    });
+  } catch (error) {
+    logOnboardingError("clerk_metadata_update", error, { route, userId, accountType, status: 500 });
+    throw error;
+  }
 }
 
-function unauthorized() {
+function unauthorized(route: OnboardingRoute) {
+  logOnboardingWarning("auth_missing_session", { route, status: 401 });
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
@@ -138,12 +234,12 @@ async function sendWelcomeEmailOnce({
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
-    return unauthorized();
+    return unauthorized("GET");
   }
 
   try {
     const supabase = getSupabaseAdminClient();
-    const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
+    const ensured = await ensureOnboardingUserProfile(userId, supabase as unknown as ServerSupabaseLike, "GET");
 
     if (ensured.error) {
       return NextResponse.json({ error: ensured.error.message }, { status: 500 });
@@ -156,6 +252,7 @@ export async function GET() {
       .maybeSingle<OnboardingUserRow>();
 
     if (userError) {
+      logOnboardingError("supabase_users_select", userError, { route: "GET", userId, status: 500 });
       return NextResponse.json({ error: userError.message }, { status: 500 });
     }
 
@@ -166,6 +263,7 @@ export async function GET() {
       .maybeSingle<MemberProfileRow>();
 
     if (memberError) {
+      logOnboardingError("supabase_member_profile_select", memberError, { route: "GET", userId, status: 500 });
       return NextResponse.json({ error: memberError.message }, { status: 500 });
     }
 
@@ -176,6 +274,7 @@ export async function GET() {
       .maybeSingle<SalonProfileRow>();
 
     if (salonError) {
+      logOnboardingError("supabase_salon_profile_select", salonError, { route: "GET", userId, status: 500 });
       return NextResponse.json({ error: salonError.message }, { status: 500 });
     }
 
@@ -191,7 +290,7 @@ export async function GET() {
       );
 
     if (accountType) {
-      await syncClerkOnboardingMetadata(userId, accountType, onboardingComplete);
+      await syncClerkOnboardingMetadata(userId, accountType, onboardingComplete, "GET");
     }
 
     return NextResponse.json(
@@ -225,6 +324,7 @@ export async function GET() {
       { status: 200 },
     );
   } catch (error) {
+    logOnboardingError("onboarding_get_unexpected", error, { route: "GET", userId, status: 500 });
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
@@ -233,7 +333,7 @@ export async function GET() {
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
-    return unauthorized();
+    return unauthorized("POST");
   }
 
   const body = (await request.json().catch(() => ({}))) as OnboardingRequestBody;
@@ -249,7 +349,7 @@ export async function POST(request: Request) {
 
   try {
     const supabase = getSupabaseAdminClient();
-    const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
+    const ensured = await ensureOnboardingUserProfile(userId, supabase as unknown as ServerSupabaseLike, "POST");
 
     if (ensured.error) {
       return NextResponse.json({ error: ensured.error.message }, { status: 500 });
@@ -262,6 +362,12 @@ export async function POST(request: Request) {
       .maybeSingle<OnboardingWelcomeUserRow>();
 
     if (welcomeUserError) {
+      logOnboardingError("supabase_welcome_user_select", welcomeUserError, {
+        route: "POST",
+        userId,
+        accountType,
+        status: 500,
+      });
       return NextResponse.json({ error: welcomeUserError.message }, { status: 500 });
     }
 
@@ -299,6 +405,12 @@ export async function POST(request: Request) {
       );
 
       if (memberError) {
+        logOnboardingError("supabase_member_profile_upsert", memberError, {
+          route: "POST",
+          userId,
+          accountType,
+          status: 500,
+        });
         return NextResponse.json({ error: memberError.message }, { status: 500 });
       }
 
@@ -308,6 +420,12 @@ export async function POST(request: Request) {
         .eq("user_id", userId);
 
       if (deleteSalonError) {
+        logOnboardingError("supabase_salon_profile_delete", deleteSalonError, {
+          route: "POST",
+          userId,
+          accountType,
+          status: 500,
+        });
         return NextResponse.json({ error: deleteSalonError.message }, { status: 500 });
       }
 
@@ -321,6 +439,12 @@ export async function POST(request: Request) {
         .eq("id", userId);
 
       if (userError) {
+        logOnboardingError("supabase_users_update_member", userError, {
+          route: "POST",
+          userId,
+          accountType,
+          status: 500,
+        });
         return NextResponse.json({ error: userError.message }, { status: 500 });
       }
     }
@@ -377,6 +501,12 @@ export async function POST(request: Request) {
       );
 
       if (salonError) {
+        logOnboardingError("supabase_salon_profile_upsert", salonError, {
+          route: "POST",
+          userId,
+          accountType,
+          status: 500,
+        });
         return NextResponse.json({ error: salonError.message }, { status: 500 });
       }
 
@@ -386,6 +516,12 @@ export async function POST(request: Request) {
         .eq("user_id", userId);
 
       if (deleteMemberError) {
+        logOnboardingError("supabase_member_profile_delete", deleteMemberError, {
+          route: "POST",
+          userId,
+          accountType,
+          status: 500,
+        });
         return NextResponse.json({ error: deleteMemberError.message }, { status: 500 });
       }
 
@@ -399,11 +535,17 @@ export async function POST(request: Request) {
         .eq("id", userId);
 
       if (userError) {
+        logOnboardingError("supabase_users_update_salon", userError, {
+          route: "POST",
+          userId,
+          accountType,
+          status: 500,
+        });
         return NextResponse.json({ error: userError.message }, { status: 500 });
       }
     }
 
-    await syncClerkOnboardingMetadata(userId, accountType, true);
+    await syncClerkOnboardingMetadata(userId, accountType, true, "POST");
 
     if (shouldSendWelcomeEmail) {
       await sendWelcomeEmailOnce({
@@ -424,6 +566,7 @@ export async function POST(request: Request) {
       { status: 200 },
     );
   } catch (error) {
+    logOnboardingError("onboarding_post_unexpected", error, { route: "POST", userId, accountType, status: 500 });
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
