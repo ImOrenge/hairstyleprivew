@@ -20,6 +20,7 @@ interface MobileBootstrap {
   credits: number;
   planKey: string | null;
   services: MobileServiceKey[];
+  degraded?: boolean;
 }
 
 interface MobileUserRow {
@@ -32,6 +33,40 @@ interface MobileUserRow {
 
 interface MobileMemberProfileRow {
   style_target: unknown;
+}
+
+function errorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+
+  if (typeof error === "string" && error.trim()) {
+    return error;
+  }
+
+  return "Unexpected error";
+}
+
+function logMobileAuthWarning(stage: string, details: Record<string, unknown>) {
+  console.warn("[mobile-auth]", {
+    stage,
+    ...details,
+  });
+}
+
+function logMobileAuthError(stage: string, error: unknown, details: Record<string, unknown>) {
+  console.error("[mobile-auth]", {
+    stage,
+    ...details,
+    error: errorMessage(error),
+  });
 }
 
 function getMobileCorsHeaders(request?: Request) {
@@ -90,7 +125,14 @@ function forbiddenForService(service: MobileServiceKey) {
 }
 
 export async function getMobileApiContext(request?: Request) {
-  const { userId } = await auth({ acceptsToken: "session_token" });
+  let userId: string | null = null;
+  try {
+    const authState = await auth({ acceptsToken: "session_token" });
+    userId = authState.userId;
+  } catch (error) {
+    logMobileAuthError("auth", error, { status: 401 });
+  }
+
   if (!userId) {
     return {
       ok: false as const,
@@ -106,45 +148,67 @@ export async function getMobileApiContext(request?: Request) {
   }
 
   const supabase = getSupabaseAdminClient();
-  const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
+  let degraded = false;
 
-  if (ensured.error) {
-    return {
-      ok: false as const,
-      response: mobileJsonResponse(request, { error: ensured.error.message }, { status: 500 }),
-    };
+  try {
+    const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
+    if (ensured.error) {
+      degraded = true;
+      logMobileAuthWarning("ensure_user_profile_degraded", { userId, error: ensured.error.message });
+    }
+  } catch (error) {
+    degraded = true;
+    logMobileAuthError("ensure_user_profile_unexpected", error, { userId });
   }
 
-  const [{ data, error }, { data: memberProfile, error: memberProfileError }, clerkUser] = await Promise.all([
-    supabase
+  let data: MobileUserRow | null = null;
+  try {
+    const result = await supabase
       .from("users")
       .select("account_type,onboarding_completed_at,credits,display_name,email")
       .eq("id", userId)
-      .maybeSingle<MobileUserRow>(),
-    supabase
-      .from("member_profiles")
-      .select("style_target")
-      .eq("user_id", userId)
-      .maybeSingle<MobileMemberProfileRow>(),
-    (async () => {
-      const client = await clerkClient();
-      return client.users.getUser(userId).catch(() => null);
-    })(),
-  ]);
+      .maybeSingle<MobileUserRow>();
 
-  if (error) {
-    return {
-      ok: false as const,
-      response: mobileJsonResponse(request, { error: error.message }, { status: 500 }),
-    };
+    if (result.error) {
+      degraded = true;
+      logMobileAuthError("supabase_users_select", result.error, { userId });
+    } else {
+      data = result.data;
+    }
+  } catch (error) {
+    degraded = true;
+    logMobileAuthError("supabase_users_select_unexpected", error, { userId });
   }
 
   const accountType = isAccountType(data?.account_type) ? data.account_type : null;
-  if (memberProfileError) {
-    return {
-      ok: false as const,
-      response: mobileJsonResponse(request, { error: memberProfileError.message }, { status: 500 }),
-    };
+  let memberProfile: MobileMemberProfileRow | null = null;
+  if (!accountType || accountType === "member") {
+    try {
+      const result = await supabase
+        .from("member_profiles")
+        .select("style_target")
+        .eq("user_id", userId)
+        .maybeSingle<MobileMemberProfileRow>();
+
+      if (result.error) {
+        degraded = true;
+        logMobileAuthError("supabase_member_profile_select", result.error, { userId });
+      } else {
+        memberProfile = result.data;
+      }
+    } catch (error) {
+      degraded = true;
+      logMobileAuthError("supabase_member_profile_select_unexpected", error, { userId });
+    }
+  }
+
+  let clerkUser: Awaited<ReturnType<Awaited<ReturnType<typeof clerkClient>>["users"]["getUser"]>> | null = null;
+  try {
+    const client = await clerkClient();
+    clerkUser = await client.users.getUser(userId);
+  } catch (error) {
+    degraded = true;
+    logMobileAuthError("clerk_user_get", error, { userId });
   }
 
   const styleTarget = isMemberStyleTarget(memberProfile?.style_target) ? memberProfile.style_target : null;
@@ -165,7 +229,13 @@ export async function getMobileApiContext(request?: Request) {
     clerkUser?.username?.trim() ||
     data?.display_name ||
     null;
-  const planKey = await getActivePlan(supabase as never, userId);
+  let planKey: string | null = null;
+  try {
+    planKey = await getActivePlan(supabase as never, userId);
+  } catch (error) {
+    degraded = true;
+    logMobileAuthError("active_plan", error, { userId });
+  }
 
   const bootstrap: MobileBootstrap = {
     userId,
@@ -177,6 +247,7 @@ export async function getMobileApiContext(request?: Request) {
     credits: Number.isInteger(data?.credits) ? Number(data?.credits) : 0,
     planKey,
     services: servicesForAccount(accountType),
+    degraded: degraded || undefined,
   };
 
   return {

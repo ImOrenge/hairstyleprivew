@@ -1,6 +1,6 @@
 import { useUser } from "@clerk/clerk-expo";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BodyText, Button, Card, Heading, Kicker, Panel, Screen, Stack, TextField } from "@hairfit/ui-native";
 import { useHairfitApi } from "../lib/api";
 
@@ -20,8 +20,54 @@ export default function OnboardingScreen() {
   const [displayName, setDisplayName] = useState(user?.fullName || user?.firstName || "");
   const [styleTarget, setStyleTarget] = useState<StyleTarget | null>(null);
   const [preferredStyleTone, setPreferredStyleTone] = useState<StyleTone>("natural");
+  const [isLoading, setIsLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadOnboardingStatus() {
+      setIsLoading(true);
+      setMessage(null);
+
+      try {
+        const status = await api.getOnboardingStatus();
+        if (!active) {
+          return;
+        }
+
+        if (status.onboardingComplete) {
+          router.replace("/");
+          return;
+        }
+
+        if (status.memberProfile) {
+          setDisplayName((current) => status.memberProfile?.displayName || current);
+          setStyleTarget(status.memberProfile.styleTarget || null);
+          setPreferredStyleTone(status.memberProfile.preferredStyleTone || "natural");
+        }
+
+        if (status.degraded) {
+          setMessage("Account status is partially unavailable. You can still complete setup.");
+        }
+      } catch (error) {
+        if (active) {
+          setMessage(error instanceof Error ? error.message : "Failed to load onboarding status.");
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadOnboardingStatus();
+
+    return () => {
+      active = false;
+    };
+  }, [api, router]);
 
   const submit = async () => {
     if (!displayName.trim() || !styleTarget || pending) return;
@@ -41,6 +87,16 @@ export default function OnboardingScreen() {
       setPending(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <Screen>
+        <Panel>
+          <BodyText>Preparing account setup...</BodyText>
+        </Panel>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>

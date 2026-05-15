@@ -20,6 +20,7 @@ export interface MobileBootstrap {
   credits: number;
   planKey: string | null;
   services: MobileServiceKey[];
+  degraded?: boolean;
 }
 
 export interface MobileDashboardGeneration {

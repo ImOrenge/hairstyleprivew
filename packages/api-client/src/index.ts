@@ -28,6 +28,20 @@ export interface ApiRequestOptions extends RequestInit {
   auth?: boolean;
 }
 
+export interface OnboardingStatus {
+  onboardingComplete: boolean;
+  accountType: MobileBootstrap["accountType"];
+  memberProfile?: {
+    displayName?: string;
+    styleTarget?: MemberStyleTarget | null;
+    preferredStyleTone?: "natural" | "trendy" | "soft" | "bold";
+  } | null;
+  salonProfile?: Record<string, unknown> | null;
+  redirectTo?: string;
+  degraded?: boolean;
+  error?: string;
+}
+
 export class HairfitApiError extends Error {
   readonly status: number;
   readonly payload: unknown;
@@ -90,6 +104,10 @@ export class HairfitApiClient {
 
   getMobileMe() {
     return this.request<MobileBootstrap>("/api/mobile/me");
+  }
+
+  getOnboardingStatus() {
+    return this.request<OnboardingStatus>("/api/onboarding");
   }
 
   getMobileDashboard(service: "customer" | "salon" | "admin", options: { range?: 7 | 30 | 90 } = {}) {
