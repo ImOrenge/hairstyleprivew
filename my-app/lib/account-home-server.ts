@@ -10,6 +10,28 @@ interface AccountHomeRow {
   onboarding_completed_at?: string | null;
 }
 
+type ClerkCurrentUser = Awaited<ReturnType<typeof currentUser>>;
+
+function errorLogDetails(error: unknown) {
+  return {
+    name: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? error.message : String(error),
+  };
+}
+
+async function loadCurrentUserForAccountHome(userId: string): Promise<ClerkCurrentUser | null> {
+  try {
+    return await currentUser();
+  } catch (error) {
+    console.error("[account-home] Failed to read Clerk currentUser:", {
+      stage: "auth_current_user",
+      userId,
+      ...errorLogDetails(error),
+    });
+    return null;
+  }
+}
+
 export function getAccountHomeHref(accountType: AccountType | null, onboardingComplete: boolean) {
   if (!onboardingComplete || !accountType) {
     return "/onboarding";
@@ -53,7 +75,7 @@ async function loadDbAccountHome(userId: string) {
 
 export async function resolveSignedInAccountHomeHref(userId: string) {
   const [user, dbAccount] = await Promise.all([
-    currentUser(),
+    loadCurrentUserForAccountHome(userId),
     loadDbAccountHome(userId),
   ]);
 

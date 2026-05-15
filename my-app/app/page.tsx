@@ -70,6 +70,20 @@ async function loadSocialProofFromProductionClerk(): Promise<HomeSocialProof> {
   }
 }
 
+async function resolveLandingSignedInRedirectHref() {
+  if (!getClerkConfigState().canUseClerkServer) {
+    return null;
+  }
+
+  try {
+    const { userId } = await auth();
+    return userId ? await resolveSignedInAccountHomeHref(userId) : null;
+  } catch (error) {
+    console.error("[landing] Failed to resolve signed-in redirect:", error);
+    return null;
+  }
+}
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: homeSeo.title,
@@ -227,11 +241,9 @@ function MobileStickyCtaBar() {
 }
 
 export default async function HomePage() {
-  if (getClerkConfigState().canUseClerkServer) {
-    const { userId } = await auth();
-    if (userId) {
-      redirect(await resolveSignedInAccountHomeHref(userId));
-    }
+  const signedInRedirectHref = await resolveLandingSignedInRedirectHref();
+  if (signedInRedirectHref) {
+    redirect(signedInRedirectHref);
   }
 
   const faqs = await loadPublishedSupportFaqs();

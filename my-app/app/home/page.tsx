@@ -200,35 +200,78 @@ function EmptyCard({ href, label, title }: { href: string; label: string; title:
   );
 }
 
+type ClerkCurrentUser = Awaited<ReturnType<typeof currentUser>>;
+
+function errorLogDetails(error: unknown) {
+  return {
+    name: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? error.message : String(error),
+  };
+}
+
+function logDashboardLoadFailure(stage: string, userId: string, error: unknown) {
+  console.error("[home/page] Failed to load authenticated dashboard data:", {
+    stage,
+    userId,
+    ...errorLogDetails(error),
+  });
+}
+
+async function loadHomeCurrentUser(userId: string): Promise<ClerkCurrentUser | null> {
+  try {
+    return await currentUser();
+  } catch (error) {
+    logDashboardLoadFailure("auth_current_user", userId, error);
+    return null;
+  }
+}
+
 async function loadDashboard(userId: string) {
-  const clerkUser = await currentUser();
+  const clerkUser = await loadHomeCurrentUser(userId);
   const metadata = parseOnboardingMetadata(clerkUser?.publicMetadata);
   let userRow: UserRow | null = null;
   let dashboard = emptyDashboard;
 
   if (isSupabaseConfigured()) {
-    const supabase = getSupabaseAdminClient();
-    const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
-    if (ensured.error) {
-      throw new Error(ensured.error.message);
+    try {
+      const supabase = getSupabaseAdminClient();
+      const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
+      if (ensured.error) {
+        logDashboardLoadFailure("ensure_user_profile", userId, ensured.error);
+      }
+
+      const { data, error } = await supabase
+        .from("users")
+        .select("account_type,onboarding_completed_at,credits,display_name,email")
+        .eq("id", userId)
+        .maybeSingle<UserRow>();
+
+      if (error) {
+        logDashboardLoadFailure("users_select", userId, error);
+      } else {
+        userRow = data;
+      }
+
+      const credits = Number.isInteger(userRow?.credits) ? Number(userRow?.credits) : 0;
+      let planKey: CustomerHomeDashboard["planKey"] = null;
+      try {
+        planKey = await getActivePlan(supabase as never, userId);
+      } catch (error) {
+        logDashboardLoadFailure("active_plan", userId, error);
+      }
+
+      dashboard = { ...emptyDashboard, credits, planKey };
+      try {
+        dashboard = await loadCustomerHomeDashboard(supabase as never, userId, {
+          credits,
+          planKey,
+        });
+      } catch (error) {
+        logDashboardLoadFailure("customer_home_dashboard", userId, error);
+      }
+    } catch (error) {
+      logDashboardLoadFailure("supabase_bootstrap", userId, error);
     }
-
-    const { data, error } = await supabase
-      .from("users")
-      .select("account_type,onboarding_completed_at,credits,display_name,email")
-      .eq("id", userId)
-      .maybeSingle<UserRow>();
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    userRow = data;
-    const planKey = await getActivePlan(supabase as never, userId);
-    dashboard = await loadCustomerHomeDashboard(supabase as never, userId, {
-      credits: Number.isInteger(data?.credits) ? Number(data?.credits) : 0,
-      planKey,
-    });
   }
 
   const dbAccountType = isAccountType(userRow?.account_type) ? userRow.account_type : null;

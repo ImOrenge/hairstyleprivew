@@ -18,6 +18,16 @@ function pickFirst(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
+async function readOnboardingUserId() {
+  try {
+    const { userId } = await auth();
+    return userId;
+  } catch (error) {
+    console.error("[onboarding/page] Failed to read Clerk auth:", error);
+    return null;
+  }
+}
+
 export default async function OnboardingPage({
   searchParams,
 }: {
@@ -32,7 +42,7 @@ export default async function OnboardingPage({
     ? `/onboarding?account_type=${encodeURIComponent(forcedAccountType)}&return_url=${encodeURIComponent(returnUrl)}`
     : "/onboarding";
 
-  const { userId } = await auth();
+  const userId = await readOnboardingUserId();
   if (!userId) {
     redirect(buildSignInRedirectUrl(signInTarget));
   }

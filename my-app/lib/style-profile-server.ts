@@ -46,8 +46,30 @@ export interface ServerSupabaseLike {
   storage: SupabaseClient["storage"];
 }
 
+type ClerkCurrentUser = Awaited<ReturnType<typeof currentUser>>;
+
+function errorLogDetails(error: unknown) {
+  return {
+    name: error instanceof Error ? error.name : typeof error,
+    message: error instanceof Error ? error.message : String(error),
+  };
+}
+
+async function loadCurrentUserForProfile(userId: string): Promise<ClerkCurrentUser | null> {
+  try {
+    return await currentUser();
+  } catch (error) {
+    console.error("[style-profile] currentUser failed during ensure_user_profile", {
+      stage: "auth_current_user",
+      userId,
+      ...errorLogDetails(error),
+    });
+    return null;
+  }
+}
+
 export async function ensureCurrentUserProfile(userId: string, supabase: ServerSupabaseLike) {
-  const user = await currentUser();
+  const user = await loadCurrentUserForProfile(userId);
   const fallbackEmail = `${userId}@placeholder.local`;
   const email =
     user?.primaryEmailAddress?.emailAddress?.trim() ??
