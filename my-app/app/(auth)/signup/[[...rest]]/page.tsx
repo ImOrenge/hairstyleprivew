@@ -47,6 +47,7 @@ export default function SignupPage() {
       <SignUp
         path="/signup"
         signInUrl="/login"
+        oauthFlow="redirect"
         fallbackRedirectUrl="/onboarding?account_type=member&return_url=%2Fhome"
         appearance={clerkAppearance}
       />

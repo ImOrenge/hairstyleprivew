@@ -122,6 +122,7 @@ Clerk note:
 - `pk_live_` keys are domain-restricted and will not render Clerk widgets on localhost.
 - Production builds must use `pk_live_` / `sk_live_` keys. The app treats Clerk test keys as unconfigured when `NODE_ENV=production` so deployments cannot silently run against a development Clerk instance. On Cloudflare, set `CLERK_PUBLISHABLE_KEY=pk_live_...` so the runtime can override a local test `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` from `.env.local`.
 - Confirm `CLERK_SECRET_KEY` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` come from the same live Clerk instance. A mismatched live key pair can render the sign-in widget but fail after authentication.
+- Google OAuth uses Clerk's redirect flow in the app. In the Clerk and Google OAuth dashboards, confirm the live social connection is enabled for the production Clerk instance and the production domain/callback URLs for `hairfit.beauty` and `clerk.hairfit.beauty` are allowed.
 - The landing user count reads only live Clerk data. In non-production environments, set `CLERK_SOCIAL_PROOF_SECRET_KEY=sk_live_...` if the production count should appear; test keys are ignored.
 
 Optional pricing and prompt env:

@@ -47,6 +47,7 @@ export default function B2BSignupPage() {
       <SignUp
         path="/b2b/signup"
         signInUrl="/login"
+        oauthFlow="redirect"
         fallbackRedirectUrl="/onboarding?account_type=salon_owner&return_url=%2Fsalon%2Fcustomers"
         appearance={clerkAppearance}
       />
