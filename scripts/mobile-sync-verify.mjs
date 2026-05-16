@@ -40,13 +40,13 @@ const expectedRoutes = [
   {
     route: "/salon/customers",
     file: "apps/hairfit-app/app/salon/customers/index.tsx",
-    markers: ['getMobileDashboard("salon")', 'useState<"all" | "manual" | "linked_member">', "filteredCustomers"],
+    markers: ["listSalonCustomers", "pendingAftercare", "/salon/customers/"],
   },
   { route: "/admin", file: "apps/hairfit-app/app/admin/index.tsx", markers: ['getMobileDashboard("admin")', 'router.push("/admin/stats")'] },
   {
     route: "/admin/stats",
     file: "apps/hairfit-app/app/admin/stats.tsx",
-    markers: ['getMobileDashboard("admin")', "daily.slice(-7)", "maxDaily", "DimensionValue"],
+    markers: ['getMobileDashboard("admin", { range })', "daily.map", "maxDaily", "DimensionValue"],
   },
 ];
 
@@ -56,7 +56,7 @@ const expectedApiContracts = [
     route: "/api/mobile/dashboard",
     file: "my-app/app/api/mobile/dashboard/route.ts",
     clientMethod: "getMobileDashboard",
-    clientPath: "/api/mobile/dashboard?service=",
+    clientPath: "/api/mobile/dashboard?${params.toString()}",
   },
   {
     route: "/api/mobile/payments/prepare",

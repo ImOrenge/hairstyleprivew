@@ -2,6 +2,7 @@ import { useAuth } from "@clerk/clerk-expo";
 import { HairfitApiClient } from "@hairfit/api-client";
 import Constants from "expo-constants";
 import { useMemo } from "react";
+import { Platform } from "react-native";
 
 function readApiBaseUrl() {
   const fromEnv = process.env.EXPO_PUBLIC_API_BASE_URL?.trim();
@@ -9,7 +10,11 @@ function readApiBaseUrl() {
     ? Constants.expoConfig.extra.apiBaseUrl.trim()
     : "";
 
-  return fromEnv || fromExtra || "http://localhost:3000";
+  if (fromEnv || fromExtra) {
+    return fromEnv || fromExtra;
+  }
+
+  return Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://localhost:3000";
 }
 
 export function useHairfitApi() {

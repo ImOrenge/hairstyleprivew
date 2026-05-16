@@ -1,5 +1,5 @@
 import { useAuth } from "@clerk/clerk-expo";
-import type { MobileDashboard } from "@hairfit/shared";
+import type { SalonAftercareTask, SalonCustomer } from "@hairfit/api-client";
 import {
   BodyText,
   Button,
@@ -17,8 +17,14 @@ import {
   TextField,
 } from "@hairfit/ui-native";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useHairfitApi } from "../../../lib/api";
+
+const sourceFilters: Array<{ label: string; value: "" | "manual" | "linked_member" }> = [
+  { label: "전체", value: "" },
+  { label: "수기 등록", value: "manual" },
+  { label: "회원 연결", value: "linked_member" },
+];
 
 const emptySummary = {
   totalCustomers: 0,
@@ -29,87 +35,99 @@ const emptySummary = {
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "-";
-
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-
-  return date.toLocaleDateString("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-  });
+  return date.toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit" });
 }
 
-function sourceLabel(customer: { email: string | null }) {
-  return customer.email ? "회원 연결" : "수기 등록";
+function sourceLabel(customer: SalonCustomer) {
+  return customer.isLinkedMember ? "회원 연결" : "수기 등록";
+}
+
+function CustomerCard({ customer }: { customer: SalonCustomer }) {
+  const router = useRouter();
+
+  return (
+    <Card>
+      <Stack gap={10}>
+        <Cluster>
+          <Chip tone={customer.isLinkedMember ? "success" : "neutral"}>{sourceLabel(customer)}</Chip>
+          <Chip>최근 수정 {formatDate(customer.updatedAt)}</Chip>
+          {customer.styleTarget ? <Chip>{customer.styleTarget === "male" ? "남성" : "여성"}</Chip> : null}
+        </Cluster>
+        <Heading style={{ fontSize: 20, lineHeight: 26 }}>{customer.name}</Heading>
+        <BodyText>{customer.phone || customer.email || "연락처 없음"}</BodyText>
+        {customer.memo ? <BodyText>{customer.memo}</BodyText> : null}
+        <BodyText>다음 애프터케어 {formatDate(customer.nextFollowUpAt)}</BodyText>
+        <Button variant="secondary" onPress={() => router.push(`/salon/customers/${encodeURIComponent(customer.id)}`)}>
+          상세 열기
+        </Button>
+      </Stack>
+    </Card>
+  );
+}
+
+function AftercareTaskCard({ task }: { task: SalonAftercareTask }) {
+  return (
+    <Card>
+      <Stack gap={8}>
+        <Cluster>
+          <Chip tone={task.status === "pending" ? "accent" : "neutral"}>{task.status}</Chip>
+          <Chip>{task.channel}</Chip>
+          <Chip>{formatDate(task.scheduledFor)}</Chip>
+        </Cluster>
+        <BodyText>{task.note || "메모 없음"}</BodyText>
+      </Stack>
+    </Card>
+  );
 }
 
 export default function SalonCustomersScreen() {
   const router = useRouter();
   const api = useHairfitApi();
   const { isLoaded, isSignedIn } = useAuth();
-  const [dashboard, setDashboard] = useState<Extract<MobileDashboard, { service: "salon" }> | null>(null);
-  const [isAdminReadOnly, setIsAdminReadOnly] = useState(false);
+  const [customers, setCustomers] = useState<SalonCustomer[]>([]);
+  const [pendingAftercare, setPendingAftercare] = useState<SalonAftercareTask[]>([]);
+  const [summary, setSummary] = useState(emptySummary);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [source, setSource] = useState<"all" | "manual" | "linked_member">("all");
+  const [source, setSource] = useState<"" | "manual" | "linked_member">("");
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      if (!isLoaded) return;
-      if (!isSignedIn) {
-        setDashboard(null);
-        setError("살롱 오너 계정으로 로그인하면 CRM을 확인할 수 있습니다.");
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setError(null);
-        const [me, result] = await Promise.all([api.getMobileMe(), api.getMobileDashboard("salon")]);
-        if (!cancelled && result.service === "salon") {
-          setDashboard(result);
-          setIsAdminReadOnly(false);
-          if (me.accountType === "admin") {
-            setError("Salon owner account required");
-          }
-        }
-      } catch (loadError) {
-        if (!cancelled) {
-          setDashboard(null);
-          setError(loadError instanceof Error ? loadError.message : "고객 목록을 불러오지 못했습니다.");
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
+  const load = async () => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setCustomers([]);
+      setPendingAftercare([]);
+      setSummary(emptySummary);
+      setError("살롱 오너 계정으로 로그인하면 CRM을 확인할 수 있습니다.");
+      setIsLoading(false);
+      return;
     }
 
+    setIsLoading(true);
+    setError(null);
+    try {
+      const result = await api.listSalonCustomers({
+        q: query.trim() || undefined,
+        source: source || undefined,
+      });
+      setCustomers(result.customers);
+      setPendingAftercare(result.pendingAftercare);
+      setSummary(result.summary);
+    } catch (loadError) {
+      setCustomers([]);
+      setPendingAftercare([]);
+      setSummary(emptySummary);
+      setError(loadError instanceof Error ? loadError.message : "고객 목록을 불러오지 못했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [api, isLoaded, isSignedIn]);
-
-  const summary = dashboard?.salon.summary ?? emptySummary;
-  const customers = dashboard?.salon.recentCustomers ?? [];
-  const filteredCustomers = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-
-    return customers.filter((customer) => {
-      const customerSource = customer.email ? "linked_member" : "manual";
-      const sourceMatches = source === "all" || source === customerSource;
-      const queryMatches =
-        !needle ||
-        [customer.name, customer.phone, customer.email].some((value) => value?.toLowerCase().includes(needle));
-
-      return sourceMatches && queryMatches;
-    });
-  }, [customers, query, source]);
+  }, [api, isLoaded, isSignedIn, source]);
 
   return (
     <Screen>
@@ -119,20 +137,12 @@ export default function SalonCustomersScreen() {
         <MetricGrid>
           <MetricTile label="전체 고객" value={summary.totalCustomers} />
           <MetricTile label="회원 연결" value={summary.linkedMembers} />
-          <MetricTile label="사후관리 대기" value={summary.pendingAftercare} />
+          <MetricTile label="애프터케어 대기" value={summary.pendingAftercare} />
           <MetricTile label="오늘까지" value={summary.dueToday} />
         </MetricGrid>
       </Stack>
 
       <Divider />
-
-      {isAdminReadOnly ? (
-        <Card style={{ backgroundColor: "#2e2507", borderColor: "#facc15" }}>
-          <BodyText style={{ color: "#facc15", fontWeight: "800" }}>
-            Admin read-only mode: select a target from Admin members to make changes.
-          </BodyText>
-        </Card>
-      ) : null}
 
       {error ? (
         <Card>
@@ -148,79 +158,41 @@ export default function SalonCustomersScreen() {
       <Stack gap={10}>
         <TextField value={query} onChangeText={setQuery} placeholder="이름, 전화번호, 이메일 검색" />
         <Cluster gap={8}>
-          <Button variant={source === "all" ? "primary" : "secondary"} onPress={() => setSource("all")}>
-            전체 유입
-          </Button>
-          <Button variant={source === "manual" ? "primary" : "secondary"} onPress={() => setSource("manual")}>
-            수기 등록
-          </Button>
-          <Button
-            variant={source === "linked_member" ? "primary" : "secondary"}
-            onPress={() => setSource("linked_member")}
-          >
-            회원 연결
-          </Button>
+          {sourceFilters.map((filter) => (
+            <Button
+              key={filter.value || "all"}
+              variant={source === filter.value ? "primary" : "secondary"}
+              onPress={() => setSource(filter.value)}
+            >
+              {filter.label}
+            </Button>
+          ))}
         </Cluster>
+        <Button variant="secondary" disabled={isLoading} onPress={load}>
+          {isLoading ? "조회 중..." : "검색"}
+        </Button>
       </Stack>
 
       <Panel>
         <Stack>
+          <Heading style={{ fontSize: 20, lineHeight: 26 }}>고객 목록</Heading>
           {isLoading ? <BodyText style={{ textAlign: "center" }}>불러오는 중...</BodyText> : null}
-
-          {!isLoading && filteredCustomers.length === 0 ? (
+          {!isLoading && customers.length === 0 ? (
             <BodyText style={{ textAlign: "center" }}>등록된 고객이 없습니다.</BodyText>
           ) : null}
-
-          {filteredCustomers.map((customer) => (
-            <Card key={customer.id}>
-              <Stack gap={10}>
-                <Cluster>
-                  <Chip tone={customer.email ? "success" : "neutral"}>{sourceLabel(customer)}</Chip>
-                  <Chip>최근 업데이트 {formatDate(customer.updatedAt)}</Chip>
-                </Cluster>
-                <Heading style={{ fontSize: 20, lineHeight: 26 }}>{customer.name}</Heading>
-                <BodyText>{customer.phone || customer.email || "연락처 없음"}</BodyText>
-                <BodyText>사후관리 {formatDate(customer.nextFollowUpAt)}</BodyText>
-                <Button variant="secondary">열기</Button>
-              </Stack>
-            </Card>
+          {customers.map((customer) => (
+            <CustomerCard key={customer.id} customer={customer} />
           ))}
         </Stack>
       </Panel>
 
       <Panel>
         <Stack>
-          <Heading style={{ fontSize: 18, lineHeight: 24 }}>회원 매칭 초대</Heading>
-          <BodyText>회원이 동의한 뒤에만 CRM 후보로 보이도록 초대 링크를 발급합니다.</BodyText>
-          <Button disabled>초대 링크 만들기</Button>
-        </Stack>
-      </Panel>
-
-      <Panel>
-        <Stack>
-          <Heading style={{ fontSize: 18, lineHeight: 24 }}>매칭 후보</Heading>
-          <TextField placeholder="회원 이름, 이메일 검색" />
-          <Card>
-            <BodyText style={{ textAlign: "center" }}>대기 중인 매칭 후보가 없습니다.</BodyText>
-          </Card>
-        </Stack>
-      </Panel>
-
-      <Panel>
-        <Stack>
-          <Heading style={{ fontSize: 18, lineHeight: 24 }}>고객 등록</Heading>
-          <TextField placeholder="고객 이름" />
-          <TextField placeholder="전화번호" />
-          <TextField placeholder="이메일" />
-          <TextField placeholder="메모" />
-          <Button disabled>고객 등록</Button>
-        </Stack>
-      </Panel>
-
-      <Panel>
-        <Stack>
-          <Heading style={{ fontSize: 18, lineHeight: 24 }}>다가오는 사후관리</Heading>
-          <BodyText>대기 중인 사후관리가 없습니다.</BodyText>
+          <Heading style={{ fontSize: 20, lineHeight: 26 }}>다가오는 애프터케어</Heading>
+          {pendingAftercare.length === 0 ? <BodyText>대기 중인 애프터케어가 없습니다.</BodyText> : null}
+          {pendingAftercare.map((task) => (
+            <AftercareTaskCard key={task.id} task={task} />
+          ))}
         </Stack>
       </Panel>
     </Screen>

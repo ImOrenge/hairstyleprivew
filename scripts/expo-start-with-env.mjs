@@ -35,7 +35,9 @@ const env = { ...process.env };
 
 env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ||=
   fileEnv.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY || fileEnv.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "";
-env.EXPO_PUBLIC_API_BASE_URL ||= fileEnv.EXPO_PUBLIC_API_BASE_URL || "http://localhost:3000";
+if (!env.EXPO_PUBLIC_API_BASE_URL && fileEnv.EXPO_PUBLIC_API_BASE_URL) {
+  env.EXPO_PUBLIC_API_BASE_URL = fileEnv.EXPO_PUBLIC_API_BASE_URL;
+}
 
 const expoCli = path.join(root, "node_modules", "expo", "bin", "cli");
 const child = spawn(process.execPath, [expoCli, "start", ...process.argv.slice(2)], {

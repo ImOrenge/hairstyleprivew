@@ -32,15 +32,15 @@ Status values:
 | `/terms-of-service` | `apps/hairfit-app/app/legal/terms.tsx` | customer | ported | Native legal page from web legal structure. |
 | `/salon` | `apps/hairfit-app/app/salon/index.tsx` | salon | ported | Salon role home in the unified app. |
 | `/salon/customers` | `apps/hairfit-app/app/salon/customers/index.tsx` | salon | ported | Reads customer summary through `/api/mobile/dashboard?service=salon`. |
-| `/salon/customers/[id]` | `apps/hairfit-app/app/salon/customers/[id].tsx` | salon | inventory | Customer detail, visits, aftercare tasks. |
-| `/salon/match/[code]` | `apps/hairfit-app/app/salon/match/[code].tsx` | salon | inventory | Customer match invite acceptance. |
+| `/salon/customers/[id]` | `apps/hairfit-app/app/salon/customers/[id].tsx` | salon | ported | Customer detail, visits, linked member generations, and aftercare tasks. |
+| `/salon/match/[code]` | `apps/hairfit-app/app/salon/match/[code].tsx` | salon | ported | Customer match invite lookup and acceptance. |
 | `/admin` | `apps/hairfit-app/app/admin/index.tsx` | admin | ported | Reads admin overview through `/api/mobile/dashboard?service=admin`. |
 | `/admin/stats` | `apps/hairfit-app/app/admin/stats.tsx` | admin | ported | Shows 30-day KPI and daily trend from mobile dashboard API. |
-| `/admin/members` | `apps/hairfit-app/app/admin/members/index.tsx` | admin | inventory | Member list. |
-| `/admin/members/[userId]` | `apps/hairfit-app/app/admin/members/[userId].tsx` | admin | inventory | Member detail and credit/account controls. |
-| `/admin/reviews` | `apps/hairfit-app/app/admin/reviews.tsx` | admin | inventory | Review moderation. |
-| `/admin/inbox` | `apps/hairfit-app/app/admin/inbox.tsx` | admin | inventory | Inbound support email. |
-| `/admin/b2b` | `apps/hairfit-app/app/admin/b2b.tsx` | admin | inventory | B2B lead pipeline. |
+| `/admin/members` | `apps/hairfit-app/app/admin/members.tsx` | admin | ported | Member list with account type, onboarding, credits, search, and filters. |
+| `/admin/members/[userId]` | `apps/hairfit-app/app/admin/members/[userId].tsx` | admin | ported | Member detail, profile snapshots, activity, payments, and salon activity. |
+| `/admin/reviews` | `apps/hairfit-app/app/admin/reviews.tsx` | admin | ported | Review list and visibility filter. |
+| `/admin/inbox` | `apps/hairfit-app/app/admin/inbox.tsx` | admin | ported | Inbound support email list and status summary. |
+| `/admin/b2b` | `apps/hairfit-app/app/admin/b2b.tsx` | admin | ported | B2B lead pipeline list and stage summary. |
 
 ## API Facade Work
 
@@ -54,5 +54,5 @@ Status values:
 | `/api/mobile/aftercare/[hairRecordId]` | customer | ported | Returns a confirmed hair record and guide JSON for mobile aftercare detail. |
 | Existing `/api/generations/*` | customer | ported | Customer mobile flow calls existing generation endpoints with Clerk bearer auth. |
 | Existing `/api/styling/*` | customer | ported | Fashion recommendation and lookbook generation. |
-| Existing `/api/salon/*` | salon | inventory | Salon CRM and matching. |
-| Existing `/api/admin/*` | admin | inventory | Admin operations. |
+| Existing `/api/salon/*` | salon | ported | Salon CRM customer detail and matching invite screens call the existing salon APIs. |
+| Existing `/api/admin/*` | admin | ported | Admin list/detail screens call the existing admin APIs through the shared client. |
