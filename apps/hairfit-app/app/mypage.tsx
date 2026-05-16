@@ -1,4 +1,4 @@
-import { useAuth } from "@clerk/clerk-expo";
+import { useAuth, useUser } from "@clerk/clerk-expo";
 import type { MemberStyleTarget, MobileBootstrap, MobileDashboard, PersonalColorResult, StyleProfile } from "@hairfit/shared";
 import {
   BodyText,
@@ -67,6 +67,23 @@ function formatPlanLabel(planKey: string | null | undefined) {
   if (planKey === "starter") return "스타터";
   if (planKey === "pro") return "프로";
   return planKey.charAt(0).toUpperCase() + planKey.slice(1);
+}
+
+function accountTypeLabel(accountType: MobileBootstrap["accountType"]) {
+  if (accountType === "admin") return "관리자";
+  if (accountType === "salon_owner") return "살롱 관리자";
+  if (accountType === "member") return "고객";
+  return "미설정";
+}
+
+function serviceLabel(service: MobileBootstrap["services"][number]) {
+  if (service === "admin") return "관리";
+  if (service === "salon") return "살롱";
+  return "고객";
+}
+
+function onboardingLabel(value: boolean | null | undefined) {
+  return value ? "완료" : "미완료";
 }
 
 function statusLabel(value: string | null | undefined) {
@@ -340,10 +357,32 @@ function PersonalColorPanel() {
 
 function AccountPanel({ me }: { me: MobileBootstrap | null }) {
   const api = useHairfitApi();
+  const router = useRouter();
+  const { signOut, userId } = useAuth();
+  const { user } = useUser();
   const [styleTarget, setStyleTarget] = useState<MemberStyleTarget | null>(me?.styleTarget ?? null);
   const [savedStyleTarget, setSavedStyleTarget] = useState<MemberStyleTarget | null>(me?.styleTarget ?? null);
   const [pending, setPending] = useState(false);
+  const [signOutPending, setSignOutPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const clerkEmail =
+    user?.primaryEmailAddress?.emailAddress?.trim() ||
+    user?.emailAddresses?.[0]?.emailAddress?.trim() ||
+    null;
+  const clerkDisplayName = user?.fullName?.trim() || user?.firstName?.trim() || user?.username?.trim() || null;
+  const accountName = me ? displayName(me) : clerkDisplayName || "HairFit 사용자";
+  const accountEmail = me?.email || clerkEmail || "-";
+  const services = me?.services?.length ? me.services.map(serviceLabel).join(", ") : "-";
+  const accountRows = [
+    { label: "이름", value: accountName },
+    { label: "이메일", value: accountEmail },
+    { label: "계정 유형", value: accountTypeLabel(me?.accountType ?? null) },
+    { label: "온보딩", value: onboardingLabel(me?.onboardingComplete) },
+    { label: "플랜", value: formatPlanLabel(me?.planKey) },
+    { label: "크레딧", value: (me?.credits ?? 0).toLocaleString("ko-KR") },
+    { label: "서비스", value: services },
+    { label: "사용자 ID", value: me?.userId || userId || "-" },
+  ];
 
   useEffect(() => {
     setStyleTarget(me?.styleTarget ?? null);
@@ -367,14 +406,39 @@ function AccountPanel({ me }: { me: MobileBootstrap | null }) {
     }
   };
 
+  const handleSignOut = async () => {
+    if (signOutPending) return;
+    setSignOutPending(true);
+    setMessage(null);
+
+    try {
+      await signOut();
+      router.replace("/login");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "로그아웃에 실패했습니다.");
+    } finally {
+      setSignOutPending(false);
+    }
+  };
+
   return (
     <Panel>
       <Stack>
         <Heading style={styles.panelHeading}>계정</Heading>
-        <BodyText>로그인된 고객 계정의 기본 정보입니다.</BodyText>
+        <BodyText>로그인된 고객 계정 정보와 로그아웃을 여기에서 관리하세요.</BodyText>
         <Card>
-          <BodyText style={styles.strongText}>{displayName(me)}</BodyText>
-          <BodyText>{me?.email || "-"}</BodyText>
+          <Stack gap={12}>
+            <Kicker>계정 정보</Kicker>
+            {accountRows.map((row) => (
+              <Stack key={row.label} gap={4}>
+                <BodyText style={styles.infoLabel}>{row.label}</BodyText>
+                <BodyText style={styles.infoValue}>{row.value}</BodyText>
+              </Stack>
+            ))}
+            <Button variant="secondary" disabled={signOutPending} onPress={handleSignOut}>
+              {signOutPending ? "로그아웃 중..." : "로그아웃"}
+            </Button>
+          </Stack>
         </Card>
         <Card>
           <Stack gap={10}>
@@ -525,6 +589,15 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   strongText: {
+    color: "#f4f1e8",
+    fontWeight: "800",
+  },
+  infoLabel: {
+    color: "#d0b06a",
+    fontSize: 12,
+    fontWeight: "900",
+  },
+  infoValue: {
     color: "#f4f1e8",
     fontWeight: "800",
   },
