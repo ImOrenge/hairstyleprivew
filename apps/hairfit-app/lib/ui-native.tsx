@@ -141,7 +141,10 @@ function AppHeader() {
     <View style={[styles.headerShell, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
       <View style={styles.header}>
         <Pressable accessibilityRole="link" onPress={() => navigatePath(headerNavigation.brandPath)} style={styles.brandButton}>
-          <Text style={[styles.brand, { color: theme.text }]}>HairFit</Text>
+          <View style={styles.brandLockup}>
+            <Text style={[styles.brand, { color: theme.text }]}>HairFit</Text>
+            <Text style={[styles.brandPath, { color: theme.muted }]}>/dashbord</Text>
+          </View>
         </Pressable>
         <View style={styles.headerActions}>
           {headerNavigation.isSignedIn ? (
@@ -197,10 +200,12 @@ function AppHeader() {
 
 export function Screen({
   children,
+  footerOverlay,
   showHeader = true,
   style,
 }: {
   children: ReactNode;
+  footerOverlay?: ReactNode;
   showHeader?: boolean;
   style?: ViewStyle;
 }) {
@@ -210,9 +215,17 @@ export function Screen({
     <SafeAreaView edges={["top"]} style={[styles.screenFrame, { backgroundColor: theme.background }]}>
       <PatternLayer />
       {showHeader ? <AppHeader /> : null}
-      <ScrollView contentContainerStyle={[styles.screen, style]} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={[styles.screen, footerOverlay ? styles.screenWithFooterOverlay : null, style]}
+        keyboardShouldPersistTaps="handled"
+      >
         {children}
       </ScrollView>
+      {footerOverlay ? (
+        <View style={[styles.footerOverlay, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
+          {footerOverlay}
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -227,6 +240,9 @@ const styles = StyleSheet.create({
     minHeight: "100%",
     padding: 8,
     paddingBottom: spacing.xl,
+  },
+  screenWithFooterOverlay: {
+    paddingBottom: 104,
   },
   headerShell: {
     borderBottomWidth: 1,
@@ -243,10 +259,28 @@ const styles = StyleSheet.create({
   brandButton: {
     paddingVertical: 4,
   },
+  brandLockup: {
+    alignItems: "baseline",
+    flexDirection: "row",
+    gap: 6,
+  },
   brand: {
     fontSize: 22,
     fontWeight: "900",
     lineHeight: 28,
+  },
+  brandPath: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  footerOverlay: {
+    borderTopWidth: 1,
+    bottom: 0,
+    left: 0,
+    padding: 8,
+    position: "absolute",
+    right: 0,
+    zIndex: 4,
   },
   headerActions: {
     alignItems: "center",

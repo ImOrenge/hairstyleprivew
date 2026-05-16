@@ -455,7 +455,6 @@ export default function MyPageScreen() {
   const activePlan = formatPlanLabel(customer?.planKey ?? me?.planKey);
   const estimatedStyles = Math.floor(credits / 5);
   const usedCredits = 0;
-  const viewerName = displayName(me);
 
   const activePanel = useMemo(() => {
     if (activeTab === "plan") {
@@ -469,19 +468,14 @@ export default function MyPageScreen() {
   }, [activePlan, activeTab, customer?.recentGenerations, customer?.recentPayments, me]);
 
   return (
-    <Screen>
+    <Screen
+      footerOverlay={
+        <Button onPress={() => router.push("/workspace")}>
+          헤어스타일 생성
+        </Button>
+      }
+    >
       <TabNavigation activeTab={activeTab} />
-
-      <Panel>
-        <Stack>
-          <Kicker>My Page</Kicker>
-          <Heading>계정 대시보드</Heading>
-          <BodyText>{viewerName}님의 사용기록, 플랜, 사용량, 에프터케어, 퍼스널컬러, 바디프로필 설정을 탭으로 확인하세요.</BodyText>
-          <Button variant="secondary" onPress={() => router.push("/workspace")}>
-            워크스페이스 열기
-          </Button>
-        </Stack>
-      </Panel>
 
       {error && isSignedIn ? (
         <Card>
