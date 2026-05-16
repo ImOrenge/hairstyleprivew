@@ -1,10 +1,9 @@
-import { useAuth, useClerk } from "@clerk/clerk-expo";
+import { useAuth } from "@clerk/clerk-expo";
 import type {
   MobileBootstrap,
   MobileDashboard,
   MobileDashboardGeneration,
   MobileDashboardStylingSession,
-  MobileServiceKey,
 } from "@hairfit/shared";
 import {
   BodyText,
@@ -21,30 +20,11 @@ import {
   Stack,
 } from "@hairfit/ui-native";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { useHairfitApi } from "../lib/api";
 
 type CustomerDashboard = Extract<MobileDashboard, { service: "customer" }>["customer"];
-
-const serviceLabels: Record<MobileServiceKey, { title: string; description: string }> = {
-  customer: {
-    title: "HairFit 고객 홈",
-    description: "사진 업로드, 헤어 추천, 패션 스타일러, 결제와 마이페이지를 이용합니다.",
-  },
-  salon: {
-    title: "Salon CRM",
-    description: "고객 목록, 매칭, 방문 기록과 애프터케어 업무를 확인합니다.",
-  },
-  admin: {
-    title: "운영 관리",
-    description: "통계, 회원, 리뷰, B2B 리드와 운영 데이터를 확인합니다.",
-  },
-};
-
-function servicesForBootstrap(bootstrap: MobileBootstrap | null) {
-  return bootstrap?.services.length ? bootstrap.services : (["customer"] as MobileServiceKey[]);
-}
 
 function displayName(me: MobileBootstrap | null) {
   const name = me?.displayName?.trim();
@@ -352,93 +332,6 @@ function CustomerHome({
   );
 }
 
-function ServiceHub({
-  bootstrap,
-  isSignedIn,
-  onOpenCustomerApp,
-}: {
-  bootstrap: MobileBootstrap | null;
-  isSignedIn: boolean;
-  onOpenCustomerApp?: () => void;
-}) {
-  const router = useRouter();
-  const { signOut } = useClerk();
-  const services = useMemo(() => servicesForBootstrap(bootstrap), [bootstrap]);
-  const accountType = bootstrap?.accountType ?? "guest";
-
-  function openService(service: MobileServiceKey) {
-    if (!isSignedIn) {
-      router.push("/login");
-      return;
-    }
-    if (service === "customer") {
-      onOpenCustomerApp?.();
-      return;
-    }
-    if (service === "salon") {
-      router.push("/salon/customers");
-      return;
-    }
-    router.push("/admin");
-  }
-
-  return (
-    <Screen>
-      <Panel>
-        <Stack>
-          <Cluster>
-            <Chip tone={isSignedIn ? "success" : "accent"}>{isSignedIn ? "Signed in" : "Guest"}</Chip>
-            <Chip>{accountType}</Chip>
-          </Cluster>
-          <Kicker>HairFit App</Kicker>
-          <Heading>서비스를 선택하세요</Heading>
-          <BodyText>계정 권한에 맞는 HairFit 서비스를 이용할 수 있습니다.</BodyText>
-          {!isSignedIn ? (
-            <Cluster>
-              <Button onPress={() => router.push("/login")}>로그인</Button>
-              <Button variant="secondary" onPress={() => router.push("/signup")}>
-                회원가입
-              </Button>
-            </Cluster>
-          ) : (
-            <Cluster>
-              <Button variant="ghost" onPress={() => void signOut()}>
-                로그아웃
-              </Button>
-            </Cluster>
-          )}
-        </Stack>
-      </Panel>
-
-      <Panel>
-        <Stack>
-          <Kicker>Services</Kicker>
-          <Heading style={styles.sectionHeading}>권한별 진입</Heading>
-          {services.map((service) => {
-            const label = serviceLabels[service];
-            return (
-              <Card key={service}>
-                <Stack gap={10}>
-                  <Cluster>
-                    <Chip tone={service === "customer" ? "accent" : service === "salon" ? "success" : "neutral"}>
-                      {service}
-                    </Chip>
-                  </Cluster>
-                  <Heading style={styles.cardHeading}>{label.title}</Heading>
-                  <BodyText>{label.description}</BodyText>
-                  <Button variant="secondary" onPress={() => openService(service)}>
-                    열기
-                  </Button>
-                </Stack>
-              </Card>
-            );
-          })}
-        </Stack>
-      </Panel>
-    </Screen>
-  );
-}
-
 export default function HairfitHomeScreen() {
   const api = useHairfitApi();
   const router = useRouter();
@@ -447,7 +340,6 @@ export default function HairfitHomeScreen() {
   const [dashboard, setDashboard] = useState<Extract<MobileDashboard, { service: "customer" }> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>("세션을 확인하는 중입니다.");
-  const [showCustomerHome, setShowCustomerHome] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -476,7 +368,7 @@ export default function HairfitHomeScreen() {
           return;
         }
 
-        if (next.accountType !== "member" && next.accountType !== "admin") {
+        if (next.accountType !== "member") {
           setDashboard(null);
           return;
         }
@@ -502,6 +394,18 @@ export default function HairfitHomeScreen() {
       cancelled = true;
     };
   }, [api, isLoaded, isSignedIn]);
+
+  useEffect(() => {
+    if (!bootstrap?.onboardingComplete) return;
+
+    if (bootstrap.accountType === "admin") {
+      router.replace("/admin/stats");
+    }
+
+    if (bootstrap.accountType === "salon_owner") {
+      router.replace("/salon/customers");
+    }
+  }, [bootstrap, router]);
 
   if (isLoaded && !isSignedIn) {
     return <LoginPromptScreen />;
@@ -532,16 +436,16 @@ export default function HairfitHomeScreen() {
     );
   }
 
-  if (bootstrap?.accountType === "member" || (bootstrap?.accountType === "admin" && showCustomerHome)) {
+  if (bootstrap?.accountType === "member") {
     return <CustomerHome customer={dashboard?.customer ?? null} isLoading={isLoading} me={bootstrap} message={message} />;
   }
 
   return (
-    <ServiceHub
-      bootstrap={bootstrap}
-      isSignedIn={Boolean(isSignedIn)}
-      onOpenCustomerApp={() => setShowCustomerHome(true)}
-    />
+    <Screen>
+      <Card>
+        <BodyText>{message || "계정 화면으로 이동하는 중입니다."}</BodyText>
+      </Card>
+    </Screen>
   );
 }
 
