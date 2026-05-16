@@ -22,7 +22,7 @@ import {
 } from "@hairfit/ui-native";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { useHairfitApi } from "../lib/api";
 
 type CustomerDashboard = Extract<MobileDashboard, { service: "customer" }>["customer"];
@@ -222,6 +222,32 @@ function EmptyHistoryCard({
         <Button onPress={() => router.push(route)}>{button}</Button>
       </Stack>
     </Card>
+  );
+}
+
+function LoginPromptScreen() {
+  const router = useRouter();
+
+  return (
+    <Screen>
+      <View style={styles.loginHero}>
+        <Stack gap={18} style={styles.loginHeroContent}>
+          <View style={styles.loginLogoMark}>
+            <Text style={styles.loginLogoText}>HairFit</Text>
+          </View>
+          <Stack gap={10}>
+            <Kicker>AI Hair Preview</Kicker>
+            <Heading style={styles.loginHeroTitle}>내 얼굴에 어울리는 헤어스타일을 먼저 확인하세요</Heading>
+            <BodyText style={styles.loginHeroText}>
+              사진 한 장으로 헤어 후보를 비교하고, 선택한 스타일에 맞춘 코디와 관리 기록까지 이어갑니다.
+            </BodyText>
+          </Stack>
+          <Button variant="secondary" onPress={() => router.push("/login")}>
+            로그인
+          </Button>
+        </Stack>
+      </View>
+    </Screen>
   );
 }
 
@@ -478,7 +504,7 @@ export default function HairfitHomeScreen() {
   }, [api, isLoaded, isSignedIn]);
 
   if (isLoaded && !isSignedIn) {
-    return <ServiceHub bootstrap={bootstrap} isSignedIn={false} />;
+    return <LoginPromptScreen />;
   }
 
   if (isSignedIn && isLoading && !bootstrap) {
@@ -526,6 +552,39 @@ const styles = StyleSheet.create({
   },
   ctaText: {
     color: "#d8d0c2",
+  },
+  loginHero: {
+    flexGrow: 1,
+    justifyContent: "center",
+    minHeight: 620,
+    paddingHorizontal: 12,
+    paddingVertical: 32,
+  },
+  loginHeroContent: {
+    width: "100%",
+  },
+  loginHeroText: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  loginHeroTitle: {
+    fontSize: 34,
+    lineHeight: 40,
+  },
+  loginLogoMark: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderColor: "#34322c",
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  loginLogoText: {
+    color: "#f4f1e8",
+    fontSize: 28,
+    fontWeight: "900",
+    lineHeight: 34,
   },
   sectionHeading: {
     fontSize: 24,
