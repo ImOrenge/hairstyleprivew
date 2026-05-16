@@ -17,12 +17,12 @@ function firstRenderableVariant(set: RecommendationSet | null) {
 }
 
 const serviceOptions: Array<{ value: ServiceType; label: string }> = [
-  { value: "cut", label: "Cut" },
-  { value: "perm", label: "Perm" },
-  { value: "color", label: "Color" },
-  { value: "bleach", label: "Bleach" },
-  { value: "treatment", label: "Treatment" },
-  { value: "other", label: "Other" },
+  { value: "cut", label: "커트" },
+  { value: "perm", label: "펌" },
+  { value: "color", label: "염색" },
+  { value: "bleach", label: "탈색" },
+  { value: "treatment", label: "트리트먼트" },
+  { value: "other", label: "기타" },
 ];
 
 function todayKey() {
@@ -36,7 +36,7 @@ export default function ResultDetailScreen() {
   const generationId = typeof id === "string" ? id : "";
   const variantFromRoute = typeof variant === "string" ? variant : "";
   const [detail, setDetail] = useState<GenerationDetail | null>(null);
-  const [message, setMessage] = useState<string | null>("Loading result...");
+  const [message, setMessage] = useState<string | null>("결과를 불러오는 중입니다.");
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
   const [serviceType, setServiceType] = useState<ServiceType>("cut");
   const [serviceDate, setServiceDate] = useState(todayKey());
@@ -47,7 +47,7 @@ export default function ResultDetailScreen() {
 
     async function load() {
       if (!generationId) return;
-      setMessage("Loading result...");
+      setMessage("결과를 불러오는 중입니다.");
       try {
         const result = await api.getGeneration(generationId);
         if (!cancelled) {
@@ -57,11 +57,11 @@ export default function ResultDetailScreen() {
             recommendationSet: result.recommendationSet,
             selectedVariant: result.selectedVariant as GeneratedVariant | null,
           });
-          setMessage("Result loaded.");
+          setMessage("결과를 불러왔습니다.");
         }
       } catch (error) {
         if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : "Failed to load result.");
+          setMessage(error instanceof Error ? error.message : "결과를 불러오지 못했습니다.");
         }
       }
     }
@@ -89,9 +89,9 @@ export default function ResultDetailScreen() {
           selectedVariant: variant,
         };
       });
-      setMessage("Selected style saved.");
+      setMessage("선택한 스타일을 저장했습니다.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to save selection.");
+      setMessage(error instanceof Error ? error.message : "선택한 스타일을 저장하지 못했습니다.");
     } finally {
       setPendingSelection(null);
     }
@@ -117,10 +117,10 @@ export default function ResultDetailScreen() {
         serviceType,
         serviceDate,
       });
-      setMessage(`Aftercare guide created for ${result.styleName}.`);
+      setMessage(`${result.styleName} 에프터케어 가이드를 만들었습니다.`);
       router.push(`/aftercare/${result.hairRecordId}`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to create aftercare guide.");
+      setMessage(error instanceof Error ? error.message : "에프터케어 가이드를 만들지 못했습니다.");
     } finally {
       setAftercarePending(false);
     }
@@ -129,21 +129,21 @@ export default function ResultDetailScreen() {
   return (
     <Screen>
       <Stack>
-        <Kicker>Result</Kicker>
-        <Heading>{primary?.label || "HairFit result"}</Heading>
-        <BodyText>Generation ID: {generationId || "unknown"}</BodyText>
+        <Kicker>결과</Kicker>
+        <Heading>{primary?.label || "HairFit 결과"}</Heading>
+        <BodyText>생성 ID: {generationId || "알 수 없음"}</BodyText>
       </Stack>
 
       <Panel>
         <Stack>
           <View style={styles.preview}>
-            {imageUrl ? <Image resizeMode="contain" source={{ uri: imageUrl }} style={styles.image} /> : <BodyText>No rendered image yet</BodyText>}
+            {imageUrl ? <Image resizeMode="contain" source={{ uri: imageUrl }} style={styles.image} /> : <BodyText>아직 렌더링된 이미지가 없습니다.</BodyText>}
           </View>
 
           {primary ? (
             <Card>
               <Stack gap={10}>
-                <Kicker>Designer brief</Kicker>
+                <Kicker>디자이너 브리프</Kicker>
                 <BodyText>{primary.reason}</BodyText>
                 <Cluster>
                   {(primary.tags || []).slice(0, 6).map((tag) => (
@@ -156,21 +156,21 @@ export default function ResultDetailScreen() {
 
           {detail?.recommendationSet ? (
             <Stack>
-              <Kicker>Variants</Kicker>
+              <Kicker>후보 스타일</Kicker>
               {detail.recommendationSet.variants.map((variant) => (
                 <Card key={variant.id}>
                   <Stack gap={10}>
                     <Heading>{variant.label}</Heading>
-                    <BodyText>Status: {variant.status}</BodyText>
+                    <BodyText>상태: {variant.status}</BodyText>
                     <Button
                       disabled={!variant.outputUrl || pendingSelection === variant.id}
                       onPress={() => selectVariant(variant)}
                     >
                       {detail.recommendationSet?.selectedVariantId === variant.id
-                        ? "Selected"
+                        ? "선택됨"
                         : pendingSelection === variant.id
-                          ? "Saving..."
-                          : "Select result"}
+                          ? "저장 중..."
+                          : "이 결과 선택"}
                     </Button>
                   </Stack>
                 </Card>
@@ -180,9 +180,9 @@ export default function ResultDetailScreen() {
 
           <Panel>
             <Stack>
-              <Kicker>Aftercare</Kicker>
-              <Heading>Confirm this style as a salon record</Heading>
-              <BodyText>Create the same aftercare guide used by the web result flow after a selected hairstyle is confirmed.</BodyText>
+              <Kicker>에프터케어</Kicker>
+              <Heading>선택한 스타일을 시술 기록으로 확정</Heading>
+              <BodyText>선택한 헤어스타일을 확정하면 웹 결과 흐름과 같은 에프터케어 가이드가 생성됩니다.</BodyText>
               <Cluster>
                 {serviceOptions.map((option) => (
                   <Button
@@ -194,9 +194,9 @@ export default function ResultDetailScreen() {
                   </Button>
                 ))}
               </Cluster>
-              <TextField label="Service date" onChangeText={setServiceDate} placeholder="YYYY-MM-DD" value={serviceDate} />
+              <TextField label="시술일" onChangeText={setServiceDate} placeholder="YYYY-MM-DD" value={serviceDate} />
               <Button disabled={!primary?.id || aftercarePending} onPress={createAftercare}>
-                {aftercarePending ? "Creating aftercare..." : "Create aftercare guide"}
+                {aftercarePending ? "에프터케어 생성 중..." : "에프터케어 가이드 만들기"}
               </Button>
             </Stack>
           </Panel>
@@ -208,10 +208,10 @@ export default function ResultDetailScreen() {
               router.push(`/styler/new?generationId=${encodeURIComponent(generationId)}&variant=${encodeURIComponent(primary?.id || "")}`)
             }
           >
-            Continue to fashion styler
+            패션 스타일러로 계속
           </Button>
-          <Button variant="secondary" onPress={() => router.push(`/generate/${generationId}`)}>Open 3x3 board</Button>
-          <Button variant="secondary" onPress={() => router.push("/mypage")}>Open my page</Button>
+          <Button variant="secondary" onPress={() => router.push(`/generate/${generationId}`)}>3x3 보드 열기</Button>
+          <Button variant="secondary" onPress={() => router.push("/mypage")}>마이페이지 열기</Button>
         </Stack>
       </Panel>
     </Screen>

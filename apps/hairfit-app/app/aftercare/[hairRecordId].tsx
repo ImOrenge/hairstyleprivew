@@ -5,19 +5,19 @@ import { useEffect, useState } from "react";
 import { useHairfitApi } from "../../lib/api";
 
 const serviceLabels: Record<string, string> = {
-  cut: "Cut",
-  perm: "Perm",
-  color: "Color",
-  bleach: "Bleach",
-  treatment: "Treatment",
-  other: "Other service",
+  cut: "커트",
+  perm: "펌",
+  color: "염색",
+  bleach: "탈색",
+  treatment: "트리트먼트",
+  other: "기타 시술",
 };
 
 const sectionOrder: Array<{ key: AftercareSectionKey; label: string }> = [
-  { key: "dry", label: "Dry" },
-  { key: "treatment", label: "Treatment" },
-  { key: "iron", label: "Iron" },
-  { key: "styling", label: "Styling" },
+  { key: "dry", label: "드라이" },
+  { key: "treatment", label: "트리트먼트" },
+  { key: "iron", label: "아이론" },
+  { key: "styling", label: "스타일링" },
 ];
 
 function formatDate(value: string) {
@@ -43,7 +43,7 @@ export default function AftercareDetailScreen() {
   const { hairRecordId } = useLocalSearchParams<{ hairRecordId: string }>();
   const id = typeof hairRecordId === "string" ? hairRecordId : "";
   const [detail, setDetail] = useState<MobileAftercareGuideResponse | null>(null);
-  const [message, setMessage] = useState("Loading aftercare guide...");
+  const [message, setMessage] = useState("에프터케어 가이드를 불러오는 중입니다.");
 
   useEffect(() => {
     let cancelled = false;
@@ -54,11 +54,11 @@ export default function AftercareDetailScreen() {
         const result = await api.getAftercareGuide(id);
         if (!cancelled) {
           setDetail(result);
-          setMessage("Follow the care timing, section steps, and next action checklist.");
+          setMessage("관리 타이밍, 단계별 방법, 다음 액션 체크리스트를 확인하세요.");
         }
       } catch (error) {
         if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : "Failed to load aftercare guide.");
+          setMessage(error instanceof Error ? error.message : "에프터케어 가이드를 불러오지 못했습니다.");
         }
       }
     }
@@ -74,22 +74,22 @@ export default function AftercareDetailScreen() {
 
   return (
     <Screen>
-      <Button variant="ghost" onPress={() => router.push("/aftercare")}>Back to aftercare list</Button>
+      <Button variant="ghost" onPress={() => router.push("/aftercare")}>에프터케어 목록으로</Button>
 
       <Panel>
         <Stack>
-          <Kicker>Aftercare Guide</Kicker>
-          <Heading>{guide?.overview.headline || record?.styleName || "Aftercare guide"}</Heading>
+          <Kicker>에프터케어 가이드</Kicker>
+          <Heading>{guide?.overview.headline || record?.styleName || "에프터케어 가이드"}</Heading>
           <BodyText>{guide?.overview.summary || message}</BodyText>
           {record ? (
             <Cluster>
               <Chip tone="success">{serviceLabels[record.serviceType] || record.serviceType}</Chip>
-              <Chip>Service: {formatDate(record.serviceDate)}</Chip>
-              <Chip>Revisit: {nextVisitDate(record.serviceDate, record.nextVisitTargetDays)}</Chip>
+              <Chip>시술일: {formatDate(record.serviceDate)}</Chip>
+              <Chip>재방문: {nextVisitDate(record.serviceDate, record.nextVisitTargetDays)}</Chip>
             </Cluster>
           ) : null}
           {record?.generationId ? (
-            <Button onPress={() => router.push(`/result/${record.generationId}`)}>Open hair result</Button>
+            <Button onPress={() => router.push(`/result/${record.generationId}`)}>헤어 결과 열기</Button>
           ) : null}
         </Stack>
       </Panel>
@@ -104,18 +104,18 @@ export default function AftercareDetailScreen() {
                   <Kicker>{label}</Kicker>
                   <Heading>{section.title}</Heading>
                   <BodyText>{section.goal}</BodyText>
-                  <Chip tone="success">Timing: {section.timing}</Chip>
-                  <Kicker>Steps</Kicker>
+                  <Chip tone="success">타이밍: {section.timing}</Chip>
+                  <Kicker>관리 단계</Kicker>
                   {section.steps.map((step, index) => (
                     <BodyText key={`${key}-step-${index}`}>{index + 1}. {step}</BodyText>
                   ))}
-                  <Kicker>Products</Kicker>
+                  <Kicker>추천 제품</Kicker>
                   <Cluster>
                     {section.products.map((product) => (
                       <Chip key={product} tone="success">{product}</Chip>
                     ))}
                   </Cluster>
-                  <Kicker>Avoid</Kicker>
+                  <Kicker>피해야 할 것</Kicker>
                   {section.avoid.map((item) => (
                     <BodyText key={item}>- {item}</BodyText>
                   ))}
@@ -126,7 +126,7 @@ export default function AftercareDetailScreen() {
 
           <Panel>
             <Stack>
-              <Heading>Maintenance schedule</Heading>
+              <Heading>관리 일정</Heading>
               {guide.maintenanceSchedule.map((item) => (
                 <Card key={`${item.label}-${item.dayOffset}`}>
                   <Kicker>{item.label}</Kicker>
@@ -138,7 +138,7 @@ export default function AftercareDetailScreen() {
 
           <Card>
             <Stack>
-              <Kicker>Warnings</Kicker>
+              <Kicker>주의사항</Kicker>
               {guide.warnings.map((warning) => (
                 <BodyText key={warning}>- {warning}</BodyText>
               ))}
@@ -147,7 +147,7 @@ export default function AftercareDetailScreen() {
 
           <Card>
             <Stack>
-              <Kicker>Next actions</Kicker>
+              <Kicker>다음 액션</Kicker>
               {guide.recommendedNextActions.map((action) => (
                 <BodyText key={action}>- {action}</BodyText>
               ))}

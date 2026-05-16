@@ -5,12 +5,12 @@ import { useEffect, useState } from "react";
 import { useHairfitApi } from "../lib/api";
 
 const serviceLabels: Record<string, string> = {
-  cut: "Cut",
-  perm: "Perm",
-  color: "Color",
-  bleach: "Bleach",
-  treatment: "Treatment",
-  other: "Other service",
+  cut: "커트",
+  perm: "펌",
+  color: "염색",
+  bleach: "탈색",
+  treatment: "트리트먼트",
+  other: "기타 시술",
 };
 
 function formatDate(value: string) {
@@ -34,7 +34,7 @@ export default function AftercareScreen() {
   const router = useRouter();
   const api = useHairfitApi();
   const [records, setRecords] = useState<MobileAftercareRecord[]>([]);
-  const [message, setMessage] = useState("Loading aftercare records...");
+  const [message, setMessage] = useState("에프터케어 기록을 불러오는 중입니다.");
 
   useEffect(() => {
     let cancelled = false;
@@ -44,11 +44,11 @@ export default function AftercareScreen() {
         const result = await api.getAftercareRecords();
         if (!cancelled) {
           setRecords(result.records);
-          setMessage(result.records.length ? "Review saved care guides for confirmed hairstyles." : "No confirmed salon record yet.");
+          setMessage(result.records.length ? "확정한 헤어스타일의 관리 가이드를 확인하세요." : "아직 확정된 헤어 시술 기록이 없습니다.");
         }
       } catch (error) {
         if (!cancelled) {
-          setMessage(error instanceof Error ? error.message : "Failed to load aftercare records.");
+          setMessage(error instanceof Error ? error.message : "에프터케어 기록을 불러오지 못했습니다.");
         }
       }
     }
@@ -63,19 +63,19 @@ export default function AftercareScreen() {
     <Screen>
       <Panel>
         <Stack>
-          <Kicker>Aftercare</Kicker>
-          <Heading>Care guides for confirmed hairstyles</Heading>
+          <Kicker>에프터케어</Kicker>
+          <Heading>확정한 헤어스타일 관리 가이드</Heading>
           <BodyText>{message}</BodyText>
-          <Button onPress={() => router.push("/upload")}>Create new style</Button>
+          <Button onPress={() => router.push("/upload")}>새 헤어 만들기</Button>
         </Stack>
       </Panel>
 
       {records.length === 0 ? (
         <Card>
           <Stack>
-            <Heading>No confirmed service yet</Heading>
-            <BodyText>Confirm a selected hairstyle on the result page to generate an aftercare guide.</BodyText>
-            <Button onPress={() => router.push("/generate")}>Go to results</Button>
+            <Heading>아직 확정된 시술이 없습니다</Heading>
+            <BodyText>결과 화면에서 선택한 헤어스타일을 확정하면 에프터케어 가이드가 생성됩니다.</BodyText>
+            <Button onPress={() => router.push("/generate")}>결과 보러가기</Button>
           </Stack>
         </Card>
       ) : (
@@ -88,8 +88,8 @@ export default function AftercareScreen() {
                   <Chip>{formatDate(record.serviceDate)}</Chip>
                 </Cluster>
                 <Heading>{record.styleName}</Heading>
-                <BodyText>Recommended revisit: {nextVisitDate(record.serviceDate, record.nextVisitTargetDays)}</BodyText>
-                <Button onPress={() => router.push(`/aftercare/${record.id}`)}>Open guide</Button>
+                <BodyText>권장 재방문일: {nextVisitDate(record.serviceDate, record.nextVisitTargetDays)}</BodyText>
+                <Button onPress={() => router.push(`/aftercare/${record.id}`)}>가이드 열기</Button>
               </Stack>
             </Card>
           ))}
