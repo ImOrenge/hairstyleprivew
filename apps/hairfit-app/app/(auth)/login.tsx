@@ -1,7 +1,10 @@
 import { useSSO, useSignIn } from "@clerk/clerk-expo";
+import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { BodyText, Button, Heading, Kicker, Panel, Screen, Stack, TextField } from "@hairfit/ui-native";
+
+const oauthRedirectUrl = AuthSession.makeRedirectUri({ path: "login" });
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -9,7 +12,7 @@ function errorMessage(error: unknown) {
     const first = (error as { errors?: Array<{ message?: string }> }).errors?.[0]?.message;
     if (first) return first;
   }
-  return "Sign in failed.";
+  return "로그인에 실패했습니다.";
 }
 
 export default function LoginScreen() {
@@ -39,7 +42,7 @@ export default function LoginScreen() {
         return;
       }
 
-      setMessage("This sign-in method needs an additional step. Use the web login once, then return to mobile.");
+      setMessage("추가 인증 단계가 필요합니다. 웹 로그인에서 인증을 완료한 뒤 다시 시도해 주세요.");
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
@@ -55,6 +58,7 @@ export default function LoginScreen() {
     try {
       const result = await startSSOFlow({
         strategy: "oauth_google",
+        redirectUrl: oauthRedirectUrl,
       });
 
       if (result.createdSessionId && result.setActive) {
@@ -63,7 +67,7 @@ export default function LoginScreen() {
         return;
       }
 
-      setMessage("Google sign-in was cancelled before a session was created.");
+      setMessage("Google 로그인 창이 닫혀 세션이 생성되지 않았습니다.");
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
@@ -75,36 +79,36 @@ export default function LoginScreen() {
     <Screen>
       <Stack>
         <Kicker>Login</Kicker>
-        <Heading>Sign in to HairFit</Heading>
-        <BodyText>Use the same Clerk account as the web app. Mobile API calls attach the Clerk session token.</BodyText>
+        <Heading>HairFit에 로그인</Heading>
+        <BodyText>웹에서 사용하는 같은 계정으로 로그인하면 모바일에서도 헤어 생성 기록과 스타일 추천을 이어서 확인할 수 있습니다.</BodyText>
       </Stack>
 
       <Panel>
         <Stack>
           <Button disabled={googlePending || pending} variant="secondary" onPress={signInWithGoogle}>
-            {googlePending ? "Opening Google..." : "Continue with Google"}
+            {googlePending ? "Google 로그인 창 여는 중..." : "Google로 계속하기"}
           </Button>
           <TextField
             autoCapitalize="none"
             keyboardType="email-address"
-            label="Email"
+            label="이메일"
             onChangeText={setEmail}
             placeholder="you@example.com"
             value={email}
           />
           <TextField
-            label="Password"
+            label="비밀번호"
             onChangeText={setPassword}
-            placeholder="Password"
+            placeholder="비밀번호"
             secureTextEntry
             value={password}
           />
           {message ? <BodyText>{message}</BodyText> : null}
           <Button disabled={!email.trim() || !password || pending} onPress={submit}>
-            {pending ? "Signing in..." : "Sign in"}
+            {pending ? "로그인 중..." : "로그인"}
           </Button>
           <Button variant="secondary" onPress={() => router.push("/signup")}>
-            Create account
+            회원가입
           </Button>
         </Stack>
       </Panel>

@@ -1,7 +1,10 @@
 import { useSSO, useSignUp } from "@clerk/clerk-expo";
+import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { BodyText, Button, Heading, Kicker, Panel, Screen, Stack, TextField } from "@hairfit/ui-native";
+
+const oauthRedirectUrl = AuthSession.makeRedirectUri({ path: "signup" });
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -9,7 +12,7 @@ function errorMessage(error: unknown) {
     const first = (error as { errors?: Array<{ message?: string }> }).errors?.[0]?.message;
     if (first) return first;
   }
-  return "Sign up failed.";
+  return "회원가입에 실패했습니다.";
 }
 
 export default function SignupScreen() {
@@ -27,7 +30,7 @@ export default function SignupScreen() {
 
   const completeSession = async (sessionId: string | null | undefined) => {
     if (!sessionId || !setActive) {
-      setMessage("Signup is not complete yet.");
+      setMessage("회원가입이 아직 완료되지 않았습니다.");
       return;
     }
 
@@ -54,7 +57,7 @@ export default function SignupScreen() {
 
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setNeedsCode(true);
-      setMessage("Enter the verification code sent to your email.");
+      setMessage("이메일로 받은 인증 코드를 입력해 주세요.");
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
@@ -70,6 +73,7 @@ export default function SignupScreen() {
     try {
       const result = await startSSOFlow({
         strategy: "oauth_google",
+        redirectUrl: oauthRedirectUrl,
         unsafeMetadata: name.trim() ? { displayName: name.trim() } : undefined,
       });
 
@@ -79,7 +83,7 @@ export default function SignupScreen() {
         return;
       }
 
-      setMessage("Google sign-up was cancelled before a session was created.");
+      setMessage("Google 회원가입 창이 닫혀 세션이 생성되지 않았습니다.");
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
@@ -99,7 +103,7 @@ export default function SignupScreen() {
         return;
       }
 
-      setMessage("Verification is not complete yet.");
+      setMessage("이메일 인증이 아직 완료되지 않았습니다.");
     } catch (error) {
       setMessage(errorMessage(error));
     } finally {
@@ -111,28 +115,28 @@ export default function SignupScreen() {
     <Screen>
       <Stack>
         <Kicker>Signup</Kicker>
-        <Heading>Create a HairFit account</Heading>
-        <BodyText>After Clerk signup, the mobile app sends you through the HairFit onboarding API.</BodyText>
+        <Heading>HairFit 계정 만들기</Heading>
+        <BodyText>계정을 만든 뒤 간단한 설정을 완료하면 모바일에서 헤어 생성과 스타일 추천을 바로 시작할 수 있습니다.</BodyText>
       </Stack>
 
       <Panel>
         <Stack>
           <Button disabled={googlePending || pending} variant="secondary" onPress={continueWithGoogle}>
-            {googlePending ? "Opening Google..." : "Continue with Google"}
+            {googlePending ? "Google 회원가입 창 여는 중..." : "Google로 계속하기"}
           </Button>
-          <TextField label="Name" onChangeText={setName} placeholder="Your name" value={name} />
+          <TextField label="이름" onChangeText={setName} placeholder="이름" value={name} />
           <TextField
             autoCapitalize="none"
             keyboardType="email-address"
-            label="Email"
+            label="이메일"
             onChangeText={setEmail}
             placeholder="you@example.com"
             value={email}
           />
           <TextField
-            label="Password"
+            label="비밀번호"
             onChangeText={setPassword}
-            placeholder="Password"
+            placeholder="비밀번호"
             secureTextEntry
             value={password}
           />
@@ -140,7 +144,7 @@ export default function SignupScreen() {
             <TextField
               autoCapitalize="none"
               keyboardType="number-pad"
-              label="Email code"
+              label="이메일 인증 코드"
               onChangeText={setCode}
               placeholder="123456"
               value={code}
@@ -149,15 +153,15 @@ export default function SignupScreen() {
           {message ? <BodyText>{message}</BodyText> : null}
           {needsCode ? (
             <Button disabled={!code.trim() || pending} onPress={verifyCode}>
-              {pending ? "Verifying..." : "Verify email"}
+              {pending ? "인증 중..." : "이메일 인증"}
             </Button>
           ) : (
             <Button disabled={!email.trim() || !password || pending} onPress={createAccount}>
-              {pending ? "Creating..." : "Create account"}
+              {pending ? "가입 중..." : "회원가입"}
             </Button>
           )}
           <Button variant="secondary" onPress={() => router.push("/login")}>
-            Sign in instead
+            이미 계정이 있어요
           </Button>
         </Stack>
       </Panel>
