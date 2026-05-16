@@ -1,6 +1,12 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@hairfit/ui-native": [
+        "lib/ui-native.tsx"
+      ]
+    },
     "strict": true
   },
   "include": [
