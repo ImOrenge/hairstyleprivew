@@ -17,7 +17,7 @@ import {
 } from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { StyleSheet } from "react-native";
+import { ScrollView, StyleSheet } from "react-native";
 import { PersonalColorResultDetails } from "../components/PersonalColorResultDetails";
 import { useHairfitApi } from "../lib/api";
 
@@ -97,8 +97,12 @@ function TabNavigation({ activeTab }: { activeTab: MyPageTabId }) {
   const router = useRouter();
 
   return (
-    <Panel style={{ padding: 8 }}>
-      <Cluster gap={8}>
+    <Panel style={styles.tabPanel}>
+      <ScrollView
+        horizontal
+        contentContainerStyle={styles.tabScrollerContent}
+        showsHorizontalScrollIndicator={false}
+      >
         {tabs.map((tab) => (
           <Button
             key={tab.id}
@@ -108,7 +112,7 @@ function TabNavigation({ activeTab }: { activeTab: MyPageTabId }) {
             {tab.label}
           </Button>
         ))}
-      </Cluster>
+      </ScrollView>
     </Panel>
   );
 }
@@ -466,6 +470,8 @@ export default function MyPageScreen() {
 
   return (
     <Screen>
+      <TabNavigation activeTab={activeTab} />
+
       <Panel>
         <Stack>
           <Kicker>My Page</Kicker>
@@ -496,7 +502,6 @@ export default function MyPageScreen() {
         <MetricTile label="바디프로필" value={customer?.styleProfileReady ? "준비됨" : "필요"} helper="아래 프로필을 완성하세요" />
       </MetricGrid>
 
-      <TabNavigation activeTab={activeTab} />
       <Divider />
       {activePanel}
     </Screen>
@@ -515,6 +520,15 @@ const styles = StyleSheet.create({
   panelHeading: {
     fontSize: 22,
     lineHeight: 28,
+  },
+  tabPanel: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+  },
+  tabScrollerContent: {
+    flexDirection: "row",
+    gap: 8,
+    paddingRight: 8,
   },
   strongText: {
     color: "#f4f1e8",
