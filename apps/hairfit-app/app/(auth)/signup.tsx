@@ -1,10 +1,81 @@
 import { useSSO, useSignUp } from "@clerk/clerk-expo";
 import * as AuthSession from "expo-auth-session";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { BodyText, Button, Heading, Kicker, Panel, Screen, Stack, TextField } from "@hairfit/ui-native";
+import { type ReactNode, useState } from "react";
+import { Platform } from "react-native";
+import { BodyText, Button, Heading, Kicker, Panel, Screen, Stack, TextField, useThemeColors } from "@hairfit/ui-native";
 
 const oauthRedirectUrl = AuthSession.makeRedirectUri({ path: "signup" });
+const webOauthCallbackPath = "/sso-callback";
+
+function webUrl(path: string) {
+  if (Platform.OS !== "web" || typeof window === "undefined") {
+    return path;
+  }
+
+  return new URL(path, window.location.origin).toString();
+}
+
+function openOAuthPopup() {
+  if (Platform.OS !== "web" || typeof window === "undefined") {
+    return null;
+  }
+
+  return window.open(
+    window.location.origin,
+    "hairfit-oauth",
+    "width=500,height=720,left=100,top=100,noopener=no,noreferrer=no",
+  );
+}
+
+function WebOAuthButton({
+  children,
+  disabled,
+  onPress,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const theme = useThemeColors();
+
+  if (Platform.OS !== "web") {
+    return (
+      <Button disabled={disabled} variant="secondary" onPress={onPress}>
+        {children}
+      </Button>
+    );
+  }
+
+  return (
+    <button
+      disabled={disabled}
+      onClick={onPress}
+      style={{
+        alignItems: "center",
+        backgroundColor: theme.surface,
+        borderColor: theme.border,
+        borderRadius: 4,
+        borderStyle: "solid",
+        borderWidth: 1,
+        color: theme.text,
+        cursor: disabled ? "not-allowed" : "pointer",
+        display: "flex",
+        fontFamily: "inherit",
+        fontSize: 16,
+        fontWeight: 800,
+        justifyContent: "center",
+        minHeight: 44,
+        opacity: disabled ? 0.48 : 1,
+        padding: "0 18px",
+        width: "100%",
+      }}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
 
 function errorMessage(error: unknown) {
   if (error instanceof Error) return error.message;
@@ -66,11 +137,33 @@ export default function SignupScreen() {
   };
 
   const continueWithGoogle = async () => {
-    if (googlePending) return;
+    if (!isLoaded || googlePending) return;
     setGooglePending(true);
     setMessage(null);
 
     try {
+      if (Platform.OS === "web") {
+        const popup = openOAuthPopup();
+        if (!popup) {
+          setMessage("브라우저에서 팝업이 차단되었습니다. 팝업 허용 후 다시 시도해 주세요.");
+          return;
+        }
+
+        await signUp.authenticateWithPopup({
+          popup,
+          strategy: "oauth_google",
+          redirectUrl: webUrl(webOauthCallbackPath),
+          redirectUrlComplete: webUrl("/onboarding"),
+          unsafeMetadata: name.trim() ? { displayName: name.trim() } : undefined,
+        });
+
+        if (signUp.createdSessionId) {
+          await setActive({ session: signUp.createdSessionId });
+        }
+        router.replace("/onboarding");
+        return;
+      }
+
       const result = await startSSOFlow({
         strategy: "oauth_google",
         redirectUrl: oauthRedirectUrl,
@@ -121,9 +214,9 @@ export default function SignupScreen() {
 
       <Panel>
         <Stack>
-          <Button disabled={googlePending || pending} variant="secondary" onPress={continueWithGoogle}>
+          <WebOAuthButton disabled={googlePending || pending} onPress={continueWithGoogle}>
             {googlePending ? "Google 회원가입 창 여는 중..." : "Google로 계속하기"}
-          </Button>
+          </WebOAuthButton>
           <TextField label="이름" onChangeText={setName} placeholder="이름" value={name} />
           <TextField
             autoCapitalize="none"
