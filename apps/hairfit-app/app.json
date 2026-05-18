@@ -18,6 +18,7 @@
       "@portone/react-native-sdk/plugin"
     ],
     "extra": {
+      "apiBaseUrl": "https://hairfit.beauty",
       "router": {
         "origin": false
       }

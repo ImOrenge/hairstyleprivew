@@ -282,7 +282,7 @@ async function loadDashboard(userId: string) {
     Boolean(metadata.onboardingComplete && accountType);
 
   if (!onboardingComplete || !accountType) {
-    redirect("/onboarding?return_url=/home");
+    redirect("/onboarding?return_url=/mypage");
   }
   if (accountType === "salon_owner") {
     redirect("/salon/customers");
