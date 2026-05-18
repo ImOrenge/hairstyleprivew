@@ -21,7 +21,7 @@ Required keys for core flow:
 - `NEXT_PUBLIC_CLERK_SIGN_IN_URL` (use `/login`)
 - `NEXT_PUBLIC_CLERK_SIGN_UP_URL` (use `/signup`)
 - `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` (use `/onboarding`)
-- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` (use `/onboarding?account_type=member&return_url=%2Fhome`)
+- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` (use `/onboarding?account_type=member&return_url=%2Fmypage`)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -97,7 +97,7 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `NEXT_PUBLIC_CLERK_SIGN_IN_URL` (use `/login`)
 - `NEXT_PUBLIC_CLERK_SIGN_UP_URL` (use `/signup`)
 - `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` (use `/onboarding`)
-- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` (use `/onboarding?account_type=member&return_url=%2Fhome`)
+- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` (use `/onboarding?account_type=member&return_url=%2Fmypage`)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`

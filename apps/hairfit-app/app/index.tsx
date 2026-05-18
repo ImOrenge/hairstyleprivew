@@ -259,6 +259,9 @@ function CustomerHome({
           <Kicker>App Home</Kicker>
           <Heading>{displayName(me)}님의 스타일 홈</Heading>
           <BodyText>헤어 생성 기록과 패션 추천 기록을 이어서 확인하고 다음 스타일 작업을 바로 시작하세요.</BodyText>
+          <Button variant="secondary" onPress={() => router.push("/mypage")}>
+            마이페이지
+          </Button>
         </Stack>
       </Panel>
 

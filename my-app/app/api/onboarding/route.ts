@@ -380,7 +380,7 @@ export async function POST(request: Request) {
 
   const returnUrl = normalizeAppPath(
     typeof body.returnUrl === "string" ? body.returnUrl : null,
-    "/home",
+    "/mypage",
   );
 
   try {

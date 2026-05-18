@@ -38,7 +38,7 @@ export default function OnboardingScreen() {
         }
 
         if (status.onboardingComplete) {
-          router.replace("/");
+          router.replace("/mypage");
           return;
         }
 
@@ -75,12 +75,12 @@ export default function OnboardingScreen() {
     setMessage(null);
 
     try {
-      await api.submitOnboarding({
+      const result = await api.submitOnboarding({
         displayName,
         styleTarget,
         preferredStyleTone,
       });
-      router.replace("/");
+      router.replace(result.redirectTo || "/mypage");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Onboarding failed.");
     } finally {

@@ -45,7 +45,7 @@ export function getAccountHomeHref(accountType: AccountType | null, onboardingCo
     return "/salon/customers";
   }
 
-  return "/home";
+  return "/mypage";
 }
 
 async function loadDbAccountHome(userId: string) {

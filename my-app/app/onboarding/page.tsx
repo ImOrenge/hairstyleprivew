@@ -36,7 +36,7 @@ export default async function OnboardingPage({
   const resolvedSearchParams = (await searchParams) ?? {};
   const requestedAccountType = pickFirst(resolvedSearchParams.account_type);
   const forcedAccountType = isOnboardingAccountType(requestedAccountType) ? requestedAccountType : undefined;
-  const defaultReturnUrl = forcedAccountType === "salon_owner" ? "/salon/customers" : "/home";
+  const defaultReturnUrl = forcedAccountType === "salon_owner" ? "/salon/customers" : "/mypage";
   const returnUrl = normalizeAppPath(pickFirst(resolvedSearchParams.return_url), defaultReturnUrl);
   const signInTarget = forcedAccountType
     ? `/onboarding?account_type=${encodeURIComponent(forcedAccountType)}&return_url=${encodeURIComponent(returnUrl)}`

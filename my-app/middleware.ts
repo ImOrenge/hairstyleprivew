@@ -245,7 +245,7 @@ const clerkAppMiddleware = hasClerkConfig
             ? "/admin/stats"
             : effectiveAccountType === "salon_owner"
               ? "/salon/customers"
-              : "/home",
+              : "/mypage",
         );
         return NextResponse.redirect(new URL(redirectTo, req.url));
       }

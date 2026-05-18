@@ -333,6 +333,13 @@ export default async function CustomerHomePage() {
               헤어 생성 기록과 패션 추천 기록을 이어서 확인하고, 다음 스타일 작업을 바로 시작하세요.
             </p>
           </div>
+          <Link
+            href="/mypage"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-surface)] px-4 py-2 text-sm font-bold text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)]"
+          >
+            <UserRound className="h-4 w-4" aria-hidden="true" />
+            마이페이지
+          </Link>
         </div>
       </Panel>
 

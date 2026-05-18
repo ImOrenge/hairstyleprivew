@@ -48,7 +48,7 @@ export default function SignupPage() {
         path="/signup"
         signInUrl="/login"
         oauthFlow="redirect"
-        fallbackRedirectUrl="/onboarding?account_type=member&return_url=%2Fhome"
+        fallbackRedirectUrl="/onboarding?account_type=member&return_url=%2Fmypage"
         appearance={clerkAppearance}
       />
     </AppPage>

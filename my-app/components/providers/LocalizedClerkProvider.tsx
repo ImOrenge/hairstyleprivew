@@ -14,7 +14,7 @@ const clerkRedirects = {
   signInUrl: "/login",
   signUpUrl: "/signup",
   signInFallbackRedirectUrl: "/onboarding",
-  signUpFallbackRedirectUrl: "/onboarding?account_type=member&return_url=%2Fhome",
+  signUpFallbackRedirectUrl: "/onboarding?account_type=member&return_url=%2Fmypage",
 } as const;
 
 export function LocalizedClerkProvider({ children, publishableKey }: LocalizedClerkProviderProps) {
