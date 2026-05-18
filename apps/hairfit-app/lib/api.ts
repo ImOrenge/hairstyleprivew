@@ -20,15 +20,13 @@ function readApiBaseUrl() {
 export function useHairfitApi() {
   const { getToken } = useAuth();
   const baseUrl = readApiBaseUrl();
-  const shouldUseCookieSession = typeof window !== "undefined";
-  const nativeGetToken = shouldUseCookieSession ? null : getToken;
 
   return useMemo(
     () =>
       new HairfitApiClient({
         baseUrl,
-        getAuthToken: nativeGetToken ? () => nativeGetToken() : () => null,
+        getAuthToken: () => getToken(),
       }),
-    [baseUrl, nativeGetToken],
+    [baseUrl, getToken],
   );
 }

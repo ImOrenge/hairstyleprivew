@@ -113,7 +113,7 @@ function logOnboardingWarning(stage: string, context: OnboardingLogContext) {
 
 async function readAuthenticatedUserId(route: OnboardingRoute) {
   try {
-    const { userId } = await auth();
+    const { userId } = await auth({ acceptsToken: "session_token" });
     return userId;
   } catch (error) {
     logOnboardingError("auth", error, { route, status: 401 });

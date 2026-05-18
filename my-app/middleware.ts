@@ -84,7 +84,7 @@ function getMobileCorsHeaders(req: NextRequest) {
 }
 
 function withMobileCors(req: NextRequest, response: NextResponse) {
-  if (!isMobileApiRoute(req) && !isMemberProfileApiRoute(req)) {
+  if (!isMobileSessionApiRoute(req)) {
     return response;
   }
 
@@ -99,6 +99,10 @@ function mobileCorsPreflight(req: NextRequest) {
     status: 204,
     headers: getMobileCorsHeaders(req),
   });
+}
+
+function isMobileSessionApiRoute(req: NextRequest) {
+  return isMobileApiRoute(req) || isMemberProfileApiRoute(req) || isOnboardingApiRoute(req);
 }
 
 async function loadDbOnboarding(userId: string) {
@@ -153,7 +157,7 @@ async function loadDbOnboarding(userId: string) {
 
 const clerkAppMiddleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
-    if ((isMobileApiRoute(req) || isMemberProfileApiRoute(req)) && req.method === "OPTIONS") {
+    if (isMobileSessionApiRoute(req) && req.method === "OPTIONS") {
       return mobileCorsPreflight(req);
     }
 
@@ -162,7 +166,7 @@ const clerkAppMiddleware = hasClerkConfig
     }
 
     const authObject =
-      isMobileApiRoute(req) || isMemberProfileApiRoute(req)
+      isMobileSessionApiRoute(req)
         ? await auth({ acceptsToken: "session_token" })
         : await auth();
     const { userId } = authObject;
@@ -297,7 +301,7 @@ const proxy = hasClerkConfig && clerkAppMiddleware
       return clerkAppMiddleware(req, event);
     }
   : (req: NextRequest) => {
-      if ((isMobileApiRoute(req) || isMemberProfileApiRoute(req)) && req.method === "OPTIONS") {
+      if (isMobileSessionApiRoute(req) && req.method === "OPTIONS") {
         return mobileCorsPreflight(req);
       }
 
