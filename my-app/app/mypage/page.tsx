@@ -7,6 +7,7 @@ import {
   type GenerationRow,
   type HairRecordRow,
   type MemberProfileRow,
+  type MyPageTabId,
   type PaymentTransactionRow,
   type SubscriptionRow,
   type UserProfileRow,
@@ -14,7 +15,7 @@ import {
 } from "../../components/mypage/MyPageDashboardTabs";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
 import type { PersonalColorResult } from "../../lib/fashion-types";
-import { isMemberStyleTarget } from "../../lib/onboarding";
+import { isMemberStyleTarget, isMemberStyleTone } from "../../lib/onboarding";
 import { normalizeStyleProfile } from "../../lib/style-profile-server";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 
@@ -69,7 +70,8 @@ export default async function MyPage({
   }
 
   const resolvedSearchParams = (await searchParams) ?? {};
-  const activeTab = normalizeMyPageTab(pickFirst(resolvedSearchParams.tab));
+  const requestedTab = normalizeMyPageTab(pickFirst(resolvedSearchParams.tab));
+  const setupRequested = pickFirst(resolvedSearchParams.setup) === "1";
   const payment = pickFirst(resolvedSearchParams.payment);
   const subscribed = pickFirst(resolvedSearchParams.subscribed);
   const checkoutId = pickFirst(resolvedSearchParams.checkout_id);
@@ -129,7 +131,7 @@ export default async function MyPage({
         .limit(6),
       supabase
         .from<MemberProfileRow>("member_profiles")
-        .select("style_target")
+        .select("display_name, style_target, preferred_style_tone")
         .eq("user_id", userId)
         .maybeSingle(),
       supabase
@@ -156,9 +158,16 @@ export default async function MyPage({
     if (!paymentResult.error && paymentResult.data) payments = paymentResult.data;
     if (!memberProfileResult.error) {
       memberProfile = {
+        display_name:
+          typeof memberProfileResult.data?.display_name === "string"
+            ? memberProfileResult.data.display_name
+            : null,
         style_target: isMemberStyleTarget(memberProfileResult.data?.style_target)
           ? memberProfileResult.data.style_target
           : null,
+        preferred_style_tone: isMemberStyleTone(memberProfileResult.data?.preferred_style_tone)
+          ? memberProfileResult.data.preferred_style_tone
+          : "natural",
       };
     }
     if (!styleProfileResult.error) {
@@ -169,9 +178,12 @@ export default async function MyPage({
   }
 
   const viewerName = getDisplayName(displayName ?? profile?.display_name, email);
+  const accountSetupComplete = Boolean(memberProfile?.display_name && memberProfile?.style_target);
+  const activeTab: MyPageTabId = setupRequested || !accountSetupComplete ? "account" : requestedTab;
 
   return (
     <MyPageDashboardTabs
+      accountSetupComplete={accountSetupComplete}
       activeTab={activeTab}
       email={email}
       generations={generations}

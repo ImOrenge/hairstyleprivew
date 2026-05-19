@@ -14,8 +14,8 @@ function AdminNavLinkWithClerk({
   className = defaultClassName,
   label = "Admin",
 }: AdminNavLinkProps) {
-  const { isSignedIn, isRoleLoaded, accountType, onboardingComplete } = useHeaderAccount();
-  const isAdmin = Boolean(isSignedIn && isRoleLoaded && onboardingComplete && accountType === "admin");
+  const { isSignedIn, isRoleLoaded, accountType, accountSetupComplete } = useHeaderAccount();
+  const isAdmin = Boolean(isSignedIn && isRoleLoaded && accountSetupComplete && accountType === "admin");
 
   if (!isAdmin) {
     return null;

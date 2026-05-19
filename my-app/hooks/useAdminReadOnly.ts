@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-interface OnboardingResponse {
+interface AccountResponse {
   accountType?: string | null;
 }
 
@@ -15,8 +15,8 @@ export function useAdminReadOnly() {
 
     async function loadRole() {
       try {
-        const response = await fetch("/api/onboarding", { cache: "no-store" });
-        const data = (await response.json().catch(() => null)) as OnboardingResponse | null;
+        const response = await fetch("/api/account", { cache: "no-store" });
+        const data = (await response.json().catch(() => null)) as AccountResponse | null;
         if (mounted) {
           setIsAdminReadOnly(response.ok && data?.accountType === "admin");
         }

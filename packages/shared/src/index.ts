@@ -16,7 +16,8 @@ export interface MobileBootstrap {
   displayName: string | null;
   accountType: "member" | "salon_owner" | "admin" | null;
   styleTarget: MemberStyleTarget | null;
-  onboardingComplete: boolean;
+  preferredStyleTone: MemberStyleTone;
+  accountSetupComplete: boolean;
   credits: number;
   planKey: string | null;
   services: MobileServiceKey[];
@@ -185,6 +186,7 @@ export type RecommendationLengthBucket = "short" | "medium" | "long";
 export type RecommendationCorrectionFocus = "crown" | "temple" | "jawline";
 export type RecommendationVariantStatus = "queued" | "generating" | "completed" | "failed";
 export type MemberStyleTarget = "male" | "female";
+export type MemberStyleTone = "natural" | "trendy" | "soft" | "bold";
 
 export interface GeneratedVariant {
   id: string;

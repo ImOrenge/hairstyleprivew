@@ -16,6 +16,7 @@ import type {
   FashionRecommendation,
   StylingSessionDetails,
   MemberStyleTarget,
+  MemberStyleTone,
 } from "@hairfit/shared";
 
 export interface HairfitApiClientOptions {
@@ -28,13 +29,13 @@ export interface ApiRequestOptions extends RequestInit {
   auth?: boolean;
 }
 
-export interface OnboardingStatus {
-  onboardingComplete: boolean;
+export interface AccountStatus {
+  accountSetupComplete: boolean;
   accountType: MobileBootstrap["accountType"];
   memberProfile?: {
     displayName?: string;
     styleTarget?: MemberStyleTarget | null;
-    preferredStyleTone?: "natural" | "trendy" | "soft" | "bold";
+    preferredStyleTone?: MemberStyleTone;
   } | null;
   salonProfile?: Record<string, unknown> | null;
   redirectTo?: string;
@@ -300,8 +301,8 @@ export class HairfitApiClient {
     return this.request<MobileBootstrap>("/api/mobile/me");
   }
 
-  getOnboardingStatus() {
-    return this.request<OnboardingStatus>("/api/onboarding");
+  getAccountStatus() {
+    return this.request<AccountStatus>("/api/account");
   }
 
   getMobileDashboard(service: "customer" | "salon" | "admin", options: { range?: 7 | 30 | 90 } = {}) {
@@ -397,25 +398,12 @@ export class HairfitApiClient {
     });
   }
 
-  submitOnboarding(input: {
+  saveAccountSetup(input: {
     displayName: string;
     styleTarget: MemberStyleTarget;
-    preferredStyleTone: "natural" | "trendy" | "soft" | "bold";
+    preferredStyleTone: MemberStyleTone;
   }) {
-    return this.request<{
-      onboardingComplete: true;
-      accountType: "member";
-      redirectTo: string;
-    }>("/api/onboarding", {
-      method: "POST",
-      body: JSON.stringify({
-        accountType: "member",
-        displayName: input.displayName,
-        styleTarget: input.styleTarget,
-        preferredStyleTone: input.preferredStyleTone,
-        returnUrl: "/mypage",
-      }),
-    });
+    return this.updateMemberProfile(input);
   }
 
   createRecommendations(referenceImageDataUrl: string) {
@@ -439,18 +427,24 @@ export class HairfitApiClient {
       profile: {
         displayName: string;
         styleTarget: MemberStyleTarget | null;
-        preferredStyleTone: "natural" | "trendy" | "soft" | "bold";
+        preferredStyleTone: MemberStyleTone;
       };
+      accountSetupComplete: boolean;
     }>("/api/member-profile");
   }
 
-  updateMemberProfile(input: { styleTarget: MemberStyleTarget }) {
+  updateMemberProfile(input: {
+    displayName: string;
+    styleTarget: MemberStyleTarget;
+    preferredStyleTone: MemberStyleTone;
+  }) {
     return this.request<{
       profile: {
         displayName: string;
         styleTarget: MemberStyleTarget;
-        preferredStyleTone: "natural" | "trendy" | "soft" | "bold";
+        preferredStyleTone: MemberStyleTone;
       };
+      accountSetupComplete: boolean;
     }>("/api/member-profile", {
       method: "PATCH",
       body: JSON.stringify(input),

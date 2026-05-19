@@ -18,7 +18,6 @@ export default function robots(): MetadataRoute.Robots {
         "/login",
         "/signup",
         "/b2b/signup",
-        "/onboarding",
       ],
     },
     sitemap: `${siteUrl}/sitemap.xml`,

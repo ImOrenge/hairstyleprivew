@@ -5,15 +5,15 @@ import { createContext, type ReactNode, useContext, useEffect, useMemo, useState
 import type { AccountType } from "../../lib/onboarding";
 import { useClerkAvailable } from "../providers/ClerkAvailabilityProvider";
 
-interface OnboardingResponse {
-  onboardingComplete?: boolean;
+interface AccountResponse {
+  accountSetupComplete?: boolean;
   accountType?: string | null;
 }
 
 interface VerifiedAccount {
   userId: string;
   accountType: AccountType | null;
-  onboardingComplete: boolean;
+  accountSetupComplete: boolean;
 }
 
 interface HeaderAccountContextValue {
@@ -22,7 +22,7 @@ interface HeaderAccountContextValue {
   isSignedIn: boolean;
   isRoleLoaded: boolean;
   accountType: AccountType | null;
-  onboardingComplete: boolean;
+  accountSetupComplete: boolean;
   accountHomeHref: string;
 }
 
@@ -32,7 +32,7 @@ const signedOutAccount: HeaderAccountContextValue = {
   isSignedIn: false,
   isRoleLoaded: true,
   accountType: null,
-  onboardingComplete: false,
+  accountSetupComplete: false,
   accountHomeHref: "/login",
 };
 
@@ -46,11 +46,7 @@ function normalizeAccountType(value: unknown): AccountType | null {
   return null;
 }
 
-function getAccountHomeHref(accountType: AccountType | null, onboardingComplete: boolean) {
-  if (!onboardingComplete || !accountType) {
-    return "/onboarding";
-  }
-
+function getAccountHomeHref(accountType: AccountType | null) {
   if (accountType === "salon_owner") {
     return "/salon/customers";
   }
@@ -69,8 +65,8 @@ function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {
   const userId = user?.id ?? null;
 
   const metadataAccountType = normalizeAccountType(user?.publicMetadata?.accountType);
-  const metadataOnboardingComplete = Boolean(
-    user?.publicMetadata?.onboardingComplete === true && metadataAccountType && metadataAccountType !== "member",
+  const metadataAccountSetupComplete = Boolean(
+    user?.publicMetadata?.accountSetupComplete === true || user?.publicMetadata?.onboardingComplete === true,
   );
 
   useEffect(() => {
@@ -85,28 +81,27 @@ function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {
       const fallbackAccount = {
         userId: activeUserId,
         accountType: metadataAccountType,
-        onboardingComplete: metadataOnboardingComplete,
+        accountSetupComplete: metadataAccountSetupComplete,
       };
 
       try {
-        const response = await fetch("/api/onboarding", { cache: "no-store" });
-        const data = (await response.json().catch(() => null)) as OnboardingResponse | null;
+        const response = await fetch("/api/account", { cache: "no-store" });
+        const data = (await response.json().catch(() => null)) as AccountResponse | null;
 
         if (!mounted) {
           return;
         }
 
         if (response.ok && data) {
-          const accountType = normalizeAccountType(data.accountType);
           setVerifiedAccount({
             userId: activeUserId,
-            accountType,
-            onboardingComplete: Boolean(data.onboardingComplete && accountType),
+            accountType: normalizeAccountType(data.accountType),
+            accountSetupComplete: Boolean(data.accountSetupComplete),
           });
           return;
         }
       } catch {
-        // Fall back to Clerk metadata below. Server-side middleware remains authoritative.
+        // Server-side middleware and page loaders remain authoritative.
       }
 
       if (mounted) {
@@ -119,7 +114,7 @@ function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, [isLoaded, isSignedIn, metadataAccountType, metadataOnboardingComplete, userId]);
+  }, [isLoaded, isSignedIn, metadataAccountSetupComplete, metadataAccountType, userId]);
 
   const value = useMemo<HeaderAccountContextValue>(() => {
     if (!isLoaded) {
@@ -140,7 +135,7 @@ function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {
 
     const currentVerifiedAccount = verifiedAccount?.userId === userId ? verifiedAccount : null;
     const accountType = currentVerifiedAccount?.accountType ?? null;
-    const onboardingComplete = currentVerifiedAccount?.onboardingComplete ?? false;
+    const accountSetupComplete = currentVerifiedAccount?.accountSetupComplete ?? false;
 
     return {
       hasClerkProvider: true,
@@ -148,8 +143,8 @@ function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {
       isSignedIn: true,
       isRoleLoaded: Boolean(currentVerifiedAccount),
       accountType,
-      onboardingComplete,
-      accountHomeHref: getAccountHomeHref(accountType, onboardingComplete),
+      accountSetupComplete,
+      accountHomeHref: getAccountHomeHref(accountType),
     };
   }, [isLoaded, isSignedIn, userId, verifiedAccount]);
 

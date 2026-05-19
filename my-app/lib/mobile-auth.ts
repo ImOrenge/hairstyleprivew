@@ -5,7 +5,14 @@ import { NextResponse } from "next/server";
 import { getActivePlan } from "./plan-entitlements";
 import { ensureCurrentUserProfile, type ServerSupabaseLike } from "./style-profile-server";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "./supabase";
-import { isAccountType, isMemberStyleTarget, type AccountType, type MemberStyleTarget } from "./onboarding";
+import {
+  isAccountType,
+  isMemberStyleTarget,
+  isMemberStyleTone,
+  type AccountType,
+  type MemberStyleTarget,
+  type MemberStyleTone,
+} from "./onboarding";
 
 type SupabaseAdminClient = ReturnType<typeof getSupabaseAdminClient>;
 export type MobileServiceKey = "customer" | "salon" | "admin";
@@ -16,7 +23,8 @@ interface MobileBootstrap {
   displayName: string | null;
   accountType: AccountType | null;
   styleTarget: MemberStyleTarget | null;
-  onboardingComplete: boolean;
+  preferredStyleTone: MemberStyleTone;
+  accountSetupComplete: boolean;
   credits: number;
   planKey: string | null;
   services: MobileServiceKey[];
@@ -32,7 +40,9 @@ interface MobileUserRow {
 }
 
 interface MobileMemberProfileRow {
+  display_name: string | null;
   style_target: unknown;
+  preferred_style_tone: unknown;
 }
 
 function errorMessage(error: unknown) {
@@ -186,7 +196,7 @@ export async function getMobileApiContext(request?: Request) {
     try {
       const result = await supabase
         .from("member_profiles")
-        .select("style_target")
+        .select("display_name,style_target,preferred_style_tone")
         .eq("user_id", userId)
         .maybeSingle<MobileMemberProfileRow>();
 
@@ -212,11 +222,15 @@ export async function getMobileApiContext(request?: Request) {
   }
 
   const styleTarget = isMemberStyleTarget(memberProfile?.style_target) ? memberProfile.style_target : null;
-  const onboardingComplete =
+  const preferredStyleTone = isMemberStyleTone(memberProfile?.preferred_style_tone)
+    ? memberProfile.preferred_style_tone
+    : "natural";
+  const savedDisplayName = data?.display_name?.trim() || memberProfile?.display_name?.trim() || null;
+  const accountSetupComplete =
     accountType === "admin" ||
     Boolean(
       data?.onboarding_completed_at &&
-        (accountType === "salon_owner" || (accountType === "member" && styleTarget)),
+        (accountType === "salon_owner" || (accountType === "member" && styleTarget && savedDisplayName)),
     );
   const email =
     clerkUser?.primaryEmailAddress?.emailAddress?.trim() ||
@@ -227,7 +241,7 @@ export async function getMobileApiContext(request?: Request) {
     clerkUser?.fullName?.trim() ||
     clerkUser?.firstName?.trim() ||
     clerkUser?.username?.trim() ||
-    data?.display_name ||
+    savedDisplayName ||
     null;
   let planKey: string | null = null;
   try {
@@ -243,7 +257,8 @@ export async function getMobileApiContext(request?: Request) {
     displayName,
     accountType,
     styleTarget,
-    onboardingComplete,
+    preferredStyleTone,
+    accountSetupComplete,
     credits: Number.isInteger(data?.credits) ? Number(data?.credits) : 0,
     planKey,
     services: servicesForAccount(accountType),

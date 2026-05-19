@@ -2,7 +2,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { generateDesignerBriefs } from "../../../../lib/designer-brief-generator";
 import {
-  buildOnboardingRedirectUrl,
+  buildAccountSetupRedirectUrl,
   isMemberStyleTarget,
   MEMBER_GENDER_REQUIRED_CODE,
 } from "../../../../lib/onboarding";
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
         {
           error: "회원정보에서 성별을 선택한 뒤 헤어스타일을 생성해 주세요.",
           code: MEMBER_GENDER_REQUIRED_CODE,
-          redirectTo: buildOnboardingRedirectUrl("/generate"),
+          redirectTo: buildAccountSetupRedirectUrl(),
         },
         { status: 428 },
       );

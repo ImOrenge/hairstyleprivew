@@ -11,7 +11,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { getCreditsPerStyle } from "../../lib/pricing-plan";
-import type { MemberStyleTarget } from "../../lib/onboarding";
+import type { MemberStyleTarget, MemberStyleTone } from "../../lib/onboarding";
 import type { PersonalColorResult } from "../../lib/fashion-types";
 import { PersonalColorResultDetails } from "../personal-color/PersonalColorResultDetails";
 import { AppPage, Panel, SurfaceCard } from "../ui/Surface";
@@ -72,7 +72,9 @@ export interface SubscriptionRow {
 }
 
 export interface MemberProfileRow {
+  display_name?: string | null;
   style_target?: MemberStyleTarget | null;
+  preferred_style_tone?: MemberStyleTone | null;
 }
 
 interface QueryState {
@@ -82,6 +84,7 @@ interface QueryState {
 }
 
 interface MyPageDashboardTabsProps {
+  accountSetupComplete: boolean;
   activeTab: MyPageTabId;
   email: string;
   generations: GenerationRow[];
@@ -583,10 +586,12 @@ function PersonalColorPanel({ personalColor }: { personalColor: PersonalColorRes
 }
 
 function AccountPanel({
+  accountSetupComplete,
   email,
   memberProfile,
   viewerName,
 }: {
+  accountSetupComplete: boolean;
   email: string;
   memberProfile: MemberProfileRow | null;
   viewerName: string;
@@ -600,6 +605,11 @@ function AccountPanel({
       className="p-4 sm:p-5"
     >
       <SectionHeader title="계정" description="로그인된 고객 계정의 기본 정보입니다." />
+      {!accountSetupComplete ? (
+        <div className="mt-4 border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+          닉네임, 성별, 선호 스타일 톤을 저장하면 헤어 추천 생성 흐름을 사용할 수 있습니다.
+        </div>
+      ) : null}
       <SurfaceCard className="mt-4 px-4 py-4">
         <div className="flex items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--app-radius-control)] bg-[var(--app-surface-muted)] text-[var(--app-text)]">
@@ -611,12 +621,17 @@ function AccountPanel({
           </div>
         </div>
       </SurfaceCard>
-      <MemberGenderForm initialStyleTarget={memberProfile?.style_target ?? null} />
+      <MemberGenderForm
+        initialDisplayName={memberProfile?.display_name || viewerName}
+        initialPreferredStyleTone={memberProfile?.preferred_style_tone ?? "natural"}
+        initialStyleTarget={memberProfile?.style_target ?? null}
+      />
     </Panel>
   );
 }
 
 function ActiveTabPanel({
+  accountSetupComplete,
   activePlan,
   activeTab,
   email,
@@ -628,6 +643,7 @@ function ActiveTabPanel({
   subscription,
   viewerName,
 }: {
+  accountSetupComplete: boolean;
   activePlan: string;
   activeTab: MyPageTabId;
   email: string;
@@ -656,13 +672,21 @@ function ActiveTabPanel({
   }
 
   if (activeTab === "account") {
-    return <AccountPanel email={email} memberProfile={memberProfile} viewerName={viewerName} />;
+    return (
+      <AccountPanel
+        accountSetupComplete={accountSetupComplete}
+        email={email}
+        memberProfile={memberProfile}
+        viewerName={viewerName}
+      />
+    );
   }
 
   return <UsagePanel generations={generations} />;
 }
 
 export function MyPageDashboardTabs({
+  accountSetupComplete,
   activeTab,
   email,
   generations,
@@ -746,6 +770,7 @@ export function MyPageDashboardTabs({
       <TabNavigation activeTab={activeTab} queryState={queryState} />
 
       <ActiveTabPanel
+        accountSetupComplete={accountSetupComplete}
         activePlan={activePlan}
         activeTab={activeTab}
         email={email}

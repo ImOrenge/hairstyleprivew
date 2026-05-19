@@ -106,7 +106,7 @@ export default function SignupScreen() {
     }
 
     await setActive({ session: sessionId });
-    router.replace("/onboarding");
+    router.replace("/");
   };
 
   const createAccount = async () => {
@@ -153,14 +153,14 @@ export default function SignupScreen() {
           popup,
           strategy: "oauth_google",
           redirectUrl: webUrl(webOauthCallbackPath),
-          redirectUrlComplete: webUrl("/onboarding"),
+          redirectUrlComplete: webUrl("/"),
           unsafeMetadata: name.trim() ? { displayName: name.trim() } : undefined,
         });
 
         if (signUp.createdSessionId) {
           await setActive({ session: signUp.createdSessionId });
         }
-        router.replace("/onboarding");
+        router.replace("/");
         return;
       }
 
@@ -172,7 +172,7 @@ export default function SignupScreen() {
 
       if (result.createdSessionId && result.setActive) {
         await result.setActive({ session: result.createdSessionId });
-        router.replace("/onboarding");
+        router.replace("/");
         return;
       }
 

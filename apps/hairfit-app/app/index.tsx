@@ -19,9 +19,9 @@ import {
   Screen,
   Stack,
 } from "@hairfit/ui-native";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { Image, Modal, StyleSheet, Text, View } from "react-native";
 import { useHairfitApi } from "../lib/api";
 
 type CustomerDashboard = Extract<MobileDashboard, { service: "customer" }>["customer"];
@@ -231,6 +231,36 @@ function LoginPromptScreen() {
   );
 }
 
+function AccountSetupModal({
+  open,
+  onClose,
+  onOpenSettings,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onOpenSettings: () => void;
+}) {
+  return (
+    <Modal animationType="fade" transparent visible={open} onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalPanel}>
+          <Stack gap={12}>
+            <Kicker>Account Setup</Kicker>
+            <Heading style={styles.modalHeading}>계정 설정을 먼저 완료해 주세요</Heading>
+            <BodyText>
+              닉네임, 성별, 선호 톤을 저장하면 헤어 생성과 스타일 추천을 바로 사용할 수 있습니다.
+            </BodyText>
+            <Button onPress={onOpenSettings}>계정 설정으로 이동</Button>
+            <Button variant="secondary" onPress={onClose}>
+              나중에 하기
+            </Button>
+          </Stack>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 function CustomerHome({
   customer,
   isLoading,
@@ -343,6 +373,7 @@ export default function HairfitHomeScreen() {
   const [dashboard, setDashboard] = useState<Extract<MobileDashboard, { service: "customer" }> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>("세션을 확인하는 중입니다.");
+  const [setupModalOpen, setSetupModalOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -365,15 +396,16 @@ export default function HairfitHomeScreen() {
         if (cancelled) return;
 
         setBootstrap(next);
-        if (!next.onboardingComplete || !next.accountType) {
+        if (next.accountType !== "member") {
           setDashboard(null);
-          setMessage("계정 설정을 마치면 HairFit 홈을 사용할 수 있습니다.");
+          if (!next.accountType || !next.accountSetupComplete) {
+            setMessage("계정 설정을 마치면 HairFit 앱을 더 정확하게 사용할 수 있습니다.");
+          }
           return;
         }
 
-        if (next.accountType !== "member") {
-          setDashboard(null);
-          return;
+        if (!next.accountSetupComplete) {
+          setMessage("계정 설정을 마치면 HairFit 앱을 더 정확하게 사용할 수 있습니다.");
         }
 
         const customerDashboard = await api.getMobileDashboard("customer");
@@ -398,8 +430,26 @@ export default function HairfitHomeScreen() {
     };
   }, [api, isLoaded, isSignedIn]);
 
+  const shouldPromptAccountSetup = Boolean(
+    bootstrap && !bootstrap.accountSetupComplete && (!bootstrap.accountType || bootstrap.accountType === "member"),
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (shouldPromptAccountSetup) {
+        setSetupModalOpen(true);
+      }
+    }, [shouldPromptAccountSetup]),
+  );
+
   useEffect(() => {
-    if (!bootstrap?.onboardingComplete) return;
+    if (!shouldPromptAccountSetup) {
+      setSetupModalOpen(false);
+    }
+  }, [shouldPromptAccountSetup]);
+
+  useEffect(() => {
+    if (!bootstrap) return;
 
     if (bootstrap.accountType === "admin") {
       router.replace("/admin/stats");
@@ -424,23 +474,20 @@ export default function HairfitHomeScreen() {
     );
   }
 
-  if (bootstrap && (!bootstrap.onboardingComplete || !bootstrap.accountType)) {
+  if (bootstrap && (!bootstrap.accountType || bootstrap.accountType === "member")) {
     return (
-      <Screen>
-        <Panel>
-          <Stack>
-            <Kicker>Account Setup</Kicker>
-            <Heading>계정 설정이 필요합니다</Heading>
-            <BodyText>{message}</BodyText>
-            <Button onPress={() => router.push("/onboarding")}>계정 설정하기</Button>
-          </Stack>
-        </Panel>
-      </Screen>
+      <>
+        <CustomerHome customer={dashboard?.customer ?? null} isLoading={isLoading} me={bootstrap} message={message} />
+        <AccountSetupModal
+          open={shouldPromptAccountSetup && setupModalOpen}
+          onClose={() => setSetupModalOpen(false)}
+          onOpenSettings={() => {
+            setSetupModalOpen(false);
+            router.push("/mypage?tab=account&setup=1");
+          }}
+        />
+      </>
     );
-  }
-
-  if (bootstrap?.accountType === "member") {
-    return <CustomerHome customer={dashboard?.customer ?? null} isLoading={isLoading} me={bootstrap} message={message} />;
   }
 
   return (
@@ -492,6 +539,26 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "900",
     lineHeight: 34,
+  },
+  modalBackdrop: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.68)",
+    flex: 1,
+    justifyContent: "center",
+    padding: 20,
+  },
+  modalHeading: {
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  modalPanel: {
+    backgroundColor: "#181713",
+    borderColor: "#d0b06a",
+    borderRadius: 8,
+    borderWidth: 1,
+    maxWidth: 420,
+    padding: 20,
+    width: "100%",
   },
   sectionHeading: {
     fontSize: 24,

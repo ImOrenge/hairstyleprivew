@@ -16,9 +16,9 @@ export default function SsoCallbackScreen() {
           signUpUrl: "/signup",
           signInFallbackRedirectUrl: "/",
           signInForceRedirectUrl: "/",
-          signUpFallbackRedirectUrl: "/onboarding",
-          signUpForceRedirectUrl: "/onboarding",
-          continueSignUpUrl: "/onboarding",
+          signUpFallbackRedirectUrl: "/",
+          signUpForceRedirectUrl: "/",
+          continueSignUpUrl: "/",
         },
         async (to) => {
           router.replace(to);

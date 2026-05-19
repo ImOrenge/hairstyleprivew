@@ -13,8 +13,8 @@ type LocalizedClerkProviderProps = {
 const clerkRedirects = {
   signInUrl: "/login",
   signUpUrl: "/signup",
-  signInFallbackRedirectUrl: "/onboarding",
-  signUpFallbackRedirectUrl: "/onboarding?account_type=member&return_url=%2Fmypage",
+  signInFallbackRedirectUrl: "/home",
+  signUpFallbackRedirectUrl: "/home",
 } as const;
 
 export function LocalizedClerkProvider({ children, publishableKey }: LocalizedClerkProviderProps) {

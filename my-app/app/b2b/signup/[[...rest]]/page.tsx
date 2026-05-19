@@ -1,56 +1,32 @@
-import { SignUp } from "@clerk/nextjs";
+import Link from "next/link";
 import { AppPage, Panel } from "../../../../components/ui/Surface";
-import { getClerkConfigState } from "../../../../lib/clerk";
-
-const clerkAppearance = {
-  variables: {
-    colorBackground: "var(--app-surface)",
-    colorText: "var(--app-text)",
-    colorTextSecondary: "var(--app-muted)",
-    colorPrimary: "var(--app-accent)",
-    colorInputBackground: "var(--app-surface-muted)",
-    colorInputText: "var(--app-text)",
-    borderRadius: "0.1875rem",
-  },
-  elements: {
-    cardBox: "border border-[var(--app-border)] bg-[var(--app-surface)] shadow-none",
-    headerTitle: "text-[var(--app-text)]",
-    headerSubtitle: "text-[var(--app-muted)]",
-    formButtonPrimary: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)] hover:bg-[var(--app-inverse-muted)]",
-    formFieldInput: "border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-text)]",
-    footerActionLink: "text-[var(--app-accent)]",
-  },
-} as const;
 
 export default function B2BSignupPage() {
-  const clerkConfig = getClerkConfigState();
-  const hasClerkKey = clerkConfig.canUseClerkFrontend;
-
-  if (!hasClerkKey) {
-    const reasonText =
-      clerkConfig.issue === "mismatched_key_types"
-        ? "Clerk publishable key와 secret key의 환경이 서로 다릅니다. pk_test_에는 sk_test_, pk_live_에는 sk_live_를 함께 사용해 주세요."
-        : "Clerk 키가 설정되지 않았습니다. my-app/.env.local에 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY와 CLERK_SECRET_KEY를 설정해 주세요.";
-
-    return (
-      <AppPage as="main" className="max-w-xl pb-16 pt-8">
-        <Panel className="p-5 sm:p-6">
-          <h1 className="text-2xl font-bold text-[var(--app-text)]">B2B 회원가입</h1>
-          <p className="mt-3 text-sm text-[var(--app-muted)]">{reasonText}</p>
-        </Panel>
-      </AppPage>
-    );
-  }
-
   return (
-    <AppPage as="main" className="flex max-w-md justify-center pb-16 pt-8">
-      <SignUp
-        path="/b2b/signup"
-        signInUrl="/login"
-        oauthFlow="redirect"
-        fallbackRedirectUrl="/onboarding?account_type=salon_owner&return_url=%2Fsalon%2Fcustomers"
-        appearance={clerkAppearance}
-      />
+    <AppPage as="main" className="max-w-2xl pb-16 pt-8">
+      <Panel className="p-5 sm:p-6">
+        <p className="app-kicker">B2B Signup</p>
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)]">
+          B2B 신규 가입은 도입 문의로 접수합니다
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
+          살롱 운영자 신규 계정은 현재 직접 가입을 열지 않습니다. 기존 살롱 계정은 로그인 후 Salon CRM을 그대로 사용할 수 있습니다.
+        </p>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <Link
+            href="/b2b/contact"
+            className="inline-flex min-h-11 items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
+          >
+            도입 문의하기
+          </Link>
+          <Link
+            href="/login"
+            className="inline-flex min-h-11 items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border)] bg-[var(--app-surface)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] text-[var(--app-text)] transition hover:border-[var(--app-border-strong)] hover:bg-[var(--app-surface-muted)]"
+          >
+            기존 계정 로그인
+          </Link>
+        </div>
+      </Panel>
     </AppPage>
   );
 }

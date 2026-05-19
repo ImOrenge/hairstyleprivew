@@ -1,5 +1,12 @@
 import { useAuth, useUser } from "@clerk/clerk-expo";
-import type { MemberStyleTarget, MobileBootstrap, MobileDashboard, PersonalColorResult, StyleProfile } from "@hairfit/shared";
+import type {
+  MemberStyleTarget,
+  MemberStyleTone,
+  MobileBootstrap,
+  MobileDashboard,
+  PersonalColorResult,
+  StyleProfile,
+} from "@hairfit/shared";
 import {
   BodyText,
   Button,
@@ -14,6 +21,7 @@ import {
   Panel,
   Screen,
   Stack,
+  TextField,
 } from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -24,6 +32,13 @@ import { useHairfitApi } from "../lib/api";
 const genderOptions: Array<{ value: MemberStyleTarget; label: string }> = [
   { value: "male", label: "남성" },
   { value: "female", label: "여성" },
+];
+
+const toneOptions: Array<{ value: MemberStyleTone; label: string }> = [
+  { value: "natural", label: "내추럴" },
+  { value: "trendy", label: "트렌디" },
+  { value: "soft", label: "소프트" },
+  { value: "bold", label: "볼드" },
 ];
 
 type MyPageTabId = "usage" | "plan" | "aftercare" | "personal-color" | "body-profile" | "account";
@@ -82,7 +97,7 @@ function serviceLabel(service: MobileBootstrap["services"][number]) {
   return "고객";
 }
 
-function onboardingLabel(value: boolean | null | undefined) {
+function accountSetupLabel(value: boolean | null | undefined) {
   return value ? "완료" : "미완료";
 }
 
@@ -355,13 +370,21 @@ function PersonalColorPanel() {
   );
 }
 
-function AccountPanel({ me }: { me: MobileBootstrap | null }) {
+function AccountPanel({
+  me,
+  onSaved,
+}: {
+  me: MobileBootstrap | null;
+  onSaved: (next: MobileBootstrap) => void;
+}) {
   const api = useHairfitApi();
   const router = useRouter();
   const { signOut, userId } = useAuth();
   const { user } = useUser();
+  const initialDisplayName = me?.displayName?.trim() || "";
   const [styleTarget, setStyleTarget] = useState<MemberStyleTarget | null>(me?.styleTarget ?? null);
-  const [savedStyleTarget, setSavedStyleTarget] = useState<MemberStyleTarget | null>(me?.styleTarget ?? null);
+  const [displayNameValue, setDisplayNameValue] = useState(initialDisplayName);
+  const [preferredStyleTone, setPreferredStyleTone] = useState<MemberStyleTone>(me?.preferredStyleTone ?? "natural");
   const [pending, setPending] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -377,7 +400,7 @@ function AccountPanel({ me }: { me: MobileBootstrap | null }) {
     { label: "이름", value: accountName },
     { label: "이메일", value: accountEmail },
     { label: "계정 유형", value: accountTypeLabel(me?.accountType ?? null) },
-    { label: "온보딩", value: onboardingLabel(me?.onboardingComplete) },
+    { label: "계정 설정", value: accountSetupLabel(me?.accountSetupComplete) },
     { label: "플랜", value: formatPlanLabel(me?.planKey) },
     { label: "크레딧", value: (me?.credits ?? 0).toLocaleString("ko-KR") },
     { label: "서비스", value: services },
@@ -385,22 +408,31 @@ function AccountPanel({ me }: { me: MobileBootstrap | null }) {
   ];
 
   useEffect(() => {
+    setDisplayNameValue(me?.displayName?.trim() || "");
     setStyleTarget(me?.styleTarget ?? null);
-    setSavedStyleTarget(me?.styleTarget ?? null);
-  }, [me?.styleTarget]);
+    setPreferredStyleTone(me?.preferredStyleTone ?? "natural");
+  }, [me?.displayName, me?.preferredStyleTone, me?.styleTarget]);
 
-  const saveGender = async () => {
-    if (!styleTarget || pending) return;
+  const saveAccountSetup = async () => {
+    const displayName = displayNameValue.trim();
+    if (!displayName || !styleTarget || pending) return;
     setPending(true);
     setMessage(null);
 
     try {
-      const result = await api.updateMemberProfile({ styleTarget });
-      setSavedStyleTarget(result.profile.styleTarget);
+      const result = await api.saveAccountSetup({
+        displayName,
+        styleTarget,
+        preferredStyleTone,
+      });
+      const nextMe = await api.getMobileMe();
+      onSaved(nextMe);
+      setDisplayNameValue(result.profile.displayName);
       setStyleTarget(result.profile.styleTarget);
-      setMessage("성별 정보가 저장되었습니다.");
+      setPreferredStyleTone(result.profile.preferredStyleTone);
+      setMessage("계정 설정이 저장되었습니다.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "성별 저장에 실패했습니다.");
+      setMessage(error instanceof Error ? error.message : "계정 설정 저장에 실패했습니다.");
     } finally {
       setPending(false);
     }
@@ -442,8 +474,15 @@ function AccountPanel({ me }: { me: MobileBootstrap | null }) {
         </Card>
         <Card>
           <Stack gap={10}>
-            <Kicker>성별</Kicker>
-            <BodyText>현재 성별: {savedStyleTarget === "male" ? "남성" : savedStyleTarget === "female" ? "여성" : "미입력"}</BodyText>
+            <Kicker>계정 설정</Kicker>
+            <BodyText>닉네임, 성별, 선호 톤을 저장하면 헤어 생성과 스타일 추천을 사용할 수 있습니다.</BodyText>
+            <TextField
+              label="닉네임"
+              onChangeText={setDisplayNameValue}
+              placeholder="닉네임"
+              value={displayNameValue}
+            />
+            <BodyText style={styles.infoLabel}>성별</BodyText>
             <Cluster>
               {genderOptions.map((option) => (
                 <Button
@@ -455,8 +494,20 @@ function AccountPanel({ me }: { me: MobileBootstrap | null }) {
                 </Button>
               ))}
             </Cluster>
-            <Button disabled={!styleTarget || pending} onPress={saveGender}>
-              {pending ? "저장 중..." : "성별 저장"}
+            <BodyText style={styles.infoLabel}>선호 톤</BodyText>
+            <Cluster>
+              {toneOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={preferredStyleTone === option.value ? "primary" : "secondary"}
+                  onPress={() => setPreferredStyleTone(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </Cluster>
+            <Button disabled={!displayNameValue.trim() || !styleTarget || pending} onPress={saveAccountSetup}>
+              {pending ? "저장 중..." : "계정 설정 저장"}
             </Button>
             {message ? <BodyText>{message}</BodyText> : null}
           </Stack>
@@ -470,7 +521,9 @@ export default function MyPageScreen() {
   const api = useHairfitApi();
   const router = useRouter();
   const searchParams = useLocalSearchParams();
-  const activeTab = normalizeTab(searchParams.tab);
+  const requestedTab = normalizeTab(searchParams.tab);
+  const setupParam = Array.isArray(searchParams.setup) ? searchParams.setup[0] : searchParams.setup;
+  const setupRequested = setupParam === "1" || setupParam === "true";
   const { isLoaded, isSignedIn } = useAuth();
   const [dashboard, setDashboard] = useState<Extract<MobileDashboard, { service: "customer" } > | null>(null);
   const [me, setMe] = useState<MobileBootstrap | null>(null);
@@ -519,6 +572,7 @@ export default function MyPageScreen() {
   const activePlan = formatPlanLabel(customer?.planKey ?? me?.planKey);
   const estimatedStyles = Math.floor(credits / 5);
   const usedCredits = 0;
+  const activeTab: MyPageTabId = setupRequested || (me !== null && !me.accountSetupComplete) ? "account" : requestedTab;
 
   const activePanel = useMemo(() => {
     if (activeTab === "plan") {
@@ -527,7 +581,7 @@ export default function MyPageScreen() {
     if (activeTab === "aftercare") return <AftercarePanel />;
     if (activeTab === "personal-color") return <PersonalColorPanel />;
     if (activeTab === "body-profile") return <BodyProfilePanel />;
-    if (activeTab === "account") return <AccountPanel me={me} />;
+    if (activeTab === "account") return <AccountPanel me={me} onSaved={setMe} />;
     return <UsagePanel generations={customer?.recentGenerations ?? []} />;
   }, [activePlan, activeTab, customer?.recentGenerations, customer?.recentPayments, me]);
 

@@ -15,6 +15,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { AppPage, Panel, SurfaceCard } from "../../components/ui/Surface";
+import { AccountSetupPromptModal } from "../../components/home/AccountSetupPromptModal";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
 import {
   loadCustomerHomeDashboard,
@@ -22,7 +23,7 @@ import {
   type CustomerHomeGeneration,
   type CustomerHomeStylingSession,
 } from "../../lib/customer-home-data";
-import { isAccountType, parseOnboardingMetadata } from "../../lib/onboarding";
+import { isAccountType, isMemberStyleTarget, parseOnboardingMetadata } from "../../lib/onboarding";
 import { getActivePlan } from "../../lib/plan-entitlements";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 import { ensureCurrentUserProfile, type ServerSupabaseLike } from "../../lib/style-profile-server";
@@ -33,6 +34,11 @@ interface UserRow {
   credits?: number | null;
   display_name?: string | null;
   email?: string | null;
+}
+
+interface MemberProfileRow {
+  display_name?: string | null;
+  style_target?: string | null;
 }
 
 const emptyDashboard: CustomerHomeDashboard = {
@@ -230,6 +236,7 @@ async function loadDashboard(userId: string) {
   const clerkUser = await loadHomeCurrentUser(userId);
   const metadata = parseOnboardingMetadata(clerkUser?.publicMetadata);
   let userRow: UserRow | null = null;
+  let memberProfile: MemberProfileRow | null = null;
   let dashboard = emptyDashboard;
 
   if (isSupabaseConfigured()) {
@@ -250,6 +257,18 @@ async function loadDashboard(userId: string) {
         logDashboardLoadFailure("users_select", userId, error);
       } else {
         userRow = data;
+      }
+
+      const { data: memberData, error: memberError } = await supabase
+        .from("member_profiles")
+        .select("display_name,style_target")
+        .eq("user_id", userId)
+        .maybeSingle<MemberProfileRow>();
+
+      if (memberError) {
+        logDashboardLoadFailure("member_profiles_select", userId, memberError);
+      } else {
+        memberProfile = memberData;
       }
 
       const credits = Number.isInteger(userRow?.credits) ? Number(userRow?.credits) : 0;
@@ -276,14 +295,16 @@ async function loadDashboard(userId: string) {
 
   const dbAccountType = isAccountType(userRow?.account_type) ? userRow.account_type : null;
   const accountType = dbAccountType ?? metadata.accountType;
-  const onboardingComplete =
+  const memberStyleTarget = isMemberStyleTarget(memberProfile?.style_target) ? memberProfile.style_target : null;
+  const accountSetupComplete =
     accountType === "admin" ||
-    Boolean(userRow?.onboarding_completed_at && accountType) ||
-    Boolean(metadata.onboardingComplete && accountType);
+    Boolean(
+      userRow?.onboarding_completed_at &&
+        (accountType === "salon_owner" ||
+          (accountType === "member" && memberStyleTarget && (memberProfile?.display_name || userRow?.display_name))),
+    ) ||
+    Boolean(metadata.accountSetupComplete && accountType);
 
-  if (!onboardingComplete || !accountType) {
-    redirect("/onboarding?return_url=/mypage");
-  }
   if (accountType === "salon_owner") {
     redirect("/salon/customers");
   }
@@ -300,7 +321,7 @@ async function loadDashboard(userId: string) {
     email.split("@")[0] ||
     "HairFit 사용자";
 
-  return { dashboard, viewerName };
+  return { accountSetupComplete, dashboard, viewerName };
 }
 
 export default async function CustomerHomePage() {
@@ -309,7 +330,7 @@ export default async function CustomerHomePage() {
     redirect(buildSignInRedirectUrl("/home"));
   }
 
-  const { dashboard, viewerName } = await loadDashboard(userId);
+  const { accountSetupComplete, dashboard, viewerName } = await loadDashboard(userId);
   const secondaryCta = buildCta(dashboard);
   const showSecondaryCta = secondaryCta.href !== "/workspace";
   const CtaIcon = ImagePlus;
@@ -322,6 +343,7 @@ export default async function CustomerHomePage() {
 
   return (
     <AppPage className="flex flex-col gap-5 pb-16">
+      <AccountSetupPromptModal open={!accountSetupComplete} />
       <Panel as="section" className="p-5 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>

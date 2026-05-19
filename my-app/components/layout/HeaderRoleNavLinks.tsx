@@ -18,7 +18,7 @@ interface HeaderNavItem {
 
 const defaultClassName = "text-[var(--app-muted)] hover:text-[var(--app-text)]";
 
-function getNavItems(accountType: AccountType | null, t: ReturnType<typeof useT>): HeaderNavItem[] {
+function getCompleteNavItems(accountType: AccountType | null, t: ReturnType<typeof useT>): HeaderNavItem[] {
   if (accountType === "member") {
     return [
       { href: "/home", label: "홈" },
@@ -39,7 +39,14 @@ function getNavItems(accountType: AccountType | null, t: ReturnType<typeof useT>
     ];
   }
 
-  return [{ href: "/onboarding", label: "계정 설정" }];
+  return [{ href: "/home", label: "홈" }];
+}
+
+function getSetupNavItems(): HeaderNavItem[] {
+  return [
+    { href: "/home", label: "홈" },
+    { href: "/mypage?tab=account&setup=1", label: "계정 설정" },
+  ];
 }
 
 export function HeaderRoleNavLinks({
@@ -47,13 +54,13 @@ export function HeaderRoleNavLinks({
   onClick,
 }: HeaderRoleNavLinksProps) {
   const t = useT();
-  const { isSignedIn, isRoleLoaded, accountType, onboardingComplete } = useHeaderAccount();
+  const { isSignedIn, isRoleLoaded, accountType, accountSetupComplete } = useHeaderAccount();
 
   if (!isSignedIn || !isRoleLoaded) {
     return null;
   }
 
-  const navItems = onboardingComplete ? getNavItems(accountType, t) : getNavItems(null, t);
+  const navItems = accountSetupComplete ? getCompleteNavItems(accountType, t) : getSetupNavItems();
 
   return (
     <>

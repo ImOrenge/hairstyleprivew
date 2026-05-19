@@ -20,8 +20,8 @@ Required keys for core flow:
 - `CLERK_SECRET_KEY`
 - `NEXT_PUBLIC_CLERK_SIGN_IN_URL` (use `/login`)
 - `NEXT_PUBLIC_CLERK_SIGN_UP_URL` (use `/signup`)
-- `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` (use `/onboarding`)
-- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` (use `/onboarding?account_type=member&return_url=%2Fmypage`)
+- `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` (use `/home`)
+- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` (use `/home`)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
@@ -96,8 +96,8 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `CLERK_PUBLISHABLE_KEY` (recommended for Cloudflare production runtime; use the same `pk_live_...` value)
 - `NEXT_PUBLIC_CLERK_SIGN_IN_URL` (use `/login`)
 - `NEXT_PUBLIC_CLERK_SIGN_UP_URL` (use `/signup`)
-- `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` (use `/onboarding`)
-- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` (use `/onboarding?account_type=member&return_url=%2Fmypage`)
+- `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` (use `/home`)
+- `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` (use `/home`)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`

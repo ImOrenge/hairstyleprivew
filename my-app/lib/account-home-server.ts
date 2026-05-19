@@ -32,11 +32,7 @@ async function loadCurrentUserForAccountHome(userId: string): Promise<ClerkCurre
   }
 }
 
-export function getAccountHomeHref(accountType: AccountType | null, onboardingComplete: boolean) {
-  if (!onboardingComplete || !accountType) {
-    return "/onboarding";
-  }
-
+export function getAccountHomeHref(accountType: AccountType | null) {
   if (accountType === "admin") {
     return "/admin/stats";
   }
@@ -45,7 +41,7 @@ export function getAccountHomeHref(accountType: AccountType | null, onboardingCo
     return "/salon/customers";
   }
 
-  return "/mypage";
+  return "/home";
 }
 
 async function loadDbAccountHome(userId: string) {
@@ -83,11 +79,5 @@ export async function resolveSignedInAccountHomeHref(userId: string) {
   const dbAccountType = isAccountType(dbAccount?.account_type) ? dbAccount.account_type : null;
   const isDevSalonOwner = isDevClerkSalonUserId(userId);
   const accountType = isDevSalonOwner ? "salon_owner" : dbAccountType ?? metadata.accountType;
-  const onboardingComplete =
-    isDevSalonOwner ||
-    accountType === "admin" ||
-    Boolean(dbAccount?.onboarding_completed_at && accountType) ||
-    metadata.onboardingComplete;
-
-  return getAccountHomeHref(accountType, onboardingComplete);
+  return getAccountHomeHref(accountType);
 }

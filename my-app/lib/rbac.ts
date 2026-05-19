@@ -53,5 +53,5 @@ export function getRoleHomeHref(accountType: RbacRole | null) {
     return "/home";
   }
 
-  return "/onboarding";
+  return "/home";
 }

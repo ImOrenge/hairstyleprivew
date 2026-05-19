@@ -10,6 +10,7 @@ export type MemberStyleTarget = (typeof MEMBER_STYLE_TARGETS)[number];
 export type MemberStyleTone = (typeof MEMBER_STYLE_TONES)[number];
 
 const DEFAULT_RETURN_URL = "/mypage";
+export const ACCOUNT_SETUP_PATH = "/mypage?tab=account&setup=1";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -40,13 +41,8 @@ export function normalizeAppPath(value: string | null | undefined, fallback = DE
   return trimmed;
 }
 
-export function buildOnboardingRedirectUrl(returnBackPath?: string | null) {
-  const normalized = normalizeAppPath(returnBackPath, DEFAULT_RETURN_URL);
-  if (normalized === DEFAULT_RETURN_URL) {
-    return "/onboarding";
-  }
-
-  return `/onboarding?return_url=${encodeURIComponent(normalized)}`;
+export function buildAccountSetupRedirectUrl() {
+  return ACCOUNT_SETUP_PATH;
 }
 
 export function parseOnboardingMetadata(metadata: unknown) {
@@ -54,12 +50,16 @@ export function parseOnboardingMetadata(metadata: unknown) {
     return {
       accountType: null as AccountType | null,
       onboardingComplete: false,
+      accountSetupComplete: false,
     };
   }
 
+  const complete = metadata.accountSetupComplete === true || metadata.onboardingComplete === true;
+
   return {
     accountType: isAccountType(metadata.accountType) ? metadata.accountType : null,
-    onboardingComplete: metadata.onboardingComplete === true,
+    onboardingComplete: complete,
+    accountSetupComplete: complete,
   };
 }
 
