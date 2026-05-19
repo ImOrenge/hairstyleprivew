@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { buildSignInRedirectUrl, getClerkConfigState, isDevClerkSalonUserId } from "./lib/clerk";
 import { isAccountType, parseOnboardingMetadata } from "./lib/onboarding";
+import { enforceTrafficGuard, withTrafficSecurityHeaders } from "./lib/traffic-guard";
 
 const { canUseClerkServer: hasClerkConfig } = getClerkConfigState();
 const isProtectedRoute = createRouteMatcher([
@@ -87,11 +88,15 @@ function withMobileCors(req: NextRequest, response: NextResponse) {
   return response;
 }
 
+function withResponseGuards(req: NextRequest, response: NextResponse) {
+  return withTrafficSecurityHeaders(req, withMobileCors(req, response));
+}
+
 function mobileCorsPreflight(req: NextRequest) {
-  return new NextResponse(null, {
+  return withResponseGuards(req, new NextResponse(null, {
     status: 204,
     headers: getMobileCorsHeaders(req),
-  });
+  }));
 }
 
 async function loadDbAccount(userId: string) {
@@ -128,12 +133,17 @@ async function loadDbAccount(userId: string) {
 
 const clerkAppMiddleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
+      const trafficGuardResponse = enforceTrafficGuard(req);
+      if (trafficGuardResponse) {
+        return withResponseGuards(req, trafficGuardResponse);
+      }
+
       if (isMobileSessionApiRoute(req) && req.method === "OPTIONS") {
         return mobileCorsPreflight(req);
       }
 
       if (!isProtectedRoute(req) || isWebhookRoute(req) || (isPublicSupportApiRoute(req) && !isMutationRequest(req))) {
-        return withMobileCors(req, NextResponse.next());
+        return withResponseGuards(req, NextResponse.next());
       }
 
       const authObject = isMobileSessionApiRoute(req)
@@ -144,10 +154,10 @@ const clerkAppMiddleware = hasClerkConfig
       const isApiRequest = req.nextUrl.pathname.startsWith("/api/");
       if (!userId) {
         if (isApiRequest) {
-          return withMobileCors(req, NextResponse.json({ error: "Authentication required" }, { status: 401 }));
+          return withResponseGuards(req, NextResponse.json({ error: "Authentication required" }, { status: 401 }));
         }
 
-        return NextResponse.redirect(new URL(buildSignInRedirectUrl(returnBackPath), req.url));
+        return withResponseGuards(req, NextResponse.redirect(new URL(buildSignInRedirectUrl(returnBackPath), req.url)));
       }
 
       try {
@@ -165,7 +175,7 @@ const clerkAppMiddleware = hasClerkConfig
         const adminNamespaceApiRequest = isAdminNamespaceApiRoute(req);
 
         if (isApiRequest && effectiveAccountType === "admin" && isMutationRequest(req) && !adminNamespaceApiRequest) {
-          return withMobileCors(
+          return withResponseGuards(
             req,
             NextResponse.json(
               { error: "Admin writes are only allowed through admin APIs" },
@@ -176,32 +186,32 @@ const clerkAppMiddleware = hasClerkConfig
 
         if (adminRestrictedRequest && effectiveAccountType !== "admin") {
           if (adminApiRequest) {
-            return withMobileCors(req, NextResponse.json({ error: "Admin account required" }, { status: 403 }));
+            return withResponseGuards(req, NextResponse.json({ error: "Admin account required" }, { status: 403 }));
           }
 
-          return NextResponse.redirect(new URL("/home", req.url));
+          return withResponseGuards(req, NextResponse.redirect(new URL("/home", req.url)));
         }
 
         if (isSalonRoute(req) && effectiveAccountType !== "salon_owner" && effectiveAccountType !== "admin") {
-          return NextResponse.redirect(new URL("/home", req.url));
+          return withResponseGuards(req, NextResponse.redirect(new URL("/home", req.url)));
         }
 
         if (isHomeRoute(req) && effectiveAccountType === "salon_owner") {
-          return NextResponse.redirect(new URL("/salon/customers", req.url));
+          return withResponseGuards(req, NextResponse.redirect(new URL("/salon/customers", req.url)));
         }
 
         if (isMyPageRoute(req) && effectiveAccountType === "salon_owner") {
-          return NextResponse.redirect(new URL("/salon/customers", req.url));
+          return withResponseGuards(req, NextResponse.redirect(new URL("/salon/customers", req.url)));
         }
 
         if (isWorkspaceRoute(req) && effectiveAccountType === "salon_owner") {
-          return NextResponse.redirect(new URL("/salon/customers", req.url));
+          return withResponseGuards(req, NextResponse.redirect(new URL("/salon/customers", req.url)));
         }
       } catch (error) {
         console.error("[middleware] Failed to read account metadata", error);
       }
 
-      return withMobileCors(req, NextResponse.next());
+      return withResponseGuards(req, NextResponse.next());
     })
   : null;
 
@@ -210,15 +220,20 @@ const proxy = hasClerkConfig && clerkAppMiddleware
       return clerkAppMiddleware(req, event);
     }
   : (req: NextRequest) => {
+      const trafficGuardResponse = enforceTrafficGuard(req);
+      if (trafficGuardResponse) {
+        return withResponseGuards(req, trafficGuardResponse);
+      }
+
       if (isMobileSessionApiRoute(req) && req.method === "OPTIONS") {
         return mobileCorsPreflight(req);
       }
 
       if (!isProtectedRoute(req) || isWebhookRoute(req) || (isPublicSupportApiRoute(req) && !isMutationRequest(req))) {
-        return withMobileCors(req, NextResponse.next());
+        return withResponseGuards(req, NextResponse.next());
       }
 
-      return withMobileCors(req, clerkConfigRequiredResponse(req));
+      return withResponseGuards(req, clerkConfigRequiredResponse(req));
     };
 
 export default proxy;

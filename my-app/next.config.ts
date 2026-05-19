@@ -18,6 +18,39 @@ const nextConfig: NextConfig = {
         ],
     },
     async headers() {
+        const noIndexHeaders = [
+            {
+                key: "X-Robots-Tag",
+                value: "noindex, nofollow, noarchive",
+            },
+        ];
+        const apiNoStoreHeaders = [
+            ...noIndexHeaders,
+            {
+                key: "Cache-Control",
+                value: "no-store",
+            },
+        ];
+        const privateRouteSources = [
+            "/admin/(.*)",
+            "/aftercare/(.*)",
+            "/api/(.*)",
+            "/b2b/signup",
+            "/generate",
+            "/generate/(.*)",
+            "/home/(.*)",
+            "/login",
+            "/login/(.*)",
+            "/mypage",
+            "/personal-color",
+            "/result/(.*)",
+            "/salon/(.*)",
+            "/signup",
+            "/signup/(.*)",
+            "/styler/(.*)",
+            "/upload",
+            "/workspace/(.*)",
+        ];
         const apiCorsHeaders = appUrl
             ? [
                 {
@@ -31,6 +64,10 @@ const nextConfig: NextConfig = {
                 },
             ]
             : [];
+        const noIndexHeaderRules = privateRouteSources.map((source) => ({
+            source,
+            headers: source === "/api/(.*)" ? apiNoStoreHeaders : noIndexHeaders,
+        }));
 
         return [
             {
@@ -54,6 +91,7 @@ const nextConfig: NextConfig = {
                     },
                 ],
             },
+            ...noIndexHeaderRules,
             ...apiCorsHeaders,
         ];
     },
