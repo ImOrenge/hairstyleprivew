@@ -59,7 +59,7 @@ interface ConfirmResponse {
   error?: string;
 }
 
-const GENERATION_MAX_CONCURRENCY = 3;
+const GENERATION_MAX_CONCURRENCY = 1;
 const GENERATION_LAUNCH_GAP_MS = 1500;
 const VARIANT_MAX_ATTEMPTS = 2;
 const VARIANT_RETRY_DELAY_MS = 3000;
