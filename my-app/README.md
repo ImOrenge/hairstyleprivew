@@ -88,6 +88,8 @@ npm run cf:preview
 npm run cf:deploy
 ```
 
+For Cloudflare Git/Workers Builds, `wrangler.jsonc` runs `npm run cf:build` as Wrangler's build step before `npx wrangler versions upload`, so `.open-next/worker.js` exists before the upload starts.
+
 ## Cloudflare environment variables
 
 Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:

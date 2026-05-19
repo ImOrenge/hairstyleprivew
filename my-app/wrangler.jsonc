@@ -1,8 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   // my-app/wrangler.jsonc
-"name": "hairstyleprivew",
+  "name": "hairstyleprivew",
   "main": ".open-next/worker.js",
+  "build": {
+    "command": "npm run cf:build"
+  },
   "minify": true,
   "find_additional_modules": true,
   "base_dir": ".open-next/middleware",
