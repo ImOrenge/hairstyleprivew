@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { cn } from "../../lib/utils";
 import type { PipelineStage } from "../../store/useGenerationStore";
 
@@ -82,9 +82,11 @@ export function PipelineStatusIndicator({
   mode = "panel",
   className,
 }: PipelineStatusIndicatorProps) {
+  const shouldReduceMotion = useReducedMotion();
   const currentIndex = STAGE_ORDER.indexOf(stage);
   const isCompleted = stage === "completed";
   const isFailed = stage === "failed";
+  const isRunning = stage !== "idle" && !isCompleted && !isFailed;
   const theme = STAGE_THEME[stage];
   const isOverlay = mode === "overlay";
   const circleSize = isOverlay ? "h-16 w-16" : "h-24 w-24";
@@ -94,6 +96,7 @@ export function PipelineStatusIndicator({
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
   const strokeOffset = circumference * (1 - displayProgress / 100);
+  const activityDashArray = `${circumference * 0.2} ${circumference}`;
   const trackClassName = isOverlay ? "text-white/20" : "text-[var(--app-border)]";
   const progressClassName = isOverlay && !isCompleted && !isFailed ? "text-white" : theme.accent;
   const containerClassName = isOverlay
@@ -109,6 +112,24 @@ export function PipelineStatusIndicator({
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.22, ease: "easeOut" }}
         >
+          {isRunning ? (
+            <motion.span
+              aria-hidden="true"
+              className={cn(
+                "absolute rounded-full",
+                isOverlay ? "h-12 w-12 bg-white/15" : "h-16 w-16 bg-[var(--app-accent-soft)]",
+              )}
+              animate={
+                shouldReduceMotion
+                  ? undefined
+                  : {
+                      opacity: [0.45, 0.16, 0.45],
+                      scale: [0.82, 1.08, 0.82],
+                    }
+              }
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+            />
+          ) : null}
           <svg aria-hidden="true" viewBox="0 0 100 100" className={cn(circleSize, "-rotate-90")}>
             <circle
               className={trackClassName}
@@ -134,6 +155,23 @@ export function PipelineStatusIndicator({
               animate={{ strokeDashoffset: strokeOffset }}
               transition={{ duration: 0.45, ease: "easeOut" }}
             />
+            {isRunning ? (
+              <motion.circle
+                className={progressClassName}
+                cx="50"
+                cy="50"
+                fill="none"
+                r={radius}
+                stroke="currentColor"
+                strokeDasharray={activityDashArray}
+                strokeLinecap="round"
+                strokeWidth="8"
+                opacity="0.82"
+                style={{ transformBox: "fill-box", transformOrigin: "50% 50%" }}
+                animate={shouldReduceMotion ? undefined : { rotate: 360 }}
+                transition={{ duration: 1.15, repeat: Infinity, ease: "linear" }}
+              />
+            ) : null}
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
             {isCompleted ? (
@@ -156,16 +194,70 @@ export function PipelineStatusIndicator({
             ) : isFailed ? (
               <span className={cn("font-black", isOverlay ? "text-xl text-rose-300" : "text-2xl text-rose-600")}>!</span>
             ) : (
-              <span className={cn("font-black tabular-nums", isOverlay ? "text-sm text-white" : "text-lg text-[var(--app-text)]")}>
+              <motion.span
+                className={cn("font-black tabular-nums", isOverlay ? "text-sm text-white" : "text-lg text-[var(--app-text)]")}
+                animate={isRunning && !shouldReduceMotion ? { scale: [1, 1.05, 1] } : undefined}
+                transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+              >
                 {displayProgress}%
-              </span>
+              </motion.span>
             )}
           </div>
         </motion.div>
 
         <div className={cn("space-y-1", isOverlay ? "flex-1" : "")}>
           <p className={cn("text-sm font-semibold", isOverlay ? "text-white" : theme.text)}>{message}</p>
-          <p className={cn("text-xs", isOverlay ? "text-white/70" : "text-[var(--app-muted)]")}>Current stage: {STAGE_LABELS[stage]}</p>
+          <div className={cn("flex flex-wrap items-center gap-2 text-xs", isOverlay ? "text-white/70" : "text-[var(--app-muted)]")}>
+            <span>Current stage: {STAGE_LABELS[stage]}</span>
+            {isRunning ? (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em]",
+                  isOverlay ? "bg-white/15 text-white" : "bg-[var(--app-surface-muted)] text-[var(--app-accent-strong)]",
+                )}
+              >
+                Processing
+                <span className="inline-flex w-4 justify-between">
+                  {[0, 1, 2].map((index) => (
+                    <motion.span
+                      key={index}
+                      aria-hidden="true"
+                      animate={shouldReduceMotion ? undefined : { opacity: [0.25, 1, 0.25] }}
+                      transition={{ duration: 1, repeat: Infinity, delay: index * 0.16, ease: "easeInOut" }}
+                    >
+                      .
+                    </motion.span>
+                  ))}
+                </span>
+              </span>
+            ) : null}
+          </div>
+          {!isFailed ? (
+            <div
+              className={cn(
+                "relative mt-2 h-1.5 overflow-hidden rounded-full",
+                isOverlay ? "bg-white/15" : "bg-[var(--app-border)]",
+              )}
+            >
+              <motion.div
+                className={cn(
+                  "absolute inset-y-0 left-0 rounded-full",
+                  isOverlay ? "bg-white" : "bg-[var(--app-accent-strong)]",
+                )}
+                initial={false}
+                animate={{ width: `${displayProgress}%` }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+              />
+              {isRunning ? (
+                <motion.span
+                  aria-hidden="true"
+                  className="absolute inset-y-0 w-1/3 rounded-full bg-gradient-to-r from-transparent via-white/70 to-transparent"
+                  animate={shouldReduceMotion ? undefined : { x: ["-120%", "320%"] }}
+                  transition={{ duration: 1.4, repeat: Infinity, ease: "easeInOut" }}
+                />
+              ) : null}
+            </div>
+          ) : null}
           {!isFailed ? (
             <p className={cn("text-[11px]", isOverlay ? "text-white/60" : "text-[var(--app-subtle)]")}>
               Progress {displayProgress}%
@@ -191,7 +283,18 @@ export function PipelineStatusIndicator({
 
           return (
             <div key={value} className="flex min-w-0 flex-col items-center gap-1">
-              <span className={cn("h-2.5 w-2.5 rounded-full transition", dotClassName)} />
+              <motion.span
+                className={cn("h-2.5 w-2.5 rounded-full transition", dotClassName)}
+                animate={
+                  isActive && isRunning && !shouldReduceMotion
+                    ? {
+                        opacity: [1, 0.55, 1],
+                        scale: [1, 1.35, 1],
+                      }
+                    : undefined
+                }
+                transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
+              />
               <span className={cn("w-full truncate text-center text-[10px] leading-3", isOverlay ? "text-white/65" : "text-[var(--app-muted)]")}>
                 {STAGE_LABELS[value]}
               </span>
