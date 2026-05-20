@@ -209,7 +209,7 @@ function buildWelcomeEmailHtml(input: WelcomeEmailInput) {
     <div style="max-width:640px;margin:0 auto;padding:32px 18px">
       <div style="border:1px solid #d4cfc4;background:#ffffff;border-radius:6px;overflow:hidden;box-shadow:0 1px 0 rgba(25,24,22,0.08)">
         <div style="padding:28px 26px 22px;border-bottom:1px solid #d4cfc4;background:#fbfaf7">
-          <p style="margin:0 0 10px;color:#80621e;font-size:11px;font-weight:900;letter-spacing:0.18em;text-transform:uppercase">Welcome to HairStyle</p>
+          <p style="margin:0 0 10px;color:#80621e;font-size:11px;font-weight:900;letter-spacing:0.18em;text-transform:uppercase">Welcome to HairFit</p>
           <h1 style="margin:0;color:#191816;font-size:26px;line-height:1.3;font-weight:900">${escapeHtml(roleCopy.headline)}</h1>
           <p style="margin:14px 0 0;color:#625f57;font-size:15px;line-height:1.7">${escapeHtml(displayName)}님, 가입이 완료되었습니다. ${escapeHtml(roleCopy.intro)}</p>
         </div>
@@ -242,7 +242,7 @@ function buildWelcomeEmailText(input: WelcomeEmailInput) {
   const displayName = input.displayName?.trim() || roleCopy.roleLabel;
 
   return [
-    "[HairStyle] 가입이 완료되었습니다.",
+    "[HairFit] 가입이 완료되었습니다.",
     "",
     `${displayName}님, 가입이 완료되었습니다.`,
     roleCopy.intro,
@@ -257,7 +257,7 @@ function buildWelcomeEmailText(input: WelcomeEmailInput) {
 }
 
 export async function sendWelcomeEmail(input: WelcomeEmailInput) {
-  const subject = "[HairStyle] 가입이 완료되었습니다";
+  const subject = "[HairFit] 가입이 완료되었습니다";
   const html = buildWelcomeEmailHtml(input);
   const text = buildWelcomeEmailText(input);
   return sendEmail({ to: input.to, subject, html, text });
