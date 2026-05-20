@@ -9,6 +9,7 @@ import {
   type MemberStyleTarget,
   type MemberStyleTone,
 } from "../../../lib/onboarding";
+import { sendWelcomeEmail } from "../../../lib/resend";
 import { ensureCurrentUserProfile, type ServerSupabaseLike } from "../../../lib/style-profile-server";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../lib/supabase";
 
@@ -17,6 +18,7 @@ interface UserRow {
   onboarding_completed_at: string | null;
   display_name: string | null;
   email: string | null;
+  welcome_email_sent_at: string | null;
 }
 
 interface MemberProfileRow {
@@ -49,6 +51,107 @@ function isMemberAccountSetupComplete({
   };
 }) {
   return Boolean(completedAt && memberProfile.displayName.trim() && memberProfile.styleTarget);
+}
+
+function getDeliverableWelcomeEmail(email: string | null | undefined) {
+  const normalized = email?.trim().toLowerCase();
+  if (!normalized || !normalized.includes("@") || normalized.endsWith("@placeholder.local")) {
+    return null;
+  }
+
+  return email?.trim() ?? null;
+}
+
+function isRecentSignupTimestamp(value: unknown) {
+  if (!value) {
+    return false;
+  }
+
+  const createdAt =
+    value instanceof Date
+      ? value.getTime()
+      : typeof value === "number"
+        ? value
+        : typeof value === "string"
+          ? Date.parse(value)
+          : Number.NaN;
+
+  if (!Number.isFinite(createdAt)) {
+    return false;
+  }
+
+  const oneDayMs = 24 * 60 * 60 * 1000;
+  const ageMs = Date.now() - createdAt;
+  return ageMs >= 0 && ageMs <= oneDayMs;
+}
+
+function welcomeEmailErrorDetails(error: unknown) {
+  if (error instanceof Error) {
+    return { name: error.name, message: error.message };
+  }
+
+  if (error && typeof error === "object") {
+    return error;
+  }
+
+  return { message: String(error) };
+}
+
+async function sendInitialWelcomeEmail({
+  accountType,
+  clerkCreatedAt,
+  displayName,
+  email,
+  supabase,
+  userId,
+  welcomeEmailSentAt,
+}: {
+  accountType: AccountType | null;
+  clerkCreatedAt: unknown;
+  displayName: string | null | undefined;
+  email: string | null | undefined;
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  userId: string;
+  welcomeEmailSentAt: string | null | undefined;
+}) {
+  const welcomeEmail = getDeliverableWelcomeEmail(email);
+  if (
+    welcomeEmailSentAt ||
+    accountType === "admin" ||
+    !isRecentSignupTimestamp(clerkCreatedAt) ||
+    !welcomeEmail
+  ) {
+    return;
+  }
+
+  const welcomeAccountType = accountType === "salon_owner" ? "salon_owner" : "member";
+  const sent = await sendWelcomeEmail({
+    to: welcomeEmail,
+    displayName,
+    accountType: welcomeAccountType,
+  });
+
+  if (sent.error) {
+    console.error("[account] Welcome email send failed", {
+      userId,
+      email,
+      error: welcomeEmailErrorDetails(sent.error),
+    });
+    return;
+  }
+
+  const { error } = await supabase
+    .from("users")
+    .update({ welcome_email_sent_at: new Date().toISOString() })
+    .eq("id", userId);
+
+  if (error) {
+    console.error("[account] Failed to mark welcome email as sent", {
+      userId,
+      email,
+      error: error.message,
+    });
+  }
 }
 
 export async function GET() {
@@ -103,7 +206,7 @@ export async function GET() {
     const [userResult, memberResult] = await Promise.all([
       supabase
         .from("users")
-        .select("account_type,onboarding_completed_at,display_name,email")
+        .select("account_type,onboarding_completed_at,display_name,email,welcome_email_sent_at")
         .eq("id", userId)
         .maybeSingle<UserRow>(),
       supabase
@@ -124,6 +227,8 @@ export async function GET() {
     const userRow = userResult.data;
     const accountType = isAccountType(userRow?.account_type) ? userRow.account_type : metadata.accountType;
     const memberProfile = normalizeMemberProfile(memberResult.data, userRow, clerkDisplayName);
+    const displayName = userRow?.display_name ?? clerkDisplayName;
+    const responseEmail = userRow?.email ?? email;
     const accountSetupComplete =
       accountType === "admin" ||
       (accountType === "salon_owner" && Boolean(userRow?.onboarding_completed_at)) ||
@@ -133,12 +238,22 @@ export async function GET() {
           memberProfile,
         }));
 
+    await sendInitialWelcomeEmail({
+      accountType,
+      clerkCreatedAt: clerkUser?.createdAt,
+      displayName,
+      email: responseEmail,
+      supabase,
+      userId,
+      welcomeEmailSentAt: userRow?.welcome_email_sent_at,
+    });
+
     return NextResponse.json(
       {
         accountType,
         accountSetupComplete,
-        displayName: userRow?.display_name ?? clerkDisplayName,
-        email: userRow?.email ?? email,
+        displayName,
+        email: responseEmail,
         memberProfile,
       },
       { status: 200 },
