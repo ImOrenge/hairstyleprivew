@@ -261,7 +261,18 @@ npm run portone:e2e:inspect -- --paymentId=<mobile-payment-id> --plan=basic --so
 4. paid 결제 전액 취소는 `payment_transactions.status=refunded`, `payment_credit_clawbacks` 1건, +원장 1건/-원장 1건, 사용자 잔여 크레딧 차감, `credits_unrecovered`를 확인한다.
 5. 부분취소는 자동 크레딧 회수 없이 운영 검토 metadata가 남는지 확인한다.
 
-### 3.4 로컬 signed webhook
+### 3.4 환불 실행 플로우 smoke
+
+앱 내부 환불 실행 API를 추가한 뒤에만 이 smoke를 릴리즈 게이트에 포함한다. 현재 구현은 PortOne 취소 웹훅 후처리까지만 지원한다.
+
+1. 테스트 Basic 결제를 만들고 `npm run portone:e2e:inspect -- --paymentId=<payment-id> --plan=basic --source=web`를 통과시킨다.
+2. 사용자 환불 요청 API가 `payment_refund_requests.pending` row를 만들고 같은 거래의 중복 pending 요청을 409로 막는지 확인한다.
+3. 관리자 승인 API가 PortOne `POST /payments/{paymentId}/cancel` 호출 전 DB 금액, PortOne 상태, 취소 가능 금액을 다시 검증하는지 확인한다.
+4. 전액 환불 승인 후 `Transaction.Cancelled` 웹훅 또는 취소 후 단건 조회로 `payment_transactions.status=refunded`, `payment_credit_clawbacks` 1건, `payment_refund_requests.completed`를 확인한다.
+5. 같은 승인 요청을 다시 보내도 PortOne 취소 API가 중복 호출되지 않고 기존 request 상태를 반환하는지 확인한다.
+6. 부분환불은 정책 확정 전까지 `manual_review_required`와 운영 검토 metadata만 남고 자동 크레딧 회수가 발생하지 않는지 확인한다.
+
+### 3.5 로컬 signed webhook
 
 로컬 서버와 `.env.local`에 `PORTONE_V2_WEBHOOK_SECRET`이 있을 때만 사용한다.
 
@@ -291,7 +302,7 @@ npm --prefix my-app run portone:webhook:test -- --url http://localhost:3010/api/
 npm run portone:webhook:test -- --deployProbe --url=https://<your-domain>/api/payments/webhook
 ```
 
-### 3.5 Guarded migration apply
+### 3.6 Guarded migration apply
 
 원격 DB 쓰기 작업은 `portone:migration:apply`로만 실행한다. 기본 실행은 dry-run이다.
 
@@ -351,6 +362,17 @@ npm run portone:migration:apply -- --write
 3. PortOne billing key 상태와 결제수단 실패 여부를 확인한다.
 4. 결제수단 문제면 사용자에게 결제수단 재등록을 안내한다.
 5. 시스템 문제면 원인을 수정하고 다음 cron 또는 수동 재처리를 실행한다.
+
+### 4.5 환불 요청 처리
+
+현재 운영자가 PortOne 콘솔에서 직접 환불하면 앱은 `Transaction.Cancelled`/`Transaction.PartialCancelled` 웹훅을 받아 후처리한다. 앱 내부 환불 실행 API가 추가된 뒤에는 아래 순서를 따른다.
+
+1. `payment_transactions.provider_order_id`와 PortOne 콘솔의 결제 상태가 같은지 확인한다.
+2. 환불 요청자, 사유, 전액/부분 환불 여부, 요청 금액을 `payment_refund_requests`에 기록한다.
+3. 관리자 승인 전 `payment_transactions.status=paid`, 금액/통화, 크레딧 지급 원장, 기존 환불 요청 상태를 확인한다.
+4. 전액 환불은 PortOne 취소 API 호출 후 `Transaction.Cancelled` 웹훅 또는 단건 조회 결과로 내부 상태를 확정한다.
+5. 부분환불은 금액 비율 크레딧 회수 정책이 확정될 때까지 자동 회수하지 않고 운영 검토로 남긴다.
+6. `credits_unrecovered > 0`이면 이미 사용된 크레딧이 있다는 뜻이므로 사용자 잔액 보정 또는 미수 처리 정책에 따라 별도 티켓을 만든다.
 
 ## 5. 운영 보류 기준
 

@@ -11,6 +11,7 @@ interface PrepareBillingKeyRequest {
   billingKeyMethod?: unknown;
   buyerName?: unknown;
   buyerEmail?: unknown;
+  buyerPhone?: unknown;
 }
 
 function readPublicPortoneConfig() {
@@ -34,6 +35,20 @@ function readText(value: unknown, maxLength: number): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed ? trimmed.slice(0, maxLength) : undefined;
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function readPhoneNumber(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const normalized = value.trim().replace(/[^\d+]/g, "");
+  return normalized ? normalized.slice(0, 20) : undefined;
+}
+
+function isValidPhoneNumber(value: string): boolean {
+  return /^\+?\d{8,15}$/.test(value);
 }
 
 export async function POST(request: Request) {
@@ -73,10 +88,16 @@ export async function POST(request: Request) {
   const clerkUser = await currentUser();
   const buyerName = readText(body.buyerName, 80);
   const buyerEmail = readText(body.buyerEmail, 120);
+  const buyerPhone = readPhoneNumber(body.buyerPhone);
   const email =
     buyerEmail ??
     clerkUser?.primaryEmailAddress?.emailAddress?.trim() ??
     clerkUser?.emailAddresses?.[0]?.emailAddress?.trim() ??
+    undefined;
+  const phoneNumber =
+    buyerPhone ??
+    clerkUser?.primaryPhoneNumber?.phoneNumber?.trim() ??
+    clerkUser?.phoneNumbers?.[0]?.phoneNumber?.trim() ??
     undefined;
   const fullName =
     buyerName ??
@@ -87,6 +108,18 @@ export async function POST(request: Request) {
   if (!fullName) {
     return NextResponse.json(
       { error: "구매자 이름을 입력해 주세요." },
+      { status: 400 },
+    );
+  }
+  if (!email || !isValidEmail(email)) {
+    return NextResponse.json(
+      { error: "결제 안내를 받을 이메일을 정확히 입력해 주세요." },
+      { status: 400 },
+    );
+  }
+  if (!phoneNumber || !isValidPhoneNumber(phoneNumber)) {
+    return NextResponse.json(
+      { error: "결제 확인에 사용할 전화번호를 숫자 기준 8~15자리로 입력해 주세요." },
       { status: 400 },
     );
   }
@@ -106,6 +139,7 @@ export async function POST(request: Request) {
         customerId: userId,
         email,
         fullName,
+        phoneNumber,
       },
     },
     { status: 200 },

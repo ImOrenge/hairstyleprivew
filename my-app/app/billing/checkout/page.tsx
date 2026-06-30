@@ -49,6 +49,10 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
     clerkUser?.primaryEmailAddress?.emailAddress?.trim() ||
     clerkUser?.emailAddresses?.[0]?.emailAddress?.trim() ||
     "";
+  const initialBuyerPhone =
+    clerkUser?.primaryPhoneNumber?.phoneNumber?.trim() ||
+    clerkUser?.phoneNumbers?.[0]?.phoneNumber?.trim() ||
+    "";
 
   return (
     <AppPage className="grid gap-5 pb-16">
@@ -68,6 +72,7 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
             planKey={planKey}
             initialBuyerName={initialBuyerName}
             initialBuyerEmail={initialBuyerEmail}
+            initialBuyerPhone={initialBuyerPhone}
             successRedirectPath={returnTo || "/mypage"}
           />
         </Panel>

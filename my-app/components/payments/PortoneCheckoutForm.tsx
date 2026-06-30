@@ -19,6 +19,7 @@ interface PrepareBillingKeyResponse {
     customerId?: string;
     email?: string;
     fullName?: string;
+    phoneNumber?: string;
   };
   error?: string;
 }
@@ -42,6 +43,7 @@ interface PortoneCheckoutFormProps {
   planKey: SelfServeSubscriptionPlanKey;
   initialBuyerName?: string;
   initialBuyerEmail?: string;
+  initialBuyerPhone?: string;
   successRedirectPath?: string;
 }
 
@@ -51,6 +53,19 @@ function currentReturnPath() {
 
 function redirectToLogin() {
   window.location.assign(`/login?redirect_url=${encodeURIComponent(currentReturnPath())}`);
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function normalizePhoneNumber(value: string) {
+  return value.replace(/[^\d+]/g, "");
+}
+
+function isValidPhoneNumber(value: string) {
+  const normalized = normalizePhoneNumber(value);
+  return /^\+?\d{8,15}$/.test(normalized);
 }
 
 function successRedirectUrl(
@@ -74,19 +89,30 @@ export function PortoneCheckoutForm({
   planKey,
   initialBuyerName = "",
   initialBuyerEmail = "",
+  initialBuyerPhone = "",
   successRedirectPath = "/mypage",
 }: PortoneCheckoutFormProps) {
   const [billingKeyMethod, setBillingKeyMethod] = useState<BillingKeyMethod>("CARD");
   const [buyerName, setBuyerName] = useState(initialBuyerName);
   const [buyerEmail, setBuyerEmail] = useState(initialBuyerEmail);
+  const [buyerPhone, setBuyerPhone] = useState(initialBuyerPhone);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const startSubscription = async () => {
     const normalizedBuyerName = buyerName.trim();
     const normalizedBuyerEmail = buyerEmail.trim();
+    const normalizedBuyerPhone = normalizePhoneNumber(buyerPhone.trim());
     if (!normalizedBuyerName) {
       setError("구매자 이름을 입력해 주세요.");
+      return;
+    }
+    if (!normalizedBuyerEmail || !isValidEmail(normalizedBuyerEmail)) {
+      setError("결제 안내를 받을 이메일을 정확히 입력해 주세요.");
+      return;
+    }
+    if (!normalizedBuyerPhone || !isValidPhoneNumber(normalizedBuyerPhone)) {
+      setError("결제 확인에 사용할 전화번호를 숫자 기준 8~15자리로 입력해 주세요.");
       return;
     }
 
@@ -101,7 +127,8 @@ export function PortoneCheckoutForm({
           plan: planKey,
           billingKeyMethod,
           buyerName: normalizedBuyerName,
-          buyerEmail: normalizedBuyerEmail || undefined,
+          buyerEmail: normalizedBuyerEmail,
+          buyerPhone: normalizedBuyerPhone,
         }),
       });
 
@@ -119,6 +146,12 @@ export function PortoneCheckoutForm({
       }
       if (!prepared.customer.fullName?.trim()) {
         throw new Error("구매자 이름을 입력해 주세요.");
+      }
+      if (!prepared.customer.email?.trim()) {
+        throw new Error("결제 안내를 받을 이메일을 입력해 주세요.");
+      }
+      if (!prepared.customer.phoneNumber?.trim()) {
+        throw new Error("결제 확인에 사용할 전화번호를 입력해 주세요.");
       }
 
       const PortOne = (await import("@portone/browser-sdk/v2").catch(() => null))?.default;
@@ -196,7 +229,7 @@ export function PortoneCheckoutForm({
           <span className="grid gap-1">
             <span className="text-sm font-black text-[var(--app-text)]">카드 정기결제</span>
             <span className="text-xs leading-5 text-[var(--app-muted)]">
-              PortOne 빌링키를 발급한 뒤 첫 결제를 진행합니다.
+              정기적으로 자동 결제됩니다.
             </span>
           </span>
         </label>
@@ -241,10 +274,28 @@ export function PortoneCheckoutForm({
             value={buyerEmail}
             onChange={(event) => setBuyerEmail(event.target.value)}
             placeholder="name@example.com"
+            required
             disabled={pending}
             className="h-11 rounded-md border border-[var(--app-border)] bg-[var(--app-bg)] px-3 text-sm font-semibold text-[var(--app-text)] outline-none transition focus:border-[var(--app-accent)]"
           />
         </label>
+        <label className="grid gap-1 text-xs font-bold text-[var(--app-muted)]">
+          전화번호
+          <input
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            value={buyerPhone}
+            onChange={(event) => setBuyerPhone(event.target.value)}
+            placeholder="01012345678"
+            required
+            disabled={pending}
+            className="h-11 rounded-md border border-[var(--app-border)] bg-[var(--app-bg)] px-3 text-sm font-semibold text-[var(--app-text)] outline-none transition focus:border-[var(--app-accent)]"
+          />
+        </label>
+        <p className="text-xs leading-5 text-[var(--app-subtle)]">
+          이메일과 전화번호는 결제 확인, 영수증 안내, 환불 처리 연락에 사용합니다.
+        </p>
       </div>
 
       {error ? (
@@ -254,7 +305,7 @@ export function PortoneCheckoutForm({
       ) : null}
 
       <Button type="submit" disabled={pending} className="h-11 w-full">
-        {pending ? "결제 연결 중..." : "결제창 열기"}
+        {pending ? "결제 연결 중..." : "결제단계로 진행하기"}
       </Button>
     </form>
   );

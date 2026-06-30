@@ -371,6 +371,20 @@ flowchart TD
 - 갱신 cron 실패
 - `past_due` 사용자 증가
 
+### 10.1 환불 절차 구현 계획
+
+현재 구현은 PortOne에서 이미 발생한 `Transaction.Cancelled`/`Transaction.PartialCancelled` 웹훅을 수신해 내부 거래, 구독, 크레딧 회수 상태를 반영하는 단계까지다. 앱에서 환불을 직접 실행하려면 아래 순서로 별도 요청 원장과 관리자 승인 API를 추가한다.
+
+1. `payment_refund_requests` 원장을 추가한다. 필드는 `payment_transaction_id`, `requested_by`, `approved_by`, `refund_type`(`full`/`partial`), `amount_krw`, `reason`, `status`, `portone_cancel_id`, `requested_at`, `approved_at`, `completed_at`, `failed_code`, `failed_message`를 둔다.
+2. 사용자 환불 요청 API는 `POST /api/payments/refund-requests`로 분리한다. 사용자는 `paid` 거래만 요청할 수 있고, 이미 `refunded`/`canceled`이거나 같은 거래에 `pending` 요청이 있으면 409를 반환한다.
+3. 관리자 환불 실행 API는 `POST /api/admin/payments/refunds/:requestId/approve`로 둔다. 승인 시 서버가 DB 거래 금액, PortOne 단건 조회 결과, 현재 취소 가능 금액을 다시 확인한다.
+4. PortOne 취소 호출은 서버 전용 함수 `cancelPortonePayment(paymentId, input)`로 `my-app/lib/portone.ts`에 추가한다. 전액 취소는 `reason`만, 부분취소는 `amount`와 `currentCancellableAmount`를 함께 보내 동시성 오류를 막는다.
+5. API가 PortOne 취소 요청에 성공해도 내부 최종 상태는 기존 웹훅 경로와 같은 규칙으로 확정한다. 즉 `Transaction.Cancelled`/`Transaction.PartialCancelled` 웹훅 또는 취소 후 단건 조회 결과를 통해 `payment_transactions`, `payment_credit_clawbacks`, `user_subscriptions`를 갱신한다.
+6. 전액 환불은 기존 `claw_back_payment_credits` RPC를 재사용한다. 지급 크레딧 중 이미 사용된 양은 `credits_unrecovered`로 남겨 운영 보정 대상에 올린다.
+7. 부분환불은 정책 확정 전까지 자동 크레딧 회수하지 않고 `manual_review_required` 상태로 남긴다. 금액 비율 회수 정책을 확정하면 `amount_krw / transaction.amount` 비율로 회수 크레딧을 계산하는 별도 RPC를 추가한다.
+8. 관리자 UI는 거래 목록에서 `provider_order_id`, PortOne 상태, 환불 가능 금액, 지급/사용/회수 크레딧, 이전 환불 요청을 보여주고, 실행 전 확인 모달에서 환불 사유 입력을 필수로 한다.
+9. 검증은 `portone:webhook:db:smoke -- --scenario=cancelled-paid-payment`, `--scenario=partial-cancelled-paid-payment`에 더해 새 `portone:refund:smoke`를 추가해 요청 원장, 관리자 승인, PortOne 취소 API 실패/성공, 중복 승인 차단을 확인한다.
+
 ## 11. 세분화 실행 계획
 
 아래 단위는 그대로 GitHub issue 또는 작업 체크리스트로 옮길 수 있는 크기다. 한 작업은 가능하면 1~3개 파일, 한 가지 상태 전이, 한 가지 검증 명령으로 끝나게 자른다.
@@ -399,7 +413,8 @@ flowchart TD
 | `P6. 갱신 cron` | 반복 결제 | 갱신 대상 조회, pending tx 선생성, 암호화 빌링키 복호화, 결제 후 단건 조회, 실패 시 `past_due`와 재시도 정보 기록 | `deno check --no-lock my-app\supabase\functions\cron-subscription-renewal\index.ts`, `npm run portone:renewal:function:smoke` | no-due live probe 통과, 만료 직전 테스트 구독 1건에서 결제/기간 연장/크레딧 지급까지 확인 |
 | `P7. UI 상태 반영` | 결제 페이지/마이페이지/모바일 | 활성 구독, 해지 예약, pending confirmation, failed, past_due, expired 표시 분리, 모바일 Basic/Standard/Pro self-serve 제한 유지 | `npm run portone:ui:smoke`, `npm run portone:mobile:smoke`, 로그인 세션 브라우저 확인 | 사용자 화면이 DB 구독 상태와 일치하고 빌링키 원문/암호문/해시가 클라이언트로 전달되지 않음 |
 | `P8. E2E smoke` | 실제 테스트 결제 | 웹 Basic 테스트 결제, PortOne 콘솔 웹훅 재전송, E2E inspector, 마이페이지 표시 확인 | `npm run portone:e2e:inspect -- --paymentId=<payment-id> --plan=basic --source=web`, `npm run portone:launch:check -- --fullLocal --verifyCloudflareSecrets ...` | 같은 `paymentId`로 PortOne, `payment_transactions`, `user_subscriptions`, `credit_ledger`, 마이페이지가 모두 연결 |
-| `P9. 운영 릴리즈` | 배포/운영 보류 해제 | 운영 secret 등록, 운영 웹훅 URL 등록, 백필 후보 확인, 알림/로그 기준 확인, launch readiness 최종 실행 | `npm run portone:launch:check -- --fullLocal --verifyCloudflareSecrets --webhookUrl=<prod-webhook-url> --renewalFunctionUrl=<function-url> --paymentId=<payment-id> --plan=basic --source=web` | 외부 증거 누락 없이 launch check 통과. 실패 시 운영 배포 보류 |
+| `P9. 환불 실행 플로우` | 앱 내부 환불 요청/승인 | 환불 요청 원장, 관리자 승인 API, PortOne 취소 API 호출, 전액/부분 환불 smoke 추가 | `payment_refund_requests`, `cancelPortonePayment`, `npm run portone:refund:smoke` | 앱에서 승인된 환불만 PortOne 취소 API를 호출하고, 웹훅/단건 조회 후 내부 거래/구독/크레딧 회수 상태가 idempotent하게 정리됨 |
+| `P10. 운영 릴리즈` | 배포/운영 보류 해제 | 운영 secret 등록, 운영 웹훅 URL 등록, 백필 후보 확인, 알림/로그 기준 확인, launch readiness 최종 실행 | `npm run portone:launch:check -- --fullLocal --verifyCloudflareSecrets --webhookUrl=<prod-webhook-url> --renewalFunctionUrl=<function-url> --paymentId=<payment-id> --plan=basic --source=web` | 외부 증거 누락 없이 launch check 통과. 실패 시 운영 배포 보류 |
 
 현재 즉시 다음 순서는 `P1`이다. `https://hairfit.beauty/api/payments/webhook`는 route까지 도달하지만 최신 probe는 `Invalid PortOne webhook signature`로 403을 반환한다. Cloudflare Worker `hairstyleprivew`의 `PORTONE_V2_WEBHOOK_SECRET`과 로컬/PortOne 콘솔 webhook secret 값을 맞춘 뒤 deploy preflight를 202 no-op까지 통과시킨 다음 `P8` 실제 테스트 결제로 넘어간다.
 
@@ -564,6 +579,8 @@ flowchart TD
 | `active` 상태가 남은 만료 구독 | 유료 권한 미부여, 마이페이지 활성 플랜 무료 표시, 새 구독 결제 가능 |
 | paid 결제 전액 취소 웹훅 2회 수신 | 거래 `refunded` 유지, 잔여 크레딧 자동 회수 1회, 이미 사용한 크레딧은 `credits_unrecovered` 기록 |
 | 결제 부분취소 웹훅 | 거래 `refunded`, 크레딧 자동 회수 없음, 구독/빌링키/사용자 크레딧 유지, 운영 검토 metadata 기록 |
+| 관리자 전액 환불 승인 | `payment_refund_requests.completed`, PortOne `Transaction.Cancelled`, 거래 `refunded`, 크레딧 회수 1회 |
+| 관리자 부분환불 승인 | `payment_refund_requests.manual_review_required` 또는 부분환불 완료, 자동 크레딧 회수 없음, 운영 검토 metadata 기록 |
 | 포트원 웹훅 미지원 이벤트 | 200 응답, DB 변경 없음 |
 
 ## 15. 오픈 결정 사항
@@ -572,8 +589,9 @@ flowchart TD
 2. 모바일 결제는 정기구독인가, 단건 크레딧 충전인가?
 3. `past_due` 유예기간은 며칠로 둘 것인가?
 4. 기존 `pg_billing_key` plaintext row 백필 스크립트를 운영 DB에 언제 실행하고, 어느 smoke 후 `--clear-plaintext`까지 진행할 것인가?
-5. 부분취소 시 금액 비율 기준으로 크레딧을 자동 조정할 것인가, 계속 수동 처리할 것인가?
-6. 플랜 변경은 즉시 차액 결제/다음 기간 적용/다운그레이드 예약 중 어떤 정책인가?
+5. 환불 요청 권한은 사용자 요청 후 관리자 승인인가, 관리자 단독 실행인가?
+6. 부분취소 시 금액 비율 기준으로 크레딧을 자동 조정할 것인가, 계속 수동 처리할 것인가?
+7. 플랜 변경은 즉시 차액 결제/다음 기간 적용/다운그레이드 예약 중 어떤 정책인가?
 
 ## 16. 우선순위 제안
 

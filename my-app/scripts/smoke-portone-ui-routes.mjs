@@ -80,7 +80,10 @@ async function checkBillingCheckoutPage(baseUrl) {
     "구매자 정보",
     "구매자 이름",
     "이메일",
-    "결제창 열기",
+    "전화번호",
+    "정기적으로 자동 결제됩니다.",
+    "결제단계로 진행하기",
+    "PortOne 보안 결제창",
     "Basic",
     "₩9,900",
   ]) {

@@ -165,7 +165,7 @@ assertAbsent(resend, '\\[HairStyle\\] \\$\\{formatPlanLabel\\(input\\.plan\\)\\}
 
 const cron = assertFile("supabase/functions/cron-subscription-renewal/index.ts");
 const cronMetadata = cron.match(
-  /function buildPaymentMetadata[\s\S]*?billing_key_storage:[\s\S]*?\n\s*\};\n}/,
+  /function buildPaymentMetadata[\s\S]*?billing_key_storage:[\s\S]*?\.\.\.details,[\s\S]*?\r?\n\s*}\r?\n/,
 );
 assert.ok(cronMetadata, "renewal cron transaction metadata block must be auditable");
 assertIncludes(cron, 'const result = await getPayment\\(paymentId\\)', "renewal cron must query PortOne after billing-key charge");
