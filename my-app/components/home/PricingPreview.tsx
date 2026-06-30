@@ -64,7 +64,6 @@ export function PricingPreview() {
         t("pricing.standard.f2"),
         t("pricing.standard.f3"),
         t("pricing.standard.f4"),
-        t("pricing.standard.f5"),
       ],
       cta: t("pricing.standard.cta"),
       tone: "recommended",

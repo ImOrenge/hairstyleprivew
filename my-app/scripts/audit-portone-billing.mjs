@@ -31,6 +31,10 @@ assertIncludes(billingPlan, 'key: "salon",[\\s\\S]*?selfServe: false', "Salon mu
 assertAbsent(billingPlan, 'HairStyle (Basic|Standard|Pro|Salon) - 월 구독', "PortOne order names must use HairFit branding");
 
 const planEntitlements = assertFile("lib/plan-entitlements.ts");
+assertIncludes(planEntitlements, 'key: "free",[\\s\\S]*?maxFashionGenerations: 1', "Free fashion generation limit must be 1");
+assertIncludes(planEntitlements, 'key: "basic",[\\s\\S]*?maxFashionGenerations: 1', "Basic fashion generation limit must be 1");
+assertIncludes(planEntitlements, 'key: "standard",[\\s\\S]*?maxFashionGenerations: 3', "Standard fashion generation limit must be 3");
+assertIncludes(planEntitlements, 'key: "pro",[\\s\\S]*?maxFashionGenerations: null', "Pro fashion generation limit must be unlimited");
 assertIncludes(planEntitlements, 'key: "free",[\\s\\S]*?generatedAssetsRetentionDays: 7', "Free generated assets must expire after 7 days");
 assertIncludes(planEntitlements, 'key: "basic",[\\s\\S]*?generatedAssetsRetentionDays: 30', "Basic generated assets must expire after 30 days");
 assertIncludes(planEntitlements, 'key: "standard",[\\s\\S]*?generatedAssetsRetentionDays: 365', "Standard generated assets must expire after 365 days");
@@ -39,12 +43,31 @@ assertIncludes(planEntitlements, 'key: "salon",[\\s\\S]*?generatedAssetsRetentio
 
 const pricingKo = assertFile("lib/i18n/locales/ko.ts");
 const pricingEn = assertFile("lib/i18n/locales/en.ts");
-assertAbsent(pricingKo, "컬러\\s*변형|컬러변형", "pricing copy must not claim color variation generation");
-assertAbsent(pricingEn, "[Cc]olor variation", "pricing copy must not claim color variation generation");
+const pricingPreview = assertFile("components/home/PricingPreview.tsx");
+assertAbsent(pricingKo, "컬러\\s*변형|컬러변형|HD 이미지|우선 생성|PDF|팀 계정|살롱 브랜딩|전용 지원", "Korean pricing copy must not claim unimplemented premium benefits");
+assertAbsent(pricingEn, "[Cc]olor variation|HD image|Priority|PDF|team accounts|branding|dedicated support", "English pricing copy must not claim unimplemented premium benefits");
+assertAbsent(pricingKo, 'pricing\\.standard\\.f5', "Standard pricing copy must not expose an unimplemented priority-generation benefit");
+assertAbsent(pricingEn, 'pricing\\.standard\\.f5', "Standard pricing copy must not expose an unimplemented priority-generation benefit");
+assertAbsent(pricingPreview, 'pricing\\.standard\\.f5', "Standard pricing UI must not reference an unimplemented priority-generation benefit");
+assertIncludes(pricingKo, '첫 결과 이미지를 생성할 때 \\{\\{credits\\}\\} 크레딧이 1회 차감', "Korean credit note must describe the actual once-per-board charge");
+assertIncludes(pricingEn, 'first result image generated from a 3x3 recommendation board charges \\{\\{credits\\}\\} credits once', "English credit note must describe the actual once-per-board charge");
+assertIncludes(pricingKo, '"pricing\\.basic\\.f4": "패션 코디 생성 1회 포함"', "Korean Basic fashion copy must match the Basic limit");
+assertIncludes(pricingKo, '"pricing\\.standard\\.f4": "패션 코디 생성 3회 포함"', "Korean Standard fashion copy must match the Standard limit");
+assertIncludes(pricingEn, '"pricing\\.basic\\.f4": "1 fashion outfit generation"', "English Basic fashion copy must match the Basic limit");
+assertIncludes(pricingEn, '"pricing\\.standard\\.f4": "3 fashion outfit generations"', "English Standard fashion copy must match the Standard limit");
 assertIncludes(pricingKo, '"pricing\\.standard\\.f3": "결과 365일 보관 \\+ 스타일 히스토리"', "Korean Standard copy must state 365-day retention");
 assertIncludes(pricingKo, '"pricing\\.pro\\.f5": "결과 영구 보관 \\+ 스타일 히스토리"', "Korean Pro copy must state permanent retention");
 assertIncludes(pricingEn, '"pricing\\.standard\\.f3": "Results kept for 365 days \\+ style history"', "English Standard copy must state 365-day retention");
 assertIncludes(pricingEn, '"pricing\\.pro\\.f5": "Permanent results \\+ style history"', "English Pro copy must state permanent retention");
+
+const promptsGenerateRoute = assertFile("app/api/prompts/generate/route.ts");
+const generationDetailRoute = assertFile("app/api/generations/[id]/route.ts");
+const generationExportRoute = assertFile("app/api/generations/[id]/export/route.ts");
+assertIncludes(promptsGenerateRoute, 'generated_assets_expires_at:\\s*generatedAssetsExpiresAt', "generation creation must persist the plan retention deadline");
+assertIncludes(generationDetailRoute, 'generated_assets_expires_at', "generation detail API must read the retention deadline");
+assertIncludes(generationDetailRoute, 'isGeneratedAssetsExpired', "generation detail API must block expired generated assets");
+assertIncludes(generationExportRoute, 'generated_assets_expires_at', "consultation sheet export must read the retention deadline");
+assertIncludes(generationExportRoute, 'isGeneratedAssetsExpired', "consultation sheet export must block expired generated assets");
 
 const portone = assertFile("lib/portone.ts");
 const portoneWebhook = assertFile("lib/portone-webhook.ts");

@@ -2,6 +2,10 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { resolveGenerationImageUrl } from "../../../../lib/generation-image-storage";
+import {
+  GENERATION_ASSETS_EXPIRED_MESSAGE,
+  isGeneratedAssetsExpired,
+} from "../../../../lib/generation-retention";
 import type { RecommendationSet } from "../../../../lib/recommendation-types";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 
@@ -62,7 +66,7 @@ async function loadGeneration(userId: string, id: string) {
 
   const { data, error } = await supabase
     .from("generations")
-    .select("id,user_id,status,error_message,generated_image_path,options,prompt_used")
+    .select("id,user_id,status,error_message,generated_image_path,generated_assets_expires_at,options,prompt_used")
     .eq("id", id)
     .maybeSingle();
 
@@ -126,6 +130,10 @@ export async function GET(_request: Request, { params }: Params) {
     return NextResponse.json({ error: loaded.error }, { status: loaded.status });
   }
 
+  if (isGeneratedAssetsExpired(loaded.data.generated_assets_expires_at)) {
+    return NextResponse.json({ error: GENERATION_ASSETS_EXPIRED_MESSAGE }, { status: 410 });
+  }
+
   const rawRecommendationSet = normalizeRecommendationSet(
     isObject(loaded.data.options) ? loaded.data.options.recommendationSet : null,
   );
@@ -171,6 +179,10 @@ export async function PATCH(request: Request, { params }: Params) {
   const loaded = await loadGeneration(userId, id.trim());
   if ("error" in loaded) {
     return NextResponse.json({ error: loaded.error }, { status: loaded.status });
+  }
+
+  if (isGeneratedAssetsExpired(loaded.data.generated_assets_expires_at)) {
+    return NextResponse.json({ error: GENERATION_ASSETS_EXPIRED_MESSAGE }, { status: 410 });
   }
 
   const options = isObject(loaded.data.options) ? loaded.data.options : {};

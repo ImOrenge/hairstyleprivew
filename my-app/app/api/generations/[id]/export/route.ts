@@ -2,6 +2,10 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { downloadGenerationImageDataUrl } from "../../../../../lib/generation-image-storage";
+import {
+  GENERATION_ASSETS_EXPIRED_MESSAGE,
+  isGeneratedAssetsExpired,
+} from "../../../../../lib/generation-retention";
 import type { GeneratedVariant, RecommendationSet } from "../../../../../lib/recommendation-types";
 import { getSupabaseAdminClient } from "../../../../../lib/supabase";
 
@@ -221,7 +225,7 @@ export async function POST(request: Request, { params }: Params) {
 
   const { data: generation, error } = await supabase
     .from("generations")
-    .select("id,user_id,created_at,options")
+    .select("id,user_id,created_at,generated_assets_expires_at,options")
     .eq("id", generationId)
     .maybeSingle();
 
@@ -233,6 +237,10 @@ export async function POST(request: Request, { params }: Params) {
   }
   if (generation.user_id !== userId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  if (isGeneratedAssetsExpired(generation.generated_assets_expires_at)) {
+    return NextResponse.json({ error: GENERATION_ASSETS_EXPIRED_MESSAGE }, { status: 410 });
   }
 
   const recommendationSet = normalizeRecommendationSet(

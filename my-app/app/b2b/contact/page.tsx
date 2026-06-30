@@ -18,7 +18,7 @@ export default function B2BContactPage() {
           살롱 도입 상담을 신청하세요
         </h1>
         <p className="text-sm leading-6 text-[var(--app-muted)] sm:text-base">
-          운영 규모와 도입 목적을 남겨주시면 Salon CRM, 상담 이미지 활용, 팀 계정 구성에 맞춰 연락드리겠습니다.
+          운영 규모와 도입 목적을 남겨주시면 고객 기록 관리와 상담 이미지 활용 범위에 맞춰 연락드리겠습니다.
         </p>
         <Link
           href="/b2b/signup"
