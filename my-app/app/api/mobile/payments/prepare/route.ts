@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireMobileService } from "../../../../../lib/mobile-auth";
-import {
-  isSelfServeBillingPlanKey,
-  type SelfServeBillingPlanKey,
-} from "../../../../../lib/billing-plan";
+import { isSelfServeBillingPlanKey } from "../../../../../lib/billing-plan";
 import { buildPortonePaymentId } from "../../../../../lib/portone-payment-id";
 import { PLAN_AMOUNT_KRW, PLAN_CREDITS, PLAN_ORDER_NAME } from "../../../../../lib/portone";
 
