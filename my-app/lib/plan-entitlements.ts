@@ -7,6 +7,7 @@ export interface PlanEntitlement {
   label: string;
   maxFashionGenerations: number | null;
   watermarkHairResults: boolean;
+  generatedAssetsRetentionDays: number | null;
 }
 
 export const PLAN_ENTITLEMENTS: Record<ActivePlanKey, PlanEntitlement> = {
@@ -15,32 +16,50 @@ export const PLAN_ENTITLEMENTS: Record<ActivePlanKey, PlanEntitlement> = {
     label: "Free",
     maxFashionGenerations: 1,
     watermarkHairResults: true,
+    generatedAssetsRetentionDays: 7,
   },
   basic: {
     key: "basic",
     label: "Basic",
     maxFashionGenerations: 1,
     watermarkHairResults: false,
+    generatedAssetsRetentionDays: 30,
   },
   standard: {
     key: "standard",
     label: "Standard",
     maxFashionGenerations: 3,
     watermarkHairResults: false,
+    generatedAssetsRetentionDays: 365,
   },
   pro: {
     key: "pro",
     label: "Pro",
     maxFashionGenerations: null,
     watermarkHairResults: false,
+    generatedAssetsRetentionDays: null,
   },
   salon: {
     key: "salon",
     label: "Salon",
     maxFashionGenerations: null,
     watermarkHairResults: false,
+    generatedAssetsRetentionDays: null,
   },
 };
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export function getGeneratedAssetsExpiresAt(
+  entitlement: PlanEntitlement,
+  now = new Date(),
+): string | null {
+  if (entitlement.generatedAssetsRetentionDays === null) {
+    return null;
+  }
+
+  return new Date(now.getTime() + entitlement.generatedAssetsRetentionDays * MS_PER_DAY).toISOString();
+}
 
 interface SupabaseEntitlementClient {
   rpc?: (

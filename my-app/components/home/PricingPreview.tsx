@@ -80,7 +80,6 @@ export function PricingPreview() {
         t("pricing.pro.f1"),
         t("pricing.pro.f2"),
         t("pricing.pro.f3"),
-        t("pricing.pro.f4"),
         t("pricing.pro.f5"),
       ],
       cta: t("pricing.pro.cta"),

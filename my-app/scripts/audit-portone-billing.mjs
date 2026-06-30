@@ -30,6 +30,22 @@ assertIncludes(billingPlan, 'key: "pro",[\\s\\S]*?credits: 600,[\\s\\S]*?priceKr
 assertIncludes(billingPlan, 'key: "salon",[\\s\\S]*?selfServe: false', "Salon must stay non-self-serve until product policy is decided");
 assertAbsent(billingPlan, 'HairStyle (Basic|Standard|Pro|Salon) - 월 구독', "PortOne order names must use HairFit branding");
 
+const planEntitlements = assertFile("lib/plan-entitlements.ts");
+assertIncludes(planEntitlements, 'key: "free",[\\s\\S]*?generatedAssetsRetentionDays: 7', "Free generated assets must expire after 7 days");
+assertIncludes(planEntitlements, 'key: "basic",[\\s\\S]*?generatedAssetsRetentionDays: 30', "Basic generated assets must expire after 30 days");
+assertIncludes(planEntitlements, 'key: "standard",[\\s\\S]*?generatedAssetsRetentionDays: 365', "Standard generated assets must expire after 365 days");
+assertIncludes(planEntitlements, 'key: "pro",[\\s\\S]*?generatedAssetsRetentionDays: null', "Pro generated assets must not expire");
+assertIncludes(planEntitlements, 'key: "salon",[\\s\\S]*?generatedAssetsRetentionDays: null', "Salon generated assets must not expire");
+
+const pricingKo = assertFile("lib/i18n/locales/ko.ts");
+const pricingEn = assertFile("lib/i18n/locales/en.ts");
+assertAbsent(pricingKo, "컬러\\s*변형|컬러변형", "pricing copy must not claim color variation generation");
+assertAbsent(pricingEn, "[Cc]olor variation", "pricing copy must not claim color variation generation");
+assertIncludes(pricingKo, '"pricing\\.standard\\.f3": "결과 365일 보관 \\+ 스타일 히스토리"', "Korean Standard copy must state 365-day retention");
+assertIncludes(pricingKo, '"pricing\\.pro\\.f5": "결과 영구 보관 \\+ 스타일 히스토리"', "Korean Pro copy must state permanent retention");
+assertIncludes(pricingEn, '"pricing\\.standard\\.f3": "Results kept for 365 days \\+ style history"', "English Standard copy must state 365-day retention");
+assertIncludes(pricingEn, '"pricing\\.pro\\.f5": "Permanent results \\+ style history"', "English Pro copy must state permanent retention");
+
 const portone = assertFile("lib/portone.ts");
 const portoneWebhook = assertFile("lib/portone-webhook.ts");
 const portonePaymentId = assertFile("lib/portone-payment-id.ts");

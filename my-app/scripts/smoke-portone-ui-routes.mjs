@@ -21,7 +21,7 @@ Usage:
 
 Checks:
   /billing renders the self-serve Basic/Standard/Pro pricing page.
-  /billing/checkout?plan=basic renders the PortOne payment method and buyer information form.
+  /billing/checkout?plan=basic&returnTo=/mypage redirects unauthenticated users to login.
   /mypage?tab=plan redirects unauthenticated users to login while preserving tab=plan.
   /api/payments/billing-key/prepare returns 401 for unauthenticated subscription attempts.
 `);
@@ -70,28 +70,24 @@ async function checkBillingPage(baseUrl) {
 }
 
 async function checkBillingCheckoutPage(baseUrl) {
-  const response = await fetchOrExplain(urlFor(baseUrl, "/billing/checkout?plan=basic"));
-  assert.equal(response.status, 200, "/billing/checkout?plan=basic should return 200");
+  const checkoutPath = "/billing/checkout?plan=basic&returnTo=%2Fmypage";
+  const response = await fetchOrExplain(urlFor(baseUrl, checkoutPath), {
+    redirect: "manual",
+  });
+  assert.ok(
+    response.status === 307 || response.status === 308,
+    `/billing/checkout should redirect unauthenticated users, got ${response.status}`,
+  );
 
-  const body = await response.text();
-  for (const expected of [
-    "결제수단 선택",
-    "카드 정기결제",
-    "구매자 정보",
-    "구매자 이름",
-    "이메일",
-    "전화번호",
-    "정기적으로 자동 결제됩니다.",
-    "결제단계로 진행하기",
-    "PortOne 보안 결제창",
-    "Basic",
-    "₩9,900",
-  ]) {
-    assertBodyIncludes(body, expected, "/billing/checkout?plan=basic");
-  }
-
-  assert.ok(!body.includes("NaN"), "/billing/checkout should not render NaN");
-  assert.ok(!body.includes(">undefined<"), "/billing/checkout should not render undefined text nodes");
+  const location = response.headers.get("location");
+  assert.ok(location, "/billing/checkout redirect should include location header");
+  const redirectUrl = new URL(location, baseUrl);
+  assert.equal(redirectUrl.pathname, "/login", "/billing/checkout should redirect to login");
+  assert.equal(
+    redirectUrl.searchParams.get("redirect_url"),
+    checkoutPath,
+    "login redirect should preserve the selected plan and return path",
+  );
 }
 
 async function checkMyPagePlanRedirect(baseUrl) {

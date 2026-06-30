@@ -6,6 +6,10 @@ import {
   isMemberStyleTarget,
   MEMBER_GENDER_REQUIRED_CODE,
 } from "../../../../lib/onboarding";
+import {
+  getGeneratedAssetsExpiresAt,
+  getPlanEntitlement,
+} from "../../../../lib/plan-entitlements";
 import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { createPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
 import { generateRecommendationSet } from "../../../../lib/recommendation-generator";
@@ -114,6 +118,8 @@ export async function POST(request: Request) {
       );
     }
 
+    const entitlement = await getPlanEntitlement(supabase, userId);
+    const generatedAssetsExpiresAt = getGeneratedAssetsExpiresAt(entitlement);
     const generated = await generateRecommendationSet(referenceImageDataUrl, styleTarget);
     const designerBriefs = await generateDesignerBriefs({
       analysis: generated.analysis,
@@ -165,6 +171,7 @@ export async function POST(request: Request) {
         },
         status: "queued",
         credits_used: creditsRequired,
+        generated_assets_expires_at: generatedAssetsExpiresAt,
         model_provider: "gemini",
         model_name: generated.model,
       })

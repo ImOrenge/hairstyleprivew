@@ -167,11 +167,17 @@ function PreviewFrame({
 }
 
 function MetricCard({
+  actionHref,
+  actionLabel,
+  actionShortLabel,
   helper,
   icon: Icon,
   label,
   value,
 }: {
+  actionHref?: string;
+  actionLabel?: string;
+  actionShortLabel?: string;
   helper: string;
   icon: typeof CreditCard;
   label: string;
@@ -187,6 +193,23 @@ function MetricCard({
       </div>
       <p className="mt-1 truncate text-xl font-black text-[var(--app-text)] sm:text-2xl">{value}</p>
       <p className="mt-1 hidden truncate text-xs leading-5 text-[var(--app-muted)] sm:block">{helper}</p>
+      {actionHref && actionLabel ? (
+        <Link
+          href={actionHref}
+          aria-label={actionLabel}
+          className="mt-3 inline-flex min-h-8 w-full min-w-0 items-center justify-center gap-1.5 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-surface)] px-2 py-1.5 text-center text-[10px] font-black uppercase leading-4 tracking-[0.04em] text-[var(--app-text)] transition hover:bg-[var(--app-surface-muted)] sm:w-auto sm:px-2.5 sm:text-[11px]"
+        >
+          {actionShortLabel ? (
+            <>
+              <span className="sm:hidden">{actionShortLabel}</span>
+              <span className="hidden sm:inline">{actionLabel}</span>
+            </>
+          ) : (
+            actionLabel
+          )}
+          <ArrowRight className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        </Link>
+      ) : null}
     </div>
   );
 }
@@ -374,6 +397,9 @@ export default async function CustomerHomePage() {
             value={dashboard.credits.toLocaleString("ko-KR")}
           />
           <MetricCard
+            actionHref="/billing"
+            actionLabel="플랜 업그레이드"
+            actionShortLabel="업그레이드"
             helper={dashboard.planKey ? "현재 활성 플랜" : "활성 구독 정보 없음"}
             icon={Sparkles}
             label="플랜"

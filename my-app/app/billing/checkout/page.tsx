@@ -1,4 +1,4 @@
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PortoneCheckoutForm } from "../../../components/payments/PortoneCheckoutForm";
 import { AppPage, Panel, SurfaceCard } from "../../../components/ui/Surface";
@@ -7,6 +7,7 @@ import {
   isSelfServeBillingPlanKey,
   type SelfServeBillingPlanKey,
 } from "../../../lib/billing-plan";
+import { buildSignInRedirectUrl } from "../../../lib/clerk";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -29,6 +30,14 @@ function sanitizeReturnTo(value: string): string {
   return value;
 }
 
+function buildCheckoutReturnPath(planKey: SelfServeBillingPlanKey, returnTo: string): string {
+  const params = new URLSearchParams({ plan: planKey });
+  if (returnTo) {
+    params.set("returnTo", returnTo);
+  }
+  return `/billing/checkout?${params.toString()}`;
+}
+
 export default async function BillingCheckoutPage({ searchParams }: BillingCheckoutPageProps) {
   const params = (await searchParams) ?? {};
   const planParam = readSearchParam(params, "plan").trim();
@@ -39,6 +48,11 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
   const planKey = planParam as SelfServeBillingPlanKey;
   const plan = getBillingPlan(planKey);
   const returnTo = sanitizeReturnTo(readSearchParam(params, "returnTo"));
+  const { userId } = await auth();
+  if (!userId) {
+    redirect(buildSignInRedirectUrl(buildCheckoutReturnPath(planKey, returnTo)));
+  }
+
   const clerkUser = await currentUser();
   const initialBuyerName =
     clerkUser?.fullName?.trim() ||
