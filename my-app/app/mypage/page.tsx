@@ -52,6 +52,35 @@ interface DashboardSupabase {
   };
 }
 
+interface SubscriptionQueryRow extends SubscriptionRow {
+  pg_billing_key?: string | null;
+  pg_billing_key_encrypted?: string | null;
+  pg_billing_key_hash?: string | null;
+}
+
+function toSafeSubscription(row: SubscriptionQueryRow | null): SubscriptionRow | null {
+  if (!row) return null;
+  const hasStoredBillingKey = [
+    row.pg_billing_key,
+    row.pg_billing_key_encrypted,
+    row.pg_billing_key_hash,
+  ].some((value) => typeof value === "string" && value.trim().length > 0);
+
+  return {
+    plan_key: row.plan_key,
+    status: row.status,
+    current_period_end: row.current_period_end,
+    cancel_at_period_end: row.cancel_at_period_end,
+    canceled_at: row.canceled_at,
+    has_stored_billing_key: hasStoredBillingKey,
+    renewal_failure_count: row.renewal_failure_count,
+    renewal_failure_code: row.renewal_failure_code,
+    renewal_failure_message: row.renewal_failure_message,
+    renewal_last_failed_at: row.renewal_last_failed_at,
+    renewal_next_retry_at: row.renewal_next_retry_at,
+  };
+}
+
 function pickFirst(value: string | string[] | undefined): string {
   if (Array.isArray(value)) {
     return value[0] ?? "";
@@ -59,17 +88,33 @@ function pickFirst(value: string | string[] | undefined): string {
   return value ?? "";
 }
 
+function buildMyPageReturnPath(searchParams: SearchParams) {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(searchParams)) {
+    const values = Array.isArray(value) ? value : [value];
+    for (const item of values) {
+      if (typeof item === "string" && item.length > 0) {
+        query.append(key, item);
+      }
+    }
+  }
+
+  const serialized = query.toString();
+  return serialized ? `/mypage?${serialized}` : "/mypage";
+}
+
 export default async function MyPage({
   searchParams,
 }: {
   searchParams?: Promise<SearchParams>;
 }) {
+  const resolvedSearchParams = (await searchParams) ?? {};
   const { userId } = await auth();
   if (!userId) {
-    redirect(buildSignInRedirectUrl("/mypage"));
+    redirect(buildSignInRedirectUrl(buildMyPageReturnPath(resolvedSearchParams)));
   }
 
-  const resolvedSearchParams = (await searchParams) ?? {};
   const requestedTab = normalizeMyPageTab(pickFirst(resolvedSearchParams.tab));
   const setupRequested = pickFirst(resolvedSearchParams.setup) === "1";
   const payment = pickFirst(resolvedSearchParams.payment);
@@ -125,7 +170,7 @@ export default async function MyPage({
         .limit(10),
       supabase
         .from<PaymentTransactionRow>("payment_transactions")
-        .select("id,status,amount,credits_to_grant,paid_at,created_at,metadata")
+        .select("id,status,amount,credits_to_grant,paid_at,created_at,failure_code,failure_message,webhook_event_type,webhook_received_at,metadata")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(6),
@@ -146,8 +191,8 @@ export default async function MyPage({
         .order("created_at", { ascending: false })
         .limit(5),
       supabase
-        .from<SubscriptionRow>("user_subscriptions")
-        .select("plan_key,status,current_period_end,cancel_at_period_end,canceled_at")
+        .from<SubscriptionQueryRow>("user_subscriptions")
+        .select("plan_key,status,current_period_end,cancel_at_period_end,canceled_at,pg_billing_key,pg_billing_key_encrypted,pg_billing_key_hash,renewal_failure_count,renewal_failure_code,renewal_failure_message,renewal_last_failed_at,renewal_next_retry_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -174,7 +219,7 @@ export default async function MyPage({
       personalColor = normalizeStyleProfile(styleProfileResult.data as Record<string, unknown> | null, userId).personalColor;
     }
     if (!hairRecordResult.error && hairRecordResult.data) hairRecords = hairRecordResult.data;
-    if (!subscriptionResult.error) subscription = subscriptionResult.data;
+    if (!subscriptionResult.error) subscription = toSafeSubscription(subscriptionResult.data);
   }
 
   const viewerName = getDisplayName(displayName ?? profile?.display_name, email);

@@ -72,12 +72,29 @@ export async function POST(request: Request) {
     );
   }
 
+  const now = new Date().toISOString();
+  const updateValues = cancelAtPeriodEnd
+    ? {
+        cancel_at_period_end: true,
+        canceled_at: now,
+      }
+    : {
+        status: "canceled",
+        cancel_at_period_end: false,
+        canceled_at: now,
+        pg_billing_key: null,
+        pg_billing_key_encrypted: null,
+        pg_billing_key_hash: null,
+        renewal_failure_count: 0,
+        renewal_last_failed_at: null,
+        renewal_next_retry_at: null,
+        renewal_failure_code: null,
+        renewal_failure_message: null,
+      };
+
   const { data: updated, error: updateError } = await supabase
     .from("user_subscriptions")
-    .update({
-      cancel_at_period_end: cancelAtPeriodEnd,
-      canceled_at: cancelAtPeriodEnd ? new Date().toISOString() : null,
-    })
+    .update(updateValues)
     .eq("id", subscription.id)
     .select("id,user_id,plan_key,status,current_period_end,cancel_at_period_end,canceled_at")
     .single();

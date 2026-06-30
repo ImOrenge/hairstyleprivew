@@ -3,6 +3,15 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
+      "@hairfit/api-client": [
+        "../../packages/api-client/src/index.ts"
+      ],
+      "@hairfit/payments-portone": [
+        "../../packages/payments-portone/src/index.ts"
+      ],
+      "@hairfit/shared": [
+        "../../packages/shared/src/index.ts"
+      ],
       "@hairfit/ui-native": [
         "lib/ui-native.tsx"
       ]

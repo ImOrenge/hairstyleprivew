@@ -1,3 +1,10 @@
+import {
+  BILLING_PLAN_KEYS,
+  getBillingPlanCredits,
+  getBillingPlanPriceKrw,
+  type BillingPlanKey,
+} from "./billing-plan";
+
 export const DEFAULT_CREDITS_PER_STYLE = 5;
 export const DEFAULT_CREDITS_PER_OUTFIT = 8;
 const DEFAULT_STYLE_COST_USD = 0.16;
@@ -5,30 +12,7 @@ const DEFAULT_TARGET_MARGIN = 0.4;
 const DEFAULT_USD_TO_KRW = 1350;
 const DEFAULT_SAFETY_MULTIPLIER = 1.06;
 
-const DEFAULT_CREDIT_PACKS = {
-  free: {
-    credits: 10,
-    priceKrw: 0,
-  },
-  basic: {
-    credits: 30,
-    priceKrw: 4900,
-  },
-  standard: {
-    credits: 80,
-    priceKrw: 9900,
-  },
-  pro: {
-    credits: 200,
-    priceKrw: 19900,
-  },
-  salon: {
-    credits: 500,
-    priceKrw: 39900,
-  },
-} as const;
-
-export type PricingTierKey = keyof typeof DEFAULT_CREDIT_PACKS;
+export type PricingTierKey = BillingPlanKey;
 
 export interface PricingEconomics {
   styleCostUsd: number;
@@ -107,26 +91,14 @@ export function getCreditsPerOutfit(): number {
   );
 }
 
-function getPackCredits(key: PricingTierKey): number {
-  const envName = `PRICING_${key.toUpperCase()}_CREDITS`;
-  const fallback = DEFAULT_CREDIT_PACKS[key].credits;
-  return Math.max(0, Math.round(readEnvNumber(envName, fallback)));
-}
-
-function getPackPriceKrw(key: PricingTierKey): number {
-  const envName = `PRICING_${key.toUpperCase()}_PRICE_KRW`;
-  const fallback = DEFAULT_CREDIT_PACKS[key].priceKrw;
-  return Math.max(0, Math.round(readEnvNumber(envName, fallback)));
-}
-
 export function getSuggestedPricingTiers(): PricingPackTier[] {
   const economics = getPricingEconomics();
 
-  const tierKeys = Object.keys(DEFAULT_CREDIT_PACKS) as PricingTierKey[];
+  const tierKeys = BILLING_PLAN_KEYS;
 
   return tierKeys.map((key) => {
-    const credits = getPackCredits(key);
-    const priceKrw = getPackPriceKrw(key);
+    const credits = getBillingPlanCredits(key);
+    const priceKrw = getBillingPlanPriceKrw(key);
     const estimatedStyles = Math.floor(credits / economics.creditsPerStyle);
     const estimatedCostUsd = estimatedStyles * economics.styleCostUsd * economics.safetyMultiplier;
     const realizedPriceUsd = priceKrw / economics.usdToKrw;

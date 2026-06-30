@@ -10,10 +10,61 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const PORTONE_V2_API_SECRET = Deno.env.get("PORTONE_V2_API_SECRET")!;
+const PORTONE_V2_STORE_ID =
+  Deno.env.get("PORTONE_V2_STORE_ID")?.trim() ||
+  Deno.env.get("NEXT_PUBLIC_PORTONE_V2_STORE_ID")?.trim() ||
+  "";
+const PORTONE_V2_CHANNEL_KEY =
+  Deno.env.get("PORTONE_V2_CHANNEL_KEY")?.trim() ||
+  Deno.env.get("NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY")?.trim() ||
+  "";
+const BILLING_KEY_ENCRYPTION_SECRET =
+  Deno.env.get("BILLING_KEY_ENCRYPTION_SECRET")?.trim() ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM_EMAIL =
-  Deno.env.get("RESEND_FROM_EMAIL") ?? "HairStyle <onboarding@resend.dev>";
+  Deno.env.get("RESEND_FROM_EMAIL") ?? "HairFit <onboarding@resend.dev>";
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+function base64ToBytes(value: string) {
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
+async function deriveBillingKeyEncryptionKey() {
+  if (!BILLING_KEY_ENCRYPTION_SECRET) {
+    throw new Error("Missing BILLING_KEY_ENCRYPTION_SECRET");
+  }
+
+  const secretHash = await crypto.subtle.digest(
+    "SHA-256",
+    textEncoder.encode(BILLING_KEY_ENCRYPTION_SECRET),
+  );
+  return crypto.subtle.importKey(
+    "raw",
+    secretHash,
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"],
+  );
+}
+
+async function decryptEncryptedBillingKey(encryptedBillingKey: string) {
+  const [version, ivBase64, encryptedBase64] = encryptedBillingKey.split(".");
+  if (version !== "v1" || !ivBase64 || !encryptedBase64) {
+    throw new Error("Unsupported encrypted billing key format");
+  }
+
+  const key = await deriveBillingKeyEncryptionKey();
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: base64ToBytes(ivBase64) },
+    key,
+    base64ToBytes(encryptedBase64),
+  );
+
+  return textDecoder.decode(decrypted);
+}
 
 // ─── PortOne V2 래퍼 ────────────────────────────────────────────────────────
 
@@ -21,8 +72,55 @@ interface BillingKeyChargeResult {
   status: string;
   paidAt: string | null;
   pgTxId: string | null;
+  orderName: string | null;
+  amountTotal: number | null;
+  currency: string | null;
   failureCode: string | null;
   failureMessage: string | null;
+}
+
+function parsePaymentResult(data: Record<string, unknown>): BillingKeyChargeResult {
+  const payment = data.payment;
+  const paymentData =
+    typeof payment === "object" && payment !== null && !Array.isArray(payment)
+      ? (payment as Record<string, unknown>)
+      : data;
+  const amount = paymentData.amount as Record<string, unknown> | undefined;
+  const pgTxId =
+    typeof paymentData.latestPgTxId === "string"
+      ? paymentData.latestPgTxId
+      : typeof paymentData.pgTxId === "string"
+        ? paymentData.pgTxId
+        : null;
+  const paidAt = typeof paymentData.paidAt === "string" ? paymentData.paidAt : null;
+  const status =
+    typeof paymentData.status === "string"
+      ? paymentData.status
+      : pgTxId || paidAt
+        ? "PAID"
+        : "FAILED";
+
+  return {
+    status,
+    paidAt,
+    pgTxId,
+    orderName: typeof paymentData.orderName === "string" ? paymentData.orderName : null,
+    amountTotal:
+      typeof amount?.total === "number"
+        ? amount.total
+        : typeof paymentData.totalAmount === "number"
+          ? paymentData.totalAmount
+          : null,
+    currency:
+      typeof amount?.currency === "string"
+        ? amount.currency
+        : typeof paymentData.currency === "string"
+          ? paymentData.currency
+          : null,
+    failureCode: typeof paymentData.failureCode === "string" ? paymentData.failureCode : null,
+    failureMessage:
+      typeof paymentData.failureMessage === "string" ? paymentData.failureMessage : null,
+  };
 }
 
 async function chargeBillingKey(
@@ -32,6 +130,10 @@ async function chargeBillingKey(
   customerId: string,
   amountKrw: number,
 ): Promise<BillingKeyChargeResult> {
+  if (!PORTONE_V2_STORE_ID) {
+    throw new Error("Missing PORTONE_V2_STORE_ID");
+  }
+
   const url = `https://api.portone.io/payments/${encodeURIComponent(paymentId)}/billing-key`;
   const res = await fetch(url, {
     method: "POST",
@@ -40,9 +142,11 @@ async function chargeBillingKey(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
+      storeId: PORTONE_V2_STORE_ID,
       billingKey,
+      ...(PORTONE_V2_CHANNEL_KEY ? { channelKey: PORTONE_V2_CHANNEL_KEY } : {}),
       orderName,
-      customer: { customerId },
+      customer: { id: customerId },
       amount: { total: amountKrw },
       currency: "KRW",
     }),
@@ -55,14 +159,26 @@ async function chargeBillingKey(
     throw new Error(`PortOne charge failed: ${msg}`);
   }
 
-  return {
-    status: typeof data.status === "string" ? data.status : "FAILED",
-    paidAt: typeof data.paidAt === "string" ? data.paidAt : null,
-    pgTxId: typeof data.latestPgTxId === "string" ? data.latestPgTxId : null,
-    failureCode: typeof data.failureCode === "string" ? data.failureCode : null,
-    failureMessage:
-      typeof data.failureMessage === "string" ? data.failureMessage : null,
-  };
+  return parsePaymentResult(data);
+}
+
+async function getPayment(paymentId: string): Promise<BillingKeyChargeResult | null> {
+  const url = `https://api.portone.io/payments/${encodeURIComponent(paymentId)}`;
+  const res = await fetch(url, {
+    headers: {
+      Authorization: `PortOne ${PORTONE_V2_API_SECRET}`,
+    },
+  });
+
+  if (res.status === 404) return null;
+
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    const msg = typeof data.message === "string" ? data.message : `HTTP ${res.status}`;
+    throw new Error(`PortOne payment lookup failed: ${msg}`);
+  }
+
+  return parsePaymentResult(data);
 }
 
 // ─── Resend 이메일 ──────────────────────────────────────────────────────────
@@ -85,7 +201,7 @@ async function sendRenewalEmail(
   const html = `
   <div style="font-family:-apple-system,Arial,sans-serif;line-height:1.7;color:#111827;max-width:600px;margin:0 auto">
     <h2 style="font-size:20px;font-weight:700;margin:0 0 12px">구독이 갱신되었어요</h2>
-    <p style="margin:0 0 14px">HairStyle ${planLabel} 구독이 자동 갱신되어 크레딧이 충전되었습니다.</p>
+    <p style="margin:0 0 14px">HairFit ${planLabel} 구독이 자동 갱신되어 크레딧이 충전되었습니다.</p>
     <ul style="padding-left:18px;margin:0 0 16px">
       <li><strong>플랜:</strong> ${planLabel}</li>
       <li><strong>충전 크레딧:</strong> +${creditsGranted.toLocaleString("ko-KR")}</li>
@@ -108,7 +224,7 @@ async function sendRenewalEmail(
     body: JSON.stringify({
       from: RESEND_FROM_EMAIL,
       to,
-      subject: `[HairStyle] ${planLabel} 구독이 갱신되었습니다 (+${creditsGranted.toLocaleString("ko-KR")} credits)`,
+      subject: `[HairFit] ${planLabel} 구독이 갱신되었습니다 (+${creditsGranted.toLocaleString("ko-KR")} credits)`,
       html,
     }),
   }).catch((e: unknown) => console.error("[cron-renewal] email error:", e));
@@ -120,9 +236,120 @@ interface DueSubscription {
   subscription_id: string;
   user_id: string;
   plan_key: string;
-  pg_billing_key: string;
+  pg_billing_key: string | null;
+  pg_billing_key_encrypted: string | null;
+  pg_billing_key_hash: string | null;
   amount_krw: number;
   credits_per_cycle: number;
+  renewal_failure_count?: number | null;
+}
+
+interface SubscriptionKeyRow {
+  id: string;
+  pg_billing_key_encrypted: string | null;
+  pg_billing_key_hash: string | null;
+}
+
+interface PaymentTransactionRow {
+  id: string;
+}
+
+interface RenewalFailureSupabaseClient {
+  from: (table: string) => {
+    update: (values: Record<string, unknown>) => {
+      eq: (
+        column: string,
+        value: unknown,
+      ) => Promise<{ error: { message: string } | null }>;
+    };
+  };
+}
+
+function buildPaymentMetadata(
+  sub: DueSubscription,
+  paymentId: string,
+  orderName: string,
+  details: Record<string, unknown> = {},
+) {
+  return {
+    source: "cron-subscription-renewal",
+    plan: sub.plan_key,
+    portone_payment_id: paymentId,
+    order_name: orderName,
+    billing_key_storage: sub.pg_billing_key_encrypted
+      ? "encrypted"
+      : "legacy_plaintext",
+    ...details,
+  };
+}
+
+async function resolveBillingKey(sub: DueSubscription) {
+  if (sub.pg_billing_key_encrypted) {
+    return decryptEncryptedBillingKey(sub.pg_billing_key_encrypted);
+  }
+  if (sub.pg_billing_key) {
+    return sub.pg_billing_key;
+  }
+  throw new Error("subscription billing key is missing");
+}
+
+function renewalFailureCount(sub: DueSubscription) {
+  const count = Number(sub.renewal_failure_count ?? 0);
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+}
+
+function nextRenewalRetryAt(nextFailureCount: number) {
+  const retryAt = new Date();
+  const delayDays = Math.min(Math.max(nextFailureCount, 1), 7);
+  retryAt.setDate(retryAt.getDate() + delayDays);
+  return retryAt.toISOString();
+}
+
+function buildRenewalPaymentId(plan: string) {
+  const normalizedPlan = plan.trim().toLowerCase();
+  const planCode =
+    normalizedPlan === "basic"
+      ? "b"
+      : normalizedPlan === "standard"
+        ? "s"
+        : normalizedPlan === "pro"
+          ? "p"
+          : "x";
+  const random = crypto.randomUUID().replaceAll("-", "").slice(0, 12);
+  const paymentId = `ren-${planCode}-${Date.now().toString(36)}-${random}`;
+  if (paymentId.length > 32) {
+    throw new Error("PortOne paymentId exceeds 32 characters");
+  }
+  return paymentId;
+}
+
+async function markSubscriptionRenewalFailed(
+  supabase: RenewalFailureSupabaseClient,
+  sub: DueSubscription,
+  failureCode: string,
+  failureMessage: string,
+) {
+  const nextFailureCount = renewalFailureCount(sub) + 1;
+  sub.renewal_failure_count = nextFailureCount;
+
+  const { error } = await supabase
+    .from("user_subscriptions")
+    .update({
+      status: "past_due",
+      renewal_failure_count: nextFailureCount,
+      renewal_last_failed_at: new Date().toISOString(),
+      renewal_next_retry_at: nextRenewalRetryAt(nextFailureCount),
+      renewal_failure_code: failureCode,
+      renewal_failure_message: failureMessage,
+    })
+    .eq("id", sub.subscription_id);
+
+  if (error) {
+    console.error(
+      "[cron-renewal] renewal failure tracking update error:",
+      error.message,
+    );
+  }
 }
 
 Deno.serve(async () => {
@@ -148,14 +375,44 @@ Deno.serve(async () => {
     });
   }
 
-  const subscriptions = (dueRows ?? []) as DueSubscription[];
+  const dueSubscriptions = (dueRows ?? []) as Array<Omit<
+    DueSubscription,
+    "pg_billing_key_encrypted" | "pg_billing_key_hash"
+  >>;
 
-  if (subscriptions.length === 0) {
+  if (dueSubscriptions.length === 0) {
     return new Response(
       JSON.stringify({ renewed: 0, failed: 0, message: "no subscriptions due" }),
       { status: 200 },
     );
   }
+
+  const subscriptionIds = dueSubscriptions.map((s) => s.subscription_id);
+  const { data: keyRows, error: keyRowsError } = await supabase
+    .from("user_subscriptions")
+    .select("id, pg_billing_key_encrypted, pg_billing_key_hash")
+    .in("id", subscriptionIds);
+
+  if (keyRowsError) {
+    console.error("[cron-renewal] key lookup error:", keyRowsError.message);
+    return new Response(JSON.stringify({ error: keyRowsError.message }), {
+      status: 500,
+    });
+  }
+
+  const keyBySubscriptionId = new Map<string, SubscriptionKeyRow>();
+  for (const row of (keyRows ?? []) as SubscriptionKeyRow[]) {
+    keyBySubscriptionId.set(row.id, row);
+  }
+
+  const subscriptions: DueSubscription[] = dueSubscriptions.map((sub) => {
+    const keyRow = keyBySubscriptionId.get(sub.subscription_id);
+    return {
+      ...sub,
+      pg_billing_key_encrypted: keyRow?.pg_billing_key_encrypted ?? null,
+      pg_billing_key_hash: keyRow?.pg_billing_key_hash ?? null,
+    };
+  });
 
   // 유저 이메일 일괄 조회
   const userIds = [...new Set(subscriptions.map((s) => s.user_id))];
@@ -173,45 +430,159 @@ Deno.serve(async () => {
   let failed = 0;
 
   for (const sub of subscriptions) {
-    const paymentId = `renewal-${sub.subscription_id}-${Date.now()}`;
+    const paymentId = buildRenewalPaymentId(sub.plan_key);
     const orderName =
-      `HairStyle ${sub.plan_key.charAt(0).toUpperCase() + sub.plan_key.slice(1)} - 월 구독`;
+      `HairFit ${sub.plan_key.charAt(0).toUpperCase() + sub.plan_key.slice(1)} - 월 구독`;
+    let txId: string | null = null;
+    let paymentCharged = false;
+    let paymentAttempted = false;
+    let txFailureRecorded = false;
+    let subscriptionFailureRecorded = false;
 
     try {
-      // 1. PortOne 빌링키 결제
-      const result = await chargeBillingKey(
-        paymentId,
-        sub.pg_billing_key,
-        orderName,
-        sub.user_id,
-        sub.amount_krw,
-      );
+      const billingKey = await resolveBillingKey(sub);
 
-      if (result.status !== "PAID") {
-        throw new Error(result.failureMessage ?? `status=${result.status}`);
-      }
-
-      // 2. payment_transactions 기록
-      await supabase
+      // 1. payment_transactions pending 기록
+      const { data: txRow, error: txInsertError } = await supabase
         .from("payment_transactions")
         .insert({
           user_id: sub.user_id,
           subscription_id: sub.subscription_id,
-          payment_provider: "portone",
-          provider_payment_id: paymentId,
-          provider_transaction_id: result.pgTxId,
+          provider: "portone",
+          provider_order_id: paymentId,
+          provider_customer_id: sub.user_id,
           amount: sub.amount_krw,
           currency: "KRW",
-          status: "succeeded",
-          credits_granted: sub.credits_per_cycle,
-          plan_key: sub.plan_key,
-          paid_at: result.paidAt ?? new Date().toISOString(),
+          status: "pending",
+          credits_to_grant: sub.credits_per_cycle,
+          metadata: buildPaymentMetadata(sub, paymentId, orderName),
         })
-        .then(({ error }) => {
-          if (error) console.error("[cron-renewal] tx insert:", error.message);
-        });
+        .select("id")
+        .single<PaymentTransactionRow>();
 
-      // 3. advance_subscription_period: 현재 period_end + 1달
+      if (txInsertError || !txRow) {
+        throw new Error(txInsertError?.message ?? "payment transaction insert failed");
+      }
+      txId = txRow.id;
+
+      // 2. PortOne 빌링키 결제
+      paymentAttempted = true;
+      const chargeResult = await chargeBillingKey(
+        paymentId,
+        billingKey,
+        orderName,
+        sub.user_id,
+        sub.amount_krw,
+      );
+      const result = await getPayment(paymentId);
+
+      if (!result) {
+        await supabase
+          .from("payment_transactions")
+          .update({
+            status: "failed",
+            failure_code: "portone_payment_not_found",
+            failure_message: "PortOne payment not found after billing-key charge",
+            metadata: buildPaymentMetadata(sub, paymentId, orderName, {
+              portoneCharge: chargeResult,
+              failureCode: "portone_payment_not_found",
+              failureMessage: "PortOne payment not found after billing-key charge",
+            }),
+          })
+          .eq("id", txId);
+        txFailureRecorded = true;
+        await markSubscriptionRenewalFailed(
+          supabase as unknown as RenewalFailureSupabaseClient,
+          sub,
+          "portone_payment_not_found",
+          "PortOne payment not found after billing-key charge",
+        );
+        subscriptionFailureRecorded = true;
+        throw new Error("PortOne payment not found after billing-key charge");
+      }
+
+      if (result.status !== "PAID") {
+        const message = result.failureMessage ?? `status=${result.status}`;
+        await supabase
+          .from("payment_transactions")
+          .update({
+            status: "failed",
+            provider_transaction_id: result.pgTxId,
+            failure_code: result.failureCode,
+            failure_message: message,
+            metadata: buildPaymentMetadata(sub, paymentId, orderName, {
+              portoneCharge: chargeResult,
+              portone: result,
+              failureCode: result.failureCode,
+              failureMessage: message,
+            }),
+          })
+          .eq("id", txId);
+        txFailureRecorded = true;
+        await markSubscriptionRenewalFailed(
+          supabase as unknown as RenewalFailureSupabaseClient,
+          sub,
+          result.failureCode ?? "portone_payment_failed",
+          message,
+        );
+        subscriptionFailureRecorded = true;
+        throw new Error(message);
+      }
+
+      if (result.amountTotal !== sub.amount_krw || result.currency !== "KRW") {
+        const message = "PortOne payment amount or currency mismatch";
+        await supabase
+          .from("payment_transactions")
+          .update({
+            status: "failed",
+            provider_transaction_id: result.pgTxId,
+            failure_code: "amount_or_currency_mismatch",
+            failure_message: message,
+            metadata: buildPaymentMetadata(sub, paymentId, orderName, {
+              portoneCharge: chargeResult,
+              portone: result,
+              failureCode: "amount_or_currency_mismatch",
+              failureMessage: message,
+              expectedAmount: sub.amount_krw,
+              expectedCurrency: "KRW",
+            }),
+          })
+          .eq("id", txId);
+        txFailureRecorded = true;
+        await markSubscriptionRenewalFailed(
+          supabase as unknown as RenewalFailureSupabaseClient,
+          sub,
+          "amount_or_currency_mismatch",
+          message,
+        );
+        subscriptionFailureRecorded = true;
+        throw new Error(message);
+      }
+
+      paymentCharged = true;
+
+      // 3. payment_transactions paid 반영
+      const { error: txPaidError } = await supabase
+        .from("payment_transactions")
+        .update({
+          status: "paid",
+          provider_transaction_id: result.pgTxId,
+          failure_code: null,
+          failure_message: null,
+          paid_at: result.paidAt ?? new Date().toISOString(),
+          metadata: buildPaymentMetadata(sub, paymentId, orderName, {
+            portoneCharge: chargeResult,
+            portone: result,
+            providerTransactionId: result.pgTxId,
+          }),
+        })
+        .eq("id", txId);
+
+      if (txPaidError) {
+        throw new Error(`payment transaction paid update failed: ${txPaidError.message}`);
+      }
+
+      // 4. advance_subscription_period: 현재 period_end + 1달
       const newPeriodStart = new Date();
       const newPeriodEnd = new Date(newPeriodStart);
       newPeriodEnd.setMonth(newPeriodEnd.getMonth() + 1);
@@ -230,9 +601,10 @@ Deno.serve(async () => {
           `[cron-renewal] advance period error sub=${sub.subscription_id}:`,
           periodError.message,
         );
+        throw new Error(periodError.message);
       }
 
-      // 4. 크레딧 지급
+      // 5. 크레딧 지급
       const { error: creditsError } = await supabase.rpc(
         "grant_subscription_credits",
         {
@@ -240,6 +612,7 @@ Deno.serve(async () => {
           p_credits: sub.credits_per_cycle,
           p_subscription_id: sub.subscription_id,
           p_reason: "subscription_renewal",
+          p_payment_transaction_id: txId,
         },
       );
       if (creditsError) {
@@ -247,9 +620,10 @@ Deno.serve(async () => {
           `[cron-renewal] credit error sub=${sub.subscription_id}:`,
           creditsError.message,
         );
+        throw new Error(creditsError.message);
       }
 
-      // 5. 갱신 이메일 (실패해도 전체 흐름에 영향 없음)
+      // 6. 갱신 이메일 (실패해도 전체 흐름에 영향 없음)
       const userEmail = emailByUserId.get(sub.user_id);
       if (userEmail) {
         await sendRenewalEmail(
@@ -268,16 +642,28 @@ Deno.serve(async () => {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[cron-renewal] FAIL sub=${sub.subscription_id}:`, msg);
 
-      // past_due 처리
-      const { error: updateError } = await supabase
-        .from("user_subscriptions")
-        .update({ status: "past_due" })
-        .eq("id", sub.subscription_id);
+      if (txId && !paymentCharged && !txFailureRecorded) {
+        await supabase
+          .from("payment_transactions")
+          .update({
+            status: "failed",
+            failure_code: "subscription_renewal_error",
+            failure_message: msg,
+            metadata: buildPaymentMetadata(sub, paymentId, orderName, {
+              failureMessage: msg,
+            }),
+          })
+          .eq("id", txId);
+      }
 
-      if (updateError) {
-        console.error(
-          "[cron-renewal] past_due update error:",
-          updateError.message,
+      if (!paymentCharged && !subscriptionFailureRecorded) {
+        await markSubscriptionRenewalFailed(
+          supabase as unknown as RenewalFailureSupabaseClient,
+          sub,
+          paymentAttempted
+            ? "subscription_renewal_error"
+            : "subscription_renewal_prepare_error",
+          msg,
         );
       }
 

@@ -295,7 +295,7 @@ function buildSubscriptionRenewalHtml(input: SubscriptionRenewalEmailInput): str
   return `
   <div style="font-family:-apple-system,Arial,sans-serif;line-height:1.7;color:#111827;max-width:600px;margin:0 auto">
     <h2 style="font-size:20px;font-weight:700;margin:0 0 12px">✅ 구독이 갱신되었어요</h2>
-    <p style="margin:0 0 14px">HairStyle ${escapeHtml(planLabel)} 구독이 자동 갱신되어 크레딧이 충전되었습니다.</p>
+    <p style="margin:0 0 14px">HairFit ${escapeHtml(planLabel)} 구독이 자동 갱신되어 크레딧이 충전되었습니다.</p>
     <ul style="padding-left:18px;margin:0 0 16px">
       <li><strong>플랜:</strong> ${escapeHtml(planLabel)}</li>
       <li><strong>충전 크레딧:</strong> +${escapeHtml(input.creditsGranted.toLocaleString("ko-KR"))}</li>
@@ -315,7 +315,7 @@ function buildSubscriptionRenewalHtml(input: SubscriptionRenewalEmailInput): str
 export async function sendSubscriptionRenewalEmail(
   input: SubscriptionRenewalEmailInput,
 ) {
-  const subject = `[HairStyle] ${formatPlanLabel(input.plan)} 구독이 갱신되었습니다 (+${input.creditsGranted.toLocaleString("ko-KR")} credits)`;
+  const subject = `[HairFit] ${formatPlanLabel(input.plan)} 구독이 갱신되었습니다 (+${input.creditsGranted.toLocaleString("ko-KR")} credits)`;
   const html = buildSubscriptionRenewalHtml(input);
   return sendEmail({ to: input.to, subject, html });
 }

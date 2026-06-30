@@ -2,16 +2,21 @@
 declare module "@portone/browser-sdk/v2" {
   interface IssueBillingKeyOptions {
     storeId: string;
-    channelKey: string;
+    channelKey?: string;
     billingKeyMethod: "CARD" | "EASY_PAY" | "MOBILE";
     issueId: string;
     issueName: string;
+    displayAmount?: number;
+    currency?: "KRW";
     customer?: {
       customerId?: string;
       fullName?: string;
+      firstName?: string;
+      lastName?: string;
       email?: string;
       phoneNumber?: string;
     };
+    customData?: Record<string, unknown>;
   }
 
   interface IssueBillingKeyResponse {

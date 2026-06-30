@@ -3,15 +3,28 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import {
+  confirmPortonePayment,
+  markPortonePaymentFailed,
+  type PortoneConfirmationSupabaseClient,
+} from "../../../../lib/portone-payment-confirmation";
+import {
   chargeBillingKey,
   isPortoneConfigured,
   PLAN_AMOUNT_KRW,
   PLAN_CREDITS,
   PLAN_ORDER_NAME,
 } from "../../../../lib/portone";
+import {
+  isSelfServeBillingPlanKey,
+  type SelfServeBillingPlanKey,
+} from "../../../../lib/billing-plan";
+import { buildPortonePaymentId } from "../../../../lib/portone-payment-id";
+import {
+  encryptBillingKey,
+  hashBillingKey,
+  maskBillingKey,
+} from "../../../../lib/billing-key-secret";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
-
-type PlanKey = "basic" | "standard" | "pro" | "salon";
 
 interface SubscribeRequestBody {
   plan?: string;
@@ -24,15 +37,85 @@ interface EnsureProfileResult {
   credits: number;
 }
 
-function parsePlanKey(v: string | undefined): PlanKey | null {
-  if (v === "basic" || v === "standard" || v === "pro" || v === "salon") return v;
-  return null;
+interface ExistingSubscriptionRow {
+  id: string;
+  status: string;
+  current_period_end: string | null;
+  pg_billing_key: string | null;
+  pg_billing_key_encrypted: string | null;
+  pg_billing_key_hash: string | null;
 }
 
-function generatePaymentId(userId: string, plan: string): string {
-  const ts = Date.now();
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `sub-${plan}-${userId.slice(0, 8)}-${ts}-${rand}`;
+function parsePlanKey(v: string | undefined): SelfServeBillingPlanKey | null {
+  return isSelfServeBillingPlanKey(v) ? v : null;
+}
+
+function isWithinCurrentPeriod(currentPeriodEnd: string | null | undefined): boolean {
+  if (!currentPeriodEnd) return true;
+  const end = new Date(currentPeriodEnd);
+  return Number.isNaN(end.getTime()) || end.getTime() >= Date.now();
+}
+
+function hasStoredBillingKey(subscription: ExistingSubscriptionRow): boolean {
+  return Boolean(
+    subscription.pg_billing_key ||
+      subscription.pg_billing_key_encrypted ||
+      subscription.pg_billing_key_hash,
+  );
+}
+
+function getSubscriptionBlockReason(
+  subscription: ExistingSubscriptionRow | null,
+): "active" | "pending_confirmation" | "restricted" | null {
+  if (!subscription) return null;
+
+  const status = subscription?.status?.trim().toLowerCase();
+  if (!status) {
+    return null;
+  }
+
+  if (status === "canceled" || status === "expired") {
+    return hasStoredBillingKey(subscription) ? "pending_confirmation" : null;
+  }
+
+  if (status === "active" || status === "trialing") {
+    return isWithinCurrentPeriod(subscription.current_period_end) ? "active" : null;
+  }
+
+  return "restricted";
+}
+
+function shouldClearPreparedSubscriptionAfterConfirmationFailure(reason: string): boolean {
+  return reason !== "portone_lookup_failed" && reason !== "transaction_update_failed";
+}
+
+async function clearPreparedSubscriptionBillingKey(
+  supabase: {
+    from: (table: string) => {
+      update: (v: Record<string, unknown>) => {
+        eq: (c: string, val: unknown) => Promise<{ error: { message: string } | null }>;
+      };
+    };
+  },
+  subscriptionId: string,
+) {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("user_subscriptions")
+    .update({
+      status: "canceled",
+      pg_billing_key: null,
+      pg_billing_key_encrypted: null,
+      pg_billing_key_hash: null,
+      cancel_at_period_end: false,
+      canceled_at: now,
+      updated_at: now,
+    })
+    .eq("id", subscriptionId);
+
+  if (error) {
+    console.warn("[subscribe] 준비 구독 빌링키 정리 실패:", error.message);
+  }
 }
 
 export async function POST(request: Request) {
@@ -88,12 +171,20 @@ export async function POST(request: Request) {
           single: () => Promise<{ data: { id: string } | null; error: { message: string } | null }>;
         };
       };
+      upsert: (
+        v: Record<string, unknown>,
+        options?: Record<string, unknown>,
+      ) => {
+        select: (c: string) => {
+          single: () => Promise<{ data: { id: string } | null; error: { message: string } | null }>;
+        };
+      };
       update: (v: Record<string, unknown>) => {
         eq: (c: string, val: unknown) => Promise<{ error: { message: string } | null }>;
       };
       select: (c: string) => {
         eq: (c: string, v: unknown) => {
-          maybeSingle: () => Promise<{ data: { id: string } | null; error: { message: string } | null }>;
+          maybeSingle: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
         };
       };
     };
@@ -111,19 +202,102 @@ export async function POST(request: Request) {
   // 4. 기존 구독 확인 (중복 방지)
   const existingSubResult = await supabase
     .from("user_subscriptions")
-    .select("id")
+    .select("id,status,current_period_end,pg_billing_key,pg_billing_key_encrypted,pg_billing_key_hash")
     .eq("user_id", userId)
-    .maybeSingle();
+    .maybeSingle<ExistingSubscriptionRow>();
 
-  if (existingSubResult.data) {
+  const subscriptionBlockReason = getSubscriptionBlockReason(existingSubResult.data);
+  if (subscriptionBlockReason) {
     return NextResponse.json(
-      { error: "이미 활성 구독이 있습니다. 마이페이지에서 관리하세요." },
+      {
+        error:
+          subscriptionBlockReason === "pending_confirmation"
+            ? "이미 진행 중인 결제 확인이 있습니다. 잠시 후 마이페이지를 확인하세요."
+            : "이미 활성 구독이 있습니다. 마이페이지에서 관리하세요.",
+        reason: subscriptionBlockReason,
+      },
       { status: 409 },
     );
   }
 
-  // 5. PortOne 첫 달 결제
-  const paymentId = generatePaymentId(userId, plan);
+  let encryptedBillingKey: string;
+  let billingKeyHash: string;
+  try {
+    [encryptedBillingKey, billingKeyHash] = await Promise.all([
+      encryptBillingKey(billingKey),
+      hashBillingKey(billingKey),
+    ]);
+  } catch (err) {
+    console.error("[subscribe] 빌링키 암호화 설정 오류:", err);
+    return NextResponse.json(
+      { error: "빌링키 보안 저장 설정이 필요합니다." },
+      { status: 503 },
+    );
+  }
+  const billingKeyMasked = maskBillingKey(billingKey);
+
+  const now = new Date();
+
+  // 5. 구독 복구용 레코드 선저장
+  // 결제가 확정되기 전까지 권한이 열리지 않도록 canceled 상태로 둔다.
+  const { data: preparedSubscription, error: preparedSubscriptionError } = await supabase
+    .from("user_subscriptions")
+    .upsert({
+      user_id: userId,
+      plan_key: plan,
+      status: "canceled",
+      pg_billing_key: null,
+      pg_billing_key_encrypted: encryptedBillingKey,
+      pg_billing_key_hash: billingKeyHash,
+      pg_latest_payment_id: null,
+      credits_per_cycle: credits,
+      current_period_start: now.toISOString(),
+      current_period_end: now.toISOString(),
+      cancel_at_period_end: false,
+      canceled_at: now.toISOString(),
+    }, { onConflict: "user_id" })
+    .select("id")
+    .single();
+
+  if (preparedSubscriptionError || !preparedSubscription) {
+    console.error("[subscribe] 구독 복구 레코드 준비 실패:", preparedSubscriptionError?.message);
+    return NextResponse.json({ error: "구독 준비 실패" }, { status: 500 });
+  }
+
+  // 6. payment_transactions pending 기록
+  const paymentId = buildPortonePaymentId("sub", plan);
+  const { data: txData, error: txErr } = await supabase
+    .from("payment_transactions")
+    .insert({
+      user_id: userId,
+      subscription_id: preparedSubscription.id,
+      provider: "portone",
+      provider_order_id: paymentId,
+      provider_customer_id: userId,
+      status: "pending",
+      currency: "KRW",
+      amount,
+      credits_to_grant: credits,
+      metadata: {
+        source: "web-subscribe",
+        plan,
+        portone_payment_id: paymentId,
+        order_name: orderName,
+        issue_id: body.issueId?.trim() || null,
+        has_billing_key: true,
+        billing_key_masked: billingKeyMasked,
+      },
+    })
+    .select("id")
+    .single();
+
+  if (txErr || !txData) {
+    console.error("[subscribe] payment_transactions pending 저장 실패:", txErr?.message);
+    await clearPreparedSubscriptionBillingKey(supabase, preparedSubscription.id);
+    return NextResponse.json({ error: "결제 기록 준비 실패" }, { status: 500 });
+  }
+
+  // 7. PortOne 첫 달 결제
   let paymentResult;
   try {
     paymentResult = await chargeBillingKey({
@@ -136,11 +310,29 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "결제 실패";
+    await markPortonePaymentFailed({
+      supabase: supabase as unknown as PortoneConfirmationSupabaseClient,
+      paymentId,
+      source: "web-subscribe-charge",
+      failureMessage: msg,
+      markSubscriptionPastDue: false,
+    });
+    await clearPreparedSubscriptionBillingKey(supabase, preparedSubscription.id);
     console.error("[subscribe] PortOne 결제 오류:", err);
     return NextResponse.json({ error: msg }, { status: 502 });
   }
 
   if (paymentResult.status !== "PAID") {
+    await markPortonePaymentFailed({
+      supabase: supabase as unknown as PortoneConfirmationSupabaseClient,
+      paymentId,
+      source: "web-subscribe-charge",
+      failureCode: paymentResult.failureCode,
+      failureMessage: paymentResult.failureMessage ?? paymentResult.status,
+      providerTransactionId: paymentResult.transactionId,
+      markSubscriptionPastDue: false,
+    });
+    await clearPreparedSubscriptionBillingKey(supabase, preparedSubscription.id);
     return NextResponse.json(
       {
         error: `결제가 완료되지 않았습니다: ${paymentResult.failureMessage ?? paymentResult.status}`,
@@ -149,58 +341,53 @@ export async function POST(request: Request) {
     );
   }
 
-  // 6. DB 트랜잭션: 구독 생성 + 결제 기록 + 크레딧 지급
-  const now = new Date();
-  const periodEnd = new Date(now);
-  periodEnd.setDate(periodEnd.getDate() + 30);
+  const confirmation = await confirmPortonePayment({
+    supabase: supabase as unknown as PortoneConfirmationSupabaseClient,
+    paymentId,
+    expectedUserId: userId,
+    expectedAmount: amount,
+    expectedCredits: credits,
+    source: "web-subscribe-confirm",
+  });
 
-  // 6-1. payment_transactions 기록
-  const { data: txData, error: txErr } = await supabase
-    .from("payment_transactions")
-    .insert({
-      user_id: userId,
-      provider: "portone",
-      provider_order_id: paymentId,
-      status: "paid",
-      currency: "KRW",
-      amount,
-      credits_to_grant: credits,
-      paid_at: paymentResult.paidAt ?? now.toISOString(),
-      metadata: {
-        plan,
-        portone_payment_id: paymentId,
-        order_name: orderName,
-        billing_key_masked: billingKey.slice(0, 10) + "...",
-      },
-    })
-    .select("id")
-    .single();
+  if (!confirmation.ok) {
+    if (shouldClearPreparedSubscriptionAfterConfirmationFailure(confirmation.reason)) {
+      await clearPreparedSubscriptionBillingKey(supabase, preparedSubscription.id);
+    }
 
-  if (txErr || !txData) {
-    console.error("[subscribe] payment_transactions 저장 실패:", txErr?.message);
     return NextResponse.json(
-      { error: "결제 기록 저장 실패" },
-      { status: 500 },
+      {
+        error: confirmation.message,
+        reason: confirmation.reason,
+        paymentId,
+      },
+      { status: confirmation.httpStatus },
     );
   }
 
-  // 6-2. user_subscriptions 생성
-  const { data: subData, error: subErr } = await supabase
+  // 8. DB 트랜잭션: 구독 활성화 + 크레딧 지급
+  const periodEnd = new Date(now);
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+  // 8-1. user_subscriptions 활성화
+  const { error: subErr } = await supabase
     .from("user_subscriptions")
-    .insert({
-      user_id: userId,
+    .update({
       plan_key: plan,
       status: "active",
-      pg_billing_key: billingKey,
+      pg_billing_key: null,
+      pg_billing_key_encrypted: encryptedBillingKey,
+      pg_billing_key_hash: billingKeyHash,
       pg_latest_payment_id: paymentId,
       credits_per_cycle: credits,
       current_period_start: now.toISOString(),
       current_period_end: periodEnd.toISOString(),
+      cancel_at_period_end: false,
+      canceled_at: null,
     })
-    .select("id")
-    .single();
+    .eq("id", preparedSubscription.id);
 
-  if (subErr || !subData) {
+  if (subErr) {
     console.error("[subscribe] user_subscriptions 저장 실패:", subErr?.message);
     return NextResponse.json(
       { error: "구독 생성 실패" },
@@ -211,10 +398,10 @@ export async function POST(request: Request) {
   // payment_transactions에 subscription_id 연결
   await supabase
     .from("payment_transactions")
-    .update({ subscription_id: subData.id })
+    .update({ subscription_id: preparedSubscription.id })
     .eq("id", txData.id);
 
-  // 6-3. 크레딧 지급
+  // 8-2. 크레딧 지급
   try {
     const grantResult = await (supabase as unknown as {
       rpc: (fn: string, params: Record<string, unknown>) => Promise<{
@@ -224,21 +411,37 @@ export async function POST(request: Request) {
     }).rpc("grant_subscription_credits", {
       p_user_id: userId,
       p_credits: credits,
-      p_subscription_id: subData.id,
+      p_subscription_id: preparedSubscription.id,
       p_reason: "subscription_first_payment",
       p_payment_transaction_id: txData.id,
     });
 
     if (grantResult.error) {
       console.error("[subscribe] 크레딧 지급 실패:", grantResult.error.message);
+      return NextResponse.json(
+        {
+          error: "구독은 생성되었지만 크레딧 지급에 실패했습니다. 웹훅 재처리 또는 운영 보정이 필요합니다.",
+          paymentId,
+          subscriptionId: preparedSubscription.id,
+        },
+        { status: 500 },
+      );
     }
   } catch (err) {
     console.error("[subscribe] 크레딧 RPC 오류:", err);
+    return NextResponse.json(
+      {
+        error: "구독은 생성되었지만 크레딧 지급에 실패했습니다. 웹훅 재처리 또는 운영 보정이 필요합니다.",
+        paymentId,
+        subscriptionId: preparedSubscription.id,
+      },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json(
     {
-      subscriptionId: subData.id,
+      subscriptionId: preparedSubscription.id,
       plan,
       credits,
       periodEnd: periodEnd.toISOString(),

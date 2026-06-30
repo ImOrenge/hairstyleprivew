@@ -8,10 +8,9 @@ import { StyleSheet, View } from "react-native";
 import { useHairfitApi } from "../lib/api";
 
 const plans: Array<{ key: MobilePaymentPlan; label: string; price: string; credits: string }> = [
-  { key: "basic", label: "Basic", price: "4,900 KRW", credits: "30 credits" },
-  { key: "standard", label: "Standard", price: "9,900 KRW", credits: "80 credits" },
-  { key: "pro", label: "Pro", price: "19,900 KRW", credits: "200 credits" },
-  { key: "salon", label: "Salon", price: "39,900 KRW", credits: "500 credits" },
+  { key: "basic", label: "Basic", price: "9,900 KRW", credits: "80 credits" },
+  { key: "standard", label: "Standard", price: "19,900 KRW", credits: "200 credits" },
+  { key: "pro", label: "Pro", price: "49,900 KRW", credits: "600 credits" },
 ];
 
 export default function BillingScreen() {

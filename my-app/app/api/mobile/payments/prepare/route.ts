@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireMobileService } from "../../../../../lib/mobile-auth";
-import { PLAN_AMOUNT_KRW, PLAN_CREDITS } from "../../../../../lib/portone";
-
-const PAYMENT_PLANS = ["basic", "standard", "pro", "salon"] as const;
-type PaymentPlan = (typeof PAYMENT_PLANS)[number];
+import {
+  isSelfServeBillingPlanKey,
+  type SelfServeBillingPlanKey,
+} from "../../../../../lib/billing-plan";
+import { buildPortonePaymentId } from "../../../../../lib/portone-payment-id";
+import { PLAN_AMOUNT_KRW, PLAN_CREDITS, PLAN_ORDER_NAME } from "../../../../../lib/portone";
 
 interface PreparePaymentRequest {
   plan?: unknown;
   appScheme?: unknown;
-}
-
-function isPaymentPlan(value: unknown): value is PaymentPlan {
-  return typeof value === "string" && PAYMENT_PLANS.includes(value as PaymentPlan);
 }
 
 function readPublicPortoneConfig() {
@@ -27,15 +25,6 @@ function readPublicPortoneConfig() {
   };
 }
 
-function buildPaymentId(plan: PaymentPlan) {
-  return `mobile-${plan}-${crypto.randomUUID()}`;
-}
-
-function orderName(plan: PaymentPlan, credits: number) {
-  const title = plan.charAt(0).toUpperCase() + plan.slice(1);
-  return `HairFit ${title} - ${credits} credits`;
-}
-
 export async function POST(request: Request) {
   const context = await requireMobileService("customer");
   if (!context.ok) {
@@ -43,7 +32,7 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as PreparePaymentRequest;
-  if (!isPaymentPlan(body.plan)) {
+  if (!isSelfServeBillingPlanKey(body.plan)) {
     return NextResponse.json({ error: "plan is invalid" }, { status: 400 });
   }
 
@@ -55,10 +44,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "PortOne store ID is not configured" }, { status: 503 });
   }
 
-  const paymentId = buildPaymentId(body.plan);
+  const paymentId = buildPortonePaymentId("mob", body.plan);
   const amountKrw = PLAN_AMOUNT_KRW[body.plan];
   const credits = PLAN_CREDITS[body.plan];
-  const name = orderName(body.plan, credits);
+  const name = PLAN_ORDER_NAME[body.plan];
   const redirectUrl = `${appScheme}://payments/complete?paymentId=${encodeURIComponent(paymentId)}`;
 
   const { error } = await (context.supabase as never as {

@@ -32,8 +32,11 @@ Optional:
 - `PROMPT_RESEARCH_MODEL` (default: `PROMPT_LLM_MODEL`, grounded deep-research stage)
 - `PROMPT_DEEP_RESEARCH_GROUNDING` (default: `true`, enables Google Search grounding in deep-research stage)
 - `GEMINI_IMAGE_MODEL` (default: `gemini-3-pro-image-preview`, Nano Banana Pro line)
+- `NEXT_PUBLIC_PORTONE_V2_STORE_ID` or `PORTONE_V2_STORE_ID` (required for PortOne billing key issuance)
+- `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY` or `PORTONE_V2_CHANNEL_KEY` (optional PortOne channel key)
 - `PORTONE_V2_API_SECRET` (required for PortOne billing key charges)
 - `PORTONE_V2_WEBHOOK_SECRET` (required for PortOne payment webhooks)
+- `BILLING_KEY_ENCRYPTION_SECRET` (required for encrypted PortOne billing key storage and renewals)
 - `PRICING_STYLE_COST_USD` (default: `0.16`, assumed cost per style)
 - `PRICING_TARGET_MARGIN` (default: `0.4`, target margin)
 - `PRICING_CREDITS_PER_STYLE` (default: `5`, credits charged per style)
@@ -41,10 +44,14 @@ Optional:
 - `PRICING_SAFETY_MULTIPLIER` (default: `1.06`, safety multiplier)
 - `PRICING_FREE_CREDITS` (default: `10`)
 - `PRICING_FREE_PRICE_KRW` (default: `0`)
-- `PRICING_STARTER_CREDITS` (default: `60`)
-- `PRICING_STARTER_PRICE_KRW` (default: `9900`)
-- `PRICING_PRO_CREDITS` (default: `250`)
-- `PRICING_PRO_PRICE_KRW` (default: `39000`)
+- `PRICING_BASIC_CREDITS` (default: `80`)
+- `PRICING_BASIC_PRICE_KRW` (default: `9900`)
+- `PRICING_STANDARD_CREDITS` (default: `200`)
+- `PRICING_STANDARD_PRICE_KRW` (default: `19900`)
+- `PRICING_PRO_CREDITS` (default: `600`)
+- `PRICING_PRO_PRICE_KRW` (default: `49900`)
+- `PRICING_SALON_CREDITS` (default: `500`)
+- `PRICING_SALON_PRICE_KRW` (default: `39900`)
 - `RESEND_API_KEY` (optional, payment success email notifications)
 - `RESEND_FROM_EMAIL` (optional, default: `HairStyle <onboarding@resend.dev>`)
 - `INBOUND_EMAIL_SECRET` (required for Cloudflare Email Routing Worker -> app webhook)
@@ -102,8 +109,11 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GOOGLE_API_KEY`
+- `NEXT_PUBLIC_PORTONE_V2_STORE_ID` or `PORTONE_V2_STORE_ID`
+- `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY` or `PORTONE_V2_CHANNEL_KEY`
 - `PORTONE_V2_API_SECRET`
 - `PORTONE_V2_WEBHOOK_SECRET`
+- `BILLING_KEY_ENCRYPTION_SECRET`
 - `INTERNAL_API_SECRET`
 - `RESEND_API_KEY` (optional)
 - `RESEND_FROM_EMAIL` (optional)
@@ -137,30 +147,67 @@ Optional pricing and prompt env:
 - `PRICING_SAFETY_MULTIPLIER`
 - `PRICING_FREE_CREDITS`
 - `PRICING_FREE_PRICE_KRW`
-- `PRICING_STARTER_CREDITS`
-- `PRICING_STARTER_PRICE_KRW`
+- `PRICING_BASIC_CREDITS`
+- `PRICING_BASIC_PRICE_KRW`
+- `PRICING_STANDARD_CREDITS`
+- `PRICING_STANDARD_PRICE_KRW`
 - `PRICING_PRO_CREDITS`
 - `PRICING_PRO_PRICE_KRW`
+- `PRICING_SALON_CREDITS`
+- `PRICING_SALON_PRICE_KRW`
 
 ## PortOne payment routes
 
+Before running live PortOne smoke tests, check runtime configuration without printing secret values:
+
+```bash
+npm run portone:billing-secret:generate
+npm run portone:billing-secret:generate -- --check
+npm run portone:preflight
+npm run portone:preflight -- --profile=full-local
+npm run portone:env:check -- --mode=test-payment
+npm run portone:env:check -- --mode=deploy-webhook --webhookUrl=https://<your-domain>/api/payments/webhook
+npm run portone:preflight -- --profile=deploy --webhookUrl=https://<your-domain>/api/payments/webhook
+npm run portone:webhook:test -- --deployProbe --url=https://<your-domain>/api/payments/webhook
+```
+
+After a test payment completes, inspect the PortOne payment and linked Supabase rows:
+
+```bash
+npm run portone:e2e:inspect -- --paymentId=<payment-id> --plan=basic --source=web
+```
+
+- `POST /api/payments/billing-key/prepare`
+  - Returns authenticated-user billing key issue parameters for the browser SDK, including `issueId`, `customerId`, store/channel config, and display amount.
 - `POST /api/payments/subscribe`
-  - Charges a PortOne billing key, creates or updates the subscription, records `payment_transactions`, and grants credits.
+  - Encrypts and hashes the PortOne billing key, charges it, creates or updates the subscription, records `payment_transactions`, and grants credits.
 - `POST /api/payments/webhook`
-  - Verifies PortOne V2 Standard Webhooks headers and processes `Transaction.Paid` and `Transaction.Failed`.
+  - Verifies PortOne V2 Standard Webhooks headers and processes paid, failed, canceled, pending, and billing-key-deleted events.
   - Renewal payments advance the subscription period, grant credits, and optionally send renewal email when `RESEND_API_KEY` is configured.
+  - `BillingKey.Deleted` matches encrypted-key subscriptions by `pg_billing_key_hash`; legacy plaintext rows are still handled as a fallback.
+  - Full cancellation events claw back currently available credits once per payment transaction and record unrecovered credits in `payment_credit_clawbacks`.
+  - Partial cancellation events update transaction metadata only; credit adjustment remains a manual operations decision.
 
 ## PortOne webhook setup
 
 1. In the PortOne dashboard, create a webhook endpoint with:
    - URL: `https://<your-domain>/api/payments/webhook`
-   - Events: `Transaction.Paid`, `Transaction.Failed`
+   - Events: `Transaction.Paid`, `Transaction.Failed`, `Transaction.Cancelled`, `Transaction.PartialCancelled`, `Transaction.CancelPending`, `Transaction.PayPending`, `Transaction.Ready`, `Transaction.VirtualAccountIssued`, `BillingKey.Deleted`
 2. Copy the webhook signing secret from PortOne and set:
    - `PORTONE_V2_WEBHOOK_SECRET=<secret from PortOne dashboard>`
 3. Ensure runtime env has:
    - `PORTONE_V2_API_SECRET`
    - `PORTONE_V2_WEBHOOK_SECRET`
-4. Deploy app, then send a PortOne test event.
+   - `BILLING_KEY_ENCRYPTION_SECRET`
+4. Deploy app, then verify the deployed endpoint shape:
+
+```bash
+npm run portone:env:check -- --mode=deploy-webhook --webhookUrl=https://<your-domain>/api/payments/webhook
+npm run portone:preflight -- --profile=deploy --webhookUrl=https://<your-domain>/api/payments/webhook
+npm run portone:webhook:test -- --deployProbe --url=https://<your-domain>/api/payments/webhook
+```
+
+5. Send a PortOne test event.
 
 Local signed webhook test without the PortOne dashboard:
 
@@ -168,8 +215,33 @@ Local signed webhook test without the PortOne dashboard:
 npm run portone:webhook:test -- --url=http://localhost:3000/api/payments/webhook --paymentId=<provider_order_id>
 ```
 
+Use `--type=<event>` and `--billingKey=<billing_key>` to smoke-test non-paid events, for example `BillingKey.Deleted`.
+
 If the payment ID exists in `payment_transactions.provider_order_id`, API should return `200`.
 If not, API may return `202` with an ignored reason, which still confirms the signature verification path is working.
+
+To verify failed/cancelled webhook DB transitions with disposable rows in a test database:
+
+```bash
+PORTONE_WEBHOOK_DB_SMOKE_CONFIRM_TEST_DB=1 npm run portone:webhook:db:smoke -- --url=http://localhost:3000/api/payments/webhook
+PORTONE_WEBHOOK_DB_SMOKE_CONFIRM_TEST_DB=1 npm run portone:webhook:db:smoke -- --scenario=pending-payment-events --url=http://localhost:3000/api/payments/webhook
+PORTONE_WEBHOOK_DB_SMOKE_CONFIRM_TEST_DB=1 npm run portone:webhook:db:smoke -- --scenario=cancelled-paid-payment --url=http://localhost:3000/api/payments/webhook
+PORTONE_WEBHOOK_DB_SMOKE_CONFIRM_TEST_DB=1 npm run portone:webhook:db:smoke -- --scenario=partial-cancelled-paid-payment --url=http://localhost:3000/api/payments/webhook
+BILLING_KEY_ENCRYPTION_SECRET=<test-secret> PORTONE_WEBHOOK_DB_SMOKE_CONFIRM_TEST_DB=1 npm run portone:webhook:db:smoke -- --scenario=billing-key-deleted --url=http://localhost:3000/api/payments/webhook
+BILLING_KEY_ENCRYPTION_SECRET=<test-secret> PORTONE_WEBHOOK_DB_SMOKE_CONFIRM_TEST_DB=1 npm run portone:webhook:db:smoke -- --scenario=billing-key-deleted-legacy --url=http://localhost:3000/api/payments/webhook
+```
+
+## PortOne billing key backfill
+
+New subscriptions store PortOne billing keys in encrypted form. Existing rows that still have `user_subscriptions.pg_billing_key` can be backfilled after `BILLING_KEY_ENCRYPTION_SECRET` is configured:
+
+```bash
+npm run portone:billing-key:backfill -- --limit=100
+npm run portone:billing-key:backfill -- --write --limit=100
+npm run portone:billing-key:backfill -- --write --clear-plaintext --limit=100
+```
+
+The first command is dry-run. Use `--clear-plaintext` only after confirming encrypted renewal works in the target environment.
 
 For local Wrangler preview, copy `.dev.vars.example` to `.dev.vars` and fill values.
 

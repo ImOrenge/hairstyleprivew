@@ -133,7 +133,7 @@ export type MobileDashboard =
       admin: MobileAdminDashboard;
     };
 
-export type MobilePaymentPlan = "basic" | "standard" | "pro" | "salon";
+export type MobilePaymentPlan = "basic" | "standard" | "pro";
 
 export interface MobilePaymentPrepareResponse {
   paymentId: string;

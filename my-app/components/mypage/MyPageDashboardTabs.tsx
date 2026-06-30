@@ -10,9 +10,10 @@ import {
   Sparkles,
   UserRound,
 } from "lucide-react";
-import { getCreditsPerStyle } from "../../lib/pricing-plan";
+import { getCreditsPerStyle, getSuggestedPricingTiers } from "../../lib/pricing-plan";
 import type { MemberStyleTarget, MemberStyleTone } from "../../lib/onboarding";
 import type { PersonalColorResult } from "../../lib/fashion-types";
+import { PortoneSubscriptionButton, type SelfServeSubscriptionPlanKey } from "../payments/PortoneSubscriptionButton";
 import { PersonalColorResultDetails } from "../personal-color/PersonalColorResultDetails";
 import { AppPage, Panel, SurfaceCard } from "../ui/Surface";
 import { MemberGenderForm } from "./MemberGenderForm";
@@ -33,6 +34,10 @@ export interface PaymentTransactionRow {
   credits_to_grant: number | null;
   paid_at: string | null;
   created_at: string;
+  failure_code?: string | null;
+  failure_message?: string | null;
+  webhook_event_type?: string | null;
+  webhook_received_at?: string | null;
   metadata?: unknown;
 }
 
@@ -69,6 +74,12 @@ export interface SubscriptionRow {
   current_period_end: string | null;
   cancel_at_period_end?: boolean | null;
   canceled_at?: string | null;
+  has_stored_billing_key?: boolean | null;
+  renewal_failure_count?: number | null;
+  renewal_failure_code?: string | null;
+  renewal_failure_message?: string | null;
+  renewal_last_failed_at?: string | null;
+  renewal_next_retry_at?: string | null;
 }
 
 export interface MemberProfileRow {
@@ -152,30 +163,61 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function getPlanFromMetadata(metadata: unknown): string | null {
-  if (!isRecord(metadata) || typeof metadata.plan !== "string") {
-    return null;
-  }
-  return metadata.plan.trim().toLowerCase() || null;
+function getMetadataString(metadata: unknown, key: string): string | null {
+  if (!isRecord(metadata)) return null;
+  const value = metadata[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
 }
 
 function isActiveSubscription(subscription: SubscriptionRow | null) {
   if (!subscription) return false;
-  if (subscription.status !== "active" && subscription.status !== "trialing") return false;
+  const status = subscription.status?.trim().toLowerCase();
+  if (status !== "active" && status !== "trialing") return false;
   if (!subscription.current_period_end) return true;
 
   const end = new Date(subscription.current_period_end);
   return Number.isNaN(end.getTime()) || end.getTime() >= Date.now();
 }
 
+function hasStoredBillingKey(subscription: SubscriptionRow | null) {
+  return Boolean(subscription?.has_stored_billing_key);
+}
+
+function isPendingConfirmationSubscription(subscription: SubscriptionRow | null) {
+  const status = subscription?.status?.trim().toLowerCase();
+  return (status === "canceled" || status === "expired") && hasStoredBillingKey(subscription);
+}
+
+function canStartNewSubscription(subscription: SubscriptionRow | null) {
+  const status = subscription?.status?.trim().toLowerCase();
+  if (isPendingConfirmationSubscription(subscription)) return false;
+  if (!status || status === "canceled" || status === "expired") return true;
+  if (status === "active" || status === "trialing") return !isActiveSubscription(subscription);
+  return false;
+}
+
 function isCancellationScheduled(subscription: SubscriptionRow | null) {
   return Boolean(subscription?.cancel_at_period_end);
+}
+
+function isPastDueSubscription(subscription: SubscriptionRow | null) {
+  return subscription?.status?.trim().toLowerCase() === "past_due";
+}
+
+function getCurrentSubscriptionPlanKey(subscription: SubscriptionRow | null): string | null {
+  if (!subscription?.plan_key || !isActiveSubscription(subscription)) {
+    return null;
+  }
+  return subscription.plan_key;
 }
 
 function formatPlanLabel(planKey: string | null): string {
   if (!planKey) return "무료";
   if (planKey === "starter") return "스타터";
+  if (planKey === "basic") return "베이직";
+  if (planKey === "standard") return "스탠다드";
   if (planKey === "pro") return "프로";
+  if (planKey === "salon") return "살롱";
   return planKey.charAt(0).toUpperCase() + planKey.slice(1);
 }
 
@@ -204,6 +246,68 @@ function formatDay(value: string | null | undefined): string {
 
 function formatKrw(value: number | null | undefined): string {
   return `${Math.max(0, value ?? 0).toLocaleString("ko-KR")} KRW`;
+}
+
+function formatSubscriptionStatus(subscription: SubscriptionRow | null): string {
+  const status = subscription?.status?.trim().toLowerCase();
+  if (!status) return "구독 없음";
+  if (isPendingConfirmationSubscription(subscription)) return "결제 확인 중";
+  if (subscription?.cancel_at_period_end) return "해지 예약";
+  if (status === "active") return "활성";
+  if (status === "trialing") return "체험";
+  if (status === "past_due") return "결제 실패";
+  if (status === "canceled") return "해지";
+  if (status === "expired") return "만료";
+  return status;
+}
+
+function getSubscriptionStatusTone(subscription: SubscriptionRow | null): string {
+  const status = subscription?.status?.trim().toLowerCase();
+  if (isPendingConfirmationSubscription(subscription)) return "bg-amber-50 text-amber-800 ring-1 ring-amber-200";
+  if (subscription?.cancel_at_period_end) return "bg-amber-50 text-amber-800 ring-1 ring-amber-200";
+  if (status === "active" || status === "trialing") return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+  if (status === "past_due") return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
+  return "bg-[var(--app-surface-muted)] text-[var(--app-text)] ring-1 ring-stone-200";
+}
+
+function formatPaymentStatus(status: string | null | undefined): string {
+  const normalized = status?.trim().toLowerCase();
+  if (!normalized) return "상태 없음";
+  if (normalized === "pending") return "결제 대기";
+  if (normalized === "paid") return "결제 완료";
+  if (normalized === "failed") return "결제 실패";
+  if (normalized === "canceled") return "취소";
+  if (normalized === "refunded") return "환불";
+  return normalized;
+}
+
+function getPaymentStatusTone(status: string | null | undefined): string {
+  const normalized = status?.trim().toLowerCase();
+  if (normalized === "paid") return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+  if (normalized === "failed") return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
+  if (normalized === "canceled" || normalized === "refunded") {
+    return "bg-amber-50 text-amber-800 ring-1 ring-amber-200";
+  }
+  return "bg-[var(--app-surface-muted)] text-[var(--app-text)] ring-1 ring-stone-200";
+}
+
+function getPaymentFailureText(payment: PaymentTransactionRow | null): string | null {
+  if (!payment) return null;
+  const message =
+    payment.failure_message?.trim() ||
+    getMetadataString(payment.metadata, "failureMessage") ||
+    getMetadataString(payment.metadata, "failureReason");
+  const code = payment.failure_code?.trim() || getMetadataString(payment.metadata, "failureCode");
+  if (message && code) return `${message} (${code})`;
+  return message || code || null;
+}
+
+function getSubscriptionFailureText(subscription: SubscriptionRow | null): string | null {
+  if (!subscription) return null;
+  const message = subscription.renewal_failure_message?.trim();
+  const code = subscription.renewal_failure_code?.trim();
+  if (message && code) return `${message} (${code})`;
+  return message || code || null;
 }
 
 function formatPrompt(prompt: string | null | undefined): string {
@@ -420,6 +524,16 @@ function PlanPanel({
 }) {
   const activeSubscription = isActiveSubscription(subscription);
   const cancellationScheduled = isCancellationScheduled(subscription);
+  const pastDue = isPastDueSubscription(subscription);
+  const pendingConfirmation = isPendingConfirmationSubscription(subscription);
+  const allowNewSubscription = canStartNewSubscription(subscription);
+  const latestFailedPayment =
+    payments.find((item) => item.status?.trim().toLowerCase() === "failed") ?? null;
+  const latestFailureText =
+    getPaymentFailureText(latestFailedPayment) ?? getSubscriptionFailureText(subscription);
+  const selfServePlans = getSuggestedPricingTiers().filter((tier) =>
+    tier.key === "basic" || tier.key === "standard" || tier.key === "pro",
+  );
 
   return (
     <Panel
@@ -435,7 +549,11 @@ function PlanPanel({
           <p className="text-xs font-bold uppercase text-[var(--app-muted)]">활성 플랜</p>
           <p className="mt-2 text-2xl font-black text-[var(--app-text)]">{activePlan}</p>
           <div className="mt-3 grid gap-2 text-xs leading-5 text-[var(--app-muted)]">
-            <p>상태: {subscription?.status || "구독 없음"}</p>
+            <p>
+              <span className={`inline-flex rounded-[var(--app-radius-control)] px-2 py-1 text-xs font-bold ${getSubscriptionStatusTone(subscription)}`}>
+                {formatSubscriptionStatus(subscription)}
+              </span>
+            </p>
             <p>현재 기간 종료: {formatDay(subscription?.current_period_end)}</p>
             {cancellationScheduled ? (
               <p className="font-semibold text-rose-600">
@@ -443,11 +561,82 @@ function PlanPanel({
               </p>
             ) : null}
           </div>
+          {pastDue ? (
+            <div className="mt-4 border border-rose-200 bg-rose-50 px-3 py-3 text-xs leading-5 text-rose-700">
+              <p className="font-bold">최근 구독 결제에 실패했습니다.</p>
+              <p className="mt-1">
+                {latestFailureText || "카드 승인 실패 또는 포트원 결제 상태를 확인해야 합니다."}
+              </p>
+              {subscription?.renewal_failure_count ? (
+                <p className="mt-1">
+                  실패 횟수: {subscription.renewal_failure_count.toLocaleString("ko-KR")}회
+                  {subscription.renewal_next_retry_at
+                    ? ` / 다음 재시도: ${formatDate(subscription.renewal_next_retry_at)}`
+                    : ""}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {pendingConfirmation ? (
+            <div className="mt-4 border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-5 text-amber-800">
+              <p className="font-bold">포트원 결제 확인을 기다리고 있습니다.</p>
+              <p className="mt-1">
+                {formatPlanLabel(subscription?.plan_key ?? null)} 플랜 결제 승인 또는 웹훅 처리 후 구독이 활성화됩니다.
+              </p>
+              <p className="mt-1">
+                결제가 중단된 경우 잠시 후 새로고침하세요. 상태가 계속 남아 있으면 운영 확인이 필요합니다.
+              </p>
+            </div>
+          ) : null}
           {activeSubscription && !cancellationScheduled ? (
             <div className="mt-4">
               <SubscriptionCancelButton />
             </div>
           ) : null}
+
+          <div className="mt-4 border-t border-[var(--app-border)] pt-4">
+            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">월 플랜 결제</p>
+            {allowNewSubscription ? (
+              <div className="mt-3 grid gap-2">
+                {selfServePlans.map((plan) => (
+                  <div
+                    key={plan.key}
+                    className="grid gap-2 border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-3"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-black text-[var(--app-text)]">
+                          {formatPlanLabel(plan.key)}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--app-muted)]">
+                          {plan.credits.toLocaleString("ko-KR")} 크레딧 / 월
+                        </p>
+                      </div>
+                      <p className="text-right text-sm font-black text-[var(--app-text)]">
+                        {formatKrw(plan.priceKrw)}
+                      </p>
+                    </div>
+                    <PortoneSubscriptionButton
+                      planKey={plan.key as SelfServeSubscriptionPlanKey}
+                      variant={plan.key === "basic" ? "secondary" : "primary"}
+                      className="w-full px-3 py-2 text-xs"
+                      successRedirectPath="/mypage"
+                    >
+                      {formatPlanLabel(plan.key)} 시작
+                    </PortoneSubscriptionButton>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">
+                {pendingConfirmation
+                  ? "결제 확인 중에는 중복 구독을 새로 만들지 않습니다. 포트원 결제 상태 확인이 끝난 뒤 다시 시도할 수 있습니다."
+                  : pastDue
+                    ? "결제 실패 상태에서는 중복 구독을 새로 만들지 않습니다. 카드 상태와 포트원 결제 기록 확인 후 운영 보정 또는 재시도 정책을 적용합니다."
+                    : "현재 구독이 있어 새 결제는 중복으로 진행하지 않습니다. 플랜 변경은 해지 후 기간 종료 또는 별도 변경 정책 확정 후 지원됩니다."}
+              </p>
+            )}
+          </div>
         </SurfaceCard>
 
         <div className="grid gap-3">
@@ -461,9 +650,23 @@ function PlanPanel({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-sm font-bold text-[var(--app-text)]">{formatKrw(item.amount)}</p>
-                    <p className="mt-1 text-xs text-[var(--app-muted)]">
-                      {item.status || "상태 없음"} / {(item.credits_to_grant ?? 0).toLocaleString("ko-KR")} 크레딧
-                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className={`rounded-[var(--app-radius-control)] px-2 py-1 text-xs font-bold ${getPaymentStatusTone(item.status)}`}>
+                        {formatPaymentStatus(item.status)}
+                      </span>
+                      <span className="text-xs text-[var(--app-muted)]">
+                        {(item.credits_to_grant ?? 0).toLocaleString("ko-KR")} 크레딧
+                      </span>
+                    </div>
+                    {getPaymentFailureText(item) ? (
+                      <p className="mt-2 text-xs leading-5 text-rose-600">{getPaymentFailureText(item)}</p>
+                    ) : null}
+                    {item.webhook_event_type ? (
+                      <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
+                        웹훅: {item.webhook_event_type}
+                        {item.webhook_received_at ? ` / ${formatDate(item.webhook_received_at)}` : ""}
+                      </p>
+                    ) : null}
                   </div>
                   <p className="text-right text-xs text-[var(--app-muted)]">{formatDate(item.paid_at ?? item.created_at)}</p>
                 </div>
@@ -699,9 +902,8 @@ export function MyPageDashboardTabs({
   subscription,
   viewerName,
 }: MyPageDashboardTabsProps) {
-  const latestPaidTx = payments.find((item) => item.status === "paid") ?? null;
-  const subscriptionPlan = isActiveSubscription(subscription) ? subscription?.plan_key ?? null : null;
-  const activePlan = formatPlanLabel(subscriptionPlan ?? getPlanFromMetadata(latestPaidTx?.metadata));
+  const subscriptionPlan = getCurrentSubscriptionPlanKey(subscription);
+  const activePlan = formatPlanLabel(subscriptionPlan);
   const credits = Number.isInteger(profile?.credits) ? Number(profile?.credits) : 0;
   const creditsPerStyle = getCreditsPerStyle();
   const estimatedStyles = creditsPerStyle > 0 ? Math.floor(credits / creditsPerStyle) : 0;

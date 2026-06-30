@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { requireMobileService } from "../../../../../lib/mobile-auth";
-import { getPayment, isPortoneConfigured, PLAN_AMOUNT_KRW, PLAN_CREDITS } from "../../../../../lib/portone";
-
-const PAYMENT_PLANS = ["basic", "standard", "pro", "salon"] as const;
-type PaymentPlan = (typeof PAYMENT_PLANS)[number];
+import {
+  isSelfServeBillingPlanKey,
+  type SelfServeBillingPlanKey,
+} from "../../../../../lib/billing-plan";
+import {
+  confirmPortonePayment,
+  type PortoneConfirmationSupabaseClient,
+} from "../../../../../lib/portone-payment-confirmation";
+import { isPortoneConfigured, PLAN_AMOUNT_KRW, PLAN_CREDITS } from "../../../../../lib/portone";
 
 interface CompletePaymentRequest {
   paymentId?: unknown;
@@ -12,6 +17,7 @@ interface CompletePaymentRequest {
 interface PaymentTransactionRow {
   id: string;
   user_id: string;
+  subscription_id: string | null;
   status: string;
   amount: number;
   credits_to_grant: number;
@@ -23,17 +29,13 @@ interface PaymentSelectBuilder {
   maybeSingle: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
 }
 
-function isPaymentPlan(value: unknown): value is PaymentPlan {
-  return typeof value === "string" && PAYMENT_PLANS.includes(value as PaymentPlan);
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function planFromTransaction(row: PaymentTransactionRow): PaymentPlan | null {
+function planFromTransaction(row: PaymentTransactionRow): SelfServeBillingPlanKey | null {
   const metadata = isRecord(row.metadata) ? row.metadata : {};
-  return isPaymentPlan(metadata.plan) ? metadata.plan : null;
+  return isSelfServeBillingPlanKey(metadata.plan) ? metadata.plan : null;
 }
 
 function nextMonth() {
@@ -82,7 +84,7 @@ export async function POST(request: Request) {
 
   const { data: transaction, error: loadError } = await supabase
     .from("payment_transactions")
-    .select("id,user_id,status,amount,credits_to_grant,metadata")
+    .select("id,user_id,subscription_id,status,amount,credits_to_grant,metadata")
     .eq("provider", "portone")
     .eq("provider_order_id", paymentId)
     .maybeSingle<PaymentTransactionRow>();
@@ -110,84 +112,67 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payment transaction metadata mismatch" }, { status: 409 });
   }
 
-  if (transaction.status !== "paid") {
-    const payment = await getPayment(paymentId);
-    if (!payment) {
-      return NextResponse.json({ error: "PortOne payment not found" }, { status: 404 });
-    }
+  const confirmation = await confirmPortonePayment({
+    supabase: supabase as unknown as PortoneConfirmationSupabaseClient,
+    paymentId,
+    expectedUserId: context.userId,
+    expectedAmount,
+    expectedCredits,
+    source: "mobile-payments-complete",
+  });
 
-    if (payment.status !== "PAID") {
-      return NextResponse.json(
+  if (!confirmation.ok) {
+    return NextResponse.json(
+      {
+        error: confirmation.message,
+        reason: confirmation.reason,
+        portoneStatus: confirmation.payment?.status,
+      },
+      { status: confirmation.httpStatus },
+    );
+  }
+
+  let subscriptionId = transaction.subscription_id;
+  if (!confirmation.alreadyPaid || !subscriptionId) {
+    const period = nextMonth();
+    const { data: subscription, error: subscriptionError } = await supabase
+      .from("user_subscriptions")
+      .upsert(
         {
-          error: "PortOne payment is not paid",
-          status: payment.status,
-          message: payment.failureMessage,
+          user_id: context.userId,
+          plan_key: plan,
+          status: "active",
+          pg_billing_key: null,
+          pg_billing_key_encrypted: null,
+          pg_billing_key_hash: null,
+          pg_latest_payment_id: paymentId,
+          credits_per_cycle: expectedCredits,
+          current_period_start: period.start,
+          current_period_end: period.end,
+          cancel_at_period_end: false,
+          canceled_at: null,
+          renewal_failure_count: 0,
+          renewal_last_failed_at: null,
+          renewal_next_retry_at: null,
+          renewal_failure_code: null,
+          renewal_failure_message: null,
         },
-        { status: 409 },
-      );
+        { onConflict: "user_id" },
+      )
+      .select("id")
+      .single<{ id: string }>();
+
+    if (subscriptionError) {
+      return NextResponse.json({ error: subscriptionError.message }, { status: 500 });
     }
 
-    if (payment.amountTotal !== expectedAmount || payment.currency !== "KRW") {
+    if (subscription?.id) {
+      subscriptionId = subscription.id;
       await supabase
         .from("payment_transactions")
-        .update({
-          status: "failed",
-          metadata: {
-            ...(isRecord(transaction.metadata) ? transaction.metadata : {}),
-            portone: payment,
-            failureReason: "amount_or_currency_mismatch",
-          },
-        })
+        .update({ subscription_id: subscription.id })
         .eq("id", transaction.id);
-
-      return NextResponse.json({ error: "PortOne payment amount mismatch" }, { status: 409 });
     }
-
-    const { error: updateError } = await supabase
-      .from("payment_transactions")
-      .update({
-        status: "paid",
-        paid_at: payment.paidAt || new Date().toISOString(),
-        metadata: {
-          ...(isRecord(transaction.metadata) ? transaction.metadata : {}),
-          portone: payment,
-        },
-      })
-      .eq("id", transaction.id);
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
-    }
-  }
-
-  const period = nextMonth();
-  const { data: subscription, error: subscriptionError } = await supabase
-    .from("user_subscriptions")
-    .upsert(
-      {
-        user_id: context.userId,
-        plan_key: plan,
-        status: "active",
-        pg_latest_payment_id: paymentId,
-        credits_per_cycle: expectedCredits,
-        current_period_start: period.start,
-        current_period_end: period.end,
-        cancel_at_period_end: false,
-      },
-      { onConflict: "user_id" },
-    )
-    .select("id")
-    .single<{ id: string }>();
-
-  if (subscriptionError) {
-    return NextResponse.json({ error: subscriptionError.message }, { status: 500 });
-  }
-
-  if (subscription?.id) {
-    await supabase
-      .from("payment_transactions")
-      .update({ subscription_id: subscription.id })
-      .eq("id", transaction.id);
   }
 
   const { data: ledgerId, error: ledgerError } = await supabase.rpc("apply_payment_credits", {
@@ -205,8 +190,10 @@ export async function POST(request: Request) {
       paymentId,
       status: "paid",
       transactionId: transaction.id,
+      subscriptionId,
       creditsGranted: expectedCredits,
       plan,
+      alreadyProcessed: confirmation.alreadyPaid && Boolean(transaction.subscription_id),
       ledgerId: typeof ledgerId === "string" || typeof ledgerId === "number" ? ledgerId : null,
     },
     { status: 200 },

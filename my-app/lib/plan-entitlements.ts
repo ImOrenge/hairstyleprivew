@@ -60,17 +60,8 @@ interface SubscriptionRow {
   current_period_end?: unknown;
 }
 
-interface PaymentTransactionRow {
-  credits_to_grant?: unknown;
-  metadata?: unknown;
-}
-
 interface StylingSessionRow {
   id?: unknown;
-}
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isPlanKey(value: unknown): value is Exclude<ActivePlanKey, "free"> {
@@ -96,18 +87,6 @@ function isSubscriptionActive(row: SubscriptionRow) {
   return Number.isNaN(end.getTime()) || end.getTime() >= Date.now();
 }
 
-function inferPlanFromPayment(row: PaymentTransactionRow): Exclude<ActivePlanKey, "free"> | null {
-  const metadata = isObject(row.metadata) ? row.metadata : {};
-  const metadataPlan = normalizePaidPlan(metadata.plan);
-  if (metadataPlan) return metadataPlan;
-
-  const credits = typeof row.credits_to_grant === "number" ? row.credits_to_grant : 0;
-  if (credits >= 500) return "salon";
-  if (credits >= 200) return "pro";
-  if (credits >= 80) return "standard";
-  return "basic";
-}
-
 async function returns<T>(query: unknown): Promise<{ data: T | null; error: { message: string } | null }> {
   return (query as { returns: <R>() => Promise<{ data: R | null; error: { message: string } | null }> }).returns<T>();
 }
@@ -130,25 +109,7 @@ export async function getActivePlan(
     return subscriptionPlan;
   }
 
-  const paymentQuery = (
-    supabase
-      .from("payment_transactions")
-      .select("credits_to_grant,metadata")
-      .eq("user_id", userId) as {
-        eq: (column: string, value: unknown) => {
-          order: (column: string, options: { ascending: boolean }) => {
-            limit: (count: number) => unknown;
-          };
-        };
-      }
-  )
-    .eq("status", "paid")
-    .order("created_at", { ascending: false })
-    .limit(1);
-
-  const { data: paidRows } = await returns<PaymentTransactionRow[]>(paymentQuery);
-  const paidPlan = paidRows?.[0] ? inferPlanFromPayment(paidRows[0]) : null;
-  return paidPlan || "free";
+  return "free";
 }
 
 export async function getPlanEntitlement(

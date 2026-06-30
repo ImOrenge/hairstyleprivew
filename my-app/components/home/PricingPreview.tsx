@@ -1,28 +1,14 @@
 ﻿"use client";
 
-import { useState } from "react";
 import { getPricingEconomics, getSuggestedPricingTiers, type PricingTierKey } from "../../lib/pricing-plan";
 import { cn } from "../../lib/utils";
 import { useT } from "../../lib/i18n/useT";
+import { PortoneSubscriptionButton } from "../payments/PortoneSubscriptionButton";
 import { Button } from "../ui/Button";
 import { Panel, SurfaceCard } from "../ui/Surface";
 
 type PlanKey = PricingTierKey;
 type PaymentPlanKey = Exclude<PlanKey, "free" | "salon">;
-
-interface SubscribeResponseBody {
-  subscriptionId?: string;
-  plan?: string;
-  credits?: number;
-  periodEnd?: string;
-  error?: string;
-}
-
-interface PortOneBillingKeyResponse {
-  billingKey?: string;
-  code?: string;
-  message?: string;
-}
 
 interface PlanBlueprint {
   key: PlanKey;
@@ -36,18 +22,8 @@ interface PlanBlueprint {
   recommended: boolean;
 }
 
-function createPaymentId(prefix: string) {
-  const random =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  return `${prefix}-${random}`;
-}
-
 export function PricingPreview() {
   const t = useT();
-  const [pendingPlan, setPendingPlan] = useState<PaymentPlanKey | null>(null);
-  const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const economics = getPricingEconomics();
   const suggestedTiers = getSuggestedPricingTiers();
   const tierByKey = new Map<string, (typeof suggestedTiers)[number]>(
@@ -150,71 +126,6 @@ export function PricingPreview() {
     };
   });
 
-  const startSubscription = async (planKey: PaymentPlanKey) => {
-    setPendingPlan(planKey);
-    setStatusMsg(null);
-
-    try {
-      const PortOne = (await import("@portone/browser-sdk/v2").catch(() => null))?.default;
-      if (!PortOne) {
-        throw new Error("결제 모듈을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.");
-      }
-
-      const storeId = process.env.NEXT_PUBLIC_PORTONE_V2_STORE_ID;
-      const channelKey = process.env.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY;
-      if (!storeId || !channelKey) {
-        throw new Error("결제 설정이 완료되지 않았습니다.");
-      }
-
-      const issueResult = (await PortOne.requestIssueBillingKey({
-        storeId,
-        channelKey,
-        billingKeyMethod: "CARD",
-        issueId: createPaymentId(`issue-${planKey}`),
-        issueName: `HairFit ${planKey.charAt(0).toUpperCase() + planKey.slice(1)} 구독`,
-        customer: {
-          customerId: createPaymentId("web"),
-        },
-      })) as PortOneBillingKeyResponse;
-
-      if (!issueResult?.billingKey) {
-        if (issueResult?.code === "USER_CANCEL") {
-          setPendingPlan(null);
-          return;
-        }
-        throw new Error(issueResult?.message ?? "빌링키 발급에 실패했습니다.");
-      }
-
-      const response = await fetch("/api/payments/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan: planKey,
-          billingKey: issueResult.billingKey,
-        }),
-      });
-
-      if (response.status === 401) {
-        const returnPath = `${window.location.pathname}${window.location.search}`;
-        window.location.assign(`/login?redirect_url=${encodeURIComponent(returnPath)}`);
-        return;
-      }
-
-      const result = (await response.json().catch(() => ({}))) as SubscribeResponseBody;
-      if (!response.ok) {
-        throw new Error(result.error ?? `구독 처리 실패 (${response.status})`);
-      }
-
-      window.location.assign(`/mypage?subscribed=${planKey}&credits=${result.credits ?? ""}`);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "구독 처리 중 오류가 발생했습니다.";
-      console.error(`[pricing] ${planKey} subscription failed:`, err);
-      setStatusMsg(msg);
-    } finally {
-      setPendingPlan(null);
-    }
-  };
-
   const handlePlanClick = (planKey: PlanKey) => {
     if (planKey === "free") {
       window.location.assign("/workspace");
@@ -225,8 +136,6 @@ export function PricingPreview() {
       window.location.assign("/b2b/signup");
       return;
     }
-
-    void startSubscription(planKey);
   };
 
   return (
@@ -244,12 +153,6 @@ export function PricingPreview() {
           {t("pricing.creditNote", { credits: economics.creditsPerStyle })}
         </p>
       </div>
-
-      {statusMsg ? (
-        <div className="mt-4 border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-[var(--app-danger)]">
-          {statusMsg}
-        </div>
-      ) : null}
 
       <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {plans.map((plan) => (
@@ -331,18 +234,24 @@ export function PricingPreview() {
               </p>
             ) : null}
 
-            <Button
-              type="button"
-              onClick={() => handlePlanClick(plan.key)}
-              disabled={pendingPlan === plan.key}
-              variant={plan.tone === "basic" ? "secondary" : "primary"}
-              className={cn(
-                "mt-4 w-full px-3 py-2 text-xs",
-                pendingPlan === plan.key && "cursor-not-allowed opacity-70",
-              )}
-            >
-              {pendingPlan === plan.key ? t("pricing.connecting") : plan.cta}
-            </Button>
+            {plan.key === "basic" || plan.key === "standard" || plan.key === "pro" ? (
+              <PortoneSubscriptionButton
+                planKey={plan.key as PaymentPlanKey}
+                variant={plan.tone === "basic" ? "secondary" : "primary"}
+                className="mt-4 w-full px-3 py-2 text-xs"
+              >
+                {plan.cta}
+              </PortoneSubscriptionButton>
+            ) : (
+              <Button
+                type="button"
+                onClick={() => handlePlanClick(plan.key)}
+                variant={plan.tone === "basic" ? "secondary" : "primary"}
+                className="mt-4 w-full px-3 py-2 text-xs"
+              >
+                {plan.cta}
+              </Button>
+            )}
           </SurfaceCard>
         ))}
       </div>
