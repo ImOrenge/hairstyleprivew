@@ -398,7 +398,15 @@ function renderEmailLayout(input: EmailLayoutInput) {
     ? `<p style="margin:22px 0 0;color:${EMAIL_COLORS.muted};font-size:12px;line-height:1.7">${escapeHtml(input.note)}</p>`
     : "";
 
-  return `
+  return `<!doctype html>
+  <html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(input.title)}</title>
+  </head>
+  <body style="margin:0;padding:0;background:${EMAIL_COLORS.bg};color:${EMAIL_COLORS.text};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escapeHtml(input.preview)}</div>
   <div style="margin:0;padding:0;background:${EMAIL_COLORS.bg};color:${EMAIL_COLORS.text};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
     <div style="max-width:640px;margin:0 auto;padding:32px 18px">
@@ -426,7 +434,9 @@ function renderEmailLayout(input: EmailLayoutInput) {
         </div>
       </div>
     </div>
-  </div>`;
+  </div>
+  </body>
+  </html>`;
 }
 
 function renderText(input: EmailLayoutInput) {
