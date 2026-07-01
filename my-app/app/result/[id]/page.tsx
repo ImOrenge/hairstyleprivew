@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ActionToolbar } from "../../../components/result/ActionToolbar";
 import { AIEvaluationView } from "../../../components/result/AIEvaluationView";
 import { ComparisonView } from "../../../components/result/ComparisonView";
@@ -20,13 +20,25 @@ interface GenerationDetailsResponse {
   recommendationSet?: RecommendationSet | null;
   selectedVariant?: GeneratedVariant | null;
   generatedImagePath?: string | null;
+  selectionLocked?: boolean;
+  confirmedHairRecord?: {
+    id: string;
+    styleName: string;
+    serviceType: string;
+    serviceDate: string;
+    createdAt: string;
+  } | null;
   options?: {
     aiEvaluation?: AIEvaluationResult;
   } | null;
 }
 
+const SELECTION_LOCKED_MESSAGE =
+  "시술 확정 후에는 이 결과 안에서 다른 스타일로 바꿀 수 없습니다. 다른 스타일은 다시 생성해 주세요.";
+
 export default function ResultPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const id = params?.id || "unknown";
 
@@ -38,11 +50,16 @@ export default function ResultPage() {
   const storeAnalysisSummary = useGenerationStore((state) => state.analysisSummary);
   const storeSelectedVariantId = useGenerationStore((state) => state.selectedVariantId);
   const setSelectedVariantId = useGenerationStore((state) => state.setSelectedVariantId);
+  const clearLatestResult = useGenerationStore((state) => state.clearLatestResult);
+  const clearRecommendationSession = useGenerationStore((state) => state.clearRecommendationSession);
 
   const [recommendationSet, setRecommendationSet] = useState<RecommendationSet | null>(null);
   const [selectedVariantId, setSelectedVariantIdState] = useState<string | null>(null);
   const [dbOutputUrl, setDbOutputUrl] = useState<string | null>(null);
   const [serverEvaluation, setServerEvaluation] = useState<AIEvaluationResult | null>(null);
+  const [selectionLocked, setSelectionLocked] = useState(false);
+  const [confirmedHairRecord, setConfirmedHairRecord] = useState<GenerationDetailsResponse["confirmedHairRecord"]>(null);
+  const [selectionNotice, setSelectionNotice] = useState<string | null>(null);
   const [isSwitching, startSwitching] = useTransition();
 
   const requestedVariantId = searchParams.get("variant");
@@ -101,14 +118,23 @@ export default function ResultPage() {
         setRecommendationSet(data.recommendationSet);
       }
 
-      const nextSelectedVariantId =
-        requestedVariantId ||
+      const serverSelectedVariantId =
         data.selectedVariant?.id ||
         data.recommendationSet?.selectedVariantId ||
         data.recommendationSet?.variants.find((variant) => variant.outputUrl)?.id ||
         null;
+      const nextSelectionLocked = Boolean(data.selectionLocked);
+      const nextSelectedVariantId =
+        (!nextSelectionLocked ? requestedVariantId : null) || serverSelectedVariantId;
 
       setSelectedVariantIdState(nextSelectedVariantId);
+      setSelectionLocked(nextSelectionLocked);
+      setConfirmedHairRecord(data.confirmedHairRecord || null);
+      setSelectionNotice(
+        nextSelectionLocked && requestedVariantId && requestedVariantId !== serverSelectedVariantId
+          ? SELECTION_LOCKED_MESSAGE
+          : null,
+      );
 
       if (data.selectedVariant?.evaluation) {
         setServerEvaluation(data.selectedVariant.evaluation);
@@ -169,17 +195,53 @@ export default function ResultPage() {
   );
 
   const handleSwitchVariant = (variant: GeneratedVariant) => {
+    if (selectionLocked && variant.id !== activeSelectedVariantId) {
+      setSelectionNotice(SELECTION_LOCKED_MESSAGE);
+      return;
+    }
+
+    if (variant.id === activeSelectedVariantId) {
+      return;
+    }
+
+    const previousVariantId = activeSelectedVariantId;
+
     startSwitching(() => {
       setSelectedVariantId(variant.id);
       setSelectedVariantIdState(variant.id);
-      void fetch(`/api/generations/${encodeURIComponent(id)}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ selectedVariantId: variant.id }),
-      });
+      setSelectionNotice(null);
+      void (async () => {
+        const response = await fetch(`/api/generations/${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ selectedVariantId: variant.id }),
+        });
+
+        if (!response.ok) {
+          const data = (await response.json().catch(() => null)) as {
+            error?: string;
+            selectionLocked?: boolean;
+            confirmedHairRecord?: GenerationDetailsResponse["confirmedHairRecord"];
+          } | null;
+
+          if (data?.selectionLocked || response.status === 409) {
+            setSelectionLocked(true);
+            setConfirmedHairRecord(data?.confirmedHairRecord || confirmedHairRecord || null);
+          }
+          setSelectedVariantId(previousVariantId);
+          setSelectedVariantIdState(previousVariantId);
+          setSelectionNotice(data?.error || SELECTION_LOCKED_MESSAGE);
+        }
+      })();
     });
+  };
+
+  const handleRegenerate = () => {
+    clearLatestResult();
+    clearRecommendationSession();
+    router.push("/workspace");
   };
 
   return (
@@ -228,6 +290,9 @@ export default function ResultPage() {
         variants={activeSet?.variants || []}
         selectedVariantId={activeSelectedVariantId}
         isSwitching={isSwitching}
+        selectionLocked={selectionLocked}
+        lockedMessage={selectionNotice}
+        onRegenerate={handleRegenerate}
         onSelect={handleSwitchVariant}
       />
 
@@ -236,6 +301,7 @@ export default function ResultPage() {
         outputImageUrl={hasRealOutput ? afterImage : null}
         hasEvaluation={Boolean(evaluation)}
         selectedVariantId={activeSelectedVariantId}
+        selectionLocked={selectionLocked}
       />
       <div className="flex w-full justify-center">
         <FeedbackModal generationId={id} />

@@ -605,7 +605,11 @@ export function WorkspaceWizard() {
       const data = (await response.json().catch(() => ({}))) as { error?: string };
 
       if (!response.ok) {
-        throw new Error(data.error || "선택한 헤어를 저장하지 못했습니다.");
+        throw new Error(
+          response.status === 409
+            ? data.error || "확정한 헤어는 변경할 수 없습니다. 다른 스타일은 다시 생성해 주세요."
+            : data.error || "선택한 헤어를 저장하지 못했습니다.",
+        );
       }
 
       setSelectedVariantId(variant.id);

@@ -1,4 +1,5 @@
 import type { GeneratedVariant, RecommendationSet } from "@hairfit/shared";
+import { HairfitApiError } from "@hairfit/api-client";
 import { BodyText, Button, Card, Chip, Cluster, Divider, Heading, Kicker, Panel, Row, Screen, Stack, Stat } from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -11,6 +12,7 @@ interface GenerationDetail {
   status: string;
   recommendationSet: RecommendationSet | null;
   selectedVariant: GeneratedVariant | null;
+  selectionLocked: boolean;
 }
 
 function normalizeDraftVariant(variant: GeneratedVariant): GeneratedVariant {
@@ -55,6 +57,8 @@ function statusTone(status: string): "neutral" | "accent" | "success" | "danger"
   if (status === "generating") return "accent";
   return "neutral";
 }
+
+const selectionLockedMessage = "확정한 헤어는 변경할 수 없습니다. 다른 스타일은 새로 생성해 주세요.";
 
 export default function GenerateBoardScreen() {
   const router = useRouter();
@@ -102,8 +106,13 @@ export default function GenerateBoardScreen() {
         status: result.status,
         recommendationSet: result.recommendationSet,
         selectedVariant: result.selectedVariant as GeneratedVariant | null,
+        selectionLocked: Boolean(result.selectionLocked),
       });
-      setMessage("Review the full 3x3 board, retry failed renders, and open any finished card as a detailed result.");
+      setMessage(
+        result.selectionLocked
+          ? selectionLockedMessage
+          : "Review the full 3x3 board, retry failed renders, and open any finished card as a detailed result.",
+      );
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to load recommendation board.");
     }
@@ -130,6 +139,11 @@ export default function GenerateBoardScreen() {
   const selectedVariantId = activeSet?.selectedVariantId || null;
 
   const runVariant = async (variant: GeneratedVariant, index: number) => {
+    if (detail?.selectionLocked) {
+      setMessage(selectionLockedMessage);
+      return;
+    }
+
     if (!flow.draft?.imageDataUrl || pendingVariantId) {
       setMessage("Retry requires the portrait selected in this mobile session.");
       return;
@@ -163,15 +177,26 @@ export default function GenerateBoardScreen() {
 
   const openResult = async (variant: GeneratedVariant) => {
     if (!generationId || openingVariantId) return;
+    const lockedSelectedVariantId = activeSet?.selectedVariantId || detail?.selectedVariant?.id || "";
+    if (detail?.selectionLocked && variant.id !== lockedSelectedVariantId) {
+      setMessage(selectionLockedMessage);
+      return;
+    }
+
     setOpeningVariantId(variant.id);
     try {
       await api.patchSelectedVariant(generationId, variant.id);
-    } catch {
-      // Result can still open; the result screen exposes the save error if selection fails again.
+    } catch (error) {
+      if (error instanceof HairfitApiError && error.status === 409) {
+        setMessage(selectionLockedMessage);
+        setOpeningVariantId(null);
+        return;
+      }
+      // Other save failures should not block result viewing; the result screen exposes the error if selection fails again.
     } finally {
       setOpeningVariantId(null);
-      router.push(`/result/${generationId}?variant=${encodeURIComponent(variant.id)}`);
     }
+    router.push(`/result/${generationId}?variant=${encodeURIComponent(variant.id)}`);
   };
 
   return (

@@ -17,8 +17,51 @@ interface PatchGenerationRequest {
   selectedVariantId?: string;
 }
 
+interface ConfirmedHairRecordSummary {
+  id: string;
+  styleName: string;
+  serviceType: string;
+  serviceDate: string;
+  createdAt: string;
+}
+
+interface MaybeSingleResult {
+  data: Record<string, unknown> | null;
+  error: { message: string } | null;
+}
+
+interface EqOrderQuery {
+  eq: (column: string, value: string) => EqOrderQuery;
+  order: (
+    column: string,
+    options: { ascending: boolean },
+  ) => {
+    limit: (count: number) => {
+      maybeSingle: () => Promise<MaybeSingleResult>;
+    };
+  };
+  maybeSingle: () => Promise<MaybeSingleResult>;
+}
+
+interface SupabaseRouteClient {
+  from: (table: string) => {
+    select: (columns: string) => EqOrderQuery;
+    update: (values: Record<string, unknown>) => {
+      eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
+    };
+  };
+  storage: SupabaseClient["storage"];
+}
+
+const SELECTION_LOCKED_MESSAGE =
+  "이미 확정된 헤어스타일입니다. 다른 스타일은 새로 생성해 주세요.";
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function text(value: unknown) {
+  return typeof value === "string" ? value : "";
 }
 
 function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
@@ -47,22 +90,7 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
 }
 
 async function loadGeneration(userId: string, id: string) {
-  const supabase = getSupabaseAdminClient() as unknown as {
-    from: (table: string) => {
-      select: (columns: string) => {
-        eq: (column: string, value: string) => {
-          maybeSingle: () => Promise<{
-            data: Record<string, unknown> | null;
-            error: { message: string } | null;
-          }>;
-        };
-      };
-      update: (values: Record<string, unknown>) => {
-        eq: (column: string, value: string) => Promise<{ error: { message: string } | null }>;
-      };
-    };
-    storage: SupabaseClient["storage"];
-  };
+  const supabase = getSupabaseAdminClient() as unknown as SupabaseRouteClient;
 
   const { data, error } = await supabase
     .from("generations")
@@ -84,6 +112,39 @@ async function loadGeneration(userId: string, id: string) {
   }
 
   return { data, supabase };
+}
+
+async function loadConfirmedHairRecord(
+  supabase: SupabaseRouteClient,
+  userId: string,
+  generationId: string,
+) {
+  const { data, error } = await supabase
+    .from("user_hair_records")
+    .select("id,style_name,service_type,service_date,created_at")
+    .eq("generation_id", generationId)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  if (!data) {
+    return { data: null };
+  }
+
+  return {
+    data: {
+      id: text(data.id),
+      styleName: text(data.style_name),
+      serviceType: text(data.service_type),
+      serviceDate: text(data.service_date),
+      createdAt: text(data.created_at),
+    } satisfies ConfirmedHairRecordSummary,
+  };
 }
 
 async function withSignedVariantUrls(
@@ -138,6 +199,12 @@ export async function GET(_request: Request, { params }: Params) {
     isObject(loaded.data.options) ? loaded.data.options.recommendationSet : null,
   );
   const recommendationSet = await withSignedVariantUrls(loaded.supabase, rawRecommendationSet);
+  const confirmedHairRecordResult = await loadConfirmedHairRecord(loaded.supabase, userId, id.trim());
+  if ("error" in confirmedHairRecordResult) {
+    return NextResponse.json({ error: confirmedHairRecordResult.error }, { status: 500 });
+  }
+
+  const confirmedHairRecord = confirmedHairRecordResult.data;
   const selectedVariant = recommendationSet?.selectedVariantId
     ? recommendationSet.variants.find((variant) => variant.id === recommendationSet.selectedVariantId) || null
     : recommendationSet?.variants.find((variant) => variant.generatedImagePath) || null;
@@ -154,6 +221,8 @@ export async function GET(_request: Request, { params }: Params) {
         typeof loaded.data.options === "object" && loaded.data.options !== null ? loaded.data.options : null,
       recommendationSet,
       selectedVariant,
+      selectionLocked: Boolean(confirmedHairRecord),
+      confirmedHairRecord,
     },
     { status: 200 },
   );
@@ -194,6 +263,45 @@ export async function PATCH(request: Request, { params }: Params) {
   const selectedVariant = recommendationSet.variants.find((variant) => variant.id === selectedVariantId);
   if (!selectedVariant) {
     return NextResponse.json({ error: "Variant not found" }, { status: 404 });
+  }
+
+  const confirmedHairRecordResult = await loadConfirmedHairRecord(loaded.supabase, userId, id.trim());
+  if ("error" in confirmedHairRecordResult) {
+    return NextResponse.json({ error: confirmedHairRecordResult.error }, { status: 500 });
+  }
+
+  if (confirmedHairRecordResult.data) {
+    const lockedVariantId =
+      recommendationSet.selectedVariantId ||
+      recommendationSet.variants.find(
+        (variant) =>
+          variant.generatedImagePath &&
+          typeof loaded.data.generated_image_path === "string" &&
+          variant.generatedImagePath === loaded.data.generated_image_path,
+      )?.id ||
+      null;
+
+    if (!lockedVariantId || lockedVariantId !== selectedVariantId) {
+      return NextResponse.json(
+        {
+          error: SELECTION_LOCKED_MESSAGE,
+          code: "selection_locked_after_confirmation",
+          selectionLocked: true,
+          confirmedHairRecord: confirmedHairRecordResult.data,
+        },
+        { status: 409 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        ok: true,
+        selectedVariantId,
+        selectionLocked: true,
+        confirmedHairRecord: confirmedHairRecordResult.data,
+      },
+      { status: 200 },
+    );
   }
 
   recommendationSet.selectedVariantId = selectedVariantId;

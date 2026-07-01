@@ -16,9 +16,20 @@ interface CreateHairRecordBody {
   serviceDate?: string; // YYYY-MM-DD
 }
 
+interface ExistingHairRecordRow {
+  id: string;
+  style_name: string;
+  service_type: string;
+  service_date: string;
+  next_visit_target_days: number;
+  created_at: string;
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const VALID_SERVICE_TYPES: ServiceType[] = ["perm", "color", "cut", "bleach", "treatment", "other"];
+const SELECTION_LOCKED_MESSAGE =
+  "이미 확정된 헤어스타일입니다. 다른 스타일은 새로 생성해 주세요.";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -64,6 +75,18 @@ function replaceCta(html: string, url: string): string {
 
 function getStyleName(variant: GeneratedVariant): string {
   return variant.label?.trim().slice(0, 80) || "선택한 헤어스타일";
+}
+
+function isSameConfirmedVariant(
+  recommendationSet: RecommendationSet,
+  selectedVariant: GeneratedVariant,
+  existingRecord: ExistingHairRecordRow,
+) {
+  if (recommendationSet.selectedVariantId) {
+    return recommendationSet.selectedVariantId === selectedVariant.id;
+  }
+
+  return existingRecord.style_name === getStyleName(selectedVariant);
 }
 
 export async function POST(request: Request) {
@@ -134,6 +157,55 @@ export async function POST(request: Request) {
   const selectedVariant = recommendationSet.variants.find((variant) => variant.id === selectedVariantId);
   if (!selectedVariant) {
     return NextResponse.json({ error: "Variant not found" }, { status: 404 });
+  }
+
+  const { data: existingRecord, error: existingRecordError } = await supabase
+    .from("user_hair_records")
+    .select("id,style_name,service_type,service_date,next_visit_target_days,created_at")
+    .eq("generation_id", generationId)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<ExistingHairRecordRow>();
+
+  if (existingRecordError) {
+    return NextResponse.json({ error: existingRecordError.message }, { status: 500 });
+  }
+
+  if (existingRecord) {
+    if (!isSameConfirmedVariant(recommendationSet, selectedVariant, existingRecord)) {
+      return NextResponse.json(
+        {
+          error: SELECTION_LOCKED_MESSAGE,
+          code: "selection_locked_after_confirmation",
+          selectionLocked: true,
+          confirmedHairRecord: {
+            id: existingRecord.id,
+            styleName: existingRecord.style_name,
+            serviceType: existingRecord.service_type,
+            serviceDate: existingRecord.service_date,
+            createdAt: existingRecord.created_at,
+          },
+        },
+        { status: 409 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        hairRecordId: existingRecord.id,
+        aftercareGuideId: null,
+        styleName: existingRecord.style_name,
+        serviceType: existingRecord.service_type,
+        serviceDate: existingRecord.service_date,
+        nextVisitTargetDays: existingRecord.next_visit_target_days,
+        careScheduledCount: 0,
+        redirectTo: `/aftercare/${existingRecord.id}`,
+        alreadyConfirmed: true,
+        selectionLocked: true,
+      },
+      { status: 200 },
+    );
   }
 
   const styleName = getStyleName(selectedVariant);

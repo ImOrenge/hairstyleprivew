@@ -482,11 +482,30 @@ export class HairfitApiClient {
       status: string;
       recommendationSet: RecommendationSet | null;
       selectedVariant: unknown | null;
+      selectionLocked?: boolean;
+      confirmedHairRecord?: {
+        id: string;
+        styleName: string;
+        serviceType: string;
+        serviceDate: string;
+        createdAt: string;
+      } | null;
     }>(`/api/generations/${encodeURIComponent(id)}`);
   }
 
   patchSelectedVariant(generationId: string, selectedVariantId: string) {
-    return this.request<{ ok: true; selectedVariantId: string }>(
+    return this.request<{
+      ok: true;
+      selectedVariantId: string;
+      selectionLocked?: boolean;
+      confirmedHairRecord?: {
+        id: string;
+        styleName: string;
+        serviceType: string;
+        serviceDate: string;
+        createdAt: string;
+      } | null;
+    }>(
       `/api/generations/${encodeURIComponent(generationId)}`,
       {
         method: "PATCH",
@@ -578,13 +597,15 @@ export class HairfitApiClient {
   }) {
     return this.request<{
       hairRecordId: string;
-      aftercareGuideId: string;
+      aftercareGuideId: string | null;
       styleName: string;
       serviceType: ServiceType;
       serviceDate: string;
       nextVisitTargetDays: number;
       careScheduledCount: number;
       redirectTo: string;
+      alreadyConfirmed?: boolean;
+      selectionLocked?: boolean;
     }>("/api/hair-records", {
       method: "POST",
       body: JSON.stringify(input),

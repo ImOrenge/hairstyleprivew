@@ -1,4 +1,5 @@
 import type { GeneratedVariant, RecommendationSet, ServiceType } from "@hairfit/shared";
+import { HairfitApiError } from "@hairfit/api-client";
 import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Screen, Stack, TextField } from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -10,6 +11,14 @@ interface GenerationDetail {
   status: string;
   recommendationSet: RecommendationSet | null;
   selectedVariant: GeneratedVariant | null;
+  selectionLocked: boolean;
+  confirmedHairRecord: {
+    id: string;
+    styleName: string;
+    serviceType: string;
+    serviceDate: string;
+    createdAt: string;
+  } | null;
 }
 
 function firstRenderableVariant(set: RecommendationSet | null) {
@@ -24,6 +33,8 @@ const serviceOptions: Array<{ value: ServiceType; label: string }> = [
   { value: "treatment", label: "트리트먼트" },
   { value: "other", label: "기타" },
 ];
+
+const selectionLockedMessage = "확정한 헤어는 변경할 수 없습니다. 다른 스타일은 새로 생성해 주세요.";
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -56,8 +67,18 @@ export default function ResultDetailScreen() {
             status: result.status,
             recommendationSet: result.recommendationSet,
             selectedVariant: result.selectedVariant as GeneratedVariant | null,
+            selectionLocked: Boolean(result.selectionLocked),
+            confirmedHairRecord: result.confirmedHairRecord ?? null,
           });
-          setMessage("결과를 불러왔습니다.");
+          const serverSelectedVariantId =
+            (result.selectedVariant as GeneratedVariant | null)?.id ||
+            result.recommendationSet?.selectedVariantId ||
+            "";
+          setMessage(
+            result.selectionLocked && variantFromRoute && variantFromRoute !== serverSelectedVariantId
+              ? selectionLockedMessage
+              : "결과를 불러왔습니다.",
+          );
         }
       } catch (error) {
         if (!cancelled) {
@@ -70,10 +91,16 @@ export default function ResultDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [api, generationId]);
+  }, [api, generationId, variantFromRoute]);
 
   const selectVariant = async (variant: GeneratedVariant) => {
     if (!generationId || pendingSelection) return;
+    const lockedSelectedVariantId = detail?.recommendationSet?.selectedVariantId || detail?.selectedVariant?.id || "";
+    if (detail?.selectionLocked && variant.id !== lockedSelectedVariantId) {
+      setMessage(selectionLockedMessage);
+      return;
+    }
+
     setPendingSelection(variant.id);
     setMessage(null);
     try {
@@ -91,7 +118,13 @@ export default function ResultDetailScreen() {
       });
       setMessage("선택한 스타일을 저장했습니다.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "선택한 스타일을 저장하지 못했습니다.");
+      setMessage(
+        error instanceof HairfitApiError && error.status === 409
+          ? selectionLockedMessage
+          : error instanceof Error
+            ? error.message
+            : "선택한 스타일을 저장하지 못했습니다.",
+      );
     } finally {
       setPendingSelection(null);
     }
@@ -99,7 +132,7 @@ export default function ResultDetailScreen() {
 
   const primary = useMemo(() => {
     const variants = detail?.recommendationSet?.variants || [];
-    const routeSelected = variantFromRoute
+    const routeSelected = !detail?.selectionLocked && variantFromRoute
       ? variants.find((item) => item.id === variantFromRoute) || null
       : null;
     return routeSelected || detail?.selectedVariant || firstRenderableVariant(detail?.recommendationSet ?? null);

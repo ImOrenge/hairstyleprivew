@@ -11,6 +11,7 @@ interface ActionToolbarProps {
   outputImageUrl?: string | null;
   hasEvaluation?: boolean;
   selectedVariantId?: string | null;
+  selectionLocked?: boolean;
 }
 
 const SERVICE_OPTIONS = [
@@ -61,6 +62,7 @@ export function ActionToolbar({
   outputImageUrl = null,
   hasEvaluation = false,
   selectedVariantId = null,
+  selectionLocked = false,
 }: ActionToolbarProps) {
   const router = useRouter();
   const clearLatestResult = useGenerationStore((state) => state.clearLatestResult);
@@ -192,7 +194,7 @@ export function ActionToolbar({
   };
 
   const handleConfirmService = async () => {
-    if (!selectedVariantId || isConfirming) return;
+    if (!selectedVariantId || isConfirming || selectionLocked) return;
 
     setIsConfirming(true);
     setConfirmError(null);
@@ -283,11 +285,11 @@ export function ActionToolbar({
             <Button
               variant="secondary"
               onClick={() => setIsConfirmOpen(true)}
-              disabled={!selectedVariantId}
+              disabled={!selectedVariantId || selectionLocked}
               className="flex h-11 min-w-[120px] items-center justify-center gap-2 rounded-[var(--app-radius-control)] border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 sm:min-w-[150px]"
             >
               <Scissors className="h-4 w-4" />
-              <span className="text-sm font-semibold">시술 확정</span>
+              <span className="text-sm font-semibold">{selectionLocked ? "시술 확정됨" : "시술 확정"}</span>
             </Button>
 
             <Button
