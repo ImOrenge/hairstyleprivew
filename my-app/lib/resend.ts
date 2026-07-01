@@ -113,9 +113,29 @@ type CareEmailInput = {
   bodyHtml: string;
 };
 
+function normalizeFromEmail(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed) return "";
+
+  if (/^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (/^.+<[^<>\s]+@[^<>\s]+\.[^<>\s]+>$/.test(trimmed)) {
+    return trimmed;
+  }
+
+  const looseMatch = trimmed.match(/^(.+?)\s+([^<>\s]+@[^<>\s]+\.[^<>\s]+)$/);
+  if (looseMatch) {
+    return `${looseMatch[1].trim()} <${looseMatch[2].trim()}>`;
+  }
+
+  return trimmed;
+}
+
 const env = process.env as Record<string, string | undefined>;
 const resendApiKey = env.RESEND_API_KEY?.trim();
-const defaultFromEmail = env.RESEND_FROM_EMAIL?.trim() || "HairFit <onboarding@resend.dev>";
+const defaultFromEmail = normalizeFromEmail(env.RESEND_FROM_EMAIL) || "HairFit <onboarding@resend.dev>";
 const MAX_LOGGED_EMAIL_BODY_LENGTH = 500_000;
 
 const EMAIL_COLORS = {
@@ -453,11 +473,13 @@ export async function sendEmail({
   from?: string;
   source?: string;
 }): Promise<SendEmailResult> {
+  const resolvedFrom = normalizeFromEmail(from) || defaultFromEmail;
+
   if (!resendApiKey) {
     console.warn(`[Resend] Skipping email send to ${to} (missing RESEND_API_KEY)`);
     await recordOutboundEmail({
       to,
-      from,
+      from: resolvedFrom,
       subject,
       html,
       text,
@@ -475,7 +497,7 @@ export async function sendEmail({
     }
 
     const { data, error } = await client.emails.send({
-      from,
+      from: resolvedFrom,
       to,
       subject,
       html,
@@ -486,7 +508,7 @@ export async function sendEmail({
       console.error("[Resend] Email send failed:", error);
       await recordOutboundEmail({
         to,
-        from,
+        from: resolvedFrom,
         subject,
         html,
         text,
@@ -500,7 +522,7 @@ export async function sendEmail({
 
     await recordOutboundEmail({
       to,
-      from,
+      from: resolvedFrom,
       subject,
       html,
       text,
@@ -513,7 +535,7 @@ export async function sendEmail({
     console.error("[Resend] Unexpected email send error:", error);
     await recordOutboundEmail({
       to,
-      from,
+      from: resolvedFrom,
       subject,
       html,
       text,
