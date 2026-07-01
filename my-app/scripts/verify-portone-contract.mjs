@@ -64,17 +64,23 @@ assert.equal(emptyResult.status, "FAILED");
 assert.equal(emptyResult.transactionId, null);
 
 const portoneSource = readFileSync(resolve("lib/portone.ts"), "utf8");
-assert.match(portoneSource, /storeId:\s*input\.storeId\?\.trim\(\)\s*\|\|\s*requireStoreId\(\)/);
+assert.match(portoneSource, /storeId:\s*input\.storeId\?\.trim\(\)\s*\|\|\s*readPortoneStoreId\(\)/);
+assert.match(portoneSource, /process\.env\.NEXT_PUBLIC_PORTONE_V2_STORE_ID\?\.trim\(\)\s*\|\|\s*process\.env\.PORTONE_V2_STORE_ID/);
+assert.match(portoneSource, /process\.env\.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY\?\.trim\(\)\s*\|\|\s*process\.env\.PORTONE_V2_CHANNEL_KEY/);
 assert.match(portoneSource, /customer:\s*\{\s*id:\s*input\.customerId\s*\}/);
 assert.match(portoneSource, /parsePortonePaymentResult\(input\.paymentId,\s*data\)/);
 assert.match(portoneSource, /formatPortoneHttpError\(response\.status,\s*data\)/);
+assert.match(portoneSource, /confirmBillingKeyIssue/);
 
 const subscribeSource = readFileSync(
   resolve("app/api/payments/subscribe/route.ts"),
   "utf8",
 );
-assert.match(subscribeSource, /getBillingKey\(billingKey\)/);
-assert.match(subscribeSource, /portone_billing_key_not_found/);
+assert.match(subscribeSource, /billingKey === PORTONE_NEEDS_CONFIRMATION/);
+assert.match(subscribeSource, /confirmBillingKeyIssue\(\{/);
+assert.match(subscribeSource, /storeId:\s*portoneConfig\.storeId/);
+assert.match(subscribeSource, /channelKey:\s*portoneConfig\.channelKey/);
+assert.doesNotMatch(subscribeSource, /getBillingKey\(billingKey\)/);
 
 const billingPlanSource = readFileSync(resolve("lib/billing-plan.ts"), "utf8");
 assert.match(billingPlanSource, /HairFit Basic - 월 구독/);

@@ -4,6 +4,10 @@ import {
   getBillingPlan,
   isSelfServeBillingPlanKey,
 } from "../../../../../lib/billing-plan";
+import {
+  readPortoneChannelKey,
+  readPortoneStoreId,
+} from "../../../../../lib/portone";
 import { buildPortoneBillingKeyIssueId } from "../../../../../lib/portone-payment-id";
 
 interface PrepareBillingKeyRequest {
@@ -16,14 +20,8 @@ interface PrepareBillingKeyRequest {
 
 function readPublicPortoneConfig() {
   return {
-    storeId:
-      process.env.NEXT_PUBLIC_PORTONE_V2_STORE_ID?.trim() ||
-      process.env.PORTONE_V2_STORE_ID?.trim() ||
-      "",
-    channelKey:
-      process.env.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY?.trim() ||
-      process.env.PORTONE_V2_CHANNEL_KEY?.trim() ||
-      undefined,
+    storeId: readPortoneStoreId(),
+    channelKey: readPortoneChannelKey(),
   };
 }
 
@@ -76,7 +74,12 @@ export async function POST(request: Request) {
     );
   }
 
-  const config = readPublicPortoneConfig();
+  let config: ReturnType<typeof readPublicPortoneConfig>;
+  try {
+    config = readPublicPortoneConfig();
+  } catch {
+    return NextResponse.json({ error: "PortOne store ID is not configured" }, { status: 503 });
+  }
   if (!config.storeId) {
     return NextResponse.json({ error: "PortOne store ID is not configured" }, { status: 503 });
   }

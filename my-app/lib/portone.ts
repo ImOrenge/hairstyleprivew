@@ -40,6 +40,12 @@ export interface PortOneBillingKeyChargeInput {
   currency?: string;
 }
 
+export interface PortOneConfirmBillingKeyInput {
+  billingIssueToken: string;
+  storeId?: string;
+  isTest?: boolean;
+}
+
 // ─── 환경 설정 ─────────────────────────────────────────────────────────────
 
 export function isPortoneConfigured(): boolean {
@@ -52,18 +58,18 @@ function requireApiSecret(): string {
   return v;
 }
 
-function requireStoreId(): string {
+export function readPortoneStoreId(): string {
   const v =
-    process.env.PORTONE_V2_STORE_ID?.trim() ||
-    process.env.NEXT_PUBLIC_PORTONE_V2_STORE_ID?.trim();
+    process.env.NEXT_PUBLIC_PORTONE_V2_STORE_ID?.trim() ||
+    process.env.PORTONE_V2_STORE_ID?.trim();
   if (!v) throw new Error("Missing PORTONE_V2_STORE_ID");
   return v;
 }
 
-function readChannelKey(): string | undefined {
+export function readPortoneChannelKey(): string | undefined {
   return (
-    process.env.PORTONE_V2_CHANNEL_KEY?.trim() ||
     process.env.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY?.trim() ||
+    process.env.PORTONE_V2_CHANNEL_KEY?.trim() ||
     undefined
   );
 }
@@ -142,7 +148,7 @@ export async function chargeBillingKey(
   input: PortOneBillingKeyChargeInput,
 ): Promise<PortOnePaymentResult> {
   const url = `${PORTONE_API_BASE}/payments/${encodeURIComponent(input.paymentId)}/billing-key`;
-  const channelKey = input.channelKey?.trim() || readChannelKey();
+  const channelKey = input.channelKey?.trim() || readPortoneChannelKey();
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -150,7 +156,7 @@ export async function chargeBillingKey(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      storeId: input.storeId?.trim() || requireStoreId(),
+      storeId: input.storeId?.trim() || readPortoneStoreId(),
       billingKey: input.billingKey,
       ...(channelKey ? { channelKey } : {}),
       orderName: input.orderName,
@@ -169,6 +175,44 @@ export async function chargeBillingKey(
   }
 
   return parsePortonePaymentResult(input.paymentId, data);
+}
+
+/**
+ * 수동 승인 채널의 빌링키 발급 완료
+ * POST /billing-keys/confirm
+ */
+export async function confirmBillingKeyIssue(
+  input: PortOneConfirmBillingKeyInput,
+): Promise<string> {
+  const response = await fetch(`${PORTONE_API_BASE}/billing-keys/confirm`, {
+    method: "POST",
+    headers: {
+      ...authHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      storeId: input.storeId?.trim() || readPortoneStoreId(),
+      billingIssueToken: input.billingIssueToken,
+      ...(typeof input.isTest === "boolean" ? { isTest: input.isTest } : {}),
+    }),
+  });
+
+  const data = await readPortoneJson(response);
+
+  if (!response.ok) {
+    throw new Error(
+      `PortOne 빌링키 발급 수동승인 실패: ${formatPortoneHttpError(response.status, data)}`,
+    );
+  }
+
+  const billingKey =
+    stringValue(data.billingKey) ||
+    (isRecord(data.billingKeyInfo) ? stringValue(data.billingKeyInfo.billingKey) : null);
+  if (!billingKey) {
+    throw new Error("PortOne 빌링키 발급 수동승인 응답에 billingKey가 없습니다.");
+  }
+
+  return billingKey;
 }
 
 /**

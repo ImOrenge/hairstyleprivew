@@ -26,6 +26,7 @@ interface PrepareBillingKeyResponse {
 
 interface PortOneBillingKeyResponse {
   billingKey?: string;
+  billingIssueToken?: string;
   code?: string;
   message?: string;
 }
@@ -170,11 +171,17 @@ export function PortoneCheckoutForm({
         customer: prepared.customer,
       })) as PortOneBillingKeyResponse | undefined;
 
-      if (!issueResult?.billingKey) {
-        if (issueResult?.code === "USER_CANCEL") {
+      if (issueResult?.code !== undefined) {
+        if (issueResult.code === "USER_CANCEL") {
           return;
         }
+        throw new Error(issueResult.message ?? "빌링키 발급에 실패했습니다.");
+      }
+      if (!issueResult?.billingKey) {
         throw new Error(issueResult?.message ?? "빌링키 발급에 실패했습니다.");
+      }
+      if (issueResult.billingKey === "NEEDS_CONFIRMATION" && !issueResult.billingIssueToken) {
+        throw new Error("빌링키 발급 수동승인 토큰이 누락되었습니다.");
       }
 
       const subscribeResponse = await fetch("/api/payments/subscribe", {
@@ -183,7 +190,10 @@ export function PortoneCheckoutForm({
         body: JSON.stringify({
           plan: planKey,
           billingKey: issueResult.billingKey,
+          billingIssueToken: issueResult.billingIssueToken,
           issueId: prepared.issueId,
+          storeId: prepared.storeId,
+          channelKey: prepared.channelKey,
         }),
       });
 

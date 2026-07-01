@@ -9,11 +9,13 @@ import {
 } from "../../../../lib/portone-payment-confirmation";
 import {
   chargeBillingKey,
-  getBillingKey,
+  confirmBillingKeyIssue,
   isPortoneConfigured,
   PLAN_AMOUNT_KRW,
   PLAN_CREDITS,
   PLAN_ORDER_NAME,
+  readPortoneChannelKey,
+  readPortoneStoreId,
 } from "../../../../lib/portone";
 import {
   isSelfServeBillingPlanKey,
@@ -31,7 +33,10 @@ import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/su
 interface SubscribeRequestBody {
   plan?: string;
   billingKey?: string;
+  billingIssueToken?: string;
   issueId?: string;
+  storeId?: string;
+  channelKey?: string;
 }
 
 interface EnsureProfileResult {
@@ -51,6 +56,8 @@ interface ExistingSubscriptionRow {
 interface UserCreditRow {
   credits: number | null;
 }
+
+const PORTONE_NEEDS_CONFIRMATION = "NEEDS_CONFIRMATION";
 
 function parsePlanKey(v: string | undefined): SelfServeBillingPlanKey | null {
   return isSelfServeBillingPlanKey(v) ? v : null;
@@ -95,11 +102,44 @@ function shouldClearPreparedSubscriptionAfterConfirmationFailure(reason: string)
   return reason !== "portone_lookup_failed" && reason !== "transaction_update_failed";
 }
 
-function buildMissingPortoneBillingKeyMessage(): string {
-  return [
-    "PortOne 빌링키 조회 실패: 서버 결제 API에서 발급된 빌링키를 찾지 못했습니다.",
-    "결제창 Store/Channel과 서버 PORTONE_V2_API_SECRET, PORTONE_V2_STORE_ID, PORTONE_V2_CHANNEL_KEY 설정이 같은 상점을 가리키는지 확인하세요.",
-  ].join(" ");
+function readOptionalText(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function maskPublicConfig(value: string | undefined): string | null {
+  if (!value) return null;
+  return value.length <= 10
+    ? `${value.slice(0, 4)}...`
+    : `${value.slice(0, 8)}...${value.slice(-4)}`;
+}
+
+function resolvePortoneCheckoutConfig(body: SubscribeRequestBody) {
+  const storeId = readPortoneStoreId();
+  const channelKey = readPortoneChannelKey();
+  const requestStoreId = readOptionalText(body.storeId);
+  const requestChannelKey = readOptionalText(body.channelKey);
+
+  if (requestStoreId && requestStoreId !== storeId) {
+    throw new Error("결제창 Store ID와 서버 Store ID가 일치하지 않습니다.");
+  }
+  if (requestChannelKey && channelKey && requestChannelKey !== channelKey) {
+    throw new Error("결제창 Channel Key와 서버 Channel Key가 일치하지 않습니다.");
+  }
+
+  return {
+    storeId,
+    channelKey: channelKey || requestChannelKey,
+  };
+}
+
+function classifyPortoneFailure(message: string): string | null {
+  if (message.startsWith("PortOne 결제 실패")) {
+    return "portone_billing_key_charge_failed";
+  }
+  if (message.includes("Store ID") || message.includes("Channel Key")) {
+    return "portone_checkout_config_mismatch";
+  }
+  return null;
 }
 
 function isDeliverableEmail(email: string): boolean {
@@ -155,7 +195,7 @@ export async function POST(request: Request) {
   // 2. 요청 파싱
   const body = (await request.json().catch(() => ({}))) as SubscribeRequestBody;
   const plan = parsePlanKey(body.plan?.trim());
-  const billingKey = body.billingKey?.trim();
+  let billingKey = body.billingKey?.trim();
 
   if (!plan) {
     return NextResponse.json({ error: "유효하지 않은 플랜입니다" }, { status: 400 });
@@ -167,6 +207,13 @@ export async function POST(request: Request) {
   const amount = PLAN_AMOUNT_KRW[plan];
   const credits = PLAN_CREDITS[plan];
   const orderName = PLAN_ORDER_NAME[plan];
+  let portoneConfig: { storeId: string; channelKey?: string };
+  try {
+    portoneConfig = resolvePortoneCheckoutConfig(body);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "PortOne 결제 설정 확인이 필요합니다.";
+    return NextResponse.json({ error: message }, { status: 503 });
+  }
 
   // 3. 사용자 프로필 확인
   const clerkUser = await currentUser();
@@ -240,6 +287,28 @@ export async function POST(request: Request) {
     );
   }
 
+  if (billingKey === PORTONE_NEEDS_CONFIRMATION) {
+    const billingIssueToken = body.billingIssueToken?.trim();
+    if (!billingIssueToken) {
+      return NextResponse.json(
+        { error: "빌링키 발급 수동승인 토큰이 필요합니다." },
+        { status: 400 },
+      );
+    }
+
+    try {
+      billingKey = await confirmBillingKeyIssue({
+        billingIssueToken,
+        storeId: portoneConfig.storeId,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "PortOne 빌링키 발급 수동승인 실패";
+      console.error("[subscribe] PortOne 빌링키 수동승인 오류:", err);
+      return NextResponse.json({ error: message }, { status: 502 });
+    }
+  }
+
   let encryptedBillingKey: string;
   let billingKeyHash: string;
   try {
@@ -306,6 +375,9 @@ export async function POST(request: Request) {
         issue_id: body.issueId?.trim() || null,
         has_billing_key: true,
         billing_key_masked: billingKeyMasked,
+        billing_key_manual_confirmed: body.billingKey?.trim() === PORTONE_NEEDS_CONFIRMATION,
+        portone_store_id_hint: maskPublicConfig(portoneConfig.storeId),
+        portone_channel_key_hint: maskPublicConfig(portoneConfig.channelKey),
       },
     })
     .select("id")
@@ -320,14 +392,11 @@ export async function POST(request: Request) {
   // 7. PortOne 첫 달 결제
   let paymentResult;
   try {
-    const billingKeyInfo = await getBillingKey(billingKey);
-    if (!billingKeyInfo) {
-      throw new Error(buildMissingPortoneBillingKeyMessage());
-    }
-
     paymentResult = await chargeBillingKey({
       paymentId,
       billingKey,
+      storeId: portoneConfig.storeId,
+      channelKey: portoneConfig.channelKey,
       orderName,
       customerId: userId,
       amount,
@@ -339,9 +408,7 @@ export async function POST(request: Request) {
       supabase: supabase as unknown as PortoneConfirmationSupabaseClient,
       paymentId,
       source: "web-subscribe-charge",
-      failureCode: msg.startsWith("PortOne 빌링키 조회 실패")
-        ? "portone_billing_key_not_found"
-        : null,
+      failureCode: classifyPortoneFailure(msg),
       failureMessage: msg,
       markSubscriptionPastDue: false,
     });
