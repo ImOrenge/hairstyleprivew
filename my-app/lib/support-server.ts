@@ -50,6 +50,7 @@ interface SupportPostRow {
   author_display_name: string;
   admin_answer: string | null;
   admin_answered_at: string | null;
+  is_hidden?: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -167,7 +168,10 @@ export async function loadPublicSupportPosts({
   return (data || []).map(normalizePost);
 }
 
-export async function loadPublicSupportPostDetail(id: string): Promise<SupportPostDetail | null> {
+export async function loadPublicSupportPostDetail(
+  id: string,
+  viewerUserId: string | null = null,
+): Promise<SupportPostDetail | null> {
   if (!isSupabaseConfigured()) {
     return null;
   }
@@ -176,14 +180,17 @@ export async function loadPublicSupportPostDetail(id: string): Promise<SupportPo
   const { data, error } = await supabase
     .from("support_posts")
     .select(
-      "id,kind,status,title,body,author_user_id,author_display_name,admin_answer,admin_answered_at,created_at,updated_at",
+      "id,kind,status,title,body,author_user_id,author_display_name,admin_answer,admin_answered_at,is_hidden,created_at,updated_at",
     )
     .eq("id", id)
     .is("deleted_at", null)
-    .eq("is_hidden", false)
     .maybeSingle<SupportPostRow>();
 
   if (error || !data) {
+    return null;
+  }
+
+  if (data.is_hidden === true && data.author_user_id !== viewerUserId) {
     return null;
   }
 

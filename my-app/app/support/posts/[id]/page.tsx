@@ -40,12 +40,12 @@ function formatDate(value: string | null) {
 
 export default async function SupportPostPage({ params }: SupportPostPageProps) {
   const resolvedParams = await params;
-  const post = await loadPublicSupportPostDetail(resolvedParams.id);
+  const { userId } = await auth();
+  const post = await loadPublicSupportPostDetail(resolvedParams.id, userId);
   if (!post) {
     notFound();
   }
 
-  const { userId } = await auth();
   const canManage = Boolean(userId && userId === post.authorUserId);
 
   return (

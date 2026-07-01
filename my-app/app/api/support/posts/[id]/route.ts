@@ -74,7 +74,8 @@ export async function GET(_: Request, { params }: Params) {
     return NextResponse.json({ error: "Support post id is required" }, { status: 400 });
   }
 
-  const post = await loadPublicSupportPostDetail(postId);
+  const { userId } = await auth();
+  const post = await loadPublicSupportPostDetail(postId, userId);
   if (!post) {
     return NextResponse.json({ error: "Support post not found" }, { status: 404 });
   }
