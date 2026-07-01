@@ -183,15 +183,41 @@ async function getPayment(paymentId: string): Promise<BillingKeyChargeResult | n
 
 // ─── Resend 이메일 ──────────────────────────────────────────────────────────
 
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function sendRenewalEmail(
   to: string,
+  displayName: string | null,
   plan: string,
+  amountKrw: number,
   creditsGranted: number,
   nextPeriodEnd: Date,
 ): Promise<void> {
   if (!RESEND_API_KEY) return;
 
-  const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
+  const planLabel =
+    plan === "basic"
+      ? "베이직"
+      : plan === "standard"
+        ? "스탠다드"
+        : plan === "pro"
+          ? "프로"
+          : plan === "salon"
+            ? "살롱"
+            : plan.charAt(0).toUpperCase() + plan.slice(1);
+  const customerName = displayName?.trim() || "고객";
+  const amountText = new Intl.NumberFormat("ko-KR", {
+    style: "currency",
+    currency: "KRW",
+    maximumFractionDigits: 0,
+  }).format(amountKrw);
   const periodEndStr = nextPeriodEnd.toLocaleDateString("ko-KR", {
     year: "numeric",
     month: "long",
@@ -199,21 +225,52 @@ async function sendRenewalEmail(
   });
 
   const html = `
-  <div style="font-family:-apple-system,Arial,sans-serif;line-height:1.7;color:#111827;max-width:600px;margin:0 auto">
-    <h2 style="font-size:20px;font-weight:700;margin:0 0 12px">구독이 갱신되었어요</h2>
-    <p style="margin:0 0 14px">HairFit ${planLabel} 구독이 자동 갱신되어 크레딧이 충전되었습니다.</p>
-    <ul style="padding-left:18px;margin:0 0 16px">
-      <li><strong>플랜:</strong> ${planLabel}</li>
-      <li><strong>충전 크레딧:</strong> +${creditsGranted.toLocaleString("ko-KR")}</li>
-      <li><strong>다음 갱신일:</strong> ${periodEndStr}</li>
-    </ul>
-    <a href="${APP_URL}/mypage" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600">
-      마이페이지에서 확인하기
-    </a>
-    <p style="margin-top:24px;font-size:12px;color:#9ca3af">
-      구독을 해지하려면 마이페이지 &gt; 구독 관리에서 취소하실 수 있습니다.
-    </p>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">이번 달 크레딧이 새로 충전되었습니다.</div>
+  <div style="margin:0;padding:0;background:#f6f5f1;color:#191816;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
+    <div style="max-width:640px;margin:0 auto;padding:32px 18px">
+      <div style="border:1px solid #d4cfc4;background:#ffffff;border-radius:6px;overflow:hidden;box-shadow:0 1px 0 rgba(25,24,22,0.08)">
+        <div style="padding:28px 26px 22px;border-bottom:1px solid #d4cfc4;background:#fbfaf7">
+          <p style="margin:0 0 10px;color:#80621e;font-size:11px;font-weight:900;letter-spacing:0.18em;text-transform:uppercase">Subscription renewed</p>
+          <h1 style="margin:0;color:#191816;font-size:26px;line-height:1.3;font-weight:900">구독이 갱신되었습니다</h1>
+        </div>
+        <div style="padding:26px">
+          <p style="display:inline-block;margin:0 0 16px;border:1px solid #d4cfc4;border-radius:3px;padding:6px 10px;color:#047857;background:#e7f4ed;font-size:12px;font-weight:900">완료</p>
+          <p style="margin:0 0 14px;color:#625f57;font-size:15px;line-height:1.75">${escapeHtml(customerName)}님, ${escapeHtml(planLabel)} 월 구독이 정상적으로 갱신되었습니다.</p>
+          <p style="margin:0 0 14px;color:#625f57;font-size:15px;line-height:1.75">이번 결제로 월간 크레딧이 새로 충전되었습니다.</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:22px 0;border-collapse:collapse">
+            <tbody>
+              <tr><td style="padding:10px 0;border-bottom:1px solid #d4cfc4;color:#625f57;font-size:13px">플랜</td><td style="padding:10px 0;border-bottom:1px solid #d4cfc4;color:#191816;font-size:13px;font-weight:800;text-align:right">${escapeHtml(planLabel)}</td></tr>
+              <tr><td style="padding:10px 0;border-bottom:1px solid #d4cfc4;color:#625f57;font-size:13px">결제 금액</td><td style="padding:10px 0;border-bottom:1px solid #d4cfc4;color:#191816;font-size:13px;font-weight:800;text-align:right">${escapeHtml(amountText)}</td></tr>
+              <tr><td style="padding:10px 0;border-bottom:1px solid #d4cfc4;color:#625f57;font-size:13px">충전 크레딧</td><td style="padding:10px 0;border-bottom:1px solid #d4cfc4;color:#191816;font-size:13px;font-weight:800;text-align:right">${creditsGranted.toLocaleString("ko-KR")} 크레딧</td></tr>
+              <tr><td style="padding:10px 0;border-bottom:1px solid #d4cfc4;color:#625f57;font-size:13px">다음 갱신 예정일</td><td style="padding:10px 0;border-bottom:1px solid #d4cfc4;color:#191816;font-size:13px;font-weight:800;text-align:right">${escapeHtml(periodEndStr)}</td></tr>
+            </tbody>
+          </table>
+          <a href="${APP_URL}/mypage?tab=plan" style="display:inline-block;margin-top:4px;background:#050505;color:#f4f1e8;text-decoration:none;border:1px solid #050505;border-radius:3px;padding:12px 18px;font-size:13px;font-weight:900;letter-spacing:0.04em">구독 상태 확인하기</a>
+          <p style="margin:22px 0 0;color:#625f57;font-size:12px;line-height:1.7">구독 해지는 마이페이지의 플랜/결제 탭에서 관리할 수 있습니다.</p>
+          <div style="margin-top:28px;border-top:1px solid #d4cfc4;padding-top:18px">
+            <p style="margin:0;color:#625f57;font-size:12px;line-height:1.7">본 메일은 HairFit 서비스 이용과 관련해 발송되었습니다.<br />문의가 필요하시면 마이페이지 또는 고객지원 메뉴를 이용해 주세요.</p>
+            <p style="margin:14px 0 0;color:#191816;font-size:12px;line-height:1.7;font-weight:800">HairFit<br /><span style="color:#625f57;font-weight:600">내 스타일을 미리 확인하는 헤어 시뮬레이션 서비스</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>`;
+
+  const text = [
+    "[HairFit] 구독이 갱신되었습니다",
+    "",
+    `${customerName}님, ${planLabel} 월 구독이 정상적으로 갱신되었습니다.`,
+    "이번 결제로 월간 크레딧이 새로 충전되었습니다.",
+    "",
+    `플랜: ${planLabel}`,
+    `결제 금액: ${amountText}`,
+    `충전 크레딧: ${creditsGranted.toLocaleString("ko-KR")} 크레딧`,
+    `다음 갱신 예정일: ${periodEndStr}`,
+    "",
+    `구독 상태 확인하기: ${APP_URL}/mypage?tab=plan`,
+    "",
+    "본 메일은 HairFit 서비스 이용과 관련해 발송되었습니다.",
+  ].join("\n");
 
   await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -224,8 +281,9 @@ async function sendRenewalEmail(
     body: JSON.stringify({
       from: RESEND_FROM_EMAIL,
       to,
-      subject: `[HairFit] ${planLabel} 구독이 갱신되었습니다 (+${creditsGranted.toLocaleString("ko-KR")} credits)`,
+      subject: `[HairFit] ${planLabel} 구독이 갱신되었습니다`,
       html,
+      text,
     }),
   }).catch((e: unknown) => console.error("[cron-renewal] email error:", e));
 }
@@ -418,12 +476,17 @@ Deno.serve(async () => {
   const userIds = [...new Set(subscriptions.map((s) => s.user_id))];
   const { data: userRows } = await supabase
     .from("users")
-    .select("id, email")
+    .select("id, email, display_name")
     .in("id", userIds);
 
-  const emailByUserId = new Map<string, string>();
+  const emailByUserId = new Map<string, { email: string; displayName: string | null }>();
   for (const u of userRows ?? []) {
-    if (u.email) emailByUserId.set(u.id as string, u.email as string);
+    if (u.email) {
+      emailByUserId.set(u.id as string, {
+        email: u.email as string,
+        displayName: (u.display_name as string | null) ?? null,
+      });
+    }
   }
 
   let renewed = 0;
@@ -627,8 +690,10 @@ Deno.serve(async () => {
       const userEmail = emailByUserId.get(sub.user_id);
       if (userEmail) {
         await sendRenewalEmail(
-          userEmail,
+          userEmail.email,
+          userEmail.displayName,
           sub.plan_key,
+          sub.amount_krw,
           sub.credits_per_cycle,
           newPeriodEnd,
         );

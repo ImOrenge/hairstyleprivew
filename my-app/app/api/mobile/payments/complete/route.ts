@@ -9,6 +9,7 @@ import {
   type PortoneConfirmationSupabaseClient,
 } from "../../../../../lib/portone-payment-confirmation";
 import { isPortoneConfigured, PLAN_AMOUNT_KRW, PLAN_CREDITS } from "../../../../../lib/portone";
+import { sendPaymentSuccessEmail } from "../../../../../lib/resend";
 
 interface CompletePaymentRequest {
   paymentId?: unknown;
@@ -29,6 +30,10 @@ interface PaymentSelectBuilder {
   maybeSingle: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
 }
 
+interface UserCreditRow {
+  credits: number | null;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -36,6 +41,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function planFromTransaction(row: PaymentTransactionRow): SelfServeBillingPlanKey | null {
   const metadata = isRecord(row.metadata) ? row.metadata : {};
   return isSelfServeBillingPlanKey(metadata.plan) ? metadata.plan : null;
+}
+
+function isDeliverableEmail(email: string | null | undefined): email is string {
+  return Boolean(
+    email &&
+      !email.endsWith("@placeholder.local") &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()),
+  );
 }
 
 function nextMonth() {
@@ -184,6 +197,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: ledgerError.message }, { status: 500 });
   }
 
+  const alreadyProcessed = confirmation.alreadyPaid && Boolean(transaction.subscription_id);
+  if (!alreadyProcessed && isDeliverableEmail(context.bootstrap.email)) {
+    try {
+      const { data: userCreditRow } = await supabase
+        .from("users")
+        .select("credits")
+        .eq("id", context.userId)
+        .maybeSingle<UserCreditRow>();
+
+      await sendPaymentSuccessEmail({
+        to: context.bootstrap.email,
+        displayName: context.bootstrap.displayName,
+        plan,
+        amount: expectedAmount,
+        currency: "KRW",
+        creditsGranted: expectedCredits,
+        currentCredits: userCreditRow?.credits ?? null,
+        paymentTransactionId: paymentId,
+        myPageUrl: new URL("/mypage?tab=plan", request.url).toString(),
+      });
+    } catch (err) {
+      console.error("[mobile/payments/complete] 결제 완료 이메일 발송 실패:", err);
+    }
+  }
+
   return NextResponse.json(
     {
       ok: true,
@@ -193,7 +231,7 @@ export async function POST(request: Request) {
       subscriptionId,
       creditsGranted: expectedCredits,
       plan,
-      alreadyProcessed: confirmation.alreadyPaid && Boolean(transaction.subscription_id),
+      alreadyProcessed,
       ledgerId: typeof ledgerId === "string" || typeof ledgerId === "number" ? ledgerId : null,
     },
     { status: 200 },

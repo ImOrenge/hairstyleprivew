@@ -24,6 +24,7 @@ import {
   hashBillingKey,
   maskBillingKey,
 } from "../../../../lib/billing-key-secret";
+import { sendPaymentSuccessEmail } from "../../../../lib/resend";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
 
 interface SubscribeRequestBody {
@@ -44,6 +45,10 @@ interface ExistingSubscriptionRow {
   pg_billing_key: string | null;
   pg_billing_key_encrypted: string | null;
   pg_billing_key_hash: string | null;
+}
+
+interface UserCreditRow {
+  credits: number | null;
 }
 
 function parsePlanKey(v: string | undefined): SelfServeBillingPlanKey | null {
@@ -87,6 +92,13 @@ function getSubscriptionBlockReason(
 
 function shouldClearPreparedSubscriptionAfterConfirmationFailure(reason: string): boolean {
   return reason !== "portone_lookup_failed" && reason !== "transaction_update_failed";
+}
+
+function isDeliverableEmail(email: string): boolean {
+  return (
+    !email.endsWith("@placeholder.local") &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  );
 }
 
 async function clearPreparedSubscriptionBillingKey(
@@ -437,6 +449,30 @@ export async function POST(request: Request) {
       },
       { status: 500 },
     );
+  }
+
+  if (isDeliverableEmail(email)) {
+    try {
+      const { data: userCreditRow } = await supabase
+        .from("users")
+        .select("credits")
+        .eq("id", userId)
+        .maybeSingle<UserCreditRow>();
+
+      await sendPaymentSuccessEmail({
+        to: email,
+        displayName,
+        plan,
+        amount,
+        currency: "KRW",
+        creditsGranted: credits,
+        currentCredits: userCreditRow?.credits ?? null,
+        paymentTransactionId: paymentId,
+        myPageUrl: new URL("/mypage?tab=plan", request.url).toString(),
+      });
+    } catch (err) {
+      console.error("[subscribe] 결제 완료 이메일 발송 실패:", err);
+    }
   }
 
   return NextResponse.json(

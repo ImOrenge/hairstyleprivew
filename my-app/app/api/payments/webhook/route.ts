@@ -12,7 +12,12 @@ import {
 import { hashBillingKey } from "../../../../lib/billing-key-secret";
 import { isSelfServeBillingPlanKey, type SelfServeBillingPlanKey } from "../../../../lib/billing-plan";
 import { verifyPortoneWebhook } from "../../../../lib/portone";
-import { sendSubscriptionRenewalEmail } from "../../../../lib/resend";
+import {
+  sendPaymentFailureEmail,
+  sendRefundCompletedEmail,
+  sendRefundReviewEmail,
+  sendSubscriptionRenewalEmail,
+} from "../../../../lib/resend";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
 
 // ─── 타입 ──────────────────────────────────────────────────────────────────
@@ -20,6 +25,7 @@ import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/su
 interface UserEmailRow {
   email?: string | null;
   credits?: number | null;
+  display_name?: string | null;
 }
 
 interface SubscriptionRow {
@@ -103,6 +109,40 @@ function isDeliverableEmail(email: string): boolean {
     !email.endsWith("@placeholder.local") &&
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
   );
+}
+
+function buildAppUrl(request: Request, path: string): string {
+  return new URL(path, new URL(request.url).origin).toString();
+}
+
+async function loadUserEmailRow(
+  supabase: {
+    from: (table: string) => {
+      select: (c: string) => {
+        eq: (c: string, v: unknown) => {
+          maybeSingle: <T>() => Promise<{ data: T | null; error: { message: string } | null }>;
+        };
+      };
+    };
+  },
+  userId: string,
+) {
+  const { data } = await supabase
+    .from("users")
+    .select("email, credits, display_name")
+    .eq("id", userId)
+    .maybeSingle<UserEmailRow>();
+
+  const email = data?.email?.trim();
+  if (!email || !isDeliverableEmail(email)) {
+    return null;
+  }
+
+  return {
+    email,
+    displayName: data?.display_name ?? null,
+    credits: data?.credits ?? null,
+  };
 }
 
 function requiresPaymentId(type: string): boolean {
@@ -381,6 +421,121 @@ async function clawBackCreditsForFullCancellation(
   return { ok: true as const, row: row ?? null };
 }
 
+function shouldNotifyPaymentFailure(transaction: PortonePaymentTransactionRow, eventType: string) {
+  return !(transaction.webhook_event_type === eventType && transaction.status === "failed");
+}
+
+function shouldNotifyFullRefund(transaction: PortonePaymentTransactionRow, eventType: string) {
+  if (transaction.webhook_event_type === eventType && transaction.status === "refunded") {
+    return false;
+  }
+  return transaction.status === "paid" || transaction.status === "refunded";
+}
+
+function shouldNotifyRefundReview(transaction: PortonePaymentTransactionRow, eventType: string) {
+  return !(transaction.webhook_event_type === eventType && transaction.status === "refunded");
+}
+
+async function sendPaymentFailureNotification({
+  supabase,
+  request,
+  transaction,
+  eventType,
+  failureMessage,
+}: {
+  supabase: Parameters<typeof loadUserEmailRow>[0];
+  request: Request;
+  transaction: PortonePaymentTransactionRow;
+  eventType: string;
+  failureMessage: string;
+}) {
+  if (!shouldNotifyPaymentFailure(transaction, eventType)) {
+    return;
+  }
+
+  const user = await loadUserEmailRow(supabase, transaction.user_id);
+  if (!user) {
+    return;
+  }
+
+  await sendPaymentFailureEmail({
+    to: user.email,
+    displayName: user.displayName,
+    plan: getPlanFromMetadata(transaction.metadata),
+    amount: transaction.amount,
+    currency: transaction.currency,
+    failureMessage,
+    myPageUrl: buildAppUrl(request, "/mypage?tab=plan"),
+    paymentTransactionId: transaction.provider_order_id ?? transaction.id,
+  });
+}
+
+async function sendRefundCompletedNotification({
+  supabase,
+  request,
+  transaction,
+  eventType,
+  clawback,
+}: {
+  supabase: Parameters<typeof loadUserEmailRow>[0];
+  request: Request;
+  transaction: PortonePaymentTransactionRow;
+  eventType: string;
+  clawback: CreditClawbackRow | null;
+}) {
+  if (!shouldNotifyFullRefund(transaction, eventType)) {
+    return;
+  }
+
+  const user = await loadUserEmailRow(supabase, transaction.user_id);
+  if (!user) {
+    return;
+  }
+
+  await sendRefundCompletedEmail({
+    to: user.email,
+    displayName: user.displayName,
+    plan: getPlanFromMetadata(transaction.metadata),
+    refundAmount: transaction.amount,
+    currency: transaction.currency,
+    paymentTransactionId: transaction.provider_order_id ?? transaction.id,
+    creditsClawedBack: clawback?.credits_clawed_back ?? null,
+    creditsUnrecovered: clawback?.credits_unrecovered ?? null,
+    myPageUrl: buildAppUrl(request, "/mypage?tab=plan"),
+  });
+}
+
+async function sendRefundReviewNotification({
+  supabase,
+  request,
+  transaction,
+  eventType,
+}: {
+  supabase: Parameters<typeof loadUserEmailRow>[0];
+  request: Request;
+  transaction: PortonePaymentTransactionRow;
+  eventType: string;
+}) {
+  if (!shouldNotifyRefundReview(transaction, eventType)) {
+    return;
+  }
+
+  const user = await loadUserEmailRow(supabase, transaction.user_id);
+  if (!user) {
+    return;
+  }
+
+  await sendRefundReviewEmail({
+    to: user.email,
+    displayName: user.displayName,
+    plan: getPlanFromMetadata(transaction.metadata),
+    requestedAmount: null,
+    currency: transaction.currency,
+    paymentTransactionId: transaction.provider_order_id ?? transaction.id,
+    supportUrl: buildAppUrl(request, "/support"),
+  });
+}
+
 // ─── 핸들러 ────────────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -545,6 +700,20 @@ export async function POST(request: Request) {
       }
     }
 
+    if (result.transaction.status !== "paid") {
+      try {
+        await sendPaymentFailureNotification({
+          supabase,
+          request,
+          transaction: result.transaction,
+          eventType: type,
+          failureMessage: failure.message,
+        });
+      } catch (err) {
+        console.error("[webhook] 결제 실패 이메일 발송 실패:", err);
+      }
+    }
+
     console.warn("[webhook] 결제 실패 처리:", paymentId);
     return NextResponse.json({ received: true }, { status: 200 });
   }
@@ -591,6 +760,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: clawback.message }, { status: 500 });
     }
 
+    try {
+      await sendRefundCompletedNotification({
+        supabase,
+        request,
+        transaction: result.transaction,
+        eventType: type,
+        clawback: clawback.row,
+      });
+    } catch (err) {
+      console.error("[webhook] 환불 완료 이메일 발송 실패:", err);
+    }
+
     return NextResponse.json(
       {
         received: true,
@@ -614,6 +795,17 @@ export async function POST(request: Request) {
 
     if (!result.ok) {
       return paymentEventFailureResponse(result, "부분취소 이벤트 반영 실패");
+    }
+
+    try {
+      await sendRefundReviewNotification({
+        supabase,
+        request,
+        transaction: result.transaction,
+        eventType: type,
+      });
+    } catch (err) {
+      console.error("[webhook] 환불 검토 이메일 발송 실패:", err);
     }
 
     return NextResponse.json({ received: true, eventType: type }, { status: 200 });
@@ -805,7 +997,7 @@ export async function POST(request: Request) {
     try {
       const { data: userRow } = await supabase
         .from("users")
-        .select("email, credits")
+        .select("email, credits, display_name")
         .eq("id", subRow.user_id)
         .maybeSingle<UserEmailRow>();
 
@@ -814,7 +1006,10 @@ export async function POST(request: Request) {
         const origin = new URL(request.url).origin;
         await sendSubscriptionRenewalEmail({
           to: email,
+          displayName: userRow?.display_name ?? null,
           plan: subRow.plan_key,
+          amount: txRow.amount,
+          currency: txRow.currency,
           creditsGranted: subRow.credits_per_cycle,
           currentCredits: userRow?.credits ?? null,
           periodEnd: newPeriodEnd.toISOString(),

@@ -6,8 +6,30 @@ type SendEmailResult = {
   error: unknown;
 };
 
+type EmailTone = "default" | "success" | "warning" | "danger";
+
+type KeyValueRow = {
+  label: string;
+  value?: string | number | null;
+};
+
+type EmailLayoutInput = {
+  kicker: string;
+  title: string;
+  preview: string;
+  body: string[];
+  cta?: {
+    label: string;
+    url: string;
+  };
+  details?: KeyValueRow[];
+  note?: string;
+  tone?: EmailTone;
+};
+
 type PaymentSuccessEmailInput = {
   to: string;
+  displayName?: string | null;
   creditsGranted: number;
   currentCredits?: number | null;
   amount?: number | null;
@@ -15,6 +37,40 @@ type PaymentSuccessEmailInput = {
   plan?: string | null;
   myPageUrl: string;
   paymentTransactionId: string;
+};
+
+type PaymentFailureEmailInput = {
+  to: string;
+  displayName?: string | null;
+  plan?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  failureMessage?: string | null;
+  nextRetryAt?: string | null;
+  myPageUrl: string;
+  paymentTransactionId?: string | null;
+};
+
+type RefundCompletedEmailInput = {
+  to: string;
+  displayName?: string | null;
+  plan?: string | null;
+  refundAmount?: number | null;
+  currency?: string | null;
+  paymentTransactionId?: string | null;
+  creditsClawedBack?: number | null;
+  creditsUnrecovered?: number | null;
+  myPageUrl: string;
+};
+
+type RefundReviewEmailInput = {
+  to: string;
+  displayName?: string | null;
+  plan?: string | null;
+  requestedAmount?: number | null;
+  currency?: string | null;
+  paymentTransactionId?: string | null;
+  supportUrl: string;
 };
 
 type WelcomeEmailAccountType = "member" | "salon_owner";
@@ -25,9 +81,70 @@ type WelcomeEmailInput = {
   accountType: WelcomeEmailAccountType;
 };
 
+type SubscriptionRenewalEmailInput = {
+  to: string;
+  displayName?: string | null;
+  plan: string;
+  amount?: number | null;
+  currency?: string | null;
+  creditsGranted: number;
+  currentCredits?: number | null;
+  periodEnd: string;
+  myPageUrl: string;
+};
+
+type CareEmailInput = {
+  to: string;
+  subject: string;
+  bodyHtml: string;
+};
+
 const env = process.env as Record<string, string | undefined>;
 const resendApiKey = env.RESEND_API_KEY?.trim();
-const defaultFromEmail = env.RESEND_FROM_EMAIL?.trim() || "HairStyle <onboarding@resend.dev>";
+const defaultFromEmail = env.RESEND_FROM_EMAIL?.trim() || "HairFit <onboarding@resend.dev>";
+
+const EMAIL_COLORS = {
+  bg: "#f6f5f1",
+  surface: "#ffffff",
+  surfaceRaised: "#fbfaf7",
+  border: "#d4cfc4",
+  text: "#191816",
+  muted: "#625f57",
+  subtle: "#908a7e",
+  inverse: "#050505",
+  inverseText: "#f4f1e8",
+  accent: "#a8863a",
+  accentStrong: "#80621e",
+  danger: "#be123c",
+  dangerBg: "#fae8eb",
+  warning: "#a16207",
+  warningBg: "#f8edd2",
+  success: "#047857",
+  successBg: "#e7f4ed",
+} as const;
+
+const toneStyle: Record<EmailTone, { bg: string; color: string; label: string }> = {
+  default: {
+    bg: EMAIL_COLORS.surfaceRaised,
+    color: EMAIL_COLORS.accentStrong,
+    label: "HairFit",
+  },
+  success: {
+    bg: EMAIL_COLORS.successBg,
+    color: EMAIL_COLORS.success,
+    label: "완료",
+  },
+  warning: {
+    bg: EMAIL_COLORS.warningBg,
+    color: EMAIL_COLORS.warning,
+    label: "확인 필요",
+  },
+  danger: {
+    bg: EMAIL_COLORS.dangerBg,
+    color: EMAIL_COLORS.danger,
+    label: "처리 안내",
+  },
+};
 
 let resendClient: Resend | null = null;
 
@@ -52,61 +169,159 @@ function escapeHtml(value: string) {
     .replace(/'/g, "&#39;");
 }
 
-function formatMoney(amount: number, currency: string) {
+function formatMoney(amount: number, currency: string = "KRW") {
+  const normalizedCurrency = currency.toUpperCase();
   try {
     return new Intl.NumberFormat("ko-KR", {
       style: "currency",
-      currency,
+      currency: normalizedCurrency,
       maximumFractionDigits: 0,
     }).format(amount);
   } catch {
-    return `${amount.toLocaleString("ko-KR")} ${currency}`;
+    return `${amount.toLocaleString("ko-KR")} ${normalizedCurrency}`;
   }
+}
+
+function formatNumber(value: number) {
+  return value.toLocaleString("ko-KR");
 }
 
 function formatPlanLabel(value?: string | null) {
   const normalized = value?.trim().toLowerCase();
   if (!normalized) {
-    return "Custom";
+    return "사용 중인 플랜";
   }
-  if (normalized === "starter") {
-    return "Starter";
-  }
-  if (normalized === "pro") {
-    return "Pro";
-  }
+  if (normalized === "starter") return "스타터";
+  if (normalized === "free") return "무료";
+  if (normalized === "basic") return "베이직";
+  if (normalized === "standard") return "스탠다드";
+  if (normalized === "pro") return "프로";
+  if (normalized === "salon") return "살롱";
   return normalized.charAt(0).toUpperCase() + normalized.slice(1);
 }
 
-function buildPaymentSuccessEmailHtml(input: PaymentSuccessEmailInput) {
-  const amountLine =
-    typeof input.amount === "number" && input.amount > 0
-      ? `<li><strong>결제 금액:</strong> ${escapeHtml(
-          formatMoney(input.amount, (input.currency || "KRW").toUpperCase()),
-        )}</li>`
-      : "";
-  const currentCreditLine =
-    typeof input.currentCredits === "number"
-      ? `<li><strong>현재 크레딧:</strong> ${escapeHtml(input.currentCredits.toLocaleString("ko-KR"))}</li>`
-      : "";
-  const planLabel = formatPlanLabel(input.plan);
+function formatDate(iso?: string | null): string | null {
+  if (!iso) return null;
+  try {
+    const value = new Date(iso);
+    if (Number.isNaN(value.getTime())) return iso;
+    return value.toLocaleDateString("ko-KR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function buildAbsoluteUrl(path: string) {
+  return new URL(path, getSiteUrl()).toString();
+}
+
+function compactRows(rows: KeyValueRow[] = []) {
+  return rows.filter((row) => row.value !== null && row.value !== undefined && String(row.value).trim() !== "");
+}
+
+function renderDetails(rows: KeyValueRow[] = []) {
+  const visibleRows = compactRows(rows);
+  if (visibleRows.length === 0) {
+    return "";
+  }
+
+  const items = visibleRows
+    .map(
+      (row) => `
+        <tr>
+          <td style="padding:10px 0;border-bottom:1px solid ${EMAIL_COLORS.border};color:${EMAIL_COLORS.muted};font-size:13px;line-height:1.5">${escapeHtml(row.label)}</td>
+          <td style="padding:10px 0;border-bottom:1px solid ${EMAIL_COLORS.border};color:${EMAIL_COLORS.text};font-size:13px;line-height:1.5;font-weight:800;text-align:right">${escapeHtml(String(row.value))}</td>
+        </tr>`,
+    )
+    .join("");
 
   return `
-  <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
-    <h2 style="margin:0 0 12px">결제가 완료되었습니다</h2>
-    <p style="margin:0 0 14px">HairFit 크레딧이 정상적으로 충전되었습니다.</p>
-    <ul style="padding-left:18px;margin:0 0 16px">
-      <li><strong>플랜:</strong> ${escapeHtml(planLabel)}</li>
-      ${amountLine}
-      <li><strong>충전 크레딧:</strong> +${escapeHtml(input.creditsGranted.toLocaleString("ko-KR"))}</li>
-      ${currentCreditLine}
-      <li><strong>결제 ID:</strong> ${escapeHtml(input.paymentTransactionId)}</li>
-    </ul>
-    <a href="${escapeHtml(input.myPageUrl)}" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:10px 14px;border-radius:8px">
-      마이페이지 열기
-    </a>
-  </div>
-  `;
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:22px 0;border-collapse:collapse">
+      <tbody>${items}</tbody>
+    </table>`;
+}
+
+function renderEmailLayout(input: EmailLayoutInput) {
+  const tone = toneStyle[input.tone ?? "default"];
+  const body = input.body
+    .map(
+      (paragraph) =>
+        `<p style="margin:0 0 14px;color:${EMAIL_COLORS.muted};font-size:15px;line-height:1.75">${escapeHtml(paragraph)}</p>`,
+    )
+    .join("");
+  const details = renderDetails(input.details);
+  const cta = input.cta
+    ? `
+      <a href="${escapeHtml(input.cta.url)}" style="display:inline-block;margin-top:4px;background:${EMAIL_COLORS.inverse};color:${EMAIL_COLORS.inverseText};text-decoration:none;border:1px solid ${EMAIL_COLORS.inverse};border-radius:3px;padding:12px 18px;font-size:13px;font-weight:900;letter-spacing:0.04em">
+        ${escapeHtml(input.cta.label)}
+      </a>`
+    : "";
+  const note = input.note
+    ? `<p style="margin:22px 0 0;color:${EMAIL_COLORS.muted};font-size:12px;line-height:1.7">${escapeHtml(input.note)}</p>`
+    : "";
+
+  return `
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${escapeHtml(input.preview)}</div>
+  <div style="margin:0;padding:0;background:${EMAIL_COLORS.bg};color:${EMAIL_COLORS.text};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
+    <div style="max-width:640px;margin:0 auto;padding:32px 18px">
+      <div style="border:1px solid ${EMAIL_COLORS.border};background:${EMAIL_COLORS.surface};border-radius:6px;overflow:hidden;box-shadow:0 1px 0 rgba(25,24,22,0.08)">
+        <div style="padding:28px 26px 22px;border-bottom:1px solid ${EMAIL_COLORS.border};background:${EMAIL_COLORS.surfaceRaised}">
+          <p style="margin:0 0 10px;color:${EMAIL_COLORS.accentStrong};font-size:11px;font-weight:900;letter-spacing:0.18em;text-transform:uppercase">${escapeHtml(input.kicker)}</p>
+          <h1 style="margin:0;color:${EMAIL_COLORS.text};font-size:26px;line-height:1.3;font-weight:900">${escapeHtml(input.title)}</h1>
+        </div>
+        <div style="padding:26px">
+          <p style="display:inline-block;margin:0 0 16px;border:1px solid ${EMAIL_COLORS.border};border-radius:3px;padding:6px 10px;color:${tone.color};background:${tone.bg};font-size:12px;font-weight:900">${escapeHtml(tone.label)}</p>
+          ${body}
+          ${details}
+          ${cta}
+          ${note}
+          <div style="margin-top:28px;border-top:1px solid ${EMAIL_COLORS.border};padding-top:18px">
+            <p style="margin:0;color:${EMAIL_COLORS.muted};font-size:12px;line-height:1.7">
+              본 메일은 HairFit 서비스 이용과 관련해 발송되었습니다.<br />
+              문의가 필요하시면 마이페이지 또는 고객지원 메뉴를 이용해 주세요.
+            </p>
+            <p style="margin:14px 0 0;color:${EMAIL_COLORS.text};font-size:12px;line-height:1.7;font-weight:800">
+              HairFit<br />
+              <span style="color:${EMAIL_COLORS.muted};font-weight:600">내 스타일을 미리 확인하는 헤어 시뮬레이션 서비스</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderText(input: EmailLayoutInput) {
+  const lines = [
+    `[HairFit] ${input.title}`,
+    "",
+    input.preview,
+    "",
+    ...input.body,
+  ];
+  const details = compactRows(input.details);
+  if (details.length > 0) {
+    lines.push("", "상세 내역", ...details.map((row) => `- ${row.label}: ${row.value}`));
+  }
+  if (input.cta) {
+    lines.push("", `${input.cta.label}: ${input.cta.url}`);
+  }
+  if (input.note) {
+    lines.push("", input.note);
+  }
+  lines.push(
+    "",
+    "본 메일은 HairFit 서비스 이용과 관련해 발송되었습니다.",
+    "문의가 필요하시면 마이페이지 또는 고객지원 메뉴를 이용해 주세요.",
+    "",
+    "HairFit",
+    "내 스타일을 미리 확인하는 헤어 시뮬레이션 서비스",
+  );
+  return lines.join("\n");
 }
 
 export async function sendEmail({
@@ -153,180 +368,297 @@ export async function sendEmail({
   }
 }
 
-export async function sendPaymentSuccessEmail(input: PaymentSuccessEmailInput) {
-  const subject = `[HairFit] 결제가 완료되었어요 (+${input.creditsGranted.toLocaleString("ko-KR")} credits)`;
-  const html = buildPaymentSuccessEmailHtml(input);
-  return sendEmail({ to: input.to, subject, html });
+function sendTemplatedEmail({
+  to,
+  subject,
+  layout,
+}: {
+  to: string;
+  subject: string;
+  layout: EmailLayoutInput;
+}) {
+  return sendEmail({
+    to,
+    subject,
+    html: renderEmailLayout(layout),
+    text: renderText(layout),
+  });
 }
 
-// ─── 구독 갱신 이메일 ────────────────────────────────────────────────────────
-
-function buildAbsoluteUrl(path: string) {
-  return new URL(path, getSiteUrl()).toString();
+function greetingName(displayName?: string | null) {
+  return displayName?.trim() || "고객";
 }
 
 function getWelcomeEmailRoleCopy(accountType: WelcomeEmailAccountType) {
   if (accountType === "salon_owner") {
     return {
-      roleLabel: "헤어샵 운영자",
-      headline: "살롱 고객 관리를 위한 워크스페이스가 준비되었습니다",
+      subject: "[HairFit] 살롱 워크스페이스가 준비되었습니다",
+      preview: "고객별 상담 기록과 스타일 추천 결과를 한곳에서 관리하세요.",
+      title: "살롱 워크스페이스가 준비되었습니다",
       intro:
-        "HairStyle은 고객 사진, 상담 기록, 스타일 추천 결과를 한 흐름에서 관리할 수 있도록 설계된 살롱 운영 도구입니다.",
+        "HairFit 살롱 계정 생성이 완료되었습니다. 이제 고객 사진, 추천 결과, 방문 기록, 사후관리 내용을 고객별로 정리할 수 있습니다.",
+      roleLabel: "헤어샵 운영자",
       sectionTitle: "운영 시작 전 확인할 항목",
-      ctaLabel: "운영자 홈 열기",
+      ctaLabel: "살롱 홈 열기",
       ctaUrl: buildAbsoluteUrl("/salon"),
       guideItems: [
-        "운영자 홈에서 샵 정보와 고객 관리 환경을 먼저 확인해 주세요.",
-        "고객 초대와 매칭을 완료하면 상담 기록, 추천 결과, 방문 이력을 고객별로 정리할 수 있습니다.",
-        "문의, 메일함, 사후관리 태스크를 한 화면에서 확인해 고객 응대 누락을 줄일 수 있습니다.",
+        "살롱 홈에서 샵 정보와 고객 관리 화면을 확인해 주세요.",
+        "고객 초대 또는 매칭 링크로 상담 대상을 연결해 주세요.",
+        "고객이 선택한 헤어 후보를 기준으로 볼륨, 앞머리, 얼굴선 보정 방향을 함께 정리해 보세요.",
       ],
     };
   }
 
   return {
-    roleLabel: "일반 회원",
-    headline: "개인 맞춤 헤어스타일 추천을 시작할 준비가 완료되었습니다",
+    subject: "[HairFit] 가입이 완료되었습니다",
+    preview: "사진 한 장으로 어울리는 헤어 후보를 확인해 보세요.",
+    title: "가입이 완료되었습니다",
     intro:
-      "HairStyle은 얼굴형과 스타일 선호도를 바탕으로 어울리는 헤어 후보를 만들고, 선택한 결과를 이후 상담과 관리에 활용할 수 있도록 돕습니다.",
-    sectionTitle: "추천 정확도를 높이는 다음 단계",
+      "HairFit에 오신 것을 환영합니다. 얼굴형, 두상 밸런스, 스타일 선호도를 바탕으로 어울리는 헤어 후보를 한 화면에서 비교할 수 있습니다.",
+    roleLabel: "일반 회원",
+    sectionTitle: "시작 전 확인할 항목",
     ctaLabel: "헤어 추천 시작하기",
     ctaUrl: buildAbsoluteUrl("/home"),
     guideItems: [
-      "프로필에서 성별과 선호 스타일 톤을 입력하면 추천 기준이 더 명확해집니다.",
-      "정면 얼굴 사진을 업로드해 3x3 헤어 후보를 생성하고, 마음에 드는 스타일을 저장해 보세요.",
-      "마이페이지에서 생성 기록, 크레딧, 결제 내역, 에프터케어 알림을 확인할 수 있습니다.",
+      "프로필에서 성별과 원하는 스타일 분위기를 입력해 주세요.",
+      "얼굴이 잘 보이는 정면 사진을 준비해 주세요.",
+      "3x3 추천 보드에서 짧은 머리, 중간 길이, 긴 머리 후보를 비교해 보세요.",
     ],
   };
 }
 
-function buildWelcomeEmailHtml(input: WelcomeEmailInput) {
-  const roleCopy = getWelcomeEmailRoleCopy(input.accountType);
-  const displayName = input.displayName?.trim() || roleCopy.roleLabel;
-  const guideItems = roleCopy.guideItems.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
-
-  return `
-  <div style="margin:0;padding:0;background:#f6f5f1;color:#191816;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
-    <div style="max-width:640px;margin:0 auto;padding:32px 18px">
-      <div style="border:1px solid #d4cfc4;background:#ffffff;border-radius:6px;overflow:hidden;box-shadow:0 1px 0 rgba(25,24,22,0.08)">
-        <div style="padding:28px 26px 22px;border-bottom:1px solid #d4cfc4;background:#fbfaf7">
-          <p style="margin:0 0 10px;color:#80621e;font-size:11px;font-weight:900;letter-spacing:0.18em;text-transform:uppercase">Welcome to HairFit</p>
-          <h1 style="margin:0;color:#191816;font-size:26px;line-height:1.3;font-weight:900">${escapeHtml(roleCopy.headline)}</h1>
-          <p style="margin:14px 0 0;color:#625f57;font-size:15px;line-height:1.7">${escapeHtml(displayName)}님, 가입이 완료되었습니다. ${escapeHtml(roleCopy.intro)}</p>
-        </div>
-
-        <div style="padding:26px">
-          <p style="display:inline-block;margin:0 0 14px;border:1px solid #d4cfc4;border-radius:999px;padding:5px 10px;color:#80621e;background:#fbfaf7;font-size:12px;font-weight:800">${escapeHtml(roleCopy.roleLabel)}</p>
-          <h2 style="margin:0 0 12px;color:#191816;font-size:18px;line-height:1.4;font-weight:800">${escapeHtml(roleCopy.sectionTitle)}</h2>
-          <ul style="margin:0 0 22px;padding-left:20px;color:#191816;font-size:14px;line-height:1.8">
-            ${guideItems}
-          </ul>
-
-          <a href="${escapeHtml(roleCopy.ctaUrl)}" style="display:inline-block;background:#050505;color:#f4f1e8;text-decoration:none;border:1px solid #050505;border-radius:3px;padding:12px 18px;font-size:13px;font-weight:800;letter-spacing:0.04em">
-            ${escapeHtml(roleCopy.ctaLabel)}
-          </a>
-
-          <div style="margin-top:28px;border-top:1px solid #d4cfc4;padding-top:18px">
-            <p style="margin:0;color:#625f57;font-size:12px;line-height:1.7">
-              본 메일은 HairStyle 가입 확인을 위해 발송되었습니다. 문의가 필요하시면 서비스 내 지원 메뉴를 이용해 주세요.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  `;
-}
-
-function buildWelcomeEmailText(input: WelcomeEmailInput) {
-  const roleCopy = getWelcomeEmailRoleCopy(input.accountType);
-  const displayName = input.displayName?.trim() || roleCopy.roleLabel;
-
-  return [
-    "[HairFit] 가입이 완료되었습니다.",
-    "",
-    `${displayName}님, 가입이 완료되었습니다.`,
-    roleCopy.intro,
-    "",
-    roleCopy.sectionTitle,
-    ...roleCopy.guideItems.map((item) => `- ${item}`),
-    "",
-    `${roleCopy.ctaLabel}: ${roleCopy.ctaUrl}`,
-    "",
-    "본 메일은 HairStyle 가입 확인을 위해 발송되었습니다. 문의가 필요하시면 서비스 내 지원 메뉴를 이용해 주세요.",
-  ].join("\n");
-}
-
 export async function sendWelcomeEmail(input: WelcomeEmailInput) {
-  const subject = "[HairFit] 가입이 완료되었습니다";
-  const html = buildWelcomeEmailHtml(input);
-  const text = buildWelcomeEmailText(input);
-  return sendEmail({ to: input.to, subject, html, text });
+  const roleCopy = getWelcomeEmailRoleCopy(input.accountType);
+  const displayName = greetingName(input.displayName);
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: roleCopy.subject,
+    layout: {
+      kicker: "Welcome to HairFit",
+      title: roleCopy.title,
+      preview: roleCopy.preview,
+      tone: "success",
+      body: [
+        `${displayName}님, ${roleCopy.intro}`,
+        `${roleCopy.sectionTitle}: ${roleCopy.guideItems.join(" ")}`,
+        input.accountType === "salon_owner"
+          ? "문의와 사후관리 태스크는 운영 화면에서 이어서 확인할 수 있습니다."
+          : "생성한 결과는 마이페이지에서 다시 확인할 수 있고, 미용실 상담 이미지로도 활용할 수 있습니다.",
+      ],
+      cta: {
+        label: roleCopy.ctaLabel,
+        url: roleCopy.ctaUrl,
+      },
+      details: roleCopy.guideItems.map((item, index) => ({
+        label: `${index + 1}`,
+        value: item,
+      })),
+      note: `${roleCopy.roleLabel} 계정 기준으로 안내드립니다.`,
+    },
+  });
 }
 
-type SubscriptionRenewalEmailInput = {
-  to: string;
-  plan: string;
-  creditsGranted: number;
-  currentCredits?: number | null;
-  periodEnd: string;
-  myPageUrl: string;
-};
-
-function formatPeriodEnd(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function buildSubscriptionRenewalHtml(input: SubscriptionRenewalEmailInput): string {
+export async function sendPaymentSuccessEmail(input: PaymentSuccessEmailInput) {
   const planLabel = formatPlanLabel(input.plan);
-  const periodEndStr = formatPeriodEnd(input.periodEnd);
-  const currentCreditsLine =
-    typeof input.currentCredits === "number"
-      ? `<li><strong>현재 크레딧:</strong> ${escapeHtml(input.currentCredits.toLocaleString("ko-KR"))}</li>`
-      : "";
+  const amountText =
+    typeof input.amount === "number" && input.amount > 0
+      ? formatMoney(input.amount, input.currency || "KRW")
+      : null;
 
-  return `
-  <div style="font-family:-apple-system,Arial,sans-serif;line-height:1.7;color:#111827;max-width:600px;margin:0 auto">
-    <h2 style="font-size:20px;font-weight:700;margin:0 0 12px">✅ 구독이 갱신되었어요</h2>
-    <p style="margin:0 0 14px">HairFit ${escapeHtml(planLabel)} 구독이 자동 갱신되어 크레딧이 충전되었습니다.</p>
-    <ul style="padding-left:18px;margin:0 0 16px">
-      <li><strong>플랜:</strong> ${escapeHtml(planLabel)}</li>
-      <li><strong>충전 크레딧:</strong> +${escapeHtml(input.creditsGranted.toLocaleString("ko-KR"))}</li>
-      ${currentCreditsLine}
-      <li><strong>다음 갱신일:</strong> ${escapeHtml(periodEndStr)}</li>
-    </ul>
-    <a href="${escapeHtml(input.myPageUrl)}" style="display:inline-block;background:#111827;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:600">
-      마이페이지에서 확인하기
-    </a>
-    <p style="margin-top:24px;font-size:12px;color:#9ca3af">
-      구독을 해지하려면 마이페이지 &gt; 구독 관리에서 취소하실 수 있습니다.
-    </p>
-  </div>
-  `;
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: "[HairFit] 결제가 완료되었습니다",
+    layout: {
+      kicker: "Payment complete",
+      title: "결제가 완료되었습니다",
+      preview: `${planLabel} 플랜 크레딧이 충전되었습니다.`,
+      tone: "success",
+      body: [
+        `${greetingName(input.displayName)}님, ${planLabel} 플랜 결제가 정상적으로 완료되었습니다.`,
+        "지금부터 충전된 크레딧으로 헤어 추천과 스타일 결과를 계속 이용할 수 있습니다.",
+        "결제 내역과 구독 상태는 마이페이지의 플랜/결제 탭에서 확인할 수 있습니다.",
+      ],
+      details: [
+        { label: "플랜", value: planLabel },
+        { label: "결제 금액", value: amountText },
+        { label: "충전 크레딧", value: `${formatNumber(input.creditsGranted)} 크레딧` },
+        {
+          label: "현재 크레딧",
+          value:
+            typeof input.currentCredits === "number"
+              ? `${formatNumber(input.currentCredits)} 크레딧`
+              : null,
+        },
+        { label: "결제 번호", value: input.paymentTransactionId },
+      ],
+      cta: {
+        label: "마이페이지에서 확인하기",
+        url: input.myPageUrl,
+      },
+    },
+  });
 }
 
-export async function sendSubscriptionRenewalEmail(
-  input: SubscriptionRenewalEmailInput,
-) {
-  const subject = `[HairFit] ${formatPlanLabel(input.plan)} 구독이 갱신되었습니다 (+${input.creditsGranted.toLocaleString("ko-KR")} credits)`;
-  const html = buildSubscriptionRenewalHtml(input);
-  return sendEmail({ to: input.to, subject, html });
+export async function sendPaymentFailureEmail(input: PaymentFailureEmailInput) {
+  const planLabel = formatPlanLabel(input.plan);
+  const amountText =
+    typeof input.amount === "number" && input.amount > 0
+      ? formatMoney(input.amount, input.currency || "KRW")
+      : null;
+
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: "[HairFit] 구독 결제를 완료하지 못했습니다",
+    layout: {
+      kicker: "Payment needs attention",
+      title: "구독 결제를 완료하지 못했습니다",
+      preview: "카드 상태를 확인하면 구독을 계속 이용할 수 있습니다.",
+      tone: "warning",
+      body: [
+        `${greetingName(input.displayName)}님, ${planLabel} 구독 결제가 승인되지 않았습니다.`,
+        "카드 한도, 유효기간, 잔액 또는 결제사 승인 상태를 확인해 주세요.",
+        "결제가 정상 처리되면 구독 상태와 크레딧이 자동으로 갱신됩니다.",
+      ],
+      details: [
+        { label: "플랜", value: planLabel },
+        { label: "결제 금액", value: amountText },
+        { label: "실패 사유", value: input.failureMessage || "카드 승인 실패 또는 결제사 상태 확인 필요" },
+        { label: "다음 재시도 예정일", value: formatDate(input.nextRetryAt) },
+        { label: "결제 번호", value: input.paymentTransactionId },
+      ],
+      cta: {
+        label: "결제 상태 확인하기",
+        url: input.myPageUrl,
+      },
+      note: "재시도 전까지 일부 유료 기능 이용이 제한될 수 있습니다.",
+    },
+  });
 }
 
-// ─── 케어 이메일 발송 ────────────────────────────────────────────────────────
+export async function sendRefundCompletedEmail(input: RefundCompletedEmailInput) {
+  const planLabel = formatPlanLabel(input.plan);
+  const amountText =
+    typeof input.refundAmount === "number" && input.refundAmount > 0
+      ? formatMoney(input.refundAmount, input.currency || "KRW")
+      : null;
 
-type CareEmailInput = {
-  to: string;
-  subject: string;
-  bodyHtml: string;
-};
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: "[HairFit] 환불 처리가 완료되었습니다",
+    layout: {
+      kicker: "Refund complete",
+      title: "환불 처리가 완료되었습니다",
+      preview: "결제 취소와 크레딧 회수 내역을 확인해 주세요.",
+      tone: "danger",
+      body: [
+        `${greetingName(input.displayName)}님, 요청하신 결제의 환불 처리가 완료되었습니다.`,
+        "환불 완료 후 해당 결제로 지급된 크레딧은 정책에 따라 회수됩니다.",
+        "이미 사용된 크레딧이 있는 경우 일부 크레딧은 즉시 회수되지 않을 수 있으며, 해당 내역은 운영 검토 대상으로 기록됩니다.",
+      ],
+      details: [
+        { label: "플랜", value: planLabel },
+        { label: "환불 금액", value: amountText },
+        { label: "결제 번호", value: input.paymentTransactionId },
+        {
+          label: "회수된 크레딧",
+          value:
+            typeof input.creditsClawedBack === "number"
+              ? `${formatNumber(input.creditsClawedBack)} 크레딧`
+              : null,
+        },
+        {
+          label: "미회수 크레딧",
+          value:
+            typeof input.creditsUnrecovered === "number"
+              ? `${formatNumber(input.creditsUnrecovered)} 크레딧`
+              : null,
+        },
+      ],
+      cta: {
+        label: "환불 내역 확인하기",
+        url: input.myPageUrl,
+      },
+    },
+  });
+}
+
+export async function sendRefundReviewEmail(input: RefundReviewEmailInput) {
+  const planLabel = formatPlanLabel(input.plan);
+  const amountText =
+    typeof input.requestedAmount === "number" && input.requestedAmount > 0
+      ? formatMoney(input.requestedAmount, input.currency || "KRW")
+      : null;
+
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: "[HairFit] 환불 요청을 검토 중입니다",
+    layout: {
+      kicker: "Refund review",
+      title: "환불 요청을 검토 중입니다",
+      preview: "부분 환불은 크레딧 조정 확인 후 처리됩니다.",
+      tone: "warning",
+      body: [
+        `${greetingName(input.displayName)}님, 부분 환불 또는 추가 확인이 필요한 결제 건이 접수되었습니다.`,
+        "부분 환불은 결제 금액, 사용한 크레딧, 구독 상태를 함께 확인한 뒤 처리됩니다.",
+        "검토가 완료되면 환불 결과를 다시 안내해 드리겠습니다.",
+      ],
+      details: [
+        { label: "플랜", value: planLabel },
+        { label: "요청 금액", value: amountText },
+        { label: "결제 번호", value: input.paymentTransactionId },
+        { label: "접수 상태", value: "운영 검토 중" },
+      ],
+      cta: {
+        label: "고객지원 확인하기",
+        url: input.supportUrl,
+      },
+      note: "긴급한 확인이 필요하면 고객지원으로 문의해 주세요.",
+    },
+  });
+}
+
+export async function sendSubscriptionRenewalEmail(input: SubscriptionRenewalEmailInput) {
+  const planLabel = formatPlanLabel(input.plan);
+  const renewalBrandLine = `HairFit ${escapeHtml(planLabel)} 구독이 자동 갱신되어 크레딧이 충전되었습니다.`;
+  const subject = `[HairFit] ${formatPlanLabel(input.plan)} 구독이 갱신되었습니다`;
+  const amountText =
+    typeof input.amount === "number" && input.amount > 0
+      ? formatMoney(input.amount, input.currency || "KRW")
+      : null;
+
+  return sendTemplatedEmail({
+    to: input.to,
+    subject,
+    layout: {
+      kicker: "Subscription renewed",
+      title: "구독이 갱신되었습니다",
+      preview: "이번 달 크레딧이 새로 충전되었습니다.",
+      tone: "success",
+      body: [
+        `${greetingName(input.displayName)}님, ${planLabel} 월 구독이 정상적으로 갱신되었습니다.`,
+        renewalBrandLine,
+        "구독 해지는 마이페이지의 플랜/결제 탭에서 관리할 수 있습니다.",
+      ],
+      details: [
+        { label: "플랜", value: planLabel },
+        { label: "결제 금액", value: amountText },
+        { label: "충전 크레딧", value: `${formatNumber(input.creditsGranted)} 크레딧` },
+        {
+          label: "현재 크레딧",
+          value:
+            typeof input.currentCredits === "number"
+              ? `${formatNumber(input.currentCredits)} 크레딧`
+              : null,
+        },
+        { label: "다음 갱신 예정일", value: formatDate(input.periodEnd) },
+      ],
+      cta: {
+        label: "구독 상태 확인하기",
+        url: input.myPageUrl,
+      },
+    },
+  });
+}
 
 export async function sendCareEmail(input: CareEmailInput) {
   return sendEmail({
