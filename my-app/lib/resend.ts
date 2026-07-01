@@ -1,10 +1,13 @@
 import { Resend } from "resend";
 import { getSiteUrl } from "./site-url";
+import { getSupabaseAdminClient, isSupabaseConfigured } from "./supabase";
 
 type SendEmailResult = {
   data: { id?: string } | null;
   error: unknown;
 };
+
+type OutboundEmailStatus = "sent" | "failed" | "skipped";
 
 type EmailTone = "default" | "success" | "warning" | "danger";
 
@@ -113,6 +116,7 @@ type CareEmailInput = {
 const env = process.env as Record<string, string | undefined>;
 const resendApiKey = env.RESEND_API_KEY?.trim();
 const defaultFromEmail = env.RESEND_FROM_EMAIL?.trim() || "HairFit <onboarding@resend.dev>";
+const MAX_LOGGED_EMAIL_BODY_LENGTH = 500_000;
 
 const EMAIL_COLORS = {
   bg: "#f6f5f1",
@@ -239,6 +243,96 @@ function buildAbsoluteUrl(path: string) {
   return new URL(path, getSiteUrl()).toString();
 }
 
+function normalizeRecipients(to: string | string[]) {
+  return (Array.isArray(to) ? to : [to]).map((item) => item.trim()).filter(Boolean);
+}
+
+function trimEmailBody(value?: string | null) {
+  if (!value) return null;
+  return value.slice(0, MAX_LOGGED_EMAIL_BODY_LENGTH);
+}
+
+function buildEmailPreview(text?: string | null, html?: string | null) {
+  const source = text || html?.replace(/<[^>]+>/g, " ") || "";
+  return source.replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
+function formatEmailLogError(error: unknown) {
+  if (!error) return null;
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return "Unknown email error";
+  }
+}
+
+function getProviderMessageId(data: unknown) {
+  if (typeof data !== "object" || data === null || !("id" in data)) {
+    return null;
+  }
+
+  const id = (data as { id?: unknown }).id;
+  return typeof id === "string" && id.trim() ? id : null;
+}
+
+async function recordOutboundEmail({
+  to,
+  from,
+  subject,
+  html,
+  text,
+  source,
+  status,
+  providerMessageId,
+  error,
+}: {
+  to: string | string[];
+  from: string;
+  subject: string;
+  html: string;
+  text?: string;
+  source: string;
+  status: OutboundEmailStatus;
+  providerMessageId?: string | null;
+  error?: unknown;
+}) {
+  if (!isSupabaseConfigured()) {
+    return;
+  }
+
+  try {
+    const supabase = getSupabaseAdminClient();
+    const recipients = normalizeRecipients(to);
+    const { error: insertError } = await supabase
+      .from("outbound_emails")
+      .insert({
+        provider: "resend",
+        provider_message_id: providerMessageId || null,
+        source,
+        from_email: from,
+        to_emails: recipients,
+        to_email_text: recipients.join(", "),
+        subject,
+        text_body: trimEmailBody(text),
+        html_body: trimEmailBody(html),
+        body_preview: buildEmailPreview(text, html),
+        status,
+        error_message: formatEmailLogError(error),
+        metadata: {},
+        sent_at: status === "sent" ? new Date().toISOString() : null,
+      });
+
+    if (insertError) {
+      console.warn("[Resend] Failed to record outbound email:", insertError.message);
+    }
+  } catch (logError) {
+    console.warn("[Resend] Unexpected outbound email log failure:", logError);
+  }
+}
+
 function compactRows(rows: KeyValueRow[] = []) {
   return rows.filter((row) => row.value !== null && row.value !== undefined && String(row.value).trim() !== "");
 }
@@ -350,15 +444,27 @@ export async function sendEmail({
   html,
   text,
   from = defaultFromEmail,
+  source = "app",
 }: {
   to: string | string[];
   subject: string;
   html: string;
   text?: string;
   from?: string;
+  source?: string;
 }): Promise<SendEmailResult> {
   if (!resendApiKey) {
     console.warn(`[Resend] Skipping email send to ${to} (missing RESEND_API_KEY)`);
+    await recordOutboundEmail({
+      to,
+      from,
+      subject,
+      html,
+      text,
+      source,
+      status: "skipped",
+      error: new Error("Missing RESEND_API_KEY"),
+    });
     return { data: null, error: new Error("Missing RESEND_API_KEY") };
   }
 
@@ -378,12 +484,43 @@ export async function sendEmail({
 
     if (error) {
       console.error("[Resend] Email send failed:", error);
+      await recordOutboundEmail({
+        to,
+        from,
+        subject,
+        html,
+        text,
+        source,
+        status: "failed",
+        providerMessageId: getProviderMessageId(data),
+        error,
+      });
       return { data, error };
     }
 
+    await recordOutboundEmail({
+      to,
+      from,
+      subject,
+      html,
+      text,
+      source,
+      status: "sent",
+      providerMessageId: getProviderMessageId(data),
+    });
     return { data: data ?? null, error: null };
   } catch (error) {
     console.error("[Resend] Unexpected email send error:", error);
+    await recordOutboundEmail({
+      to,
+      from,
+      subject,
+      html,
+      text,
+      source,
+      status: "failed",
+      error,
+    });
     return { data: null, error };
   }
 }
@@ -392,16 +529,19 @@ function sendTemplatedEmail({
   to,
   subject,
   layout,
+  source,
 }: {
   to: string;
   subject: string;
   layout: EmailLayoutInput;
+  source: string;
 }) {
   return sendEmail({
     to,
     subject,
     html: renderEmailLayout(layout),
     text: renderText(layout),
+    source,
   });
 }
 
@@ -453,6 +593,7 @@ export async function sendWelcomeEmail(input: WelcomeEmailInput) {
   return sendTemplatedEmail({
     to: input.to,
     subject: roleCopy.subject,
+    source: input.accountType === "salon_owner" ? "welcome_salon" : "welcome_member",
     layout: {
       kicker: "Welcome to HairFit",
       title: roleCopy.title,
@@ -488,6 +629,7 @@ export async function sendPaymentSuccessEmail(input: PaymentSuccessEmailInput) {
   return sendTemplatedEmail({
     to: input.to,
     subject: "[HairFit] 결제가 완료되었습니다",
+    source: "payment_success",
     layout: {
       kicker: "Payment complete",
       title: "결제가 완료되었습니다",
@@ -529,6 +671,7 @@ export async function sendPaymentFailureEmail(input: PaymentFailureEmailInput) {
   return sendTemplatedEmail({
     to: input.to,
     subject: "[HairFit] 구독 결제를 완료하지 못했습니다",
+    source: "payment_failure",
     layout: {
       kicker: "Payment needs attention",
       title: "구독 결제를 완료하지 못했습니다",
@@ -565,6 +708,7 @@ export async function sendRefundCompletedEmail(input: RefundCompletedEmailInput)
   return sendTemplatedEmail({
     to: input.to,
     subject: "[HairFit] 환불 처리가 완료되었습니다",
+    source: "refund_completed",
     layout: {
       kicker: "Refund complete",
       title: "환불 처리가 완료되었습니다",
@@ -612,6 +756,7 @@ export async function sendRefundReviewEmail(input: RefundReviewEmailInput) {
   return sendTemplatedEmail({
     to: input.to,
     subject: "[HairFit] 환불 요청을 검토 중입니다",
+    source: "refund_review",
     layout: {
       kicker: "Refund review",
       title: "환불 요청을 검토 중입니다",
@@ -644,6 +789,7 @@ export async function sendSupportReplyEmail(input: SupportReplyEmailInput) {
   return sendTemplatedEmail({
     to: input.to,
     subject: "[HairFit] 고객지원 답변이 등록되었습니다",
+    source: "support_reply",
     layout: {
       kicker: "Support reply",
       title: "고객지원 답변이 등록되었습니다",
@@ -681,6 +827,7 @@ export async function sendSubscriptionRenewalEmail(input: SubscriptionRenewalEma
   return sendTemplatedEmail({
     to: input.to,
     subject,
+    source: "subscription_renewal",
     layout: {
       kicker: "Subscription renewed",
       title: "구독이 갱신되었습니다",
@@ -717,5 +864,6 @@ export async function sendCareEmail(input: CareEmailInput) {
     to: input.to,
     subject: input.subject,
     html: input.bodyHtml,
+    source: "care",
   });
 }
