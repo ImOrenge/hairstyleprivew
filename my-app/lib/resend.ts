@@ -73,6 +73,17 @@ type RefundReviewEmailInput = {
   supportUrl: string;
 };
 
+type SupportReplyEmailInput = {
+  to: string;
+  displayName?: string | null;
+  postId: string;
+  postTitle: string;
+  postKindLabel?: string | null;
+  postStatusLabel?: string | null;
+  adminAnswer: string;
+  answeredAt?: string | null;
+};
+
 type WelcomeEmailAccountType = "member" | "salon_owner";
 
 type WelcomeEmailInput = {
@@ -213,6 +224,15 @@ function formatDate(iso?: string | null): string | null {
   } catch {
     return iso;
   }
+}
+
+function summarizeText(value: string, maxLength = 220) {
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, maxLength - 3)}...`;
 }
 
 function buildAbsoluteUrl(path: string) {
@@ -613,6 +633,38 @@ export async function sendRefundReviewEmail(input: RefundReviewEmailInput) {
         url: input.supportUrl,
       },
       note: "긴급한 확인이 필요하면 고객지원으로 문의해 주세요.",
+    },
+  });
+}
+
+export async function sendSupportReplyEmail(input: SupportReplyEmailInput) {
+  const supportPostUrl = buildAbsoluteUrl(`/support/posts/${encodeURIComponent(input.postId)}`);
+  const answerSummary = summarizeText(input.adminAnswer);
+
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: "[HairFit] 고객지원 답변이 등록되었습니다",
+    layout: {
+      kicker: "Support reply",
+      title: "고객지원 답변이 등록되었습니다",
+      preview: `${input.postTitle}에 대한 HairFit 운영팀 답변을 확인해 주세요.`,
+      tone: "success",
+      body: [
+        `${greetingName(input.displayName)}님, 남겨주신 고객지원 게시글에 HairFit 운영팀 답변이 등록되었습니다.`,
+        `"${input.postTitle}" 글에서 전체 답변과 현재 처리 상태를 확인할 수 있습니다.`,
+        `답변 요약: ${answerSummary}`,
+      ],
+      details: [
+        { label: "게시글", value: input.postTitle },
+        { label: "게시판", value: input.postKindLabel },
+        { label: "상태", value: input.postStatusLabel },
+        { label: "답변 등록일", value: formatDate(input.answeredAt) },
+      ],
+      cta: {
+        label: "답변 확인하기",
+        url: supportPostUrl,
+      },
+      note: "추가 확인이 필요하면 고객지원 게시글을 다시 확인한 뒤 필요한 내용을 새 글로 남겨 주세요.",
     },
   });
 }
