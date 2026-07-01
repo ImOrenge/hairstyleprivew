@@ -74,6 +74,64 @@ function authHeader(): Record<string, string> {
   return { Authorization: `PortOne ${requireApiSecret()}` };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function readPortoneJson(response: Response): Promise<Record<string, unknown>> {
+  const text = await response.text().catch(() => "");
+  if (!text.trim()) {
+    return {};
+  }
+
+  try {
+    const data = JSON.parse(text) as unknown;
+    return isRecord(data) ? data : {};
+  } catch {
+    return {};
+  }
+}
+
+function stringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function collectPortoneErrorParts(
+  data: Record<string, unknown>,
+  depth = 0,
+): string[] {
+  if (depth > 2) {
+    return [];
+  }
+
+  const direct = ["type", "code", "message", "pgCode", "pgMessage", "reason"]
+    .map((key) => stringValue(data[key]))
+    .filter((value): value is string => Boolean(value));
+
+  const nested = ["error", "failure", "cause"].flatMap((key) => {
+    const value = data[key];
+    return isRecord(value) ? collectPortoneErrorParts(value, depth + 1) : [];
+  });
+
+  const channelFailures = Array.isArray(data.channelSpecificFailures)
+    ? data.channelSpecificFailures.flatMap((value) =>
+        isRecord(value) ? collectPortoneErrorParts(value, depth + 1) : [],
+      )
+    : [];
+
+  return Array.from(new Set([...direct, ...nested, ...channelFailures]));
+}
+
+function formatPortoneHttpError(
+  status: number,
+  data: Record<string, unknown>,
+): string {
+  const parts = collectPortoneErrorParts(data);
+  return parts.length > 0
+    ? `HTTP ${status}: ${parts.join(" / ")}`
+    : `HTTP ${status}`;
+}
+
 // ─── API 함수 ──────────────────────────────────────────────────────────────
 
 /**
@@ -84,6 +142,7 @@ export async function chargeBillingKey(
   input: PortOneBillingKeyChargeInput,
 ): Promise<PortOnePaymentResult> {
   const url = `${PORTONE_API_BASE}/payments/${encodeURIComponent(input.paymentId)}/billing-key`;
+  const channelKey = input.channelKey?.trim() || readChannelKey();
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -93,9 +152,7 @@ export async function chargeBillingKey(
     body: JSON.stringify({
       storeId: input.storeId?.trim() || requireStoreId(),
       billingKey: input.billingKey,
-      ...(input.channelKey || readChannelKey()
-        ? { channelKey: input.channelKey?.trim() || readChannelKey() }
-        : {}),
+      ...(channelKey ? { channelKey } : {}),
       orderName: input.orderName,
       customer: { id: input.customerId },
       amount: { total: input.amount },
@@ -103,17 +160,12 @@ export async function chargeBillingKey(
     }),
   });
 
-  const data = (await response.json().catch(() => ({}))) as Record<
-    string,
-    unknown
-  >;
+  const data = await readPortoneJson(response);
 
   if (!response.ok) {
-    const msg =
-      typeof data.message === "string"
-        ? data.message
-        : `PortOne HTTP ${response.status}`;
-    throw new Error(`PortOne 결제 실패: ${msg}`);
+    throw new Error(
+      `PortOne 결제 실패: ${formatPortoneHttpError(response.status, data)}`,
+    );
   }
 
   return parsePortonePaymentResult(input.paymentId, data);
@@ -130,11 +182,13 @@ export async function getPayment(
   const response = await fetch(url, { headers: authHeader() });
 
   if (response.status === 404) return null;
+  const data = await readPortoneJson(response);
   if (!response.ok) {
-    throw new Error(`PortOne 결제 조회 실패: HTTP ${response.status}`);
+    throw new Error(
+      `PortOne 결제 조회 실패: ${formatPortoneHttpError(response.status, data)}`,
+    );
   }
 
-  const data = (await response.json()) as Record<string, unknown>;
   return parsePortonePaymentResult(paymentId, data);
 }
 
@@ -148,10 +202,12 @@ export async function getBillingKey(
   const url = `${PORTONE_API_BASE}/billing-keys/${encodeURIComponent(billingKey)}`;
   const response = await fetch(url, { headers: authHeader() });
   if (response.status === 404) return null;
+  const data = await readPortoneJson(response);
   if (!response.ok) {
-    throw new Error(`PortOne 빌링키 조회 실패: HTTP ${response.status}`);
+    throw new Error(
+      `PortOne 빌링키 조회 실패: ${formatPortoneHttpError(response.status, data)}`,
+    );
   }
-  const data = (await response.json()) as Record<string, unknown>;
   return { status: typeof data.status === "string" ? data.status : "UNKNOWN" };
 }
 

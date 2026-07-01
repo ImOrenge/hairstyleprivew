@@ -76,6 +76,8 @@ assertIncludes(portone, 'storeId:\\s*input\\.storeId\\?\\.trim\\(\\)\\s*\\|\\|\\
 assertIncludes(portone, 'customer:\\s*\\{\\s*id:\\s*input\\.customerId\\s*\\}', "REST billing-key charge must use customer.id");
 assertIncludes(portone, 'amount:\\s*\\{\\s*total:\\s*input\\.amount\\s*\\}', "billing-key charge must use server amount");
 assertIncludes(portone, 'parsePortonePaymentResult\\(input\\.paymentId,\\s*data\\)', "billing-key charge must parse wrapped PortOne payment responses");
+assertIncludes(portone, 'readPortoneJson\\(response\\)', "PortOne client must read response bodies through the shared parser");
+assertIncludes(portone, 'formatPortoneHttpError\\(response\\.status,\\s*data\\)', "PortOne client must preserve HTTP status and structured error details");
 assertIncludes(portone, 'verifyPortoneWebhook', "PortOne client module must re-export webhook verification");
 assertIncludes(portonePaymentId, 'PORTONE_PAYMENT_ID_MAX_LENGTH = 32', "PortOne paymentId helper must encode the external max length");
 assertIncludes(portonePaymentId, 'PORTONE_BILLING_KEY_ISSUE_ID_MAX_LENGTH = 40', "PortOne billing-key issueId helper must encode the INIStdPay oid max length");
@@ -119,6 +121,8 @@ const subscribeMetadata = subscribe.match(
 );
 assert.ok(subscribeMetadata, "web subscribe transaction metadata block must be auditable");
 assertIncludes(subscribe, 'buildPortonePaymentId\\("sub",\\s*plan\\)', "web subscribe must generate PortOne-safe short payment IDs");
+assertIncludes(subscribe, 'getBillingKey\\(billingKey\\)', "web subscribe must verify the billing key with server PortOne credentials before charging");
+assertIncludes(subscribe, 'portone_billing_key_not_found', "web subscribe must classify server-side billing-key lookup failures");
 const billingKeyPrepare = assertFile("app/api/payments/billing-key/prepare/route.ts");
 assertIncludes(billingKeyPrepare, 'buildPortoneBillingKeyIssueId\\(plan\\)', "billing-key prepare must generate INIStdPay-safe short issue IDs");
 assertAbsent(billingKeyPrepare, 'crypto\\.randomUUID\\(\\)', "billing-key prepare must not use full UUID issue IDs");

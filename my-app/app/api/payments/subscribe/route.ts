@@ -9,6 +9,7 @@ import {
 } from "../../../../lib/portone-payment-confirmation";
 import {
   chargeBillingKey,
+  getBillingKey,
   isPortoneConfigured,
   PLAN_AMOUNT_KRW,
   PLAN_CREDITS,
@@ -92,6 +93,13 @@ function getSubscriptionBlockReason(
 
 function shouldClearPreparedSubscriptionAfterConfirmationFailure(reason: string): boolean {
   return reason !== "portone_lookup_failed" && reason !== "transaction_update_failed";
+}
+
+function buildMissingPortoneBillingKeyMessage(): string {
+  return [
+    "PortOne 빌링키 조회 실패: 서버 결제 API에서 발급된 빌링키를 찾지 못했습니다.",
+    "결제창 Store/Channel과 서버 PORTONE_V2_API_SECRET, PORTONE_V2_STORE_ID, PORTONE_V2_CHANNEL_KEY 설정이 같은 상점을 가리키는지 확인하세요.",
+  ].join(" ");
 }
 
 function isDeliverableEmail(email: string): boolean {
@@ -312,6 +320,11 @@ export async function POST(request: Request) {
   // 7. PortOne 첫 달 결제
   let paymentResult;
   try {
+    const billingKeyInfo = await getBillingKey(billingKey);
+    if (!billingKeyInfo) {
+      throw new Error(buildMissingPortoneBillingKeyMessage());
+    }
+
     paymentResult = await chargeBillingKey({
       paymentId,
       billingKey,
@@ -326,6 +339,9 @@ export async function POST(request: Request) {
       supabase: supabase as unknown as PortoneConfirmationSupabaseClient,
       paymentId,
       source: "web-subscribe-charge",
+      failureCode: msg.startsWith("PortOne 빌링키 조회 실패")
+        ? "portone_billing_key_not_found"
+        : null,
       failureMessage: msg,
       markSubscriptionPastDue: false,
     });

@@ -67,6 +67,14 @@ const portoneSource = readFileSync(resolve("lib/portone.ts"), "utf8");
 assert.match(portoneSource, /storeId:\s*input\.storeId\?\.trim\(\)\s*\|\|\s*requireStoreId\(\)/);
 assert.match(portoneSource, /customer:\s*\{\s*id:\s*input\.customerId\s*\}/);
 assert.match(portoneSource, /parsePortonePaymentResult\(input\.paymentId,\s*data\)/);
+assert.match(portoneSource, /formatPortoneHttpError\(response\.status,\s*data\)/);
+
+const subscribeSource = readFileSync(
+  resolve("app/api/payments/subscribe/route.ts"),
+  "utf8",
+);
+assert.match(subscribeSource, /getBillingKey\(billingKey\)/);
+assert.match(subscribeSource, /portone_billing_key_not_found/);
 
 const billingPlanSource = readFileSync(resolve("lib/billing-plan.ts"), "utf8");
 assert.match(billingPlanSource, /HairFit Basic - 월 구독/);
