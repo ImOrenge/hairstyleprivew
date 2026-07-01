@@ -170,9 +170,7 @@ export async function PATCH(request: Request, { params }: Params) {
     body.adminAnswer !== undefined &&
     previousPost &&
     hasText(data.admin_answer) &&
-    !hasText(previousPost.admin_answer) &&
     !previousPost.admin_answer_email_sent_at &&
-    !data.is_hidden &&
     !data.deleted_at;
 
   if (shouldNotifyAuthor) {

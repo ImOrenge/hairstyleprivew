@@ -52,6 +52,17 @@ interface FaqsResponse {
   error?: string;
 }
 
+type EmailNotification =
+  | { attempted: false; sent: false; reason: string }
+  | { attempted: true; sent: false; error: string }
+  | { attempted: true; sent: true; providerId: string | null };
+
+interface SavePostResponse {
+  post?: AdminSupportPost;
+  emailNotification?: EmailNotification;
+  error?: string;
+}
+
 const visibilityOptions = [
   { value: "all", label: "전체" },
   { value: "visible", label: "공개" },
@@ -76,6 +87,28 @@ function emptyFaqForm() {
   };
 }
 
+function supportEmailNotificationMessage(notification?: EmailNotification) {
+  if (!notification) return null;
+
+  if (notification.attempted) {
+    if (notification.sent) {
+      return { tone: "success" as const, text: "답변을 저장하고 고객에게 메일을 발송했습니다." };
+    }
+
+    return { tone: "warning" as const, text: `답변은 저장됐지만 메일 발송에 실패했습니다. ${notification.error}` };
+  }
+
+  if (notification.reason === "author_email_missing") {
+    return { tone: "warning" as const, text: "답변은 저장됐지만 작성자 이메일이 없어 메일을 보내지 못했습니다." };
+  }
+
+  if (notification.reason === "author_lookup_failed") {
+    return { tone: "warning" as const, text: "답변은 저장됐지만 작성자 정보를 불러오지 못해 메일을 보내지 못했습니다." };
+  }
+
+  return null;
+}
+
 export default function AdminSupportPage() {
   const [mode, setMode] = useState<"posts" | "faqs">("posts");
   const [query, setQuery] = useState("");
@@ -97,6 +130,7 @@ export default function AdminSupportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const postsUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -190,13 +224,14 @@ export default function AdminSupportPage() {
     if (!selectedPost) return;
     setBusyId(selectedPost.id);
     setError(null);
+    setNotice(null);
 
     const response = await fetch(`/api/admin/support/posts/${encodeURIComponent(selectedPost.id)}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(postEditor),
     });
-    const data = (await response.json().catch(() => ({}))) as { post?: AdminSupportPost; error?: string };
+    const data = (await response.json().catch(() => ({}))) as SavePostResponse;
 
     if (!response.ok || !data.post) {
       setError(data.error || "게시글 관리 정보 저장에 실패했습니다.");
@@ -211,6 +246,12 @@ export default function AdminSupportPage() {
       hidden: data.post.is_hidden,
       hiddenReason: data.post.hidden_reason || "",
     });
+    const notificationMessage = supportEmailNotificationMessage(data.emailNotification);
+    if (notificationMessage?.tone === "warning") {
+      setError(notificationMessage.text);
+    } else {
+      setNotice(notificationMessage?.text || "저장되었습니다.");
+    }
     setBusyId(null);
   }
 
@@ -291,6 +332,9 @@ export default function AdminSupportPage() {
 
       {error ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div>
+      ) : null}
+      {notice ? (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{notice}</div>
       ) : null}
 
       {mode === "posts" ? (
