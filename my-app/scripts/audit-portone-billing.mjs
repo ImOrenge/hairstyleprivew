@@ -78,6 +78,7 @@ assertIncludes(portone, 'amount:\\s*\\{\\s*total:\\s*input\\.amount\\s*\\}', "bi
 assertIncludes(portone, 'parsePortonePaymentResult\\(input\\.paymentId,\\s*data\\)', "billing-key charge must parse wrapped PortOne payment responses");
 assertIncludes(portone, 'verifyPortoneWebhook', "PortOne client module must re-export webhook verification");
 assertIncludes(portonePaymentId, 'PORTONE_PAYMENT_ID_MAX_LENGTH = 32', "PortOne paymentId helper must encode the external max length");
+assertIncludes(portonePaymentId, 'PORTONE_BILLING_KEY_ISSUE_ID_MAX_LENGTH = 40', "PortOne billing-key issueId helper must encode the INIStdPay oid max length");
 assertIncludes(portonePaymentId, 'Date\\.now\\(\\)\\.toString\\(36\\)', "PortOne paymentId helper must use a compact timestamp");
 assertIncludes(portonePaymentId, 'randomToken\\(12\\)', "PortOne paymentId helper must keep random suffix compact");
 assertIncludes(portoneWebhook, 'readHeader\\(headers, "webhook-id"\\)[\\s\\S]*readHeader\\(headers, "portone-webhook-id"\\)', "webhook verifier must accept PortOne webhook id header aliases");
@@ -118,6 +119,9 @@ const subscribeMetadata = subscribe.match(
 );
 assert.ok(subscribeMetadata, "web subscribe transaction metadata block must be auditable");
 assertIncludes(subscribe, 'buildPortonePaymentId\\("sub",\\s*plan\\)', "web subscribe must generate PortOne-safe short payment IDs");
+const billingKeyPrepare = assertFile("app/api/payments/billing-key/prepare/route.ts");
+assertIncludes(billingKeyPrepare, 'buildPortoneBillingKeyIssueId\\(plan\\)', "billing-key prepare must generate INIStdPay-safe short issue IDs");
+assertAbsent(billingKeyPrepare, 'crypto\\.randomUUID\\(\\)', "billing-key prepare must not use full UUID issue IDs");
 assertIncludes(mobilePrepare, 'buildPortonePaymentId\\("mob",\\s*body\\.plan\\)', "mobile prepare must generate PortOne-safe short payment IDs");
 assertIncludes(subscribe, 'status:\\s*"pending"', "web subscribe must create pending transaction before charge");
 assertIncludes(subscribe, 'pg_billing_key:\\s*null', "web subscribe must not store plaintext billing key for new rows");

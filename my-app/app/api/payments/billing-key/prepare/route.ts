@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 import {
   getBillingPlan,
   isSelfServeBillingPlanKey,
-  type SelfServeBillingPlanKey,
 } from "../../../../../lib/billing-plan";
+import { buildPortoneBillingKeyIssueId } from "../../../../../lib/portone-payment-id";
 
 interface PrepareBillingKeyRequest {
   plan?: unknown;
@@ -25,10 +25,6 @@ function readPublicPortoneConfig() {
       process.env.PORTONE_V2_CHANNEL_KEY?.trim() ||
       undefined,
   };
-}
-
-function createIssueId(plan: SelfServeBillingPlanKey, userId: string) {
-  return `issue-${plan}-${userId.slice(0, 8)}-${crypto.randomUUID()}`;
 }
 
 function readText(value: unknown, maxLength: number): string | undefined {
@@ -123,7 +119,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const issueId = createIssueId(plan, userId);
+  const issueId = buildPortoneBillingKeyIssueId(plan);
 
   return NextResponse.json(
     {

@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
+  PORTONE_BILLING_KEY_ISSUE_ID_MAX_LENGTH,
   PORTONE_PAYMENT_ID_MAX_LENGTH,
+  buildPortoneBillingKeyIssueId,
   buildPortonePaymentId,
 } from "../lib/portone-payment-id.ts";
 import { parsePortonePaymentResult } from "../lib/portone-payment-result.ts";
@@ -16,6 +18,13 @@ for (const plan of ["basic", "standard", "pro"]) {
     );
     assert.match(paymentId, /^(sub|mob|ren)-[bsp]-[a-z0-9]+-[a-z0-9]+$/);
   }
+
+  const issueId = buildPortoneBillingKeyIssueId(plan);
+  assert.ok(
+    issueId.length <= PORTONE_BILLING_KEY_ISSUE_ID_MAX_LENGTH,
+    `${plan} billing key issueId must be at most ${PORTONE_BILLING_KEY_ISSUE_ID_MAX_LENGTH} characters`,
+  );
+  assert.match(issueId, /^bki-[bsp]-[a-z0-9]+-[a-z0-9]+$/);
 }
 
 const wrappedPaid = parsePortonePaymentResult("pay_wrapped", {
