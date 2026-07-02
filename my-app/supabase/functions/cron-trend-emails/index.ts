@@ -3,12 +3,13 @@
  * Sends due trend_alerts to active paid subscription users.
  */
 
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") ?? "HairStyle <onboarding@resend.dev>";
+const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
+const RESEND_FROM_EMAIL = resolveResendFromEmail(Deno.env.get("RESEND_FROM_EMAIL"));
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
 
 const ALERT_BATCH_SIZE = 5;
@@ -31,8 +32,36 @@ type UserRow = {
   display_name: string | null;
 };
 
+type PublicSchema = {
+  Tables: Record<string, never>;
+  Views: Record<string, never>;
+  Functions: Record<string, never>;
+  Enums: Record<string, never>;
+  CompositeTypes: Record<string, never>;
+};
+
+type Database = {
+  public: PublicSchema;
+};
+
+type PublicSupabaseClient = SupabaseClient<
+  Database,
+  "public",
+  "public",
+  PublicSchema,
+  { PostgrestVersion: string }
+>;
+
+function resolveResendFromEmail(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed || /@resend\.dev\b/i.test(trimmed)) {
+    return PRODUCTION_FROM_EMAIL;
+  }
+  return trimmed;
+}
+
 async function fetchTargetSubscriptions(
-  supabase: ReturnType<typeof createClient>,
+  supabase: PublicSupabaseClient,
   targetPlans: string[],
 ): Promise<{ subscriptions: SubscriptionRow[]; error: string | null }> {
   const subscriptions: SubscriptionRow[] = [];
@@ -60,7 +89,7 @@ async function fetchTargetSubscriptions(
 }
 
 async function fetchSentUserIds(
-  supabase: ReturnType<typeof createClient>,
+  supabase: PublicSupabaseClient,
   alertId: string,
   userIds: string[],
 ): Promise<{ userIds: Set<string>; error: string | null }> {
@@ -89,7 +118,7 @@ async function fetchSentUserIds(
 }
 
 async function fetchUsersByIds(
-  supabase: ReturnType<typeof createClient>,
+  supabase: PublicSupabaseClient,
   userIds: string[],
 ): Promise<{ users: UserRow[]; error: string | null }> {
   const users: UserRow[] = [];

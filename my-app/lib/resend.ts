@@ -113,29 +113,36 @@ type CareEmailInput = {
   bodyHtml: string;
 };
 
+const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
+const RESEND_DEVELOPMENT_SENDER_PATTERN = /@resend\.dev\b/i;
+
+function stripDevelopmentSender(value: string) {
+  return RESEND_DEVELOPMENT_SENDER_PATTERN.test(value) ? "" : value;
+}
+
 function normalizeFromEmail(value?: string | null) {
   const trimmed = value?.trim();
   if (!trimmed) return "";
 
   if (/^[^@\s<>]+@[^@\s<>]+\.[^@\s<>]+$/.test(trimmed)) {
-    return trimmed;
+    return stripDevelopmentSender(trimmed);
   }
 
   if (/^.+<[^<>\s]+@[^<>\s]+\.[^<>\s]+>$/.test(trimmed)) {
-    return trimmed;
+    return stripDevelopmentSender(trimmed);
   }
 
   const looseMatch = trimmed.match(/^(.+?)\s+([^<>\s]+@[^<>\s]+\.[^<>\s]+)$/);
   if (looseMatch) {
-    return `${looseMatch[1].trim()} <${looseMatch[2].trim()}>`;
+    return stripDevelopmentSender(`${looseMatch[1].trim()} <${looseMatch[2].trim()}>`);
   }
 
-  return trimmed;
+  return stripDevelopmentSender(trimmed);
 }
 
 const env = process.env as Record<string, string | undefined>;
 const resendApiKey = env.RESEND_API_KEY?.trim();
-const defaultFromEmail = normalizeFromEmail(env.RESEND_FROM_EMAIL) || "HairFit <onboarding@resend.dev>";
+const defaultFromEmail = normalizeFromEmail(env.RESEND_FROM_EMAIL) || PRODUCTION_FROM_EMAIL;
 const MAX_LOGGED_EMAIL_BODY_LENGTH = 500_000;
 
 const EMAIL_COLORS = {

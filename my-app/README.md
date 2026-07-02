@@ -53,7 +53,7 @@ Optional:
 - `PRICING_SALON_CREDITS` (default: `500`)
 - `PRICING_SALON_PRICE_KRW` (default: `39900`)
 - `RESEND_API_KEY` (optional, payment success email notifications)
-- `RESEND_FROM_EMAIL` (optional, default: `HairStyle <onboarding@resend.dev>`)
+- `RESEND_FROM_EMAIL` (optional, default: `HairFit <noreply@hairfit.beauty>`)
 - `INBOUND_EMAIL_SECRET` (required for Cloudflare Email Routing Worker -> app webhook)
 - `BUSINESS_INBOUND_EMAIL` (optional, default: `busyness@hairfit.beauty`)
 - `SUPPORT_INBOUND_EMAIL` (optional, default: `support@hairfit.beauty`)
@@ -116,7 +116,7 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `BILLING_KEY_ENCRYPTION_SECRET`
 - `INTERNAL_API_SECRET`
 - `RESEND_API_KEY` (optional)
-- `RESEND_FROM_EMAIL` (optional)
+- `RESEND_FROM_EMAIL` (optional, use a verified HairFit sender; development Resend senders are ignored)
 - `INBOUND_EMAIL_SECRET` (required for inbound support email storage)
 - `BUSINESS_INBOUND_EMAIL` (optional, default: `busyness@hairfit.beauty`)
 - `SUPPORT_INBOUND_EMAIL` (optional, default: `support@hairfit.beauty`)

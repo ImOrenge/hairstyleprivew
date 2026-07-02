@@ -9,11 +9,19 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const RESEND_FROM_EMAIL =
-  Deno.env.get("RESEND_FROM_EMAIL") ?? "HairStyle <onboarding@resend.dev>";
+const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
+const RESEND_FROM_EMAIL = resolveResendFromEmail(Deno.env.get("RESEND_FROM_EMAIL"));
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
 
 const BATCH_SIZE = 50; // 1회 실행 당 최대 발송 수
+
+function resolveResendFromEmail(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed || /@resend\.dev\b/i.test(trimmed)) {
+    return PRODUCTION_FROM_EMAIL;
+  }
+  return trimmed;
+}
 
 async function sendEmail(
   to: string,

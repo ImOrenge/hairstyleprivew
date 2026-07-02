@@ -217,6 +217,15 @@ assertIncludes(resend, 'HairFit \\$\\{escapeHtml\\(planLabel\\)\\} 구독이 자
 assertIncludes(resend, '\\[HairFit\\] \\$\\{formatPlanLabel\\(input\\.plan\\)\\} 구독이 갱신되었습니다', "subscription renewal email subject must use HairFit branding");
 assertAbsent(resend, 'HairStyle \\$\\{escapeHtml\\(planLabel\\)\\} 구독이 자동 갱신', "subscription renewal email body must not use legacy HairStyle branding");
 assertAbsent(resend, '\\[HairStyle\\] \\$\\{formatPlanLabel\\(input\\.plan\\)\\} 구독이 갱신되었습니다', "subscription renewal email subject must not use legacy HairStyle branding");
+assertIncludes(resend, 'PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit\\.beauty>"', "app emails must default to the verified HairFit sender");
+assertAbsent(resend, 'onboarding@resend\\.dev', "app emails must not fall back to the Resend development sender");
+
+const envLocalExample = assertFile(".env.local.example");
+const devVarsExample = assertFile(".dev.vars.example");
+assertIncludes(envLocalExample, 'RESEND_FROM_EMAIL=HairFit <noreply@hairfit\\.beauty>', "local env example must use the verified HairFit sender");
+assertIncludes(devVarsExample, 'RESEND_FROM_EMAIL=HairFit <noreply@hairfit\\.beauty>', "Wrangler env example must use the verified HairFit sender");
+assertAbsent(envLocalExample, 'onboarding@resend\\.dev', "local env example must not suggest the Resend development sender");
+assertAbsent(devVarsExample, 'onboarding@resend\\.dev', "Wrangler env example must not suggest the Resend development sender");
 
 const cron = assertFile("supabase/functions/cron-subscription-renewal/index.ts");
 const cronMetadata = cron.match(
@@ -233,8 +242,16 @@ assertIncludes(cron, 'billing_key_storage', "renewal cron metadata must record s
 assertIncludes(cron, 'HairFit \\$\\{sub\\.plan_key\\.charAt\\(0\\)\\.toUpperCase\\(\\) \\+ sub\\.plan_key\\.slice\\(1\\)\\} - 월 구독', "renewal cron order names must use HairFit branding");
 assertAbsent(cron, 'HairStyle \\$\\{sub\\.plan_key\\.charAt\\(0\\)', "renewal cron order names must not use legacy HairStyle branding");
 assertAbsent(cron, '\\[HairStyle\\]', "renewal cron email subjects must not use legacy HairStyle branding");
-assertAbsent(cron, 'HairStyle <onboarding@resend\\.dev>', "renewal cron default sender must not use legacy HairStyle branding");
+assertIncludes(cron, 'PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit\\.beauty>"', "renewal cron must default to the verified HairFit sender");
+assertAbsent(cron, 'onboarding@resend\\.dev', "renewal cron must not fall back to the Resend development sender");
 assertAbsent(cronMetadata[0], '(^|[^_A-Za-z0-9])billing_key_hash\\s*:', "renewal cron metadata must not store billing_key_hash");
+
+const careCron = assertFile("supabase/functions/cron-care-emails/index.ts");
+const trendCron = assertFile("supabase/functions/cron-trend-emails/index.ts");
+assertIncludes(careCron, 'PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit\\.beauty>"', "care cron must default to the verified HairFit sender");
+assertIncludes(trendCron, 'PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit\\.beauty>"', "trend cron must default to the verified HairFit sender");
+assertAbsent(careCron, 'onboarding@resend\\.dev', "care cron must not fall back to the Resend development sender");
+assertAbsent(trendCron, 'onboarding@resend\\.dev', "trend cron must not fall back to the Resend development sender");
 
 const requiredMigrations = [
   "supabase/migrations/202606290001_update_billing_plan_pricing.sql",

@@ -21,12 +21,20 @@ const PORTONE_V2_CHANNEL_KEY =
 const BILLING_KEY_ENCRYPTION_SECRET =
   Deno.env.get("BILLING_KEY_ENCRYPTION_SECRET")?.trim() ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const RESEND_FROM_EMAIL =
-  Deno.env.get("RESEND_FROM_EMAIL") ?? "HairFit <onboarding@resend.dev>";
+const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
+const RESEND_FROM_EMAIL = resolveResendFromEmail(Deno.env.get("RESEND_FROM_EMAIL"));
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
+
+function resolveResendFromEmail(value?: string | null) {
+  const trimmed = value?.trim();
+  if (!trimmed || /@resend\.dev\b/i.test(trimmed)) {
+    return PRODUCTION_FROM_EMAIL;
+  }
+  return trimmed;
+}
 
 function base64ToBytes(value: string) {
   return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
