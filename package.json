@@ -18,6 +18,7 @@
     "portone:contract:test": "npm --prefix my-app run portone:contract:test",
     "portone:confirmation:test": "npm --prefix my-app run portone:confirmation:test",
     "portone:ui:smoke": "npm --prefix my-app run portone:ui:smoke --",
+    "portone:refund:smoke": "npm --prefix my-app run portone:refund:smoke",
     "portone:mobile:smoke": "node scripts/smoke-portone-mobile-integration.mjs",
     "portone:migration:check": "npm --prefix my-app run portone:migration:check",
     "portone:migration:apply": "npm --prefix my-app run portone:migration:apply --",

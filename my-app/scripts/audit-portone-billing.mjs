@@ -146,6 +146,7 @@ assertAbsent(subscribeMetadata[0], 'billingKeyHash\\s*[,}]', "web subscribe meta
 const webhook = assertFile("app/api/payments/webhook/route.ts");
 const webhookTestScript = assertFile("scripts/send-portone-webhook-test.mjs");
 const webhookDbSmokeScript = assertFile("scripts/smoke-portone-webhook-db.mjs");
+const refundSmokeScript = assertFile("scripts/smoke-portone-refund-requests.mjs");
 for (const eventName of [
   "Transaction.Paid",
   "Transaction.Failed",
@@ -206,6 +207,10 @@ assertIncludes(webhookDbSmokeScript, 'expected user credits to be clawed back to
 assertIncludes(webhookDbSmokeScript, 'expected no clawback rows for partial cancellation', "webhook DB smoke must verify partial cancellations do not claw back credits");
 assertIncludes(webhookDbSmokeScript, 'partial cancellation should not clear stored billing-key fields', "webhook DB smoke must verify partial cancellations keep billing keys");
 assertIncludes(webhookDbSmokeScript, 'pending events should keep subscription active', "webhook DB smoke must verify pending events keep subscriptions active");
+assertIncludes(refundSmokeScript, 'payment_refund_requests', "refund smoke must verify the refund request ledger");
+assertIncludes(refundSmokeScript, 'cancelPortonePayment', "refund smoke must verify the PortOne cancellation client");
+assertIncludes(refundSmokeScript, 'finalizePortoneRefundFromLookup', "refund smoke must verify approval finalization");
+assertIncludes(refundSmokeScript, 'RefundRequestButton', "refund smoke must verify mypage refund UX");
 assertIncludes(webhookDbSmokeScript, 'pending events should not clear stored billing-key fields', "webhook DB smoke must verify pending events keep billing keys");
 
 const webhookRoute = assertFile("app/api/payments/webhook/route.ts");
@@ -345,6 +350,7 @@ assertIncludes(migrationCheckScript, 'payment_transactions', "migration check mu
 assertIncludes(migrationCheckScript, 'provider_transaction_id', "migration check must detect missing provider transaction id column");
 assertIncludes(migrationCheckScript, 'payment_credit_clawbacks', "migration check must inspect credit clawback schema");
 assertIncludes(migrationCheckScript, 'claw_back_payment_credits', "migration check must inspect clawback RPC");
+assertIncludes(migrationCheckScript, 'payment_refund_requests', "migration check must inspect refund request ledger schema");
 assertIncludes(migrationCheckScript, 'apply/check migrations in order', "migration check must print migration remediation order");
 
 const migrationApplyScript = assertFile("scripts/apply-portone-migrations.mjs");
@@ -353,10 +359,12 @@ assertIncludes(migrationApplyScript, 'assertExpectedDryRun\\(dryRunOutput\\)', "
 assertIncludes(migrationApplyScript, 'PORTONE_MIGRATION_ALLOW_REMOTE_WRITE', "migration apply must require explicit write env");
 assertIncludes(migrationApplyScript, 'PORTONE_MIGRATION_CONFIRM_PROJECT_REF', "migration apply must require explicit project ref confirmation");
 assertIncludes(migrationApplyScript, 'npm", \\["run", "portone:migration:check"\\]', "migration apply must run post-push migration check");
+assertIncludes(migrationApplyScript, '20260702120012_payment_refund_requests\\.sql', "migration apply must allow the refund request migration");
 
 const appPackage = assertFile("package.json");
 assertIncludes(appPackage, '"portone:confirmation:test": "node --no-warnings scripts/verify-portone-confirmation-rules.mjs"', "my-app package must expose confirmation rules test command");
 assertIncludes(appPackage, '"portone:ui:smoke": "node scripts/smoke-portone-ui-routes.mjs"', "my-app package must expose UI route smoke command");
+assertIncludes(appPackage, '"portone:refund:smoke": "node --no-warnings scripts/smoke-portone-refund-requests.mjs"', "my-app package must expose refund request smoke command");
 assertIncludes(appPackage, '"portone:db:smoke": "node scripts/smoke-portone-billing-db.mjs"', "my-app package must expose DB smoke command");
 assertIncludes(appPackage, '"portone:webhook:db:smoke": "node scripts/smoke-portone-webhook-db.mjs"', "my-app package must expose webhook DB smoke command");
 assertIncludes(appPackage, '"portone:migration:check": "node scripts/check-portone-migration-status.mjs"', "my-app package must expose migration check command");
@@ -373,6 +381,7 @@ const launchReadinessScript = assertFile(resolve(root, "scripts/check-portone-la
 const webhookUnblockScript = assertFile(resolve(root, "scripts/unblock-portone-webhook-secret.mjs"));
 assertIncludes(rootPackage, '"portone:confirmation:test": "npm --prefix my-app run portone:confirmation:test"', "root package must proxy confirmation rules test command");
 assertIncludes(rootPackage, '"portone:ui:smoke": "npm --prefix my-app run portone:ui:smoke --"', "root package must proxy UI route smoke command with argument forwarding");
+assertIncludes(rootPackage, '"portone:refund:smoke": "npm --prefix my-app run portone:refund:smoke"', "root package must proxy refund request smoke command");
 assertIncludes(rootPackage, '"portone:mobile:smoke": "node scripts/smoke-portone-mobile-integration.mjs"', "root package must expose mobile PortOne smoke command");
 assertIncludes(rootPackage, '"portone:db:smoke": "npm --prefix my-app run portone:db:smoke --"', "root package must proxy DB smoke command with argument forwarding");
 assertIncludes(rootPackage, '"portone:webhook:db:smoke": "npm --prefix my-app run portone:webhook:db:smoke --"', "root package must proxy webhook DB smoke command with argument forwarding");
@@ -393,9 +402,11 @@ assertIncludes(preflightScript, 'profile=deploy', "preflight script must documen
 assertIncludes(preflightScript, 'npmRun\\("portone:audit"\\)', "preflight local profile must run static audit");
 assertIncludes(preflightScript, 'npmRun\\("portone:contract:test"\\)', "preflight local profile must run PortOne contract checks");
 assertIncludes(preflightScript, 'npmRun\\("portone:confirmation:test"\\)', "preflight local profile must run confirmation checks");
+assertIncludes(preflightScript, 'npmRun\\("portone:refund:smoke"\\)', "preflight local profile must run refund request smoke");
 assertIncludes(preflightScript, 'npmRun\\("portone:webhook:signature:test"\\)', "preflight local profile must run webhook signature checks");
 assertIncludes(preflightScript, 'npmRun\\("portone:mobile:smoke"\\)', "preflight local profile must run mobile PortOne smoke");
 assertIncludes(preflightScript, 'my-app/scripts/generate-billing-secret.mjs', "preflight script must syntax-check the billing secret generator");
+assertIncludes(preflightScript, 'my-app/scripts/smoke-portone-refund-requests.mjs', "preflight script must syntax-check the refund request smoke");
 assertIncludes(preflightScript, 'npmRun\\("typecheck"\\)', "preflight full-local profile must run typecheck");
 assertIncludes(preflightScript, 'deno check: cron-subscription-renewal', "preflight full-local profile must run renewal Edge Function Deno check");
 assertIncludes(preflightScript, 'my-app/supabase/functions/cron-subscription-renewal/index.ts', "preflight Deno check must target renewal Edge Function");
@@ -438,6 +449,12 @@ const retryMigration = read("supabase/migrations/202606290005_subscription_renew
 assertIncludes(retryMigration, 'pg_latest_payment_id = p_payment_id', "advance_subscription_period must store latest payment id");
 assertIncludes(retryMigration, 'renewal_failure_count = 0', "successful renewal must clear failure count");
 assertIncludes(retryMigration, 's\\.pg_billing_key_encrypted is not null[\\s\\S]*?or s\\.pg_billing_key is not null', "renewal RPC must include encrypted-key and legacy-key rows");
+
+const refundRequestMigration = read("supabase/migrations/20260702120012_payment_refund_requests.sql");
+assertIncludes(refundRequestMigration, 'create table if not exists public\\.payment_refund_requests', "refund request migration must create the ledger");
+assertIncludes(refundRequestMigration, 'idx_payment_refund_requests_one_open_per_payment', "refund request migration must prevent duplicate open requests");
+assertIncludes(refundRequestMigration, 'revoke all on table public\\.payment_refund_requests from anon, authenticated', "refund request migration must keep client roles off the ledger");
+assertIncludes(refundRequestMigration, 'grant select, insert, update on table public\\.payment_refund_requests to service_role', "refund request migration must grant service role access");
 
 const runbook = assertFile(resolve(root, "docs/portone-billing-operations-runbook.md"));
 for (const heading of [
@@ -494,6 +511,7 @@ assertIncludes(plan, 'portone:webhook:test -- --deployProbe', "integration plan 
 assertIncludes(plan, 'npm run portone:e2e:inspect', "integration plan must reference E2E payment inspector command");
 assertIncludes(plan, 'npm run portone:ui:smoke', "integration plan must reference UI route smoke command");
 assertIncludes(plan, 'npm run portone:mobile:smoke', "integration plan must reference mobile PortOne smoke command");
+assertIncludes(plan, 'npm run portone:refund:smoke', "integration plan must reference refund execution smoke command");
 assertIncludes(plan, 'Transaction.Ready', "integration plan must record local signed webhook route smoke");
 
 const migrationStatus = assertFile(resolve(root, "docs/portone-billing-migration-status.md"));

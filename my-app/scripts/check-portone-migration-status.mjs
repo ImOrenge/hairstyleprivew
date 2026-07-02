@@ -124,6 +124,31 @@ const schemaChecks = [
       "renewal_failure_message",
     ],
   },
+  {
+    id: "BILL-09-01",
+    migration: "20260702120012_payment_refund_requests.sql",
+    table: "payment_refund_requests",
+    columns: [
+      "id",
+      "payment_transaction_id",
+      "user_id",
+      "requested_by",
+      "approved_by",
+      "refund_type",
+      "amount_krw",
+      "reason",
+      "status",
+      "portone_cancel_id",
+      "requested_at",
+      "approved_at",
+      "completed_at",
+      "failed_code",
+      "failed_message",
+      "metadata",
+      "created_at",
+      "updated_at",
+    ],
+  },
 ];
 
 const rpcChecks = [

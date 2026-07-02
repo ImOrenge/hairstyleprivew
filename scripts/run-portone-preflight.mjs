@@ -111,9 +111,14 @@ function runLocalProfile() {
     "--check",
     "my-app/scripts/generate-billing-secret.mjs",
   ]);
+  run("syntax: PortOne refund request smoke", nodeBin, [
+    "--check",
+    "my-app/scripts/smoke-portone-refund-requests.mjs",
+  ]);
   npmRun("portone:audit");
   npmRun("portone:contract:test");
   npmRun("portone:confirmation:test");
+  npmRun("portone:refund:smoke");
   npmRun("portone:webhook:signature:test");
   npmRun("portone:mobile:smoke");
 }

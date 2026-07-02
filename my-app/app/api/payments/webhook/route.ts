@@ -436,6 +436,48 @@ function shouldNotifyRefundReview(transaction: PortonePaymentTransactionRow, eve
   return !(transaction.webhook_event_type === eventType && transaction.status === "refunded");
 }
 
+function isMissingRelation(message: string) {
+  const normalized = message.toLowerCase();
+  return normalized.includes("does not exist") || normalized.includes("schema cache");
+}
+
+async function markRefundRequestAfterCancellation(
+  supabase: {
+    from: (table: string) => {
+      update: (v: Record<string, unknown>) => {
+        eq: (c: string, v: unknown) => Promise<{ error: { message: string } | null }>;
+      };
+    };
+  },
+  transaction: PortonePaymentTransactionRow,
+  eventType: string,
+  status: "completed" | "manual_review_required",
+  details: Record<string, unknown>,
+) {
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("payment_refund_requests")
+    .update({
+      status,
+      completed_at: status === "completed" ? now : null,
+      failed_code: null,
+      failed_message: null,
+      metadata: {
+        source: "portone-webhook",
+        eventType,
+        paymentTransactionId: transaction.id,
+        ...details,
+      },
+    })
+    .eq("payment_transaction_id", transaction.id);
+
+  if (error && !isMissingRelation(error.message)) {
+    return { ok: false as const, message: error.message };
+  }
+
+  return { ok: true as const };
+}
+
 async function sendPaymentFailureNotification({
   supabase,
   request,
@@ -760,6 +802,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: clawback.message }, { status: 500 });
     }
 
+    const refundRequestUpdate = await markRefundRequestAfterCancellation(
+      supabase,
+      result.transaction,
+      type,
+      "completed",
+      {
+        creditClawback: clawback.row,
+      },
+    );
+
+    if (!refundRequestUpdate.ok) {
+      console.error("[webhook] 환불 요청 원장 완료 반영 실패:", refundRequestUpdate.message);
+      return NextResponse.json({ error: refundRequestUpdate.message }, { status: 500 });
+    }
+
     try {
       await sendRefundCompletedNotification({
         supabase,
@@ -795,6 +852,21 @@ export async function POST(request: Request) {
 
     if (!result.ok) {
       return paymentEventFailureResponse(result, "부분취소 이벤트 반영 실패");
+    }
+
+    const refundRequestUpdate = await markRefundRequestAfterCancellation(
+      supabase,
+      result.transaction,
+      type,
+      "manual_review_required",
+      {
+        partialCancellation: true,
+      },
+    );
+
+    if (!refundRequestUpdate.ok) {
+      console.error("[webhook] 부분 환불 요청 원장 반영 실패:", refundRequestUpdate.message);
+      return NextResponse.json({ error: refundRequestUpdate.message }, { status: 500 });
     }
 
     try {

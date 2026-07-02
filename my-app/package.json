@@ -12,6 +12,7 @@
     "portone:contract:test": "node --no-warnings scripts/verify-portone-contract.mjs",
     "portone:confirmation:test": "node --no-warnings scripts/verify-portone-confirmation-rules.mjs",
     "portone:audit": "node --no-warnings scripts/audit-portone-billing.mjs",
+    "portone:refund:smoke": "node --no-warnings scripts/smoke-portone-refund-requests.mjs",
     "portone:ui:smoke": "node scripts/smoke-portone-ui-routes.mjs",
     "portone:webhook:db:smoke": "node scripts/smoke-portone-webhook-db.mjs",
     "portone:migration:check": "node scripts/check-portone-migration-status.mjs",

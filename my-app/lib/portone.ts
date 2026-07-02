@@ -46,6 +46,26 @@ export interface PortOneConfirmBillingKeyInput {
   isTest?: boolean;
 }
 
+export type PortOneCancelRequester = "CUSTOMER" | "ADMIN";
+
+export interface PortOneCancelPaymentInput {
+  paymentId: string;
+  storeId?: string;
+  reason: string;
+  requester?: PortOneCancelRequester;
+  amount?: number;
+  taxFreeAmount?: number;
+  vatAmount?: number;
+  currentCancellableAmount?: number;
+}
+
+export interface PortOneCancelPaymentResult {
+  cancellationId: string | null;
+  status: string | null;
+  requestedAt: string | null;
+  raw: Record<string, unknown>;
+}
+
 // ─── 환경 설정 ─────────────────────────────────────────────────────────────
 
 export function isPortoneConfigured(): boolean {
@@ -213,6 +233,53 @@ export async function confirmBillingKeyIssue(
   }
 
   return billingKey;
+}
+
+/**
+ * 결제 취소/환불 요청
+ * POST /payments/{paymentId}/cancel
+ */
+export async function cancelPortonePayment(
+  input: PortOneCancelPaymentInput,
+): Promise<PortOneCancelPaymentResult> {
+  const url = `${PORTONE_API_BASE}/payments/${encodeURIComponent(input.paymentId)}/cancel`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      ...authHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      storeId: input.storeId?.trim() || readPortoneStoreId(),
+      reason: input.reason,
+      ...(input.requester ? { requester: input.requester } : {}),
+      ...(typeof input.amount === "number" ? { amount: input.amount } : {}),
+      ...(typeof input.taxFreeAmount === "number" ? { taxFreeAmount: input.taxFreeAmount } : {}),
+      ...(typeof input.vatAmount === "number" ? { vatAmount: input.vatAmount } : {}),
+      ...(typeof input.currentCancellableAmount === "number"
+        ? { currentCancellableAmount: input.currentCancellableAmount }
+        : {}),
+    }),
+  });
+
+  const data = await readPortoneJson(response);
+
+  if (!response.ok) {
+    throw new Error(
+      `PortOne 결제 취소 실패: ${formatPortoneHttpError(response.status, data)}`,
+    );
+  }
+
+  const cancellation = isRecord(data.cancellation) ? data.cancellation : data;
+  return {
+    cancellationId: stringValue(cancellation.id) || stringValue(cancellation.cancellationId),
+    status: stringValue(cancellation.status),
+    requestedAt:
+      stringValue(cancellation.requestedAt) ||
+      stringValue(cancellation.createdAt) ||
+      null,
+    raw: data,
+  };
 }
 
 /**

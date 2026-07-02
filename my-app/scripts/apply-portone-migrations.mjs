@@ -11,6 +11,7 @@ const expectedMigrations = [
   "202606290003_encrypt_portone_billing_keys.sql",
   "202606290004_payment_credit_clawback.sql",
   "202606290005_subscription_renewal_retry_tracking.sql",
+  "20260702120012_payment_refund_requests.sql",
 ];
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");

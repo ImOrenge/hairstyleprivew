@@ -1,6 +1,7 @@
 # PortOne Billing Migration Status
 
 작성일: 2026-06-30
+최근 갱신: 2026-07-02
 
 이 문서는 PortOne 빌링 연동을 위해 현재 연결된 Supabase DB의 migration 적용 상태를 기록한다.
 
@@ -12,13 +13,14 @@
 
 ## 적용 결과
 
-`2026-06-30` 기준으로 PortOne billing migration 5개가 remote history에 모두 적용되었다.
+`2026-07-02` 기준으로 PortOne billing migration 6개가 remote history에 모두 적용되었다.
 
 1. `202606290001_update_billing_plan_pricing.sql`
 2. `202606290002_payment_transaction_portone_tracking.sql`
 3. `202606290003_encrypt_portone_billing_keys.sql`
 4. `202606290004_payment_credit_clawback.sql`
 5. `202606290005_subscription_renewal_retry_tracking.sql`
+6. `20260702120012_payment_refund_requests.sql`
 
 적용 명령:
 
@@ -31,6 +33,8 @@ npm run portone:migration:apply -- --write
 
 첫 적용 중 `202606290005`에서 `get_subscriptions_due_for_renewal(timestamptz)` 반환 컬럼 추가로 Postgres `cannot change return type of existing function` 오류가 발생했다. `202606290005_subscription_renewal_retry_tracking.sql`에서 기존 함수를 먼저 `drop function if exists` 하도록 보정한 뒤, 남은 `202606290005`만 재적용해 성공했다.
 
+`2026-07-02`에 `20260702120012_payment_refund_requests.sql`을 같은 guarded apply 경로로 추가 적용했다. 적용 직전 dry-run은 pending migration이 해당 파일 1개뿐임을 확인했고, 적용 직후 `portone:migration:check`가 `payment_refund_requests` 핵심 컬럼까지 통과했다.
+
 ## Supabase CLI migration history
 
 명령:
@@ -41,7 +45,7 @@ supabase migration list --workdir my-app
 
 결과:
 
-- remote history가 `202606290001`부터 `202606290005`까지 모두 포함한다.
+- remote history가 `202606290001`부터 `20260702120012`까지 모두 포함한다.
 - `npm run portone:migration:apply` dry-run은 `Remote database is up to date`와 `no pending PortOne migrations`를 반환한다.
 
 ## 읽기 전용 schema/RPC 체크
@@ -58,6 +62,7 @@ npm run portone:migration:check
 - `user_subscriptions` 빌링키 암호문/해시 컬럼 확인 완료
 - `payment_credit_clawbacks` 테이블/핵심 컬럼 확인 완료
 - `user_subscriptions` 갱신 retry 컬럼 확인 완료
+- `payment_refund_requests` 환불 요청 원장 테이블/핵심 컬럼 확인 완료
 - `get_subscriptions_due_for_renewal`, `apply_payment_credits`, `grant_subscription_credits`, `advance_subscription_period`, `claw_back_payment_credits` RPC probe 통과
 
 ## DB smoke

@@ -9,6 +9,7 @@ import {
   type MemberProfileRow,
   type MyPageTabId,
   type PaymentTransactionRow,
+  type RefundRequestRow,
   type SubscriptionRow,
   type UserProfileRow,
   type UserStyleProfileRow,
@@ -136,6 +137,7 @@ export default async function MyPage({
   let profile: UserProfileRow | null = null;
   let generations: GenerationRow[] = [];
   let payments: PaymentTransactionRow[] = [];
+  let refundRequests: RefundRequestRow[] = [];
   let memberProfile: MemberProfileRow | null = null;
   let personalColor: PersonalColorResult | null = null;
   let hairRecords: HairRecordRow[] = [];
@@ -157,6 +159,7 @@ export default async function MyPage({
     const [
       generationResult,
       paymentResult,
+      refundRequestResult,
       memberProfileResult,
       styleProfileResult,
       hairRecordResult,
@@ -174,6 +177,12 @@ export default async function MyPage({
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(6),
+      supabase
+        .from<RefundRequestRow>("payment_refund_requests")
+        .select("id,payment_transaction_id,status,refund_type,amount_krw,reason,requested_at,approved_at,completed_at,failed_code,failed_message")
+        .eq("user_id", userId)
+        .order("requested_at", { ascending: false })
+        .limit(12),
       supabase
         .from<MemberProfileRow>("member_profiles")
         .select("display_name, style_target, preferred_style_tone")
@@ -201,6 +210,7 @@ export default async function MyPage({
 
     if (!generationResult.error && generationResult.data) generations = generationResult.data;
     if (!paymentResult.error && paymentResult.data) payments = paymentResult.data;
+    if (!refundRequestResult.error && refundRequestResult.data) refundRequests = refundRequestResult.data;
     if (!memberProfileResult.error) {
       memberProfile = {
         display_name:
@@ -234,6 +244,7 @@ export default async function MyPage({
       generations={generations}
       hairRecords={hairRecords}
       payments={payments}
+      refundRequests={refundRequests}
       memberProfile={memberProfile}
       personalColor={personalColor}
       profile={profile}

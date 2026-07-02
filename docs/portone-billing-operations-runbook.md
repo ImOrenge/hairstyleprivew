@@ -162,8 +162,8 @@ npm run portone:webhook:db:smoke -- --scenario=billing-key-deleted-legacy --url=
 ## 2. 배포 순서
 
 1. `npm --prefix my-app run portone:migration:check`로 현재 DB의 누락 schema/RPC를 확인한다.
-2. `supabase db push --dry-run --workdir my-app` 또는 `npm run portone:migration:apply`로 적용 예정 migration이 `202606290001`부터 `202606290005`까지인지 확인한다.
-3. `PORTONE_MIGRATION_ALLOW_REMOTE_WRITE=1`과 `PORTONE_MIGRATION_CONFIRM_PROJECT_REF=<project-ref>`를 설정한 뒤 `npm run portone:migration:apply -- --write`로 Supabase migration 5개를 순서대로 적용한다.
+2. `supabase db push --dry-run --workdir my-app` 또는 `npm run portone:migration:apply`로 적용 예정 migration이 PortOne billing migration 목록의 전체 또는 미적용 suffix인지 확인한다.
+3. `PORTONE_MIGRATION_ALLOW_REMOTE_WRITE=1`과 `PORTONE_MIGRATION_CONFIRM_PROJECT_REF=<project-ref>`를 설정한 뒤 `npm run portone:migration:apply -- --write`로 Supabase migration을 순서대로 적용한다.
 4. `npm --prefix my-app run portone:migration:check`가 통과하는지 다시 확인한다.
 5. 테스트 DB에서 `npm --prefix my-app run portone:db:smoke`와 `npm --prefix my-app run portone:db:smoke -- --write`를 실행해 `get_subscriptions_due_for_renewal`, `grant_subscription_credits`, `apply_payment_credits`, `advance_subscription_period`, `claw_back_payment_credits` 호출과 idempotency를 확인한다.
 6. 앱 환경 변수와 Edge Function 환경 변수를 테스트 값으로 등록한다.
@@ -210,7 +210,7 @@ npm run portone:preflight -- --profile=deploy --webhookUrl=https://hairfit.beaut
 
 ### 3.0 DB/RPC smoke
 
-1. 테스트 DB에 migration 5개를 적용한다.
+1. 테스트 DB에 PortOne billing migration 전체를 적용한다.
 2. `npm --prefix my-app run portone:migration:check`가 통과하는지 확인한다.
 3. `PORTONE_DB_SMOKE_CONFIRM_TEST_DB=1`로 schema/RPC probe를 실행한다.
 4. `PORTONE_DB_SMOKE_ALLOW_WRITE=1`을 추가해 write smoke를 실행한다.
@@ -263,7 +263,7 @@ npm run portone:e2e:inspect -- --paymentId=<mobile-payment-id> --plan=basic --so
 
 ### 3.4 환불 실행 플로우 smoke
 
-앱 내부 환불 실행 API를 추가한 뒤에만 이 smoke를 릴리즈 게이트에 포함한다. 현재 구현은 PortOne 취소 웹훅 후처리까지만 지원한다.
+앱 내부 환불 실행 API가 추가된 뒤에는 이 smoke를 릴리즈 게이트에 포함한다. 2026-07-02 로컬 브랜치 기준 구현은 사용자 요청 원장, 관리자 승인 API, PortOne 취소 함수, 마이페이지/관리자 UX까지 포함한다.
 
 1. 테스트 Basic 결제를 만들고 `npm run portone:e2e:inspect -- --paymentId=<payment-id> --plan=basic --source=web`를 통과시킨다.
 2. 사용자 환불 요청 API가 `payment_refund_requests.pending` row를 만들고 같은 거래의 중복 pending 요청을 409로 막는지 확인한다.
@@ -271,6 +271,7 @@ npm run portone:e2e:inspect -- --paymentId=<mobile-payment-id> --plan=basic --so
 4. 전액 환불 승인 후 `Transaction.Cancelled` 웹훅 또는 취소 후 단건 조회로 `payment_transactions.status=refunded`, `payment_credit_clawbacks` 1건, `payment_refund_requests.completed`를 확인한다.
 5. 같은 승인 요청을 다시 보내도 PortOne 취소 API가 중복 호출되지 않고 기존 request 상태를 반환하는지 확인한다.
 6. 부분환불은 정책 확정 전까지 `manual_review_required`와 운영 검토 metadata만 남고 자동 크레딧 회수가 발생하지 않는지 확인한다.
+7. 로컬 정적 확인은 `npm run portone:refund:smoke`로 요청 원장, 승인 API, PortOne 취소 함수, 마이페이지/관리자 UX 연결을 확인한다.
 
 ### 3.5 로컬 signed webhook
 
@@ -365,7 +366,7 @@ npm run portone:migration:apply -- --write
 
 ### 4.5 환불 요청 처리
 
-현재 운영자가 PortOne 콘솔에서 직접 환불하면 앱은 `Transaction.Cancelled`/`Transaction.PartialCancelled` 웹훅을 받아 후처리한다. 앱 내부 환불 실행 API가 추가된 뒤에는 아래 순서를 따른다.
+운영자가 PortOne 콘솔에서 직접 환불하면 앱은 `Transaction.Cancelled`/`Transaction.PartialCancelled` 웹훅을 받아 후처리한다. 앱 내부 환불 요청/승인 API를 사용할 때는 아래 순서를 따른다.
 
 1. `payment_transactions.provider_order_id`와 PortOne 콘솔의 결제 상태가 같은지 확인한다.
 2. 환불 요청자, 사유, 전액/부분 환불 여부, 요청 금액을 `payment_refund_requests`에 기록한다.

@@ -17,6 +17,7 @@ import { PortoneSubscriptionButton, type SelfServeSubscriptionPlanKey } from "..
 import { PersonalColorResultDetails } from "../personal-color/PersonalColorResultDetails";
 import { AppPage, Panel, SurfaceCard } from "../ui/Surface";
 import { MemberGenderForm } from "./MemberGenderForm";
+import { RefundRequestButton } from "./RefundRequestButton";
 import { StyleProfileForm } from "./StyleProfileForm";
 import { SubscriptionCancelButton } from "./SubscriptionCancelButton";
 
@@ -39,6 +40,20 @@ export interface PaymentTransactionRow {
   webhook_event_type?: string | null;
   webhook_received_at?: string | null;
   metadata?: unknown;
+}
+
+export interface RefundRequestRow {
+  id: string;
+  payment_transaction_id: string;
+  status: string | null;
+  refund_type: string | null;
+  amount_krw: number | null;
+  reason: string | null;
+  requested_at: string;
+  approved_at?: string | null;
+  completed_at?: string | null;
+  failed_code?: string | null;
+  failed_message?: string | null;
 }
 
 export interface GenerationRow {
@@ -101,6 +116,7 @@ interface MyPageDashboardTabsProps {
   generations: GenerationRow[];
   hairRecords: HairRecordRow[];
   payments: PaymentTransactionRow[];
+  refundRequests: RefundRequestRow[];
   memberProfile: MemberProfileRow | null;
   personalColor: PersonalColorResult | null;
   profile: UserProfileRow | null;
@@ -300,6 +316,30 @@ function getPaymentFailureText(payment: PaymentTransactionRow | null): string | 
   const code = payment.failure_code?.trim() || getMetadataString(payment.metadata, "failureCode");
   if (message && code) return `${message} (${code})`;
   return message || code || null;
+}
+
+function formatRefundStatus(status: string | null | undefined): string {
+  const normalized = status?.trim().toLowerCase();
+  if (!normalized) return "환불 상태 없음";
+  if (normalized === "pending") return "환불 검토 중";
+  if (normalized === "approved") return "환불 승인됨";
+  if (normalized === "completed") return "환불 완료";
+  if (normalized === "failed") return "환불 실패";
+  if (normalized === "manual_review_required") return "수동 검토";
+  if (normalized === "rejected") return "환불 반려";
+  return normalized;
+}
+
+function getRefundStatusTone(status: string | null | undefined): string {
+  const normalized = status?.trim().toLowerCase();
+  if (normalized === "completed") return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+  if (normalized === "failed" || normalized === "rejected") return "bg-rose-50 text-rose-700 ring-1 ring-rose-200";
+  return "bg-amber-50 text-amber-800 ring-1 ring-amber-200";
+}
+
+function canRequestRefund(payment: PaymentTransactionRow, refundRequest: RefundRequestRow | null): boolean {
+  if (refundRequest) return false;
+  return payment.status?.trim().toLowerCase() === "paid";
 }
 
 function getSubscriptionFailureText(subscription: SubscriptionRow | null): string | null {
@@ -516,10 +556,12 @@ function UsagePanel({ generations }: { generations: GenerationRow[] }) {
 function PlanPanel({
   activePlan,
   payments,
+  refundRequests,
   subscription,
 }: {
   activePlan: string;
   payments: PaymentTransactionRow[];
+  refundRequests: RefundRequestRow[];
   subscription: SubscriptionRow | null;
 }) {
   const activeSubscription = isActiveSubscription(subscription);
@@ -533,6 +575,9 @@ function PlanPanel({
     getPaymentFailureText(latestFailedPayment) ?? getSubscriptionFailureText(subscription);
   const selfServePlans = getSuggestedPricingTiers().filter((tier) =>
     tier.key === "basic" || tier.key === "standard" || tier.key === "pro",
+  );
+  const refundRequestByPaymentId = new Map(
+    refundRequests.map((item) => [item.payment_transaction_id, item]),
   );
 
   return (
@@ -645,7 +690,10 @@ function PlanPanel({
               결제 기록이 없습니다.
             </SurfaceCard>
           ) : (
-            payments.map((item) => (
+            payments.map((item) => {
+              const refundRequest = refundRequestByPaymentId.get(item.id) ?? null;
+
+              return (
               <SurfaceCard key={item.id} className="px-4 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -667,11 +715,31 @@ function PlanPanel({
                         {item.webhook_received_at ? ` / ${formatDate(item.webhook_received_at)}` : ""}
                       </p>
                     ) : null}
+                    {refundRequest ? (
+                      <div className="mt-3 grid gap-1 text-xs leading-5 text-[var(--app-muted)]">
+                        <p>
+                          <span className={`rounded-[var(--app-radius-control)] px-2 py-1 font-bold ${getRefundStatusTone(refundRequest.status)}`}>
+                            {formatRefundStatus(refundRequest.status)}
+                          </span>
+                        </p>
+                        <p>요청일: {formatDate(refundRequest.requested_at)}</p>
+                        {refundRequest.failed_message ? (
+                          <p className="font-semibold text-rose-600">
+                            {refundRequest.failed_message}
+                            {refundRequest.failed_code ? ` (${refundRequest.failed_code})` : ""}
+                          </p>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {canRequestRefund(item, refundRequest) ? (
+                      <RefundRequestButton paymentTransactionId={item.id} />
+                    ) : null}
                   </div>
                   <p className="text-right text-xs text-[var(--app-muted)]">{formatDate(item.paid_at ?? item.created_at)}</p>
                 </div>
               </SurfaceCard>
-            ))
+              );
+            })
           )}
         </div>
       </div>
@@ -841,6 +909,7 @@ function ActiveTabPanel({
   generations,
   hairRecords,
   payments,
+  refundRequests,
   memberProfile,
   personalColor,
   subscription,
@@ -853,13 +922,14 @@ function ActiveTabPanel({
   generations: GenerationRow[];
   hairRecords: HairRecordRow[];
   payments: PaymentTransactionRow[];
+  refundRequests: RefundRequestRow[];
   memberProfile: MemberProfileRow | null;
   personalColor: PersonalColorResult | null;
   subscription: SubscriptionRow | null;
   viewerName: string;
 }) {
   if (activeTab === "plan") {
-    return <PlanPanel activePlan={activePlan} payments={payments} subscription={subscription} />;
+    return <PlanPanel activePlan={activePlan} payments={payments} refundRequests={refundRequests} subscription={subscription} />;
   }
 
   if (activeTab === "aftercare") {
@@ -895,6 +965,7 @@ export function MyPageDashboardTabs({
   generations,
   hairRecords,
   payments,
+  refundRequests,
   memberProfile,
   personalColor,
   profile,
@@ -979,6 +1050,7 @@ export function MyPageDashboardTabs({
         generations={generations}
         hairRecords={hairRecords}
         payments={payments}
+        refundRequests={refundRequests}
         memberProfile={memberProfile}
         personalColor={personalColor}
         subscription={subscription}
