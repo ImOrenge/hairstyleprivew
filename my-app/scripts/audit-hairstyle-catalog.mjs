@@ -46,6 +46,8 @@ assert(catalog.includes("enqueueCatalogRotationTrendAlert"), "missing trend aler
 assert(catalog.includes("trend_alert_enqueue_failed"), "missing alert enqueue failure isolation warning");
 assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup builder");
 assert(catalog.includes("buildLineupBackedRecommendations"), "missing lineup-backed recommendation builder");
+const topNineBody = catalog.match(/function buildTopNine\([\s\S]*?function buildLineupBackedRecommendations/);
+assert(topNineBody && topNineBody[0].includes("if (limit <= 0)") && topNineBody[0].includes("selected.length >= limit"), "lineup fallback builder must enforce recommendation limit");
 assert(catalog.includes("computeLineupOverlap"), "missing lineup overlap calculation");
 assert(catalog.includes("overlap_warning"), "missing lineup overlap warning event");
 const generateBody = catalog.match(/export async function generateCatalogBackedRecommendationSet\([\s\S]*?return \{[\s\S]*?selectionContext,[\s\S]*?\};\n\}/);
@@ -85,6 +87,7 @@ console.log(JSON.stringify({
     "activation lineup guard",
     "lineup builder",
     "lineup-backed recommendations",
+    "lineup fallback limit",
     "overlap warning",
     "no automatic seeded fallback",
     "cron names",

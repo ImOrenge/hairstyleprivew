@@ -1290,6 +1290,10 @@ function buildTopNine(
   startRank = 1,
   limit = 9,
 ): CatalogBackedRecommendationCandidate[] {
+  if (limit <= 0) {
+    return [];
+  }
+
   const scored = rows
     .map((row) => ({ row, score: scoreCatalogRow(row, context) }))
     .sort((a, b) => b.score - a.score);
@@ -1299,6 +1303,10 @@ function buildTopNine(
   const requiredBuckets: RecommendationLengthBucket[] = ["short", "medium", "long"];
 
   for (const bucket of requiredBuckets) {
+    if (selected.length >= limit) {
+      break;
+    }
+
     const match = scored.find((item) => item.row.lengthBucket === bucket && !picked.has(item.row.id));
     if (match) {
       selected.push(match);
