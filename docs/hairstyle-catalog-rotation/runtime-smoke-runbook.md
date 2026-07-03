@@ -36,7 +36,7 @@
 | 10 | recommendation smoke | 남성/여성 사용자 추천 생성 | 각 target에서 active cycle 기반 9개 lineup을 반환한다. |
 | 11 | alert idempotency | `npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert` | `catalog_rotation` alert가 cycle당 1개만 존재한다. |
 | 12 | failure fallback | 강제 실패 조건에서 rebuild 호출 | failed cycle만 기록되고 기존 active cycle은 유지된다. |
-| 13 | post-rotation mail | `cron-trend-emails-post-rotation` 실행 또는 함수 수동 호출 | due alert delivery가 중복 없이 기록된다. |
+| 13 | post-rotation mail | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 기본은 due alert가 있으면 실제 메일 발송 방지를 위해 거부한다. 의도한 live smoke는 `--allowPendingAlerts --expectPendingCatalogAlert`를 붙이고, due alert delivery가 중복 없이 기록되는지 확인한다. |
 
 ## SQL 확인
 
@@ -56,6 +56,7 @@
 | `supabase db push --dry-run --workdir my-app` | 통과 |
 | `npm run hairstyle:catalog:env:check` | 스크립트 추가. 실제 runtime env 값 필요 |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=readonly` | 스크립트 추가. 실제 배포 앱 URL과 admin secret 필요 |
+| `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 스크립트 보강. 실제 Supabase service role과 함수 URL 필요 |
 | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false` |
 | remote pending migrations | `202607030001_plan_credit_policy_aftercare.sql`, `20260703092000_hairstyle_catalog_rotation.sql`, `20260703093000_hairstyle_catalog_rotation_cron.sql`, `20260703094000_hairstyle_catalog_rotation_event_rpc.sql` |
 | 주의 | 실제 `supabase db push`는 선행 pending migration `202607030001_plan_credit_policy_aftercare.sql`도 함께 적용한다. |

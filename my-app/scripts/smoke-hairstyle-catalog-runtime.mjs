@@ -63,6 +63,8 @@ Usage:
   npm run hairstyle:catalog:runtime:smoke -- --mode=rotation-check --write --confirmAppUrl=https://hairfit.beauty
   npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=https://hairfit.beauty
   npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert
+  npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function
+  npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function --allowPendingAlerts --expectPendingCatalogAlert
 
 Modes:
   status             GET admin latest status and validate the response shape.
@@ -71,15 +73,20 @@ Modes:
   rotation-check     POST onlyIfDue rotation check. Requires --write confirmation.
   force-rebuild      POST force rebuild. Requires --write, --allowForceRebuild, and confirmation.
   alert-idempotency  Query trend_alerts and verify catalog_rotation alert count is <= 1.
+  trend-mail-function Invoke cron-trend-emails only when no due alerts exist, unless explicitly allowed.
 
 Env or args:
   NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_SITE_URL / APP_URL / SITE_URL
   INTERNAL_API_SECRET
   SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL
   SUPABASE_SERVICE_ROLE_KEY
+  SUPABASE_EDGE_FUNCTION_BASE_URL / EDGE_FUNCTION_BASE_URL
   --appUrl=https://hairfit.beauty
   --confirmAppUrl=https://hairfit.beauty
   --cycleId=<catalog-cycle-id>
+  --functionUrl=https://<project-ref>.functions.supabase.co/cron-trend-emails
+  --allowPendingAlerts
+  --expectPendingCatalogAlert
   --allowNoActive
   HAIRSTYLE_CATALOG_RUNTIME_SMOKE_TIMEOUT_MS=120000
   HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL=https://hairfit.beauty
@@ -110,6 +117,28 @@ function readAppUrl() {
 
 function readSupabaseUrl() {
   return readEnv("SUPABASE_URL") || readEnv("NEXT_PUBLIC_SUPABASE_URL");
+}
+
+function deriveEdgeFunctionBaseUrl() {
+  const explicit = readEnv("SUPABASE_EDGE_FUNCTION_BASE_URL") || readEnv("EDGE_FUNCTION_BASE_URL");
+  if (explicit) return parseUrl(explicit, "Supabase Edge Function base URL").origin;
+
+  const supabaseUrl = parseUrl(readSupabaseUrl(), "Supabase URL");
+  const hostname = supabaseUrl.hostname.toLowerCase();
+  if (hostname.endsWith(".supabase.co")) {
+    return `https://${hostname.replace(/\.supabase\.co$/, ".functions.supabase.co")}`;
+  }
+  if (hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1") {
+    return supabaseUrl.origin + "/functions/v1";
+  }
+
+  throw new Error("Cannot derive Edge Function base URL from Supabase URL. Pass --functionUrl.");
+}
+
+function readTrendMailFunctionUrl() {
+  const explicit = getArg("functionUrl") || readEnv("SUPABASE_TREND_MAIL_FUNCTION_URL") || readEnv("TREND_MAIL_FUNCTION_URL");
+  if (explicit) return parseUrl(explicit, "trend mail function URL").toString();
+  return `${deriveEdgeFunctionBaseUrl().replace(/\/$/, "")}/cron-trend-emails`;
 }
 
 function readTimeoutMs() {
@@ -205,6 +234,19 @@ async function fetchJson(url, options = {}) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+function supabaseRestHeaders() {
+  const serviceRoleKey = requireSecret("SUPABASE_SERVICE_ROLE_KEY");
+  return {
+    apikey: serviceRoleKey,
+    authorization: `Bearer ${serviceRoleKey}`,
+  };
+}
+
+function supabaseRestUrl(path) {
+  const supabaseUrl = parseUrl(readSupabaseUrl(), "Supabase URL").origin;
+  return new URL(`${supabaseUrl}/rest/v1/${path}`);
 }
 
 async function adminRequest(path, options = {}) {
@@ -384,8 +426,6 @@ async function runForceRebuildSmoke() {
 }
 
 async function runAlertIdempotencySmoke() {
-  const supabaseUrl = parseUrl(readSupabaseUrl(), "Supabase URL").origin;
-  const serviceRoleKey = requireSecret("SUPABASE_SERVICE_ROLE_KEY");
   let cycleId = getArg("cycleId");
 
   if (!cycleId) {
@@ -395,16 +435,13 @@ async function runAlertIdempotencySmoke() {
   }
   assert(cycleId, "Missing active cycle id for alert idempotency smoke.");
 
-  const url = new URL(`${supabaseUrl}/rest/v1/trend_alerts`);
+  const url = supabaseRestUrl("trend_alerts");
   url.searchParams.set("select", "id,catalog_cycle_id,alert_type,scheduled_send_at,sent_at");
   url.searchParams.set("catalog_cycle_id", `eq.${cycleId}`);
   url.searchParams.set("alert_type", "eq.catalog_rotation");
 
   const rows = await fetchJson(url.toString(), {
-    headers: {
-      apikey: serviceRoleKey,
-      authorization: `Bearer ${serviceRoleKey}`,
-    },
+    headers: supabaseRestHeaders(),
   });
   assert(Array.isArray(rows), "trend_alerts REST response must be an array");
   assert(rows.length <= 1, `catalog_rotation alert must be idempotent, got ${rows.length}`);
@@ -418,6 +455,109 @@ async function runAlertIdempotencySmoke() {
     cycleId,
     alertCount: rows.length,
     alertId: rows[0]?.id ?? null,
+  }, null, 2));
+}
+
+async function readDueTrendAlerts() {
+  const url = supabaseRestUrl("trend_alerts");
+  url.searchParams.set("select", "id,catalog_cycle_id,alert_type,scheduled_send_at,target_plans,sent_at");
+  url.searchParams.set("sent_at", "is.null");
+  url.searchParams.set("scheduled_send_at", `lte.${new Date().toISOString()}`);
+  url.searchParams.set("order", "scheduled_send_at.asc");
+  url.searchParams.set("limit", "25");
+
+  const rows = await fetchJson(url.toString(), {
+    headers: supabaseRestHeaders(),
+  });
+  assert(Array.isArray(rows), "trend_alerts REST response must be an array");
+  return rows;
+}
+
+async function readDeliveryRows(alertIds) {
+  if (alertIds.length === 0) return [];
+
+  const url = supabaseRestUrl("trend_alert_deliveries");
+  url.searchParams.set("select", "id,alert_id,user_id,status");
+  url.searchParams.set("alert_id", `in.(${alertIds.join(",")})`);
+  url.searchParams.set("order", "alert_id.asc");
+
+  const rows = await fetchJson(url.toString(), {
+    headers: supabaseRestHeaders(),
+  });
+  assert(Array.isArray(rows), "trend_alert_deliveries REST response must be an array");
+  return rows;
+}
+
+function assertNoDuplicateDeliveries(deliveries) {
+  const seen = new Set();
+  const duplicates = [];
+  for (const delivery of deliveries) {
+    const key = `${delivery.alert_id}:${delivery.user_id}`;
+    if (seen.has(key)) {
+      duplicates.push(key);
+    }
+    seen.add(key);
+  }
+  assert(duplicates.length === 0, `trend alert deliveries must be idempotent, duplicates=${duplicates.join(",")}`);
+}
+
+async function invokeTrendMailFunction(functionUrl) {
+  const serviceRoleKey = requireSecret("SUPABASE_SERVICE_ROLE_KEY");
+  return fetchJson(functionUrl, {
+    method: "POST",
+    headers: {
+      ...supabaseRestHeaders(),
+      authorization: `Bearer ${serviceRoleKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ smoke: true }),
+  });
+}
+
+async function runTrendMailFunctionSmoke() {
+  const functionUrl = readTrendMailFunctionUrl();
+  const dueAlerts = await readDueTrendAlerts();
+  const dueCatalogAlerts = dueAlerts.filter((alert) => alert.alert_type === "catalog_rotation");
+  const allowPendingAlerts = hasFlag("--allowPendingAlerts");
+
+  if (hasFlag("--expectPendingCatalogAlert")) {
+    assert(dueCatalogAlerts.length > 0, "expected at least one due catalog_rotation alert");
+  }
+
+  if (dueAlerts.length > 0 && !allowPendingAlerts) {
+    console.log(JSON.stringify({
+      ok: false,
+      mode: "trend-mail-function",
+      invoked: false,
+      functionUrl,
+      dueAlerts: dueAlerts.length,
+      dueCatalogAlerts: dueCatalogAlerts.length,
+      message: "refusing to invoke because due trend alerts can send real email",
+    }, null, 2));
+    throw new Error("Due trend alerts exist. Re-run with --allowPendingAlerts only for an intentional live mail smoke.");
+  }
+
+  const response = await invokeTrendMailFunction(functionUrl);
+  assert(Number.isFinite(response.sent), "trend mail function response missing sent count");
+  assert(Number.isFinite(response.failed), "trend mail function response missing failed count");
+  assert(response.failed === 0, `trend mail function reported failed=${response.failed}`);
+  if (dueAlerts.length === 0) {
+    assert(response.sent === 0, `no-due trend mail smoke expected sent=0, got ${response.sent}`);
+  }
+
+  const deliveryRows = await readDeliveryRows(dueCatalogAlerts.map((alert) => alert.id));
+  assertNoDuplicateDeliveries(deliveryRows);
+
+  console.log(JSON.stringify({
+    ok: true,
+    mode: "trend-mail-function",
+    invoked: true,
+    functionUrl,
+    dueAlerts: dueAlerts.length,
+    dueCatalogAlerts: dueCatalogAlerts.length,
+    sent: response.sent,
+    failed: response.failed,
+    deliveryRows: deliveryRows.length,
   }, null, 2));
 }
 
@@ -455,8 +595,14 @@ async function main() {
     await runAlertIdempotencySmoke();
     return;
   }
+  if (mode === "trend-mail-function") {
+    await runTrendMailFunctionSmoke();
+    return;
+  }
 
-  throw new Error("Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, or alert-idempotency.");
+  throw new Error(
+    "Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, alert-idempotency, or trend-mail-function.",
+  );
 }
 
 main().catch((error) => {

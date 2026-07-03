@@ -119,11 +119,16 @@ assert(runtimeSmokeScript.includes("mode=dry-run"), "runtime smoke runner must e
 assert(runtimeSmokeScript.includes("mode=rotation-check"), "runtime smoke runner must expose rotation-check mode");
 assert(runtimeSmokeScript.includes("mode=force-rebuild"), "runtime smoke runner must expose force-rebuild mode");
 assert(runtimeSmokeScript.includes("mode=alert-idempotency"), "runtime smoke runner must expose alert idempotency mode");
+assert(runtimeSmokeScript.includes("mode=trend-mail-function"), "runtime smoke runner must expose trend mail function mode");
 assert(runtimeSmokeScript.includes("requireWriteConfirmation"), "runtime smoke runner must guard mutating calls");
 assert(runtimeSmokeScript.includes("HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL"), "runtime smoke runner must support target confirmation env");
 assert(runtimeSmokeScript.includes("beforeActiveCycleId === afterActiveCycleId"), "runtime smoke dry-run must verify active cycle is unchanged");
 assert(runtimeSmokeScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime smoke alert query must use service role env");
 assert(runtimeSmokeScript.includes("rows.length <= 1"), "runtime smoke must verify catalog_rotation alert idempotency");
+assert(runtimeSmokeScript.includes("cron-trend-emails"), "runtime smoke runner must target the trend mail Edge Function");
+assert(runtimeSmokeScript.includes("allowPendingAlerts"), "runtime trend mail smoke must guard live email sends");
+assert(runtimeSmokeScript.includes("dueAlerts.length > 0 && !allowPendingAlerts"), "runtime trend mail smoke must refuse due alerts by default");
+assert(runtimeSmokeScript.includes("assertNoDuplicateDeliveries"), "runtime trend mail smoke must check delivery idempotency");
 
 console.log(JSON.stringify({
   ok: true,
@@ -147,5 +152,6 @@ console.log(JSON.stringify({
     "remote readiness guard",
     "runtime env preflight",
     "runtime API smoke runner",
+    "trend mail function smoke guard",
   ],
 }, null, 2));

@@ -65,6 +65,7 @@
 | 12 | forced rebuild smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
 | 13 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
 | 14 | trend alert smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert` | Supabase runtime env 필요 |
+| 15 | post-rotation mail smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | Supabase runtime env 필요. 실제 발송은 `--allowPendingAlerts --expectPendingCatalogAlert` 필요 |
 
 ## 구현 순서 규칙
 
