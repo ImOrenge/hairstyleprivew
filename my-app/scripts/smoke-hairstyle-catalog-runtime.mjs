@@ -62,6 +62,7 @@ Usage:
   npm run hairstyle:catalog:runtime:smoke -- --mode=readonly
   npm run hairstyle:catalog:runtime:smoke -- --mode=rotation-check --write --confirmAppUrl=https://hairfit.beauty
   npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=https://hairfit.beauty
+  npm run hairstyle:catalog:runtime:smoke -- --mode=active-db
   npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert
   npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function
   npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function --allowPendingAlerts --expectPendingCatalogAlert
@@ -72,6 +73,7 @@ Modes:
   readonly           Run status and dry-run. Default.
   rotation-check     POST onlyIfDue rotation check. Requires --write confirmation.
   force-rebuild      POST force rebuild. Requires --write, --allowForceRebuild, and confirmation.
+  active-db          Validate active catalog RPC, row pool, lineup shape, and alert/delivery uniqueness.
   alert-idempotency  Query trend_alerts and verify catalog_rotation alert count is <= 1.
   trend-mail-function Invoke cron-trend-emails only when no due alerts exist, unless explicitly allowed.
 
@@ -84,6 +86,7 @@ Env or args:
   --appUrl=https://hairfit.beauty
   --confirmAppUrl=https://hairfit.beauty
   --cycleId=<catalog-cycle-id>
+  --market=kr
   --functionUrl=https://<project-ref>.functions.supabase.co/cron-trend-emails
   --allowPendingAlerts
   --expectPendingCatalogAlert
@@ -247,6 +250,25 @@ function supabaseRestHeaders() {
 function supabaseRestUrl(path) {
   const supabaseUrl = parseUrl(readSupabaseUrl(), "Supabase URL").origin;
   return new URL(`${supabaseUrl}/rest/v1/${path}`);
+}
+
+function readExpectedPromptTemplateVersion() {
+  const source = readFileSync(resolve(appDir, "lib", "hairstyle-catalog-seed.ts"), "utf8");
+  const match = source.match(/HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION\s*=\s*"([^"]+)"/);
+  if (!match) {
+    throw new Error("Cannot read HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION");
+  }
+  return match[1];
+}
+
+function normalizeStyleTargets(value) {
+  if (Array.isArray(value)) {
+    return value.filter((item) => item === "male" || item === "female");
+  }
+  if (typeof value === "string") {
+    return value.split(",").map((item) => item.trim()).filter((item) => item === "male" || item === "female");
+  }
+  return [];
 }
 
 async function adminRequest(path, options = {}) {
@@ -425,6 +447,19 @@ async function runForceRebuildSmoke() {
   }, null, 2));
 }
 
+async function readCatalogRotationAlerts(cycleId) {
+  const url = supabaseRestUrl("trend_alerts");
+  url.searchParams.set("select", "id,catalog_cycle_id,alert_type,scheduled_send_at,sent_at");
+  url.searchParams.set("catalog_cycle_id", `eq.${cycleId}`);
+  url.searchParams.set("alert_type", "eq.catalog_rotation");
+
+  const rows = await fetchJson(url.toString(), {
+    headers: supabaseRestHeaders(),
+  });
+  assert(Array.isArray(rows), "trend_alerts REST response must be an array");
+  return rows;
+}
+
 async function runAlertIdempotencySmoke() {
   let cycleId = getArg("cycleId");
 
@@ -435,15 +470,7 @@ async function runAlertIdempotencySmoke() {
   }
   assert(cycleId, "Missing active cycle id for alert idempotency smoke.");
 
-  const url = supabaseRestUrl("trend_alerts");
-  url.searchParams.set("select", "id,catalog_cycle_id,alert_type,scheduled_send_at,sent_at");
-  url.searchParams.set("catalog_cycle_id", `eq.${cycleId}`);
-  url.searchParams.set("alert_type", "eq.catalog_rotation");
-
-  const rows = await fetchJson(url.toString(), {
-    headers: supabaseRestHeaders(),
-  });
-  assert(Array.isArray(rows), "trend_alerts REST response must be an array");
+  const rows = await readCatalogRotationAlerts(cycleId);
   assert(rows.length <= 1, `catalog_rotation alert must be idempotent, got ${rows.length}`);
   if (hasFlag("--expectAlert")) {
     assert(rows.length === 1, "expected one catalog_rotation alert for the active cycle");
@@ -455,6 +482,127 @@ async function runAlertIdempotencySmoke() {
     cycleId,
     alertCount: rows.length,
     alertId: rows[0]?.id ?? null,
+  }, null, 2));
+}
+
+function validateLineupShape(lineups, itemsById, styleTarget) {
+  const targetLineups = lineups
+    .filter((lineup) => lineup.style_target === styleTarget)
+    .sort((left, right) => Number(left.rank) - Number(right.rank));
+  assert(targetLineups.length >= 9, `${styleTarget} active lineup count is below 9: ${targetLineups.length}`);
+
+  const ranks = new Set();
+  const catalogItemIds = new Set();
+  for (const lineup of targetLineups) {
+    assert(Number.isFinite(lineup.rank), `${styleTarget} lineup has invalid rank`);
+    ranks.add(lineup.rank);
+    assert(typeof lineup.catalog_item_id === "string", `${styleTarget} lineup missing catalog_item_id`);
+    assert(itemsById.has(lineup.catalog_item_id), `${styleTarget} lineup references a missing active catalog item`);
+    assert(!catalogItemIds.has(lineup.catalog_item_id), `${styleTarget} lineup repeats catalog item ${lineup.catalog_item_id}`);
+    catalogItemIds.add(lineup.catalog_item_id);
+  }
+
+  for (let rank = 1; rank <= 9; rank += 1) {
+    assert(ranks.has(rank), `${styleTarget} active lineup missing rank ${rank}`);
+  }
+}
+
+async function runActiveDbSmoke() {
+  const market = getArg("market", "kr");
+  const expectedPromptTemplateVersion = readExpectedPromptTemplateVersion();
+  const url = supabaseRestUrl("rpc/get_active_hairstyle_catalog");
+  const active = await fetchJson(url.toString(), {
+    method: "POST",
+    headers: {
+      ...supabaseRestHeaders(),
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({ p_market: market }),
+  });
+
+  assert(isObject(active), "active catalog RPC response must be an object");
+  const activeCycleId = typeof active.activeCycleId === "string" ? active.activeCycleId : "";
+  if (!activeCycleId && !hasFlag("--allowNoActive")) {
+    throw new Error("active catalog RPC returned no activeCycleId. Use --allowNoActive only for pre-bootstrap diagnostics.");
+  }
+
+  const items = Array.isArray(active.items) ? active.items : [];
+  const lineups = Array.isArray(active.lineups) ? active.lineups : [];
+
+  if (!activeCycleId) {
+    console.log(JSON.stringify({
+      ok: true,
+      mode: "active-db",
+      market,
+      activeCycleId: null,
+      itemCount: items.length,
+      lineupCounts: { male: 0, female: 0 },
+      message: "no active cycle configured",
+    }, null, 2));
+    return;
+  }
+
+  assert(isObject(active.cycle), "active catalog RPC response missing cycle");
+  assert(active.cycle.status === "succeeded", `active cycle must be succeeded, got ${active.cycle.status}`);
+  assert(active.cycle.cycle_id === activeCycleId, "active cycle id does not match cycle payload");
+
+  const activatedAt = Date.parse(active.activatedAt);
+  const expiresAt = Date.parse(active.expiresAt);
+  assert(Number.isFinite(activatedAt), "active catalog missing valid activatedAt");
+  assert(Number.isFinite(expiresAt), "active catalog missing valid expiresAt");
+  assert(expiresAt > activatedAt, "active catalog expiresAt must be after activatedAt");
+
+  assert(items.length >= 32, `active catalog item count must be at least 32, got ${items.length}`);
+
+  const slugs = items.map((item) => (typeof item.slug === "string" ? item.slug : ""));
+  const slugSet = new Set(slugs);
+  assert(!slugs.includes(""), "active catalog items must all have slugs");
+  assert(slugSet.size === slugs.length, "active catalog contains duplicate slugs");
+
+  const itemsById = new Map();
+  let maleCandidateCount = 0;
+  let femaleCandidateCount = 0;
+  let promptMismatchCount = 0;
+
+  for (const item of items) {
+    assert(typeof item.id === "string", "active catalog item missing id");
+    itemsById.set(item.id, item);
+    assert(item.market === market, `active catalog item has unexpected market ${item.market}`);
+    assert(item.status === "active", `active catalog item has unexpected status ${item.status}`);
+    assert(item.source_cycle_id === activeCycleId, "active catalog item source_cycle_id mismatch");
+    const targets = normalizeStyleTargets(item.style_targets);
+    if (targets.includes("male")) maleCandidateCount += 1;
+    if (targets.includes("female")) femaleCandidateCount += 1;
+    if (item.prompt_template_version !== expectedPromptTemplateVersion) promptMismatchCount += 1;
+  }
+
+  assert(maleCandidateCount >= 18, `male active catalog candidate count must be at least 18, got ${maleCandidateCount}`);
+  assert(femaleCandidateCount >= 18, `female active catalog candidate count must be at least 18, got ${femaleCandidateCount}`);
+  assert(promptMismatchCount === 0, `active catalog has ${promptMismatchCount} prompt template version mismatches`);
+
+  validateLineupShape(lineups, itemsById, "male");
+  validateLineupShape(lineups, itemsById, "female");
+
+  const catalogRotationAlerts = await readCatalogRotationAlerts(activeCycleId);
+  assert(catalogRotationAlerts.length <= 1, `catalog_rotation alert must be idempotent, got ${catalogRotationAlerts.length}`);
+  const deliveryRows = await readDeliveryRows(catalogRotationAlerts.map((alert) => alert.id));
+  assertNoDuplicateDeliveries(deliveryRows);
+
+  console.log(JSON.stringify({
+    ok: true,
+    mode: "active-db",
+    market,
+    activeCycleId,
+    expiresAt: active.expiresAt,
+    itemCount: items.length,
+    maleCandidateCount,
+    femaleCandidateCount,
+    lineupCounts: {
+      male: lineups.filter((lineup) => lineup.style_target === "male").length,
+      female: lineups.filter((lineup) => lineup.style_target === "female").length,
+    },
+    catalogRotationAlertCount: catalogRotationAlerts.length,
+    deliveryRows: deliveryRows.length,
   }, null, 2));
 }
 
@@ -591,6 +739,10 @@ async function main() {
     await runForceRebuildSmoke();
     return;
   }
+  if (mode === "active-db") {
+    await runActiveDbSmoke();
+    return;
+  }
   if (mode === "alert-idempotency") {
     await runAlertIdempotencySmoke();
     return;
@@ -601,7 +753,7 @@ async function main() {
   }
 
   throw new Error(
-    "Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, alert-idempotency, or trend-mail-function.",
+    "Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, active-db, alert-idempotency, or trend-mail-function.",
   );
 }
 

@@ -118,6 +118,7 @@ assert(runtimeSmokeScript.includes("mode=status"), "runtime smoke runner must ex
 assert(runtimeSmokeScript.includes("mode=dry-run"), "runtime smoke runner must expose dry-run mode");
 assert(runtimeSmokeScript.includes("mode=rotation-check"), "runtime smoke runner must expose rotation-check mode");
 assert(runtimeSmokeScript.includes("mode=force-rebuild"), "runtime smoke runner must expose force-rebuild mode");
+assert(runtimeSmokeScript.includes("mode=active-db"), "runtime smoke runner must expose active DB mode");
 assert(runtimeSmokeScript.includes("mode=alert-idempotency"), "runtime smoke runner must expose alert idempotency mode");
 assert(runtimeSmokeScript.includes("mode=trend-mail-function"), "runtime smoke runner must expose trend mail function mode");
 assert(runtimeSmokeScript.includes("requireWriteConfirmation"), "runtime smoke runner must guard mutating calls");
@@ -129,6 +130,11 @@ assert(runtimeSmokeScript.includes("cron-trend-emails"), "runtime smoke runner m
 assert(runtimeSmokeScript.includes("allowPendingAlerts"), "runtime trend mail smoke must guard live email sends");
 assert(runtimeSmokeScript.includes("dueAlerts.length > 0 && !allowPendingAlerts"), "runtime trend mail smoke must refuse due alerts by default");
 assert(runtimeSmokeScript.includes("assertNoDuplicateDeliveries"), "runtime trend mail smoke must check delivery idempotency");
+assert(runtimeSmokeScript.includes("get_active_hairstyle_catalog"), "runtime active DB smoke must call the active catalog RPC");
+assert(runtimeSmokeScript.includes("items.length >= 32"), "runtime active DB smoke must enforce 32 active catalog rows");
+assert(runtimeSmokeScript.includes("maleCandidateCount >= 18"), "runtime active DB smoke must enforce male candidate pool size");
+assert(runtimeSmokeScript.includes("femaleCandidateCount >= 18"), "runtime active DB smoke must enforce female candidate pool size");
+assert(runtimeSmokeScript.includes("validateLineupShape"), "runtime active DB smoke must validate active lineup shape");
 
 console.log(JSON.stringify({
   ok: true,
@@ -153,5 +159,6 @@ console.log(JSON.stringify({
     "runtime env preflight",
     "runtime API smoke runner",
     "trend mail function smoke guard",
+    "active DB smoke guard",
   ],
 }, null, 2));

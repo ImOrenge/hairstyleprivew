@@ -60,12 +60,13 @@
 | 7 | migration dry-run | `supabase db push --dry-run --workdir my-app` | 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
 | 8 | remote write guard | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false`, `blockingPending:["202607030001_plan_credit_policy_aftercare.sql"]` |
 | 9 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` | 통과 |
-| 10 | admin latest smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=status` | Supabase runtime env 필요 |
-| 11 | due checker smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=rotation-check --write --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
-| 12 | forced rebuild smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
-| 13 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
-| 14 | trend alert smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert` | Supabase runtime env 필요 |
-| 15 | post-rotation mail smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | Supabase runtime env 필요. 실제 발송은 `--allowPendingAlerts --expectPendingCatalogAlert` 필요 |
+| 10 | active DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | Supabase runtime env와 migration 적용 필요 |
+| 11 | admin latest smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=status` | Supabase runtime env 필요 |
+| 12 | due checker smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=rotation-check --write --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
+| 13 | forced rebuild smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
+| 14 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
+| 15 | trend alert smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert` | Supabase runtime env 필요 |
+| 16 | post-rotation mail smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | Supabase runtime env 필요. 실제 발송은 `--allowPendingAlerts --expectPendingCatalogAlert` 필요 |
 
 ## 구현 순서 규칙
 
