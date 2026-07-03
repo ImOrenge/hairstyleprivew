@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import {
+  CatalogRebuildConflictError,
   isAuthorizedAdminRequest,
   rebuildWeeklyHairstyleCatalog,
   type CatalogRebuildMode,
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected rebuild error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    const status = error instanceof CatalogRebuildConflictError ? 409 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }

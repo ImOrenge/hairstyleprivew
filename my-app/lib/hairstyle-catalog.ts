@@ -96,6 +96,13 @@ interface QueryError {
   code?: string;
 }
 
+export class CatalogRebuildConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "CatalogRebuildConflictError";
+  }
+}
+
 interface CatalogRebuildResult {
   cycleId: string | null;
   status: CatalogRebuildStatus;
@@ -728,6 +735,39 @@ function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, 
     promptVersionMismatchCount,
     lineupCounts: { male: 0, female: 0 },
     warnings,
+  };
+}
+
+async function validateActiveCatalogSnapshot(
+  supabase: SupabaseCatalogClient,
+  activeCatalog: ActiveCatalogCycleResult,
+): Promise<CatalogValidationResult> {
+  const rows = await loadActiveCatalogRows(supabase, activeCatalog.activeCycle);
+  const lineups = await loadActiveLineups(supabase, activeCatalog.activeCycle);
+  const lineupCounts = {
+    male: lineups.filter((lineup) => lineup.styleTarget === "male").length,
+    female: lineups.filter((lineup) => lineup.styleTarget === "female").length,
+  };
+  const warnings: string[] = [];
+
+  if (lineupCounts.male < MIN_STYLE_TARGET_RECOMMENDATION_ROWS) {
+    warnings.push(`male_lineup_below_9:${lineupCounts.male}`);
+  }
+
+  if (lineupCounts.female < MIN_STYLE_TARGET_RECOMMENDATION_ROWS) {
+    warnings.push(`female_lineup_below_9:${lineupCounts.female}`);
+  }
+
+  const validation = validateCatalogRowsForActivation(rows);
+
+  return {
+    ...validation,
+    passed:
+      validation.passed &&
+      lineupCounts.male >= MIN_STYLE_TARGET_RECOMMENDATION_ROWS &&
+      lineupCounts.female >= MIN_STYLE_TARGET_RECOMMENDATION_ROWS,
+    lineupCounts,
+    warnings: [...validation.warnings, ...warnings],
   };
 }
 
@@ -1451,7 +1491,9 @@ async function createHairstyleCatalogCycleForMode(mode: CatalogSourceMode) {
           return waited.cycle;
         }
 
-        throw new Error("Hairstyle catalog bootstrap is already in progress. Please retry shortly.");
+        throw new CatalogRebuildConflictError(
+          "Hairstyle catalog bootstrap is already in progress. Please retry shortly.",
+        );
       }
     }
 
@@ -1776,6 +1818,9 @@ export async function rebuildWeeklyHairstyleCatalog(
 
   if (options.onlyIfDue && !options.force && !isActiveCatalogDue(activeBefore?.activeCycle ?? null, now)) {
     await recordCatalogRotationAttempt(supabase, "skipped", activeBefore?.activeCycle.activeCycleId ?? null);
+    const validation = activeBefore
+      ? await validateActiveCatalogSnapshot(supabase, activeBefore)
+      : validateCatalogRowsForActivation([]);
 
     return {
       cycleId: null,
@@ -1790,7 +1835,7 @@ export async function rebuildWeeklyHairstyleCatalog(
       sourceSummary: activeBefore?.cycle.sourceSummary ?? buildCycleSourceSummary(sourceMode, now.toISOString()),
       requestedMode: options.mode,
       resolvedMode: activeBefore?.cycle.sourceSummary?.mode ?? sourceMode,
-      validation: validateCatalogRowsForActivation([]),
+      validation,
       activatedAt: activeBefore?.activeCycle.activatedAt ?? null,
       expiresAt: activeBefore?.activeCycle.expiresAt ?? null,
       nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(now),

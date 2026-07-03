@@ -22,10 +22,12 @@
 | [x] | `force`가 TTL을 우회하도록 구현 | route/service |
 | [x] | `dryRun`이 DB activation과 alert enqueue를 생략하도록 구현 | route/service |
 | [x] | market 단위 advisory lock 적용 | activation RPC와 running cycle guard |
+| [x] | running cycle 중복은 `409`로 반환 | route/service |
 | [x] | stale running 30분 초과 복구 호출 | service |
 | [x] | 60일 primary, 120일 fallback 수집 호출 계약 연결 | service |
 | [x] | `auto` 수집 실패 시 seeded catalog로 자동 active 교체하지 않도록 보장 | service/audit |
 | [x] | validation 결과 구조화 | service |
+| [x] | not-due skip 응답의 validation을 active snapshot 기준으로 반환 | service/audit |
 | [x] | response에 `skipReason`, `trendAlertId`, `expiresAt`, `nextAutomaticAttemptAt` 포함 | route |
 | [x] | 실패 시 `fail_hairstyle_catalog_cycle`와 rotation event 기록 | service/RPC |
 
@@ -34,10 +36,12 @@
 | 기준 | 기대값 |
 | --- | --- |
 | not due | `onlyIfDue=true`이고 TTL 남음이면 수집 없이 `skipped:not_due` |
+| not due validation | skip 응답의 validation은 기존 active row와 lineup 수량을 기준으로 반환 |
 | due | TTL 만료 시 researched 수집과 active 교체 시도 |
 | dry-run | 수집/검증 결과는 반환하지만 active pointer와 alert는 변경하지 않음 |
 | force | TTL이 남아도 수집/검증/활성화 가능 |
 | failure | 실패해도 기존 active pointer 유지 |
+| running conflict | stale 기준 미만의 running cycle 중복은 `409`로 반환 |
 | no seeded auto fallback | seeded catalog는 명시적 `mode:"seeded"` 호출에서만 active 후보가 된다. |
 
 ## 검증 체크리스트
@@ -50,5 +54,6 @@
 | [ ] | 강제 실패 조건에서 기존 active cycle 유지 확인. Supabase runtime env 필요 |
 | [x] | 정적 audit로 `auto` rebuild가 seeded fallback을 자동 실행하지 않는지 확인 |
 | [x] | response에 validation과 freshness warning 포함 확인 |
+| [x] | 정적 audit로 not-due active snapshot validation과 running conflict `409` 확인 |
 | [x] | `npm run lint` 통과 |
 | [x] | `npm run build` 통과 |

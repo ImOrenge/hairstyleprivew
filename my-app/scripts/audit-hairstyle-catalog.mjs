@@ -26,6 +26,7 @@ if (blueprintAudit.status !== 0) {
 
 const catalog = read("lib/hairstyle-catalog.ts");
 const trendResearch = read("lib/hairstyle-trend-research.ts");
+const rebuildRoute = read("app/api/admin/hairstyles/rebuild/route.ts");
 const rotationMigration = read("supabase/migrations/20260703092000_hairstyle_catalog_rotation.sql");
 const eventMigration = read("supabase/migrations/20260703094000_hairstyle_catalog_rotation_event_rpc.sql");
 const cronMigration = read("supabase/migrations/20260703093000_hairstyle_catalog_rotation_cron.sql");
@@ -42,6 +43,11 @@ assert(!trendResearch.includes("RESEARCH_LOOKBACK_DAYS = 240"), "hair trend rese
 assert(catalog.includes("export async function ensureCatalogAvailable()"), "missing active catalog availability function");
 const ensureBody = catalog.match(/export async function ensureCatalogAvailable\(\)[\s\S]*?function filterRowsForStyleTarget/);
 assert(ensureBody && !ensureBody[0].includes("rebuildWeeklyHairstyleCatalog("), "user recommendation path still triggers rebuild");
+assert(catalog.includes("validateActiveCatalogSnapshot"), "not-due skip must validate the active catalog snapshot");
+const notDueBody = catalog.match(/if \(options\.onlyIfDue[\s\S]*?await recordCatalogRotationAttempt\(supabase, "started", null\);/);
+assert(notDueBody && notDueBody[0].includes("validateActiveCatalogSnapshot"), "not-due skip returns empty validation instead of active snapshot validation");
+assert(catalog.includes("CatalogRebuildConflictError"), "missing rebuild conflict error type");
+assert(rebuildRoute.includes("CatalogRebuildConflictError") && rebuildRoute.includes("409"), "rebuild route must map running conflicts to 409");
 assert(catalog.includes("enqueueCatalogRotationTrendAlert"), "missing trend alert enqueue service hook");
 assert(catalog.includes("trend_alert_enqueue_failed"), "missing alert enqueue failure isolation warning");
 const alertPolicyBody = catalog.match(/function shouldSendCatalogRotationAlert\([\s\S]*?function computeCycleExpiresAt/);
@@ -85,6 +91,8 @@ console.log(JSON.stringify({
     "blueprints",
     "lookback",
     "active-only recommendation path",
+    "not-due active snapshot validation",
+    "running conflict status",
     "trend alert idempotency",
     "low freshness alert policy",
     "activation lineup guard",
