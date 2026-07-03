@@ -827,6 +827,42 @@ function buildCatalogLineupsForCycle(rows: HairstyleCatalogRow[], cycleId: strin
   ];
 }
 
+function computeLineupOverlap(
+  previousRows: HairstyleCatalogRow[],
+  previousLineups: HairstyleCatalogLineupRow[],
+  nextRows: HairstyleCatalogRow[],
+  nextLineups: CatalogLineupInsert[],
+) {
+  const previousSlugById = new Map(previousRows.map((row) => [row.id, row.slug]));
+  const nextSlugById = new Map(nextRows.map((row) => [row.id, row.slug]));
+
+  return (["male", "female"] as const).map((styleTarget) => {
+    const previousSlugs = new Set(
+      previousLineups
+        .filter((lineup) => lineup.styleTarget === styleTarget)
+        .sort((a, b) => a.rank - b.rank)
+        .slice(0, MIN_STYLE_TARGET_RECOMMENDATION_ROWS)
+        .map((lineup) => previousSlugById.get(lineup.catalogItemId))
+        .filter((slug): slug is string => Boolean(slug)),
+    );
+    const nextSlugs = nextLineups
+      .filter((lineup) => lineup.style_target === styleTarget)
+      .sort((a, b) => a.rank - b.rank)
+      .slice(0, MIN_STYLE_TARGET_RECOMMENDATION_ROWS)
+      .map((lineup) => nextSlugById.get(lineup.catalog_item_id))
+      .filter((slug): slug is string => Boolean(slug));
+    const overlapSlugs = nextSlugs.filter((slug) => previousSlugs.has(slug));
+
+    return {
+      styleTarget,
+      overlapCount: overlapSlugs.length,
+      overlapSlugs,
+      previousCount: previousSlugs.size,
+      nextCount: nextSlugs.length,
+    };
+  });
+}
+
 async function recordCatalogRotationAttempt(
   supabase: SupabaseCatalogClient,
   status: string,
@@ -838,6 +874,26 @@ async function recordCatalogRotationAttempt(
     p_status: status,
     p_cycle_id: cycleId,
     p_error_log: errorLog ?? null,
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+}
+
+async function recordCatalogRotationEvent(
+  supabase: SupabaseCatalogClient,
+  eventType: string,
+  cycleId: string | null,
+  message: string,
+  metadata: Record<string, unknown>,
+) {
+  const response = await supabase.rpc("record_hairstyle_catalog_rotation_event", {
+    p_market: CATALOG_MARKET,
+    p_event_type: eventType,
+    p_cycle_id: cycleId,
+    p_message: message,
+    p_metadata: metadata,
   });
 
   if (response.error) {
@@ -1361,6 +1417,7 @@ async function rebuildCatalogWithMode(
   options: CatalogRebuildOptions,
   sourceMode: CatalogSourceMode,
   staleRunningCyclesFailed: number,
+  previousActiveCatalog: ActiveCatalogCycleResult | null,
 ): Promise<CatalogRebuildResult> {
   const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
   const cycle = options.dryRun ? null : await createHairstyleCatalogCycleForMode(sourceMode);
@@ -1523,6 +1580,36 @@ async function rebuildCatalogWithMode(
       throw new Error(lineupUpsertResult.error.message);
     }
 
+    if (previousActiveCatalog) {
+      const previousRows = await loadActiveCatalogRows(supabase, previousActiveCatalog.activeCycle);
+      const previousLineups = await loadActiveLineups(supabase, previousActiveCatalog.activeCycle);
+      const overlapResults = computeLineupOverlap(previousRows, previousLineups, persistedRows, lineups);
+      const warningResults = overlapResults.filter((result) => result.overlapCount >= 7);
+
+      if (warningResults.length > 0) {
+        validation.warnings.push(
+          ...warningResults.map((result) => `lineup_overlap_${result.styleTarget}:${result.overlapCount}`),
+        );
+
+        try {
+          await recordCatalogRotationEvent(
+            supabase,
+            "overlap_warning",
+            cycle.cycleId,
+            "New hairstyle catalog lineup overlaps heavily with the previous active lineup.",
+            {
+              previousCycleId: previousActiveCatalog.activeCycle.activeCycleId,
+              overlapThreshold: 7,
+              results: warningResults,
+            },
+          );
+        } catch (eventError) {
+          const eventMessage = eventError instanceof Error ? eventError.message : "Unexpected overlap event error";
+          validation.warnings.push(`overlap_warning_event_failed:${eventMessage}`);
+        }
+      }
+    }
+
     const finishedAt = new Date().toISOString();
     const cycleUpdateValues = options.activate
       ? {
@@ -1648,18 +1735,18 @@ export async function rebuildWeeklyHairstyleCatalog(
   await recordCatalogRotationAttempt(supabase, "started", null);
 
   if (options.mode === "seeded" || options.mode === "researched") {
-    return rebuildCatalogWithMode(options, sourceMode, staleRunningCyclesFailed);
+    return rebuildCatalogWithMode(options, sourceMode, staleRunningCyclesFailed, activeBefore);
   }
 
   try {
-    return await rebuildCatalogWithMode(options, "researched-weekly", staleRunningCyclesFailed);
+    return await rebuildCatalogWithMode(options, "researched-weekly", staleRunningCyclesFailed, activeBefore);
   } catch (error) {
     if (isBootstrapInProgressError(error)) {
       throw error;
     }
 
     console.warn("[catalog] Live research rebuild failed, retrying with seeded fallback.", error);
-    return rebuildCatalogWithMode(options, "seeded-weekly", staleRunningCyclesFailed);
+    return rebuildCatalogWithMode(options, "seeded-weekly", staleRunningCyclesFailed, activeBefore);
   }
 }
 

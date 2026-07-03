@@ -36,7 +36,7 @@
 | --- | --- |
 | lint | `npm run lint` 통과 |
 | build | `npm run build` 통과 |
-| audit | `npm run hairstyle:catalog:audit` 통과 |
+| audit | `npm run hairstyle:catalog:audit` 통과. blueprint, lookback, active-only 추천, alert idempotency, lineup, overlap warning, cron names 포함 |
 | migration | `supabase db push --dry-run --workdir my-app` 통과 |
 | trend mail | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | admin latest | active 상태, stale 상태, next attempt, last failed 정보 확인 |

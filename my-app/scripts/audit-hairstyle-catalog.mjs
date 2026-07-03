@@ -23,6 +23,7 @@ if (blueprintAudit.status !== 0) {
 const catalog = read("lib/hairstyle-catalog.ts");
 const trendResearch = read("lib/hairstyle-trend-research.ts");
 const rotationMigration = read("supabase/migrations/20260703092000_hairstyle_catalog_rotation.sql");
+const eventMigration = read("supabase/migrations/20260703094000_hairstyle_catalog_rotation_event_rpc.sql");
 const cronMigration = read("supabase/migrations/20260703093000_hairstyle_catalog_rotation_cron.sql");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
@@ -34,8 +35,11 @@ assert(ensureBody && !ensureBody[0].includes("rebuildWeeklyHairstyleCatalog("), 
 assert(catalog.includes("enqueueCatalogRotationTrendAlert"), "missing trend alert enqueue service hook");
 assert(catalog.includes("trend_alert_enqueue_failed"), "missing alert enqueue failure isolation warning");
 assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup builder");
+assert(catalog.includes("computeLineupOverlap"), "missing lineup overlap calculation");
+assert(catalog.includes("overlap_warning"), "missing lineup overlap warning event");
 assert(rotationMigration.includes("idx_trend_alerts_catalog_cycle_alert_type"), "missing trend alert idempotency index");
 assert(rotationMigration.includes("hairstyle_catalog_active_cycles"), "missing active catalog table migration");
+assert(eventMigration.includes("record_hairstyle_catalog_rotation_event"), "missing generic rotation event RPC");
 assert(cronMigration.includes("cron-hairstyle-catalog-rotation-check"), "missing rotation cron job name");
 assert(cronMigration.includes("cron-trend-emails-post-rotation"), "missing post rotation mail cron job name");
 assert(cronMigration.includes("'onlyIfDue', true"), "rotation cron does not send onlyIfDue");
@@ -49,6 +53,7 @@ console.log(JSON.stringify({
     "active-only recommendation path",
     "trend alert idempotency",
     "lineup builder",
+    "overlap warning",
     "cron names",
   ],
 }, null, 2));
