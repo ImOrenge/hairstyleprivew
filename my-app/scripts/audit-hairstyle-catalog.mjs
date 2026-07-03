@@ -37,6 +37,7 @@ const rebuildRoute = read("app/api/admin/hairstyles/rebuild/route.ts");
 const rotationMigration = read("supabase/migrations/20260703092000_hairstyle_catalog_rotation.sql");
 const eventMigration = read("supabase/migrations/20260703094000_hairstyle_catalog_rotation_event_rpc.sql");
 const cronMigration = read("supabase/migrations/20260703093000_hairstyle_catalog_rotation_cron.sql");
+const cronStatusMigration = read("supabase/migrations/20260703124648_hairstyle_catalog_cron_status.sql");
 const packageJson = read("package.json");
 const architectureDoc = readRepo("docs/hairstyle-catalog-rotation-architecture.md");
 const phaseReadme = readRepo("docs/hairstyle-catalog-rotation/README.md");
@@ -80,6 +81,11 @@ assert(cronMigration.includes("cron-hairstyle-catalog-rotation-check"), "missing
 assert(cronMigration.includes("cron-trend-emails-post-rotation"), "missing post rotation mail cron job name");
 assert(cronMigration.includes("'onlyIfDue', true"), "rotation cron does not send onlyIfDue");
 assert(cronMigration.includes("'x-admin-secret'"), "rotation cron does not send admin secret header");
+assert(cronStatusMigration.includes("get_hairstyle_catalog_rotation_cron_status"), "missing hairstyle cron status RPC");
+assert(cronStatusMigration.includes("to_regclass('cron.job')"), "cron status RPC must tolerate missing pg_cron");
+assert(cronStatusMigration.includes("20 0 * * *"), "cron status RPC must validate rotation check schedule");
+assert(cronStatusMigration.includes("40 0 * * *"), "cron status RPC must validate post-rotation mail schedule");
+assert(cronStatusMigration.includes("grant execute on function public.get_hairstyle_catalog_rotation_cron_status() to service_role"), "cron status RPC must be service-role only");
 assert(architectureDoc.includes("상태: 구현 완료, Supabase runtime smoke 대기"), "architecture doc status is stale");
 assert(!architectureDoc.includes("상태: 설계안, 미구현"), "architecture doc still says unimplemented");
 assert(phaseReadme.includes("runtime-smoke-runbook.md"), "phase README must link runtime smoke runbook");
@@ -105,6 +111,7 @@ assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS
 assert(remoteReadinessScript.includes("timed out after"), "remote readiness guard must fail clearly on command timeout");
 assert(remoteReadinessScript.includes("withRemoteCheckLock"), "remote readiness guard must prevent concurrent Supabase dry-runs");
 assert(remoteReadinessScript.includes("hairstyle-catalog-remote-check.lock"), "remote readiness guard must use a named local lock file");
+assert(remoteReadinessScript.includes("20260703124648_hairstyle_catalog_cron_status.sql"), "remote readiness guard must expect cron status migration");
 assert(runtimeEnvScript.includes("mode=admin-api"), "runtime env check must expose admin-api mode");
 assert(runtimeEnvScript.includes("mode=cron-registration"), "runtime env check must expose cron-registration mode");
 assert(runtimeEnvScript.includes("mode=trend-mail-function"), "runtime env check must expose trend-mail-function mode");
@@ -118,6 +125,7 @@ assert(runtimeSmokeScript.includes("mode=status"), "runtime smoke runner must ex
 assert(runtimeSmokeScript.includes("mode=dry-run"), "runtime smoke runner must expose dry-run mode");
 assert(runtimeSmokeScript.includes("mode=rotation-check"), "runtime smoke runner must expose rotation-check mode");
 assert(runtimeSmokeScript.includes("mode=force-rebuild"), "runtime smoke runner must expose force-rebuild mode");
+assert(runtimeSmokeScript.includes("mode=cron-db"), "runtime smoke runner must expose cron DB mode");
 assert(runtimeSmokeScript.includes("mode=active-db"), "runtime smoke runner must expose active DB mode");
 assert(runtimeSmokeScript.includes("mode=alert-idempotency"), "runtime smoke runner must expose alert idempotency mode");
 assert(runtimeSmokeScript.includes("mode=trend-mail-function"), "runtime smoke runner must expose trend mail function mode");
@@ -135,6 +143,7 @@ assert(runtimeSmokeScript.includes("items.length >= 32"), "runtime active DB smo
 assert(runtimeSmokeScript.includes("maleCandidateCount >= 18"), "runtime active DB smoke must enforce male candidate pool size");
 assert(runtimeSmokeScript.includes("femaleCandidateCount >= 18"), "runtime active DB smoke must enforce female candidate pool size");
 assert(runtimeSmokeScript.includes("validateLineupShape"), "runtime active DB smoke must validate active lineup shape");
+assert(runtimeSmokeScript.includes("get_hairstyle_catalog_rotation_cron_status"), "runtime cron DB smoke must call the cron status RPC");
 
 console.log(JSON.stringify({
   ok: true,
@@ -158,6 +167,7 @@ console.log(JSON.stringify({
     "remote readiness guard",
     "runtime env preflight",
     "runtime API smoke runner",
+    "cron DB smoke guard",
     "trend mail function smoke guard",
     "active DB smoke guard",
   ],

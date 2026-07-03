@@ -10,6 +10,7 @@ const expectedHairstyleMigrations = [
   "20260703092000_hairstyle_catalog_rotation.sql",
   "20260703093000_hairstyle_catalog_rotation_cron.sql",
   "20260703094000_hairstyle_catalog_rotation_event_rpc.sql",
+  "20260703124648_hairstyle_catalog_cron_status.sql",
 ];
 const defaultCommandTimeoutMs = 120000;
 

@@ -14,7 +14,7 @@
 | smoke | rebuild, fallback, alert, mail delivery 경로 확인 |
 | runbook | 운영 절차와 장애 대응 기록 |
 | env preflight | runtime smoke 전 필요한 env 준비 상태 확인 |
-| runtime smoke runner | admin latest, dry-run, rotation-check, force rebuild, alert idempotency 명령화 |
+| runtime smoke runner | admin latest, cron DB state, dry-run, rotation-check, force rebuild, alert idempotency 명령화 |
 
 ## 작업 체크리스트
 
@@ -37,6 +37,7 @@
 | [x] | cron function deployment 주의사항 작성 | P5 운영 메모 |
 | [x] | runtime env preflight 스크립트 추가 | `my-app/scripts/check-hairstyle-catalog-runtime-env.mjs` |
 | [x] | runtime API smoke runner 스크립트 추가 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` |
+| [x] | cron DB smoke 명령이 rotation/post-rotation mail cron 등록 상태를 검사 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` |
 
 ## 완료 기준
 
@@ -49,6 +50,7 @@
 | remote guard | `npm run hairstyle:catalog:remote:check`가 unrelated pending migration을 감지 |
 | env preflight | `npm run hairstyle:catalog:env:check`가 admin API, cron helper, trend mail function env를 점검 |
 | runtime smoke runner | `npm run hairstyle:catalog:runtime:smoke`가 read-only와 guarded write smoke를 제공 |
+| cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db`가 rotation/post-rotation mail cron 등록 상태를 점검 |
 | trend mail | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | admin latest | active 상태, stale 상태, next attempt, last failed 정보 확인 |
 | smoke | due checker, forced rebuild, fallback, alert, mail 중복 방지 확인 |
@@ -64,8 +66,10 @@
 | [x] | synthetic env로 `npm run hairstyle:catalog:env:check` 통과 |
 | [x] | `npm run hairstyle:catalog:runtime:smoke -- --help` |
 | [x] | active DB smoke 명령이 active RPC, 32개 row, 후보 pool, lineup shape, alert/delivery 중복을 검사 |
+| [x] | cron DB smoke 명령이 rotation/post-rotation mail cron 등록 상태를 검사 |
+| [x] | 임시 Postgres에서 cron status RPC unavailable/healthy 응답 smoke 통과 |
 | [x] | trend mail function smoke 명령이 due alert 기본 거부와 delivery 중복 검사를 제공 |
-| [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
+| [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 4개 migration 포함 |
 | [x] | `npm run hairstyle:catalog:remote:check` 통과. `readyForWrite:false`, blocker `202607030001_plan_credit_policy_aftercare.sql` 확인 |
 | [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |
 | [ ] | admin latest smoke. Supabase runtime env 필요 |

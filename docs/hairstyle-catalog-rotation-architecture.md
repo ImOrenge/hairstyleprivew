@@ -403,6 +403,7 @@
 | `activate_hairstyle_catalog_cycle(p_market, p_cycle_id, p_expires_at, p_rotation_period, p_rotation_seed)` | cycle succeeded 처리와 active pointer swap을 atomic하게 실행 |
 | `fail_hairstyle_catalog_cycle(p_cycle_id, p_error_log)` | cycle 실패 처리와 active pointer error 기록 |
 | `get_active_hairstyle_catalog(p_market)` | active cycle, rows, lineups 조회 |
+| `get_hairstyle_catalog_rotation_cron_status()` | rotation check와 post-rotation mail cron 등록 상태 점검 |
 | `mark_stale_running_hairstyle_cycles_failed(p_market, p_timeout_minutes)` | 오래 걸린 running cycle 복구 |
 | `enqueue_catalog_rotation_trend_alert(p_market, p_cycle_id, p_scheduled_send_at, p_target_plans)` | active cycle 기반 trend alert를 중복 없이 생성 |
 | `record_hairstyle_catalog_rotation_attempt(p_market, p_status, p_cycle_id, p_error_log)` | 자동 due checker 시도와 재시도 상태 기록 |
@@ -419,6 +420,7 @@
 | `my-app/supabase/functions/cron-trend-emails/index.ts` | `catalog_rotation` alert 재시도와 cycle metadata 치환 지원 |
 | `my-app/supabase/migrations/*_hairstyle_catalog_rotation.sql` | active pointer, lineup, RPC, cron 등록 |
 | `my-app/scripts/audit-hairstyle-catalog.mjs` | TTL, cron, DB schema, 코드 경로 정적 점검 |
+| `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` | active DB, cron DB, admin/API, mail delivery runtime smoke |
 | `package.json`, `my-app/package.json` | `hairstyle:catalog:audit` script 추가 |
 
 ## 16. 단계별 구현 계획
@@ -453,6 +455,7 @@
 | 기존 데이터 migration | latest succeeded cycle을 initial active로 등록 |
 | cron 등록 | `cron-hairstyle-catalog-rotation-check`가 `20 0 * * *`로 등록 |
 | 트렌드 알림 후속 cron | `cron-trend-emails-post-rotation`이 `40 0 * * *`로 등록 |
+| cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` 통과 |
 | admin secret | cron 호출에 쓰는 `INTERNAL_API_SECRET`와 앱 secret 일치 |
 | 첫 active | `GET /api/admin/hairstyles/cycles/latest`에서 `activeCycle` 존재 |
 | blueprint 풀 | 전체 32개, 남성/여성 후보 각각 18개 이상 |

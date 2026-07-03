@@ -47,7 +47,7 @@
 
 | 상태 | 검증 |
 | --- | --- |
-| [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
+| [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 4개 migration 포함 |
 | [x] | 임시 Postgres에 migration 적용 smoke 통과 |
 | [x] | `select public.get_active_hairstyle_catalog('kr')` RPC smoke 통과 |
 | [x] | latest succeeded cycle initial active 등록 SQL 확인 |

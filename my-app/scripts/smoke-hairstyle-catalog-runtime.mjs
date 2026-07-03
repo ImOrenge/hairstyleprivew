@@ -62,6 +62,7 @@ Usage:
   npm run hairstyle:catalog:runtime:smoke -- --mode=readonly
   npm run hairstyle:catalog:runtime:smoke -- --mode=rotation-check --write --confirmAppUrl=https://hairfit.beauty
   npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=https://hairfit.beauty
+  npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db
   npm run hairstyle:catalog:runtime:smoke -- --mode=active-db
   npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert
   npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function
@@ -73,6 +74,7 @@ Modes:
   readonly           Run status and dry-run. Default.
   rotation-check     POST onlyIfDue rotation check. Requires --write confirmation.
   force-rebuild      POST force rebuild. Requires --write, --allowForceRebuild, and confirmation.
+  cron-db            Validate registered pg_cron jobs through the database helper RPC.
   active-db          Validate active catalog RPC, row pool, lineup shape, and alert/delivery uniqueness.
   alert-idempotency  Query trend_alerts and verify catalog_rotation alert count is <= 1.
   trend-mail-function Invoke cron-trend-emails only when no due alerts exist, unless explicitly allowed.
@@ -447,6 +449,45 @@ async function runForceRebuildSmoke() {
   }, null, 2));
 }
 
+async function runCronDbSmoke() {
+  const url = supabaseRestUrl("rpc/get_hairstyle_catalog_rotation_cron_status");
+  const status = await fetchJson(url.toString(), {
+    method: "POST",
+    headers: {
+      ...supabaseRestHeaders(),
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({}),
+  });
+
+  assert(isObject(status), "cron status RPC response must be an object");
+  assert(status.available === true, "cron status RPC reports pg_cron is not available");
+  assert(status.ok === true, `cron status RPC reported unhealthy jobs: ${JSON.stringify(status)}`);
+
+  const jobs = Array.isArray(status.jobs) ? status.jobs : [];
+  const expected = new Map([
+    ["cron-hairstyle-catalog-rotation-check", "20 0 * * *"],
+    ["cron-trend-emails-post-rotation", "40 0 * * *"],
+  ]);
+
+  for (const [jobName, schedule] of expected) {
+    const job = jobs.find((item) => item.jobName === jobName);
+    assert(job, `missing cron job ${jobName}`);
+    assert(job.schedule === schedule, `${jobName} expected schedule ${schedule}, got ${job.schedule}`);
+    assert(job.active === true, `${jobName} must be active`);
+  }
+
+  console.log(JSON.stringify({
+    ok: true,
+    mode: "cron-db",
+    jobs: jobs.map((job) => ({
+      jobName: job.jobName,
+      schedule: job.schedule,
+      active: job.active,
+    })),
+  }, null, 2));
+}
+
 async function readCatalogRotationAlerts(cycleId) {
   const url = supabaseRestUrl("trend_alerts");
   url.searchParams.set("select", "id,catalog_cycle_id,alert_type,scheduled_send_at,sent_at");
@@ -739,6 +780,10 @@ async function main() {
     await runForceRebuildSmoke();
     return;
   }
+  if (mode === "cron-db") {
+    await runCronDbSmoke();
+    return;
+  }
   if (mode === "active-db") {
     await runActiveDbSmoke();
     return;
@@ -753,7 +798,7 @@ async function main() {
   }
 
   throw new Error(
-    "Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, active-db, alert-idempotency, or trend-mail-function.",
+    "Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, cron-db, active-db, alert-idempotency, or trend-mail-function.",
   );
 }
 
