@@ -590,13 +590,26 @@ function resolveCatalogSourceMode(mode: CatalogRebuildMode): CatalogSourceMode {
   return mode === "seeded" ? "seeded-weekly" : "researched-weekly";
 }
 
-function shouldSendCatalogRotationAlert(options: CatalogRebuildOptions, sourceMode: CatalogSourceMode) {
+function shouldSendCatalogRotationAlert(
+  options: CatalogRebuildOptions,
+  sourceMode: CatalogSourceMode,
+  sourceSummary: HairstyleCatalogSourceSummary,
+) {
   if (options.dryRun || !options.activate) {
     return false;
   }
 
-  if (typeof options.notify === "boolean") {
-    return options.notify;
+  if (options.notify === false) {
+    return false;
+  }
+
+  const lowFreshness = sourceSummary.freshnessStatus === "lowFreshness" || sourceSummary.freshnessStatus === "fallback";
+  if (lowFreshness && options.notify !== true) {
+    return false;
+  }
+
+  if (options.notify === true) {
+    return true;
   }
 
   return sourceMode === "researched-weekly";
@@ -1263,6 +1276,9 @@ async function rebuildCatalogWithMode(
           };
     const rows = buildCatalogRowsForCycle(cycleId, nowIso, research.trendSignals);
     const validation = validateCatalogRowsForActivation(rows);
+    if (research.sourceSummary.freshnessStatus && research.sourceSummary.freshnessStatus !== "fresh") {
+      validation.warnings.push(`freshness_status:${research.sourceSummary.freshnessStatus}`);
+    }
 
     if (!validation.passed) {
       throw new Error(`Hairstyle catalog validation failed: ${validation.warnings.join(", ") || "insufficient rows"}`);
@@ -1388,16 +1404,22 @@ async function rebuildCatalogWithMode(
       activatedAt = activationTime.toISOString();
       expiresAt = activation.expiresAt;
 
-      if (shouldSendCatalogRotationAlert(options, sourceMode)) {
+      if (shouldSendCatalogRotationAlert(options, sourceMode, research.sourceSummary)) {
         trendAlertScheduledSendAt = new Date(
           activationTime.getTime() + options.notifyDelayMinutes * 60 * 1000,
         ).toISOString();
-        trendAlertId = await enqueueCatalogRotationTrendAlert(
-          supabase,
-          cycle.cycleId,
-          trendAlertScheduledSendAt,
-          options.notifyPlans,
-        );
+        try {
+          trendAlertId = await enqueueCatalogRotationTrendAlert(
+            supabase,
+            cycle.cycleId,
+            trendAlertScheduledSendAt,
+            options.notifyPlans,
+          );
+        } catch (alertError) {
+          const alertMessage = alertError instanceof Error ? alertError.message : "Unexpected trend alert enqueue error";
+          validation.warnings.push(`trend_alert_enqueue_failed:${alertMessage}`);
+          trendAlertScheduledSendAt = null;
+        }
       }
     }
 
