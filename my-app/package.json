@@ -7,6 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "hairstyle:catalog:audit": "node scripts/audit-hairstyle-catalog.mjs",
     "portone:webhook:test": "node scripts/send-portone-webhook-test.mjs",
     "portone:webhook:signature:test": "node --no-warnings scripts/verify-portone-webhook-signature.mjs",
     "portone:contract:test": "node --no-warnings scripts/verify-portone-contract.mjs",

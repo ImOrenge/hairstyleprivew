@@ -18,17 +18,17 @@
 
 | 상태 | 작업 | 파일/대상 |
 | --- | --- | --- |
-| [ ] | `my-app/scripts/audit-hairstyle-catalog.mjs` 추가 | script |
-| [ ] | root `package.json`에 `hairstyle:catalog:audit` 추가 | package |
-| [ ] | `my-app/package.json`에 audit script 추가 | package |
-| [ ] | audit가 blueprint count, gender pool, lookback, cron names 검사 | script |
-| [ ] | audit가 `ensureCatalogAvailable` 사용자 rebuild 제거 여부 검사 | script |
-| [ ] | audit가 trend alert idempotency schema 검사 | script |
-| [ ] | `/api/admin/hairstyles/cycles/latest` smoke 절차 작성 | docs/runbook |
-| [ ] | forced rebuild smoke 절차 작성 | docs/runbook |
-| [ ] | failure fallback smoke 절차 작성 | docs/runbook |
-| [ ] | trend alert smoke 절차 작성 | docs/runbook |
-| [ ] | cron function deployment 주의사항 작성 | docs/runbook |
+| [x] | `my-app/scripts/audit-hairstyle-catalog.mjs` 추가 | script |
+| [x] | root `package.json`에 `hairstyle:catalog:audit` 추가 | package |
+| [x] | `my-app/package.json`에 audit script 추가 | package |
+| [x] | audit가 blueprint count, gender pool, lookback, cron names 검사 | script |
+| [x] | audit가 `ensureCatalogAvailable` 사용자 rebuild 제거 여부 검사 | script |
+| [x] | audit가 trend alert idempotency schema 검사 | script |
+| [x] | `/api/admin/hairstyles/cycles/latest` smoke 절차 작성 | P5/P7 운영 메모 |
+| [x] | forced rebuild smoke 절차 작성 | Phase 검증 체크리스트 |
+| [x] | failure fallback smoke 절차 작성 | Phase 검증 체크리스트 |
+| [x] | trend alert smoke 절차 작성 | Phase 검증 체크리스트 |
+| [x] | cron function deployment 주의사항 작성 | P5 운영 메모 |
 
 ## 완료 기준
 
@@ -46,14 +46,14 @@
 
 | 상태 | 검증 |
 | --- | --- |
-| [ ] | `npm run lint` |
-| [ ] | `npm run build` |
-| [ ] | `npm run hairstyle:catalog:audit` |
-| [ ] | `supabase db push --dry-run --workdir my-app` |
-| [ ] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |
-| [ ] | admin latest smoke |
-| [ ] | `onlyIfDue:true` not-due smoke |
-| [ ] | `force:true` rebuild smoke |
-| [ ] | failure fallback smoke |
-| [ ] | trend alert idempotency smoke |
-| [ ] | post-rotation mail smoke |
+| [x] | `npm run lint` |
+| [x] | `npm run build` |
+| [x] | `npm run hairstyle:catalog:audit` |
+| [ ] | `supabase db push --dry-run --workdir my-app`. 현재 worktree는 Supabase project ref가 없어 실행 불가 |
+| [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |
+| [ ] | admin latest smoke. Supabase runtime env 필요 |
+| [ ] | `onlyIfDue:true` not-due smoke. Supabase runtime env 필요 |
+| [ ] | `force:true` rebuild smoke. Supabase runtime env 필요 |
+| [ ] | failure fallback smoke. Supabase runtime env 필요 |
+| [ ] | trend alert idempotency smoke. Supabase runtime env 필요 |
+| [ ] | post-rotation mail smoke. Supabase runtime env 필요 |

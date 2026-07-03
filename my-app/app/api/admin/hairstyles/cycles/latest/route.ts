@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getLatestSuccessfulCatalogCycle, isAuthorizedAdminRequest } from "../../../../../../lib/hairstyle-catalog";
+import { getHairstyleCatalogAdminStatus, isAuthorizedAdminRequest } from "../../../../../../lib/hairstyle-catalog";
 
 export async function GET(request: Request) {
   if (!isAuthorizedAdminRequest(request)) {
@@ -7,12 +7,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const cycle = await getLatestSuccessfulCatalogCycle();
-    if (!cycle) {
-      return NextResponse.json({ cycle: null }, { status: 200 });
-    }
-
-    return NextResponse.json({ cycle }, { status: 200 });
+    const status = await getHairstyleCatalogAdminStatus();
+    return NextResponse.json(status, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected cycle lookup error";
     return NextResponse.json({ error: message }, { status: 500 });

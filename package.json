@@ -14,6 +14,7 @@
     "cf:preview": "npm --prefix my-app run cf:preview",
     "lint": "npm --prefix my-app run lint",
     "lint:all": "npm --workspaces --if-present run lint",
+    "hairstyle:catalog:audit": "npm --prefix my-app run hairstyle:catalog:audit",
     "portone:audit": "npm --prefix my-app run portone:audit",
     "portone:contract:test": "npm --prefix my-app run portone:contract:test",
     "portone:confirmation:test": "npm --prefix my-app run portone:confirmation:test",

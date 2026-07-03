@@ -1668,6 +1668,57 @@ export async function getLatestSuccessfulCatalogCycle() {
   return getLatestCatalogCycleByStatus(supabase, "succeeded");
 }
 
+export async function getHairstyleCatalogAdminStatus() {
+  const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
+  const now = new Date();
+  const activeCatalog = await getActiveCatalogCycle(supabase).catch(() => null);
+  const latestSucceededCycle = await getLatestCatalogCycleByStatus(supabase, "succeeded");
+  const lastFailedCycle = await getLatestCatalogCycleByStatus(supabase, "failed");
+  const lineups = activeCatalog ? await loadActiveLineups(supabase, activeCatalog.activeCycle) : [];
+  const lineupCounts = {
+    male: lineups.filter((lineup) => lineup.styleTarget === "male").length,
+    female: lineups.filter((lineup) => lineup.styleTarget === "female").length,
+  };
+  const activeStartedAt = activeCatalog ? Date.parse(activeCatalog.activeCycle.activatedAt) : Number.NaN;
+  const expiresAt = activeCatalog ? Date.parse(activeCatalog.activeCycle.expiresAt) : Number.NaN;
+  const isExpired = Number.isFinite(expiresAt) ? expiresAt <= now.getTime() : false;
+  const isStale = Number.isFinite(expiresAt) ? expiresAt + 24 * 60 * 60 * 1000 <= now.getTime() : false;
+  const warnings: string[] = [];
+
+  if (activeCatalog && lineupCounts.male < MIN_STYLE_TARGET_RECOMMENDATION_ROWS) {
+    warnings.push(`male_lineup_below_9:${lineupCounts.male}`);
+  }
+
+  if (activeCatalog && lineupCounts.female < MIN_STYLE_TARGET_RECOMMENDATION_ROWS) {
+    warnings.push(`female_lineup_below_9:${lineupCounts.female}`);
+  }
+
+  if (isExpired) {
+    warnings.push("active_cycle_expired");
+  }
+
+  if (isStale) {
+    warnings.push("active_cycle_stale");
+  }
+
+  return {
+    activeCycle: activeCatalog?.activeCycle ?? null,
+    latestSucceededCycle,
+    lastFailedCycle,
+    activeAgeDays: Number.isFinite(activeStartedAt)
+      ? Math.max(0, Math.round(((now.getTime() - activeStartedAt) / (24 * 60 * 60 * 1000)) * 100) / 100)
+      : null,
+    expiresAt: activeCatalog?.activeCycle.expiresAt ?? null,
+    nextRotationAt: activeCatalog?.activeCycle.expiresAt ?? null,
+    isExpired,
+    isStale,
+    lineupCounts,
+    warnings,
+    lastAutomaticAttemptAt: activeCatalog?.activeCycle.updatedAt ?? null,
+    nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(now),
+  };
+}
+
 export async function listCatalogRowsForCycle(cycleId: string) {
   const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
   return loadCatalogRows(supabase, cycleId);
