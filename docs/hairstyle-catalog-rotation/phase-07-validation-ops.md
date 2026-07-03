@@ -41,6 +41,7 @@
 | build | `npm run build` 통과 |
 | audit | `npm run hairstyle:catalog:audit` 통과. blueprint, lookback, active-only 추천, alert idempotency, lineup, overlap warning, cron names 포함 |
 | migration | `supabase db push --dry-run --workdir my-app` 통과 |
+| remote guard | `npm run hairstyle:catalog:remote:check`가 unrelated pending migration을 감지 |
 | trend mail | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | admin latest | active 상태, stale 상태, next attempt, last failed 정보 확인 |
 | smoke | due checker, forced rebuild, fallback, alert, mail 중복 방지 확인 |
@@ -53,6 +54,7 @@
 | [x] | `npm run build` |
 | [x] | `npm run hairstyle:catalog:audit` |
 | [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
+| [x] | `npm run hairstyle:catalog:remote:check` 통과. `readyForWrite:false`, blocker `202607030001_plan_credit_policy_aftercare.sql` 확인 |
 | [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |
 | [ ] | admin latest smoke. Supabase runtime env 필요 |
 | [ ] | `onlyIfDue:true` not-due smoke. Supabase runtime env 필요 |

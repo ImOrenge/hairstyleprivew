@@ -29,9 +29,12 @@ const trendResearch = read("lib/hairstyle-trend-research.ts");
 const rotationMigration = read("supabase/migrations/20260703092000_hairstyle_catalog_rotation.sql");
 const eventMigration = read("supabase/migrations/20260703094000_hairstyle_catalog_rotation_event_rpc.sql");
 const cronMigration = read("supabase/migrations/20260703093000_hairstyle_catalog_rotation_cron.sql");
+const packageJson = read("package.json");
 const architectureDoc = readRepo("docs/hairstyle-catalog-rotation-architecture.md");
 const phaseReadme = readRepo("docs/hairstyle-catalog-rotation/README.md");
 const runtimeRunbook = readRepo("docs/hairstyle-catalog-rotation/runtime-smoke-runbook.md");
+const rootPackageJson = readRepo("package.json");
+const remoteReadinessScript = read("scripts/check-hairstyle-catalog-remote-readiness.mjs");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
 assert(trendResearch.includes("FALLBACK_RESEARCH_LOOKBACK_DAYS = 120"), "missing 120 day fallback lookback");
@@ -67,6 +70,10 @@ assert(runtimeRunbook.includes("cron-hairstyle-catalog-rotation-check"), "runtim
 assert(runtimeRunbook.includes("catalog_rotation"), "runtime smoke runbook missing catalog rotation alert check");
 assert(runtimeRunbook.includes("Supabase linked dry-run 완료"), "runtime smoke runbook must record linked dry-run status");
 assert(!runtimeRunbook.includes("현재 격리 worktree에는 project ref가 없음"), "runtime smoke runbook still says project ref is missing");
+assert(packageJson.includes("\"hairstyle:catalog:remote:check\""), "my-app package is missing hairstyle remote readiness script");
+assert(rootPackageJson.includes("\"hairstyle:catalog:remote:check\""), "root package is missing hairstyle remote readiness script");
+assert(remoteReadinessScript.includes("blockingPending") && remoteReadinessScript.includes("Refusing hairstyle remote write"), "remote readiness guard must block unrelated pending migrations");
+assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_MIGRATION_CONFIRM_PROJECT_REF"), "remote readiness guard must require explicit project confirmation for writes");
 
 console.log(JSON.stringify({
   ok: true,
@@ -82,5 +89,6 @@ console.log(JSON.stringify({
     "no automatic seeded fallback",
     "cron names",
     "doc status",
+    "remote readiness guard",
   ],
 }, null, 2));
