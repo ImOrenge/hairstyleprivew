@@ -1,11 +1,11 @@
 # 헤어스타일 카탈로그 순환 구현 태스크
 
 작성일: 2026-07-03
-상태: 구현 태스크 분해, 미구현
+상태: 구현 완료, Supabase runtime smoke 대기
 
 ## 목적
 
-`docs/hairstyle-catalog-rotation-architecture.md`의 아키텍처를 구현 가능한 Phase 단위로 쪼갠다. 각 Phase는 독립 파일로 관리하고, 완료 여부는 체크리스트와 검증 명령으로 판단한다.
+`docs/hairstyle-catalog-rotation-architecture.md`의 아키텍처를 구현 가능한 Phase 단위로 쪼개고, 각 Phase의 산출물과 검증 상태를 독립 파일로 관리한다. 2026-07-03 기준 P1-P7 구현과 로컬/정적/임시 Postgres 검증은 완료했고, Supabase project ref와 runtime env가 필요한 smoke만 남아 있다.
 
 ## Phase 목록
 
@@ -18,6 +18,18 @@
 | P5. 자동 rotation cron | [phase-05-auto-rotation-cron.md](phase-05-auto-rotation-cron.md) | 매일 due checker와 post-rotation mail cron | P3, P4 |
 | P6. 회전 품질 | [phase-06-rotation-quality.md](phase-06-rotation-quality.md) | 32개 blueprint, slot lineup, overlap warning | P2, P3 |
 | P7. 운영 검증 | [phase-07-validation-ops.md](phase-07-validation-ops.md) | audit, smoke, admin status, 배포 전 검증 | P1-P6 |
+
+## 검증 상태 요약
+
+| 구분 | 상태 | 근거 |
+| --- | --- | --- |
+| 구현 태스크 | 완료 | P1-P7 작업 체크리스트 `[x]` 처리 |
+| 로컬 앱 검증 | 완료 | `npm run lint`, `npm run build` 통과 |
+| 정적 카탈로그 감사 | 완료 | `npm run hairstyle:catalog:audit` 통과 |
+| Deno 함수 문법 | 완료 | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
+| DB migration smoke | 완료 | 임시 Postgres에서 P1/P5/P6 event RPC migration smoke 통과 |
+| Supabase linked dry-run | 대기 | 현재 worktree는 Supabase project ref가 없어 `supabase db push --dry-run --workdir my-app` 실행 불가 |
+| Supabase runtime/API smoke | 대기 | runtime env와 배포 대상이 필요하며 [runtime-smoke-runbook.md](runtime-smoke-runbook.md)에 절차 정리 |
 
 ## 전체 완료 기준
 
@@ -33,18 +45,18 @@
 
 ## 전체 검증 순서
 
-| 순서 | 검증 | 명령 또는 기준 |
-| ---: | --- | --- |
-| 1 | 정적 타입/문법 | `npm run lint` |
-| 2 | 앱 빌드 | `npm run build` |
-| 3 | 카탈로그 감사 | `npm run hairstyle:catalog:audit` |
-| 4 | migration dry-run | `supabase db push --dry-run --workdir my-app` |
-| 5 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |
-| 6 | admin latest smoke | `GET /api/admin/hairstyles/cycles/latest` |
-| 7 | due checker smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","onlyIfDue":true}` |
-| 8 | forced rebuild smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","force":true}` |
-| 9 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 |
-| 10 | trend alert smoke | active 교체 후 `trend_alerts.alert_type='catalog_rotation'` 1건 확인 |
+| 순서 | 검증 | 명령 또는 기준 | 현재 상태 |
+| ---: | --- | --- | --- |
+| 1 | 정적 타입/문법 | `npm run lint` | 통과 |
+| 2 | 앱 빌드 | `npm run build` | 통과 |
+| 3 | 카탈로그 감사 | `npm run hairstyle:catalog:audit` | 통과 |
+| 4 | migration dry-run | `supabase db push --dry-run --workdir my-app` | Supabase project ref 필요 |
+| 5 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` | 통과 |
+| 6 | admin latest smoke | `GET /api/admin/hairstyles/cycles/latest` | Supabase runtime env 필요 |
+| 7 | due checker smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","onlyIfDue":true}` | Supabase runtime env 필요 |
+| 8 | forced rebuild smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","force":true}` | Supabase runtime env 필요 |
+| 9 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
+| 10 | trend alert smoke | active 교체 후 `trend_alerts.alert_type='catalog_rotation'` 1건 확인 | Supabase runtime env 필요 |
 
 ## 구현 순서 규칙
 

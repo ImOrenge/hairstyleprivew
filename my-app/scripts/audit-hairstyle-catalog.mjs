@@ -6,6 +6,10 @@ function read(path) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
+function readRepo(path) {
+  return readFileSync(new URL(`../../${path}`, import.meta.url), "utf8");
+}
+
 function assert(condition, message) {
   if (!condition) {
     throw new Error(message);
@@ -25,6 +29,9 @@ const trendResearch = read("lib/hairstyle-trend-research.ts");
 const rotationMigration = read("supabase/migrations/20260703092000_hairstyle_catalog_rotation.sql");
 const eventMigration = read("supabase/migrations/20260703094000_hairstyle_catalog_rotation_event_rpc.sql");
 const cronMigration = read("supabase/migrations/20260703093000_hairstyle_catalog_rotation_cron.sql");
+const architectureDoc = readRepo("docs/hairstyle-catalog-rotation-architecture.md");
+const phaseReadme = readRepo("docs/hairstyle-catalog-rotation/README.md");
+const runtimeRunbook = readRepo("docs/hairstyle-catalog-rotation/runtime-smoke-runbook.md");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
 assert(trendResearch.includes("FALLBACK_RESEARCH_LOOKBACK_DAYS = 120"), "missing 120 day fallback lookback");
@@ -44,6 +51,13 @@ assert(cronMigration.includes("cron-hairstyle-catalog-rotation-check"), "missing
 assert(cronMigration.includes("cron-trend-emails-post-rotation"), "missing post rotation mail cron job name");
 assert(cronMigration.includes("'onlyIfDue', true"), "rotation cron does not send onlyIfDue");
 assert(cronMigration.includes("'x-admin-secret'"), "rotation cron does not send admin secret header");
+assert(architectureDoc.includes("상태: 구현 완료, Supabase runtime smoke 대기"), "architecture doc status is stale");
+assert(!architectureDoc.includes("상태: 설계안, 미구현"), "architecture doc still says unimplemented");
+assert(phaseReadme.includes("runtime-smoke-runbook.md"), "phase README must link runtime smoke runbook");
+assert(phaseReadme.includes("상태: 구현 완료, Supabase runtime smoke 대기"), "phase README status is stale");
+assert(!phaseReadme.includes("상태: 구현 태스크 분해, 미구현"), "phase README still says unimplemented");
+assert(runtimeRunbook.includes("cron-hairstyle-catalog-rotation-check"), "runtime smoke runbook missing rotation cron check");
+assert(runtimeRunbook.includes("catalog_rotation"), "runtime smoke runbook missing catalog rotation alert check");
 
 console.log(JSON.stringify({
   ok: true,
@@ -55,5 +69,6 @@ console.log(JSON.stringify({
     "lineup builder",
     "overlap warning",
     "cron names",
+    "doc status",
   ],
 }, null, 2));

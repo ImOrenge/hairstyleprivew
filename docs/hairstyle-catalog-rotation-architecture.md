@@ -1,19 +1,19 @@
 # HairFit 헤어스타일 카탈로그 순환 아키텍처
 
 작성일: 2026-07-03
-상태: 설계안, 미구현
+상태: 구현 완료, Supabase runtime smoke 대기
 
 ## 1. 목적
 
 헤어 추천에 쓰이는 카탈로그가 한 번 생성된 뒤 계속 고정되는 문제를 해결한다. 목표는 7일마다 한국 헤어스타일 트렌드 데이터를 수집하고, 검증을 통과한 새 카탈로그만 실제 추천에 반영하는 것이다.
 
-이 문서는 현재 구현을 대체할 목표 아키텍처 기준이다. 현재 코드는 `researched-weekly`라는 이름을 쓰지만 7일 만료 체크와 수집 cron이 없다.
+이 문서는 구현된 카탈로그 순환 구조의 목표 아키텍처와 운영 기준이다. 2026-07-03 기준 P1-P7 구현과 로컬/정적/임시 Postgres 검증은 완료했고, Supabase project ref와 runtime env가 필요한 smoke 검증만 남아 있다.
 
 구현 태스크는 [hairstyle-catalog-rotation/README.md](hairstyle-catalog-rotation/README.md)에서 Phase별 체크리스트로 관리한다.
 
-## 2. 현재 상태 요약
+## 2. 구현 전 상태 요약
 
-| 영역 | 현재 구현 | 문제 |
+| 영역 | 기존 구현 | 문제 |
 | --- | --- | --- |
 | 수집 함수 | `collectKoreanHairstyleTrendResearch()`가 Google News RSS를 수집 | 함수는 있으나 주기 실행자가 없음 |
 | 리빌드 함수 | `rebuildWeeklyHairstyleCatalog()` | 이름은 weekly지만 7일 TTL 판단 없음 |
