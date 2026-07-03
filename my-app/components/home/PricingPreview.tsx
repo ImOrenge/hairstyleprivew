@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { getPlanDisplayBenefits, type PlanDisplayBenefit } from "../../lib/plan-benefit-display";
+import type { PlanDisplayBenefit } from "../../lib/plan-benefit-display";
 import type { PricingTierKey } from "../../lib/pricing-plan";
 import { cn } from "../../lib/utils";
 import { useT } from "../../lib/i18n/useT";
@@ -20,6 +20,10 @@ interface PlanBlueprint {
   cta: string;
   tone: "basic" | "recommended" | "premium" | "enterprise";
   recommended: boolean;
+}
+
+interface PricingPreviewProps {
+  initialDisplayBenefits: PlanDisplayBenefit[];
 }
 
 function usageLine(benefit: PlanDisplayBenefit, t: ReturnType<typeof useT>) {
@@ -69,9 +73,9 @@ function featureLines(plan: PlanBlueprint, benefit: PlanDisplayBenefit, t: Retur
   return [...base, t("pricing.basic.f2"), t("pricing.basic.f3")];
 }
 
-export function PricingPreview() {
+export function PricingPreview({ initialDisplayBenefits }: PricingPreviewProps) {
   const t = useT();
-  const displayBenefits = getPlanDisplayBenefits();
+  const displayBenefits = initialDisplayBenefits;
   const benefitByKey = new Map<string, PlanDisplayBenefit>(
     displayBenefits.map((benefit) => [benefit.key, benefit]),
   );

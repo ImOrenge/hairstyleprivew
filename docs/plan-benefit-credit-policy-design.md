@@ -312,6 +312,7 @@ my-app/lib/plan-benefit-display.ts
 - 헤어+패션 세트 예상 횟수와 잔여 크레딧을 계산한다.
 - 에프터케어 무료/추가 차감 정책을 반환한다.
 - 랜딩, `/billing`, 마이페이지, 체크아웃이 같은 값을 쓰게 한다.
+- Client Component는 비공개 env를 직접 읽지 않는다. 랜딩과 `/billing`은 서버에서 계산한 표시값 snapshot을 `PricingPreview`에 props로 전달한다.
 
 권장 타입:
 
@@ -370,7 +371,7 @@ pricing.usage.aftercarePolicy
 변경:
 
 - `DEFAULT_CREDITS_PER_STYLE`을 10으로 변경한다.
-- `PRICING_CREDITS_PER_STYLE` 환경 변수 override는 유지한다.
+- `PRICING_CREDITS_PER_STYLE` 환경 변수 override는 유지하되, 10크레딧 정책 하한보다 낮은 값은 무시한다.
 
 서버 정책:
 
@@ -390,6 +391,7 @@ pricing.usage.aftercarePolicy
 변경:
 
 - `DEFAULT_CREDITS_PER_OUTFIT`을 20으로 변경한다.
+- `PRICING_CREDITS_PER_OUTFIT` 환경 변수 override는 유지하되, 20크레딧 정책 하한보다 낮은 값은 무시한다.
 - 유료 플랜의 별도 `maxFashionGenerations` 상한을 제거한다.
 - Free는 패션 혜택으로 광고하지 않는다.
 
@@ -416,6 +418,7 @@ pricing.usage.aftercarePolicy
 
 - `DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM = 30`을 추가한다.
 - `getCreditsPerAftercareProgram()`을 추가한다.
+- `PRICING_CREDITS_PER_AFTERCARE_PROGRAM` 환경 변수 override는 유지하되, 30크레딧 정책 하한보다 낮은 값은 무시한다.
 - 계정 기준 첫 에프터케어 프로그램은 무료다.
 - 두 번째 프로그램부터 30크레딧을 차감한다.
 

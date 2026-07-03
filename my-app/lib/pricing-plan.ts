@@ -59,7 +59,7 @@ export function getPricingEconomics(): PricingEconomics {
   const styleCostUsd = Math.max(0.0001, readEnvNumber("PRICING_STYLE_COST_USD", DEFAULT_STYLE_COST_USD));
   const targetMargin = clamp(readEnvNumber("PRICING_TARGET_MARGIN", DEFAULT_TARGET_MARGIN), 0.05, 0.9);
   const creditsPerStyle = Math.max(
-    1,
+    DEFAULT_CREDITS_PER_STYLE,
     Math.round(readEnvNumber("PRICING_CREDITS_PER_STYLE", DEFAULT_CREDITS_PER_STYLE)),
   );
   const usdToKrw = Math.max(1, readEnvNumber("PRICING_USD_TO_KRW", DEFAULT_USD_TO_KRW));
@@ -87,14 +87,14 @@ export function getCreditsPerStyle(): number {
 
 export function getCreditsPerOutfit(): number {
   return Math.max(
-    1,
+    DEFAULT_CREDITS_PER_OUTFIT,
     Math.round(readEnvNumber("PRICING_CREDITS_PER_OUTFIT", DEFAULT_CREDITS_PER_OUTFIT)),
   );
 }
 
 export function getCreditsPerAftercareProgram(): number {
   return Math.max(
-    1,
+    DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM,
     Math.round(readEnvNumber("PRICING_CREDITS_PER_AFTERCARE_PROGRAM", DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM)),
   );
 }

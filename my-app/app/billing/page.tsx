@@ -1,7 +1,10 @@
 import { PricingPreview } from "../../components/home/PricingPreview";
 import { AppPage, Panel } from "../../components/ui/Surface";
+import { getPlanDisplayBenefits } from "../../lib/plan-benefit-display";
 
 export default function BillingPage() {
+  const pricingDisplayBenefits = getPlanDisplayBenefits();
+
   return (
     <AppPage className="flex flex-col gap-5 pb-16">
       <Panel as="section" className="p-5 sm:p-6">
@@ -14,7 +17,7 @@ export default function BillingPage() {
           헤어 결과 이미지, 확정 헤어 기준 패션 룩북, 에프터케어 프로그램에 함께 사용됩니다.
         </p>
       </Panel>
-      <PricingPreview />
+      <PricingPreview initialDisplayBenefits={pricingDisplayBenefits} />
     </AppPage>
   );
 }

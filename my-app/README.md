@@ -39,7 +39,7 @@ Optional:
 - `BILLING_KEY_ENCRYPTION_SECRET` (required for encrypted PortOne billing key storage and renewals)
 - `PRICING_STYLE_COST_USD` (default: `0.16`, assumed cost per style)
 - `PRICING_TARGET_MARGIN` (default: `0.4`, target margin)
-- `PRICING_CREDITS_PER_STYLE` (default: `5`, credits charged per style)
+- `PRICING_CREDITS_PER_STYLE` (default/minimum: `10`, credits charged per hair result image)
 - `PRICING_USD_TO_KRW` (default: `1350`, USD/KRW exchange-rate assumption)
 - `PRICING_SAFETY_MULTIPLIER` (default: `1.06`, safety multiplier)
 - `PRICING_FREE_CREDITS` (default: `10`)

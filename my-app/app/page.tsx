@@ -10,6 +10,7 @@ import { HeroSection } from "../components/home/HeroSection";
 import { AppPage, InverseSection, Panel, SurfaceCard } from "../components/ui/Surface";
 import { resolveSignedInAccountHomeHref } from "../lib/account-home-server";
 import { getClerkConfigState, getProductionClerkSecretKey } from "../lib/clerk";
+import { getPlanDisplayBenefits } from "../lib/plan-benefit-display";
 import {
   homeNavItems,
   homeSeo,
@@ -249,6 +250,7 @@ export default async function HomePage() {
   const faqs = await loadPublishedSupportFaqs();
   const jsonLd = buildHomeJsonLd(faqs);
   const { userCount, avatars } = await loadHomeSocialProof();
+  const pricingDisplayBenefits = getPlanDisplayBenefits();
 
   return (
     <>
@@ -339,7 +341,7 @@ export default async function HomePage() {
 
         {/* 6. 가격 */}
         <div id="home-pricing" className="scroll-mt-24">
-          <PricingPreview />
+          <PricingPreview initialDisplayBenefits={pricingDisplayBenefits} />
         </div>
 
         {/* 7. 후기/신뢰 */}
