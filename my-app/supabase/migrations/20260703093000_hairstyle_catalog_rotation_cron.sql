@@ -67,11 +67,16 @@ begin
     $sql$
       select net.http_post(
         url     := %L,
-        headers := '{"Content-Type":"application/json","Authorization":"Bearer %s"}'::jsonb,
+        headers := jsonb_build_object(
+          'Content-Type', 'application/json',
+          'Authorization', %L,
+          'apikey', %L
+        ),
         body    := '{}'::jsonb
       ) as request_id;
     $sql$,
     rtrim(p_edge_function_base_url, '/') || '/cron-trend-emails',
+    'Bearer ' || p_service_role_key,
     p_service_role_key
   );
 

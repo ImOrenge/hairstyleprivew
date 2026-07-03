@@ -83,6 +83,7 @@ assert(cronMigration.includes("cron-hairstyle-catalog-rotation-check"), "missing
 assert(cronMigration.includes("cron-trend-emails-post-rotation"), "missing post rotation mail cron job name");
 assert(cronMigration.includes("'onlyIfDue', true"), "rotation cron does not send onlyIfDue");
 assert(cronMigration.includes("'x-admin-secret'"), "rotation cron does not send admin secret header");
+assert(cronMigration.includes("'apikey'"), "post-rotation mail cron must send Supabase apikey header");
 assert(cronStatusMigration.includes("get_hairstyle_catalog_rotation_cron_status"), "missing hairstyle cron status RPC");
 assert(cronStatusMigration.includes("to_regclass('cron.job')"), "cron status RPC must tolerate missing pg_cron");
 assert(cronStatusMigration.includes("20 0 * * *"), "cron status RPC must validate rotation check schedule");

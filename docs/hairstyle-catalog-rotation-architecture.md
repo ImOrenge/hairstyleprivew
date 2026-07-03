@@ -455,6 +455,7 @@
 | 기존 데이터 migration | latest succeeded cycle을 initial active로 등록 |
 | cron 등록 | `cron-hairstyle-catalog-rotation-check`가 `20 0 * * *`로 등록 |
 | 트렌드 알림 후속 cron | `cron-trend-emails-post-rotation`이 `40 0 * * *`로 등록 |
+| Edge Function header | post-rotation mail cron이 `Authorization: Bearer <service-role-key>`와 `apikey: <service-role-key>`를 함께 전송 |
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` 통과 |
 | admin secret | cron 호출에 쓰는 `INTERNAL_API_SECRET`와 앱 secret 일치 |
 | 첫 active | `GET /api/admin/hairstyles/cycles/latest`에서 `activeCycle` 존재 |

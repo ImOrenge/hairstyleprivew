@@ -24,6 +24,7 @@
 | [x] | 기존 `cron-trend-emails` daily job 유지 | 별도 helper로 분리 |
 | [x] | `rotation-check` body에 `onlyIfDue:true`, `notify:true` 포함 | migration |
 | [x] | `pg_net` 호출 header에 `x-admin-secret` 포함 | migration |
+| [x] | post-rotation Edge Function 호출 header에 `Authorization`과 `apikey` 포함 | migration |
 | [x] | running cycle 30분 초과 복구 경로 연결 | P3 service |
 | [x] | rotation attempt event 기록 | service/RPC |
 | [x] | cron 등록 문서와 운영 명령 추가 | 아래 운영 메모 |
