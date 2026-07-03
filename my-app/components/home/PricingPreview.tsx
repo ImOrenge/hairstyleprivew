@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { getPricingEconomics, getSuggestedPricingTiers, type PricingTierKey } from "../../lib/pricing-plan";
+import { getPlanDisplayBenefits, type PlanDisplayBenefit } from "../../lib/plan-benefit-display";
+import type { PricingTierKey } from "../../lib/pricing-plan";
 import { cn } from "../../lib/utils";
 import { useT } from "../../lib/i18n/useT";
 import { PortoneSubscriptionButton } from "../payments/PortoneSubscriptionButton";
@@ -16,19 +17,65 @@ interface PlanBlueprint {
   subtitle: string;
   description: string;
   period: string;
-  features: string[];
   cta: string;
   tone: "basic" | "recommended" | "premium" | "enterprise";
   recommended: boolean;
 }
 
+function usageLine(benefit: PlanDisplayBenefit, t: ReturnType<typeof useT>) {
+  if (benefit.key === "free" || benefit.usage.hairFashionSetCount <= 0) {
+    return t("pricing.usage.hairFashionUnavailable");
+  }
+
+  if (benefit.usage.hairFashionRemainderCredits > 0) {
+    return t("pricing.usage.hairFashionSetsWithRemainder", {
+      sets: benefit.usage.hairFashionSetCount,
+      remainder: benefit.usage.hairFashionRemainderCredits,
+    });
+  }
+
+  return t("pricing.usage.hairFashionSets", { sets: benefit.usage.hairFashionSetCount });
+}
+
+function featureLines(plan: PlanBlueprint, benefit: PlanDisplayBenefit, t: ReturnType<typeof useT>) {
+  if (plan.key === "salon") {
+    return [
+      t("pricing.salon.f1"),
+      t("pricing.salon.f2"),
+      t("pricing.salon.f3"),
+      t("pricing.salon.f4"),
+      t("pricing.salon.f5"),
+    ];
+  }
+
+  const base = [
+    t("pricing.usage.hairOnly", { count: benefit.usage.hairOnlyCount }),
+    usageLine(benefit, t),
+    t("pricing.usage.aftercarePolicy", { credits: benefit.creditsPerAftercareProgram }),
+  ];
+
+  if (plan.key === "free") {
+    return [t("pricing.free.f1"), ...base, t("pricing.free.f3")];
+  }
+
+  if (plan.key === "pro") {
+    return [...base, t("pricing.pro.f3"), t("pricing.pro.f5")];
+  }
+
+  if (plan.key === "standard") {
+    return [...base, t("pricing.standard.f2"), t("pricing.standard.f3")];
+  }
+
+  return [...base, t("pricing.basic.f2"), t("pricing.basic.f3")];
+}
+
 export function PricingPreview() {
   const t = useT();
-  const economics = getPricingEconomics();
-  const suggestedTiers = getSuggestedPricingTiers();
-  const tierByKey = new Map<string, (typeof suggestedTiers)[number]>(
-    suggestedTiers.map((tier) => [tier.key, tier]),
+  const displayBenefits = getPlanDisplayBenefits();
+  const benefitByKey = new Map<string, PlanDisplayBenefit>(
+    displayBenefits.map((benefit) => [benefit.key, benefit]),
   );
+  const sampleBenefit = benefitByKey.get("basic") ?? displayBenefits[0];
 
   const planBlueprint: PlanBlueprint[] = [
     {
@@ -37,7 +84,6 @@ export function PricingPreview() {
       subtitle: t("pricing.free.subtitle"),
       description: t("pricing.free.desc"),
       period: t("pricing.freePeriod"),
-      features: [t("pricing.free.f1"), t("pricing.free.f2"), t("pricing.free.f3")],
       cta: t("pricing.free.cta"),
       tone: "basic",
       recommended: false,
@@ -48,7 +94,6 @@ export function PricingPreview() {
       subtitle: t("pricing.basic.subtitle"),
       description: t("pricing.basic.desc"),
       period: t("pricing.perMonth"),
-      features: [t("pricing.basic.f1"), t("pricing.basic.f2"), t("pricing.basic.f3"), t("pricing.basic.f4")],
       cta: t("pricing.basic.cta"),
       tone: "basic",
       recommended: false,
@@ -59,12 +104,6 @@ export function PricingPreview() {
       subtitle: t("pricing.standard.subtitle"),
       description: t("pricing.standard.desc"),
       period: t("pricing.perMonth"),
-      features: [
-        t("pricing.standard.f1"),
-        t("pricing.standard.f2"),
-        t("pricing.standard.f3"),
-        t("pricing.standard.f4"),
-      ],
       cta: t("pricing.standard.cta"),
       tone: "recommended",
       recommended: true,
@@ -75,12 +114,6 @@ export function PricingPreview() {
       subtitle: t("pricing.pro.subtitle"),
       description: t("pricing.pro.desc"),
       period: t("pricing.perMonth"),
-      features: [
-        t("pricing.pro.f1"),
-        t("pricing.pro.f2"),
-        t("pricing.pro.f3"),
-        t("pricing.pro.f5"),
-      ],
       cta: t("pricing.pro.cta"),
       tone: "premium",
       recommended: false,
@@ -91,13 +124,6 @@ export function PricingPreview() {
       subtitle: t("pricing.salon.subtitle"),
       description: t("pricing.salon.desc"),
       period: t("pricing.salonPeriod"),
-      features: [
-        t("pricing.salon.f1"),
-        t("pricing.salon.f2"),
-        t("pricing.salon.f3"),
-        t("pricing.salon.f4"),
-        t("pricing.salon.f5"),
-      ],
       cta: t("pricing.salon.cta"),
       tone: "enterprise",
       recommended: false,
@@ -105,22 +131,24 @@ export function PricingPreview() {
   ];
 
   const plans = planBlueprint.map((plan) => {
-    const tier = tierByKey.get(plan.key);
-    if (!tier || plan.key === "salon") {
+    const benefit = benefitByKey.get(plan.key);
+    if (!benefit || plan.key === "salon") {
       return {
         ...plan,
         price: plan.key === "salon" ? t("pricing.salonPrice") : "0원",
         credits: plan.key === "salon" ? t("pricing.salonCredits") : t("pricing.noCredits"),
+        features: benefit ? featureLines(plan, benefit, t) : [],
       };
     }
 
     return {
       ...plan,
-      price: tier.priceLabel,
+      price: benefit.priceLabel,
       credits:
         plan.key === "free"
-          ? t("pricing.freeCredits", { credits: tier.credits, styles: tier.estimatedStyles })
-          : t("pricing.paidCredits", { credits: tier.credits, styles: tier.estimatedStyles }),
+          ? t("pricing.freeCredits", { credits: benefit.credits, styles: benefit.usage.hairOnlyCount })
+          : t("pricing.paidCredits", { credits: benefit.credits, styles: benefit.usage.hairOnlyCount }),
+      features: featureLines(plan, benefit, t),
     };
   });
 
@@ -148,7 +176,13 @@ export function PricingPreview() {
           </h2>
         </div>
         <p className="text-sm text-[var(--app-muted)]">
-          {t("pricing.creditNote", { credits: economics.creditsPerStyle })}
+          {sampleBenefit
+            ? t("pricing.creditNote", {
+                credits: sampleBenefit.creditsPerStyle,
+                outfitCredits: sampleBenefit.creditsPerOutfit,
+                aftercareCredits: sampleBenefit.creditsPerAftercareProgram,
+              })
+            : null}
         </p>
       </div>
 

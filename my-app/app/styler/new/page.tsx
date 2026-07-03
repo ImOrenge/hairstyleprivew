@@ -33,6 +33,7 @@ interface GenerationResponse {
   recommendationSet?: {
     analysis?: FaceAnalysisSummary;
     variants?: GeneratedVariant[];
+    selectedVariantId?: string | null;
   } | null;
   error?: string;
 }
@@ -452,10 +453,17 @@ function StylerNewContent() {
         return;
       }
 
-      const variantFromSet =
-        data.recommendationSet?.variants?.find((variant) => variant.id === selectedVariantId) || null;
-
       if (response.ok) {
+        const confirmedVariantId = data.recommendationSet?.selectedVariantId || data.selectedVariant?.id || null;
+        if (confirmedVariantId !== selectedVariantId) {
+          setSelectedVariant(null);
+          setProfileError("패션 추천은 결과 화면에서 헤어스타일을 확정한 뒤 시작할 수 있습니다.");
+          setIsLoadingVariant(false);
+          return;
+        }
+
+        const variantFromSet =
+          data.recommendationSet?.variants?.find((variant) => variant.id === selectedVariantId) || null;
         setSelectedVariant(variantFromSet || data.selectedVariant || null);
         if (!variantFromSet && !data.selectedVariant) {
           setProfileError("선택한 헤어스타일을 찾지 못했습니다. 헤어 결과에서 다시 선택해 주세요.");
@@ -620,7 +628,7 @@ function StylerNewContent() {
         <p className="app-kicker">패션 추천</p>
         <h1 className="text-3xl font-black tracking-tight text-[var(--app-text)]">헤어스타일에 맞춘 전신 코디 만들기</h1>
         <p className="max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
-          먼저 헤어스타일과 바디 프로필을 확인한 뒤, 원하는 패션 장르를 선택하면 AI 카탈로그 기반 코디와 룩북 이미지를 생성합니다.
+          먼저 확정된 헤어스타일과 바디 프로필을 확인한 뒤, 원하는 패션 장르를 선택하면 AI 카탈로그 기반 코디와 룩북 이미지를 생성합니다.
         </p>
       </header>
 
@@ -735,7 +743,7 @@ function StylerNewContent() {
 
           {!selectedVariant ? (
             <p className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-              패션 추천을 시작하려면 헤어스타일을 먼저 선택해야 합니다.
+              패션 추천을 시작하려면 결과 화면에서 헤어스타일을 먼저 확정해야 합니다.
             </p>
           ) : null}
 
@@ -753,7 +761,7 @@ function StylerNewContent() {
             ) : null}
             {!selectedVariant ? (
               <Button type="button" variant="secondary" onClick={openHairModal}>
-                헤어스타일 선택하기
+                확정할 헤어스타일 찾기
               </Button>
             ) : null}
             <Button

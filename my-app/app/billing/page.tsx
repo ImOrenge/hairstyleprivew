@@ -10,7 +10,8 @@ export default function BillingPage() {
           플랜 결제
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
-          필요한 월 크레딧에 맞춰 플랜을 선택하고 PortOne 카드 빌링키로 구독을 시작하세요.
+          필요한 월 크레딧에 맞춰 플랜을 선택하고 PortOne 카드 빌링키로 구독을 시작하세요. 크레딧은
+          헤어 결과 이미지, 확정 헤어 기준 패션 룩북, 에프터케어 프로그램에 함께 사용됩니다.
         </p>
       </Panel>
       <PricingPreview />

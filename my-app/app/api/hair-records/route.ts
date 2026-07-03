@@ -7,6 +7,7 @@ import {
 } from "../../../lib/hair-care-generator";
 import { generateAftercareGuide } from "../../../lib/aftercare-guide-generator";
 import type { GeneratedVariant, RecommendationSet } from "../../../lib/recommendation-types";
+import { getCreditsPerAftercareProgram } from "../../../lib/pricing-plan";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../lib/supabase";
 
 interface CreateHairRecordBody {
@@ -23,6 +24,27 @@ interface ExistingHairRecordRow {
   service_date: string;
   next_visit_target_days: number;
   created_at: string;
+}
+
+interface ExistingAftercareGuideRow {
+  id: string;
+}
+
+interface UserCreditRow {
+  credits: number | null;
+}
+
+interface CreditRpcClient {
+  rpc: (
+    fn: "consume_credits",
+    params: {
+      p_user_id: string;
+      p_generation_id: string;
+      p_amount: number;
+      p_reason: string;
+      p_metadata: Record<string, unknown>;
+    },
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -89,6 +111,26 @@ function isSameConfirmedVariant(
   return existingRecord.style_name === getStyleName(selectedVariant);
 }
 
+function isInsufficientCreditsError(error: { message?: string } | null) {
+  return Boolean(error?.message?.toLowerCase().includes("insufficient credits"));
+}
+
+async function deleteHairRecordCascade(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  userId: string,
+  hairRecordId: string,
+) {
+  const { error } = await supabase
+    .from("user_hair_records")
+    .delete()
+    .eq("id", hairRecordId)
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("[hair-records] aftercare cleanup failed:", error.message);
+  }
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
@@ -129,6 +171,7 @@ export async function POST(request: Request) {
   const origin = new URL(request.url).origin;
   const ctaUrl = `${origin}/aftercare`;
   const supabase = getSupabaseAdminClient();
+  const aftercareProgramCredits = getCreditsPerAftercareProgram();
 
   const { data: generation, error: generationError } = await supabase
     .from("generations")
@@ -200,12 +243,50 @@ export async function POST(request: Request) {
         serviceDate: existingRecord.service_date,
         nextVisitTargetDays: existingRecord.next_visit_target_days,
         careScheduledCount: 0,
+        chargedCredits: 0,
+        firstAftercareProgramFreeUsed: false,
+        aftercareProgramCreditCost: aftercareProgramCredits,
         redirectTo: `/aftercare/${existingRecord.id}`,
         alreadyConfirmed: true,
         selectionLocked: true,
       },
       { status: 200 },
     );
+  }
+
+  const { data: previousAftercareGuide, error: previousAftercareGuideError } = await supabase
+    .from("user_aftercare_guides")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle<ExistingAftercareGuideRow>();
+
+  if (previousAftercareGuideError) {
+    return NextResponse.json({ error: previousAftercareGuideError.message }, { status: 500 });
+  }
+
+  const firstAftercareProgramFreeUsed = !previousAftercareGuide;
+  if (!firstAftercareProgramFreeUsed) {
+    const { data: userCredits, error: userCreditsError } = await supabase
+      .from("users")
+      .select("credits")
+      .eq("id", userId)
+      .maybeSingle<UserCreditRow>();
+
+    if (userCreditsError) {
+      return NextResponse.json({ error: userCreditsError.message }, { status: 500 });
+    }
+
+    if (Number(userCredits?.credits ?? 0) < aftercareProgramCredits) {
+      return NextResponse.json(
+        {
+          error: "크레딧이 부족합니다.",
+          requiredCredits: aftercareProgramCredits,
+          chargedCredits: 0,
+        },
+        { status: 409 },
+      );
+    }
   }
 
   const styleName = getStyleName(selectedVariant);
@@ -281,6 +362,43 @@ export async function POST(request: Request) {
     .update({ care_generated_at: new Date().toISOString() })
     .eq("id", hairRecordId);
 
+  let chargedCredits = 0;
+  if (!firstAftercareProgramFreeUsed) {
+    const chargedAt = new Date().toISOString();
+    const creditRpc = supabase as unknown as CreditRpcClient;
+    const { error: consumeError } = await creditRpc.rpc("consume_credits", {
+      p_user_id: userId,
+      p_generation_id: generationId,
+      p_amount: aftercareProgramCredits,
+      p_reason: "aftercare_program_usage",
+      p_metadata: {
+        source: "api/hair-records",
+        hairRecordId,
+        aftercareGuideId: guideRow.id,
+        careScheduledCount: contents.length,
+        chargedAt,
+      },
+    });
+
+    if (consumeError) {
+      await deleteHairRecordCascade(supabase, userId, hairRecordId);
+      if (isInsufficientCreditsError(consumeError)) {
+        return NextResponse.json(
+          {
+            error: "크레딧이 부족합니다.",
+            requiredCredits: aftercareProgramCredits,
+            chargedCredits: 0,
+          },
+          { status: 409 },
+        );
+      }
+
+      return NextResponse.json({ error: consumeError.message }, { status: 500 });
+    }
+
+    chargedCredits = aftercareProgramCredits;
+  }
+
   recommendationSet.selectedVariantId = selectedVariantId;
   await supabase
     .from("generations")
@@ -304,6 +422,9 @@ export async function POST(request: Request) {
       serviceDate,
       nextVisitTargetDays: nextVisitDays,
       careScheduledCount: contents.length,
+      chargedCredits,
+      firstAftercareProgramFreeUsed,
+      aftercareProgramCreditCost: aftercareProgramCredits,
       redirectTo: `/aftercare/${hairRecordId}`,
     },
     { status: 201 },

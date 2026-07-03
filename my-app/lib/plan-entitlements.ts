@@ -14,21 +14,21 @@ export const PLAN_ENTITLEMENTS: Record<ActivePlanKey, PlanEntitlement> = {
   free: {
     key: "free",
     label: "Free",
-    maxFashionGenerations: 1,
+    maxFashionGenerations: 0,
     watermarkHairResults: true,
     generatedAssetsRetentionDays: 7,
   },
   basic: {
     key: "basic",
     label: "Basic",
-    maxFashionGenerations: 1,
+    maxFashionGenerations: null,
     watermarkHairResults: false,
     generatedAssetsRetentionDays: 30,
   },
   standard: {
     key: "standard",
     label: "Standard",
-    maxFashionGenerations: 3,
+    maxFashionGenerations: null,
     watermarkHairResults: false,
     generatedAssetsRetentionDays: 365,
   },
@@ -157,5 +157,9 @@ export async function countUserCompletedFashionGenerations(
 }
 
 export function formatLimitError(entitlement: PlanEntitlement) {
+  if (entitlement.maxFashionGenerations === 0) {
+    return `${entitlement.label} 플랜은 패션 룩북 이미지를 생성할 수 없습니다. 확정된 헤어와 추가 크레딧이 필요합니다.`;
+  }
+
   return `${entitlement.label} 플랜은 패션 룩북을 최대 ${entitlement.maxFashionGenerations}개까지 생성할 수 있습니다.`;
 }

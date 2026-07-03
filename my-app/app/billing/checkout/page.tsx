@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 import { PortoneCheckoutForm } from "../../../components/payments/PortoneCheckoutForm";
 import { AppPage, Panel, SurfaceCard } from "../../../components/ui/Surface";
 import {
-  getBillingPlan,
   isSelfServeBillingPlanKey,
   type SelfServeBillingPlanKey,
 } from "../../../lib/billing-plan";
 import { buildSignInRedirectUrl } from "../../../lib/clerk";
+import { getSelfServePlanDisplayBenefit, type PlanDisplayBenefit } from "../../../lib/plan-benefit-display";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -23,6 +23,18 @@ function readSearchParam(params: SearchParams, key: string): string {
 
 function formatKrw(value: number): string {
   return `₩${value.toLocaleString("ko-KR")}`;
+}
+
+function formatHairFashionEstimate(plan: PlanDisplayBenefit): string {
+  if (plan.usage.hairFashionSetCount <= 0) {
+    return "불가";
+  }
+
+  if (plan.usage.hairFashionRemainderCredits > 0) {
+    return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트, ${plan.usage.hairFashionRemainderCredits.toLocaleString("ko-KR")}크레딧 잔여`;
+  }
+
+  return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트`;
 }
 
 function sanitizeReturnTo(value: string): string {
@@ -46,7 +58,7 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
   }
 
   const planKey = planParam as SelfServeBillingPlanKey;
-  const plan = getBillingPlan(planKey);
+  const plan = getSelfServePlanDisplayBenefit(planKey);
   const returnTo = sanitizeReturnTo(readSearchParam(params, "returnTo"));
   const { userId } = await auth();
   if (!userId) {
@@ -99,6 +111,22 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
           <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
             매월 {plan.credits.toLocaleString("ko-KR")} 크레딧이 지급됩니다.
           </p>
+          <div className="mt-5 border-t border-[var(--app-border)] pt-4">
+            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">차감 기준</p>
+            <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
+              <li>헤어 결과 이미지 생성: {plan.creditsPerStyle.toLocaleString("ko-KR")}크레딧</li>
+              <li>패션 룩북 이미지 생성: 확정 헤어 기준 {plan.creditsPerOutfit.toLocaleString("ko-KR")}크레딧</li>
+              <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}크레딧</li>
+            </ul>
+          </div>
+          <div className="mt-5 border-t border-[var(--app-border)] pt-4">
+            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">예상 사용량</p>
+            <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
+              <li>헤어만 사용 시 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회</li>
+              <li>헤어+패션 세트 기준 {formatHairFashionEstimate(plan)}</li>
+              <li>생성 이미지 {plan.retentionLabelKo}</li>
+            </ul>
+          </div>
           <div className="mt-5 border-t border-[var(--app-border)] pt-4">
             <p className="text-xs font-bold uppercase text-[var(--app-muted)]">월 결제 금액</p>
             <p className="mt-1 text-3xl font-black text-[var(--app-text)]">

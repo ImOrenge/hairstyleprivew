@@ -108,6 +108,12 @@ export async function POST(request: Request) {
   if (!recommendationSet) {
     return NextResponse.json({ error: "헤어 추천 세트를 찾을 수 없습니다." }, { status: 400 });
   }
+  if (!recommendationSet.selectedVariantId || recommendationSet.selectedVariantId !== selectedVariantId) {
+    return NextResponse.json(
+      { error: "패션 룩북은 확정된 헤어스타일을 기준으로만 생성할 수 있습니다." },
+      { status: 409 },
+    );
+  }
 
   const selectedVariant = getGeneratedVariant(recommendationSet, selectedVariantId);
   if (!selectedVariant) {

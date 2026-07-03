@@ -5,8 +5,9 @@ import {
   type BillingPlanKey,
 } from "./billing-plan";
 
-export const DEFAULT_CREDITS_PER_STYLE = 5;
-export const DEFAULT_CREDITS_PER_OUTFIT = 8;
+export const DEFAULT_CREDITS_PER_STYLE = 10;
+export const DEFAULT_CREDITS_PER_OUTFIT = 20;
+export const DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM = 30;
 const DEFAULT_STYLE_COST_USD = 0.16;
 const DEFAULT_TARGET_MARGIN = 0.4;
 const DEFAULT_USD_TO_KRW = 1350;
@@ -88,6 +89,13 @@ export function getCreditsPerOutfit(): number {
   return Math.max(
     1,
     Math.round(readEnvNumber("PRICING_CREDITS_PER_OUTFIT", DEFAULT_CREDITS_PER_OUTFIT)),
+  );
+}
+
+export function getCreditsPerAftercareProgram(): number {
+  return Math.max(
+    1,
+    Math.round(readEnvNumber("PRICING_CREDITS_PER_AFTERCARE_PROGRAM", DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM)),
   );
 }
 

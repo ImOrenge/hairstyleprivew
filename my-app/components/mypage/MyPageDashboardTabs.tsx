@@ -10,7 +10,8 @@ import {
   Sparkles,
   UserRound,
 } from "lucide-react";
-import { getCreditsPerStyle, getSuggestedPricingTiers } from "../../lib/pricing-plan";
+import { getSelfServePlanDisplayBenefits, type PlanDisplayBenefit } from "../../lib/plan-benefit-display";
+import { getCreditsPerStyle } from "../../lib/pricing-plan";
 import type { MemberStyleTarget, MemberStyleTone } from "../../lib/onboarding";
 import type { PersonalColorResult } from "../../lib/fashion-types";
 import { PortoneSubscriptionButton, type SelfServeSubscriptionPlanKey } from "../payments/PortoneSubscriptionButton";
@@ -553,6 +554,18 @@ function UsagePanel({ generations }: { generations: GenerationRow[] }) {
   );
 }
 
+function formatPlanHairFashionUsage(plan: PlanDisplayBenefit) {
+  if (plan.usage.hairFashionSetCount <= 0) {
+    return "헤어+패션 세트 불가";
+  }
+
+  if (plan.usage.hairFashionRemainderCredits > 0) {
+    return `헤어+패션 약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 · ${plan.usage.hairFashionRemainderCredits.toLocaleString("ko-KR")}크레딧 잔여`;
+  }
+
+  return `헤어+패션 약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트`;
+}
+
 function PlanPanel({
   activePlan,
   payments,
@@ -573,9 +586,7 @@ function PlanPanel({
     payments.find((item) => item.status?.trim().toLowerCase() === "failed") ?? null;
   const latestFailureText =
     getPaymentFailureText(latestFailedPayment) ?? getSubscriptionFailureText(subscription);
-  const selfServePlans = getSuggestedPricingTiers().filter((tier) =>
-    tier.key === "basic" || tier.key === "standard" || tier.key === "pro",
-  );
+  const selfServePlans = getSelfServePlanDisplayBenefits();
   const refundRequestByPaymentId = new Map(
     refundRequests.map((item) => [item.payment_transaction_id, item]),
   );
@@ -656,6 +667,12 @@ function PlanPanel({
                         <p className="mt-1 text-xs text-[var(--app-muted)]">
                           {plan.credits.toLocaleString("ko-KR")} 크레딧 / 월
                         </p>
+                        <div className="mt-2 grid gap-1 text-xs leading-5 text-[var(--app-muted)]">
+                          <p>헤어 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회</p>
+                          <p>{formatPlanHairFashionUsage(plan)}</p>
+                          <p>첫 에프터케어 프로그램 무료 · 주기별 케어 메일 포함 · 추가 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}크레딧</p>
+                          <p>생성 이미지 {plan.retentionLabelKo}</p>
+                        </div>
                       </div>
                       <p className="text-right text-sm font-black text-[var(--app-text)]">
                         {formatKrw(plan.priceKrw)}

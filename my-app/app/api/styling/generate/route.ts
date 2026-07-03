@@ -27,27 +27,6 @@ interface StylingGenerateRequest {
   sessionId?: string;
 }
 
-type QueryError = { message: string } | null;
-
-interface LookupQueryResult {
-  data: Record<string, unknown> | null;
-  error: QueryError;
-}
-
-interface FreePlanLookupClient {
-  from: (table: string) => {
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        eq: (column: string, value: string) => {
-          limit: (count: number) => {
-            maybeSingle: () => Promise<LookupQueryResult>;
-          };
-        };
-      };
-    };
-  };
-}
-
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -88,40 +67,6 @@ function extensionFromMime(mimeType: string) {
   if (mimeType.includes("webp")) return "webp";
   if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg";
   return "png";
-}
-
-async function isFreePlanUser(supabase: ServerSupabaseLike, userId: string) {
-  const lookupClient = supabase as unknown as FreePlanLookupClient;
-  const { data: paidTx, error } = await lookupClient
-    .from("payment_transactions")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("status", "paid")
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return !paidTx;
-}
-
-async function hasCompletedFashionGeneration(supabase: ServerSupabaseLike, userId: string) {
-  const lookupClient = supabase as unknown as FreePlanLookupClient;
-  const { data: completedSession, error } = await lookupClient
-    .from("styling_sessions")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("status", "completed")
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return Boolean(completedSession);
 }
 
 export async function POST(request: Request) {
@@ -171,17 +116,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const freePlan = await isFreePlanUser(supabase, userId);
-  if (freePlan) {
-    const reachedFashionLimit = await hasCompletedFashionGeneration(supabase, userId);
-    if (reachedFashionLimit) {
-      return NextResponse.json(
-        { error: "무료 플랜은 패션 생성을 1회만 사용할 수 있습니다." },
-        { status: 403 },
-      );
-    }
-  }
-
   const { data: profileRow, error: profileError } = await supabase
     .from("user_style_profiles")
     .select("*")
@@ -213,6 +147,12 @@ export async function POST(request: Request) {
   const recommendationSet = normalizeRecommendationSet(
     isObject(generation.options) ? generation.options.recommendationSet : null,
   );
+  if (!recommendationSet?.selectedVariantId || recommendationSet.selectedVariantId !== session.selected_variant_id) {
+    return NextResponse.json(
+      { error: "패션 룩북은 확정된 헤어스타일을 기준으로만 생성할 수 있습니다." },
+      { status: 409 },
+    );
+  }
   const selectedVariant = recommendationSet?.variants.find(
     (variant) => variant.id === session.selected_variant_id,
   ) || null;
