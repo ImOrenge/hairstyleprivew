@@ -44,6 +44,8 @@ const ensureBody = catalog.match(/export async function ensureCatalogAvailable\(
 assert(ensureBody && !ensureBody[0].includes("rebuildWeeklyHairstyleCatalog("), "user recommendation path still triggers rebuild");
 assert(catalog.includes("enqueueCatalogRotationTrendAlert"), "missing trend alert enqueue service hook");
 assert(catalog.includes("trend_alert_enqueue_failed"), "missing alert enqueue failure isolation warning");
+const alertPolicyBody = catalog.match(/function shouldSendCatalogRotationAlert\([\s\S]*?function computeCycleExpiresAt/);
+assert(alertPolicyBody && alertPolicyBody[0].includes('options.reason === "rotation-check"') && alertPolicyBody[0].includes("lowFreshness && (isAutomaticRotationCheck || options.notify !== true)"), "automatic rotation-check must not send low freshness catalog alerts");
 assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup builder");
 assert(catalog.includes("buildLineupBackedRecommendations"), "missing lineup-backed recommendation builder");
 const topNineBody = catalog.match(/function buildTopNine\([\s\S]*?function buildLineupBackedRecommendations/);
@@ -84,6 +86,7 @@ console.log(JSON.stringify({
     "lookback",
     "active-only recommendation path",
     "trend alert idempotency",
+    "low freshness alert policy",
     "activation lineup guard",
     "lineup builder",
     "lineup-backed recommendations",

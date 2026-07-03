@@ -361,7 +361,7 @@
 | `researched` | 60일 primary active 교체 성공 시 알림 생성 |
 | `seeded` | 기본 알림 생성 안 함. `notify:true` 명시 시 생성 |
 | `dryRun:true` | 알림 생성 안 함 |
-| `lowFreshness:true` | 기본 알림 생성 안 함. `notify:true` 명시 시에도 response warning 포함 |
+| `lowFreshness:true` | 자동 `rotation-check`에서는 알림 생성 안 함. 수동 운영자가 `notify:true`로 강제할 수 있고 response warning을 포함 |
 
 ### 11.4 추천 생성 내부 계약
 

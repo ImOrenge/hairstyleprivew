@@ -617,7 +617,8 @@ function shouldSendCatalogRotationAlert(
   }
 
   const lowFreshness = sourceSummary.freshnessStatus === "lowFreshness" || sourceSummary.freshnessStatus === "fallback";
-  if (lowFreshness && options.notify !== true) {
+  const isAutomaticRotationCheck = options.reason === "rotation-check";
+  if (lowFreshness && (isAutomaticRotationCheck || options.notify !== true)) {
     return false;
   }
 

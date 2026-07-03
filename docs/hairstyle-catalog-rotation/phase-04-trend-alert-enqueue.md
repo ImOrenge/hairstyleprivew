@@ -22,7 +22,7 @@
 | [x] | alert title/body template 정의 | migration RPC |
 | [x] | `target_plans` 기본값 `standard`, `pro`, `salon` 적용 | service/RPC |
 | [x] | `notify`, `notifyPlans`, `notifyDelayMinutes` 옵션 반영 | rebuild route |
-| [x] | `lowFreshness=true`이면 기본 알림 생성 제외 | service |
+| [x] | `lowFreshness=true`이면 자동 `rotation-check` 알림 생성 제외 | service |
 | [x] | `seeded` mode는 기본 알림 생성 제외 | service |
 | [x] | active 교체가 실제로 발생한 경우에만 enqueue | service |
 | [x] | 같은 cycle 재호출 시 기존 alert ID 반환 또는 no-op | RPC/service |
@@ -35,6 +35,7 @@
 | --- | --- |
 | researched primary | active 교체 후 `catalog_rotation` alert 1개 생성 |
 | low freshness | active 교체 가능, 기본 alert 없음 |
+| automatic fallback freshness | `reason:"rotation-check"`에서는 `notify:true` body여도 alert 없음 |
 | seeded | 명시적 `notify:true` 없이는 alert 없음 |
 | idempotent | 같은 cycle에 alert 중복 없음 |
 | isolation | alert enqueue 실패가 추천용 active 교체를 깨지 않음 |
@@ -47,7 +48,7 @@
 | [ ] | active 교체 후 `trend_alerts.alert_type='catalog_rotation'` 1건 확인. Supabase runtime env 필요 |
 | [ ] | 같은 cycle로 rebuild 재호출 시 alert 중복 없음. Supabase runtime env 필요 |
 | [x] | `notify:false`에서 alert 생성 없음. 정적 정책 확인 |
-| [x] | `lowFreshness=true` cycle에서 기본 alert 생성 없음. 정적 정책 확인 |
+| [x] | `lowFreshness=true` cycle에서 자동 `rotation-check` alert 생성 없음. 정적 정책 확인 |
 | [x] | alert 생성 실패 simulation 시 active pointer 유지. service catch path 확인 |
 | [x] | `npm run lint` 통과 |
 | [x] | `npm run build` 통과 |
