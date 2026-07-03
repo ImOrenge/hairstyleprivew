@@ -24,6 +24,7 @@
 | [x] | `loadActiveCatalogRows()` 구현 | `my-app/lib/hairstyle-catalog.ts` |
 | [x] | `loadActiveLineups()` 구현 | `my-app/lib/hairstyle-catalog.ts` |
 | [x] | `ensureCatalogAvailable()`의 사용자 요청 중 rebuild 제거 | `my-app/lib/hairstyle-catalog.ts` |
+| [x] | 추천 생성이 active lineup snapshot을 우선 사용하도록 연결 | `my-app/lib/hairstyle-catalog.ts` |
 | [x] | active 없음, row 부족, stale 상태의 오류 메시지 정리 | `my-app/lib/hairstyle-catalog.ts` |
 | [x] | 추천 후보가 active cycle ID를 그대로 기록하는지 확인 | `my-app/lib/hairstyle-catalog.ts` |
 
@@ -32,6 +33,7 @@
 | 기준 | 기대값 |
 | --- | --- |
 | active 기준 | 추천 생성은 active pointer의 cycle만 사용한다. |
+| lineup 기준 | 추천 생성은 active cycle의 `hairstyle_catalog_lineups` 순서를 우선 사용한다. |
 | no live research | 일반 추천 요청에서 Google News RSS 수집이 실행되지 않는다. |
 | stale 분리 | stale 상태는 운영 API/cron 대상이지 사용자 요청의 rebuild trigger가 아니다. |
 | generation 기록 | generation options에 active `catalogCycleId`가 저장된다. |
@@ -46,3 +48,4 @@
 | [ ] | active pointer가 없을 때 명확한 서버 오류 반환. Supabase runtime env 필요 |
 | [ ] | active row가 부족할 때 rebuild 없이 운영 오류 반환. Supabase runtime env 필요 |
 | [x] | 정적 검색으로 사용자 추천 경로에서 `rebuildWeeklyHairstyleCatalog()` 미호출 확인 |
+| [x] | 정적 audit로 추천 경로가 active lineup snapshot을 사용하는지 확인 |

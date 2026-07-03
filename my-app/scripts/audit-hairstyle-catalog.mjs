@@ -42,8 +42,11 @@ assert(ensureBody && !ensureBody[0].includes("rebuildWeeklyHairstyleCatalog("), 
 assert(catalog.includes("enqueueCatalogRotationTrendAlert"), "missing trend alert enqueue service hook");
 assert(catalog.includes("trend_alert_enqueue_failed"), "missing alert enqueue failure isolation warning");
 assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup builder");
+assert(catalog.includes("buildLineupBackedRecommendations"), "missing lineup-backed recommendation builder");
 assert(catalog.includes("computeLineupOverlap"), "missing lineup overlap calculation");
 assert(catalog.includes("overlap_warning"), "missing lineup overlap warning event");
+const generateBody = catalog.match(/export async function generateCatalogBackedRecommendationSet\([\s\S]*?return \{[\s\S]*?selectionContext,[\s\S]*?\};\n\}/);
+assert(generateBody && generateBody[0].includes("lineups") && generateBody[0].includes("buildLineupBackedRecommendations"), "recommendation path must use active lineup snapshots");
 assert(!catalog.includes("retrying with seeded fallback"), "auto rebuild still falls back to seeded catalog");
 assert(!catalog.includes('rebuildCatalogWithMode(options, "seeded-weekly", staleRunningCyclesFailed, activeBefore)'), "auto rebuild must not auto-activate seeded fallback");
 assert(rotationMigration.includes("idx_trend_alerts_catalog_cycle_alert_type"), "missing trend alert idempotency index");
@@ -69,6 +72,7 @@ console.log(JSON.stringify({
     "active-only recommendation path",
     "trend alert idempotency",
     "lineup builder",
+    "lineup-backed recommendations",
     "overlap warning",
     "no automatic seeded fallback",
     "cron names",

@@ -27,6 +27,7 @@
 | [x] | style target별 short/medium/long 각각 4개 이상 검증 | audit/script |
 | [x] | `rotationSeed` 기반 deterministic bias 구현 | `my-app/lib/hairstyle-catalog.ts` |
 | [x] | `trend`, `face_fit`, `evergreen`, `experimental` slot builder 구현 | service |
+| [x] | 저장된 slot lineup을 추천 노출 순서에 우선 반영 | service |
 | [x] | 이전 active top 9 overlap 계산과 warning 이벤트 기록 | service/RPC |
 | [x] | `hairstyle_catalog_lineups` insert 구현 | service/RPC |
 
@@ -49,6 +50,7 @@
 | [x] | 여성 후보 18개 이상 확인 |
 | [x] | 남성 후보 18개 이상 확인 |
 | [x] | 남성/여성 lineup 각각 9개 생성 경로 typecheck 확인 |
+| [x] | 정적 audit로 추천 경로가 active lineup snapshot을 사용하는지 확인 |
 | [ ] | 같은 seed에서 lineup 순서 재현 확인. Supabase runtime env 필요 |
 | [ ] | 다른 seed에서 near-tie lineup 순서 변화 확인. Supabase runtime env 필요 |
 | [x] | overlap warning 이벤트 기록 경로 정적 감사 확인 |

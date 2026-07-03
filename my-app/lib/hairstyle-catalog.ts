@@ -1257,13 +1257,45 @@ function scoreCatalogRow(row: HairstyleCatalogRow, context: CatalogSelectionCont
   return Math.round(score * 100) / 100;
 }
 
-function buildTopNine(rows: HairstyleCatalogRow[], context: CatalogSelectionContext, cycleId: string): CatalogBackedRecommendationCandidate[] {
+function buildRecommendationCandidate(
+  row: HairstyleCatalogRow,
+  context: CatalogSelectionContext,
+  cycleId: string,
+  rank: number,
+  selectionScore: number,
+): CatalogBackedRecommendationCandidate {
+  return {
+    id: row.slug,
+    rank,
+    label: row.nameKo,
+    reason: buildReason(row, context),
+    prompt: composePrompt(row, context.analysis, context.styleTarget),
+    negativePrompt: row.negativePrompt,
+    tags: [row.lengthBucket, row.silhouette, row.texture, row.bangType, ...row.volumeFocusTags].filter(Boolean),
+    lengthBucket: row.lengthBucket,
+    correctionFocus: deriveCorrectionFocusFromRow(row),
+    catalogItemId: row.id,
+    catalogCycleId: cycleId,
+    selectionScore,
+    promptTemplateVersion: row.promptTemplateVersion,
+    styleTarget: context.styleTarget,
+  };
+}
+
+function buildTopNine(
+  rows: HairstyleCatalogRow[],
+  context: CatalogSelectionContext,
+  cycleId: string,
+  excludedCatalogItemIds = new Set<string>(),
+  startRank = 1,
+  limit = 9,
+): CatalogBackedRecommendationCandidate[] {
   const scored = rows
     .map((row) => ({ row, score: scoreCatalogRow(row, context) }))
     .sort((a, b) => b.score - a.score);
 
   const selected: Array<{ row: HairstyleCatalogRow; score: number }> = [];
-  const picked = new Set<string>();
+  const picked = new Set<string>(excludedCatalogItemIds);
   const requiredBuckets: RecommendationLengthBucket[] = ["short", "medium", "long"];
 
   for (const bucket of requiredBuckets) {
@@ -1275,7 +1307,7 @@ function buildTopNine(rows: HairstyleCatalogRow[], context: CatalogSelectionCont
   }
 
   for (const item of scored) {
-    if (selected.length >= 9) {
+    if (selected.length >= limit) {
       break;
     }
     if (picked.has(item.row.id)) {
@@ -1285,22 +1317,53 @@ function buildTopNine(rows: HairstyleCatalogRow[], context: CatalogSelectionCont
     picked.add(item.row.id);
   }
 
-  return selected.slice(0, 9).map(({ row, score }, index) => ({
-    id: row.slug,
-    rank: index + 1,
-    label: row.nameKo,
-    reason: buildReason(row, context),
-    prompt: composePrompt(row, context.analysis, context.styleTarget),
-    negativePrompt: row.negativePrompt,
-    tags: [row.lengthBucket, row.silhouette, row.texture, row.bangType, ...row.volumeFocusTags].filter(Boolean),
-    lengthBucket: row.lengthBucket,
-    correctionFocus: deriveCorrectionFocusFromRow(row),
-    catalogItemId: row.id,
-    catalogCycleId: cycleId,
-    selectionScore: score,
-    promptTemplateVersion: row.promptTemplateVersion,
-    styleTarget: context.styleTarget,
-  }));
+  return selected
+    .slice(0, limit)
+    .map(({ row, score }, index) => buildRecommendationCandidate(row, context, cycleId, startRank + index, score));
+}
+
+function buildLineupBackedRecommendations(
+  rows: HairstyleCatalogRow[],
+  lineups: HairstyleCatalogLineupRow[],
+  context: CatalogSelectionContext,
+  cycleId: string,
+): CatalogBackedRecommendationCandidate[] {
+  const rowsById = new Map(rows.map((row) => [row.id, row]));
+  const selected: CatalogBackedRecommendationCandidate[] = [];
+  const picked = new Set<string>();
+
+  for (const lineup of lineups
+    .filter((item) => item.styleTarget === context.styleTarget)
+    .sort((a, b) => a.rank - b.rank)) {
+    if (selected.length >= 9) {
+      break;
+    }
+
+    const row = rowsById.get(lineup.catalogItemId);
+    if (!row || picked.has(row.id) || !row.styleTargets.includes(context.styleTarget)) {
+      continue;
+    }
+
+    selected.push(
+      buildRecommendationCandidate(
+        row,
+        context,
+        cycleId,
+        selected.length + 1,
+        Math.round((lineup.rotationScore + scoreCatalogRow(row, context)) * 100) / 100,
+      ),
+    );
+    picked.add(row.id);
+  }
+
+  if (selected.length >= 9) {
+    return selected;
+  }
+
+  return [
+    ...selected,
+    ...buildTopNine(rows, context, cycleId, picked, selected.length + 1, 9 - selected.length),
+  ].slice(0, 9);
 }
 
 async function runImageAnalysis(referenceImageDataUrl: string): Promise<{ analysis: FaceAnalysisSummary | null; model: string }> {
@@ -1858,7 +1921,7 @@ export async function generateCatalogBackedRecommendationSet(
   referenceImageDataUrl: string,
   styleTarget: MemberStyleTarget,
 ) {
-  const { activeCycle, cycle, rows } = await ensureCatalogAvailable();
+  const { activeCycle, cycle, rows, lineups } = await ensureCatalogAvailable();
   const targetRows = filterRowsForStyleTarget(rows, styleTarget);
 
   if (needsStyleTargetCatalogRefresh(targetRows)) {
@@ -1869,7 +1932,7 @@ export async function generateCatalogBackedRecommendationSet(
 
   const analysisRun = await analyzeFaceForCatalog(referenceImageDataUrl);
   const selectionContext = buildCatalogSelectionContext(analysisRun.analysis, styleTarget);
-  const recommendations = buildTopNine(targetRows, selectionContext, cycle.cycleId);
+  const recommendations = buildLineupBackedRecommendations(targetRows, lineups, selectionContext, cycle.cycleId);
 
   if (recommendations.length === 0) {
     throw new Error("No catalog-backed recommendations could be selected.");
