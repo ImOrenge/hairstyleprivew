@@ -57,6 +57,7 @@ export type CatalogRebuildMode = "auto" | "researched" | "seeded";
 type CatalogSourceMode = "researched-weekly" | "seeded-weekly";
 type CatalogRebuildStatus = "succeeded" | "skipped";
 type CatalogSkipReason = "not_due" | "dry_run";
+type CatalogLineupSlotKey = "trend" | "face_fit" | "evergreen" | "experimental";
 
 const CATALOG_MARKET = "kr";
 const CATALOG_BOOTSTRAP_MAX_POLLS = 8;
@@ -139,7 +140,19 @@ interface CatalogValidationResult {
   targetStyleTargetCount: number;
   promptTemplateVersion: string;
   promptVersionMismatchCount: number;
+  lineupCounts: Record<MemberStyleTarget, number>;
   warnings: string[];
+}
+
+interface CatalogLineupInsert {
+  cycle_id: string;
+  market: string;
+  style_target: MemberStyleTarget;
+  slot_key: CatalogLineupSlotKey;
+  rank: number;
+  catalog_item_id: string;
+  rotation_score: number;
+  selection_reason: string;
 }
 
 interface CatalogAvailabilityResult {
@@ -629,6 +642,24 @@ function formatRotationPeriod(date: Date) {
   return `${weekDate.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
+function buildRotationSeed(cycleId: string, rotationPeriod: string) {
+  return `${CATALOG_MARKET}:${rotationPeriod}:${cycleId}`;
+}
+
+function hashToUnitInterval(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return (hash >>> 0) / 4294967295;
+}
+
+function rotationBias(rotationSeed: string, row: HairstyleCatalogRow, styleTarget: MemberStyleTarget) {
+  return hashToUnitInterval(`${rotationSeed}:${styleTarget}:${row.slug}`);
+}
+
 function computeNextAutomaticAttemptAt(now = new Date()) {
   const next = new Date(Date.UTC(
     now.getUTCFullYear(),
@@ -694,8 +725,106 @@ function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, 
     targetStyleTargetCount: TARGET_STYLE_TARGET_POOL_SIZE,
     promptTemplateVersion: HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
     promptVersionMismatchCount,
+    lineupCounts: { male: 0, female: 0 },
     warnings,
   };
+}
+
+function scoreLineupCandidate(
+  row: HairstyleCatalogRow,
+  slotKey: CatalogLineupSlotKey,
+  rotationSeed: string,
+  styleTarget: MemberStyleTarget,
+) {
+  const bias = rotationBias(rotationSeed, row, styleTarget) * 10;
+  const baseScore = row.trendScore * 0.45 + row.freshnessScore * 0.35 + bias;
+
+  if (slotKey === "trend") {
+    return baseScore + row.trendScore * 0.25;
+  }
+
+  if (slotKey === "face_fit") {
+    return baseScore + row.faceShapeFitTags.length * 4 + row.volumeFocusTags.length * 3;
+  }
+
+  if (slotKey === "experimental") {
+    return baseScore + bias * 2;
+  }
+
+  return baseScore + (100 - Math.abs(70 - row.trendScore)) * 0.08;
+}
+
+function buildLineupForStyleTarget(
+  rows: HairstyleCatalogRow[],
+  cycleId: string,
+  rotationSeed: string,
+  styleTarget: MemberStyleTarget,
+): CatalogLineupInsert[] {
+  const targetRows = rows.filter((row) => row.styleTargets.includes(styleTarget));
+  const picked = new Set<string>();
+  const lineup: CatalogLineupInsert[] = [];
+  const slotPlan: Array<{ slotKey: CatalogLineupSlotKey; count: number }> = [
+    { slotKey: "trend", count: 3 },
+    { slotKey: "face_fit", count: 3 },
+    { slotKey: "evergreen", count: 2 },
+    { slotKey: "experimental", count: 1 },
+  ];
+
+  for (const { slotKey, count } of slotPlan) {
+    const candidates = targetRows
+      .filter((row) => !picked.has(row.id))
+      .sort((a, b) =>
+        scoreLineupCandidate(b, slotKey, rotationSeed, styleTarget) -
+        scoreLineupCandidate(a, slotKey, rotationSeed, styleTarget),
+      );
+
+    for (const row of candidates.slice(0, count)) {
+      picked.add(row.id);
+      lineup.push({
+        cycle_id: cycleId,
+        market: row.market,
+        style_target: styleTarget,
+        slot_key: slotKey,
+        rank: lineup.length + 1,
+        catalog_item_id: row.id,
+        rotation_score: Math.round(scoreLineupCandidate(row, slotKey, rotationSeed, styleTarget) * 100) / 100,
+        selection_reason: `${slotKey} slot selected by rotation seed ${rotationSeed}`,
+      });
+    }
+  }
+
+  if (lineup.length < MIN_STYLE_TARGET_RECOMMENDATION_ROWS) {
+    const fillers = targetRows
+      .filter((row) => !picked.has(row.id))
+      .sort((a, b) => scoreLineupCandidate(b, "trend", rotationSeed, styleTarget) - scoreLineupCandidate(a, "trend", rotationSeed, styleTarget));
+
+    for (const row of fillers) {
+      if (lineup.length >= MIN_STYLE_TARGET_RECOMMENDATION_ROWS) {
+        break;
+      }
+
+      picked.add(row.id);
+      lineup.push({
+        cycle_id: cycleId,
+        market: row.market,
+        style_target: styleTarget,
+        slot_key: "trend",
+        rank: lineup.length + 1,
+        catalog_item_id: row.id,
+        rotation_score: Math.round(scoreLineupCandidate(row, "trend", rotationSeed, styleTarget) * 100) / 100,
+        selection_reason: `fill slot selected by rotation seed ${rotationSeed}`,
+      });
+    }
+  }
+
+  return lineup.slice(0, MIN_STYLE_TARGET_RECOMMENDATION_ROWS);
+}
+
+function buildCatalogLineupsForCycle(rows: HairstyleCatalogRow[], cycleId: string, rotationSeed: string) {
+  return [
+    ...buildLineupForStyleTarget(rows, cycleId, rotationSeed, "male"),
+    ...buildLineupForStyleTarget(rows, cycleId, rotationSeed, "female"),
+  ];
 }
 
 async function recordCatalogRotationAttempt(
@@ -736,7 +865,7 @@ async function activateCatalogCycle(
 ) {
   const rotationPeriod = formatRotationPeriod(activatedAt);
   const expiresAt = computeCycleExpiresAt(activatedAt);
-  const rotationSeed = `${CATALOG_MARKET}:${rotationPeriod}:${cycleId}`;
+  const rotationSeed = buildRotationSeed(cycleId, rotationPeriod);
   const response = await supabase.rpc("activate_hairstyle_catalog_cycle", {
     p_market: CATALOG_MARKET,
     p_cycle_id: cycleId,
@@ -1367,6 +1496,32 @@ async function rebuildCatalogWithMode(
 
     const insertedCount = upsertPayload.filter((row) => !existingSlugs.has(row.slug)).length;
     const updatedCount = upsertPayload.length - insertedCount;
+    const activationTime = new Date();
+    const rotationPeriod = formatRotationPeriod(activationTime);
+    const rotationSeed = buildRotationSeed(cycle.cycleId, rotationPeriod);
+    const persistedRows = await loadCatalogRows(supabase, cycle.cycleId);
+    const lineups = buildCatalogLineupsForCycle(persistedRows, cycle.cycleId, rotationSeed);
+    validation.lineupCounts = {
+      male: lineups.filter((lineup) => lineup.style_target === "male").length,
+      female: lineups.filter((lineup) => lineup.style_target === "female").length,
+    };
+
+    if (
+      validation.lineupCounts.male < MIN_STYLE_TARGET_RECOMMENDATION_ROWS ||
+      validation.lineupCounts.female < MIN_STYLE_TARGET_RECOMMENDATION_ROWS
+    ) {
+      throw new Error(
+        `Hairstyle catalog lineup validation failed: male=${validation.lineupCounts.male}, female=${validation.lineupCounts.female}`,
+      );
+    }
+
+    const lineupUpsertResult = await supabase
+      .from("hairstyle_catalog_lineups")
+      .upsert(lineups as unknown as Record<string, unknown>[], { onConflict: "cycle_id,style_target,rank" });
+
+    if (lineupUpsertResult.error) {
+      throw new Error(lineupUpsertResult.error.message);
+    }
 
     const finishedAt = new Date().toISOString();
     const cycleUpdateValues = options.activate
@@ -1398,7 +1553,6 @@ async function rebuildCatalogWithMode(
     let trendAlertScheduledSendAt: string | null = null;
 
     if (options.activate) {
-      const activationTime = new Date();
       const activation = await activateCatalogCycle(supabase, cycle.cycleId, activationTime);
       activated = true;
       activatedAt = activationTime.toISOString();

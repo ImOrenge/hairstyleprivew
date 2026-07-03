@@ -18,17 +18,17 @@
 
 | 상태 | 작업 | 파일/대상 |
 | --- | --- | --- |
-| [ ] | 기존 18개 slug 유지 여부 확인 | `my-app/lib/hairstyle-catalog-seed.ts` |
-| [ ] | 신규 여성 전용 blueprint 6개 추가 | seed |
-| [ ] | 신규 남성 전용 blueprint 6개 추가 | seed |
-| [ ] | 신규 공용 blueprint 2개 추가 | seed |
-| [ ] | 전체 blueprint 32개 검증 helper 추가 | audit/script |
-| [ ] | 남성/여성 후보 각각 18개 이상 검증 | audit/script |
-| [ ] | style target별 short/medium/long 각각 4개 이상 검증 | audit/script |
-| [ ] | `rotationSeed` 기반 deterministic bias 구현 | `my-app/lib/hairstyle-catalog.ts` |
-| [ ] | `trend`, `face_fit`, `evergreen`, `experimental` slot builder 구현 | service |
+| [x] | 기존 18개 slug 유지 여부 확인 | `my-app/lib/hairstyle-catalog-seed.ts` |
+| [x] | 신규 여성 전용 blueprint 6개 추가 | seed |
+| [x] | 신규 남성 전용 blueprint 6개 추가 | seed |
+| [x] | 신규 공용 blueprint 2개 추가 | seed |
+| [x] | 전체 blueprint 32개 검증 helper 추가 | `my-app/scripts/audit-hairstyle-catalog-blueprints.mjs` |
+| [x] | 남성/여성 후보 각각 18개 이상 검증 | audit/script |
+| [x] | style target별 short/medium/long 각각 4개 이상 검증 | audit/script |
+| [x] | `rotationSeed` 기반 deterministic bias 구현 | `my-app/lib/hairstyle-catalog.ts` |
+| [x] | `trend`, `face_fit`, `evergreen`, `experimental` slot builder 구현 | service |
 | [ ] | 이전 active top 9 overlap 계산과 warning 이벤트 기록 | service |
-| [ ] | `hairstyle_catalog_lineups` insert 구현 | service/RPC |
+| [x] | `hairstyle_catalog_lineups` insert 구현 | service/RPC |
 
 ## 완료 기준
 
@@ -45,10 +45,13 @@
 
 | 상태 | 검증 |
 | --- | --- |
-| [ ] | blueprint count 32 확인 |
-| [ ] | 여성 후보 18개 이상 확인 |
-| [ ] | 남성 후보 18개 이상 확인 |
-| [ ] | 남성/여성 lineup 각각 9개 확인 |
-| [ ] | 같은 seed에서 lineup 순서 재현 확인 |
-| [ ] | 다른 seed에서 near-tie lineup 순서 변화 확인 |
+| [x] | blueprint count 32 확인 |
+| [x] | 여성 후보 18개 이상 확인 |
+| [x] | 남성 후보 18개 이상 확인 |
+| [x] | 남성/여성 lineup 각각 9개 생성 경로 typecheck 확인 |
+| [ ] | 같은 seed에서 lineup 순서 재현 확인. Supabase runtime env 필요 |
+| [ ] | 다른 seed에서 near-tie lineup 순서 변화 확인. Supabase runtime env 필요 |
 | [ ] | overlap warning 이벤트 기록 확인 |
+| [x] | `node my-app/scripts/audit-hairstyle-catalog-blueprints.mjs` 통과 |
+| [x] | `npm run lint` 통과 |
+| [x] | `npm run build` 통과 |
