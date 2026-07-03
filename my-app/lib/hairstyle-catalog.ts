@@ -838,6 +838,7 @@ async function rebuildCatalogWithMode(
     const existingResponse = await ((supabase
       .from("hairstyle_catalog")
       .select("slug")
+      .eq("source_cycle_id", cycle.cycleId)
       .in("slug", slugs)) as unknown as Promise<{
         data: Array<Record<string, unknown>> | null;
         error: QueryError | null;
@@ -877,7 +878,7 @@ async function rebuildCatalogWithMode(
 
     const upsertResult = await supabase
       .from("hairstyle_catalog")
-      .upsert(upsertPayload, { onConflict: "slug" });
+      .upsert(upsertPayload, { onConflict: "source_cycle_id,slug" });
 
     if (upsertResult.error) {
       throw new Error(upsertResult.error.message);

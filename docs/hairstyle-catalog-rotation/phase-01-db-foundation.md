@@ -17,19 +17,19 @@
 
 | 상태 | 작업 | 파일/대상 |
 | --- | --- | --- |
-| [ ] | `hairstyle_catalog_active_cycles` 테이블 추가 | `my-app/supabase/migrations/*_hairstyle_catalog_rotation.sql` |
-| [ ] | `hairstyle_catalog_lineups` 테이블 추가 | migration |
-| [ ] | `hairstyle_catalog_rotation_events` 테이블 추가 | migration |
-| [ ] | `trend_alerts.catalog_cycle_id`, `alert_type`, `source_summary` 추가 | migration |
-| [ ] | `trend_alerts` cycle별 중복 방지 partial unique 추가 | migration |
-| [ ] | `hairstyle_catalog.slug` global unique를 cycle-scoped unique로 전환 | migration |
-| [ ] | `activate_hairstyle_catalog_cycle(...)` RPC 추가 | migration |
-| [ ] | `fail_hairstyle_catalog_cycle(...)` RPC 추가 | migration |
-| [ ] | `get_active_hairstyle_catalog(...)` RPC 추가 | migration |
-| [ ] | `mark_stale_running_hairstyle_cycles_failed(...)` RPC 추가 | migration |
-| [ ] | `record_hairstyle_catalog_rotation_attempt(...)` RPC 추가 | migration |
-| [ ] | 기존 latest succeeded cycle을 initial active로 backfill | migration |
-| [ ] | service role 권한과 authenticated read 정책 점검 | migration |
+| [x] | `hairstyle_catalog_active_cycles` 테이블 추가 | `my-app/supabase/migrations/20260703092000_hairstyle_catalog_rotation.sql` |
+| [x] | `hairstyle_catalog_lineups` 테이블 추가 | migration |
+| [x] | `hairstyle_catalog_rotation_events` 테이블 추가 | migration |
+| [x] | `trend_alerts.catalog_cycle_id`, `alert_type`, `source_summary` 추가 | migration |
+| [x] | `trend_alerts` cycle별 중복 방지 partial unique 추가 | migration |
+| [x] | `hairstyle_catalog.slug` global unique를 cycle-scoped unique로 전환 | migration |
+| [x] | `activate_hairstyle_catalog_cycle(...)` RPC 추가 | migration |
+| [x] | `fail_hairstyle_catalog_cycle(...)` RPC 추가 | migration |
+| [x] | `get_active_hairstyle_catalog(...)` RPC 추가 | migration |
+| [x] | `mark_stale_running_hairstyle_cycles_failed(...)` RPC 추가 | migration |
+| [x] | `record_hairstyle_catalog_rotation_attempt(...)` RPC 추가 | migration |
+| [x] | 기존 latest succeeded cycle을 initial active로 backfill | migration |
+| [x] | service role 권한과 authenticated read 정책 점검 | migration |
 
 ## 완료 기준
 
@@ -45,8 +45,10 @@
 
 | 상태 | 검증 |
 | --- | --- |
-| [ ] | `supabase db push --dry-run --workdir my-app` 통과 |
-| [ ] | `select public.get_active_hairstyle_catalog('kr')` RPC smoke 통과 |
-| [ ] | latest succeeded cycle initial active 등록 확인 |
-| [ ] | 같은 slug를 다른 cycle에 insert할 수 있는지 확인 |
-| [ ] | 같은 cycle 안 slug 중복 insert가 실패하는지 확인 |
+| [ ] | `supabase db push --dry-run --workdir my-app` 통과. 현재 worktree는 Supabase project ref가 없어 실행 불가 |
+| [x] | 임시 Postgres에 migration 적용 smoke 통과 |
+| [x] | `select public.get_active_hairstyle_catalog('kr')` RPC smoke 통과 |
+| [x] | latest succeeded cycle initial active 등록 SQL 확인 |
+| [x] | 같은 slug를 다른 cycle에 insert할 수 있는지 확인 |
+| [x] | 같은 cycle 안 slug 중복 insert가 실패하는지 확인 |
+| [x] | `enqueue_catalog_rotation_trend_alert(...)` idempotency smoke 통과 |
