@@ -7,6 +7,14 @@ import {
 
 interface RebuildCatalogRequest {
   mode?: string | null;
+  force?: boolean | null;
+  onlyIfDue?: boolean | null;
+  activate?: boolean | null;
+  dryRun?: boolean | null;
+  reason?: string | null;
+  notify?: boolean | null;
+  notifyPlans?: unknown;
+  notifyDelayMinutes?: number | null;
 }
 
 function isCatalogRebuildMode(value: string): value is CatalogRebuildMode {
@@ -27,7 +35,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await rebuildWeeklyHairstyleCatalog(mode);
+    const result = await rebuildWeeklyHairstyleCatalog({
+      mode,
+      force: body.force === true,
+      onlyIfDue: body.onlyIfDue === true,
+      activate: body.activate !== false,
+      dryRun: body.dryRun === true,
+      reason: typeof body.reason === "string" ? body.reason : "manual",
+      notify: typeof body.notify === "boolean" ? body.notify : null,
+      notifyPlans: Array.isArray(body.notifyPlans)
+        ? body.notifyPlans.filter((item): item is string => typeof item === "string")
+        : ["standard", "pro", "salon"],
+      notifyDelayMinutes: typeof body.notifyDelayMinutes === "number" ? body.notifyDelayMinutes : 10,
+    });
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected rebuild error";

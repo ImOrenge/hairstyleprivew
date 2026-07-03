@@ -17,16 +17,16 @@
 
 | 상태 | 작업 | 파일/대상 |
 | --- | --- | --- |
-| [ ] | request schema 확장 | `my-app/app/api/admin/hairstyles/rebuild/route.ts` |
-| [ ] | `onlyIfDue` skip 로직 추가 | route/service |
-| [ ] | `force`가 TTL을 우회하도록 구현 | route/service |
-| [ ] | `dryRun`이 DB activation과 alert enqueue를 생략하도록 구현 | route/service |
-| [ ] | market 단위 advisory lock 적용 | `my-app/lib/hairstyle-catalog.ts` |
-| [ ] | stale running 30분 초과 복구 호출 | service |
-| [ ] | 60일 primary, 120일 fallback 수집 호출 계약 연결 | service |
-| [ ] | validation 결과 구조화 | service |
-| [ ] | response에 `skipReason`, `trendAlertId`, `expiresAt`, `nextAutomaticAttemptAt` 포함 | route |
-| [ ] | 실패 시 `fail_hairstyle_catalog_cycle`와 rotation event 기록 | service/RPC |
+| [x] | request schema 확장 | `my-app/app/api/admin/hairstyles/rebuild/route.ts` |
+| [x] | `onlyIfDue` skip 로직 추가 | route/service |
+| [x] | `force`가 TTL을 우회하도록 구현 | route/service |
+| [x] | `dryRun`이 DB activation과 alert enqueue를 생략하도록 구현 | route/service |
+| [x] | market 단위 advisory lock 적용 | activation RPC와 running cycle guard |
+| [x] | stale running 30분 초과 복구 호출 | service |
+| [x] | 60일 primary, 120일 fallback 수집 호출 계약 연결 | service |
+| [x] | validation 결과 구조화 | service |
+| [x] | response에 `skipReason`, `trendAlertId`, `expiresAt`, `nextAutomaticAttemptAt` 포함 | route |
+| [x] | 실패 시 `fail_hairstyle_catalog_cycle`와 rotation event 기록 | service/RPC |
 
 ## 완료 기준
 
@@ -42,8 +42,10 @@
 
 | 상태 | 검증 |
 | --- | --- |
-| [ ] | `POST /api/admin/hairstyles/rebuild {"mode":"auto","onlyIfDue":true}` not due smoke |
-| [ ] | `POST /api/admin/hairstyles/rebuild {"mode":"auto","force":true}` forced rebuild smoke |
-| [ ] | `dryRun:true` 실행 후 active pointer 불변 확인 |
-| [ ] | 강제 실패 조건에서 기존 active cycle 유지 확인 |
-| [ ] | response에 validation과 freshness warning 포함 확인 |
+| [ ] | `POST /api/admin/hairstyles/rebuild {"mode":"auto","onlyIfDue":true}` not due smoke. Supabase runtime env 필요 |
+| [ ] | `POST /api/admin/hairstyles/rebuild {"mode":"auto","force":true}` forced rebuild smoke. Supabase runtime env 필요 |
+| [ ] | `dryRun:true` 실행 후 active pointer 불변 확인. Supabase runtime env 필요 |
+| [ ] | 강제 실패 조건에서 기존 active cycle 유지 확인. Supabase runtime env 필요 |
+| [x] | response에 validation과 freshness warning 포함 확인 |
+| [x] | `npm run lint` 통과 |
+| [x] | `npm run build` 통과 |

@@ -7,7 +7,9 @@ import type { HairstyleCatalogSourceSummary } from "./recommendation-types";
 
 const GOOGLE_NEWS_RSS_BASE_URL = "https://news.google.com/rss/search";
 const GOOGLE_NEWS_PROVIDER = "google-news-rss";
-const RESEARCH_LOOKBACK_DAYS = 240;
+const PRIMARY_RESEARCH_LOOKBACK_DAYS = 60;
+const FALLBACK_RESEARCH_LOOKBACK_DAYS = 120;
+const FRESHNESS_WINDOW_DAYS = 30;
 const MAX_ITEMS_PER_QUERY = 10;
 const REQUEST_TIMEOUT_MS = 12000;
 
@@ -64,7 +66,7 @@ function buildGoogleNewsUrl(query: string) {
   return `${GOOGLE_NEWS_RSS_BASE_URL}?${params.toString()}`;
 }
 
-function isRecentEnough(publishedAt: string | null, now = new Date()) {
+function isRecentEnough(publishedAt: string | null, now = new Date(), lookbackDays = PRIMARY_RESEARCH_LOOKBACK_DAYS) {
   if (!publishedAt) {
     return true;
   }
@@ -75,7 +77,7 @@ function isRecentEnough(publishedAt: string | null, now = new Date()) {
   }
 
   const ageMs = now.getTime() - publishedTime;
-  return ageMs <= RESEARCH_LOOKBACK_DAYS * 24 * 60 * 60 * 1000;
+  return ageMs <= lookbackDays * 24 * 60 * 60 * 1000;
 }
 
 function extractItemsFromRss(xml: string, query: string) {
@@ -183,6 +185,10 @@ function recencyWeight(publishedAt: string | null, now = new Date()) {
   return 0.2;
 }
 
+function hasFreshDocument(documents: TrendResearchDocument[], now = new Date()) {
+  return documents.some((document) => isRecentEnough(document.publishedAt, now, FRESHNESS_WINDOW_DAYS));
+}
+
 function buildDocumentKey(document: TrendResearchDocument) {
   return [document.title, document.sourceName, document.publishedAt || ""].join("::");
 }
@@ -253,12 +259,27 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
   const fulfilledDocuments = queryResults.flatMap((result) =>
     result.status === "fulfilled" ? result.value : [],
   );
-  const recentDocuments = fulfilledDocuments.filter((document) => isRecentEnough(document.publishedAt, referenceDate));
-
-  const dedupedDocuments = Array.from(
-    new Map(recentDocuments.map((document) => [buildDocumentKey(document), document])).values(),
+  const primaryDocuments = fulfilledDocuments.filter((document) =>
+    isRecentEnough(document.publishedAt, referenceDate, PRIMARY_RESEARCH_LOOKBACK_DAYS),
   );
-  const relevantDocuments = filterRelevantDocuments(dedupedDocuments);
+
+  const primaryDedupedDocuments = Array.from(
+    new Map(primaryDocuments.map((document) => [buildDocumentKey(document), document])).values(),
+  );
+  const primaryRelevantDocuments = filterRelevantDocuments(primaryDedupedDocuments);
+  const usedFallback = primaryRelevantDocuments.length === 0;
+  const fallbackDedupedDocuments = usedFallback
+    ? Array.from(
+        new Map(
+          fulfilledDocuments
+            .filter((document) => isRecentEnough(document.publishedAt, referenceDate, FALLBACK_RESEARCH_LOOKBACK_DAYS))
+            .map((document) => [buildDocumentKey(document), document]),
+        ).values(),
+      )
+    : [];
+  const fallbackRelevantDocuments = usedFallback ? filterRelevantDocuments(fallbackDedupedDocuments) : [];
+  const dedupedDocuments = usedFallback ? fallbackDedupedDocuments : primaryDedupedDocuments;
+  const relevantDocuments = usedFallback ? fallbackRelevantDocuments : primaryRelevantDocuments;
 
   if (relevantDocuments.length === 0) {
     const failures = queryResults
@@ -271,6 +292,11 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
   }
 
   const trendSignals = scoreTrendSignals(relevantDocuments);
+  const freshnessStatus = usedFallback
+    ? "fallback"
+    : hasFreshDocument(relevantDocuments, referenceDate)
+      ? "fresh"
+      : "lowFreshness";
   const topStyleSignals = [...trendSignals.values()]
     .sort((a, b) => b.signalCount - a.signalCount || b.trendScore - a.trendScore)
     .slice(0, 6)
@@ -289,6 +315,11 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
     queries,
     notes: "Weekly Korean hairstyle catalog rebuilt from live Google News RSS search results and curated style blueprints.",
     providers: [GOOGLE_NEWS_PROVIDER],
+    primaryLookbackDays: PRIMARY_RESEARCH_LOOKBACK_DAYS,
+    fallbackLookbackDays: FALLBACK_RESEARCH_LOOKBACK_DAYS,
+    effectiveLookbackDays: usedFallback ? FALLBACK_RESEARCH_LOOKBACK_DAYS : PRIMARY_RESEARCH_LOOKBACK_DAYS,
+    freshnessWindowDays: FRESHNESS_WINDOW_DAYS,
+    freshnessStatus,
     documentsCollected: dedupedDocuments.length,
     documentsUsed: relevantDocuments.length,
     sourceNames: Array.from(new Set(relevantDocuments.map((document) => document.sourceName))).slice(0, 20),

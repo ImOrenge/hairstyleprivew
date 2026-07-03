@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getSupabaseAdminClient } from "./supabase";
 import {
@@ -54,11 +55,19 @@ export const RECOMMENDATION_PROMPT_VERSION = "catalog-backed-grid-v2";
 
 export type CatalogRebuildMode = "auto" | "researched" | "seeded";
 type CatalogSourceMode = "researched-weekly" | "seeded-weekly";
+type CatalogRebuildStatus = "succeeded" | "skipped";
+type CatalogSkipReason = "not_due" | "dry_run";
 
 const CATALOG_MARKET = "kr";
 const CATALOG_BOOTSTRAP_MAX_POLLS = 8;
 const CATALOG_BOOTSTRAP_POLL_MS = 500;
 const UNIQUE_CONSTRAINT_VIOLATION_CODE = "23505";
+const CATALOG_ROTATION_TTL_DAYS = 7;
+const TARGET_BLUEPRINT_POOL_SIZE = 32;
+const TARGET_STYLE_TARGET_POOL_SIZE = 18;
+const MIN_STYLE_TARGET_RECOMMENDATION_ROWS = 9;
+const AUTOMATIC_ROTATION_CRON_UTC_HOUR = 0;
+const AUTOMATIC_ROTATION_CRON_UTC_MINUTE = 20;
 const DEFAULT_OBSERVED_PARTING = "soft off-center parting";
 const DEFAULT_RECOMMENDED_PARTING = "soft off-center parting";
 const DEFAULT_PARTING_STRATEGY =
@@ -87,14 +96,50 @@ interface QueryError {
 }
 
 interface CatalogRebuildResult {
-  cycleId: string;
-  status: "succeeded";
+  cycleId: string | null;
+  status: CatalogRebuildStatus;
+  skipReason?: CatalogSkipReason;
+  activeCycleId: string | null;
+  activated: boolean;
+  dryRun: boolean;
   insertedCount: number;
   updatedCount: number;
   itemCount: number;
   sourceSummary: HairstyleCatalogSourceSummary;
   requestedMode: CatalogRebuildMode;
   resolvedMode: CatalogSourceMode;
+  validation: CatalogValidationResult;
+  activatedAt: string | null;
+  expiresAt: string | null;
+  nextAutomaticAttemptAt: string;
+  trendAlertId: string | null;
+  trendAlertScheduledSendAt: string | null;
+  staleRunningCyclesFailed: number;
+}
+
+interface CatalogRebuildOptions {
+  mode: CatalogRebuildMode;
+  force: boolean;
+  onlyIfDue: boolean;
+  activate: boolean;
+  dryRun: boolean;
+  reason: string;
+  notify: boolean | null;
+  notifyPlans: string[];
+  notifyDelayMinutes: number;
+}
+
+interface CatalogValidationResult {
+  passed: boolean;
+  rowCount: number;
+  requiredRowCount: number;
+  targetBlueprintCount: number;
+  maleCandidateCount: number;
+  femaleCandidateCount: number;
+  targetStyleTargetCount: number;
+  promptTemplateVersion: string;
+  promptVersionMismatchCount: number;
+  warnings: string[];
 }
 
 interface CatalogAvailabilityResult {
@@ -144,6 +189,10 @@ interface SupabaseCatalogClient {
       options: { onConflict: string },
     ) => Promise<{ error: QueryError | null }>;
   };
+  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{
+    data: unknown;
+    error: QueryError | null;
+  }>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -505,6 +554,213 @@ function buildCycleSourceSummary(mode: CatalogSourceMode, startedAt: string): Ha
 
 function buildSeededTrendSignals() {
   return new Map<string, BlueprintTrendSignal>();
+}
+
+function normalizeCatalogRebuildOptions(modeOrOptions: CatalogRebuildMode | Partial<CatalogRebuildOptions>): CatalogRebuildOptions {
+  if (typeof modeOrOptions === "string") {
+    return {
+      mode: modeOrOptions,
+      force: false,
+      onlyIfDue: false,
+      activate: true,
+      dryRun: false,
+      reason: "manual",
+      notify: null,
+      notifyPlans: ["standard", "pro", "salon"],
+      notifyDelayMinutes: 10,
+    };
+  }
+
+  return {
+    mode: modeOrOptions.mode ?? "auto",
+    force: modeOrOptions.force ?? false,
+    onlyIfDue: modeOrOptions.onlyIfDue ?? false,
+    activate: modeOrOptions.activate ?? true,
+    dryRun: modeOrOptions.dryRun ?? false,
+    reason: cleanText(modeOrOptions.reason ?? "manual") || "manual",
+    notify: typeof modeOrOptions.notify === "boolean" ? modeOrOptions.notify : null,
+    notifyPlans: modeOrOptions.notifyPlans?.length
+      ? Array.from(new Set(modeOrOptions.notifyPlans.map(cleanText).filter(Boolean)))
+      : ["standard", "pro", "salon"],
+    notifyDelayMinutes: Math.max(0, Math.min(120, modeOrOptions.notifyDelayMinutes ?? 10)),
+  };
+}
+
+function resolveCatalogSourceMode(mode: CatalogRebuildMode): CatalogSourceMode {
+  return mode === "seeded" ? "seeded-weekly" : "researched-weekly";
+}
+
+function shouldSendCatalogRotationAlert(options: CatalogRebuildOptions, sourceMode: CatalogSourceMode) {
+  if (options.dryRun || !options.activate) {
+    return false;
+  }
+
+  if (typeof options.notify === "boolean") {
+    return options.notify;
+  }
+
+  return sourceMode === "researched-weekly";
+}
+
+function computeCycleExpiresAt(activatedAt: Date) {
+  return new Date(activatedAt.getTime() + CATALOG_ROTATION_TTL_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
+function formatRotationPeriod(date: Date) {
+  const weekDate = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = weekDate.getUTCDay() || 7;
+  weekDate.setUTCDate(weekDate.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(weekDate.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((weekDate.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+
+  return `${weekDate.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+}
+
+function computeNextAutomaticAttemptAt(now = new Date()) {
+  const next = new Date(Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    AUTOMATIC_ROTATION_CRON_UTC_HOUR,
+    AUTOMATIC_ROTATION_CRON_UTC_MINUTE,
+    0,
+    0,
+  ));
+
+  if (next.getTime() <= now.getTime()) {
+    next.setUTCDate(next.getUTCDate() + 1);
+  }
+
+  return next.toISOString();
+}
+
+function isActiveCatalogDue(activeCycle: HairstyleCatalogActiveCycle | null, now = new Date()) {
+  if (!activeCycle) {
+    return true;
+  }
+
+  const expiresAt = Date.parse(activeCycle.expiresAt);
+  return !Number.isFinite(expiresAt) || expiresAt <= now.getTime();
+}
+
+function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, "id"> | HairstyleCatalogRow>): CatalogValidationResult {
+  const maleCandidateCount = rows.filter((row) => row.styleTargets.includes("male")).length;
+  const femaleCandidateCount = rows.filter((row) => row.styleTargets.includes("female")).length;
+  const promptVersionMismatchCount = rows.filter(
+    (row) => row.promptTemplateVersion !== HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
+  ).length;
+  const warnings: string[] = [];
+
+  if (rows.length < TARGET_BLUEPRINT_POOL_SIZE) {
+    warnings.push(`blueprint_pool_below_target:${rows.length}/${TARGET_BLUEPRINT_POOL_SIZE}`);
+  }
+
+  if (maleCandidateCount < TARGET_STYLE_TARGET_POOL_SIZE) {
+    warnings.push(`male_candidate_pool_below_target:${maleCandidateCount}/${TARGET_STYLE_TARGET_POOL_SIZE}`);
+  }
+
+  if (femaleCandidateCount < TARGET_STYLE_TARGET_POOL_SIZE) {
+    warnings.push(`female_candidate_pool_below_target:${femaleCandidateCount}/${TARGET_STYLE_TARGET_POOL_SIZE}`);
+  }
+
+  if (promptVersionMismatchCount > 0) {
+    warnings.push(`prompt_template_version_mismatch:${promptVersionMismatchCount}`);
+  }
+
+  return {
+    passed:
+      rows.length >= MIN_STYLE_TARGET_RECOMMENDATION_ROWS &&
+      maleCandidateCount >= MIN_STYLE_TARGET_RECOMMENDATION_ROWS &&
+      femaleCandidateCount >= MIN_STYLE_TARGET_RECOMMENDATION_ROWS &&
+      promptVersionMismatchCount === 0,
+    rowCount: rows.length,
+    requiredRowCount: MIN_STYLE_TARGET_RECOMMENDATION_ROWS,
+    targetBlueprintCount: TARGET_BLUEPRINT_POOL_SIZE,
+    maleCandidateCount,
+    femaleCandidateCount,
+    targetStyleTargetCount: TARGET_STYLE_TARGET_POOL_SIZE,
+    promptTemplateVersion: HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
+    promptVersionMismatchCount,
+    warnings,
+  };
+}
+
+async function recordCatalogRotationAttempt(
+  supabase: SupabaseCatalogClient,
+  status: string,
+  cycleId: string | null,
+  errorLog?: string,
+) {
+  const response = await supabase.rpc("record_hairstyle_catalog_rotation_attempt", {
+    p_market: CATALOG_MARKET,
+    p_status: status,
+    p_cycle_id: cycleId,
+    p_error_log: errorLog ?? null,
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+}
+
+async function markStaleRunningCatalogCyclesFailed(supabase: SupabaseCatalogClient) {
+  const response = await supabase.rpc("mark_stale_running_hairstyle_cycles_failed", {
+    p_market: CATALOG_MARKET,
+    p_timeout_minutes: 30,
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+
+  return typeof response.data === "number" ? response.data : 0;
+}
+
+async function activateCatalogCycle(
+  supabase: SupabaseCatalogClient,
+  cycleId: string,
+  activatedAt: Date,
+) {
+  const rotationPeriod = formatRotationPeriod(activatedAt);
+  const expiresAt = computeCycleExpiresAt(activatedAt);
+  const rotationSeed = `${CATALOG_MARKET}:${rotationPeriod}:${cycleId}`;
+  const response = await supabase.rpc("activate_hairstyle_catalog_cycle", {
+    p_market: CATALOG_MARKET,
+    p_cycle_id: cycleId,
+    p_expires_at: expiresAt,
+    p_rotation_period: rotationPeriod,
+    p_rotation_seed: rotationSeed,
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+
+  return {
+    expiresAt,
+    rotationPeriod,
+    rotationSeed,
+  };
+}
+
+async function enqueueCatalogRotationTrendAlert(
+  supabase: SupabaseCatalogClient,
+  cycleId: string,
+  scheduledSendAt: string,
+  targetPlans: string[],
+) {
+  const response = await supabase.rpc("enqueue_catalog_rotation_trend_alert", {
+    p_market: CATALOG_MARKET,
+    p_cycle_id: cycleId,
+    p_scheduled_send_at: scheduledSendAt,
+    p_target_plans: targetPlans,
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+
+  return typeof response.data === "string" ? response.data : null;
 }
 
 function isBootstrapInProgressError(error: unknown) {
@@ -949,42 +1205,55 @@ async function finalizeCatalogCycleFailure(
   cycleId: string,
   message: string,
 ) {
-  await supabase
-    .from("hairstyle_catalog_cycles")
-    .update({
-      status: "failed",
-      finished_at: new Date().toISOString(),
-      error_log: message,
-    })
-    .eq("cycle_id", cycleId);
+  const response = await supabase.rpc("fail_hairstyle_catalog_cycle", {
+    p_cycle_id: cycleId,
+    p_error_log: message,
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
 }
 
 async function rebuildCatalogWithMode(
-  requestedMode: CatalogRebuildMode,
+  options: CatalogRebuildOptions,
   sourceMode: CatalogSourceMode,
+  staleRunningCyclesFailed: number,
 ): Promise<CatalogRebuildResult> {
   const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
-  const cycle = await createHairstyleCatalogCycleForMode(sourceMode);
-
-  if (cycle.status === "succeeded") {
-    const rows = await loadCatalogRows(supabase, cycle.cycleId);
-    const resolvedMode = cycle.sourceSummary?.mode ?? sourceMode;
-
-    return {
-      cycleId: cycle.cycleId,
-      status: "succeeded",
-      insertedCount: 0,
-      updatedCount: rows.length,
-      itemCount: rows.length,
-      sourceSummary: cycle.sourceSummary ?? buildCycleSourceSummary(resolvedMode, cycle.startedAt),
-      requestedMode,
-      resolvedMode,
-    };
-  }
-
+  const cycle = options.dryRun ? null : await createHairstyleCatalogCycleForMode(sourceMode);
   const nowIso = new Date().toISOString();
+  const cycleId = cycle?.cycleId ?? randomUUID();
 
   try {
+    if (cycle?.status === "succeeded") {
+      const rows = await loadCatalogRows(supabase, cycle.cycleId);
+      const validation = validateCatalogRowsForActivation(rows);
+      const activeAfter = await getActiveCatalogCycle(supabase).catch(() => null);
+      const resolvedMode = cycle.sourceSummary?.mode ?? sourceMode;
+
+      return {
+        cycleId: cycle.cycleId,
+        status: "succeeded",
+        activeCycleId: activeAfter?.activeCycle.activeCycleId ?? null,
+        activated: false,
+        dryRun: options.dryRun,
+        insertedCount: 0,
+        updatedCount: rows.length,
+        itemCount: rows.length,
+        sourceSummary: cycle.sourceSummary ?? buildCycleSourceSummary(resolvedMode, cycle.startedAt),
+        requestedMode: options.mode,
+        resolvedMode,
+        validation,
+        activatedAt: null,
+        expiresAt: activeAfter?.activeCycle.expiresAt ?? null,
+        nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(),
+        trendAlertId: null,
+        trendAlertScheduledSendAt: null,
+        staleRunningCyclesFailed,
+      };
+    }
+
     const research =
       sourceMode === "researched-weekly"
         ? await collectKoreanHairstyleTrendResearch(new Date(nowIso))
@@ -992,7 +1261,43 @@ async function rebuildCatalogWithMode(
             trendSignals: buildSeededTrendSignals(),
             sourceSummary: buildCycleSourceSummary(sourceMode, nowIso),
           };
-    const rows = buildCatalogRowsForCycle(cycle.cycleId, nowIso, research.trendSignals);
+    const rows = buildCatalogRowsForCycle(cycleId, nowIso, research.trendSignals);
+    const validation = validateCatalogRowsForActivation(rows);
+
+    if (!validation.passed) {
+      throw new Error(`Hairstyle catalog validation failed: ${validation.warnings.join(", ") || "insufficient rows"}`);
+    }
+
+    if (options.dryRun) {
+      const activeAfter = await getActiveCatalogCycle(supabase).catch(() => null);
+
+      return {
+        cycleId,
+        status: "succeeded",
+        skipReason: "dry_run",
+        activeCycleId: activeAfter?.activeCycle.activeCycleId ?? null,
+        activated: false,
+        dryRun: true,
+        insertedCount: 0,
+        updatedCount: 0,
+        itemCount: rows.length,
+        sourceSummary: research.sourceSummary,
+        requestedMode: options.mode,
+        resolvedMode: sourceMode,
+        validation,
+        activatedAt: null,
+        expiresAt: activeAfter?.activeCycle.expiresAt ?? null,
+        nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(),
+        trendAlertId: null,
+        trendAlertScheduledSendAt: null,
+        staleRunningCyclesFailed,
+      };
+    }
+
+    if (!cycle) {
+      throw new Error("Hairstyle catalog cycle was not created.");
+    }
+
     const slugs = rows.map((row) => row.slug);
 
     const existingResponse = await ((supabase
@@ -1048,56 +1353,137 @@ async function rebuildCatalogWithMode(
     const updatedCount = upsertPayload.length - insertedCount;
 
     const finishedAt = new Date().toISOString();
+    const cycleUpdateValues = options.activate
+      ? {
+          item_count: upsertPayload.length,
+          error_log: null,
+          source_summary: research.sourceSummary,
+        }
+      : {
+          status: "succeeded",
+          finished_at: finishedAt,
+          item_count: upsertPayload.length,
+          error_log: null,
+          source_summary: research.sourceSummary,
+        };
     const updateResult = await supabase
       .from("hairstyle_catalog_cycles")
-      .update({
-        status: "succeeded",
-        finished_at: finishedAt,
-        item_count: upsertPayload.length,
-        error_log: null,
-        source_summary: research.sourceSummary,
-      })
+      .update(cycleUpdateValues)
       .eq("cycle_id", cycle.cycleId);
 
     if (updateResult.error) {
       throw new Error(updateResult.error.message);
     }
 
+    let activated = false;
+    let activatedAt: string | null = null;
+    let expiresAt: string | null = null;
+    let trendAlertId: string | null = null;
+    let trendAlertScheduledSendAt: string | null = null;
+
+    if (options.activate) {
+      const activationTime = new Date();
+      const activation = await activateCatalogCycle(supabase, cycle.cycleId, activationTime);
+      activated = true;
+      activatedAt = activationTime.toISOString();
+      expiresAt = activation.expiresAt;
+
+      if (shouldSendCatalogRotationAlert(options, sourceMode)) {
+        trendAlertScheduledSendAt = new Date(
+          activationTime.getTime() + options.notifyDelayMinutes * 60 * 1000,
+        ).toISOString();
+        trendAlertId = await enqueueCatalogRotationTrendAlert(
+          supabase,
+          cycle.cycleId,
+          trendAlertScheduledSendAt,
+          options.notifyPlans,
+        );
+      }
+    }
+
+    await recordCatalogRotationAttempt(supabase, "succeeded", cycle.cycleId);
+    const activeAfter = await getActiveCatalogCycle(supabase).catch(() => null);
+
     return {
       cycleId: cycle.cycleId,
-      status: "succeeded" as const,
+      status: "succeeded",
+      activeCycleId: activeAfter?.activeCycle.activeCycleId ?? null,
+      activated,
+      dryRun: false,
       insertedCount,
       updatedCount,
       itemCount: upsertPayload.length,
       sourceSummary: research.sourceSummary,
-      requestedMode,
+      requestedMode: options.mode,
       resolvedMode: sourceMode,
+      validation,
+      activatedAt,
+      expiresAt: expiresAt ?? activeAfter?.activeCycle.expiresAt ?? null,
+      nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(),
+      trendAlertId,
+      trendAlertScheduledSendAt,
+      staleRunningCyclesFailed,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected catalog rebuild error";
-    await finalizeCatalogCycleFailure(supabase, cycle.cycleId, message);
+    if (cycle) {
+      await finalizeCatalogCycleFailure(supabase, cycle.cycleId, message);
+    }
     throw error;
   }
 }
 
-export async function rebuildWeeklyHairstyleCatalog(mode: CatalogRebuildMode = "auto"): Promise<CatalogRebuildResult> {
-  if (mode === "seeded") {
-    return rebuildCatalogWithMode(mode, "seeded-weekly");
+export async function rebuildWeeklyHairstyleCatalog(
+  modeOrOptions: CatalogRebuildMode | Partial<CatalogRebuildOptions> = "auto",
+): Promise<CatalogRebuildResult> {
+  const options = normalizeCatalogRebuildOptions(modeOrOptions);
+  const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
+  const now = new Date();
+  const sourceMode = resolveCatalogSourceMode(options.mode);
+  const staleRunningCyclesFailed = await markStaleRunningCatalogCyclesFailed(supabase);
+  const activeBefore = await getActiveCatalogCycle(supabase).catch(() => null);
+
+  if (options.onlyIfDue && !options.force && !isActiveCatalogDue(activeBefore?.activeCycle ?? null, now)) {
+    await recordCatalogRotationAttempt(supabase, "skipped", activeBefore?.activeCycle.activeCycleId ?? null);
+
+    return {
+      cycleId: null,
+      status: "skipped",
+      skipReason: "not_due",
+      activeCycleId: activeBefore?.activeCycle.activeCycleId ?? null,
+      activated: false,
+      dryRun: options.dryRun,
+      insertedCount: 0,
+      updatedCount: 0,
+      itemCount: activeBefore?.cycle.itemCount ?? 0,
+      sourceSummary: activeBefore?.cycle.sourceSummary ?? buildCycleSourceSummary(sourceMode, now.toISOString()),
+      requestedMode: options.mode,
+      resolvedMode: activeBefore?.cycle.sourceSummary?.mode ?? sourceMode,
+      validation: validateCatalogRowsForActivation([]),
+      activatedAt: activeBefore?.activeCycle.activatedAt ?? null,
+      expiresAt: activeBefore?.activeCycle.expiresAt ?? null,
+      nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(now),
+      trendAlertId: null,
+      trendAlertScheduledSendAt: null,
+      staleRunningCyclesFailed,
+    };
   }
 
-  if (mode === "researched") {
-    return rebuildCatalogWithMode(mode, "researched-weekly");
+  await recordCatalogRotationAttempt(supabase, "started", null);
+
+  if (options.mode === "seeded" || options.mode === "researched") {
+    return rebuildCatalogWithMode(options, sourceMode, staleRunningCyclesFailed);
   }
 
   try {
-    return await rebuildCatalogWithMode(mode, "researched-weekly");
+    return await rebuildCatalogWithMode(options, "researched-weekly", staleRunningCyclesFailed);
   } catch (error) {
     if (isBootstrapInProgressError(error)) {
       throw error;
     }
 
     console.warn("[catalog] Live research rebuild failed, retrying with seeded fallback.", error);
-    return rebuildCatalogWithMode(mode, "seeded-weekly");
+    return rebuildCatalogWithMode(options, "seeded-weekly", staleRunningCyclesFailed);
   }
 }
 
