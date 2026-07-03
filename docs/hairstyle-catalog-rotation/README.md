@@ -26,6 +26,7 @@
 | 구현 태스크 | 완료 | P1-P7 작업 체크리스트 `[x]` 처리 |
 | 로컬 앱 검증 | 완료 | `npm run lint`, `npm run build` 통과 |
 | 정적 카탈로그 감사 | 완료 | `npm run hairstyle:catalog:audit` 통과 |
+| 라인업 회전 감사 | 완료 | `npm run hairstyle:catalog:lineup:audit` 통과 |
 | Deno 함수 문법 | 완료 | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | DB migration smoke | 완료 | 임시 Postgres에서 P1/P5/P6 event RPC migration smoke 통과 |
 | Supabase linked dry-run | 완료 | `supabase link --project-ref dpzdhxlqnogfpubpslbf --workdir my-app` 후 `supabase db push --dry-run --workdir my-app` 통과 |
@@ -51,14 +52,15 @@
 | 1 | 정적 타입/문법 | `npm run lint` | 통과 |
 | 2 | 앱 빌드 | `npm run build` | 통과 |
 | 3 | 카탈로그 감사 | `npm run hairstyle:catalog:audit` | 통과 |
-| 4 | migration dry-run | `supabase db push --dry-run --workdir my-app` | 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
-| 5 | remote write guard | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false`, `blockingPending:["202607030001_plan_credit_policy_aftercare.sql"]` |
-| 6 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` | 통과 |
-| 7 | admin latest smoke | `GET /api/admin/hairstyles/cycles/latest` | Supabase runtime env 필요 |
-| 8 | due checker smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","onlyIfDue":true}` | Supabase runtime env 필요 |
-| 9 | forced rebuild smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","force":true}` | Supabase runtime env 필요 |
-| 10 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
-| 11 | trend alert smoke | active 교체 후 `trend_alerts.alert_type='catalog_rotation'` 1건 확인 | Supabase runtime env 필요 |
+| 4 | 라인업 회전 감사 | `npm run hairstyle:catalog:lineup:audit` | 통과 |
+| 5 | migration dry-run | `supabase db push --dry-run --workdir my-app` | 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
+| 6 | remote write guard | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false`, `blockingPending:["202607030001_plan_credit_policy_aftercare.sql"]` |
+| 7 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` | 통과 |
+| 8 | admin latest smoke | `GET /api/admin/hairstyles/cycles/latest` | Supabase runtime env 필요 |
+| 9 | due checker smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","onlyIfDue":true}` | Supabase runtime env 필요 |
+| 10 | forced rebuild smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","force":true}` | Supabase runtime env 필요 |
+| 11 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
+| 12 | trend alert smoke | active 교체 후 `trend_alerts.alert_type='catalog_rotation'` 1건 확인 | Supabase runtime env 필요 |
 
 ## 구현 순서 규칙
 

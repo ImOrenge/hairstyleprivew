@@ -51,8 +51,8 @@
 | [x] | 남성 후보 18개 이상 확인 |
 | [x] | 남성/여성 lineup 각각 9개 생성 경로 typecheck 확인 |
 | [x] | 정적 audit로 추천 경로가 active lineup snapshot을 사용하는지 확인 |
-| [ ] | 같은 seed에서 lineup 순서 재현 확인. Supabase runtime env 필요 |
-| [ ] | 다른 seed에서 near-tie lineup 순서 변화 확인. Supabase runtime env 필요 |
+| [x] | 같은 seed에서 lineup 순서 재현 확인 | `npm run hairstyle:catalog:lineup:audit` |
+| [x] | 다른 seed에서 near-tie lineup 순서 변화 확인 | `npm run hairstyle:catalog:lineup:audit` |
 | [x] | overlap warning 이벤트 기록 경로 정적 감사 확인 |
 | [x] | 임시 Postgres에서 `record_hairstyle_catalog_rotation_event(...)` overlap warning insert smoke 통과 |
 | [x] | `node my-app/scripts/audit-hairstyle-catalog-blueprints.mjs` 통과 |

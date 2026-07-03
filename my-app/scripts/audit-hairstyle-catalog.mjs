@@ -19,9 +19,16 @@ function assert(condition, message) {
 const blueprintAudit = spawnSync(process.execPath, [fileURLToPath(new URL("./audit-hairstyle-catalog-blueprints.mjs", import.meta.url))], {
   encoding: "utf8",
 });
+const lineupAudit = spawnSync(process.execPath, [fileURLToPath(new URL("./audit-hairstyle-catalog-lineups.mjs", import.meta.url))], {
+  encoding: "utf8",
+});
 
 if (blueprintAudit.status !== 0) {
   throw new Error(blueprintAudit.stderr || blueprintAudit.stdout || "blueprint audit failed");
+}
+
+if (lineupAudit.status !== 0) {
+  throw new Error(lineupAudit.stderr || lineupAudit.stdout || "lineup audit failed");
 }
 
 const catalog = read("lib/hairstyle-catalog.ts");
@@ -53,6 +60,7 @@ assert(catalog.includes("trend_alert_enqueue_failed"), "missing alert enqueue fa
 const alertPolicyBody = catalog.match(/function shouldSendCatalogRotationAlert\([\s\S]*?function computeCycleExpiresAt/);
 assert(alertPolicyBody && alertPolicyBody[0].includes('options.reason === "rotation-check"') && alertPolicyBody[0].includes("lowFreshness && (isAutomaticRotationCheck || options.notify !== true)"), "automatic rotation-check must not send low freshness catalog alerts");
 assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup builder");
+assert(catalog.includes('from "./hairstyle-catalog-lineup"'), "lineup builder must live in the pure lineup module");
 assert(catalog.includes("buildLineupBackedRecommendations"), "missing lineup-backed recommendation builder");
 const topNineBody = catalog.match(/function buildTopNine\([\s\S]*?function buildLineupBackedRecommendations/);
 assert(topNineBody && topNineBody[0].includes("if (limit <= 0)") && topNineBody[0].includes("selected.length >= limit"), "lineup fallback builder must enforce recommendation limit");
@@ -81,7 +89,9 @@ assert(runtimeRunbook.includes("catalog_rotation"), "runtime smoke runbook missi
 assert(runtimeRunbook.includes("Supabase linked dry-run 완료"), "runtime smoke runbook must record linked dry-run status");
 assert(!runtimeRunbook.includes("현재 격리 worktree에는 project ref가 없음"), "runtime smoke runbook still says project ref is missing");
 assert(packageJson.includes("\"hairstyle:catalog:remote:check\""), "my-app package is missing hairstyle remote readiness script");
+assert(packageJson.includes("\"hairstyle:catalog:lineup:audit\""), "my-app package is missing hairstyle lineup audit script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:remote:check\""), "root package is missing hairstyle remote readiness script");
+assert(rootPackageJson.includes("\"hairstyle:catalog:lineup:audit\""), "root package is missing hairstyle lineup audit script");
 assert(remoteReadinessScript.includes("blockingPending") && remoteReadinessScript.includes("Refusing hairstyle remote write"), "remote readiness guard must block unrelated pending migrations");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_MIGRATION_CONFIRM_PROJECT_REF"), "remote readiness guard must require explicit project confirmation for writes");
 
@@ -97,6 +107,7 @@ console.log(JSON.stringify({
     "low freshness alert policy",
     "activation lineup guard",
     "lineup builder",
+    "lineup deterministic rotation",
     "lineup-backed recommendations",
     "lineup fallback limit",
     "overlap warning",

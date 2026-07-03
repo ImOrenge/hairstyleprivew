@@ -54,6 +54,7 @@
 | [x] | `npm run lint` |
 | [x] | `npm run build` |
 | [x] | `npm run hairstyle:catalog:audit` |
+| [x] | `npm run hairstyle:catalog:lineup:audit` |
 | [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
 | [x] | `npm run hairstyle:catalog:remote:check` 통과. `readyForWrite:false`, blocker `202607030001_plan_credit_policy_aftercare.sql` 확인 |
 | [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |
