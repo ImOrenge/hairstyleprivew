@@ -16,6 +16,7 @@
     "lint:all": "npm --workspaces --if-present run lint",
     "hairstyle:catalog:audit": "npm --prefix my-app run hairstyle:catalog:audit",
     "hairstyle:catalog:lineup:audit": "npm --prefix my-app run hairstyle:catalog:lineup:audit",
+    "hairstyle:catalog:env:check": "npm --prefix my-app run hairstyle:catalog:env:check --",
     "hairstyle:catalog:remote:check": "npm --prefix my-app run hairstyle:catalog:remote:check --",
     "portone:audit": "npm --prefix my-app run portone:audit",
     "portone:contract:test": "npm --prefix my-app run portone:contract:test",

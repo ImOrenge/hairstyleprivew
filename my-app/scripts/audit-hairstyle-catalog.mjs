@@ -43,6 +43,7 @@ const phaseReadme = readRepo("docs/hairstyle-catalog-rotation/README.md");
 const runtimeRunbook = readRepo("docs/hairstyle-catalog-rotation/runtime-smoke-runbook.md");
 const rootPackageJson = readRepo("package.json");
 const remoteReadinessScript = read("scripts/check-hairstyle-catalog-remote-readiness.mjs");
+const runtimeEnvScript = read("scripts/check-hairstyle-catalog-runtime-env.mjs");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
 assert(trendResearch.includes("FALLBACK_RESEARCH_LOOKBACK_DAYS = 120"), "missing 120 day fallback lookback");
@@ -86,18 +87,30 @@ assert(!phaseReadme.includes("상태: 구현 태스크 분해, 미구현"), "pha
 assert(!phaseReadme.includes("현재 worktree는 Supabase project ref가 없어"), "phase README still says Supabase project ref is missing");
 assert(runtimeRunbook.includes("cron-hairstyle-catalog-rotation-check"), "runtime smoke runbook missing rotation cron check");
 assert(runtimeRunbook.includes("catalog_rotation"), "runtime smoke runbook missing catalog rotation alert check");
+assert(runtimeRunbook.includes("hairstyle:catalog:env:check"), "runtime smoke runbook missing runtime env preflight");
 assert(runtimeRunbook.includes("Supabase linked dry-run 완료"), "runtime smoke runbook must record linked dry-run status");
 assert(!runtimeRunbook.includes("현재 격리 worktree에는 project ref가 없음"), "runtime smoke runbook still says project ref is missing");
 assert(packageJson.includes("\"hairstyle:catalog:remote:check\""), "my-app package is missing hairstyle remote readiness script");
 assert(packageJson.includes("\"hairstyle:catalog:lineup:audit\""), "my-app package is missing hairstyle lineup audit script");
+assert(packageJson.includes("\"hairstyle:catalog:env:check\""), "my-app package is missing hairstyle runtime env check script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:remote:check\""), "root package is missing hairstyle remote readiness script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:lineup:audit\""), "root package is missing hairstyle lineup audit script");
+assert(rootPackageJson.includes("\"hairstyle:catalog:env:check\""), "root package is missing hairstyle runtime env check script");
 assert(remoteReadinessScript.includes("blockingPending") && remoteReadinessScript.includes("Refusing hairstyle remote write"), "remote readiness guard must block unrelated pending migrations");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_MIGRATION_CONFIRM_PROJECT_REF"), "remote readiness guard must require explicit project confirmation for writes");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS"), "remote readiness guard must expose a command timeout override");
 assert(remoteReadinessScript.includes("timed out after"), "remote readiness guard must fail clearly on command timeout");
 assert(remoteReadinessScript.includes("withRemoteCheckLock"), "remote readiness guard must prevent concurrent Supabase dry-runs");
 assert(remoteReadinessScript.includes("hairstyle-catalog-remote-check.lock"), "remote readiness guard must use a named local lock file");
+assert(runtimeEnvScript.includes("mode=admin-api"), "runtime env check must expose admin-api mode");
+assert(runtimeEnvScript.includes("mode=cron-registration"), "runtime env check must expose cron-registration mode");
+assert(runtimeEnvScript.includes("mode=trend-mail-function"), "runtime env check must expose trend-mail-function mode");
+assert(runtimeEnvScript.includes("INTERNAL_API_SECRET"), "runtime env check must require admin secret");
+assert(runtimeEnvScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime env check must require Supabase service role key");
+assert(runtimeEnvScript.includes("RESEND_API_KEY"), "runtime env check must require Resend API key for trend mail smoke");
+assert(runtimeEnvScript.includes("RESEND_FROM_EMAIL"), "runtime env check must require a Resend sender for trend mail smoke");
+assert(runtimeEnvScript.includes("@resend\\.dev"), "runtime env check must reject Resend development senders");
+assert(runtimeEnvScript.includes("deriveEdgeFunctionBaseUrl"), "runtime env check must derive Supabase Edge Function base URL");
 
 console.log(JSON.stringify({
   ok: true,
@@ -119,5 +132,6 @@ console.log(JSON.stringify({
     "cron names",
     "doc status",
     "remote readiness guard",
+    "runtime env preflight",
   ],
 }, null, 2));
