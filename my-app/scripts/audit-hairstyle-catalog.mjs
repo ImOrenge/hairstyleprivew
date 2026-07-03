@@ -44,6 +44,7 @@ const runtimeRunbook = readRepo("docs/hairstyle-catalog-rotation/runtime-smoke-r
 const rootPackageJson = readRepo("package.json");
 const remoteReadinessScript = read("scripts/check-hairstyle-catalog-remote-readiness.mjs");
 const runtimeEnvScript = read("scripts/check-hairstyle-catalog-runtime-env.mjs");
+const runtimeSmokeScript = read("scripts/smoke-hairstyle-catalog-runtime.mjs");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
 assert(trendResearch.includes("FALLBACK_RESEARCH_LOOKBACK_DAYS = 120"), "missing 120 day fallback lookback");
@@ -93,9 +94,11 @@ assert(!runtimeRunbook.includes("현재 격리 worktree에는 project ref가 없
 assert(packageJson.includes("\"hairstyle:catalog:remote:check\""), "my-app package is missing hairstyle remote readiness script");
 assert(packageJson.includes("\"hairstyle:catalog:lineup:audit\""), "my-app package is missing hairstyle lineup audit script");
 assert(packageJson.includes("\"hairstyle:catalog:env:check\""), "my-app package is missing hairstyle runtime env check script");
+assert(packageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "my-app package is missing hairstyle runtime smoke script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:remote:check\""), "root package is missing hairstyle remote readiness script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:lineup:audit\""), "root package is missing hairstyle lineup audit script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:env:check\""), "root package is missing hairstyle runtime env check script");
+assert(rootPackageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "root package is missing hairstyle runtime smoke script");
 assert(remoteReadinessScript.includes("blockingPending") && remoteReadinessScript.includes("Refusing hairstyle remote write"), "remote readiness guard must block unrelated pending migrations");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_MIGRATION_CONFIRM_PROJECT_REF"), "remote readiness guard must require explicit project confirmation for writes");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS"), "remote readiness guard must expose a command timeout override");
@@ -111,6 +114,16 @@ assert(runtimeEnvScript.includes("RESEND_API_KEY"), "runtime env check must requ
 assert(runtimeEnvScript.includes("RESEND_FROM_EMAIL"), "runtime env check must require a Resend sender for trend mail smoke");
 assert(runtimeEnvScript.includes("@resend\\.dev"), "runtime env check must reject Resend development senders");
 assert(runtimeEnvScript.includes("deriveEdgeFunctionBaseUrl"), "runtime env check must derive Supabase Edge Function base URL");
+assert(runtimeSmokeScript.includes("mode=status"), "runtime smoke runner must expose status mode");
+assert(runtimeSmokeScript.includes("mode=dry-run"), "runtime smoke runner must expose dry-run mode");
+assert(runtimeSmokeScript.includes("mode=rotation-check"), "runtime smoke runner must expose rotation-check mode");
+assert(runtimeSmokeScript.includes("mode=force-rebuild"), "runtime smoke runner must expose force-rebuild mode");
+assert(runtimeSmokeScript.includes("mode=alert-idempotency"), "runtime smoke runner must expose alert idempotency mode");
+assert(runtimeSmokeScript.includes("requireWriteConfirmation"), "runtime smoke runner must guard mutating calls");
+assert(runtimeSmokeScript.includes("HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL"), "runtime smoke runner must support target confirmation env");
+assert(runtimeSmokeScript.includes("beforeActiveCycleId === afterActiveCycleId"), "runtime smoke dry-run must verify active cycle is unchanged");
+assert(runtimeSmokeScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime smoke alert query must use service role env");
+assert(runtimeSmokeScript.includes("rows.length <= 1"), "runtime smoke must verify catalog_rotation alert idempotency");
 
 console.log(JSON.stringify({
   ok: true,
@@ -133,5 +146,6 @@ console.log(JSON.stringify({
     "doc status",
     "remote readiness guard",
     "runtime env preflight",
+    "runtime API smoke runner",
   ],
 }, null, 2));

@@ -10,6 +10,7 @@
     "hairstyle:catalog:audit": "node scripts/audit-hairstyle-catalog.mjs",
     "hairstyle:catalog:lineup:audit": "node scripts/audit-hairstyle-catalog-lineups.mjs",
     "hairstyle:catalog:env:check": "node scripts/check-hairstyle-catalog-runtime-env.mjs",
+    "hairstyle:catalog:runtime:smoke": "node scripts/smoke-hairstyle-catalog-runtime.mjs",
     "hairstyle:catalog:remote:check": "node scripts/check-hairstyle-catalog-remote-readiness.mjs",
     "portone:webhook:test": "node scripts/send-portone-webhook-test.mjs",
     "portone:webhook:signature:test": "node --no-warnings scripts/verify-portone-webhook-signature.mjs",

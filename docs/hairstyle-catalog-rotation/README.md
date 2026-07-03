@@ -28,6 +28,7 @@
 | 정적 카탈로그 감사 | 완료 | `npm run hairstyle:catalog:audit` 통과 |
 | 라인업 회전 감사 | 완료 | `npm run hairstyle:catalog:lineup:audit` 통과 |
 | Runtime env preflight | 완료 | synthetic env로 `npm run hairstyle:catalog:env:check` 통과 |
+| Runtime API smoke runner | 완료 | `npm run hairstyle:catalog:runtime:smoke -- --help` 통과. 실제 배포 URL과 admin secret 필요 |
 | Deno 함수 문법 | 완료 | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | DB migration smoke | 완료 | 임시 Postgres에서 P1/P5/P6 event RPC migration smoke 통과 |
 | Supabase linked dry-run | 완료 | `supabase link --project-ref dpzdhxlqnogfpubpslbf --workdir my-app` 후 `supabase db push --dry-run --workdir my-app` 통과 |
@@ -55,14 +56,15 @@
 | 3 | 카탈로그 감사 | `npm run hairstyle:catalog:audit` | 통과 |
 | 4 | 라인업 회전 감사 | `npm run hairstyle:catalog:lineup:audit` | 통과 |
 | 5 | runtime env preflight | `npm run hairstyle:catalog:env:check` | synthetic env 통과. 실제 runtime env 필요 |
-| 6 | migration dry-run | `supabase db push --dry-run --workdir my-app` | 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
-| 7 | remote write guard | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false`, `blockingPending:["202607030001_plan_credit_policy_aftercare.sql"]` |
-| 8 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` | 통과 |
-| 9 | admin latest smoke | `GET /api/admin/hairstyles/cycles/latest` | Supabase runtime env 필요 |
-| 10 | due checker smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","onlyIfDue":true}` | Supabase runtime env 필요 |
-| 11 | forced rebuild smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","force":true}` | Supabase runtime env 필요 |
-| 12 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
-| 13 | trend alert smoke | active 교체 후 `trend_alerts.alert_type='catalog_rotation'` 1건 확인 | Supabase runtime env 필요 |
+| 6 | runtime API smoke command | `npm run hairstyle:catalog:runtime:smoke -- --help` | 통과. 실제 runtime smoke는 배포 URL과 admin secret 필요 |
+| 7 | migration dry-run | `supabase db push --dry-run --workdir my-app` | 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
+| 8 | remote write guard | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false`, `blockingPending:["202607030001_plan_credit_policy_aftercare.sql"]` |
+| 9 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` | 통과 |
+| 10 | admin latest smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=status` | Supabase runtime env 필요 |
+| 11 | due checker smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=rotation-check --write --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
+| 12 | forced rebuild smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
+| 13 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
+| 14 | trend alert smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert` | Supabase runtime env 필요 |
 
 ## 구현 순서 규칙
 
