@@ -5,7 +5,7 @@
 
 ## 목적
 
-`docs/hairstyle-catalog-rotation-architecture.md`의 아키텍처를 구현 가능한 Phase 단위로 쪼개고, 각 Phase의 산출물과 검증 상태를 독립 파일로 관리한다. 2026-07-03 기준 P1-P7 구현과 로컬/정적/임시 Postgres 검증은 완료했고, Supabase project ref와 runtime env가 필요한 smoke만 남아 있다.
+`docs/hairstyle-catalog-rotation-architecture.md`의 아키텍처를 구현 가능한 Phase 단위로 쪼개고, 각 Phase의 산출물과 검증 상태를 독립 파일로 관리한다. 2026-07-03 기준 P1-P7 구현과 로컬/정적/임시 Postgres/Supabase linked dry-run 검증은 완료했고, Supabase runtime/API smoke만 남아 있다.
 
 ## Phase 목록
 
@@ -28,7 +28,7 @@
 | 정적 카탈로그 감사 | 완료 | `npm run hairstyle:catalog:audit` 통과 |
 | Deno 함수 문법 | 완료 | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | DB migration smoke | 완료 | 임시 Postgres에서 P1/P5/P6 event RPC migration smoke 통과 |
-| Supabase linked dry-run | 대기 | 현재 worktree는 Supabase project ref가 없어 `supabase db push --dry-run --workdir my-app` 실행 불가 |
+| Supabase linked dry-run | 완료 | `supabase link --project-ref dpzdhxlqnogfpubpslbf --workdir my-app` 후 `supabase db push --dry-run --workdir my-app` 통과 |
 | Supabase runtime/API smoke | 대기 | runtime env와 배포 대상이 필요하며 [runtime-smoke-runbook.md](runtime-smoke-runbook.md)에 절차 정리 |
 
 ## 전체 완료 기준
@@ -50,7 +50,7 @@
 | 1 | 정적 타입/문법 | `npm run lint` | 통과 |
 | 2 | 앱 빌드 | `npm run build` | 통과 |
 | 3 | 카탈로그 감사 | `npm run hairstyle:catalog:audit` | 통과 |
-| 4 | migration dry-run | `supabase db push --dry-run --workdir my-app` | Supabase project ref 필요 |
+| 4 | migration dry-run | `supabase db push --dry-run --workdir my-app` | 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
 | 5 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` | 통과 |
 | 6 | admin latest smoke | `GET /api/admin/hairstyles/cycles/latest` | Supabase runtime env 필요 |
 | 7 | due checker smoke | `POST /api/admin/hairstyles/rebuild {"mode":"auto","onlyIfDue":true}` | Supabase runtime env 필요 |

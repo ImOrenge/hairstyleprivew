@@ -52,7 +52,7 @@
 | [x] | `npm run lint` |
 | [x] | `npm run build` |
 | [x] | `npm run hairstyle:catalog:audit` |
-| [ ] | `supabase db push --dry-run --workdir my-app`. 현재 worktree는 Supabase project ref가 없어 실행 불가 |
+| [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 3개 migration 포함 |
 | [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |
 | [ ] | admin latest smoke. Supabase runtime env 필요 |
 | [ ] | `onlyIfDue:true` not-due smoke. Supabase runtime env 필요 |

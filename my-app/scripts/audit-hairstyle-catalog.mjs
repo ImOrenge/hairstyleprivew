@@ -62,8 +62,11 @@ assert(!architectureDoc.includes("상태: 설계안, 미구현"), "architecture 
 assert(phaseReadme.includes("runtime-smoke-runbook.md"), "phase README must link runtime smoke runbook");
 assert(phaseReadme.includes("상태: 구현 완료, Supabase runtime smoke 대기"), "phase README status is stale");
 assert(!phaseReadme.includes("상태: 구현 태스크 분해, 미구현"), "phase README still says unimplemented");
+assert(!phaseReadme.includes("현재 worktree는 Supabase project ref가 없어"), "phase README still says Supabase project ref is missing");
 assert(runtimeRunbook.includes("cron-hairstyle-catalog-rotation-check"), "runtime smoke runbook missing rotation cron check");
 assert(runtimeRunbook.includes("catalog_rotation"), "runtime smoke runbook missing catalog rotation alert check");
+assert(runtimeRunbook.includes("Supabase linked dry-run 완료"), "runtime smoke runbook must record linked dry-run status");
+assert(!runtimeRunbook.includes("현재 격리 worktree에는 project ref가 없음"), "runtime smoke runbook still says project ref is missing");
 
 console.log(JSON.stringify({
   ok: true,

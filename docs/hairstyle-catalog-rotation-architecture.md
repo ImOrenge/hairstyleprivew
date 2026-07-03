@@ -7,7 +7,7 @@
 
 헤어 추천에 쓰이는 카탈로그가 한 번 생성된 뒤 계속 고정되는 문제를 해결한다. 목표는 7일마다 한국 헤어스타일 트렌드 데이터를 수집하고, 검증을 통과한 새 카탈로그만 실제 추천에 반영하는 것이다.
 
-이 문서는 구현된 카탈로그 순환 구조의 목표 아키텍처와 운영 기준이다. 2026-07-03 기준 P1-P7 구현과 로컬/정적/임시 Postgres 검증은 완료했고, Supabase project ref와 runtime env가 필요한 smoke 검증만 남아 있다.
+이 문서는 구현된 카탈로그 순환 구조의 목표 아키텍처와 운영 기준이다. 2026-07-03 기준 P1-P7 구현과 로컬/정적/임시 Postgres/Supabase linked dry-run 검증은 완료했고, Supabase runtime/API smoke 검증만 남아 있다.
 
 구현 태스크는 [hairstyle-catalog-rotation/README.md](hairstyle-catalog-rotation/README.md)에서 Phase별 체크리스트로 관리한다.
 

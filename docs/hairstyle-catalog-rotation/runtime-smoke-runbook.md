@@ -1,7 +1,7 @@
 # Supabase Runtime Smoke Runbook
 
 작성일: 2026-07-03
-상태: Supabase project ref와 runtime env 필요
+상태: Supabase linked dry-run 완료, runtime env 필요
 
 ## 목적
 
@@ -11,7 +11,7 @@
 
 | 항목 | 필요값 | 비고 |
 | --- | --- | --- |
-| Supabase link | `supabase link --project-ref <project-ref> --workdir my-app` | 현재 격리 worktree에는 project ref가 없음 |
+| Supabase link | `supabase link --project-ref dpzdhxlqnogfpubpslbf --workdir my-app` | 2026-07-03 격리 worktree에서 link 완료 |
 | 앱 URL | `NEXT_PUBLIC_APP_URL` 또는 배포 URL | admin API 호출 대상 |
 | admin secret | `INTERNAL_API_SECRET` | `x-admin-secret` header와 일치 |
 | service role key | Supabase service role key | cron helper 등록 시 사용 |
@@ -42,6 +42,15 @@
 | cron job | `select jobname, schedule, active from cron.job where jobname in ('cron-hairstyle-catalog-rotation-check', 'cron-trend-emails-post-rotation');` |
 | alert idempotency | `select catalog_cycle_id, alert_type, count(*) from public.trend_alerts where alert_type = 'catalog_rotation' group by catalog_cycle_id, alert_type;` |
 | overlap warning | `select * from public.hairstyle_catalog_rotation_events where event_type = 'overlap_warning' order by created_at desc limit 5;` |
+
+## Dry-run Evidence
+
+| 항목 | 결과 |
+| --- | --- |
+| project ref | `dpzdhxlqnogfpubpslbf` (`hair-fit-seoul`) |
+| `supabase db push --dry-run --workdir my-app` | 통과 |
+| remote pending migrations | `202607030001_plan_credit_policy_aftercare.sql`, `20260703092000_hairstyle_catalog_rotation.sql`, `20260703093000_hairstyle_catalog_rotation_cron.sql`, `20260703094000_hairstyle_catalog_rotation_event_rpc.sql` |
+| 주의 | 실제 `supabase db push`는 선행 pending migration `202607030001_plan_credit_policy_aftercare.sql`도 함께 적용한다. |
 
 ## 판정
 
