@@ -11,7 +11,7 @@
 
 | 항목 | 필요값 | 비고 |
 | --- | --- | --- |
-| Supabase link | `supabase link --project-ref dpzdhxlqnogfpubpslbf --workdir my-app` | 2026-07-03 격리 worktree에서 link 완료 |
+| Supabase link | `supabase link --project-ref dpzdhxlqnogfpubpslbf --workdir my-app` | 2026-07-03 격리 worktree에서 link 완료. `SUPABASE_URL`은 linked project ref에서 자동 유도 가능 |
 | 앱 URL | `NEXT_PUBLIC_APP_URL` 또는 배포 URL | admin API 호출 대상 |
 | admin secret | `INTERNAL_API_SECRET` | `x-admin-secret` header와 일치 |
 | service role key | Supabase service role key | cron helper 등록 시 사용 |
@@ -19,6 +19,7 @@
 | remote check timeout | `HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS=120000` | Supabase CLI 지연 시 guard가 명확히 실패하도록 조정 가능 |
 | remote check lock | `my-app/supabase/.temp/hairstyle-catalog-remote-check.lock` | 같은 worktree에서 dry-run guard를 동시에 실행하지 않는다. |
 | runtime smoke target confirmation | `--confirmAppUrl=<app-url>` 또는 `HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL` | active 변경 가능 호출은 대상 URL 확인 없이는 실행하지 않는다. |
+| local env files | `my-app/.env.local`, `my-app/.env.assets` | 격리 worktree에는 메인 worktree의 ignored env 파일을 복사해서 사용한다. |
 
 ## 실행 순서
 
@@ -62,6 +63,9 @@
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | 스크립트 보강. 실제 Supabase service role과 cron status RPC 적용 필요 |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 스크립트 보강. 실제 Supabase service role과 함수 URL 필요 |
 | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false` |
+| `npm run hairstyle:catalog:env:check -- --appUrl=https://hairfit.beauty` | 메인 worktree env 복사 후 Supabase service role/Resend/public URL 통과. `INTERNAL_API_SECRET`는 placeholder라 admin/API smoke blocker |
+| `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | remote RPC 미적용으로 `PGRST202`. pending migration 적용 전 정상 blocker |
+| `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | remote RPC 미적용으로 `PGRST202`. pending migration 적용 전 정상 blocker |
 | remote pending migrations | `202607030001_plan_credit_policy_aftercare.sql`, `20260703092000_hairstyle_catalog_rotation.sql`, `20260703093000_hairstyle_catalog_rotation_cron.sql`, `20260703094000_hairstyle_catalog_rotation_event_rpc.sql`, `20260703124648_hairstyle_catalog_cron_status.sql` |
 | 주의 | 실제 `supabase db push`는 선행 pending migration `202607030001_plan_credit_policy_aftercare.sql`도 함께 적용한다. |
 | timeout guard | `HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS` 기본값은 120000ms이며, CLI 지연 시 timeout 오류로 실패한다. |

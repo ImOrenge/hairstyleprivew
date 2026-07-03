@@ -120,6 +120,8 @@ assert(runtimeEnvScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime env chec
 assert(runtimeEnvScript.includes("RESEND_API_KEY"), "runtime env check must require Resend API key for trend mail smoke");
 assert(runtimeEnvScript.includes("RESEND_FROM_EMAIL"), "runtime env check must require a Resend sender for trend mail smoke");
 assert(runtimeEnvScript.includes("@resend\\.dev"), "runtime env check must reject Resend development senders");
+assert(runtimeEnvScript.includes(".env.assets"), "runtime env check must load asset/runtime env file copied from the main worktree");
+assert(runtimeEnvScript.includes("readLinkedProjectRef"), "runtime env check must derive Supabase URL from linked project ref");
 assert(runtimeEnvScript.includes("deriveEdgeFunctionBaseUrl"), "runtime env check must derive Supabase Edge Function base URL");
 assert(runtimeSmokeScript.includes("mode=status"), "runtime smoke runner must expose status mode");
 assert(runtimeSmokeScript.includes("mode=dry-run"), "runtime smoke runner must expose dry-run mode");
@@ -133,6 +135,9 @@ assert(runtimeSmokeScript.includes("requireWriteConfirmation"), "runtime smoke r
 assert(runtimeSmokeScript.includes("HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL"), "runtime smoke runner must support target confirmation env");
 assert(runtimeSmokeScript.includes("beforeActiveCycleId === afterActiveCycleId"), "runtime smoke dry-run must verify active cycle is unchanged");
 assert(runtimeSmokeScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime smoke alert query must use service role env");
+assert(runtimeSmokeScript.includes(".env.assets"), "runtime smoke runner must load asset/runtime env file copied from the main worktree");
+assert(runtimeSmokeScript.includes("readLinkedProjectRef"), "runtime smoke runner must derive Supabase URL from linked project ref");
+assert(runtimeSmokeScript.includes("PGRST202"), "runtime smoke runner must explain missing RPC migration/schema-cache failures");
 assert(runtimeSmokeScript.includes("rows.length <= 1"), "runtime smoke must verify catalog_rotation alert idempotency");
 assert(runtimeSmokeScript.includes("cron-trend-emails"), "runtime smoke runner must target the trend mail Edge Function");
 assert(runtimeSmokeScript.includes("allowPendingAlerts"), "runtime trend mail smoke must guard live email sends");

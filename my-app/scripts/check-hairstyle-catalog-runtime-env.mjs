@@ -5,6 +5,8 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const MIN_SECRET_LENGTH = 16;
+const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = resolve(appDir, "..");
 
 function loadEnvFile(path) {
   if (!existsSync(path)) return;
@@ -26,12 +28,11 @@ function loadEnvFile(path) {
 }
 
 function loadLocalEnv() {
-  const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  const repoRoot = resolve(appDir, "..");
   for (const path of [
     resolve(repoRoot, ".env.local"),
     resolve(repoRoot, ".env"),
     resolve(appDir, ".env.local"),
+    resolve(appDir, ".env.assets"),
     resolve(appDir, ".env"),
   ]) {
     loadEnvFile(path);
@@ -179,8 +180,19 @@ function readAppUrl() {
   );
 }
 
+function readLinkedProjectRef() {
+  const path = resolve(appDir, "supabase", ".temp", "project-ref");
+  if (!existsSync(path)) return "";
+  const projectRef = readFileSync(path, "utf8").trim();
+  return /^[a-z0-9]{20}$/.test(projectRef) ? projectRef : "";
+}
+
 function readSupabaseUrl() {
-  return readEnv("SUPABASE_URL") || readEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const explicit = readEnv("SUPABASE_URL") || readEnv("NEXT_PUBLIC_SUPABASE_URL");
+  if (explicit) return explicit;
+
+  const linkedProjectRef = readLinkedProjectRef();
+  return linkedProjectRef ? `https://${linkedProjectRef}.supabase.co` : "";
 }
 
 function deriveEdgeFunctionBaseUrl() {
@@ -223,7 +235,7 @@ function checkCronRegistration(group) {
 function checkTrendMailFunction(group) {
   const allowLocal = hasFlag("--allowLocal");
   return [
-    ...checkHttpsUrl(group, "Supabase URL", readEnv("SUPABASE_URL"), { allowLocal }),
+    ...checkHttpsUrl(group, "Supabase URL", readSupabaseUrl(), { allowLocal }),
     ...checkSecret(group, "SUPABASE_SERVICE_ROLE_KEY", "Supabase service role key"),
     ...checkSecret(group, "RESEND_API_KEY", "Resend API key", { minLength: 8 }),
     ...checkResendSender(group),

@@ -32,6 +32,7 @@ function loadLocalEnv() {
     resolve(repoRoot, ".env.local"),
     resolve(repoRoot, ".env"),
     resolve(appDir, ".env.local"),
+    resolve(appDir, ".env.assets"),
     resolve(appDir, ".env"),
   ]) {
     loadEnvFile(path);
@@ -120,8 +121,19 @@ function readAppUrl() {
   );
 }
 
+function readLinkedProjectRef() {
+  const path = resolve(appDir, "supabase", ".temp", "project-ref");
+  if (!existsSync(path)) return "";
+  const projectRef = readFileSync(path, "utf8").trim();
+  return /^[a-z0-9]{20}$/.test(projectRef) ? projectRef : "";
+}
+
 function readSupabaseUrl() {
-  return readEnv("SUPABASE_URL") || readEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const explicit = readEnv("SUPABASE_URL") || readEnv("NEXT_PUBLIC_SUPABASE_URL");
+  if (explicit) return explicit;
+
+  const linkedProjectRef = readLinkedProjectRef();
+  return linkedProjectRef ? `https://${linkedProjectRef}.supabase.co` : "";
 }
 
 function deriveEdgeFunctionBaseUrl() {
@@ -227,6 +239,11 @@ async function fetchJson(url, options = {}) {
 
     if (!response.ok) {
       const message = isObject(data) && typeof data.error === "string" ? data.error : text.slice(0, 300);
+      if (isObject(data) && data.code === "PGRST202" && url.includes("/rpc/")) {
+        throw new Error(
+          `${options.method ?? "GET"} ${url} failed ${response.status}: RPC is missing from the Supabase schema cache. Apply the pending hairstyle catalog migrations before running this smoke. ${message}`,
+        );
+      }
       throw new Error(`${options.method ?? "GET"} ${url} failed ${response.status}: ${message}`);
     }
 
