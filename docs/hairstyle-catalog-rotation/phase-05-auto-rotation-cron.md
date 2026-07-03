@@ -18,16 +18,16 @@
 
 | 상태 | 작업 | 파일/대상 |
 | --- | --- | --- |
-| [ ] | `register_app_cron_schedules`에 web app base URL/admin secret 인자 추가 또는 별도 helper 추가 | migration |
-| [ ] | `cron-hairstyle-catalog-rotation-check` 등록 | migration |
-| [ ] | `cron-trend-emails-post-rotation` 등록 | migration |
-| [ ] | 기존 `cron-trend-emails` daily job 유지 | migration |
-| [ ] | `rotation-check` body에 `onlyIfDue:true`, `notify:true` 포함 | migration |
-| [ ] | `pg_net` 호출 header에 `x-admin-secret` 포함 | migration |
-| [ ] | running cycle 30분 초과 복구 경로 연결 | P3 service |
-| [ ] | rotation attempt event 기록 | service/RPC |
-| [ ] | cron 등록 문서와 운영 명령 추가 | docs/runbook 또는 architecture |
-| [ ] | Supabase Edge Function 배포 단위와 main app deploy 분리 주의사항 반영 | docs |
+| [x] | `register_app_cron_schedules`에 web app base URL/admin secret 인자 추가 또는 별도 helper 추가 | `register_hairstyle_catalog_rotation_cron(...)` |
+| [x] | `cron-hairstyle-catalog-rotation-check` 등록 | migration |
+| [x] | `cron-trend-emails-post-rotation` 등록 | migration |
+| [x] | 기존 `cron-trend-emails` daily job 유지 | 별도 helper로 분리 |
+| [x] | `rotation-check` body에 `onlyIfDue:true`, `notify:true` 포함 | migration |
+| [x] | `pg_net` 호출 header에 `x-admin-secret` 포함 | migration |
+| [x] | running cycle 30분 초과 복구 경로 연결 | P3 service |
+| [x] | rotation attempt event 기록 | service/RPC |
+| [x] | cron 등록 문서와 운영 명령 추가 | 아래 운영 메모 |
+| [x] | Supabase Edge Function 배포 단위와 main app deploy 분리 주의사항 반영 | 아래 운영 메모 |
 
 ## 완료 기준
 
@@ -43,9 +43,19 @@
 
 | 상태 | 검증 |
 | --- | --- |
-| [ ] | `cron.job`에 `cron-hairstyle-catalog-rotation-check` 존재 |
-| [ ] | `cron.job`에 `cron-trend-emails-post-rotation` 존재 |
-| [ ] | not-due 상태에서 cron body 호출이 `skipped:not_due` 반환 |
-| [ ] | expired 상태에서 cron body 호출이 rebuild 경로 진입 |
-| [ ] | 실패 기록 후 다음 `onlyIfDue` 호출이 재시도 경로 진입 |
-| [ ] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
+| [x] | 임시 Postgres에 cron helper migration 적용 smoke 통과 |
+| [ ] | `cron.job`에 `cron-hairstyle-catalog-rotation-check` 존재. Supabase pg_cron runtime 필요 |
+| [ ] | `cron.job`에 `cron-trend-emails-post-rotation` 존재. Supabase pg_cron runtime 필요 |
+| [ ] | not-due 상태에서 cron body 호출이 `skipped:not_due` 반환. Supabase runtime env 필요 |
+| [ ] | expired 상태에서 cron body 호출이 rebuild 경로 진입. Supabase runtime env 필요 |
+| [ ] | 실패 기록 후 다음 `onlyIfDue` 호출이 재시도 경로 진입. Supabase runtime env 필요 |
+| [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
+
+## 운영 메모
+
+| 항목 | 내용 |
+| --- | --- |
+| 등록 함수 | `select public.register_hairstyle_catalog_rotation_cron('<web-app-url>', '<internal-admin-secret>', '<edge-function-base-url>', '<service-role-key>');` |
+| rotation check | `cron-hairstyle-catalog-rotation-check`, `20 0 * * *`, 한국시간 09:20 |
+| post rotation mail | `cron-trend-emails-post-rotation`, `40 0 * * *`, 한국시간 09:40 |
+| Edge Function 배포 | `cron-trend-emails`는 Supabase Edge Function 배포 단위다. main app 배포만으로 함수 코드가 갱신되지 않는다. |
