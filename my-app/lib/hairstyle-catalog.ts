@@ -11,7 +11,9 @@ import type {
   CatalogBackedRecommendationCandidate,
   CatalogSelectionContext,
   FaceAnalysisSummary,
+  HairstyleCatalogActiveCycle,
   HairstyleCatalogCycle,
+  HairstyleCatalogLineupRow,
   HairstyleCatalogSourceSummary,
   HairstyleCatalogRow,
   MemberStyleTarget,
@@ -96,50 +98,47 @@ interface CatalogRebuildResult {
 }
 
 interface CatalogAvailabilityResult {
+  activeCycle: HairstyleCatalogActiveCycle;
   cycle: HairstyleCatalogCycle;
   rows: HairstyleCatalogRow[];
+  lineups: HairstyleCatalogLineupRow[];
+}
+
+interface ActiveCatalogCycleResult {
+  activeCycle: HairstyleCatalogActiveCycle;
+  cycle: HairstyleCatalogCycle;
+}
+
+interface SupabaseSelectResponse {
+  data: Array<Record<string, unknown>> | Record<string, unknown> | null;
+  error: QueryError | null;
+}
+
+interface SupabaseSingleResponse {
+  data: Record<string, unknown> | null;
+  error: QueryError | null;
+}
+
+interface SupabaseSelectBuilder extends PromiseLike<SupabaseSelectResponse> {
+  eq: (column: string, value: string) => SupabaseSelectBuilder;
+  in: (column: string, values: string[]) => SupabaseSelectBuilder;
+  order: (column: string, options?: { ascending?: boolean }) => SupabaseSelectBuilder;
+  limit: (count: number) => SupabaseSelectBuilder;
+  maybeSingle: () => Promise<SupabaseSingleResponse>;
+  single: () => Promise<SupabaseSingleResponse>;
 }
 
 interface SupabaseCatalogClient {
   from: (table: string) => {
     insert: (values: Record<string, unknown>) => {
       select: (columns: string) => {
-        single: () => Promise<{
-          data: Record<string, unknown> | null;
-          error: QueryError | null;
-        }>;
+        single: () => Promise<SupabaseSingleResponse>;
       };
     };
     update: (values: Record<string, unknown>) => {
       eq: (column: string, value: string) => Promise<{ error: QueryError | null }>;
     };
-    select: (columns: string) => {
-      eq: (column: string, value: string) => {
-        order?: never;
-        in?: never;
-        limit?: never;
-        maybeSingle: () => Promise<{
-          data: Record<string, unknown> | null;
-          error: QueryError | null;
-        }>;
-      };
-      in: (column: string, values: string[]) => {
-        order: (column: string, options?: { ascending?: boolean }) => {
-          returns?: never;
-        };
-        then?: never;
-      };
-      order: (column: string, options?: { ascending?: boolean }) => {
-        limit: (count: number) => {
-          maybeSingle: () => Promise<{
-            data: Record<string, unknown> | null;
-            error: QueryError | null;
-          }>;
-          returns?: never;
-        };
-        then?: never;
-      };
-    };
+    select: (columns: string) => SupabaseSelectBuilder;
     upsert: (
       values: Record<string, unknown>[],
       options: { onConflict: string },
@@ -351,6 +350,76 @@ function normalizeCatalogCycle(raw: Record<string, unknown>): HairstyleCatalogCy
   };
 }
 
+function normalizeActiveCatalogCycle(raw: Record<string, unknown>): HairstyleCatalogActiveCycle | null {
+  const market = typeof raw.market === "string" ? raw.market : "";
+  const activeCycleId = typeof raw.active_cycle_id === "string" ? raw.active_cycle_id : "";
+  const activatedAt = typeof raw.activated_at === "string" ? raw.activated_at : "";
+  const expiresAt = typeof raw.expires_at === "string" ? raw.expires_at : "";
+  const rotationPeriod = typeof raw.rotation_period === "string" ? raw.rotation_period : "";
+  const rotationSeed = typeof raw.rotation_seed === "string" ? raw.rotation_seed : "";
+  const lastRebuildStatus = typeof raw.last_rebuild_status === "string" ? raw.last_rebuild_status : "";
+  const createdAt = typeof raw.created_at === "string" ? raw.created_at : "";
+  const updatedAt = typeof raw.updated_at === "string" ? raw.updated_at : "";
+
+  if (!market || !activeCycleId || !activatedAt || !expiresAt || !rotationPeriod || !rotationSeed || !lastRebuildStatus) {
+    return null;
+  }
+
+  return {
+    market,
+    activeCycleId,
+    previousCycleId: typeof raw.previous_cycle_id === "string" ? raw.previous_cycle_id : null,
+    activatedAt,
+    expiresAt,
+    rotationPeriod,
+    rotationSeed,
+    lastRebuildCycleId: typeof raw.last_rebuild_cycle_id === "string" ? raw.last_rebuild_cycle_id : null,
+    lastRebuildStatus,
+    lastErrorLog: typeof raw.last_error_log === "string" ? raw.last_error_log : null,
+    sourceSummary: normalizeSourceSummary(raw.source_summary),
+    createdAt,
+    updatedAt,
+  };
+}
+
+function normalizeLineupRow(raw: Record<string, unknown>): HairstyleCatalogLineupRow | null {
+  const id = typeof raw.id === "string" ? raw.id : "";
+  const cycleId = typeof raw.cycle_id === "string" ? raw.cycle_id : "";
+  const market = typeof raw.market === "string" ? raw.market : "";
+  const styleTarget = raw.style_target;
+  const slotKey = raw.slot_key;
+  const rank = typeof raw.rank === "number" ? raw.rank : 0;
+  const catalogItemId = typeof raw.catalog_item_id === "string" ? raw.catalog_item_id : "";
+  const rotationScore = typeof raw.rotation_score === "number" ? raw.rotation_score : 0;
+  const selectionReason = typeof raw.selection_reason === "string" ? raw.selection_reason : "";
+  const createdAt = typeof raw.created_at === "string" ? raw.created_at : "";
+
+  if (
+    !id ||
+    !cycleId ||
+    !market ||
+    !isMemberStyleTarget(styleTarget) ||
+    (slotKey !== "trend" && slotKey !== "face_fit" && slotKey !== "evergreen" && slotKey !== "experimental") ||
+    rank <= 0 ||
+    !catalogItemId
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    cycleId,
+    market,
+    styleTarget,
+    slotKey,
+    rank,
+    catalogItemId,
+    rotationScore,
+    selectionReason,
+    createdAt,
+  };
+}
+
 function normalizeSourceSummary(raw: unknown): HairstyleCatalogSourceSummary | null {
   if (!isRecord(raw)) {
     return null;
@@ -373,6 +442,17 @@ function normalizeSourceSummary(raw: unknown): HairstyleCatalogSourceSummary | n
     providers: Array.isArray(raw.providers)
       ? raw.providers.filter((item): item is string => typeof item === "string").map(cleanText).filter(Boolean)
       : undefined,
+    primaryLookbackDays: typeof raw.primaryLookbackDays === "number" ? raw.primaryLookbackDays : undefined,
+    fallbackLookbackDays: typeof raw.fallbackLookbackDays === "number" ? raw.fallbackLookbackDays : undefined,
+    effectiveLookbackDays: typeof raw.effectiveLookbackDays === "number" ? raw.effectiveLookbackDays : undefined,
+    freshnessWindowDays: typeof raw.freshnessWindowDays === "number" ? raw.freshnessWindowDays : undefined,
+    freshnessStatus:
+      raw.freshnessStatus === "fresh" ||
+      raw.freshnessStatus === "lowFreshness" ||
+      raw.freshnessStatus === "fallback" ||
+      raw.freshnessStatus === "seeded"
+        ? raw.freshnessStatus
+        : undefined,
     documentsCollected: typeof raw.documentsCollected === "number" ? raw.documentsCollected : undefined,
     documentsUsed: typeof raw.documentsUsed === "number" ? raw.documentsUsed : undefined,
     sourceNames: Array.isArray(raw.sourceNames)
@@ -452,6 +532,86 @@ async function loadCatalogRows(
   return (response.data || [])
     .map((row) => normalizeCatalogRow(row))
     .filter((row): row is HairstyleCatalogRow => row !== null && row.status === "active");
+}
+
+async function getActiveCatalogCycle(supabase: SupabaseCatalogClient): Promise<ActiveCatalogCycleResult | null> {
+  const activeResponse = await supabase
+    .from("hairstyle_catalog_active_cycles")
+    .select(
+      "market,active_cycle_id,previous_cycle_id,activated_at,expires_at,rotation_period,rotation_seed,last_rebuild_cycle_id,last_rebuild_status,last_error_log,source_summary,created_at,updated_at",
+    )
+    .eq("market", CATALOG_MARKET)
+    .maybeSingle();
+
+  if (activeResponse.error) {
+    throw new Error(activeResponse.error.message);
+  }
+
+  if (!activeResponse.data) {
+    return null;
+  }
+
+  const activeCycle = normalizeActiveCatalogCycle(activeResponse.data);
+  if (!activeCycle) {
+    throw new Error("Active hairstyle catalog pointer is malformed.");
+  }
+
+  const cycleResponse = await supabase
+    .from("hairstyle_catalog_cycles")
+    .select("cycle_id,status,market,started_at,finished_at,item_count,source_summary,error_log")
+    .eq("cycle_id", activeCycle.activeCycleId)
+    .maybeSingle();
+
+  if (cycleResponse.error) {
+    throw new Error(cycleResponse.error.message);
+  }
+
+  if (!cycleResponse.data) {
+    throw new Error(`Active hairstyle catalog cycle was not found: ${activeCycle.activeCycleId}`);
+  }
+
+  const cycle = normalizeCatalogCycle(cycleResponse.data);
+  if (!cycle || cycle.status !== "succeeded" || cycle.market !== activeCycle.market) {
+    throw new Error(`Active hairstyle catalog cycle is not usable: ${activeCycle.activeCycleId}`);
+  }
+
+  return {
+    activeCycle,
+    cycle,
+  };
+}
+
+async function loadActiveCatalogRows(
+  supabase: SupabaseCatalogClient,
+  activeCycle: HairstyleCatalogActiveCycle,
+): Promise<HairstyleCatalogRow[]> {
+  return (await loadCatalogRows(supabase, activeCycle.activeCycleId)).filter((row) => row.market === activeCycle.market);
+}
+
+async function loadActiveLineups(
+  supabase: SupabaseCatalogClient,
+  activeCycle: HairstyleCatalogActiveCycle,
+): Promise<HairstyleCatalogLineupRow[]> {
+  const response = await ((supabase
+    .from("hairstyle_catalog_lineups")
+    .select(
+      "id,cycle_id,market,style_target,slot_key,rank,catalog_item_id,rotation_score,selection_reason,created_at",
+    )
+    .eq("cycle_id", activeCycle.activeCycleId)
+    .eq("market", activeCycle.market)
+    .order("style_target", { ascending: true })
+    .order("rank", { ascending: true })) as unknown as Promise<{
+    data: Array<Record<string, unknown>> | null;
+    error: QueryError | null;
+  }>);
+
+  if (response.error) {
+    throw new Error(response.error.message);
+  }
+
+  return (response.data || [])
+    .map((row) => normalizeLineupRow(row))
+    .filter((row): row is HairstyleCatalogLineupRow => row !== null);
 }
 
 async function getLatestCatalogCycleByStatus(
@@ -963,34 +1123,40 @@ export async function analyzeFaceForCatalog(referenceImageDataUrl: string) {
   };
 }
 
-export async function ensureCatalogAvailable(mode: CatalogRebuildMode = "auto"): Promise<CatalogAvailabilityResult> {
+function buildActiveCatalogOperationMessage(activeCycle: HairstyleCatalogActiveCycle | null) {
+  if (!activeCycle) {
+    return "Run the hairstyle catalog rotation job before serving catalog-backed recommendations.";
+  }
+
+  const expiresAt = Date.parse(activeCycle.expiresAt);
+  if (Number.isFinite(expiresAt) && expiresAt <= Date.now()) {
+    return `Active hairstyle catalog cycle ${activeCycle.activeCycleId} expired at ${activeCycle.expiresAt}; user requests do not trigger live rebuilds. Run the rotation cron or admin rebuild job.`;
+  }
+
+  return `Run the hairstyle catalog rotation job for active cycle ${activeCycle.activeCycleId}.`;
+}
+
+export async function ensureCatalogAvailable(): Promise<CatalogAvailabilityResult> {
   const supabase = getSupabaseAdminClient() as unknown as SupabaseCatalogClient;
-  const latestCycle = await getLatestSuccessfulCatalogCycle();
+  const activeCatalog = await getActiveCatalogCycle(supabase);
 
-  if (latestCycle) {
-    const rows = await loadCatalogRows(supabase, latestCycle.cycleId);
-    if (rows.length > 0) {
-      return {
-        cycle: latestCycle,
-        rows,
-      };
-    }
+  if (!activeCatalog) {
+    throw new Error(`No active hairstyle catalog cycle is configured. ${buildActiveCatalogOperationMessage(null)}`);
   }
 
-  const rebuildResult = await rebuildWeeklyHairstyleCatalog(mode);
-  const rebuiltCycle = await getLatestSuccessfulCatalogCycle();
-  if (!rebuiltCycle || rebuiltCycle.cycleId !== rebuildResult.cycleId) {
-    throw new Error("Hairstyle catalog bootstrap did not produce a usable cycle.");
-  }
+  const rows = await loadActiveCatalogRows(supabase, activeCatalog.activeCycle);
 
-  const rebuiltRows = await loadCatalogRows(supabase, rebuiltCycle.cycleId);
-  if (rebuiltRows.length === 0) {
-    throw new Error("Hairstyle catalog bootstrap produced an empty cycle.");
+  if (rows.length < 9) {
+    throw new Error(
+      `Active hairstyle catalog cycle ${activeCatalog.cycle.cycleId} has only ${rows.length} usable rows. ${buildActiveCatalogOperationMessage(activeCatalog.activeCycle)}`,
+    );
   }
 
   return {
-    cycle: rebuiltCycle,
-    rows: rebuiltRows,
+    activeCycle: activeCatalog.activeCycle,
+    cycle: activeCatalog.cycle,
+    rows,
+    lineups: await loadActiveLineups(supabase, activeCatalog.activeCycle),
   };
 }
 
@@ -1009,28 +1175,18 @@ export async function generateCatalogBackedRecommendationSet(
   referenceImageDataUrl: string,
   styleTarget: MemberStyleTarget,
 ) {
-  let { cycle: latestCycle, rows } = await ensureCatalogAvailable();
-  let targetRows = filterRowsForStyleTarget(rows, styleTarget);
+  const { activeCycle, cycle, rows } = await ensureCatalogAvailable();
+  const targetRows = filterRowsForStyleTarget(rows, styleTarget);
 
   if (needsStyleTargetCatalogRefresh(targetRows)) {
-    const rebuildResult = await rebuildWeeklyHairstyleCatalog();
-    const rebuiltCycle = await getLatestSuccessfulCatalogCycle();
-    if (!rebuiltCycle || rebuiltCycle.cycleId !== rebuildResult.cycleId) {
-      throw new Error("Gender-specific hairstyle catalog rebuild did not produce a usable cycle.");
-    }
-
-    latestCycle = rebuiltCycle;
-    rows = await listCatalogRowsForCycle(rebuiltCycle.cycleId);
-    targetRows = filterRowsForStyleTarget(rows, styleTarget);
-  }
-
-  if (targetRows.length < 9) {
-    throw new Error(`Not enough ${styleTarget} hairstyle catalog rows are available.`);
+    throw new Error(
+      `Active hairstyle catalog cycle ${cycle.cycleId} does not have 9 current ${styleTarget} rows. ${buildActiveCatalogOperationMessage(activeCycle)}`,
+    );
   }
 
   const analysisRun = await analyzeFaceForCatalog(referenceImageDataUrl);
   const selectionContext = buildCatalogSelectionContext(analysisRun.analysis, styleTarget);
-  const recommendations = buildTopNine(targetRows, selectionContext, latestCycle.cycleId);
+  const recommendations = buildTopNine(targetRows, selectionContext, cycle.cycleId);
 
   if (recommendations.length === 0) {
     throw new Error("No catalog-backed recommendations could be selected.");
@@ -1041,7 +1197,7 @@ export async function generateCatalogBackedRecommendationSet(
     recommendations,
     model: analysisRun.model,
     promptVersion: RECOMMENDATION_PROMPT_VERSION,
-    catalogCycleId: latestCycle.cycleId,
+    catalogCycleId: cycle.cycleId,
     selectionContext,
   };
 }

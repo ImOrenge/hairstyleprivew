@@ -17,15 +17,15 @@
 
 | 상태 | 작업 | 파일/대상 |
 | --- | --- | --- |
-| [ ] | `HairstyleCatalogActiveCycle` 타입 추가 | `my-app/lib/recommendation-types.ts` |
-| [ ] | `HairstyleCatalogLineupRow` 타입 추가 | `my-app/lib/recommendation-types.ts` |
-| [ ] | `HairstyleCatalogSourceSummary`에 lookback/freshness 필드 추가 | `my-app/lib/recommendation-types.ts` |
-| [ ] | `getActiveCatalogCycle()` 구현 | `my-app/lib/hairstyle-catalog.ts` |
-| [ ] | `loadActiveCatalogRows()` 구현 | `my-app/lib/hairstyle-catalog.ts` |
-| [ ] | `loadActiveLineups()` 구현 | `my-app/lib/hairstyle-catalog.ts` |
-| [ ] | `ensureCatalogAvailable()`의 사용자 요청 중 rebuild 제거 | `my-app/lib/hairstyle-catalog.ts` |
-| [ ] | active 없음, row 부족, stale 상태의 오류 메시지 정리 | `my-app/lib/hairstyle-catalog.ts` |
-| [ ] | 추천 후보가 active cycle ID를 그대로 기록하는지 확인 | `my-app/lib/hairstyle-catalog.ts` |
+| [x] | `HairstyleCatalogActiveCycle` 타입 추가 | `my-app/lib/recommendation-types.ts` |
+| [x] | `HairstyleCatalogLineupRow` 타입 추가 | `my-app/lib/recommendation-types.ts` |
+| [x] | `HairstyleCatalogSourceSummary`에 lookback/freshness 필드 추가 | `my-app/lib/recommendation-types.ts` |
+| [x] | `getActiveCatalogCycle()` 구현 | `my-app/lib/hairstyle-catalog.ts` |
+| [x] | `loadActiveCatalogRows()` 구현 | `my-app/lib/hairstyle-catalog.ts` |
+| [x] | `loadActiveLineups()` 구현 | `my-app/lib/hairstyle-catalog.ts` |
+| [x] | `ensureCatalogAvailable()`의 사용자 요청 중 rebuild 제거 | `my-app/lib/hairstyle-catalog.ts` |
+| [x] | active 없음, row 부족, stale 상태의 오류 메시지 정리 | `my-app/lib/hairstyle-catalog.ts` |
+| [x] | 추천 후보가 active cycle ID를 그대로 기록하는지 확인 | `my-app/lib/hairstyle-catalog.ts` |
 
 ## 완료 기준
 
@@ -40,8 +40,9 @@
 
 | 상태 | 검증 |
 | --- | --- |
-| [ ] | `npm run lint` 통과 |
-| [ ] | `npm run build` 통과 |
-| [ ] | active cycle이 있을 때 남성/여성 추천 각각 9개 반환 |
-| [ ] | active pointer가 없을 때 명확한 서버 오류 반환 |
-| [ ] | active row가 부족할 때 rebuild 없이 운영 오류 반환 |
+| [x] | `npm run lint` 통과 |
+| [x] | `npm run build` 통과 |
+| [ ] | active cycle이 있을 때 남성/여성 추천 각각 9개 반환. Supabase runtime env 필요 |
+| [ ] | active pointer가 없을 때 명확한 서버 오류 반환. Supabase runtime env 필요 |
+| [ ] | active row가 부족할 때 rebuild 없이 운영 오류 반환. Supabase runtime env 필요 |
+| [x] | 정적 검색으로 사용자 추천 경로에서 `rebuildWeeklyHairstyleCatalog()` 미호출 확인 |

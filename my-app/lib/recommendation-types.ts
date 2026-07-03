@@ -12,6 +12,11 @@ export interface HairstyleCatalogSourceSummary {
   queries: string[];
   notes: string;
   providers?: string[];
+  primaryLookbackDays?: number;
+  fallbackLookbackDays?: number;
+  effectiveLookbackDays?: number;
+  freshnessWindowDays?: number;
+  freshnessStatus?: "fresh" | "lowFreshness" | "fallback" | "seeded";
   documentsCollected?: number;
   documentsUsed?: number;
   sourceNames?: string[];
@@ -55,6 +60,35 @@ export interface HairstyleCatalogCycle {
   itemCount: number;
   sourceSummary: HairstyleCatalogSourceSummary | null;
   errorLog: string | null;
+}
+
+export interface HairstyleCatalogActiveCycle {
+  market: string;
+  activeCycleId: string;
+  previousCycleId: string | null;
+  activatedAt: string;
+  expiresAt: string;
+  rotationPeriod: string;
+  rotationSeed: string;
+  lastRebuildCycleId: string | null;
+  lastRebuildStatus: string;
+  lastErrorLog: string | null;
+  sourceSummary: HairstyleCatalogSourceSummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HairstyleCatalogLineupRow {
+  id: string;
+  cycleId: string;
+  market: string;
+  styleTarget: MemberStyleTarget;
+  slotKey: "trend" | "face_fit" | "evergreen" | "experimental";
+  rank: number;
+  catalogItemId: string;
+  rotationScore: number;
+  selectionReason: string;
+  createdAt: string;
 }
 
 export interface HairstyleCatalogRow {
