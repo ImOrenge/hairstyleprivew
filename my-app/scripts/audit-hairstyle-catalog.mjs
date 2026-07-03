@@ -47,6 +47,7 @@ const remoteReadinessScript = read("scripts/check-hairstyle-catalog-remote-readi
 const runtimeEnvScript = read("scripts/check-hairstyle-catalog-runtime-env.mjs");
 const runtimeSmokeScript = read("scripts/smoke-hairstyle-catalog-runtime.mjs");
 const cloudflareSecretsScript = read("scripts/check-hairstyle-catalog-cloudflare-secrets.mjs");
+const trendMailFunction = read("supabase/functions/cron-trend-emails/index.ts");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
 assert(trendResearch.includes("FALLBACK_RESEARCH_LOOKBACK_DAYS = 120"), "missing 120 day fallback lookback");
@@ -152,6 +153,9 @@ assert(runtimeSmokeScript.includes("cron-trend-emails"), "runtime smoke runner m
 assert(runtimeSmokeScript.includes("allowPendingAlerts"), "runtime trend mail smoke must guard live email sends");
 assert(runtimeSmokeScript.includes("dueAlerts.length > 0 && !allowPendingAlerts"), "runtime trend mail smoke must refuse due alerts by default");
 assert(runtimeSmokeScript.includes("assertNoDuplicateDeliveries"), "runtime trend mail smoke must check delivery idempotency");
+assert(runtimeSmokeScript.includes("validateTrendMailProcessedAlerts"), "runtime trend mail smoke must validate processed alert evidence");
+assert(runtimeSmokeScript.includes("catalogRotationProcessed"), "runtime trend mail smoke must verify catalog rotation processing count");
+assert(runtimeSmokeScript.includes("alertType === \"catalog_rotation\""), "runtime trend mail smoke must verify catalog_rotation alerts were processed");
 assert(runtimeSmokeScript.includes("get_active_hairstyle_catalog"), "runtime active DB smoke must call the active catalog RPC");
 assert(runtimeSmokeScript.includes("items.length >= 32"), "runtime active DB smoke must enforce 32 active catalog rows");
 assert(runtimeSmokeScript.includes("maleCandidateCount >= 18"), "runtime active DB smoke must enforce male candidate pool size");
@@ -163,6 +167,11 @@ assert(runtimeSmokeScript.includes("slotCounts.face_fit === 3"), "runtime active
 assert(runtimeSmokeScript.includes("slotCounts.evergreen === 2"), "runtime active DB smoke must validate evergreen slot count");
 assert(runtimeSmokeScript.includes("slotCounts.experimental === 1"), "runtime active DB smoke must validate experimental slot count");
 assert(runtimeSmokeScript.includes("get_hairstyle_catalog_rotation_cron_status"), "runtime cron DB smoke must call the cron status RPC");
+assert(trendMailFunction.includes("prioritizePendingAlerts"), "trend mail function must prioritize catalog rotation alerts in the due batch");
+assert(trendMailFunction.includes("ALERT_FETCH_LIMIT = 25"), "trend mail function must fetch enough due alerts before catalog priority sorting");
+assert(trendMailFunction.includes("alert_type,catalog_cycle_id"), "trend mail function must select catalog alert metadata");
+assert(trendMailFunction.includes("catalogRotationProcessed"), "trend mail function response must expose processed catalog rotation count");
+assert(trendMailFunction.includes("processedAlerts"), "trend mail function response must expose processed alert evidence");
 
 console.log(JSON.stringify({
   ok: true,
@@ -189,6 +198,7 @@ console.log(JSON.stringify({
     "Cloudflare secret-name smoke guard",
     "cron DB smoke guard",
     "trend mail function smoke guard",
+    "trend mail catalog processing evidence",
     "active DB smoke guard",
   ],
 }, null, 2));

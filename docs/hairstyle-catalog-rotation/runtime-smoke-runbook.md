@@ -40,7 +40,7 @@
 | 12 | recommendation smoke | 남성/여성 사용자 추천 생성 | 각 target에서 active cycle 기반 9개 lineup을 반환한다. |
 | 13 | alert idempotency | `npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert` | `catalog_rotation` alert가 cycle당 1개만 존재한다. |
 | 14 | failure fallback | 강제 실패 조건에서 rebuild 호출 | failed cycle만 기록되고 기존 active cycle은 유지된다. |
-| 15 | post-rotation mail | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 기본은 due alert가 있으면 실제 메일 발송 방지를 위해 거부한다. 의도한 live smoke는 `--allowPendingAlerts --expectPendingCatalogAlert`를 붙이고, due alert delivery가 중복 없이 기록되는지 확인한다. |
+| 15 | post-rotation mail | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 기본은 due alert가 있으면 실제 메일 발송 방지를 위해 거부한다. 의도한 live smoke는 `--allowPendingAlerts --expectPendingCatalogAlert`를 붙이고, `processedAlerts`/`catalogRotationProcessed`와 delivery 중복 방지를 함께 확인한다. |
 
 ## SQL 확인
 
@@ -62,7 +62,7 @@
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=readonly` | 스크립트 추가. 실제 배포 앱 URL과 admin secret 필요 |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | 스크립트 보강. 실제 Supabase service role과 migration 적용 필요 |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | 스크립트 보강. 실제 Supabase service role과 cron status RPC 적용 필요 |
-| `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 스크립트 보강. 실제 Supabase service role과 함수 URL 필요 |
+| `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 스크립트 보강. `catalog_rotation` due alert 처리 증거와 delivery 중복을 확인한다. 실제 Supabase service role과 함수 URL 필요 |
 | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false` |
 | `npm run hairstyle:catalog:env:check -- --appUrl=https://hairfit.beauty` | 메인 worktree env 복사 후 Supabase service role/Resend/public URL 통과. `INTERNAL_API_SECRET`는 placeholder라 admin/API smoke blocker |
 | `npm run hairstyle:catalog:cloudflare:secrets` | local `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 통과. local `INTERNAL_API_SECRET`는 placeholder라 blocker |

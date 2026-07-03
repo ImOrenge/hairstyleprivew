@@ -749,6 +749,47 @@ async function invokeTrendMailFunction(functionUrl) {
   });
 }
 
+function validateTrendMailProcessedAlerts(response, dueAlerts, dueCatalogAlerts) {
+  assert(Array.isArray(response.processedAlerts), "trend mail function response missing processedAlerts");
+  assert(Number.isFinite(response.catalogRotationProcessed), "trend mail function response missing catalogRotationProcessed");
+
+  if (dueAlerts.length === 0) {
+    assert(response.processedAlerts.length === 0, "no-due trend mail smoke expected no processed alerts");
+    assert(response.catalogRotationProcessed === 0, "no-due trend mail smoke expected catalogRotationProcessed=0");
+    return;
+  }
+
+  const expectedCatalogBatchIds = dueAlerts
+    .filter((alert) => alert.alert_type === "catalog_rotation")
+    .slice(0, 5)
+    .map((alert) => alert.id);
+
+  if (hasFlag("--expectPendingCatalogAlert")) {
+    assert(dueCatalogAlerts.length > 0, "expected at least one due catalog_rotation alert");
+    assert(
+      expectedCatalogBatchIds.length > 0,
+      "expected a due catalog_rotation alert in the first trend mail batch",
+    );
+  }
+
+  if (expectedCatalogBatchIds.length === 0) {
+    return;
+  }
+
+  const processedCatalogIds = new Set(
+    response.processedAlerts
+      .filter((alert) => alert.alertType === "catalog_rotation")
+      .map((alert) => alert.alertId),
+  );
+  for (const alertId of expectedCatalogBatchIds) {
+    assert(processedCatalogIds.has(alertId), `catalog_rotation alert was not processed by trend mail function: ${alertId}`);
+  }
+  assert(
+    response.catalogRotationProcessed >= expectedCatalogBatchIds.length,
+    `catalogRotationProcessed below expected batch count: ${response.catalogRotationProcessed}/${expectedCatalogBatchIds.length}`,
+  );
+}
+
 async function runTrendMailFunctionSmoke() {
   const functionUrl = readTrendMailFunctionUrl();
   const dueAlerts = await readDueTrendAlerts();
@@ -776,6 +817,7 @@ async function runTrendMailFunctionSmoke() {
   assert(Number.isFinite(response.sent), "trend mail function response missing sent count");
   assert(Number.isFinite(response.failed), "trend mail function response missing failed count");
   assert(response.failed === 0, `trend mail function reported failed=${response.failed}`);
+  validateTrendMailProcessedAlerts(response, dueAlerts, dueCatalogAlerts);
   if (dueAlerts.length === 0) {
     assert(response.sent === 0, `no-due trend mail smoke expected sent=0, got ${response.sent}`);
   }
@@ -792,6 +834,8 @@ async function runTrendMailFunctionSmoke() {
     dueCatalogAlerts: dueCatalogAlerts.length,
     sent: response.sent,
     failed: response.failed,
+    catalogRotationProcessed: response.catalogRotationProcessed,
+    processedAlerts: response.processedAlerts.length,
     deliveryRows: deliveryRows.length,
   }, null, 2));
 }

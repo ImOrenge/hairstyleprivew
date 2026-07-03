@@ -52,6 +52,7 @@
 | runtime smoke runner | `npm run hairstyle:catalog:runtime:smoke`가 read-only와 guarded write smoke를 제공 |
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db`가 rotation/post-rotation mail cron 등록 상태를 점검 |
 | trend mail | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
+| trend mail evidence | live mail smoke에서 `catalog_rotation` alert 처리 요약과 delivery 중복 방지를 확인 |
 | admin latest | active 상태, stale 상태, next attempt, last failed 정보 확인 |
 | smoke | due checker, forced rebuild, fallback, alert, mail 중복 방지 확인 |
 
@@ -69,6 +70,7 @@
 | [x] | cron DB smoke 명령이 rotation/post-rotation mail cron 등록 상태를 검사 |
 | [x] | 임시 Postgres에서 cron status RPC unavailable/healthy 응답 smoke 통과 |
 | [x] | trend mail function smoke 명령이 due alert 기본 거부와 delivery 중복 검사를 제공 |
+| [x] | trend mail function smoke 명령이 `catalog_rotation` 처리 증거를 검증 |
 | [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 4개 migration 포함 |
 | [x] | `npm run hairstyle:catalog:remote:check` 통과. `readyForWrite:false`, blocker `202607030001_plan_credit_policy_aftercare.sql` 확인 |
 | [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |

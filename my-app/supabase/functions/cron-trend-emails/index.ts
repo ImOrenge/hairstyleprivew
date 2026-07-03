@@ -13,12 +13,27 @@ const RESEND_FROM_EMAIL = resolveResendFromEmail(Deno.env.get("RESEND_FROM_EMAIL
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
 
 const ALERT_BATCH_SIZE = 5;
+const ALERT_FETCH_LIMIT = 25;
 
 type TrendAlert = {
   id: string;
   title: string;
   body_html: string;
   target_plans: string[];
+  scheduled_send_at?: string | null;
+  alert_type?: string | null;
+  catalog_cycle_id?: string | null;
+};
+
+type ProcessedAlert = {
+  alertId: string;
+  alertType: string | null;
+  catalogCycleId: string | null;
+  targetUserCount: number;
+  emailRecipientCount: number;
+  sent: number;
+  failed: number;
+  completed: boolean;
 };
 
 type SubscriptionRow = {
@@ -148,6 +163,60 @@ function resolveHtml(html: string, user: UserRow) {
     .replace(/\{\{USER_NAME\}\}/g, user.display_name ?? "customer");
 }
 
+function alertTimeMs(alert: TrendAlert) {
+  const parsed = Date.parse(alert.scheduled_send_at ?? "");
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function prioritizePendingAlerts(alerts: TrendAlert[]) {
+  return [...alerts]
+    .sort((left, right) => {
+      const leftPriority = left.alert_type === "catalog_rotation" ? 0 : 1;
+      const rightPriority = right.alert_type === "catalog_rotation" ? 0 : 1;
+      return leftPriority - rightPriority || alertTimeMs(left) - alertTimeMs(right) || left.id.localeCompare(right.id);
+    })
+    .slice(0, ALERT_BATCH_SIZE);
+}
+
+async function fetchPendingTrendAlerts(
+  supabase: PublicSupabaseClient,
+): Promise<{ alerts: TrendAlert[]; error: string | null }> {
+  const withCatalogMetadata = await supabase
+    .from("trend_alerts")
+    .select("id,title,body_html,target_plans,scheduled_send_at,alert_type,catalog_cycle_id")
+    .lte("scheduled_send_at", new Date().toISOString())
+    .is("sent_at", null)
+    .order("scheduled_send_at", { ascending: true })
+    .limit(ALERT_FETCH_LIMIT);
+
+  if (!withCatalogMetadata.error) {
+    return { alerts: (withCatalogMetadata.data ?? []) as TrendAlert[], error: null };
+  }
+
+  if (!/(alert_type|catalog_cycle_id)/i.test(withCatalogMetadata.error.message)) {
+    return { alerts: [], error: withCatalogMetadata.error.message };
+  }
+
+  console.warn(
+    "[cron-trend-emails] trend_alerts catalog metadata columns are missing; falling back to legacy alert shape:",
+    withCatalogMetadata.error.message,
+  );
+
+  const legacy = await supabase
+    .from("trend_alerts")
+    .select("id,title,body_html,target_plans,scheduled_send_at")
+    .lte("scheduled_send_at", new Date().toISOString())
+    .is("sent_at", null)
+    .order("scheduled_send_at", { ascending: true })
+    .limit(ALERT_BATCH_SIZE);
+
+  if (legacy.error) {
+    return { alerts: [], error: legacy.error.message };
+  }
+
+  return { alerts: (legacy.data ?? []) as TrendAlert[], error: null };
+}
+
 async function sendEmail(
   to: string,
   subject: string,
@@ -188,37 +257,50 @@ async function sendEmail(
 Deno.serve(async () => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const { data: alerts, error: alertError } = await supabase
-    .from("trend_alerts")
-    .select("id,title,body_html,target_plans")
-    .lte("scheduled_send_at", new Date().toISOString())
-    .is("sent_at", null)
-    .order("scheduled_send_at", { ascending: true })
-    .limit(ALERT_BATCH_SIZE);
+  const { alerts, error: alertError } = await fetchPendingTrendAlerts(supabase);
 
   if (alertError) {
-    console.error("[cron-trend-emails] alert fetch error:", alertError.message);
-    return new Response(JSON.stringify({ error: alertError.message }), { status: 500 });
+    console.error("[cron-trend-emails] alert fetch error:", alertError);
+    return new Response(JSON.stringify({ error: alertError }), { status: 500 });
   }
 
-  const pendingAlerts = (alerts ?? []) as TrendAlert[];
+  const pendingAlerts = prioritizePendingAlerts(alerts ?? []);
   if (pendingAlerts.length === 0) {
-    return new Response(JSON.stringify({ sent: 0, failed: 0, message: "no pending trend alerts" }), {
+    return new Response(JSON.stringify({
+      sent: 0,
+      failed: 0,
+      catalogRotationProcessed: 0,
+      processedAlerts: [],
+      message: "no pending trend alerts",
+    }), {
       status: 200,
     });
   }
 
   let totalSent = 0;
   let totalFailed = 0;
+  const processedAlerts: ProcessedAlert[] = [];
 
   for (const alert of pendingAlerts) {
     const targetPlans = alert.target_plans?.length ? alert.target_plans : ["standard", "pro", "salon"];
+    const alertType = alert.alert_type ?? null;
+    const catalogCycleId = alert.catalog_cycle_id ?? null;
 
     const { subscriptions, error: subscriptionError } = await fetchTargetSubscriptions(supabase, targetPlans);
 
     if (subscriptionError) {
       console.error(`[cron-trend-emails] subscription fetch error alert=${alert.id}:`, subscriptionError);
       totalFailed++;
+      processedAlerts.push({
+        alertId: alert.id,
+        alertType,
+        catalogCycleId,
+        targetUserCount: 0,
+        emailRecipientCount: 0,
+        sent: 0,
+        failed: 1,
+        completed: false,
+      });
       continue;
     }
 
@@ -229,6 +311,16 @@ Deno.serve(async () => {
         .from("trend_alerts")
         .update({ sent_at: new Date().toISOString(), sent_count: 0 })
         .eq("id", alert.id);
+      processedAlerts.push({
+        alertId: alert.id,
+        alertType,
+        catalogCycleId,
+        targetUserCount: 0,
+        emailRecipientCount: 0,
+        sent: 0,
+        failed: 0,
+        completed: true,
+      });
       continue;
     }
 
@@ -241,6 +333,16 @@ Deno.serve(async () => {
     if (deliveryFetchError) {
       console.error(`[cron-trend-emails] delivery fetch error alert=${alert.id}:`, deliveryFetchError);
       totalFailed++;
+      processedAlerts.push({
+        alertId: alert.id,
+        alertType,
+        catalogCycleId,
+        targetUserCount: targetUserIds.length,
+        emailRecipientCount: 0,
+        sent: 0,
+        failed: 1,
+        completed: false,
+      });
       continue;
     }
 
@@ -262,6 +364,16 @@ Deno.serve(async () => {
     if (userFetchError) {
       console.error(`[cron-trend-emails] user fetch error alert=${alert.id}:`, userFetchError);
       totalFailed++;
+      processedAlerts.push({
+        alertId: alert.id,
+        alertType,
+        catalogCycleId,
+        targetUserCount: targetUserIds.length,
+        emailRecipientCount: 0,
+        sent: 0,
+        failed: 1,
+        completed: false,
+      });
       continue;
     }
 
@@ -330,8 +442,23 @@ Deno.serve(async () => {
 
     totalSent += alertSent;
     totalFailed += alertFailed;
+    processedAlerts.push({
+      alertId: alert.id,
+      alertType,
+      catalogCycleId,
+      targetUserCount: targetUserIds.length,
+      emailRecipientCount: users.length,
+      sent: alertSent,
+      failed: alertFailed,
+      completed: allKnownRecipientsSent,
+    });
   }
 
   console.log(`[cron-trend-emails] sent=${totalSent} failed=${totalFailed}`);
-  return new Response(JSON.stringify({ sent: totalSent, failed: totalFailed }), { status: 200 });
+  return new Response(JSON.stringify({
+    sent: totalSent,
+    failed: totalFailed,
+    catalogRotationProcessed: processedAlerts.filter((alert) => alert.alertType === "catalog_rotation").length,
+    processedAlerts,
+  }), { status: 200 });
 });

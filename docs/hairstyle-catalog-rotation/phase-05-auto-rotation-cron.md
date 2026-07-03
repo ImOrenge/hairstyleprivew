@@ -38,6 +38,7 @@
 | due | TTL 만료 시 자동 active 교체 시도 |
 | retry | 실패 후 다음 날 자동 재시도 |
 | post mail | active 교체로 생성된 due alert를 09:40 KST에 발송 시도 |
+| mail priority | due alert backlog가 있어도 `catalog_rotation` alert를 post-rotation batch에서 우선 처리 |
 
 ## 검증 체크리스트
 
@@ -50,6 +51,7 @@
 | [ ] | expired 상태에서 cron body 호출이 rebuild 경로 진입. Supabase runtime env 필요 |
 | [ ] | 실패 기록 후 다음 `onlyIfDue` 호출이 재시도 경로 진입. Supabase runtime env 필요 |
 | [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
+| [x] | post-rotation mail 함수가 `catalog_rotation` due alert를 batch 우선 처리하고 처리 요약을 반환. 정적 audit 확인 |
 
 ## 운영 메모
 

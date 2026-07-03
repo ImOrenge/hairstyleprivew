@@ -140,7 +140,7 @@
 | --- | --- | --- | --- | --- | --- |
 | `cron-hairstyle-catalog-rotation-check` | 매일 | 09:20 | `20 0 * * *` | `/api/admin/hairstyles/rebuild` | active 만료 확인. due일 때만 수집/검증/활성화 |
 | `cron-trend-emails` | 매일 | 09:15 | `15 0 * * *` | `/cron-trend-emails` | 기존 due trend alert 발송 |
-| `cron-trend-emails-post-rotation` | 매일 | 09:40 | `40 0 * * *` | `/cron-trend-emails` | 당일 카탈로그 교체로 생성된 alert 후속 발송 |
+| `cron-trend-emails-post-rotation` | 매일 | 09:40 | `40 0 * * *` | `/cron-trend-emails` | 당일 카탈로그 교체로 생성된 `catalog_rotation` alert 후속 발송. due backlog가 있어도 batch 우선 처리 |
 | `cron-care-emails` | 매일 | 09:00 | `0 0 * * *` | `/cron-care-emails` | 에프터케어 메일 |
 | `cron-subscription-renewal` | 매일 | 02:00 | `0 17 * * *` | `/cron-subscription-renewal` | 구독 갱신 |
 
@@ -464,6 +464,7 @@
 | 실패 smoke | 강제 실패 시 기존 active cycle 유지 |
 | 자동 retry smoke | 실패 기록 후 다음 `onlyIfDue` 호출이 재시도 경로로 진입 |
 | 메일 smoke | due alert 발송 후 `trend_alert_deliveries` 중복 없음 |
+| 메일 처리 증거 | live smoke 응답의 `processedAlerts`와 `catalogRotationProcessed`로 `catalog_rotation` alert 처리 확인 |
 | audit | `npm run hairstyle:catalog:audit` 통과 |
 
 ## 19. MVP 결정
