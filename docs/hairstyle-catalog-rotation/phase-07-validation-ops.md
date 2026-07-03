@@ -24,6 +24,7 @@
 | [x] | audit가 blueprint count, gender pool, lookback, cron names 검사 | script |
 | [x] | audit가 `ensureCatalogAvailable` 사용자 rebuild 제거 여부 검사 | script |
 | [x] | audit가 trend alert idempotency schema 검사 | script |
+| [x] | audit가 activation RPC의 남/녀 lineup guard 검사 | script |
 | [x] | audit가 추천 경로의 active lineup snapshot 사용 여부 검사 | script |
 | [x] | audit가 `auto` rebuild의 seeded fallback 자동 활성화 금지 여부 검사 | script |
 | [x] | `/api/admin/hairstyles/cycles/latest` smoke 절차 작성 | P5/P7 운영 메모 |

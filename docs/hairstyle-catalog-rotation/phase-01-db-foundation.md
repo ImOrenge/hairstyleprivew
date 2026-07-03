@@ -24,6 +24,7 @@
 | [x] | `trend_alerts` cycle별 중복 방지 partial unique 추가 | migration |
 | [x] | `hairstyle_catalog.slug` global unique를 cycle-scoped unique로 전환 | migration |
 | [x] | `activate_hairstyle_catalog_cycle(...)` RPC 추가 | migration |
+| [x] | activation RPC에서 남/녀 lineup 각각 9개 이상 최종 검증 | migration |
 | [x] | `fail_hairstyle_catalog_cycle(...)` RPC 추가 | migration |
 | [x] | `get_active_hairstyle_catalog(...)` RPC 추가 | migration |
 | [x] | `mark_stale_running_hairstyle_cycles_failed(...)` RPC 추가 | migration |
@@ -38,6 +39,7 @@
 | active pointer | market `kr`에 active cycle을 1개만 가리킬 수 있다. |
 | row snapshot | 같은 slug가 다른 cycle에 공존할 수 있다. |
 | activation | validation 이후 한 transaction으로 active pointer가 교체된다. |
+| lineup guard | 남/녀 lineup이 각각 9개 미만인 cycle은 active가 될 수 없다. |
 | fallback | failed cycle이 active pointer를 바꾸지 않는다. |
 | trend alert 중복 | 같은 `catalog_cycle_id`의 `catalog_rotation` alert가 2개 생기지 않는다. |
 

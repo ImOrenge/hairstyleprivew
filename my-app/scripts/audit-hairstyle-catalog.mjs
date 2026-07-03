@@ -51,6 +51,7 @@ assert(!catalog.includes("retrying with seeded fallback"), "auto rebuild still f
 assert(!catalog.includes('rebuildCatalogWithMode(options, "seeded-weekly", staleRunningCyclesFailed, activeBefore)'), "auto rebuild must not auto-activate seeded fallback");
 assert(rotationMigration.includes("idx_trend_alerts_catalog_cycle_alert_type"), "missing trend alert idempotency index");
 assert(rotationMigration.includes("hairstyle_catalog_active_cycles"), "missing active catalog table migration");
+assert(rotationMigration.includes("v_male_lineup_count") && rotationMigration.includes("insufficient lineups"), "activation RPC must reject cycles without male/female lineups");
 assert(eventMigration.includes("record_hairstyle_catalog_rotation_event"), "missing generic rotation event RPC");
 assert(cronMigration.includes("cron-hairstyle-catalog-rotation-check"), "missing rotation cron job name");
 assert(cronMigration.includes("cron-trend-emails-post-rotation"), "missing post rotation mail cron job name");
@@ -71,6 +72,7 @@ console.log(JSON.stringify({
     "lookback",
     "active-only recommendation path",
     "trend alert idempotency",
+    "activation lineup guard",
     "lineup builder",
     "lineup-backed recommendations",
     "overlap warning",

@@ -213,6 +213,8 @@ declare
   v_now timestamptz := now();
   v_cycle record;
   v_row_count integer;
+  v_male_lineup_count integer;
+  v_female_lineup_count integer;
   v_previous_cycle_id uuid;
   v_expires_at timestamptz;
   v_rotation_period text;
@@ -248,6 +250,21 @@ begin
 
   if v_row_count <= 0 then
     raise exception 'cycle % has no active catalog rows', p_cycle_id;
+  end if;
+
+  select
+    count(*) filter (where style_target = 'male'),
+    count(*) filter (where style_target = 'female')
+    into v_male_lineup_count, v_female_lineup_count
+    from public.hairstyle_catalog_lineups
+   where cycle_id = p_cycle_id
+     and market = v_market;
+
+  if coalesce(v_male_lineup_count, 0) < 9 or coalesce(v_female_lineup_count, 0) < 9 then
+    raise exception 'cycle % has insufficient lineups: male %, female %',
+      p_cycle_id,
+      coalesce(v_male_lineup_count, 0),
+      coalesce(v_female_lineup_count, 0);
   end if;
 
   v_expires_at := coalesce(p_expires_at, v_now + interval '7 days');
