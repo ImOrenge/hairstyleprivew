@@ -961,10 +961,6 @@ async function enqueueCatalogRotationTrendAlert(
   return typeof response.data === "string" ? response.data : null;
 }
 
-function isBootstrapInProgressError(error: unknown) {
-  return error instanceof Error && error.message.includes("bootstrap is already in progress");
-}
-
 async function loadCatalogRows(
   supabase: SupabaseCatalogClient,
   cycleId: string,
@@ -1734,20 +1730,7 @@ export async function rebuildWeeklyHairstyleCatalog(
 
   await recordCatalogRotationAttempt(supabase, "started", null);
 
-  if (options.mode === "seeded" || options.mode === "researched") {
-    return rebuildCatalogWithMode(options, sourceMode, staleRunningCyclesFailed, activeBefore);
-  }
-
-  try {
-    return await rebuildCatalogWithMode(options, "researched-weekly", staleRunningCyclesFailed, activeBefore);
-  } catch (error) {
-    if (isBootstrapInProgressError(error)) {
-      throw error;
-    }
-
-    console.warn("[catalog] Live research rebuild failed, retrying with seeded fallback.", error);
-    return rebuildCatalogWithMode(options, "seeded-weekly", staleRunningCyclesFailed, activeBefore);
-  }
+  return rebuildCatalogWithMode(options, sourceMode, staleRunningCyclesFailed, activeBefore);
 }
 
 export async function getLatestSuccessfulCatalogCycle() {

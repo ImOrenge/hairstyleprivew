@@ -44,6 +44,8 @@ assert(catalog.includes("trend_alert_enqueue_failed"), "missing alert enqueue fa
 assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup builder");
 assert(catalog.includes("computeLineupOverlap"), "missing lineup overlap calculation");
 assert(catalog.includes("overlap_warning"), "missing lineup overlap warning event");
+assert(!catalog.includes("retrying with seeded fallback"), "auto rebuild still falls back to seeded catalog");
+assert(!catalog.includes('rebuildCatalogWithMode(options, "seeded-weekly", staleRunningCyclesFailed, activeBefore)'), "auto rebuild must not auto-activate seeded fallback");
 assert(rotationMigration.includes("idx_trend_alerts_catalog_cycle_alert_type"), "missing trend alert idempotency index");
 assert(rotationMigration.includes("hairstyle_catalog_active_cycles"), "missing active catalog table migration");
 assert(eventMigration.includes("record_hairstyle_catalog_rotation_event"), "missing generic rotation event RPC");
@@ -68,6 +70,7 @@ console.log(JSON.stringify({
     "trend alert idempotency",
     "lineup builder",
     "overlap warning",
+    "no automatic seeded fallback",
     "cron names",
     "doc status",
   ],
