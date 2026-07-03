@@ -20,6 +20,7 @@
 | remote check lock | `my-app/supabase/.temp/hairstyle-catalog-remote-check.lock` | 같은 worktree에서 dry-run guard를 동시에 실행하지 않는다. |
 | runtime smoke target confirmation | `--confirmAppUrl=<app-url>` 또는 `HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL` | active 변경 가능 호출은 대상 URL 확인 없이는 실행하지 않는다. |
 | local env files | `my-app/.env.local`, `my-app/.env.assets` | 격리 worktree에는 메인 worktree의 ignored env 파일을 복사해서 사용한다. |
+| Cloudflare secret names | `npm run hairstyle:catalog:cloudflare:secrets -- --verify` | Worker에 등록된 secret 이름만 확인한다. 값은 조회하거나 출력하지 않는다. |
 
 ## 실행 순서
 
@@ -64,6 +65,8 @@
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 스크립트 보강. 실제 Supabase service role과 함수 URL 필요 |
 | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false` |
 | `npm run hairstyle:catalog:env:check -- --appUrl=https://hairfit.beauty` | 메인 worktree env 복사 후 Supabase service role/Resend/public URL 통과. `INTERNAL_API_SECRET`는 placeholder라 admin/API smoke blocker |
+| `npm run hairstyle:catalog:cloudflare:secrets` | local `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 통과. local `INTERNAL_API_SECRET`는 placeholder라 blocker |
+| `npm run hairstyle:catalog:cloudflare:secrets -- --verify --only=INTERNAL_API_SECRET,SUPABASE_SERVICE_ROLE_KEY,NEXT_PUBLIC_SUPABASE_URL` | Cloudflare API token 인증 실패 `9106`. deployed secret name 확인에는 유효한 `CLOUDFLARE_API_TOKEN` 필요 |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | remote RPC 미적용으로 `PGRST202`. pending migration 적용 전 정상 blocker |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | remote RPC 미적용으로 `PGRST202`. pending migration 적용 전 정상 blocker |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | remote `trend_alerts.catalog_cycle_id` 미적용으로 `42703`. pending migration 적용 전 정상 blocker |

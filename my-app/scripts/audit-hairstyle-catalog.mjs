@@ -46,6 +46,7 @@ const rootPackageJson = readRepo("package.json");
 const remoteReadinessScript = read("scripts/check-hairstyle-catalog-remote-readiness.mjs");
 const runtimeEnvScript = read("scripts/check-hairstyle-catalog-runtime-env.mjs");
 const runtimeSmokeScript = read("scripts/smoke-hairstyle-catalog-runtime.mjs");
+const cloudflareSecretsScript = read("scripts/check-hairstyle-catalog-cloudflare-secrets.mjs");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
 assert(trendResearch.includes("FALLBACK_RESEARCH_LOOKBACK_DAYS = 120"), "missing 120 day fallback lookback");
@@ -101,10 +102,17 @@ assert(packageJson.includes("\"hairstyle:catalog:remote:check\""), "my-app packa
 assert(packageJson.includes("\"hairstyle:catalog:lineup:audit\""), "my-app package is missing hairstyle lineup audit script");
 assert(packageJson.includes("\"hairstyle:catalog:env:check\""), "my-app package is missing hairstyle runtime env check script");
 assert(packageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "my-app package is missing hairstyle runtime smoke script");
+assert(packageJson.includes("\"hairstyle:catalog:cloudflare:secrets\""), "my-app package is missing hairstyle Cloudflare secret check script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:remote:check\""), "root package is missing hairstyle remote readiness script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:lineup:audit\""), "root package is missing hairstyle lineup audit script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:env:check\""), "root package is missing hairstyle runtime env check script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "root package is missing hairstyle runtime smoke script");
+assert(rootPackageJson.includes("\"hairstyle:catalog:cloudflare:secrets\""), "root package is missing hairstyle Cloudflare secret check script");
+assert(cloudflareSecretsScript.includes("INTERNAL_API_SECRET"), "Cloudflare secret check must verify admin API secret name");
+assert(cloudflareSecretsScript.includes("wrangler\", \"secret\", \"list\""), "Cloudflare secret check must list deployed Worker secret names");
+assert(cloudflareSecretsScript.includes("--format\", \"json\""), "Cloudflare secret check must parse Wrangler JSON output");
+assert(cloudflareSecretsScript.includes("Cloudflare API authentication failed"), "Cloudflare secret check must explain invalid API token failures");
+assert(!cloudflareSecretsScript.includes("secret put"), "Cloudflare secret check must not write deployed secret values");
 assert(remoteReadinessScript.includes("blockingPending") && remoteReadinessScript.includes("Refusing hairstyle remote write"), "remote readiness guard must block unrelated pending migrations");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_MIGRATION_CONFIRM_PROJECT_REF"), "remote readiness guard must require explicit project confirmation for writes");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS"), "remote readiness guard must expose a command timeout override");
@@ -178,6 +186,7 @@ console.log(JSON.stringify({
     "remote readiness guard",
     "runtime env preflight",
     "runtime API smoke runner",
+    "Cloudflare secret-name smoke guard",
     "cron DB smoke guard",
     "trend mail function smoke guard",
     "active DB smoke guard",
