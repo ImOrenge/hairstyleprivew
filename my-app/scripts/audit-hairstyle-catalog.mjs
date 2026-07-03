@@ -94,6 +94,10 @@ assert(rootPackageJson.includes("\"hairstyle:catalog:remote:check\""), "root pac
 assert(rootPackageJson.includes("\"hairstyle:catalog:lineup:audit\""), "root package is missing hairstyle lineup audit script");
 assert(remoteReadinessScript.includes("blockingPending") && remoteReadinessScript.includes("Refusing hairstyle remote write"), "remote readiness guard must block unrelated pending migrations");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_MIGRATION_CONFIRM_PROJECT_REF"), "remote readiness guard must require explicit project confirmation for writes");
+assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS"), "remote readiness guard must expose a command timeout override");
+assert(remoteReadinessScript.includes("timed out after"), "remote readiness guard must fail clearly on command timeout");
+assert(remoteReadinessScript.includes("withRemoteCheckLock"), "remote readiness guard must prevent concurrent Supabase dry-runs");
+assert(remoteReadinessScript.includes("hairstyle-catalog-remote-check.lock"), "remote readiness guard must use a named local lock file");
 
 console.log(JSON.stringify({
   ok: true,

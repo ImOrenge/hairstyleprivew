@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -11,10 +11,27 @@ const expectedHairstyleMigrations = [
   "20260703093000_hairstyle_catalog_rotation_cron.sql",
   "20260703094000_hairstyle_catalog_rotation_event_rpc.sql",
 ];
+const defaultCommandTimeoutMs = 120000;
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appDir, "..");
 const projectRefPath = resolve(appDir, "supabase", ".temp", "project-ref");
+const lockDir = dirname(projectRefPath);
+const lockPath = resolve(lockDir, "hairstyle-catalog-remote-check.lock");
+
+function readCommandTimeoutMs() {
+  const raw = process.env.HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS;
+  if (!raw) {
+    return defaultCommandTimeoutMs;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 5000) {
+    throw new Error("HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS must be an integer >= 5000");
+  }
+
+  return parsed;
+}
 
 function hasFlag(name) {
   return process.argv.includes(name);
@@ -38,7 +55,46 @@ confirmation env vars are set:
 
   HAIRSTYLE_CATALOG_MIGRATION_ALLOW_REMOTE_WRITE=1
   HAIRSTYLE_CATALOG_MIGRATION_CONFIRM_PROJECT_REF=${expectedProjectRef}
+
+Optional:
+  HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS=120000
 `);
+}
+
+function withRemoteCheckLock(timeout, callback) {
+  mkdirSync(lockDir, { recursive: true });
+
+  if (existsSync(lockPath)) {
+    const ageMs = Date.now() - statSync(lockPath).mtimeMs;
+    const staleAfterMs = Math.max(timeout * 2, 10 * 60 * 1000);
+    if (ageMs > staleAfterMs) {
+      unlinkSync(lockPath);
+    }
+  }
+
+  let fd;
+  try {
+    fd = openSync(lockPath, "wx");
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "EEXIST") {
+      throw new Error(`Another hairstyle catalog remote readiness check is already running: ${lockPath}`);
+    }
+    throw error;
+  }
+
+  try {
+    writeFileSync(fd, JSON.stringify({
+      pid: process.pid,
+      startedAt: new Date().toISOString(),
+      timeoutMs: timeout,
+    }));
+    return callback();
+  } finally {
+    closeSync(fd);
+    if (existsSync(lockPath)) {
+      unlinkSync(lockPath);
+    }
+  }
 }
 
 function readProjectRef() {
@@ -49,16 +105,22 @@ function readProjectRef() {
 }
 
 function run(command, args) {
+  const timeout = readCommandTimeoutMs();
   const result = spawnSync(command, args, {
     cwd: repoRoot,
     encoding: "utf8",
     shell: process.platform === "win32",
+    timeout,
+    killSignal: "SIGTERM",
   });
 
   const stdout = result.stdout ?? "";
   const stderr = result.stderr ?? "";
 
   if (result.error) {
+    if (result.error.code === "ETIMEDOUT") {
+      throw new Error(`${command} ${args.join(" ")} timed out after ${timeout}ms`);
+    }
     throw result.error;
   }
   if (result.status !== 0) {
@@ -144,7 +206,10 @@ async function main() {
   const strict = hasFlag("--strict");
   const write = hasFlag("--write");
   const projectRef = readProjectRef();
-  const dryRunOutput = run("supabase", ["db", "push", "--dry-run", "--workdir", "my-app"]);
+  const commandTimeoutMs = readCommandTimeoutMs();
+  const dryRunOutput = withRemoteCheckLock(commandTimeoutMs, () =>
+    run("supabase", ["db", "push", "--dry-run", "--workdir", "my-app"]),
+  );
   const readiness = buildReadiness(projectRef, extractMigrationFiles(dryRunOutput));
 
   printReadiness(readiness);

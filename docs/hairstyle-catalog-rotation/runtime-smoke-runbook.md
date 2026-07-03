@@ -16,6 +16,8 @@
 | admin secret | `INTERNAL_API_SECRET` | `x-admin-secret` header와 일치 |
 | service role key | Supabase service role key | cron helper 등록 시 사용 |
 | edge function base URL | Supabase functions base URL | post-rotation mail cron 대상 |
+| remote check timeout | `HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS=120000` | Supabase CLI 지연 시 guard가 명확히 실패하도록 조정 가능 |
+| remote check lock | `my-app/supabase/.temp/hairstyle-catalog-remote-check.lock` | 같은 worktree에서 dry-run guard를 동시에 실행하지 않는다. |
 
 ## 실행 순서
 
@@ -53,6 +55,8 @@
 | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false` |
 | remote pending migrations | `202607030001_plan_credit_policy_aftercare.sql`, `20260703092000_hairstyle_catalog_rotation.sql`, `20260703093000_hairstyle_catalog_rotation_cron.sql`, `20260703094000_hairstyle_catalog_rotation_event_rpc.sql` |
 | 주의 | 실제 `supabase db push`는 선행 pending migration `202607030001_plan_credit_policy_aftercare.sql`도 함께 적용한다. |
+| timeout guard | `HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS` 기본값은 120000ms이며, CLI 지연 시 timeout 오류로 실패한다. |
+| 동시 실행 주의 | `hairstyle:catalog:remote:check`는 local lock으로 같은 worktree의 중복 실행을 차단한다. |
 
 ## 판정
 
