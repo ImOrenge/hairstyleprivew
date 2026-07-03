@@ -530,10 +530,16 @@ function validateLineupShape(lineups, itemsById, styleTarget) {
   const targetLineups = lineups
     .filter((lineup) => lineup.style_target === styleTarget)
     .sort((left, right) => Number(left.rank) - Number(right.rank));
-  assert(targetLineups.length >= 9, `${styleTarget} active lineup count is below 9: ${targetLineups.length}`);
+  assert(targetLineups.length === 9, `${styleTarget} active lineup count must be exactly 9, got ${targetLineups.length}`);
 
   const ranks = new Set();
   const catalogItemIds = new Set();
+  const slotCounts = {
+    trend: 0,
+    face_fit: 0,
+    evergreen: 0,
+    experimental: 0,
+  };
   for (const lineup of targetLineups) {
     assert(Number.isFinite(lineup.rank), `${styleTarget} lineup has invalid rank`);
     ranks.add(lineup.rank);
@@ -541,11 +547,29 @@ function validateLineupShape(lineups, itemsById, styleTarget) {
     assert(itemsById.has(lineup.catalog_item_id), `${styleTarget} lineup references a missing active catalog item`);
     assert(!catalogItemIds.has(lineup.catalog_item_id), `${styleTarget} lineup repeats catalog item ${lineup.catalog_item_id}`);
     catalogItemIds.add(lineup.catalog_item_id);
+    assert(
+      Object.prototype.hasOwnProperty.call(slotCounts, lineup.slot_key),
+      `${styleTarget} lineup has unexpected slot_key ${lineup.slot_key}`,
+    );
+    slotCounts[lineup.slot_key] += 1;
   }
 
   for (let rank = 1; rank <= 9; rank += 1) {
     assert(ranks.has(rank), `${styleTarget} active lineup missing rank ${rank}`);
   }
+  assert(slotCounts.trend === 3, `${styleTarget} active lineup trend slot count must be 3, got ${slotCounts.trend}`);
+  assert(
+    slotCounts.face_fit === 3,
+    `${styleTarget} active lineup face_fit slot count must be 3, got ${slotCounts.face_fit}`,
+  );
+  assert(
+    slotCounts.evergreen === 2,
+    `${styleTarget} active lineup evergreen slot count must be 2, got ${slotCounts.evergreen}`,
+  );
+  assert(
+    slotCounts.experimental === 1,
+    `${styleTarget} active lineup experimental slot count must be 1, got ${slotCounts.experimental}`,
+  );
 }
 
 async function runActiveDbSmoke() {

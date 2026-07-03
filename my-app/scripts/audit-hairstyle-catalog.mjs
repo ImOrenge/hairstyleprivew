@@ -143,6 +143,11 @@ assert(runtimeSmokeScript.includes("items.length >= 32"), "runtime active DB smo
 assert(runtimeSmokeScript.includes("maleCandidateCount >= 18"), "runtime active DB smoke must enforce male candidate pool size");
 assert(runtimeSmokeScript.includes("femaleCandidateCount >= 18"), "runtime active DB smoke must enforce female candidate pool size");
 assert(runtimeSmokeScript.includes("validateLineupShape"), "runtime active DB smoke must validate active lineup shape");
+assert(runtimeSmokeScript.includes("targetLineups.length === 9"), "runtime active DB smoke must reject over/under-sized lineups");
+assert(runtimeSmokeScript.includes("slotCounts.trend === 3"), "runtime active DB smoke must validate trend slot count");
+assert(runtimeSmokeScript.includes("slotCounts.face_fit === 3"), "runtime active DB smoke must validate face_fit slot count");
+assert(runtimeSmokeScript.includes("slotCounts.evergreen === 2"), "runtime active DB smoke must validate evergreen slot count");
+assert(runtimeSmokeScript.includes("slotCounts.experimental === 1"), "runtime active DB smoke must validate experimental slot count");
 assert(runtimeSmokeScript.includes("get_hairstyle_catalog_rotation_cron_status"), "runtime cron DB smoke must call the cron status RPC");
 
 console.log(JSON.stringify({

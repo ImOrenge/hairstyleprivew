@@ -65,7 +65,7 @@
 | [x] | `npm run hairstyle:catalog:lineup:audit` |
 | [x] | synthetic env로 `npm run hairstyle:catalog:env:check` 통과 |
 | [x] | `npm run hairstyle:catalog:runtime:smoke -- --help` |
-| [x] | active DB smoke 명령이 active RPC, 32개 row, 후보 pool, lineup shape, alert/delivery 중복을 검사 |
+| [x] | active DB smoke 명령이 active RPC, 32개 row, 후보 pool, 정확히 9개 lineup과 슬롯 구성, alert/delivery 중복을 검사 |
 | [x] | cron DB smoke 명령이 rotation/post-rotation mail cron 등록 상태를 검사 |
 | [x] | 임시 Postgres에서 cron status RPC unavailable/healthy 응답 smoke 통과 |
 | [x] | trend mail function smoke 명령이 due alert 기본 거부와 delivery 중복 검사를 제공 |

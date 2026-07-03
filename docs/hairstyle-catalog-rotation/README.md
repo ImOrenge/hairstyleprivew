@@ -33,7 +33,7 @@
 | DB migration smoke | 완료 | 임시 Postgres에서 P1/P5/P6 event RPC/P7 cron status RPC migration smoke 통과 |
 | Supabase linked dry-run | 완료 | `supabase link --project-ref dpzdhxlqnogfpubpslbf --workdir my-app` 후 `supabase db push --dry-run --workdir my-app` 통과 |
 | Remote write guard | 완료 | `npm run hairstyle:catalog:remote:check`가 unrelated pending migration을 감지한다. |
-| Supabase runtime/API smoke | 대기 | runtime env와 배포 대상이 필요하며 [runtime-smoke-runbook.md](runtime-smoke-runbook.md)에 절차 정리 |
+| Supabase runtime/API smoke | 대기 | runtime env와 배포 대상이 필요하며 [runtime-smoke-runbook.md](runtime-smoke-runbook.md)에 절차 정리. active DB smoke는 9개 lineup 초과/미달과 슬롯 구성까지 검사 |
 
 ## 전체 완료 기준
 
