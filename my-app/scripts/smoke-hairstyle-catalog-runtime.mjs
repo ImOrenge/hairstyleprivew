@@ -244,6 +244,11 @@ async function fetchJson(url, options = {}) {
           `${options.method ?? "GET"} ${url} failed ${response.status}: RPC is missing from the Supabase schema cache. Apply the pending hairstyle catalog migrations before running this smoke. ${message}`,
         );
       }
+      if (isObject(data) && data.code === "42703" && /trend_alerts\.(catalog_cycle_id|alert_type)/.test(message)) {
+        throw new Error(
+          `${options.method ?? "GET"} ${url} failed ${response.status}: trend alert catalog columns are missing. Apply the pending hairstyle catalog migrations before running this smoke. ${message}`,
+        );
+      }
       throw new Error(`${options.method ?? "GET"} ${url} failed ${response.status}: ${message}`);
     }
 

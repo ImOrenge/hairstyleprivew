@@ -138,6 +138,7 @@ assert(runtimeSmokeScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime smoke 
 assert(runtimeSmokeScript.includes(".env.assets"), "runtime smoke runner must load asset/runtime env file copied from the main worktree");
 assert(runtimeSmokeScript.includes("readLinkedProjectRef"), "runtime smoke runner must derive Supabase URL from linked project ref");
 assert(runtimeSmokeScript.includes("PGRST202"), "runtime smoke runner must explain missing RPC migration/schema-cache failures");
+assert(runtimeSmokeScript.includes("42703"), "runtime smoke runner must explain missing trend alert catalog columns");
 assert(runtimeSmokeScript.includes("rows.length <= 1"), "runtime smoke must verify catalog_rotation alert idempotency");
 assert(runtimeSmokeScript.includes("cron-trend-emails"), "runtime smoke runner must target the trend mail Edge Function");
 assert(runtimeSmokeScript.includes("allowPendingAlerts"), "runtime trend mail smoke must guard live email sends");

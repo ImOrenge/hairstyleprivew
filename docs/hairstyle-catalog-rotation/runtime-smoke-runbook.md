@@ -66,6 +66,7 @@
 | `npm run hairstyle:catalog:env:check -- --appUrl=https://hairfit.beauty` | 메인 worktree env 복사 후 Supabase service role/Resend/public URL 통과. `INTERNAL_API_SECRET`는 placeholder라 admin/API smoke blocker |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | remote RPC 미적용으로 `PGRST202`. pending migration 적용 전 정상 blocker |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | remote RPC 미적용으로 `PGRST202`. pending migration 적용 전 정상 blocker |
+| `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | remote `trend_alerts.catalog_cycle_id` 미적용으로 `42703`. pending migration 적용 전 정상 blocker |
 | remote pending migrations | `202607030001_plan_credit_policy_aftercare.sql`, `20260703092000_hairstyle_catalog_rotation.sql`, `20260703093000_hairstyle_catalog_rotation_cron.sql`, `20260703094000_hairstyle_catalog_rotation_event_rpc.sql`, `20260703124648_hairstyle_catalog_cron_status.sql` |
 | 주의 | 실제 `supabase db push`는 선행 pending migration `202607030001_plan_credit_policy_aftercare.sql`도 함께 적용한다. |
 | timeout guard | `HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS` 기본값은 120000ms이며, CLI 지연 시 timeout 오류로 실패한다. |
