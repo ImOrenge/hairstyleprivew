@@ -78,7 +78,13 @@ Optional external evidence:
   --forceRuntimeSmoke        Run requested runtime smoke even when preflight blockers are known.
   --runTrendMailSmoke        Run guarded cron-trend-emails smoke.
   --appUrl <url>             Deployed app URL passed to env/runtime smoke.
+  --cycleId <id>             Catalog cycle id passed to alert idempotency smoke.
+  --market <market>          Catalog market passed to active DB smoke. Defaults in runtime smoke.
+  --expectAlert              Require a catalog_rotation alert for the selected cycle.
+  --allowNoActive            Allow read-only smoke before an active cycle exists.
   --functionUrl <url>        Deployed cron-trend-emails function URL.
+  --allowPendingAlerts       Allow intentional live trend-mail smoke when due alerts exist.
+  --expectPendingCatalogAlert Require at least one due catalog_rotation alert for trend-mail smoke.
   --allowLocal               Allow localhost app URL for smoke scripts.
   --allowMissingExternal     Exit 0 after reporting missing external evidence.
 `);
@@ -162,12 +168,17 @@ function parseJsonObject(output, label) {
   return JSON.parse(output.slice(start, end + 1));
 }
 
-function buildPassThroughArgs(names) {
+function buildPassThroughArgs(names, flags = []) {
   const args = ["--"];
   for (const name of names) {
     const value = getArg(name);
     if (value) {
       args.push(`--${name}=${value}`);
+    }
+  }
+  for (const flag of flags) {
+    if (hasFlag(flag)) {
+      args.push(`--${flag}`);
     }
   }
   if (hasFlag("allowLocal")) {
@@ -242,7 +253,7 @@ function collectRuntimeSmoke(missingEvidence, externalBlockers, prerequisites) {
     return;
   }
 
-  const baseArgs = buildPassThroughArgs(["appUrl"]);
+  const baseArgs = buildPassThroughArgs(["appUrl", "cycleId", "market"], ["expectAlert", "allowNoActive"]);
 
   if (runReadOnlyRuntimeSmoke) {
     if (!shouldSkipRuntimeSmoke("read-only runtime smoke", true, prerequisites, missingEvidence)) {
@@ -283,7 +294,7 @@ function collectTrendMailSmoke(missingEvidence, externalBlockers, prerequisites)
     return;
   }
 
-  const args = buildPassThroughArgs(["functionUrl"]);
+  const args = buildPassThroughArgs(["functionUrl"], ["allowPendingAlerts", "expectPendingCatalogAlert"]);
   args.push("--mode=trend-mail-function");
   tryExternal(
     "trend mail function smoke",

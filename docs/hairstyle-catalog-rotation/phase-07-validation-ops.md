@@ -15,7 +15,7 @@
 | runbook | 운영 절차와 장애 대응 기록 |
 | env preflight | runtime smoke 전 필요한 env 준비 상태 확인 |
 | runtime smoke runner | admin latest, cron DB state, dry-run, rotation-check, force rebuild, alert idempotency 명령화 |
-| launch readiness | 로컬 감사와 외부 runtime blocker를 한 번에 보고하고, non-mutating runtime smoke와 admin dry-run POST smoke를 분리하며, prerequisite 실패 시 dependent smoke를 skip하는 통합 게이트 |
+| launch readiness | 로컬 감사와 외부 runtime blocker를 한 번에 보고하고, non-mutating runtime smoke와 admin dry-run POST smoke를 분리하며, prerequisite 실패 시 dependent smoke를 skip하는 통합 게이트. 특정 cycle/market과 live mail smoke 확인 옵션은 runtime smoke로 그대로 전달 |
 
 ## 작업 체크리스트
 
@@ -55,7 +55,7 @@
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db`가 rotation/post-rotation mail cron 등록 상태를 점검 |
 | trend mail | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | trend mail deploy | `npm run hairstyle:catalog:trend-mail:deploy` dry-run 통과 |
-| launch readiness | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal`가 로컬 감사와 외부 blocker 보고를 완료하고, runtime smoke 옵션을 `--runReadOnlyRuntimeSmoke`와 `--runAdminDryRunSmoke`로 분리하며 `--forceRuntimeSmoke` 없이는 known-blocked smoke를 skip |
+| launch readiness | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal`가 로컬 감사와 외부 blocker 보고를 완료하고, runtime smoke 옵션을 `--runReadOnlyRuntimeSmoke`와 `--runAdminDryRunSmoke`로 분리하며 `--forceRuntimeSmoke` 없이는 known-blocked smoke를 skip. `--cycleId`, `--market`, `--expectAlert`, `--allowPendingAlerts`, `--expectPendingCatalogAlert`는 하위 smoke로 전달 |
 | trend mail evidence | live mail smoke에서 `catalog_rotation` alert 처리 요약과 delivery 중복 방지를 확인 |
 | trend mail auth | `cron-trend-emails`가 service-key header 없이는 실행되지 않음 |
 | admin latest | active 상태, stale 상태, next attempt, last failed 정보 확인 |

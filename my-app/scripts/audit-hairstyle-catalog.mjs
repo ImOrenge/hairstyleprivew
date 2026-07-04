@@ -214,6 +214,8 @@ assert(launchReadinessScript.includes("forceRuntimeSmoke"), "launch readiness mu
 assert(launchReadinessScript.includes("shouldSkipRuntimeSmoke"), "launch readiness must skip dependent runtime smoke when prerequisites fail");
 assert(launchReadinessScript.includes("listRemoteRuntimeBlockers"), "launch readiness must derive runtime smoke blockers from remote readiness");
 assert(launchReadinessScript.includes("runTrendMailSmoke"), "launch readiness must expose trend mail smoke execution");
+assert(launchReadinessScript.includes('"appUrl", "cycleId", "market"'), "launch readiness must pass cycleId and market to runtime smoke");
+assert(launchReadinessScript.includes('"allowPendingAlerts", "expectPendingCatalogAlert"'), "launch readiness must pass intentional live trend-mail smoke flags");
 assert(launchReadinessScript.includes("pendingMigrations"), "launch readiness must report pending remote migrations");
 assert(launchReadinessScript.includes("blockingMigrationDetails"), "launch readiness must include blocking migration summaries");
 assert(launchReadinessScript.includes("runtime env preflight failed"), "launch readiness must gate runtime smoke on env preflight");
