@@ -176,6 +176,31 @@ function requireSecret(name) {
   return value;
 }
 
+function usableSecret(name) {
+  const value = readEnv(name);
+  if (!value || value.includes("<") || /^YOUR[_A-Z0-9-]*$/i.test(value)) {
+    return "";
+  }
+  return value;
+}
+
+function adminAuthHeaders() {
+  const internalSecret = usableSecret("INTERNAL_API_SECRET");
+  if (internalSecret) {
+    return { "x-admin-secret": internalSecret };
+  }
+
+  const serviceRoleKey = usableSecret("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceRoleKey) {
+    return {
+      apikey: serviceRoleKey,
+      authorization: `Bearer ${serviceRoleKey}`,
+    };
+  }
+
+  throw new Error("Missing admin API credential. Set INTERNAL_API_SECRET or SUPABASE_SERVICE_ROLE_KEY.");
+}
+
 function appOrigin() {
   const appUrl = readAppUrl();
   if (!appUrl) {
@@ -297,10 +322,9 @@ function normalizeStyleTargets(value) {
 
 async function adminRequest(path, options = {}) {
   const origin = appOrigin();
-  const secret = requireSecret("INTERNAL_API_SECRET");
   const url = `${origin}${path}`;
   const headers = {
-    "x-admin-secret": secret,
+    ...adminAuthHeaders(),
     ...(options.body ? { "content-type": "application/json" } : {}),
   };
 

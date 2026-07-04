@@ -1007,17 +1007,34 @@ export function getAdminSecret() {
   return secret;
 }
 
+function getServiceRoleAdminSecret() {
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  return secret && !secret.includes("YOUR_") ? secret : "";
+}
+
+function readBearerToken(value: string | null) {
+  const match = value?.trim().match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() ?? "";
+}
+
 export function isAuthorizedAdminRequest(request: Request) {
-  const provided = request.headers.get("x-admin-secret")?.trim();
-  if (!provided) {
+  const providedSecrets = [
+    request.headers.get("x-admin-secret")?.trim() ?? "",
+    request.headers.get("apikey")?.trim() ?? "",
+    readBearerToken(request.headers.get("authorization")),
+  ].filter(Boolean);
+  if (providedSecrets.length === 0) {
     return false;
   }
 
+  const allowedSecrets = [getServiceRoleAdminSecret()];
   try {
-    return provided === getAdminSecret();
+    allowedSecrets.push(getAdminSecret());
   } catch {
-    return false;
+    // INTERNAL_API_SECRET is optional when Supabase service-role auth is available.
   }
+
+  return allowedSecrets.filter(Boolean).some((secret) => providedSecrets.includes(secret));
 }
 
 function buildReason(row: HairstyleCatalogRow, selectionContext: CatalogSelectionContext): string {

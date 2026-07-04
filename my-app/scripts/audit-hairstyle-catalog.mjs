@@ -78,6 +78,9 @@ const rotationMigration = read("supabase/migrations/20260703092000_hairstyle_cat
 const eventMigration = read("supabase/migrations/20260703094000_hairstyle_catalog_rotation_event_rpc.sql");
 const cronMigration = read("supabase/migrations/20260703093000_hairstyle_catalog_rotation_cron.sql");
 const cronStatusMigration = read("supabase/migrations/20260703124648_hairstyle_catalog_cron_status.sql");
+const pgCronExtensionMigration = read("supabase/migrations/20260704043000_enable_pg_cron_extension.sql");
+const cronServiceRoleAuthMigration = read("supabase/migrations/20260704044500_hairstyle_catalog_cron_service_role_auth.sql");
+const cronSecurityDefinerMigration = read("supabase/migrations/20260704050000_hairstyle_catalog_cron_register_security_definer.sql");
 const supabaseConfig = read("supabase/config.toml");
 const packageJson = read("package.json");
 const architectureDoc = readRepo("docs/hairstyle-catalog-rotation-architecture.md");
@@ -119,12 +122,16 @@ assert(notDueBody && notDueBody[0].includes("validateActiveCatalogSnapshot"), "n
 assert(catalog.includes("CatalogRebuildConflictError"), "missing rebuild conflict error type");
 assert(rebuildRoute.includes("CatalogRebuildConflictError") && rebuildRoute.includes("409"), "rebuild route must map running conflicts to 409");
 assert(catalog.includes("lineupCounts: validation.lineupCounts"), "rebuild response must expose top-level lineupCounts");
+assert(catalog.includes("getServiceRoleAdminSecret"), "catalog admin auth must support service-role fallback");
+assert(catalog.includes('request.headers.get("apikey")'), "catalog admin auth must accept apikey service-role header");
+assert(catalog.includes('request.headers.get("authorization")'), "catalog admin auth must accept Authorization bearer service-role header");
 const catalogSecretBypassCount = (
   middleware.match(/isCatalogSecretAdminApiRoute\(req\) && hasValidCatalogAdminSecret\(req\)/g) || []
 ).length;
 const firstCatalogSecretBypass = middleware.indexOf("if (isCatalogSecretAdminApiRoute(req) && hasValidCatalogAdminSecret(req))");
 const firstAuthRead = middleware.indexOf("const authObject =");
 assert(middleware.includes("function hasValidCatalogAdminSecret"), "middleware must validate catalog admin secret requests");
+assert(middleware.includes("SUPABASE_SERVICE_ROLE_KEY"), "middleware catalog admin bypass must support service-role fallback");
 assert(catalogSecretBypassCount >= 2, "middleware must allow catalog secret admin APIs in both Clerk and no-Clerk paths");
 assert(
   firstCatalogSecretBypass >= 0 && firstAuthRead >= 0 && firstCatalogSecretBypass < firstAuthRead,
@@ -154,6 +161,11 @@ assert(cronMigration.includes("cron-trend-emails-post-rotation"), "missing post 
 assert(cronMigration.includes("'onlyIfDue', true"), "rotation cron does not send onlyIfDue");
 assert(cronMigration.includes("'x-admin-secret'"), "rotation cron does not send admin secret header");
 assert(cronMigration.includes("'apikey'"), "post-rotation mail cron must send Supabase apikey header");
+assert(pgCronExtensionMigration.includes("create extension if not exists pg_cron"), "missing pg_cron extension migration");
+assert(cronServiceRoleAuthMigration.includes("'apikey', p_service_role_key"), "rotation cron must send service-role apikey to admin route");
+assert(cronServiceRoleAuthMigration.includes("'Authorization', 'Bearer ' || p_service_role_key"), "rotation cron must send service-role bearer token to admin route");
+assert(cronServiceRoleAuthMigration.includes("p_admin_secret") && !cronServiceRoleAuthMigration.includes("p_admin_secret is required"), "rotation cron admin secret must be optional");
+assert(cronSecurityDefinerMigration.includes("security definer"), "rotation cron registration helper must run as security definer");
 assert(cronStatusMigration.includes("get_hairstyle_catalog_rotation_cron_status"), "missing hairstyle cron status RPC");
 assert(cronStatusMigration.includes("to_regclass('cron.job')"), "cron status RPC must tolerate missing pg_cron");
 assert(cronStatusMigration.includes("20 0 * * *"), "cron status RPC must validate rotation check schedule");
@@ -195,6 +207,7 @@ assert(rootPackageJson.includes("\"hairstyle:catalog:launch:summary:check\""), "
 assert(architectureDoc.includes("check-hairstyle-catalog-launch-summary.mjs"), "architecture doc missing launch summary check script impact");
 assert(architectureDoc.includes("Launch summary schema guard"), "architecture deployment checklist missing launch summary schema guard");
 assert(cloudflareSecretsScript.includes("INTERNAL_API_SECRET"), "Cloudflare secret check must verify admin API secret name");
+assert(cloudflareSecretsScript.includes("OPTIONAL_DEPLOYED_NAMES") && cloudflareSecretsScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "Cloudflare secret check must allow service-role admin fallback");
 assert(cloudflareSecretsScript.includes("wrangler\", \"secret\", \"list\""), "Cloudflare secret check must list deployed Worker secret names");
 assert(cloudflareSecretsScript.includes("--format\", \"json\""), "Cloudflare secret check must parse Wrangler JSON output");
 assert(cloudflareSecretsScript.includes("Cloudflare API authentication failed"), "Cloudflare secret check must explain invalid API token failures");
@@ -207,11 +220,16 @@ assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS
 assert(remoteReadinessScript.includes("timed out after"), "remote readiness guard must fail clearly on command timeout");
 assert(remoteReadinessScript.includes("withRemoteCheckLock"), "remote readiness guard must prevent concurrent Supabase dry-runs");
 assert(remoteReadinessScript.includes("hairstyle-catalog-remote-check.lock"), "remote readiness guard must use a named local lock file");
+assert(remoteReadinessScript.includes("hairstylePending.length === pendingMigrations.length"), "remote readiness guard must allow expected follow-up migrations");
 assert(remoteReadinessScript.includes("20260703124648_hairstyle_catalog_cron_status.sql"), "remote readiness guard must expect cron status migration");
+assert(remoteReadinessScript.includes("20260704043000_enable_pg_cron_extension.sql"), "remote readiness guard must expect pg_cron extension migration");
+assert(remoteReadinessScript.includes("20260704044500_hairstyle_catalog_cron_service_role_auth.sql"), "remote readiness guard must expect service-role cron auth migration");
+assert(remoteReadinessScript.includes("20260704050000_hairstyle_catalog_cron_register_security_definer.sql"), "remote readiness guard must expect cron security definer migration");
 assert(runtimeEnvScript.includes("mode=admin-api"), "runtime env check must expose admin-api mode");
 assert(runtimeEnvScript.includes("mode=cron-registration"), "runtime env check must expose cron-registration mode");
 assert(runtimeEnvScript.includes("mode=trend-mail-function"), "runtime env check must expose trend-mail-function mode");
 assert(runtimeEnvScript.includes("INTERNAL_API_SECRET"), "runtime env check must require admin secret");
+assert(runtimeEnvScript.includes("admin API service-role fallback"), "runtime env check must accept service-role admin fallback");
 assert(runtimeEnvScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime env check must require Supabase service role key");
 assert(runtimeEnvScript.includes("RESEND_API_KEY"), "runtime env check must require Resend API key for trend mail smoke");
 assert(runtimeEnvScript.includes("RESEND_FROM_EMAIL"), "runtime env check must require a Resend sender for trend mail smoke");
@@ -228,6 +246,7 @@ assert(runtimeSmokeScript.includes("mode=active-db"), "runtime smoke runner must
 assert(runtimeSmokeScript.includes("mode=alert-idempotency"), "runtime smoke runner must expose alert idempotency mode");
 assert(runtimeSmokeScript.includes("mode=trend-mail-function"), "runtime smoke runner must expose trend mail function mode");
 assert(runtimeSmokeScript.includes("requireWriteConfirmation"), "runtime smoke runner must guard mutating calls");
+assert(runtimeSmokeScript.includes("adminAuthHeaders"), "runtime smoke runner must support service-role admin fallback");
 assert(runtimeSmokeScript.includes("HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL"), "runtime smoke runner must support target confirmation env");
 assert(runtimeSmokeScript.includes("beforeActiveCycleId === afterActiveCycleId"), "runtime smoke dry-run must verify active cycle is unchanged");
 assert(runtimeSmokeScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime smoke alert query must use service role env");

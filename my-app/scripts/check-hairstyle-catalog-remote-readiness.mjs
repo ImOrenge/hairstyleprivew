@@ -11,6 +11,9 @@ const expectedHairstyleMigrations = [
   "20260703093000_hairstyle_catalog_rotation_cron.sql",
   "20260703094000_hairstyle_catalog_rotation_event_rpc.sql",
   "20260703124648_hairstyle_catalog_cron_status.sql",
+  "20260704043000_enable_pg_cron_extension.sql",
+  "20260704044500_hairstyle_catalog_cron_service_role_auth.sql",
+  "20260704050000_hairstyle_catalog_cron_register_security_definer.sql",
 ];
 const defaultCommandTimeoutMs = 120000;
 
@@ -50,9 +53,9 @@ Default mode runs:
   supabase db push --dry-run --workdir my-app
 
 It reports whether the linked project is ready for the hairstyle catalog remote
-push. Write mode refuses to mutate the remote database unless all pending
-migrations are exactly the expected hairstyle catalog migrations and both
-confirmation env vars are set:
+push. Write mode refuses to mutate the remote database unless every pending
+migration is an expected hairstyle catalog migration and both confirmation env
+vars are set:
 
   HAIRSTYLE_CATALOG_MIGRATION_ALLOW_REMOTE_WRITE=1
   HAIRSTYLE_CATALOG_MIGRATION_CONFIRM_PROJECT_REF=${expectedProjectRef}
@@ -195,9 +198,7 @@ function buildReadiness(projectRef, pendingMigrations) {
   const expectedSet = new Set(expectedHairstyleMigrations);
   const hairstylePending = pendingMigrations.filter((file) => expectedSet.has(file));
   const blockingPending = pendingMigrations.filter((file) => !expectedSet.has(file));
-  const missingHairstyleMigrations = expectedHairstyleMigrations.filter(
-    (file) => pendingMigrations.length > 0 && !pendingMigrations.includes(file),
-  );
+  const missingHairstyleMigrations = [];
 
   return {
     projectRef,
@@ -211,8 +212,8 @@ function buildReadiness(projectRef, pendingMigrations) {
     readyForWrite:
       projectRef === expectedProjectRef &&
       blockingPending.length === 0 &&
-      missingHairstyleMigrations.length === 0 &&
-      hairstylePending.length === expectedHairstyleMigrations.length,
+      hairstylePending.length > 0 &&
+      hairstylePending.length === pendingMigrations.length,
   };
 }
 

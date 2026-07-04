@@ -45,12 +45,21 @@ const isMyPageRoute = createRouteMatcher(["/mypage"]);
 const isWorkspaceRoute = createRouteMatcher(["/workspace(.*)"]);
 
 function hasValidCatalogAdminSecret(req: NextRequest) {
-  const expected = process.env.INTERNAL_API_SECRET?.trim();
-  if (!expected) {
+  const providedSecrets = [
+    req.headers.get("x-admin-secret")?.trim() ?? "",
+    req.headers.get("apikey")?.trim() ?? "",
+    req.headers.get("authorization")?.trim().match(/^Bearer\s+(.+)$/i)?.[1]?.trim() ?? "",
+  ].filter(Boolean);
+  if (providedSecrets.length === 0) {
     return false;
   }
 
-  return req.headers.get("x-admin-secret")?.trim() === expected;
+  const allowedSecrets = [
+    process.env.INTERNAL_API_SECRET?.trim() ?? "",
+    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ?? "",
+  ].filter((secret) => secret && !secret.includes("YOUR_"));
+
+  return allowedSecrets.some((secret) => providedSecrets.includes(secret));
 }
 
 function clerkConfigRequiredResponse(req: NextRequest) {

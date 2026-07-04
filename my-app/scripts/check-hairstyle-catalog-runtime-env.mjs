@@ -116,6 +116,24 @@ function checkSecret(group, name, label, options = {}) {
   return [];
 }
 
+function checkAdminCredential(group) {
+  const internalSecret = readEnv("INTERNAL_API_SECRET");
+  if (internalSecret && !isPlaceholder(internalSecret) && internalSecret.length >= MIN_SECRET_LENGTH) {
+    console.log(`[ok] ${group}: admin API secret (INTERNAL_API_SECRET)`);
+    return [];
+  }
+
+  const serviceRoleKey = readEnv("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceRoleKey && !isPlaceholder(serviceRoleKey) && serviceRoleKey.length >= MIN_SECRET_LENGTH) {
+    console.log(`[ok] ${group}: admin API service-role fallback (SUPABASE_SERVICE_ROLE_KEY)`);
+    return [];
+  }
+
+  const message = `${group}: missing admin API credential (INTERNAL_API_SECRET or SUPABASE_SERVICE_ROLE_KEY)`;
+  console.log(`[missing] ${message}`);
+  return [message];
+}
+
 function checkResendSender(group) {
   const sender = readEnv("RESEND_FROM_EMAIL");
   if (!sender || isPlaceholder(sender)) {
@@ -211,7 +229,7 @@ function checkAdminApi(group) {
   const allowLocal = hasFlag("--allowLocal");
   return [
     ...checkHttpsUrl(group, "admin app URL", readAppUrl(), { allowLocal }),
-    ...checkSecret(group, "INTERNAL_API_SECRET", "admin API secret"),
+    ...checkAdminCredential(group),
   ];
 }
 

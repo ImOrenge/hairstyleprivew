@@ -9,11 +9,11 @@ const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appDir, "..");
 const wranglerConfigPath = resolve(appDir, "wrangler.jsonc");
 const REQUIRED_DEPLOYED_NAMES = [
-  "INTERNAL_API_SECRET",
   "NEXT_PUBLIC_SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
 ];
 const OPTIONAL_DEPLOYED_NAMES = [
+  "INTERNAL_API_SECRET",
   "NEXT_PUBLIC_APP_URL",
   "NEXT_PUBLIC_SITE_URL",
 ];
