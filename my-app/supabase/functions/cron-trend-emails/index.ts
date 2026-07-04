@@ -5,8 +5,10 @@
 
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("HAIRSTYLE_CATALOG_SUPABASE_URL") ?? Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY =
+  Deno.env.get("HAIRSTYLE_CATALOG_SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const HAIRSTYLE_CATALOG_CRON_SECRET = Deno.env.get("HAIRSTYLE_CATALOG_CRON_SECRET")?.trim() ?? "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
 const RESEND_FROM_EMAIL = resolveResendFromEmail(Deno.env.get("RESEND_FROM_EMAIL"));
@@ -171,7 +173,8 @@ function readBearerToken(value: string | null) {
 function isAuthorizedCronRequest(request: Request) {
   const apiKey = request.headers.get("apikey")?.trim() ?? "";
   const bearerToken = readBearerToken(request.headers.get("authorization"));
-  return apiKey === SUPABASE_SERVICE_ROLE_KEY || bearerToken === SUPABASE_SERVICE_ROLE_KEY;
+  const allowedSecrets = [SUPABASE_SERVICE_ROLE_KEY, HAIRSTYLE_CATALOG_CRON_SECRET].filter(Boolean);
+  return allowedSecrets.includes(apiKey) || allowedSecrets.includes(bearerToken);
 }
 
 function alertTimeMs(alert: TrendAlert) {

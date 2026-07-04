@@ -260,6 +260,9 @@ assert(trendMailFunction.includes("alert_type,catalog_cycle_id"), "trend mail fu
 assert(supabaseConfig.includes("[functions.cron-trend-emails]"), "trend mail function must have explicit function config");
 assert(supabaseConfig.includes("verify_jwt = false"), "trend mail function must disable platform JWT verification for service-key cron calls");
 assert(trendMailFunction.includes("isAuthorizedCronRequest"), "trend mail function must authorize cron requests inside the function");
+assert(trendMailFunction.includes("HAIRSTYLE_CATALOG_SUPABASE_SERVICE_ROLE_KEY"), "trend mail function must support function-scoped service role secret");
+assert(trendMailFunction.includes("HAIRSTYLE_CATALOG_CRON_SECRET"), "trend mail function must support function-scoped cron secret");
+assert(trendMailFunction.includes("allowedSecrets.includes"), "trend mail function must compare cron auth against all configured secrets");
 assert(trendMailFunction.includes('request.headers.get("apikey")'), "trend mail function must accept Supabase apikey header");
 assert(trendMailFunction.includes('request.headers.get("authorization")'), "trend mail function must inspect Authorization bearer header");
 assert(trendMailFunction.includes('error: "Unauthorized"'), "trend mail function must reject missing service credentials");
@@ -279,6 +282,8 @@ assert(trendMailDeployScript.includes("--use-api"), "trend mail deploy helper mu
 assert(trendMailDeployScript.includes('"deno", ["check", "--no-lock", functionPath]'), "trend mail deploy helper must run Deno check before deploy");
 assert(trendMailDeployScript.includes("verify_jwt=false"), "trend mail deploy helper must enforce function JWT config");
 assert(trendMailDeployScript.includes("isAuthorizedCronRequest"), "trend mail deploy helper must enforce in-function auth guard");
+assert(trendMailDeployScript.includes("HAIRSTYLE_CATALOG_SUPABASE_SERVICE_ROLE_KEY"), "trend mail deploy helper must enforce function-scoped service role secret support");
+assert(trendMailDeployScript.includes("HAIRSTYLE_CATALOG_CRON_SECRET"), "trend mail deploy helper must enforce function-scoped cron secret support");
 assert(launchReadinessScript.includes("hairstyle:catalog:remote:check"), "launch readiness must run remote migration readiness");
 assert(launchReadinessScript.includes("hairstyle:catalog:env:check"), "launch readiness must run runtime env preflight");
 assert(launchReadinessScript.includes("hairstyle:catalog:cloudflare:secrets"), "launch readiness must check Cloudflare secret names");

@@ -109,6 +109,8 @@ function validateLocalFunctionReadiness() {
   assert(config.includes("[functions.cron-trend-emails]"), "Missing cron-trend-emails function config");
   assert(config.includes("verify_jwt = false"), "cron-trend-emails must deploy with verify_jwt=false");
   assert(source.includes("isAuthorizedCronRequest"), "cron-trend-emails must authorize service-key cron calls");
+  assert(source.includes("HAIRSTYLE_CATALOG_SUPABASE_SERVICE_ROLE_KEY"), "cron-trend-emails must support function-scoped service role secret");
+  assert(source.includes("HAIRSTYLE_CATALOG_CRON_SECRET"), "cron-trend-emails must support function-scoped cron secret");
   assert(source.includes('request.headers.get("apikey")'), "cron-trend-emails must accept apikey header");
   assert(source.includes('request.headers.get("authorization")'), "cron-trend-emails must inspect Authorization header");
 
