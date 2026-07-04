@@ -157,7 +157,7 @@ const topNineBody = catalog.match(/function buildTopNine\([\s\S]*?function build
 assert(topNineBody && topNineBody[0].includes("if (limit <= 0)") && topNineBody[0].includes("selected.length >= limit"), "lineup fallback builder must enforce recommendation limit");
 assert(catalog.includes("computeLineupOverlap"), "missing lineup overlap calculation");
 assert(catalog.includes("overlap_warning"), "missing lineup overlap warning event");
-const generateBody = catalog.match(/export async function generateCatalogBackedRecommendationSet\([\s\S]*?return \{[\s\S]*?selectionContext,[\s\S]*?\};\n\}/);
+const generateBody = catalog.match(/export async function generateCatalogBackedRecommendationSet\([\s\S]*?return \{[\s\S]*?selectionContext,[\s\S]*?\};\r?\n\}/);
 assert(generateBody && generateBody[0].includes("lineups") && generateBody[0].includes("buildLineupBackedRecommendations"), "recommendation path must use active lineup snapshots");
 assert(!catalog.includes("retrying with seeded fallback"), "auto rebuild still falls back to seeded catalog");
 assert(!catalog.includes('rebuildCatalogWithMode(options, "seeded-weekly", staleRunningCyclesFailed, activeBefore)'), "auto rebuild must not auto-activate seeded fallback");
