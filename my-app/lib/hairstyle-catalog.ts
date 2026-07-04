@@ -121,6 +121,7 @@ interface CatalogRebuildResult {
   requestedMode: CatalogRebuildMode;
   resolvedMode: CatalogSourceMode;
   validation: CatalogValidationResult;
+  lineupCounts: Record<MemberStyleTarget, number>;
   activatedAt: string | null;
   expiresAt: string | null;
   nextAutomaticAttemptAt: string;
@@ -1400,6 +1401,7 @@ async function rebuildCatalogWithMode(
         requestedMode: options.mode,
         resolvedMode,
         validation,
+        lineupCounts: validation.lineupCounts,
         activatedAt: null,
         expiresAt: activeAfter?.activeCycle.expiresAt ?? null,
         nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(),
@@ -1443,6 +1445,7 @@ async function rebuildCatalogWithMode(
         requestedMode: options.mode,
         resolvedMode: sourceMode,
         validation,
+        lineupCounts: validation.lineupCounts,
         activatedAt: null,
         expiresAt: activeAfter?.activeCycle.expiresAt ?? null,
         nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(),
@@ -1636,6 +1639,7 @@ async function rebuildCatalogWithMode(
       requestedMode: options.mode,
       resolvedMode: sourceMode,
       validation,
+      lineupCounts: validation.lineupCounts,
       activatedAt,
       expiresAt: expiresAt ?? activeAfter?.activeCycle.expiresAt ?? null,
       nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(),
@@ -1682,6 +1686,7 @@ export async function rebuildWeeklyHairstyleCatalog(
       requestedMode: options.mode,
       resolvedMode: activeBefore?.cycle.sourceSummary?.mode ?? sourceMode,
       validation,
+      lineupCounts: validation.lineupCounts,
       activatedAt: activeBefore?.activeCycle.activatedAt ?? null,
       expiresAt: activeBefore?.activeCycle.expiresAt ?? null,
       nextAutomaticAttemptAt: computeNextAutomaticAttemptAt(now),

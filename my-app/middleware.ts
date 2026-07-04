@@ -44,6 +44,15 @@ const isHomeRoute = createRouteMatcher(["/home(.*)"]);
 const isMyPageRoute = createRouteMatcher(["/mypage"]);
 const isWorkspaceRoute = createRouteMatcher(["/workspace(.*)"]);
 
+function hasValidCatalogAdminSecret(req: NextRequest) {
+  const expected = process.env.INTERNAL_API_SECRET?.trim();
+  if (!expected) {
+    return false;
+  }
+
+  return req.headers.get("x-admin-secret")?.trim() === expected;
+}
+
 function clerkConfigRequiredResponse(req: NextRequest) {
   const url = new URL(req.url);
   if (url.pathname.startsWith("/api/")) {
@@ -137,6 +146,10 @@ const clerkAppMiddleware = hasClerkConfig
         return withMobileCors(req, NextResponse.next());
       }
 
+      if (isCatalogSecretAdminApiRoute(req) && hasValidCatalogAdminSecret(req)) {
+        return withMobileCors(req, NextResponse.next());
+      }
+
       const authObject = isMobileSessionApiRoute(req)
         ? await auth({ acceptsToken: "session_token" })
         : await auth();
@@ -216,6 +229,10 @@ const proxy = hasClerkConfig && clerkAppMiddleware
       }
 
       if (!isProtectedRoute(req) || isWebhookRoute(req) || (isPublicSupportApiRoute(req) && !isMutationRequest(req))) {
+        return withMobileCors(req, NextResponse.next());
+      }
+
+      if (isCatalogSecretAdminApiRoute(req) && hasValidCatalogAdminSecret(req)) {
         return withMobileCors(req, NextResponse.next());
       }
 

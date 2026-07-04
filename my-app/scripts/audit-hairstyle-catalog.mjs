@@ -73,6 +73,7 @@ if (lineupAudit.status !== 0) {
 const catalog = read("lib/hairstyle-catalog.ts");
 const trendResearch = read("lib/hairstyle-trend-research.ts");
 const rebuildRoute = read("app/api/admin/hairstyles/rebuild/route.ts");
+const middleware = read("middleware.ts");
 const rotationMigration = read("supabase/migrations/20260703092000_hairstyle_catalog_rotation.sql");
 const eventMigration = read("supabase/migrations/20260703094000_hairstyle_catalog_rotation_event_rpc.sql");
 const cronMigration = read("supabase/migrations/20260703093000_hairstyle_catalog_rotation_cron.sql");
@@ -117,6 +118,18 @@ const notDueBody = catalog.match(/if \(options\.onlyIfDue[\s\S]*?await recordCat
 assert(notDueBody && notDueBody[0].includes("validateActiveCatalogSnapshot"), "not-due skip returns empty validation instead of active snapshot validation");
 assert(catalog.includes("CatalogRebuildConflictError"), "missing rebuild conflict error type");
 assert(rebuildRoute.includes("CatalogRebuildConflictError") && rebuildRoute.includes("409"), "rebuild route must map running conflicts to 409");
+assert(catalog.includes("lineupCounts: validation.lineupCounts"), "rebuild response must expose top-level lineupCounts");
+const catalogSecretBypassCount = (
+  middleware.match(/isCatalogSecretAdminApiRoute\(req\) && hasValidCatalogAdminSecret\(req\)/g) || []
+).length;
+const firstCatalogSecretBypass = middleware.indexOf("if (isCatalogSecretAdminApiRoute(req) && hasValidCatalogAdminSecret(req))");
+const firstAuthRead = middleware.indexOf("const authObject =");
+assert(middleware.includes("function hasValidCatalogAdminSecret"), "middleware must validate catalog admin secret requests");
+assert(catalogSecretBypassCount >= 2, "middleware must allow catalog secret admin APIs in both Clerk and no-Clerk paths");
+assert(
+  firstCatalogSecretBypass >= 0 && firstAuthRead >= 0 && firstCatalogSecretBypass < firstAuthRead,
+  "catalog secret admin APIs must bypass Clerk auth before reading user auth",
+);
 assert(catalog.includes("enqueueCatalogRotationTrendAlert"), "missing trend alert enqueue service hook");
 assert(catalog.includes("trend_alert_enqueue_failed"), "missing alert enqueue failure isolation warning");
 const alertPolicyBody = catalog.match(/function shouldSendCatalogRotationAlert\([\s\S]*?function computeCycleExpiresAt/);
