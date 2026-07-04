@@ -155,6 +155,7 @@ assert(runtimeRunbook.includes("cron-hairstyle-catalog-rotation-check"), "runtim
 assert(runtimeRunbook.includes("catalog_rotation"), "runtime smoke runbook missing catalog rotation alert check");
 assert(runtimeRunbook.includes("hairstyle:catalog:env:check"), "runtime smoke runbook missing runtime env preflight");
 assert(runtimeRunbook.includes("Supabase linked dry-run 완료"), "runtime smoke runbook must record linked dry-run status");
+assert(runtimeRunbook.includes("--summaryJson"), "runtime smoke runbook missing readiness summary JSON option");
 assert(!runtimeRunbook.includes("현재 격리 worktree에는 project ref가 없음"), "runtime smoke runbook still says project ref is missing");
 for (const phaseDoc of phaseDocSpecs) {
   assertPhaseDoc(phaseDoc, phaseDoc.doc, phaseReadme);
@@ -275,6 +276,11 @@ assert(launchReadinessScript.includes('"allowPendingAlerts", "expectPendingCatal
 assert(launchReadinessScript.includes("pendingMigrations"), "launch readiness must report pending remote migrations");
 assert(launchReadinessScript.includes("blockingMigrationDetails"), "launch readiness must include blocking migration summaries");
 assert(launchReadinessScript.includes("runtime env preflight failed"), "launch readiness must gate runtime smoke on env preflight");
+assert(launchReadinessScript.includes("summaryJson"), "launch readiness must expose machine-readable summary output");
+assert(launchReadinessScript.includes("writeSummaryJson"), "launch readiness must write summary JSON when requested");
+assert(launchReadinessScript.includes("requestedEvidence"), "launch readiness summary must report requested evidence");
+assert(launchReadinessScript.includes("missingEvidence"), "launch readiness summary must include missing evidence");
+assert(launchReadinessScript.includes("externalBlockers"), "launch readiness summary must include external blockers");
 assert(launchReadinessScript.includes("completed with missing external evidence"), "launch readiness allow-missing path must finish after blocker output");
 assert(launchReadinessScript.includes("process.exitCode = 2"), "launch readiness must fail when external evidence is missing by default");
 

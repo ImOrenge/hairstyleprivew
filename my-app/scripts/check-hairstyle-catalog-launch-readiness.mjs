@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -85,6 +85,7 @@ Optional external evidence:
   --functionUrl <url>        Deployed cron-trend-emails function URL.
   --allowPendingAlerts       Allow intentional live trend-mail smoke when due alerts exist.
   --expectPendingCatalogAlert Require at least one due catalog_rotation alert for trend-mail smoke.
+  --summaryJson <path>       Write a machine-readable readiness summary JSON file.
   --allowLocal               Allow localhost app URL for smoke scripts.
   --allowMissingExternal     Exit 0 after reporting missing external evidence.
 `);
@@ -303,6 +304,76 @@ function collectTrendMailSmoke(missingEvidence, externalBlockers, prerequisites)
   );
 }
 
+function requestedEvidence() {
+  const runAllRuntimeSmoke = hasFlag("runRuntimeSmoke");
+  return {
+    verifyCloudflareSecrets: hasFlag("verifyCloudflareSecrets"),
+    runReadOnlyRuntimeSmoke: runAllRuntimeSmoke || hasFlag("runReadOnlyRuntimeSmoke"),
+    runAdminDryRunSmoke: runAllRuntimeSmoke || hasFlag("runAdminDryRunSmoke"),
+    runTrendMailSmoke: hasFlag("runTrendMailSmoke"),
+    forceRuntimeSmoke: hasFlag("forceRuntimeSmoke"),
+  };
+}
+
+function buildSummary({
+  allowMissingExternal,
+  cloudflareLocalSecretCheckOk,
+  cloudflareDeployedSecretCheckOk,
+  envPreflightOk,
+  externalBlockers,
+  missingEvidence,
+  remoteReadiness,
+  trendMailDeployDryRunOk,
+}) {
+  const hasBlockers = missingEvidence.length > 0 || externalBlockers.length > 0;
+  return {
+    ok: !hasBlockers,
+    allowMissingExternal,
+    exitCode: hasBlockers && !allowMissingExternal ? 2 : 0,
+    requestedEvidence: requestedEvidence(),
+    checks: {
+      audit: true,
+      remoteReadiness: Boolean(remoteReadiness),
+      envPreflight: envPreflightOk,
+      cloudflareLocalSecretNames: cloudflareLocalSecretCheckOk,
+      cloudflareDeployedSecretNames: cloudflareDeployedSecretCheckOk,
+      trendMailDeployDryRun: trendMailDeployDryRunOk,
+    },
+    remoteReadiness: remoteReadiness
+      ? {
+          projectRef: remoteReadiness.projectRef ?? null,
+          expectedProjectRef: remoteReadiness.expectedProjectRef ?? null,
+          projectMatches: Boolean(remoteReadiness.projectMatches),
+          pendingMigrations: Array.isArray(remoteReadiness.pendingMigrations)
+            ? remoteReadiness.pendingMigrations
+            : [],
+          hairstylePending: Array.isArray(remoteReadiness.hairstylePending)
+            ? remoteReadiness.hairstylePending
+            : [],
+          blockingPending: Array.isArray(remoteReadiness.blockingPending)
+            ? remoteReadiness.blockingPending
+            : [],
+          missingHairstyleMigrations: Array.isArray(remoteReadiness.missingHairstyleMigrations)
+            ? remoteReadiness.missingHairstyleMigrations
+            : [],
+          readyForWrite: Boolean(remoteReadiness.readyForWrite),
+        }
+      : null,
+    missingEvidence,
+    externalBlockers,
+  };
+}
+
+function writeSummaryJson(summary) {
+  const target = getArg("summaryJson");
+  if (!target) return;
+
+  const path = resolve(repoRoot, target);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(summary, null, 2)}\n`, "utf8");
+  console.log(`[hairstyle:catalog:launch:check] wrote summary JSON: ${path}`);
+}
+
 function main() {
   if (hasFlag("help") || process.argv.includes("-h")) {
     showHelp();
@@ -314,6 +385,9 @@ function main() {
   const allowMissingExternal = hasFlag("allowMissingExternal");
   const missingEvidence = [];
   const externalBlockers = [];
+  let cloudflareLocalSecretCheckOk = false;
+  let cloudflareDeployedSecretCheckOk = null;
+  let trendMailDeployDryRunOk = false;
 
   npmRun("hairstyle:catalog:audit");
 
@@ -335,18 +409,18 @@ function main() {
     externalBlockers,
   ));
 
-  tryExternal(
+  cloudflareLocalSecretCheckOk = Boolean(tryExternal(
     "Cloudflare local secret-name preflight",
     () => npmRun("hairstyle:catalog:cloudflare:secrets"),
     externalBlockers,
-  );
+  ));
 
   if (hasFlag("verifyCloudflareSecrets")) {
-    tryExternal(
+    cloudflareDeployedSecretCheckOk = Boolean(tryExternal(
       "Cloudflare deployed secret-name verification",
       () => npmRun("hairstyle:catalog:cloudflare:secrets", ["--", "--verify"]),
       externalBlockers,
-    );
+    ));
   } else {
     missingEvidence.push(
       "deployed Cloudflare Worker secret names not verified; rerun with --verifyCloudflareSecrets",
@@ -354,8 +428,21 @@ function main() {
   }
 
   npmRun("hairstyle:catalog:trend-mail:deploy");
+  trendMailDeployDryRunOk = true;
   collectRuntimeSmoke(missingEvidence, externalBlockers, { remoteReadiness, envPreflightOk });
   collectTrendMailSmoke(missingEvidence, externalBlockers, { remoteReadiness, envPreflightOk });
+
+  const summary = buildSummary({
+    allowMissingExternal,
+    cloudflareLocalSecretCheckOk,
+    cloudflareDeployedSecretCheckOk,
+    envPreflightOk,
+    externalBlockers,
+    missingEvidence,
+    remoteReadiness,
+    trendMailDeployDryRunOk,
+  });
+  writeSummaryJson(summary);
 
   if (missingEvidence.length > 0 || externalBlockers.length > 0) {
     console.error("[hairstyle:catalog:launch:check] missing external evidence or blockers:");

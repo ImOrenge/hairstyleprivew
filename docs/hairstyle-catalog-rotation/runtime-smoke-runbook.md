@@ -22,6 +22,7 @@
 | remote check lock | `my-app/supabase/.temp/hairstyle-catalog-remote-check.lock` | 같은 worktree에서 dry-run guard를 동시에 실행하지 않는다. |
 | runtime smoke target confirmation | `--confirmAppUrl=<app-url>` 또는 `HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL` | active 변경 가능 호출은 대상 URL 확인 없이는 실행하지 않는다. |
 | runtime smoke force | `--forceRuntimeSmoke` | launch readiness에서 prerequisite가 실패해도 원시 runtime smoke 실패를 수집할 때만 사용한다. |
+| readiness summary JSON | `--summaryJson=<path>` | launch readiness 최종 판정, 요청한 증거, remote readiness, missing evidence, external blocker를 JSON 파일로 남긴다. |
 | local env files | `my-app/.env.local`, `my-app/.env.assets` | 격리 worktree에는 메인 worktree의 ignored env 파일을 복사해서 사용한다. |
 | Cloudflare secret names | `npm run hairstyle:catalog:cloudflare:secrets -- --verify` | Worker에 등록된 secret 이름만 확인한다. 값은 조회하거나 출력하지 않는다. |
 
@@ -35,7 +36,7 @@
 | 4 | migration 적용 | `npm run hairstyle:catalog:remote:check -- --write` | active pointer, lineup, event RPC, cron helper가 생성된다. |
 | 5 | trend mail function deploy dry-run | `npm run hairstyle:catalog:trend-mail:deploy` | `verify_jwt=false`, `--no-verify-jwt`, 함수 내부 service-key auth, Deno check, deploy command를 원격 변경 없이 확인한다. |
 | 6 | trend mail function deploy | `npm run hairstyle:catalog:trend-mail:deploy -- --write` | `HAIRSTYLE_CATALOG_FUNCTION_DEPLOY_ALLOW_WRITE=1`과 project ref 확인 env가 있을 때만 `cron-trend-emails`를 배포한다. |
-| 7 | launch readiness summary | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal` | 로컬 감사, remote readiness, env, Cloudflare secret, trend mail deploy dry-run을 한 번에 실행하고 남은 외부 blocker를 확인한다. Runtime smoke는 `--runReadOnlyRuntimeSmoke`, admin dry-run POST는 `--runAdminDryRunSmoke`로 분리하고, prerequisite 실패 시 실행을 skip한다. 특정 cycle 검증은 `--cycleId=<id> --market=kr --expectAlert`를 함께 넘긴다. |
+| 7 | launch readiness summary | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal --summaryJson=my-app/supabase/.temp/hairstyle-launch-summary.json` | 로컬 감사, remote readiness, env, Cloudflare secret, trend mail deploy dry-run을 한 번에 실행하고 남은 외부 blocker를 확인한다. Runtime smoke는 `--runReadOnlyRuntimeSmoke`, admin dry-run POST는 `--runAdminDryRunSmoke`로 분리하고, prerequisite 실패 시 실행을 skip한다. 특정 cycle 검증은 `--cycleId=<id> --market=kr --expectAlert`를 함께 넘긴다. |
 | 8 | cron 등록 | `select public.register_hairstyle_catalog_rotation_cron('<web-url>', '<admin-secret>', '<edge-base-url>', '<service-role-key>');` | `cron.job`에 rotation check와 post-rotation mail job이 존재한다. |
 | 9 | cron DB state | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | rotation check와 post-rotation mail job의 schedule, active 상태, 호출 대상 fragment를 DB에서 확인한다. |
 | 10 | active DB state | `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | active RPC, 32개 row, 남/녀 후보 18개 이상, 남/녀 lineup 정확히 9개와 슬롯 구성, alert/delivery 중복 방지를 확인한다. |
@@ -79,6 +80,7 @@
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | remote RPC 미적용으로 `PGRST202`. pending migration 적용 전 정상 blocker |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | remote `trend_alerts.catalog_cycle_id` 미적용으로 `42703`. pending migration 적용 전 정상 blocker |
 | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal` | 통과. remote pending migration, 앱 URL/admin secret 누락, Cloudflare deployed secret 미검증, read-only/admin dry-run runtime smoke 미실행을 blocker로 보고 |
+| `npm run hairstyle:catalog:launch:check -- --allowMissingExternal --summaryJson=my-app/supabase/.temp/hairstyle-launch-summary.json` | 통과. 사람이 읽는 blocker 로그와 별도로 `ok`, `requestedEvidence`, `checks`, `remoteReadiness`, `missingEvidence`, `externalBlockers` JSON을 생성 |
 | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal --runReadOnlyRuntimeSmoke --runAdminDryRunSmoke` | known prerequisite 실패 때문에 runtime smoke를 skip하고, `--forceRuntimeSmoke` 사용 시에만 원시 smoke 실패를 수집한다. |
 | `npm run hairstyle:catalog:launch:check -- --runReadOnlyRuntimeSmoke --runTrendMailSmoke --cycleId=<cycle-id> --market=kr --expectAlert --allowPendingAlerts --expectPendingCatalogAlert` | migration/env 준비 후 특정 cycle의 alert idempotency와 의도한 live `catalog_rotation` mail smoke를 한 번에 검증한다. due alert가 있으면 실제 메일 전송 가능성이 있으므로 운영 승인 후에만 `--allowPendingAlerts`를 사용한다. |
 | remote pending migrations | `202607030001_plan_credit_policy_aftercare.sql`, `20260703092000_hairstyle_catalog_rotation.sql`, `20260703093000_hairstyle_catalog_rotation_cron.sql`, `20260703094000_hairstyle_catalog_rotation_event_rpc.sql`, `20260703124648_hairstyle_catalog_cron_status.sql` |
