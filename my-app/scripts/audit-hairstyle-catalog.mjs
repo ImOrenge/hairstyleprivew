@@ -278,6 +278,9 @@ assert(launchReadinessScript.includes("blockingMigrationDetails"), "launch readi
 assert(launchReadinessScript.includes("runtime env preflight failed"), "launch readiness must gate runtime smoke on env preflight");
 assert(launchReadinessScript.includes("summaryJson"), "launch readiness must expose machine-readable summary output");
 assert(launchReadinessScript.includes("writeSummaryJson"), "launch readiness must write summary JSON when requested");
+assert(launchReadinessScript.includes("hairstyle-catalog-launch-readiness"), "launch readiness summary must identify the check");
+assert(launchReadinessScript.includes("schemaVersion"), "launch readiness summary must expose a schema version");
+assert(launchReadinessScript.includes("generatedAt"), "launch readiness summary must include generation timestamp");
 assert(launchReadinessScript.includes("requestedEvidence"), "launch readiness summary must report requested evidence");
 assert(launchReadinessScript.includes("summarizeBlockingMigrationDetails"), "launch readiness summary must preserve blocking migration details");
 assert(launchReadinessScript.includes("missingEvidence"), "launch readiness summary must include missing evidence");

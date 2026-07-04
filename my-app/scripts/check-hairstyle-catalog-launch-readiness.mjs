@@ -344,6 +344,9 @@ function buildSummary({
 }) {
   const hasBlockers = missingEvidence.length > 0 || externalBlockers.length > 0;
   return {
+    check: "hairstyle-catalog-launch-readiness",
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
     ok: !hasBlockers,
     allowMissingExternal,
     exitCode: hasBlockers && !allowMissingExternal ? 2 : 0,
