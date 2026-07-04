@@ -385,6 +385,24 @@ function buildSummary({
   };
 }
 
+function buildFatalSummary(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    check: "hairstyle-catalog-launch-readiness",
+    schemaVersion: 1,
+    generatedAt: new Date().toISOString(),
+    ok: false,
+    allowMissingExternal: hasFlag("allowMissingExternal"),
+    exitCode: 1,
+    requestedEvidence: requestedEvidence(),
+    checks: null,
+    remoteReadiness: null,
+    missingEvidence: [],
+    externalBlockers: [],
+    fatalError: message,
+  };
+}
+
 function writeSummaryJson(summary) {
   const target = getArg("summaryJson");
   if (!target) return;
@@ -489,6 +507,16 @@ function main() {
 try {
   main();
 } catch (error) {
+  if (getArg("summaryJson")) {
+    try {
+      writeSummaryJson(buildFatalSummary(error));
+    } catch (summaryError) {
+      console.error(
+        "[hairstyle:catalog:launch:check] failed to write summary JSON:",
+        summaryError instanceof Error ? summaryError.message : String(summaryError),
+      );
+    }
+  }
   console.error(
     "[hairstyle:catalog:launch:check] failed:",
     error instanceof Error ? error.message : String(error),
