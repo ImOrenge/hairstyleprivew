@@ -48,6 +48,7 @@ const remoteReadinessScript = read("scripts/check-hairstyle-catalog-remote-readi
 const runtimeEnvScript = read("scripts/check-hairstyle-catalog-runtime-env.mjs");
 const runtimeSmokeScript = read("scripts/smoke-hairstyle-catalog-runtime.mjs");
 const cloudflareSecretsScript = read("scripts/check-hairstyle-catalog-cloudflare-secrets.mjs");
+const trendMailDeployScript = read("scripts/deploy-hairstyle-catalog-trend-mail-function.mjs");
 const trendMailFunction = read("supabase/functions/cron-trend-emails/index.ts");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
@@ -106,11 +107,13 @@ assert(packageJson.includes("\"hairstyle:catalog:lineup:audit\""), "my-app packa
 assert(packageJson.includes("\"hairstyle:catalog:env:check\""), "my-app package is missing hairstyle runtime env check script");
 assert(packageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "my-app package is missing hairstyle runtime smoke script");
 assert(packageJson.includes("\"hairstyle:catalog:cloudflare:secrets\""), "my-app package is missing hairstyle Cloudflare secret check script");
+assert(packageJson.includes("\"hairstyle:catalog:trend-mail:deploy\""), "my-app package is missing hairstyle trend mail deploy script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:remote:check\""), "root package is missing hairstyle remote readiness script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:lineup:audit\""), "root package is missing hairstyle lineup audit script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:env:check\""), "root package is missing hairstyle runtime env check script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "root package is missing hairstyle runtime smoke script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:cloudflare:secrets\""), "root package is missing hairstyle Cloudflare secret check script");
+assert(rootPackageJson.includes("\"hairstyle:catalog:trend-mail:deploy\""), "root package is missing hairstyle trend mail deploy script");
 assert(cloudflareSecretsScript.includes("INTERNAL_API_SECRET"), "Cloudflare secret check must verify admin API secret name");
 assert(cloudflareSecretsScript.includes("wrangler\", \"secret\", \"list\""), "Cloudflare secret check must list deployed Worker secret names");
 assert(cloudflareSecretsScript.includes("--format\", \"json\""), "Cloudflare secret check must parse Wrangler JSON output");
@@ -180,6 +183,14 @@ assert(trendMailFunction.includes('request.headers.get("authorization")'), "tren
 assert(trendMailFunction.includes('error: "Unauthorized"'), "trend mail function must reject missing service credentials");
 assert(trendMailFunction.includes("catalogRotationProcessed"), "trend mail function response must expose processed catalog rotation count");
 assert(trendMailFunction.includes("processedAlerts"), "trend mail function response must expose processed alert evidence");
+assert(trendMailDeployScript.includes("dry-run only"), "trend mail deploy helper must default to dry-run");
+assert(trendMailDeployScript.includes("HAIRSTYLE_CATALOG_FUNCTION_DEPLOY_ALLOW_WRITE"), "trend mail deploy helper must require write allow env");
+assert(trendMailDeployScript.includes("HAIRSTYLE_CATALOG_FUNCTION_DEPLOY_CONFIRM_PROJECT_REF"), "trend mail deploy helper must require project confirmation");
+assert(trendMailDeployScript.includes('"functions", "deploy", functionName'), "trend mail deploy helper must deploy the Supabase function");
+assert(trendMailDeployScript.includes("--use-api"), "trend mail deploy helper must support server-side function bundling");
+assert(trendMailDeployScript.includes('"deno", ["check", "--no-lock", functionPath]'), "trend mail deploy helper must run Deno check before deploy");
+assert(trendMailDeployScript.includes("verify_jwt=false"), "trend mail deploy helper must enforce function JWT config");
+assert(trendMailDeployScript.includes("isAuthorizedCronRequest"), "trend mail deploy helper must enforce in-function auth guard");
 
 console.log(JSON.stringify({
   ok: true,
@@ -208,6 +219,7 @@ console.log(JSON.stringify({
     "trend mail function smoke guard",
     "trend mail catalog processing evidence",
     "trend mail service-key auth guard",
+    "trend mail deploy guard",
     "active DB smoke guard",
   ],
 }, null, 2));

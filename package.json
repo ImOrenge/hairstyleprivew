@@ -20,6 +20,7 @@
     "hairstyle:catalog:runtime:smoke": "npm --prefix my-app run hairstyle:catalog:runtime:smoke --",
     "hairstyle:catalog:remote:check": "npm --prefix my-app run hairstyle:catalog:remote:check --",
     "hairstyle:catalog:cloudflare:secrets": "npm --prefix my-app run hairstyle:catalog:cloudflare:secrets --",
+    "hairstyle:catalog:trend-mail:deploy": "npm --prefix my-app run hairstyle:catalog:trend-mail:deploy --",
     "portone:audit": "npm --prefix my-app run portone:audit",
     "portone:contract:test": "npm --prefix my-app run portone:contract:test",
     "portone:confirmation:test": "npm --prefix my-app run portone:confirmation:test",
