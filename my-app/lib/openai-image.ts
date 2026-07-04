@@ -276,8 +276,10 @@ export async function runOpenAIImageGeneration(
     "Global Constraints:",
     "- Use the provided reference image as the identity source.",
     "- Keep identity and ethnicity unchanged.",
-    "- Keep frontal portrait and white background.",
-    "- Change only hairstyle and hair color.",
+    "- Keep a frontal portrait composition.",
+    "- Change only hairstyle, hair color, and background cleanup.",
+    "- Replace the original background with a clean solid-color studio backdrop.",
+    "- Use plain white or a light neutral background with no props, room details, patterns, scenery, or text.",
     "- Do not alter face geometry, skin tone, expression, pose, camera angle, framing, or clothing.",
     "",
     request.productRequirements?.trim()

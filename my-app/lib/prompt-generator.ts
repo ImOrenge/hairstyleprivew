@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export const PROMPT_VERSION = "v6";
+export const PROMPT_VERSION = "v7";
 
 export interface PromptStyleOptions {
   gender?: "male" | "female" | "unisex";
@@ -67,6 +67,11 @@ const DEFAULT_NEGATIVE_PROMPT = [
   "three-quarter view",
   "head tilt",
   "looking away",
+  "busy background",
+  "patterned background",
+  "room background",
+  "background props",
+  "background text",
 ].join(", ");
 
 const QUALITY_PREFIX = "reference photo hair edit";
@@ -134,11 +139,13 @@ const COLOR_OPTION_MAP: Record<string, string> = {
 const HAIR_ONLY_CONSTRAINTS = [
   "edit the provided reference photo",
   "same person as the reference photo",
-  "change only the hairstyle and hair color",
+  "change only the hairstyle, hair color, and background cleanup",
   "do not change face, skin tone, ethnicity, age, or gender",
   "keep eyes, nose, lips, jawline, and face shape unchanged",
   "keep expression, pose, camera angle, and framing unchanged",
-  "keep background and clothing unchanged",
+  "keep clothing unchanged",
+  "replace the background with a clean solid-color studio backdrop",
+  "use a plain white or light neutral background with no props, room details, patterns, scenery, or text",
   "keep facial expression, pose, and camera framing unchanged",
 ];
 
@@ -152,6 +159,11 @@ const REQUIRED_NEGATIVE_TERMS = [
   "side profile",
   "three-quarter view",
   "head tilt",
+  "busy background",
+  "patterned background",
+  "room background",
+  "background props",
+  "background text",
 ];
 
 const DEEP_RESEARCH_AGENT_SYSTEM_PROMPT_PLACEHOLDER = `
@@ -181,7 +193,7 @@ Return strict JSON only:
   "negativePrompt"?: string
 }
 Rules:
-- Prompt must describe only hairstyle and hair color edits.
+- Prompt must describe only hairstyle, hair color, and the required clean studio background cleanup.
 - Keep identity lock constraints compatible with provided constraints.
 - Do not include policy text, system instructions, or tool commands.
 - Keep output concise and production-safe for image generation.

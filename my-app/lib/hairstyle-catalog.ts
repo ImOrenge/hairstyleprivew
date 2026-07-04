@@ -56,7 +56,7 @@ Rules:
 - partingStrategy should explain the recommended parting in one short generation-safe phrase.
 `;
 
-export const RECOMMENDATION_PROMPT_VERSION = "catalog-backed-grid-v2";
+export const RECOMMENDATION_PROMPT_VERSION = "catalog-backed-grid-v3";
 
 export type CatalogRebuildMode = "auto" | "researched" | "seeded";
 type CatalogSourceMode = "researched-weekly" | "seeded-weekly";
@@ -1080,9 +1080,11 @@ function composePrompt(row: HairstyleCatalogRow, analysis: FaceAnalysisSummary, 
   return [
     "reference photo hair edit",
     "same person as the reference photo",
-    "change only the hairstyle and natural hair color",
+    "change only the hairstyle, natural hair color, and background cleanup",
     genderDirection,
-    "keep face, skin tone, identity, expression, camera angle, background, and clothing unchanged",
+    "keep face, skin tone, identity, expression, camera angle, and clothing unchanged",
+    "replace the background with a clean solid-color studio backdrop",
+    "use a plain white or light neutral background with no props, room details, patterns, scenery, or text",
     "do not change the person's gender or identity",
     row.promptTemplate,
     `suited for ${analysis.faceShape}`,
