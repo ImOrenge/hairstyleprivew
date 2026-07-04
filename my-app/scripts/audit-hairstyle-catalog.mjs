@@ -38,6 +38,7 @@ const rotationMigration = read("supabase/migrations/20260703092000_hairstyle_cat
 const eventMigration = read("supabase/migrations/20260703094000_hairstyle_catalog_rotation_event_rpc.sql");
 const cronMigration = read("supabase/migrations/20260703093000_hairstyle_catalog_rotation_cron.sql");
 const cronStatusMigration = read("supabase/migrations/20260703124648_hairstyle_catalog_cron_status.sql");
+const supabaseConfig = read("supabase/config.toml");
 const packageJson = read("package.json");
 const architectureDoc = readRepo("docs/hairstyle-catalog-rotation-architecture.md");
 const phaseReadme = readRepo("docs/hairstyle-catalog-rotation/README.md");
@@ -171,6 +172,12 @@ assert(runtimeSmokeScript.includes("get_hairstyle_catalog_rotation_cron_status")
 assert(trendMailFunction.includes("prioritizePendingAlerts"), "trend mail function must prioritize catalog rotation alerts in the due batch");
 assert(trendMailFunction.includes("ALERT_FETCH_LIMIT = 25"), "trend mail function must fetch enough due alerts before catalog priority sorting");
 assert(trendMailFunction.includes("alert_type,catalog_cycle_id"), "trend mail function must select catalog alert metadata");
+assert(supabaseConfig.includes("[functions.cron-trend-emails]"), "trend mail function must have explicit function config");
+assert(supabaseConfig.includes("verify_jwt = false"), "trend mail function must disable platform JWT verification for service-key cron calls");
+assert(trendMailFunction.includes("isAuthorizedCronRequest"), "trend mail function must authorize cron requests inside the function");
+assert(trendMailFunction.includes('request.headers.get("apikey")'), "trend mail function must accept Supabase apikey header");
+assert(trendMailFunction.includes('request.headers.get("authorization")'), "trend mail function must inspect Authorization bearer header");
+assert(trendMailFunction.includes('error: "Unauthorized"'), "trend mail function must reject missing service credentials");
 assert(trendMailFunction.includes("catalogRotationProcessed"), "trend mail function response must expose processed catalog rotation count");
 assert(trendMailFunction.includes("processedAlerts"), "trend mail function response must expose processed alert evidence");
 
@@ -200,6 +207,7 @@ console.log(JSON.stringify({
     "cron DB smoke guard",
     "trend mail function smoke guard",
     "trend mail catalog processing evidence",
+    "trend mail service-key auth guard",
     "active DB smoke guard",
   ],
 }, null, 2));

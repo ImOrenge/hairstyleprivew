@@ -25,6 +25,7 @@
 | [x] | `rotation-check` body에 `onlyIfDue:true`, `notify:true` 포함 | migration |
 | [x] | `pg_net` 호출 header에 `x-admin-secret` 포함 | migration |
 | [x] | post-rotation Edge Function 호출 header에 `Authorization`과 `apikey` 포함 | migration |
+| [x] | `cron-trend-emails`를 `verify_jwt=false`와 함수 내부 service-key 검증으로 구성 | `supabase/config.toml`, Edge Function |
 | [x] | running cycle 30분 초과 복구 경로 연결 | P3 service |
 | [x] | rotation attempt event 기록 | service/RPC |
 | [x] | cron 등록 문서와 운영 명령 추가 | 아래 운영 메모 |
@@ -53,6 +54,7 @@
 | [ ] | 실패 기록 후 다음 `onlyIfDue` 호출이 재시도 경로 진입. Supabase runtime env 필요 |
 | [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | [x] | post-rotation mail 함수가 `catalog_rotation` due alert를 batch 우선 처리하고 처리 요약을 반환. 정적 audit 확인 |
+| [x] | post-rotation mail 함수가 service role header 없이 401을 반환하도록 정적 audit 확인 |
 
 ## 운영 메모
 
@@ -62,3 +64,4 @@
 | rotation check | `cron-hairstyle-catalog-rotation-check`, `20 0 * * *`, 한국시간 09:20 |
 | post rotation mail | `cron-trend-emails-post-rotation`, `40 0 * * *`, 한국시간 09:40 |
 | Edge Function 배포 | `cron-trend-emails`는 Supabase Edge Function 배포 단위다. main app 배포만으로 함수 코드가 갱신되지 않는다. |
+| Edge Function auth | `verify_jwt=false`로 배포하고, 함수 내부에서 `Authorization` 또는 `apikey`의 service role key를 검증한다. |

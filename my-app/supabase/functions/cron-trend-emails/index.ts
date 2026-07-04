@@ -163,6 +163,17 @@ function resolveHtml(html: string, user: UserRow) {
     .replace(/\{\{USER_NAME\}\}/g, user.display_name ?? "customer");
 }
 
+function readBearerToken(value: string | null) {
+  const match = value?.trim().match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() ?? "";
+}
+
+function isAuthorizedCronRequest(request: Request) {
+  const apiKey = request.headers.get("apikey")?.trim() ?? "";
+  const bearerToken = readBearerToken(request.headers.get("authorization"));
+  return apiKey === SUPABASE_SERVICE_ROLE_KEY || bearerToken === SUPABASE_SERVICE_ROLE_KEY;
+}
+
 function alertTimeMs(alert: TrendAlert) {
   const parsed = Date.parse(alert.scheduled_send_at ?? "");
   return Number.isFinite(parsed) ? parsed : 0;
@@ -254,7 +265,11 @@ async function sendEmail(
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (request) => {
+  if (!isAuthorizedCronRequest(request)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+  }
+
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   const { alerts, error: alertError } = await fetchPendingTrendAlerts(supabase);

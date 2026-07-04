@@ -17,6 +17,7 @@
 | service role key | Supabase service role key | cron helper 등록 시 사용 |
 | edge function base URL | Supabase functions base URL | post-rotation mail cron 대상 |
 | edge function headers | `Authorization`, `apikey` | post-rotation mail cron이 service role key를 두 header에 모두 넣어 호출한다. |
+| edge function auth | `verify_jwt=false` + service-key 내부 검증 | 새 API key 형식과 pg_cron 호출을 모두 견디되, header 없이는 401로 차단한다. |
 | remote check timeout | `HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS=120000` | Supabase CLI 지연 시 guard가 명확히 실패하도록 조정 가능 |
 | remote check lock | `my-app/supabase/.temp/hairstyle-catalog-remote-check.lock` | 같은 worktree에서 dry-run guard를 동시에 실행하지 않는다. |
 | runtime smoke target confirmation | `--confirmAppUrl=<app-url>` 또는 `HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL` | active 변경 가능 호출은 대상 URL 확인 없이는 실행하지 않는다. |
