@@ -143,6 +143,7 @@ const alertPolicyBody = catalog.match(/function shouldSendCatalogRotationAlert\(
 assert(alertPolicyBody && alertPolicyBody[0].includes('options.reason === "rotation-check"') && alertPolicyBody[0].includes("lowFreshness && (isAutomaticRotationCheck || options.notify !== true)"), "automatic rotation-check must not send low freshness catalog alerts");
 assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup builder");
 assert(catalog.includes('from "./hairstyle-catalog-lineup"'), "lineup builder must live in the pure lineup module");
+assert(catalog.includes("attachDryRunCatalogRowIds"), "dry-run rebuild must attach stable temporary ids for lineup validation");
 assert(catalog.includes("buildLineupBackedRecommendations"), "missing lineup-backed recommendation builder");
 const topNineBody = catalog.match(/function buildTopNine\([\s\S]*?function buildLineupBackedRecommendations/);
 assert(topNineBody && topNineBody[0].includes("if (limit <= 0)") && topNineBody[0].includes("selected.length >= limit"), "lineup fallback builder must enforce recommendation limit");

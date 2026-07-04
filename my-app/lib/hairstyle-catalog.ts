@@ -718,6 +718,13 @@ function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, 
   };
 }
 
+function attachDryRunCatalogRowIds(rows: Array<Omit<HairstyleCatalogRow, "id"> | HairstyleCatalogRow>): HairstyleCatalogRow[] {
+  return rows.map((row) => ({
+    ...row,
+    id: "id" in row && row.id ? row.id : row.slug,
+  }));
+}
+
 async function validateActiveCatalogSnapshot(
   supabase: SupabaseCatalogClient,
   activeCatalog: ActiveCatalogCycleResult,
@@ -1447,6 +1454,15 @@ async function rebuildCatalogWithMode(
 
     if (options.dryRun) {
       const activeAfter = await getActiveCatalogCycle(supabase).catch(() => null);
+      const dryRunLineups = buildCatalogLineupsForCycle(
+        attachDryRunCatalogRowIds(rows),
+        cycleId,
+        buildRotationSeed(cycleId, formatRotationPeriod(new Date(nowIso))),
+      );
+      validation.lineupCounts = {
+        male: dryRunLineups.filter((lineup) => lineup.style_target === "male").length,
+        female: dryRunLineups.filter((lineup) => lineup.style_target === "female").length,
+      };
 
       return {
         cycleId,
