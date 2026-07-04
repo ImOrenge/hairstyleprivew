@@ -75,6 +75,7 @@ Optional external evidence:
   --runReadOnlyRuntimeSmoke  Run DB/status smoke modes that do not POST rebuild.
   --runAdminDryRunSmoke      Run admin rebuild dry-run POST and verify active is unchanged.
   --runRuntimeSmoke          Compatibility flag for both runtime smoke groups above.
+  --forceRuntimeSmoke        Run requested runtime smoke even when preflight blockers are known.
   --runTrendMailSmoke        Run guarded cron-trend-emails smoke.
   --appUrl <url>             Deployed app URL passed to env/runtime smoke.
   --functionUrl <url>        Deployed cron-trend-emails function URL.
@@ -122,6 +123,34 @@ function tryExternal(label, callback, externalBlockers) {
     externalBlockers.push(`${label}: ${error instanceof Error ? error.message : String(error)}`);
     return "";
   }
+}
+
+function listRemoteRuntimeBlockers(readiness) {
+  if (!readiness) {
+    return ["remote readiness is unavailable"];
+  }
+
+  const blockers = [];
+  const hairstylePending = Array.isArray(readiness.hairstylePending) ? readiness.hairstylePending : [];
+  const blockingPending = Array.isArray(readiness.blockingPending) ? readiness.blockingPending : [];
+  const missingHairstyleMigrations = Array.isArray(readiness.missingHairstyleMigrations)
+    ? readiness.missingHairstyleMigrations
+    : [];
+
+  if (!readiness.projectMatches) {
+    blockers.push(`linked project mismatch: expected ${readiness.expectedProjectRef}, got ${readiness.projectRef}`);
+  }
+  if (blockingPending.length > 0) {
+    blockers.push(`unrelated pending migrations: ${blockingPending.join(", ")}`);
+  }
+  if (hairstylePending.length > 0) {
+    blockers.push(`hairstyle migrations pending: ${hairstylePending.join(", ")}`);
+  }
+  if (missingHairstyleMigrations.length > 0) {
+    blockers.push(`expected hairstyle migrations missing from dry-run: ${missingHairstyleMigrations.join(", ")}`);
+  }
+
+  return blockers;
 }
 
 function parseJsonObject(output, label) {
@@ -182,7 +211,26 @@ function collectRemoteReadiness(output, missingEvidence, externalBlockers) {
   return readiness;
 }
 
-function collectRuntimeSmoke(missingEvidence, externalBlockers) {
+function shouldSkipRuntimeSmoke(label, requested, prerequisites, missingEvidence) {
+  if (!requested) return true;
+  if (hasFlag("forceRuntimeSmoke")) return false;
+
+  const blockers = [
+    ...listRemoteRuntimeBlockers(prerequisites.remoteReadiness),
+  ];
+  if (!prerequisites.envPreflightOk) {
+    blockers.push("runtime env preflight failed");
+  }
+
+  if (blockers.length === 0) return false;
+
+  missingEvidence.push(
+    `${label} skipped; ${blockers.join("; ")}. Rerun with --forceRuntimeSmoke to collect raw smoke failures.`,
+  );
+  return true;
+}
+
+function collectRuntimeSmoke(missingEvidence, externalBlockers, prerequisites) {
   const runAllRuntimeSmoke = hasFlag("runRuntimeSmoke");
   const runReadOnlyRuntimeSmoke = runAllRuntimeSmoke || hasFlag("runReadOnlyRuntimeSmoke");
   const runAdminDryRunSmoke = runAllRuntimeSmoke || hasFlag("runAdminDryRunSmoke");
@@ -197,33 +245,41 @@ function collectRuntimeSmoke(missingEvidence, externalBlockers) {
   const baseArgs = buildPassThroughArgs(["appUrl"]);
 
   if (runReadOnlyRuntimeSmoke) {
-    for (const mode of ["cron-db", "active-db", "alert-idempotency", "status"]) {
-      tryExternal(
-        `${mode} runtime smoke`,
-        () => npmRun("hairstyle:catalog:runtime:smoke", [...baseArgs, `--mode=${mode}`]),
-        externalBlockers,
-      );
+    if (!shouldSkipRuntimeSmoke("read-only runtime smoke", true, prerequisites, missingEvidence)) {
+      for (const mode of ["cron-db", "active-db", "alert-idempotency", "status"]) {
+        tryExternal(
+          `${mode} runtime smoke`,
+          () => npmRun("hairstyle:catalog:runtime:smoke", [...baseArgs, `--mode=${mode}`]),
+          externalBlockers,
+        );
+      }
     }
   } else {
     missingEvidence.push("read-only runtime smoke not run; rerun with --runReadOnlyRuntimeSmoke");
   }
 
   if (runAdminDryRunSmoke) {
-    tryExternal(
-      "admin dry-run runtime smoke",
-      () => npmRun("hairstyle:catalog:runtime:smoke", [...baseArgs, "--mode=dry-run"]),
-      externalBlockers,
-    );
+    if (!shouldSkipRuntimeSmoke("admin dry-run runtime smoke", true, prerequisites, missingEvidence)) {
+      tryExternal(
+        "admin dry-run runtime smoke",
+        () => npmRun("hairstyle:catalog:runtime:smoke", [...baseArgs, "--mode=dry-run"]),
+        externalBlockers,
+      );
+    }
   } else {
     missingEvidence.push("admin dry-run POST smoke not run; rerun with --runAdminDryRunSmoke");
   }
 }
 
-function collectTrendMailSmoke(missingEvidence, externalBlockers) {
+function collectTrendMailSmoke(missingEvidence, externalBlockers, prerequisites) {
   if (!hasFlag("runTrendMailSmoke")) {
     missingEvidence.push(
       "post-rotation mail smoke not run; rerun with --runTrendMailSmoke after cron-trend-emails is deployed",
     );
+    return;
+  }
+
+  if (shouldSkipRuntimeSmoke("post-rotation mail smoke", true, prerequisites, missingEvidence)) {
     return;
   }
 
@@ -250,20 +306,23 @@ function main() {
 
   npmRun("hairstyle:catalog:audit");
 
+  let remoteReadiness = null;
+  let envPreflightOk = false;
+
   const remoteOutput = tryExternal(
     "Supabase remote readiness dry-run",
     () => npmRun("hairstyle:catalog:remote:check"),
     externalBlockers,
   );
   if (remoteOutput) {
-    collectRemoteReadiness(remoteOutput, missingEvidence, externalBlockers);
+    remoteReadiness = collectRemoteReadiness(remoteOutput, missingEvidence, externalBlockers);
   }
 
-  tryExternal(
+  envPreflightOk = Boolean(tryExternal(
     "runtime env preflight",
     () => npmRun("hairstyle:catalog:env:check", buildPassThroughArgs(["appUrl", "edgeFunctionBaseUrl"])),
     externalBlockers,
-  );
+  ));
 
   tryExternal(
     "Cloudflare local secret-name preflight",
@@ -284,8 +343,8 @@ function main() {
   }
 
   npmRun("hairstyle:catalog:trend-mail:deploy");
-  collectRuntimeSmoke(missingEvidence, externalBlockers);
-  collectTrendMailSmoke(missingEvidence, externalBlockers);
+  collectRuntimeSmoke(missingEvidence, externalBlockers, { remoteReadiness, envPreflightOk });
+  collectTrendMailSmoke(missingEvidence, externalBlockers, { remoteReadiness, envPreflightOk });
 
   if (missingEvidence.length > 0 || externalBlockers.length > 0) {
     console.error("[hairstyle:catalog:launch:check] missing external evidence or blockers:");

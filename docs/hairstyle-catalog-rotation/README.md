@@ -35,7 +35,7 @@
 | Supabase linked dry-run | 완료 | `supabase link --project-ref dpzdhxlqnogfpubpslbf --workdir my-app` 후 `supabase db push --dry-run --workdir my-app` 통과 |
 | Remote write guard | 완료 | `npm run hairstyle:catalog:remote:check`가 unrelated pending migration을 감지하고 `blockingMigrationDetails`로 로컬 migration 요약을 보고한다. |
 | Supabase runtime/API smoke | 대기 | runtime env와 배포 대상이 필요하며 [runtime-smoke-runbook.md](runtime-smoke-runbook.md)에 절차 정리. active DB smoke는 9개 lineup 초과/미달과 슬롯 구성까지 검사 |
-| Launch readiness guard | 완료 | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal`가 로컬 audit, remote readiness, env, Cloudflare secret, trend mail deploy dry-run을 묶고 남은 외부 blocker를 보고한다. runtime smoke는 read-only와 admin dry-run POST 옵션을 분리한다. |
+| Launch readiness guard | 완료 | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal`가 로컬 audit, remote readiness, env, Cloudflare secret, trend mail deploy dry-run을 묶고 남은 외부 blocker를 보고한다. runtime smoke는 read-only와 admin dry-run POST 옵션을 분리하고, prerequisite 실패 시 실행을 skip한다. |
 
 ## 전체 완료 기준
 

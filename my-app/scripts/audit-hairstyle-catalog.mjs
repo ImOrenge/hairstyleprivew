@@ -210,9 +210,13 @@ assert(launchReadinessScript.includes("allowMissingExternal"), "launch readiness
 assert(launchReadinessScript.includes("runReadOnlyRuntimeSmoke"), "launch readiness must expose read-only runtime smoke execution");
 assert(launchReadinessScript.includes("runAdminDryRunSmoke"), "launch readiness must separate admin dry-run POST smoke from read-only smoke");
 assert(launchReadinessScript.includes("runAllRuntimeSmoke"), "launch readiness must keep the compatibility runtime smoke flag explicit");
+assert(launchReadinessScript.includes("forceRuntimeSmoke"), "launch readiness must expose a force flag for raw runtime smoke failures");
+assert(launchReadinessScript.includes("shouldSkipRuntimeSmoke"), "launch readiness must skip dependent runtime smoke when prerequisites fail");
+assert(launchReadinessScript.includes("listRemoteRuntimeBlockers"), "launch readiness must derive runtime smoke blockers from remote readiness");
 assert(launchReadinessScript.includes("runTrendMailSmoke"), "launch readiness must expose trend mail smoke execution");
 assert(launchReadinessScript.includes("pendingMigrations"), "launch readiness must report pending remote migrations");
 assert(launchReadinessScript.includes("blockingMigrationDetails"), "launch readiness must include blocking migration summaries");
+assert(launchReadinessScript.includes("runtime env preflight failed"), "launch readiness must gate runtime smoke on env preflight");
 assert(launchReadinessScript.includes("completed with missing external evidence"), "launch readiness allow-missing path must finish after blocker output");
 assert(launchReadinessScript.includes("process.exitCode = 2"), "launch readiness must fail when external evidence is missing by default");
 

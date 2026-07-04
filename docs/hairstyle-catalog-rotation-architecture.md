@@ -460,7 +460,7 @@
 | Edge Function header | post-rotation mail cron이 `Authorization: Bearer <service-role-key>`와 `apikey: <service-role-key>`를 함께 전송 |
 | Edge Function auth | `cron-trend-emails`는 `verify_jwt=false`로 배포하고 함수 내부에서 service role key header를 검증 |
 | Edge Function deploy guard | `npm run hairstyle:catalog:trend-mail:deploy` dry-run 통과 후 확인 env와 `--write`로 배포 |
-| Launch readiness guard | `npm run hairstyle:catalog:launch:check`는 외부 증거가 빠지면 실패하고, `--allowMissingExternal`에서는 blocker 목록만 보고. Runtime smoke는 non-mutating smoke와 admin dry-run POST를 분리 |
+| Launch readiness guard | `npm run hairstyle:catalog:launch:check`는 외부 증거가 빠지면 실패하고, `--allowMissingExternal`에서는 blocker 목록만 보고. Runtime smoke는 non-mutating smoke와 admin dry-run POST를 분리하며, prerequisite 실패 시 known-blocked smoke를 skip |
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` 통과 |
 | admin secret | cron 호출에 쓰는 `INTERNAL_API_SECRET`와 앱 secret 일치 |
 | 첫 active | `GET /api/admin/hairstyles/cycles/latest`에서 `activeCycle` 존재 |
