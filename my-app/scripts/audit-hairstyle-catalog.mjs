@@ -302,7 +302,12 @@ assert(launchSummaryScript.includes("requestedEvidence"), "launch summary check 
 assert(launchSummaryScript.includes("blockingMigrationDetails"), "launch summary check must validate blocking migration details");
 assert(launchSummaryScript.includes("fatalError"), "launch summary check must validate fatal summaries");
 assert(launchSummaryScript.includes("expectRemoteBlocker"), "launch summary check must support remote blocker expectations");
+assert(launchSummaryScript.includes("assertNoSecretValues"), "launch summary check must reject leaked secret values");
+assert(launchSummaryScript.includes("sensitiveEnvNamePattern"), "launch summary check must discover sensitive env names");
+assert(launchSummaryScript.includes("forbiddenSecretPatterns"), "launch summary check must reject token-shaped values");
 assert(runtimeRunbook.includes("hairstyle:catalog:launch:summary:check"), "runtime smoke runbook missing launch summary check command");
+assert(runtimeRunbook.includes("secret-free"), "runtime smoke runbook missing secret-free summary guard");
+assert(architectureDoc.includes("secret-free"), "architecture doc missing secret-free summary guard");
 
 console.log(JSON.stringify({
   ok: true,
@@ -335,6 +340,7 @@ console.log(JSON.stringify({
     "trend mail deploy guard",
     "launch readiness guard",
     "launch summary schema guard",
+    "launch summary secret-free guard",
     "active DB smoke guard",
   ],
 }, null, 2));

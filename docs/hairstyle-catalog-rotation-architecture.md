@@ -423,7 +423,7 @@
 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` | active DB, cron DB, admin/API, mail delivery runtime smoke |
 | `my-app/scripts/check-hairstyle-catalog-remote-readiness.mjs` | Supabase dry-run, pending migration, blocking migration detail, write guard 확인 |
 | `my-app/scripts/check-hairstyle-catalog-launch-readiness.mjs` | 로컬 감사와 외부 runtime blocker를 통합 보고 |
-| `my-app/scripts/check-hairstyle-catalog-launch-summary.mjs` | readiness summary JSON의 schema, blocker, fatal summary 계약 검증 |
+| `my-app/scripts/check-hairstyle-catalog-launch-summary.mjs` | readiness summary JSON의 schema, blocker, fatal summary, secret-free 계약 검증 |
 | `package.json`, `my-app/package.json` | `hairstyle:catalog:audit`, smoke, remote/env/secret/deploy/launch script 추가 |
 
 ## 16. 단계별 구현 계획
@@ -462,7 +462,7 @@
 | Edge Function auth | `cron-trend-emails`는 `verify_jwt=false`로 배포하고 함수 내부에서 service role key header를 검증 |
 | Edge Function deploy guard | `npm run hairstyle:catalog:trend-mail:deploy` dry-run 통과 후 확인 env와 `--write`로 배포 |
 | Launch readiness guard | `npm run hairstyle:catalog:launch:check`는 외부 증거가 빠지면 실패하고, `--allowMissingExternal`에서는 blocker 목록만 보고. Runtime smoke는 non-mutating smoke와 admin dry-run POST를 분리하며, prerequisite 실패 시 known-blocked smoke를 skip. `--cycleId`, `--market`, `--expectAlert`, live mail smoke flags는 하위 runtime smoke로 전달하고, `--summaryJson`은 자동화용 blocker summary를 생성 |
-| Launch summary schema guard | `npm run hairstyle:catalog:launch:summary:check`가 생성된 readiness summary JSON의 schema, blocker, fatal summary 계약을 검증 |
+| Launch summary schema guard | `npm run hairstyle:catalog:launch:summary:check`가 생성된 readiness summary JSON의 schema, blocker, fatal summary, secret-free 계약을 검증 |
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` 통과 |
 | admin secret | cron 호출에 쓰는 `INTERNAL_API_SECRET`와 앱 secret 일치 |
 | 첫 active | `GET /api/admin/hairstyles/cycles/latest`에서 `activeCycle` 존재 |

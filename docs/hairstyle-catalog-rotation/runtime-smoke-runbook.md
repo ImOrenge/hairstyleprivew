@@ -23,7 +23,7 @@
 | runtime smoke target confirmation | `--confirmAppUrl=<app-url>` 또는 `HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL` | active 변경 가능 호출은 대상 URL 확인 없이는 실행하지 않는다. |
 | runtime smoke force | `--forceRuntimeSmoke` | launch readiness에서 prerequisite가 실패해도 원시 runtime smoke 실패를 수집할 때만 사용한다. |
 | readiness summary JSON | `--summaryJson=<path>` | `check`, `schemaVersion`, `generatedAt`, 최종 판정, 요청한 증거, remote readiness, `blockingMigrationDetails`, missing evidence, external blocker를 JSON 파일로 남긴다. 필수 단계가 fatal 실패하면 `fatalError`를 기록한다. |
-| readiness summary validator | `npm run hairstyle:catalog:launch:summary:check` | 생성된 summary JSON의 schema, blocker, fatal summary 계약을 검증한다. |
+| readiness summary validator | `npm run hairstyle:catalog:launch:summary:check` | 생성된 summary JSON의 schema, blocker, fatal summary, secret-free 계약을 검증한다. |
 | local env files | `my-app/.env.local`, `my-app/.env.assets` | 격리 worktree에는 메인 worktree의 ignored env 파일을 복사해서 사용한다. |
 | Cloudflare secret names | `npm run hairstyle:catalog:cloudflare:secrets -- --verify` | Worker에 등록된 secret 이름만 확인한다. 값은 조회하거나 출력하지 않는다. |
 
@@ -83,7 +83,7 @@
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | remote `trend_alerts.catalog_cycle_id` 미적용으로 `42703`. pending migration 적용 전 정상 blocker |
 | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal` | 통과. remote pending migration, 앱 URL/admin secret 누락, Cloudflare deployed secret 미검증, read-only/admin dry-run runtime smoke 미실행을 blocker로 보고 |
 | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal --summaryJson=my-app/supabase/.temp/hairstyle-launch-summary.json` | 통과. 사람이 읽는 blocker 로그와 별도로 `check`, `schemaVersion`, `generatedAt`, `ok`, `requestedEvidence`, `checks`, `remoteReadiness.blockingMigrationDetails`, `missingEvidence`, `externalBlockers` JSON을 생성. 필수 단계 fatal 실패 시에도 `fatalError` summary를 남긴다. |
-| `npm run hairstyle:catalog:launch:summary:check -- --path=my-app/supabase/.temp/hairstyle-launch-summary.json --expectBlocked --expectReadyForWrite=false --expectRemoteBlocker=202607030001_plan_credit_policy_aftercare.sql` | 통과. 생성된 summary JSON의 schema, blocker 목록, `readyForWrite:false`, fatal summary 계약을 검증한다. |
+| `npm run hairstyle:catalog:launch:summary:check -- --path=my-app/supabase/.temp/hairstyle-launch-summary.json --expectBlocked --expectReadyForWrite=false --expectRemoteBlocker=202607030001_plan_credit_policy_aftercare.sql` | 통과. 생성된 summary JSON의 schema, blocker 목록, `readyForWrite:false`, fatal summary, secret-free 계약을 검증한다. |
 | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal --runReadOnlyRuntimeSmoke --runAdminDryRunSmoke` | known prerequisite 실패 때문에 runtime smoke를 skip하고, `--forceRuntimeSmoke` 사용 시에만 원시 smoke 실패를 수집한다. |
 | `npm run hairstyle:catalog:launch:check -- --runReadOnlyRuntimeSmoke --runTrendMailSmoke --cycleId=<cycle-id> --market=kr --expectAlert --allowPendingAlerts --expectPendingCatalogAlert` | migration/env 준비 후 특정 cycle의 alert idempotency와 의도한 live `catalog_rotation` mail smoke를 한 번에 검증한다. due alert가 있으면 실제 메일 전송 가능성이 있으므로 운영 승인 후에만 `--allowPendingAlerts`를 사용한다. |
 | remote pending migrations | `202607030001_plan_credit_policy_aftercare.sql`, `20260703092000_hairstyle_catalog_rotation.sql`, `20260703093000_hairstyle_catalog_rotation_cron.sql`, `20260703094000_hairstyle_catalog_rotation_event_rpc.sql`, `20260703124648_hairstyle_catalog_cron_status.sql` |

@@ -7,6 +7,13 @@ import { fileURLToPath } from "node:url";
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appDir, "..");
 const defaultSummaryPath = "my-app/supabase/.temp/hairstyle-launch-summary-smoke.json";
+const sensitiveEnvNamePattern = /(SECRET|TOKEN|KEY|PASSWORD|PRIVATE)/i;
+const forbiddenSecretPatterns = [
+  [/Bearer\s+[A-Za-z0-9._~+/-]+=*/i, "bearer token"],
+  [/eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/, "JWT"],
+  [/re_[A-Za-z0-9]{20,}/, "Resend API key"],
+  [/sk_(?:live|test)_[A-Za-z0-9]{16,}/, "secret API key"],
+];
 
 function getArg(name, fallback = "") {
   const prefixed = `--${name}=`;
@@ -49,6 +56,37 @@ function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
+function loadEnvFile(path) {
+  if (!existsSync(path)) return;
+
+  const content = readFileSync(path, "utf8");
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#") || !line.includes("=")) continue;
+    const index = line.indexOf("=");
+    const key = line.slice(0, index).trim();
+    let value = line.slice(index + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    if (key && !process.env[key]) {
+      process.env[key] = value;
+    }
+  }
+}
+
+function loadLocalEnv() {
+  for (const path of [
+    resolve(repoRoot, ".env.local"),
+    resolve(repoRoot, ".env"),
+    resolve(appDir, ".env.local"),
+    resolve(appDir, ".env.assets"),
+    resolve(appDir, ".env"),
+  ]) {
+    loadEnvFile(path);
+  }
+}
+
 function readSummary(path) {
   assert(existsSync(path), `summary JSON does not exist: ${path}`);
   const parsed = JSON.parse(readFileSync(path, "utf8"));
@@ -69,6 +107,43 @@ function assertStringArray(value, label) {
   assert(Array.isArray(value), `${label} must be an array`);
   for (const item of value) {
     assert(typeof item === "string" && item.trim(), `${label} must contain non-empty strings`);
+  }
+}
+
+function collectStrings(value, path = "$", collected = []) {
+  if (typeof value === "string") {
+    collected.push({ path, value });
+    return collected;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectStrings(item, `${path}[${index}]`, collected));
+    return collected;
+  }
+  if (isObject(value)) {
+    for (const [key, nested] of Object.entries(value)) {
+      collectStrings(nested, `${path}.${key}`, collected);
+    }
+  }
+  return collected;
+}
+
+function sensitiveEnvValues() {
+  return Object.entries(process.env)
+    .filter(([name, value]) => sensitiveEnvNamePattern.test(name) && typeof value === "string")
+    .map(([name, value]) => [name, value.trim()])
+    .filter(([, value]) => value.length >= 8);
+}
+
+function assertNoSecretValues(summary) {
+  const strings = collectStrings(summary);
+  for (const { path, value } of strings) {
+    for (const [pattern, label] of forbiddenSecretPatterns) {
+      assert(!pattern.test(value), `summary contains ${label}-like value at ${path}`);
+    }
+
+    for (const [envName, envValue] of sensitiveEnvValues()) {
+      assert(!value.includes(envValue), `summary contains sensitive env value from ${envName} at ${path}`);
+    }
   }
 }
 
@@ -135,6 +210,7 @@ function validateSummary(summary) {
   assert(summary.check === "hairstyle-catalog-launch-readiness", "summary check name is incorrect");
   assert(summary.schemaVersion === 1, "summary schemaVersion must be 1");
   assert(typeof summary.generatedAt === "string" && !Number.isNaN(Date.parse(summary.generatedAt)), "generatedAt must be an ISO timestamp");
+  assertNoSecretValues(summary);
   assertBoolean(summary.ok, "ok");
   assertBoolean(summary.allowMissingExternal, "allowMissingExternal");
   assert([0, 1, 2].includes(summary.exitCode), "exitCode must be 0, 1, or 2");
@@ -174,6 +250,7 @@ function main() {
   }
 
   const summaryPath = resolveSummaryPath(getArg("path"));
+  loadLocalEnv();
   const summary = readSummary(summaryPath);
   validateSummary(summary);
 
@@ -212,6 +289,7 @@ function main() {
     fatal: Object.hasOwn(summary, "fatalError"),
     missingEvidence: summary.missingEvidence.length,
     externalBlockers: summary.externalBlockers.length,
+    secretFree: true,
     readyForWrite: summary.remoteReadiness?.readyForWrite ?? null,
     blockingPending: summary.remoteReadiness?.blockingPending ?? [],
   }, null, 2));

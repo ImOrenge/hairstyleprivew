@@ -36,7 +36,7 @@
 | Remote write guard | 완료 | `npm run hairstyle:catalog:remote:check`가 unrelated pending migration을 감지하고 `blockingMigrationDetails`로 로컬 migration 요약을 보고한다. |
 | Supabase runtime/API smoke | 대기 | runtime env와 배포 대상이 필요하며 [runtime-smoke-runbook.md](runtime-smoke-runbook.md)에 절차 정리. active DB smoke는 9개 lineup 초과/미달과 슬롯 구성까지 검사 |
 | Launch readiness guard | 완료 | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal`가 로컬 audit, remote readiness, env, Cloudflare secret, trend mail deploy dry-run을 묶고 남은 외부 blocker를 보고한다. runtime smoke는 read-only와 admin dry-run POST 옵션을 분리하고, prerequisite 실패 시 실행을 skip한다. 특정 cycle/market과 live mail smoke 옵션은 하위 smoke로 전달하며, `--summaryJson`으로 자동화용 blocker summary를 남긴다. |
-| Launch summary schema guard | 완료 | `npm run hairstyle:catalog:launch:summary:check`가 생성된 readiness summary JSON의 schema, blocker, fatal summary 계약을 검증한다. |
+| Launch summary schema guard | 완료 | `npm run hairstyle:catalog:launch:summary:check`가 생성된 readiness summary JSON의 schema, blocker, fatal summary, secret-free 계약을 검증한다. |
 
 ## 전체 완료 기준
 
