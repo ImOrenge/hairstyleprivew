@@ -148,6 +148,8 @@ assert(cronStatusMigration.includes("40 0 * * *"), "cron status RPC must validat
 assert(cronStatusMigration.includes("grant execute on function public.get_hairstyle_catalog_rotation_cron_status() to service_role"), "cron status RPC must be service-role only");
 assert(architectureDoc.includes("상태: 구현 완료, Supabase runtime smoke 대기"), "architecture doc status is stale");
 assert(!architectureDoc.includes("상태: 설계안, 미구현"), "architecture doc still says unimplemented");
+assert(!architectureDoc.includes("현재 구현의 `RESEARCH_LOOKBACK_DAYS = 240`"), "architecture doc still presents the old 240-day lookback as current");
+assert(!architectureDoc.includes("현재 18개 blueprint"), "architecture doc still presents the old 18-blueprint pool as current");
 assert(phaseReadme.includes("runtime-smoke-runbook.md"), "phase README must link runtime smoke runbook");
 assert(phaseReadme.includes("상태: 구현 완료, Supabase runtime smoke 대기"), "phase README status is stale");
 assert(!phaseReadme.includes("상태: 구현 태스크 분해, 미구현"), "phase README still says unimplemented");
@@ -177,6 +179,8 @@ assert(rootPackageJson.includes("\"hairstyle:catalog:cloudflare:secrets\""), "ro
 assert(rootPackageJson.includes("\"hairstyle:catalog:trend-mail:deploy\""), "root package is missing hairstyle trend mail deploy script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:launch:check\""), "root package is missing hairstyle launch readiness script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:launch:summary:check\""), "root package is missing hairstyle launch summary check script");
+assert(architectureDoc.includes("check-hairstyle-catalog-launch-summary.mjs"), "architecture doc missing launch summary check script impact");
+assert(architectureDoc.includes("Launch summary schema guard"), "architecture deployment checklist missing launch summary schema guard");
 assert(cloudflareSecretsScript.includes("INTERNAL_API_SECRET"), "Cloudflare secret check must verify admin API secret name");
 assert(cloudflareSecretsScript.includes("wrangler\", \"secret\", \"list\""), "Cloudflare secret check must list deployed Worker secret names");
 assert(cloudflareSecretsScript.includes("--format\", \"json\""), "Cloudflare secret check must parse Wrangler JSON output");

@@ -203,7 +203,7 @@
 
 ### 8.1 수집 기간 정책
 
-현재 구현의 `RESEARCH_LOOKBACK_DAYS = 240`은 주간 트렌드 회전에는 너무 길다. 목표 구조에서는 기본 수집 기간과 fallback 기간을 분리한다.
+기존 단일 `RESEARCH_LOOKBACK_DAYS = 240` 정책은 주간 트렌드 회전에는 너무 길었다. 구현된 구조에서는 기본 수집 기간과 fallback 기간을 분리한다.
 
 | 항목 | 기준 | 설명 |
 | --- | ---: | --- |
@@ -233,7 +233,7 @@
 
 ### 8.2 블루프린트 풀 규모
 
-현재 18개 blueprint는 남성/여성별 추천 후보가 각각 10개 수준이라 주간 회전 폭이 좁다. 목표 구조에서는 저장되는 헤어스타일 blueprint 풀을 32개로 늘리고, 사용자에게 한 번에 노출되는 추천 lineup은 기존 9개를 유지한다.
+기존 18개 blueprint는 남성/여성별 추천 후보가 각각 10개 수준이라 주간 회전 폭이 좁았다. 구현된 구조에서는 저장되는 헤어스타일 blueprint 풀을 32개로 늘리고, 사용자에게 한 번에 노출되는 추천 lineup은 기존 9개를 유지한다.
 
 | 항목 | 현재 | 목표 | 설명 |
 | --- | ---: | ---: | --- |
@@ -423,6 +423,7 @@
 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` | active DB, cron DB, admin/API, mail delivery runtime smoke |
 | `my-app/scripts/check-hairstyle-catalog-remote-readiness.mjs` | Supabase dry-run, pending migration, blocking migration detail, write guard 확인 |
 | `my-app/scripts/check-hairstyle-catalog-launch-readiness.mjs` | 로컬 감사와 외부 runtime blocker를 통합 보고 |
+| `my-app/scripts/check-hairstyle-catalog-launch-summary.mjs` | readiness summary JSON의 schema, blocker, fatal summary 계약 검증 |
 | `package.json`, `my-app/package.json` | `hairstyle:catalog:audit`, smoke, remote/env/secret/deploy/launch script 추가 |
 
 ## 16. 단계별 구현 계획
@@ -461,6 +462,7 @@
 | Edge Function auth | `cron-trend-emails`는 `verify_jwt=false`로 배포하고 함수 내부에서 service role key header를 검증 |
 | Edge Function deploy guard | `npm run hairstyle:catalog:trend-mail:deploy` dry-run 통과 후 확인 env와 `--write`로 배포 |
 | Launch readiness guard | `npm run hairstyle:catalog:launch:check`는 외부 증거가 빠지면 실패하고, `--allowMissingExternal`에서는 blocker 목록만 보고. Runtime smoke는 non-mutating smoke와 admin dry-run POST를 분리하며, prerequisite 실패 시 known-blocked smoke를 skip. `--cycleId`, `--market`, `--expectAlert`, live mail smoke flags는 하위 runtime smoke로 전달하고, `--summaryJson`은 자동화용 blocker summary를 생성 |
+| Launch summary schema guard | `npm run hairstyle:catalog:launch:summary:check`가 생성된 readiness summary JSON의 schema, blocker, fatal summary 계약을 검증 |
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` 통과 |
 | admin secret | cron 호출에 쓰는 `INTERNAL_API_SECRET`와 앱 secret 일치 |
 | 첫 active | `GET /api/admin/hairstyles/cycles/latest`에서 `activeCycle` 존재 |
