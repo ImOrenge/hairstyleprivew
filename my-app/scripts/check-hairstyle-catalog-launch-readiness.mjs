@@ -61,7 +61,7 @@ function showHelp() {
 Usage:
   npm run hairstyle:catalog:launch:check
   npm run hairstyle:catalog:launch:check -- --allowMissingExternal
-  npm run hairstyle:catalog:launch:check -- --verifyCloudflareSecrets --runRuntimeSmoke --runTrendMailSmoke --appUrl=https://hairfit.beauty
+  npm run hairstyle:catalog:launch:check -- --verifyCloudflareSecrets --runReadOnlyRuntimeSmoke --runAdminDryRunSmoke --runTrendMailSmoke --appUrl=https://hairfit.beauty
 
 Default checks:
   - static catalog audit
@@ -72,7 +72,9 @@ Default checks:
 
 Optional external evidence:
   --verifyCloudflareSecrets  Verify deployed Cloudflare Worker secret names.
-  --runRuntimeSmoke          Run read-only DB/admin runtime smoke modes.
+  --runReadOnlyRuntimeSmoke  Run DB/status smoke modes that do not POST rebuild.
+  --runAdminDryRunSmoke      Run admin rebuild dry-run POST and verify active is unchanged.
+  --runRuntimeSmoke          Compatibility flag for both runtime smoke groups above.
   --runTrendMailSmoke        Run guarded cron-trend-emails smoke.
   --appUrl <url>             Deployed app URL passed to env/runtime smoke.
   --functionUrl <url>        Deployed cron-trend-emails function URL.
@@ -177,20 +179,39 @@ function collectRemoteReadiness(output, missingEvidence, externalBlockers) {
 }
 
 function collectRuntimeSmoke(missingEvidence, externalBlockers) {
-  if (!hasFlag("runRuntimeSmoke")) {
+  const runAllRuntimeSmoke = hasFlag("runRuntimeSmoke");
+  const runReadOnlyRuntimeSmoke = runAllRuntimeSmoke || hasFlag("runReadOnlyRuntimeSmoke");
+  const runAdminDryRunSmoke = runAllRuntimeSmoke || hasFlag("runAdminDryRunSmoke");
+
+  if (!runReadOnlyRuntimeSmoke && !runAdminDryRunSmoke) {
     missingEvidence.push(
-      "read-only runtime smoke not run; rerun with --runRuntimeSmoke after runtime env and migrations are ready",
+      "runtime smoke not run; rerun with --runReadOnlyRuntimeSmoke and --runAdminDryRunSmoke after runtime env and migrations are ready",
     );
     return;
   }
 
   const baseArgs = buildPassThroughArgs(["appUrl"]);
-  for (const mode of ["cron-db", "active-db", "alert-idempotency", "status", "dry-run"]) {
+
+  if (runReadOnlyRuntimeSmoke) {
+    for (const mode of ["cron-db", "active-db", "alert-idempotency", "status"]) {
+      tryExternal(
+        `${mode} runtime smoke`,
+        () => npmRun("hairstyle:catalog:runtime:smoke", [...baseArgs, `--mode=${mode}`]),
+        externalBlockers,
+      );
+    }
+  } else {
+    missingEvidence.push("read-only runtime smoke not run; rerun with --runReadOnlyRuntimeSmoke");
+  }
+
+  if (runAdminDryRunSmoke) {
     tryExternal(
-      `${mode} runtime smoke`,
-      () => npmRun("hairstyle:catalog:runtime:smoke", [...baseArgs, `--mode=${mode}`]),
+      "admin dry-run runtime smoke",
+      () => npmRun("hairstyle:catalog:runtime:smoke", [...baseArgs, "--mode=dry-run"]),
       externalBlockers,
     );
+  } else {
+    missingEvidence.push("admin dry-run POST smoke not run; rerun with --runAdminDryRunSmoke");
   }
 }
 
@@ -275,6 +296,9 @@ function main() {
       process.exitCode = 2;
       return;
     }
+
+    console.error("[hairstyle:catalog:launch:check] readiness checks completed with missing external evidence");
+    return;
   }
 
   console.log("[hairstyle:catalog:launch:check] readiness checks completed");

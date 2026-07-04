@@ -205,9 +205,12 @@ assert(launchReadinessScript.includes("hairstyle:catalog:env:check"), "launch re
 assert(launchReadinessScript.includes("hairstyle:catalog:cloudflare:secrets"), "launch readiness must check Cloudflare secret names");
 assert(launchReadinessScript.includes("hairstyle:catalog:trend-mail:deploy"), "launch readiness must run trend mail deploy dry-run");
 assert(launchReadinessScript.includes("allowMissingExternal"), "launch readiness must support external blocker reporting without failure");
-assert(launchReadinessScript.includes("runRuntimeSmoke"), "launch readiness must expose read-only runtime smoke execution");
+assert(launchReadinessScript.includes("runReadOnlyRuntimeSmoke"), "launch readiness must expose read-only runtime smoke execution");
+assert(launchReadinessScript.includes("runAdminDryRunSmoke"), "launch readiness must separate admin dry-run POST smoke from read-only smoke");
+assert(launchReadinessScript.includes("runAllRuntimeSmoke"), "launch readiness must keep the compatibility runtime smoke flag explicit");
 assert(launchReadinessScript.includes("runTrendMailSmoke"), "launch readiness must expose trend mail smoke execution");
 assert(launchReadinessScript.includes("pendingMigrations"), "launch readiness must report pending remote migrations");
+assert(launchReadinessScript.includes("completed with missing external evidence"), "launch readiness allow-missing path must finish after blocker output");
 assert(launchReadinessScript.includes("process.exitCode = 2"), "launch readiness must fail when external evidence is missing by default");
 
 console.log(JSON.stringify({
