@@ -252,6 +252,35 @@ function filterRelevantDocuments(documents: TrendResearchDocument[]) {
   });
 }
 
+function buildSeededFallbackTrendSignals() {
+  return new Map(
+    KOREAN_HAIRSTYLE_BLUEPRINTS.map((blueprint) => [
+      blueprint.slug,
+      {
+        slug: blueprint.slug,
+        signalCount: 0,
+        trendScore: blueprint.baselineTrendScore,
+        freshnessScore: blueprint.baselineFreshnessScore,
+      } satisfies BlueprintTrendSignal,
+    ]),
+  );
+}
+
+function buildTopStyleSignals(trendSignals: Map<string, BlueprintTrendSignal>) {
+  return [...trendSignals.values()]
+    .sort((a, b) => b.signalCount - a.signalCount || b.trendScore - a.trendScore)
+    .slice(0, 6)
+    .map((signal) => {
+      const blueprint = KOREAN_HAIRSTYLE_BLUEPRINTS.find((item) => item.slug === signal.slug);
+
+      return {
+        slug: signal.slug,
+        nameKo: blueprint?.nameKo || signal.slug,
+        signalCount: signal.signalCount,
+      };
+    });
+}
+
 export async function collectKoreanHairstyleTrendResearch(referenceDate = new Date()) {
   const queries = buildKoreanWeeklyStyleQueries(referenceDate);
   const queryResults = await Promise.allSettled(queries.map((query) => fetchGoogleNewsDocuments(query)));
@@ -286,9 +315,28 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
       .filter((result): result is PromiseRejectedResult => result.status === "rejected")
       .map((result) => String(result.reason))
       .slice(0, 3);
+    const trendSignals = buildSeededFallbackTrendSignals();
 
     const detail = failures.length > 0 ? ` Failures: ${failures.join(" | ")}` : "";
-    throw new Error(`No usable Korean hairstyle research documents were collected.${detail}`);
+    return {
+      documents: [],
+      trendSignals,
+      sourceSummary: {
+        mode: "researched-weekly",
+        queries,
+        notes: `Google News RSS research was unavailable; rebuilt from curated hairstyle blueprint baselines.${detail}`,
+        providers: [GOOGLE_NEWS_PROVIDER, "curated-blueprints"],
+        primaryLookbackDays: PRIMARY_RESEARCH_LOOKBACK_DAYS,
+        fallbackLookbackDays: FALLBACK_RESEARCH_LOOKBACK_DAYS,
+        effectiveLookbackDays: FALLBACK_RESEARCH_LOOKBACK_DAYS,
+        freshnessWindowDays: FRESHNESS_WINDOW_DAYS,
+        freshnessStatus: "seeded",
+        documentsCollected: dedupedDocuments.length,
+        documentsUsed: 0,
+        sourceNames: [],
+        topStyleSignals: buildTopStyleSignals(trendSignals),
+      } satisfies HairstyleCatalogSourceSummary,
+    };
   }
 
   const trendSignals = scoreTrendSignals(relevantDocuments);
@@ -297,18 +345,6 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
     : hasFreshDocument(relevantDocuments, referenceDate)
       ? "fresh"
       : "lowFreshness";
-  const topStyleSignals = [...trendSignals.values()]
-    .sort((a, b) => b.signalCount - a.signalCount || b.trendScore - a.trendScore)
-    .slice(0, 6)
-    .map((signal) => {
-      const blueprint = KOREAN_HAIRSTYLE_BLUEPRINTS.find((item) => item.slug === signal.slug);
-
-      return {
-        slug: signal.slug,
-        nameKo: blueprint?.nameKo || signal.slug,
-        signalCount: signal.signalCount,
-      };
-    });
 
   const sourceSummary: HairstyleCatalogSourceSummary = {
     mode: "researched-weekly",
@@ -323,7 +359,7 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
     documentsCollected: dedupedDocuments.length,
     documentsUsed: relevantDocuments.length,
     sourceNames: Array.from(new Set(relevantDocuments.map((document) => document.sourceName))).slice(0, 20),
-    topStyleSignals,
+    topStyleSignals: buildTopStyleSignals(trendSignals),
   };
 
   return {

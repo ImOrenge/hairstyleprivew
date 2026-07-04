@@ -617,7 +617,10 @@ function shouldSendCatalogRotationAlert(
     return false;
   }
 
-  const lowFreshness = sourceSummary.freshnessStatus === "lowFreshness" || sourceSummary.freshnessStatus === "fallback";
+  const lowFreshness =
+    sourceSummary.freshnessStatus === "lowFreshness" ||
+    sourceSummary.freshnessStatus === "fallback" ||
+    sourceSummary.freshnessStatus === "seeded";
   const isAutomaticRotationCheck = options.reason === "rotation-check";
   if (lowFreshness && (isAutomaticRotationCheck || options.notify !== true)) {
     return false;

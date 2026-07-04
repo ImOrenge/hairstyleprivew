@@ -113,6 +113,8 @@ const trendMailFunction = read("supabase/functions/cron-trend-emails/index.ts");
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
 assert(trendResearch.includes("FALLBACK_RESEARCH_LOOKBACK_DAYS = 120"), "missing 120 day fallback lookback");
 assert(!trendResearch.includes("RESEARCH_LOOKBACK_DAYS = 240"), "hair trend research still uses 240 day lookback");
+assert(trendResearch.includes("buildSeededFallbackTrendSignals"), "trend research must fallback to curated blueprints when RSS is unavailable");
+assert(trendResearch.includes('freshnessStatus: "seeded"'), "RSS-unavailable fallback must mark the source summary as seeded");
 assert(catalog.includes("export async function ensureCatalogAvailable()"), "missing active catalog availability function");
 const ensureBody = catalog.match(/export async function ensureCatalogAvailable\(\)[\s\S]*?function filterRowsForStyleTarget/);
 assert(ensureBody && !ensureBody[0].includes("rebuildWeeklyHairstyleCatalog("), "user recommendation path still triggers rebuild");
@@ -140,7 +142,13 @@ assert(
 assert(catalog.includes("enqueueCatalogRotationTrendAlert"), "missing trend alert enqueue service hook");
 assert(catalog.includes("trend_alert_enqueue_failed"), "missing alert enqueue failure isolation warning");
 const alertPolicyBody = catalog.match(/function shouldSendCatalogRotationAlert\([\s\S]*?function computeCycleExpiresAt/);
-assert(alertPolicyBody && alertPolicyBody[0].includes('options.reason === "rotation-check"') && alertPolicyBody[0].includes("lowFreshness && (isAutomaticRotationCheck || options.notify !== true)"), "automatic rotation-check must not send low freshness catalog alerts");
+assert(
+  alertPolicyBody &&
+    alertPolicyBody[0].includes('options.reason === "rotation-check"') &&
+    alertPolicyBody[0].includes('sourceSummary.freshnessStatus === "seeded"') &&
+    alertPolicyBody[0].includes("lowFreshness && (isAutomaticRotationCheck || options.notify !== true)"),
+  "automatic rotation-check must not send low freshness catalog alerts",
+);
 assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup builder");
 assert(catalog.includes('from "./hairstyle-catalog-lineup"'), "lineup builder must live in the pure lineup module");
 assert(catalog.includes("attachDryRunCatalogRowIds"), "dry-run rebuild must attach stable temporary ids for lineup validation");
