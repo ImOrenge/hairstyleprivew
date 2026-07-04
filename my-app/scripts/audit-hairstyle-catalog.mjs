@@ -103,6 +103,7 @@ const runtimeSmokeScript = read("scripts/smoke-hairstyle-catalog-runtime.mjs");
 const cloudflareSecretsScript = read("scripts/check-hairstyle-catalog-cloudflare-secrets.mjs");
 const trendMailDeployScript = read("scripts/deploy-hairstyle-catalog-trend-mail-function.mjs");
 const launchReadinessScript = read("scripts/check-hairstyle-catalog-launch-readiness.mjs");
+const launchSummaryScript = read("scripts/check-hairstyle-catalog-launch-summary.mjs");
 const trendMailFunction = read("supabase/functions/cron-trend-emails/index.ts");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
@@ -167,6 +168,7 @@ assert(packageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "my-app pack
 assert(packageJson.includes("\"hairstyle:catalog:cloudflare:secrets\""), "my-app package is missing hairstyle Cloudflare secret check script");
 assert(packageJson.includes("\"hairstyle:catalog:trend-mail:deploy\""), "my-app package is missing hairstyle trend mail deploy script");
 assert(packageJson.includes("\"hairstyle:catalog:launch:check\""), "my-app package is missing hairstyle launch readiness script");
+assert(packageJson.includes("\"hairstyle:catalog:launch:summary:check\""), "my-app package is missing hairstyle launch summary check script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:remote:check\""), "root package is missing hairstyle remote readiness script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:lineup:audit\""), "root package is missing hairstyle lineup audit script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:env:check\""), "root package is missing hairstyle runtime env check script");
@@ -174,6 +176,7 @@ assert(rootPackageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "root pa
 assert(rootPackageJson.includes("\"hairstyle:catalog:cloudflare:secrets\""), "root package is missing hairstyle Cloudflare secret check script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:trend-mail:deploy\""), "root package is missing hairstyle trend mail deploy script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:launch:check\""), "root package is missing hairstyle launch readiness script");
+assert(rootPackageJson.includes("\"hairstyle:catalog:launch:summary:check\""), "root package is missing hairstyle launch summary check script");
 assert(cloudflareSecretsScript.includes("INTERNAL_API_SECRET"), "Cloudflare secret check must verify admin API secret name");
 assert(cloudflareSecretsScript.includes("wrangler\", \"secret\", \"list\""), "Cloudflare secret check must list deployed Worker secret names");
 assert(cloudflareSecretsScript.includes("--format\", \"json\""), "Cloudflare secret check must parse Wrangler JSON output");
@@ -289,6 +292,13 @@ assert(launchReadinessScript.includes("missingEvidence"), "launch readiness summ
 assert(launchReadinessScript.includes("externalBlockers"), "launch readiness summary must include external blockers");
 assert(launchReadinessScript.includes("completed with missing external evidence"), "launch readiness allow-missing path must finish after blocker output");
 assert(launchReadinessScript.includes("process.exitCode = 2"), "launch readiness must fail when external evidence is missing by default");
+assert(launchSummaryScript.includes("hairstyle-catalog-launch-readiness"), "launch summary check must validate readiness summary identity");
+assert(launchSummaryScript.includes("schemaVersion === 1"), "launch summary check must validate schema version");
+assert(launchSummaryScript.includes("requestedEvidence"), "launch summary check must validate requested evidence flags");
+assert(launchSummaryScript.includes("blockingMigrationDetails"), "launch summary check must validate blocking migration details");
+assert(launchSummaryScript.includes("fatalError"), "launch summary check must validate fatal summaries");
+assert(launchSummaryScript.includes("expectRemoteBlocker"), "launch summary check must support remote blocker expectations");
+assert(runtimeRunbook.includes("hairstyle:catalog:launch:summary:check"), "runtime smoke runbook missing launch summary check command");
 
 console.log(JSON.stringify({
   ok: true,
@@ -320,6 +330,7 @@ console.log(JSON.stringify({
     "trend mail service-key auth guard",
     "trend mail deploy guard",
     "launch readiness guard",
+    "launch summary schema guard",
     "active DB smoke guard",
   ],
 }, null, 2));

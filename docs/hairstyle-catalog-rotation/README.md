@@ -36,6 +36,7 @@
 | Remote write guard | 완료 | `npm run hairstyle:catalog:remote:check`가 unrelated pending migration을 감지하고 `blockingMigrationDetails`로 로컬 migration 요약을 보고한다. |
 | Supabase runtime/API smoke | 대기 | runtime env와 배포 대상이 필요하며 [runtime-smoke-runbook.md](runtime-smoke-runbook.md)에 절차 정리. active DB smoke는 9개 lineup 초과/미달과 슬롯 구성까지 검사 |
 | Launch readiness guard | 완료 | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal`가 로컬 audit, remote readiness, env, Cloudflare secret, trend mail deploy dry-run을 묶고 남은 외부 blocker를 보고한다. runtime smoke는 read-only와 admin dry-run POST 옵션을 분리하고, prerequisite 실패 시 실행을 skip한다. 특정 cycle/market과 live mail smoke 옵션은 하위 smoke로 전달하며, `--summaryJson`으로 자동화용 blocker summary를 남긴다. |
+| Launch summary schema guard | 완료 | `npm run hairstyle:catalog:launch:summary:check`가 생성된 readiness summary JSON의 schema, blocker, fatal summary 계약을 검증한다. |
 
 ## 전체 완료 기준
 
@@ -64,14 +65,15 @@
 | 9 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` | 통과 |
 | 10 | trend mail deploy dry-run | `npm run hairstyle:catalog:trend-mail:deploy` | 통과. 실제 배포는 확인 env와 `--write` 필요 |
 | 11 | launch readiness summary | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal` | 통과. 실제 launch는 migration 적용, deployed secret 확인, runtime smoke가 추가로 필요. 특정 cycle 검증은 `--cycleId=<id> --market=kr --expectAlert`를 추가하고, 자동화 증거는 `--summaryJson=<path>`로 `blockingMigrationDetails`까지 저장 |
-| 12 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | Supabase runtime env와 cron status RPC 적용 필요 |
-| 13 | active DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | Supabase runtime env와 migration 적용 필요 |
-| 14 | admin latest smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=status` | Supabase runtime env 필요 |
-| 15 | due checker smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=rotation-check --write --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
-| 16 | forced rebuild smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
-| 17 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
-| 18 | trend alert smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert` | Supabase runtime env 필요 |
-| 19 | post-rotation mail smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | Supabase runtime env 필요. 실제 발송은 `--allowPendingAlerts --expectPendingCatalogAlert` 필요 |
+| 12 | launch summary schema | `npm run hairstyle:catalog:launch:summary:check -- --path=my-app/supabase/.temp/hairstyle-launch-summary-smoke.json --expectBlocked --expectReadyForWrite=false --expectRemoteBlocker=202607030001_plan_credit_policy_aftercare.sql` | 통과. summary JSON이 secret 없이 blocker/fatal 계약을 유지하는지 확인 |
+| 13 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | Supabase runtime env와 cron status RPC 적용 필요 |
+| 14 | active DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | Supabase runtime env와 migration 적용 필요 |
+| 15 | admin latest smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=status` | Supabase runtime env 필요 |
+| 16 | due checker smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=rotation-check --write --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
+| 17 | forced rebuild smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=<app-url>` | Supabase runtime env 필요 |
+| 18 | failure fallback smoke | 강제 실패 조건에서 active cycle 유지 확인 | Supabase runtime env 필요 |
+| 19 | trend alert smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert` | Supabase runtime env 필요 |
+| 20 | post-rotation mail smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | Supabase runtime env 필요. 실제 발송은 `--allowPendingAlerts --expectPendingCatalogAlert` 필요 |
 
 ## 구현 순서 규칙
 
