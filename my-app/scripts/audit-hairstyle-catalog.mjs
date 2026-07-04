@@ -186,7 +186,13 @@ assert(trendMailFunction.includes("processedAlerts"), "trend mail function respo
 assert(trendMailDeployScript.includes("dry-run only"), "trend mail deploy helper must default to dry-run");
 assert(trendMailDeployScript.includes("HAIRSTYLE_CATALOG_FUNCTION_DEPLOY_ALLOW_WRITE"), "trend mail deploy helper must require write allow env");
 assert(trendMailDeployScript.includes("HAIRSTYLE_CATALOG_FUNCTION_DEPLOY_CONFIRM_PROJECT_REF"), "trend mail deploy helper must require project confirmation");
-assert(trendMailDeployScript.includes('"functions", "deploy", functionName'), "trend mail deploy helper must deploy the Supabase function");
+assert(
+  trendMailDeployScript.includes('"functions"') &&
+    trendMailDeployScript.includes('"deploy"') &&
+    trendMailDeployScript.includes("functionName"),
+  "trend mail deploy helper must deploy the Supabase function",
+);
+assert(trendMailDeployScript.includes("--no-verify-jwt"), "trend mail deploy helper must explicitly disable platform JWT verification");
 assert(trendMailDeployScript.includes("--use-api"), "trend mail deploy helper must support server-side function bundling");
 assert(trendMailDeployScript.includes('"deno", ["check", "--no-lock", functionPath]'), "trend mail deploy helper must run Deno check before deploy");
 assert(trendMailDeployScript.includes("verify_jwt=false"), "trend mail deploy helper must enforce function JWT config");

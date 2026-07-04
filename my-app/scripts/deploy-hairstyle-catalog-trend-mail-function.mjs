@@ -116,7 +116,16 @@ function validateLocalFunctionReadiness() {
 }
 
 function buildDeployArgs(projectRef) {
-  const args = ["functions", "deploy", functionName, "--workdir", "my-app", "--project-ref", projectRef];
+  const args = [
+    "functions",
+    "deploy",
+    functionName,
+    "--workdir",
+    "my-app",
+    "--project-ref",
+    projectRef,
+    "--no-verify-jwt",
+  ];
   if (!hasFlag("--noUseApi")) {
     args.push("--use-api");
   }
