@@ -16,6 +16,45 @@ function assert(condition, message) {
   }
 }
 
+function sectionBetween(doc, heading) {
+  const marker = `## ${heading}`;
+  const start = doc.indexOf(marker);
+  assert(start >= 0, `missing phase doc section: ${heading}`);
+  const next = doc.indexOf("\n## ", start + marker.length);
+  return next >= 0 ? doc.slice(start, next) : doc.slice(start);
+}
+
+function checklistRows(section) {
+  return section
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => /^\| \[[ x]\] \|/.test(line));
+}
+
+function assertPhaseDoc(spec, doc, readme) {
+  assert(doc.includes(spec.title), `${spec.file} title is missing or stale`);
+  assert(readme.includes(`[${spec.fileName}](${spec.fileName})`), `${spec.file} is not linked from phase README`);
+  for (const section of ["목표", "변경 범위", "작업 체크리스트", "완료 기준", "검증 체크리스트"]) {
+    assert(doc.includes(`## ${section}`), `${spec.file} missing section: ${section}`);
+  }
+
+  const workRows = checklistRows(sectionBetween(doc, "작업 체크리스트"));
+  const verificationRows = checklistRows(sectionBetween(doc, "검증 체크리스트"));
+  assert(workRows.length > 0, `${spec.file} has no work checklist rows`);
+  assert(verificationRows.length > 0, `${spec.file} has no verification checklist rows`);
+
+  const incompleteWorkRows = workRows.filter((line) => line.startsWith("| [ ] |"));
+  assert(incompleteWorkRows.length === 0, `${spec.file} has incomplete implementation tasks: ${incompleteWorkRows.join(" / ")}`);
+
+  const incompleteVerificationRows = verificationRows.filter((line) => line.startsWith("| [ ] |"));
+  for (const row of incompleteVerificationRows) {
+    assert(
+      row.includes("Supabase runtime env 필요") || row.includes("Supabase pg_cron runtime 필요"),
+      `${spec.file} has unchecked verification not marked as runtime-gated: ${row}`,
+    );
+  }
+}
+
 const blueprintAudit = spawnSync(process.execPath, [fileURLToPath(new URL("./audit-hairstyle-catalog-blueprints.mjs", import.meta.url))], {
   encoding: "utf8",
 });
@@ -43,6 +82,20 @@ const packageJson = read("package.json");
 const architectureDoc = readRepo("docs/hairstyle-catalog-rotation-architecture.md");
 const phaseReadme = readRepo("docs/hairstyle-catalog-rotation/README.md");
 const runtimeRunbook = readRepo("docs/hairstyle-catalog-rotation/runtime-smoke-runbook.md");
+const phaseDocSpecs = [
+  ["P1. DB 기반", "phase-01-db-foundation.md"],
+  ["P2. 서비스 리팩터", "phase-02-service-active-catalog.md"],
+  ["P3. 리빌드 API", "phase-03-rebuild-api.md"],
+  ["P4. 트렌드 알림 Enqueue", "phase-04-trend-alert-enqueue.md"],
+  ["P5. 자동 Rotation Cron", "phase-05-auto-rotation-cron.md"],
+  ["P6. 회전 품질", "phase-06-rotation-quality.md"],
+  ["P7. 운영 검증", "phase-07-validation-ops.md"],
+].map(([title, fileName]) => ({
+  title: `# ${title}`,
+  fileName,
+  file: `docs/hairstyle-catalog-rotation/${fileName}`,
+  doc: readRepo(`docs/hairstyle-catalog-rotation/${fileName}`),
+}));
 const rootPackageJson = readRepo("package.json");
 const remoteReadinessScript = read("scripts/check-hairstyle-catalog-remote-readiness.mjs");
 const runtimeEnvScript = read("scripts/check-hairstyle-catalog-runtime-env.mjs");
@@ -103,6 +156,9 @@ assert(runtimeRunbook.includes("catalog_rotation"), "runtime smoke runbook missi
 assert(runtimeRunbook.includes("hairstyle:catalog:env:check"), "runtime smoke runbook missing runtime env preflight");
 assert(runtimeRunbook.includes("Supabase linked dry-run 완료"), "runtime smoke runbook must record linked dry-run status");
 assert(!runtimeRunbook.includes("현재 격리 worktree에는 project ref가 없음"), "runtime smoke runbook still says project ref is missing");
+for (const phaseDoc of phaseDocSpecs) {
+  assertPhaseDoc(phaseDoc, phaseDoc.doc, phaseReadme);
+}
 assert(packageJson.includes("\"hairstyle:catalog:remote:check\""), "my-app package is missing hairstyle remote readiness script");
 assert(packageJson.includes("\"hairstyle:catalog:lineup:audit\""), "my-app package is missing hairstyle lineup audit script");
 assert(packageJson.includes("\"hairstyle:catalog:env:check\""), "my-app package is missing hairstyle runtime env check script");
@@ -241,6 +297,7 @@ console.log(JSON.stringify({
     "no automatic seeded fallback",
     "cron names",
     "doc status",
+    "phase docs",
     "remote readiness guard",
     "runtime env preflight",
     "runtime API smoke runner",

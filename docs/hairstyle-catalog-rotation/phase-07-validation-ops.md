@@ -40,6 +40,7 @@
 | [x] | runtime API smoke runner 스크립트 추가 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` |
 | [x] | cron DB smoke 명령이 rotation/post-rotation mail cron 등록 상태를 검사 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` |
 | [x] | launch readiness guard 추가 | `my-app/scripts/check-hairstyle-catalog-launch-readiness.mjs` |
+| [x] | audit가 P1-P7 phase 문서 구조와 runtime-gated 미검증 항목을 검사 | `my-app/scripts/audit-hairstyle-catalog.mjs` |
 
 ## 완료 기준
 
@@ -56,6 +57,7 @@
 | trend mail | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | trend mail deploy | `npm run hairstyle:catalog:trend-mail:deploy` dry-run 통과 |
 | launch readiness | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal`가 로컬 감사와 외부 blocker 보고를 완료하고, runtime smoke 옵션을 `--runReadOnlyRuntimeSmoke`와 `--runAdminDryRunSmoke`로 분리하며 `--forceRuntimeSmoke` 없이는 known-blocked smoke를 skip. `--cycleId`, `--market`, `--expectAlert`, `--allowPendingAlerts`, `--expectPendingCatalogAlert`는 하위 smoke로 전달 |
+| phase docs | P1-P7 문서가 목표, 변경 범위, 작업 체크리스트, 완료 기준, 검증 체크리스트를 유지하고 unchecked 검증은 runtime-gated 사유를 명시 |
 | trend mail evidence | live mail smoke에서 `catalog_rotation` alert 처리 요약과 delivery 중복 방지를 확인 |
 | trend mail auth | `cron-trend-emails`가 service-key header 없이는 실행되지 않음 |
 | admin latest | active 상태, stale 상태, next attempt, last failed 정보 확인 |
