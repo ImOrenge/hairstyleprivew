@@ -15,6 +15,7 @@
 | runbook | 운영 절차와 장애 대응 기록 |
 | env preflight | runtime smoke 전 필요한 env 준비 상태 확인 |
 | runtime smoke runner | admin latest, cron DB state, dry-run, rotation-check, force rebuild, alert idempotency 명령화 |
+| launch readiness | 로컬 감사와 외부 runtime blocker를 한 번에 보고하는 통합 게이트 |
 
 ## 작업 체크리스트
 
@@ -38,6 +39,7 @@
 | [x] | runtime env preflight 스크립트 추가 | `my-app/scripts/check-hairstyle-catalog-runtime-env.mjs` |
 | [x] | runtime API smoke runner 스크립트 추가 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` |
 | [x] | cron DB smoke 명령이 rotation/post-rotation mail cron 등록 상태를 검사 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` |
+| [x] | launch readiness guard 추가 | `my-app/scripts/check-hairstyle-catalog-launch-readiness.mjs` |
 
 ## 완료 기준
 
@@ -53,6 +55,7 @@
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db`가 rotation/post-rotation mail cron 등록 상태를 점검 |
 | trend mail | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` 통과 |
 | trend mail deploy | `npm run hairstyle:catalog:trend-mail:deploy` dry-run 통과 |
+| launch readiness | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal`가 로컬 감사와 외부 blocker 보고를 완료 |
 | trend mail evidence | live mail smoke에서 `catalog_rotation` alert 처리 요약과 delivery 중복 방지를 확인 |
 | trend mail auth | `cron-trend-emails`가 service-key header 없이는 실행되지 않음 |
 | admin latest | active 상태, stale 상태, next attempt, last failed 정보 확인 |
@@ -78,6 +81,7 @@
 | [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 4개 migration 포함 |
 | [x] | `npm run hairstyle:catalog:remote:check` 통과. `readyForWrite:false`, blocker `202607030001_plan_credit_policy_aftercare.sql` 확인 |
 | [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |
+| [x] | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal` |
 | [ ] | admin latest smoke. Supabase runtime env 필요 |
 | [ ] | `onlyIfDue:true` not-due smoke. Supabase runtime env 필요 |
 | [ ] | `force:true` rebuild smoke. Supabase runtime env 필요 |

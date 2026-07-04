@@ -14,6 +14,7 @@
     "hairstyle:catalog:remote:check": "node scripts/check-hairstyle-catalog-remote-readiness.mjs",
     "hairstyle:catalog:cloudflare:secrets": "node scripts/check-hairstyle-catalog-cloudflare-secrets.mjs",
     "hairstyle:catalog:trend-mail:deploy": "node scripts/deploy-hairstyle-catalog-trend-mail-function.mjs",
+    "hairstyle:catalog:launch:check": "node scripts/check-hairstyle-catalog-launch-readiness.mjs",
     "portone:webhook:test": "node scripts/send-portone-webhook-test.mjs",
     "portone:webhook:signature:test": "node --no-warnings scripts/verify-portone-webhook-signature.mjs",
     "portone:contract:test": "node --no-warnings scripts/verify-portone-contract.mjs",

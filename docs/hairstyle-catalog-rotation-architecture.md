@@ -421,7 +421,8 @@
 | `my-app/supabase/migrations/*_hairstyle_catalog_rotation.sql` | active pointer, lineup, RPC, cron 등록 |
 | `my-app/scripts/audit-hairstyle-catalog.mjs` | TTL, cron, DB schema, 코드 경로 정적 점검 |
 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` | active DB, cron DB, admin/API, mail delivery runtime smoke |
-| `package.json`, `my-app/package.json` | `hairstyle:catalog:audit` script 추가 |
+| `my-app/scripts/check-hairstyle-catalog-launch-readiness.mjs` | 로컬 감사와 외부 runtime blocker를 통합 보고 |
+| `package.json`, `my-app/package.json` | `hairstyle:catalog:audit`, smoke, remote/env/secret/deploy/launch script 추가 |
 
 ## 16. 단계별 구현 계획
 
@@ -458,6 +459,7 @@
 | Edge Function header | post-rotation mail cron이 `Authorization: Bearer <service-role-key>`와 `apikey: <service-role-key>`를 함께 전송 |
 | Edge Function auth | `cron-trend-emails`는 `verify_jwt=false`로 배포하고 함수 내부에서 service role key header를 검증 |
 | Edge Function deploy guard | `npm run hairstyle:catalog:trend-mail:deploy` dry-run 통과 후 확인 env와 `--write`로 배포 |
+| Launch readiness guard | `npm run hairstyle:catalog:launch:check`는 외부 증거가 빠지면 실패하고, `--allowMissingExternal`에서는 blocker 목록만 보고 |
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` 통과 |
 | admin secret | cron 호출에 쓰는 `INTERNAL_API_SECRET`와 앱 secret 일치 |
 | 첫 active | `GET /api/admin/hairstyles/cycles/latest`에서 `activeCycle` 존재 |
