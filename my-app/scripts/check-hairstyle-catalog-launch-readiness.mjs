@@ -315,6 +315,23 @@ function requestedEvidence() {
   };
 }
 
+function summarizeBlockingMigrationDetails(remoteReadiness) {
+  if (!remoteReadiness || !Array.isArray(remoteReadiness.blockingMigrationDetails)) {
+    return [];
+  }
+
+  return remoteReadiness.blockingMigrationDetails
+    .filter((detail) => detail && typeof detail === "object")
+    .map((detail) => ({
+      file: typeof detail.file === "string" ? detail.file : "",
+      path: typeof detail.path === "string" ? detail.path : "",
+      existsLocally: Boolean(detail.existsLocally),
+      operations: Array.isArray(detail.operations)
+        ? detail.operations.filter((operation) => typeof operation === "string" && operation.trim()).slice(0, 5)
+        : [],
+    }));
+}
+
 function buildSummary({
   allowMissingExternal,
   cloudflareLocalSecretCheckOk,
@@ -353,6 +370,7 @@ function buildSummary({
           blockingPending: Array.isArray(remoteReadiness.blockingPending)
             ? remoteReadiness.blockingPending
             : [],
+          blockingMigrationDetails: summarizeBlockingMigrationDetails(remoteReadiness),
           missingHairstyleMigrations: Array.isArray(remoteReadiness.missingHairstyleMigrations)
             ? remoteReadiness.missingHairstyleMigrations
             : [],

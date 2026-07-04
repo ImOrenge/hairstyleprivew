@@ -279,6 +279,7 @@ assert(launchReadinessScript.includes("runtime env preflight failed"), "launch r
 assert(launchReadinessScript.includes("summaryJson"), "launch readiness must expose machine-readable summary output");
 assert(launchReadinessScript.includes("writeSummaryJson"), "launch readiness must write summary JSON when requested");
 assert(launchReadinessScript.includes("requestedEvidence"), "launch readiness summary must report requested evidence");
+assert(launchReadinessScript.includes("summarizeBlockingMigrationDetails"), "launch readiness summary must preserve blocking migration details");
 assert(launchReadinessScript.includes("missingEvidence"), "launch readiness summary must include missing evidence");
 assert(launchReadinessScript.includes("externalBlockers"), "launch readiness summary must include external blockers");
 assert(launchReadinessScript.includes("completed with missing external evidence"), "launch readiness allow-missing path must finish after blocker output");

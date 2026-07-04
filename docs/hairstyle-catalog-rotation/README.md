@@ -63,7 +63,7 @@
 | 8 | remote write guard | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false`, `blockingPending:["202607030001_plan_credit_policy_aftercare.sql"]`, `blockingMigrationDetails` 포함 |
 | 9 | trend mail function check | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` | 통과 |
 | 10 | trend mail deploy dry-run | `npm run hairstyle:catalog:trend-mail:deploy` | 통과. 실제 배포는 확인 env와 `--write` 필요 |
-| 11 | launch readiness summary | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal` | 통과. 실제 launch는 migration 적용, deployed secret 확인, runtime smoke가 추가로 필요. 특정 cycle 검증은 `--cycleId=<id> --market=kr --expectAlert`를 추가하고, 자동화 증거는 `--summaryJson=<path>`로 저장 |
+| 11 | launch readiness summary | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal` | 통과. 실제 launch는 migration 적용, deployed secret 확인, runtime smoke가 추가로 필요. 특정 cycle 검증은 `--cycleId=<id> --market=kr --expectAlert`를 추가하고, 자동화 증거는 `--summaryJson=<path>`로 `blockingMigrationDetails`까지 저장 |
 | 12 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | Supabase runtime env와 cron status RPC 적용 필요 |
 | 13 | active DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=active-db` | Supabase runtime env와 migration 적용 필요 |
 | 14 | admin latest smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=status` | Supabase runtime env 필요 |
