@@ -160,9 +160,13 @@ function collectRemoteReadiness(output, missingEvidence, externalBlockers) {
   }
 
   if (blockingPending.length > 0) {
-    externalBlockers.push(
-      `remote DB write is blocked by unrelated pending migration(s): ${blockingPending.join(", ")}`,
-    );
+    const details = Array.isArray(readiness.blockingMigrationDetails) ? readiness.blockingMigrationDetails : [];
+    for (const file of blockingPending) {
+      const detail = details.find((item) => item && item.file === file);
+      const operations = Array.isArray(detail?.operations) ? detail.operations.filter(Boolean).slice(0, 3) : [];
+      const suffix = operations.length > 0 ? `; local operations: ${operations.join(" | ")}` : "";
+      externalBlockers.push(`remote DB write is blocked by unrelated pending migration: ${file}${suffix}`);
+    }
   }
 
   if (hairstylePending.length > 0) {

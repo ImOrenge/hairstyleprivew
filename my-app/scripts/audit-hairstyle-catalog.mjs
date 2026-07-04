@@ -123,6 +123,8 @@ assert(cloudflareSecretsScript.includes("--format\", \"json\""), "Cloudflare sec
 assert(cloudflareSecretsScript.includes("Cloudflare API authentication failed"), "Cloudflare secret check must explain invalid API token failures");
 assert(!cloudflareSecretsScript.includes("secret put"), "Cloudflare secret check must not write deployed secret values");
 assert(remoteReadinessScript.includes("blockingPending") && remoteReadinessScript.includes("Refusing hairstyle remote write"), "remote readiness guard must block unrelated pending migrations");
+assert(remoteReadinessScript.includes("blockingMigrationDetails"), "remote readiness guard must describe unrelated pending migrations");
+assert(remoteReadinessScript.includes("readBlockingMigrationDetail"), "remote readiness guard must summarize blocking migration files");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_MIGRATION_CONFIRM_PROJECT_REF"), "remote readiness guard must require explicit project confirmation for writes");
 assert(remoteReadinessScript.includes("HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS"), "remote readiness guard must expose a command timeout override");
 assert(remoteReadinessScript.includes("timed out after"), "remote readiness guard must fail clearly on command timeout");
@@ -210,6 +212,7 @@ assert(launchReadinessScript.includes("runAdminDryRunSmoke"), "launch readiness 
 assert(launchReadinessScript.includes("runAllRuntimeSmoke"), "launch readiness must keep the compatibility runtime smoke flag explicit");
 assert(launchReadinessScript.includes("runTrendMailSmoke"), "launch readiness must expose trend mail smoke execution");
 assert(launchReadinessScript.includes("pendingMigrations"), "launch readiness must report pending remote migrations");
+assert(launchReadinessScript.includes("blockingMigrationDetails"), "launch readiness must include blocking migration summaries");
 assert(launchReadinessScript.includes("completed with missing external evidence"), "launch readiness allow-missing path must finish after blocker output");
 assert(launchReadinessScript.includes("process.exitCode = 2"), "launch readiness must fail when external evidence is missing by default");
 

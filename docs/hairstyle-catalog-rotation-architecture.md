@@ -421,6 +421,7 @@
 | `my-app/supabase/migrations/*_hairstyle_catalog_rotation.sql` | active pointer, lineup, RPC, cron 등록 |
 | `my-app/scripts/audit-hairstyle-catalog.mjs` | TTL, cron, DB schema, 코드 경로 정적 점검 |
 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` | active DB, cron DB, admin/API, mail delivery runtime smoke |
+| `my-app/scripts/check-hairstyle-catalog-remote-readiness.mjs` | Supabase dry-run, pending migration, blocking migration detail, write guard 확인 |
 | `my-app/scripts/check-hairstyle-catalog-launch-readiness.mjs` | 로컬 감사와 외부 runtime blocker를 통합 보고 |
 | `package.json`, `my-app/package.json` | `hairstyle:catalog:audit`, smoke, remote/env/secret/deploy/launch script 추가 |
 

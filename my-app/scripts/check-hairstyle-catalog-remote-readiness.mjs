@@ -148,6 +148,49 @@ function extractMigrationFiles(output) {
   return files;
 }
 
+function summarizeSqlStatement(statement) {
+  return statement
+    .replace(/--.*$/gm, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 240);
+}
+
+function collapseDollarQuotedBodies(sql) {
+  return sql.replace(/\$[A-Za-z_]*\$[\s\S]*?\$[A-Za-z_]*\$/g, "$$ <function body omitted> $$");
+}
+
+function isTopLevelOperation(statement) {
+  return /^(alter|comment|create|delete|drop|grant|insert|revoke|update)\b/i.test(statement);
+}
+
+function readBlockingMigrationDetail(file) {
+  const relativePath = `supabase/migrations/${file}`;
+  const fullPath = resolve(appDir, relativePath);
+  if (!existsSync(fullPath)) {
+    return {
+      file,
+      path: relativePath,
+      existsLocally: false,
+      operations: [],
+    };
+  }
+
+  const sql = collapseDollarQuotedBodies(readFileSync(fullPath, "utf8"));
+  const operations = sql
+    .split(";")
+    .map(summarizeSqlStatement)
+    .filter((statement) => statement && isTopLevelOperation(statement))
+    .slice(0, 5);
+
+  return {
+    file,
+    path: relativePath,
+    existsLocally: true,
+    operations,
+  };
+}
+
 function buildReadiness(projectRef, pendingMigrations) {
   const expectedSet = new Set(expectedHairstyleMigrations);
   const hairstylePending = pendingMigrations.filter((file) => expectedSet.has(file));
@@ -163,6 +206,7 @@ function buildReadiness(projectRef, pendingMigrations) {
     pendingMigrations,
     hairstylePending,
     blockingPending,
+    blockingMigrationDetails: blockingPending.map(readBlockingMigrationDetail),
     missingHairstyleMigrations,
     readyForWrite:
       projectRef === expectedProjectRef &&

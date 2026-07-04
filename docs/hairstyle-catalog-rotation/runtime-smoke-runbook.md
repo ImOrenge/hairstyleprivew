@@ -70,6 +70,7 @@
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 스크립트 보강. `catalog_rotation` due alert 처리 증거와 delivery 중복을 확인한다. 실제 Supabase service role과 함수 URL 필요 |
 | `npm run hairstyle:catalog:trend-mail:deploy` | dry-run 통과. `cron-trend-emails` Deno check와 배포 guard 확인 |
 | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false` |
+| `npm run hairstyle:catalog:remote:check` blocker detail | `blockingMigrationDetails`가 `202607030001_plan_credit_policy_aftercare.sql`의 local operations를 보여준다. 이 migration은 credit/aftercare 정책 쪽 변경이므로 헤어 migration write 전에 별도 적용 판단이 필요하다. |
 | `npm run hairstyle:catalog:env:check -- --appUrl=https://hairfit.beauty` | 메인 worktree env 복사 후 Supabase service role/Resend/public URL 통과. `INTERNAL_API_SECRET`는 placeholder라 admin/API smoke blocker |
 | `npm run hairstyle:catalog:cloudflare:secrets` | local `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 통과. local `INTERNAL_API_SECRET`는 placeholder라 blocker |
 | `npm run hairstyle:catalog:cloudflare:secrets -- --verify --only=INTERNAL_API_SECRET,SUPABASE_SERVICE_ROLE_KEY,NEXT_PUBLIC_SUPABASE_URL` | Cloudflare API token 인증 실패 `9106`. deployed secret name 확인에는 유효한 `CLOUDFLARE_API_TOKEN` 필요 |

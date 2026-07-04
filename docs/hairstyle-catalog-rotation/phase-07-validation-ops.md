@@ -49,7 +49,7 @@
 | build | `npm run build` 통과 |
 | audit | `npm run hairstyle:catalog:audit` 통과. blueprint, lookback, active-only 추천, alert idempotency, lineup, overlap warning, cron names 포함 |
 | migration | `supabase db push --dry-run --workdir my-app` 통과 |
-| remote guard | `npm run hairstyle:catalog:remote:check`가 unrelated pending migration을 감지 |
+| remote guard | `npm run hairstyle:catalog:remote:check`가 unrelated pending migration을 감지하고 `blockingMigrationDetails`를 보고 |
 | env preflight | `npm run hairstyle:catalog:env:check`가 admin API, cron helper, trend mail function env를 점검 |
 | runtime smoke runner | `npm run hairstyle:catalog:runtime:smoke`가 read-only와 guarded write smoke를 제공 |
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db`가 rotation/post-rotation mail cron 등록 상태를 점검 |
@@ -79,7 +79,7 @@
 | [x] | trend mail function의 `verify_jwt=false` + service-key 내부 검증 guard를 정적 audit에 포함 |
 | [x] | trend mail function deploy guard dry-run |
 | [x] | `supabase db push --dry-run --workdir my-app` 통과. remote pending 목록에 `202607030001_plan_credit_policy_aftercare.sql`와 헤어 카탈로그 4개 migration 포함 |
-| [x] | `npm run hairstyle:catalog:remote:check` 통과. `readyForWrite:false`, blocker `202607030001_plan_credit_policy_aftercare.sql` 확인 |
+| [x] | `npm run hairstyle:catalog:remote:check` 통과. `readyForWrite:false`, blocker `202607030001_plan_credit_policy_aftercare.sql`와 local operation 요약 확인 |
 | [x] | `deno check --no-lock my-app/supabase/functions/cron-trend-emails/index.ts` |
 | [x] | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal` |
 | [ ] | admin latest smoke. Supabase runtime env 필요 |
