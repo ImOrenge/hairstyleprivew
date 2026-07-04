@@ -211,6 +211,8 @@ const en: Record<TranslationKey, string> = {
     "pricing.salonPrice": "Contact",
     "pricing.salonCredits": "B2B onboarding consultation",
     "pricing.recurringNote": "Monthly billing · cancel anytime",
+    "pricing.waitlist.cta": "Join waitlist",
+    "pricing.waitlist.note": "Subscription checkout preparing · waitlist gets first notice",
     "pricing.noCredits": "0 credits",
     "pricing.connecting": "Connecting...",
 

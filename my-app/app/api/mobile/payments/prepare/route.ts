@@ -3,6 +3,7 @@ import { requireMobileService } from "../../../../../lib/mobile-auth";
 import { isSelfServeBillingPlanKey } from "../../../../../lib/billing-plan";
 import { buildPortonePaymentId } from "../../../../../lib/portone-payment-id";
 import { PLAN_AMOUNT_KRW, PLAN_CREDITS, PLAN_ORDER_NAME } from "../../../../../lib/portone";
+import { getSubscriptionAccessMode } from "../../../../../lib/subscription-access";
 
 interface PreparePaymentRequest {
   plan?: unknown;
@@ -26,6 +27,12 @@ export async function POST(request: Request) {
   const context = await requireMobileService("customer");
   if (!context.ok) {
     return context.response;
+  }
+  if (getSubscriptionAccessMode() === "waitlist") {
+    return NextResponse.json(
+      { error: "구독 결제는 현재 웨잇리스트로 운영 중입니다." },
+      { status: 503 },
+    );
   }
 
   const body = (await request.json().catch(() => ({}))) as PreparePaymentRequest;

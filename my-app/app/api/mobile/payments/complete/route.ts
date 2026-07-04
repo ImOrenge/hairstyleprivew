@@ -10,6 +10,7 @@ import {
 } from "../../../../../lib/portone-payment-confirmation";
 import { isPortoneConfigured, PLAN_AMOUNT_KRW, PLAN_CREDITS } from "../../../../../lib/portone";
 import { sendPaymentSuccessEmail } from "../../../../../lib/resend";
+import { getSubscriptionAccessMode } from "../../../../../lib/subscription-access";
 
 interface CompletePaymentRequest {
   paymentId?: unknown;
@@ -65,6 +66,12 @@ export async function POST(request: Request) {
   const context = await requireMobileService("customer");
   if (!context.ok) {
     return context.response;
+  }
+  if (getSubscriptionAccessMode() === "waitlist") {
+    return NextResponse.json(
+      { error: "구독 결제는 현재 웨잇리스트로 운영 중입니다." },
+      { status: 503 },
+    );
   }
 
   if (!isPortoneConfigured()) {

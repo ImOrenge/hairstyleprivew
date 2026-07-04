@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { buildSignInRedirectUrl, getClerkConfigState, isDevClerkSalonUserId } from "./lib/clerk";
 import { isAccountType, parseOnboardingMetadata } from "./lib/onboarding";
+import { getSubscriptionAccessMode } from "./lib/subscription-access";
 
 const { canUseClerkServer: hasClerkConfig } = getClerkConfigState();
 const isProtectedRoute = createRouteMatcher([
@@ -29,6 +30,10 @@ const isPublicSupportApiRoute = createRouteMatcher([
   "/api/support/posts",
   "/api/support/posts/(.*)",
 ]);
+const isPublicSubscriptionWaitlistRoute = createRouteMatcher([
+  "/api/subscription-waitlist",
+]);
+const isBillingCheckoutRoute = createRouteMatcher(["/billing/checkout(.*)"]);
 const isAccountApiRoute = createRouteMatcher(["/api/account"]);
 const isMobileApiRoute = createRouteMatcher(["/api/mobile(.*)"]);
 const isMemberProfileApiRoute = createRouteMatcher(["/api/member-profile"]);
@@ -73,6 +78,14 @@ function clerkConfigRequiredResponse(req: NextRequest) {
 
 function isMutationRequest(req: NextRequest) {
   return req.method !== "GET" && req.method !== "HEAD" && req.method !== "OPTIONS";
+}
+
+function isPublicWaitlistCheckoutRoute(req: NextRequest) {
+  return (
+    req.method === "GET" &&
+    isBillingCheckoutRoute(req) &&
+    getSubscriptionAccessMode() === "waitlist"
+  );
 }
 
 function getMobileCorsHeaders(req: NextRequest) {
@@ -151,7 +164,13 @@ const clerkAppMiddleware = hasClerkConfig
         return mobileCorsPreflight(req);
       }
 
-      if (!isProtectedRoute(req) || isWebhookRoute(req) || (isPublicSupportApiRoute(req) && !isMutationRequest(req))) {
+      if (
+        !isProtectedRoute(req) ||
+        isWebhookRoute(req) ||
+        isPublicWaitlistCheckoutRoute(req) ||
+        (isPublicSupportApiRoute(req) && !isMutationRequest(req)) ||
+        (isPublicSubscriptionWaitlistRoute(req) && req.method === "POST")
+      ) {
         return withMobileCors(req, NextResponse.next());
       }
 
@@ -237,7 +256,13 @@ const proxy = hasClerkConfig && clerkAppMiddleware
         return mobileCorsPreflight(req);
       }
 
-      if (!isProtectedRoute(req) || isWebhookRoute(req) || (isPublicSupportApiRoute(req) && !isMutationRequest(req))) {
+      if (
+        !isProtectedRoute(req) ||
+        isWebhookRoute(req) ||
+        isPublicWaitlistCheckoutRoute(req) ||
+        (isPublicSupportApiRoute(req) && !isMutationRequest(req)) ||
+        (isPublicSubscriptionWaitlistRoute(req) && req.method === "POST")
+      ) {
         return withMobileCors(req, NextResponse.next());
       }
 

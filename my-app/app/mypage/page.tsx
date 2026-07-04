@@ -18,6 +18,7 @@ import { buildSignInRedirectUrl } from "../../lib/clerk";
 import type { PersonalColorResult } from "../../lib/fashion-types";
 import { isMemberStyleTarget, isMemberStyleTone } from "../../lib/onboarding";
 import { normalizeStyleProfile } from "../../lib/style-profile-server";
+import { getSubscriptionAccessMode } from "../../lib/subscription-access";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -235,6 +236,7 @@ export default async function MyPage({
   const viewerName = getDisplayName(displayName ?? profile?.display_name, email);
   const accountSetupComplete = Boolean(memberProfile?.display_name && memberProfile?.style_target);
   const activeTab: MyPageTabId = setupRequested || !accountSetupComplete ? "account" : requestedTab;
+  const subscriptionAccessMode = getSubscriptionAccessMode();
 
   return (
     <MyPageDashboardTabs
@@ -254,6 +256,7 @@ export default async function MyPage({
         subscribed,
       }}
       subscription={subscription}
+      subscriptionAccessMode={subscriptionAccessMode}
       viewerName={viewerName}
     />
   );

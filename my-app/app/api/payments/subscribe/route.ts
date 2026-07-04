@@ -29,6 +29,7 @@ import {
 } from "../../../../lib/billing-key-secret";
 import { sendPaymentSuccessEmail } from "../../../../lib/resend";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
+import { getSubscriptionAccessMode } from "../../../../lib/subscription-access";
 
 interface SubscribeRequestBody {
   plan?: string;
@@ -183,6 +184,12 @@ export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  if (getSubscriptionAccessMode() === "waitlist") {
+    return NextResponse.json(
+      { error: "구독 결제는 현재 웨잇리스트로 운영 중입니다." },
+      { status: 503 },
+    );
   }
 
   if (!isSupabaseConfigured()) {

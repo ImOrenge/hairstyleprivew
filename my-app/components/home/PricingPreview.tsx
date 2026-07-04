@@ -2,6 +2,7 @@
 
 import type { PlanDisplayBenefit } from "../../lib/plan-benefit-display";
 import type { PricingTierKey } from "../../lib/pricing-plan";
+import type { SubscriptionAccessMode } from "../../lib/subscription-access";
 import { cn } from "../../lib/utils";
 import { useT } from "../../lib/i18n/useT";
 import { PortoneSubscriptionButton } from "../payments/PortoneSubscriptionButton";
@@ -24,6 +25,7 @@ interface PlanBlueprint {
 
 interface PricingPreviewProps {
   initialDisplayBenefits: PlanDisplayBenefit[];
+  subscriptionAccessMode: SubscriptionAccessMode;
 }
 
 function usageLine(benefit: PlanDisplayBenefit, t: ReturnType<typeof useT>) {
@@ -73,8 +75,9 @@ function featureLines(plan: PlanBlueprint, benefit: PlanDisplayBenefit, t: Retur
   return [...base, t("pricing.basic.f2"), t("pricing.basic.f3")];
 }
 
-export function PricingPreview({ initialDisplayBenefits }: PricingPreviewProps) {
+export function PricingPreview({ initialDisplayBenefits, subscriptionAccessMode }: PricingPreviewProps) {
   const t = useT();
+  const subscriptionWaitlistMode = subscriptionAccessMode === "waitlist";
   const displayBenefits = initialDisplayBenefits;
   const benefitByKey = new Map<string, PlanDisplayBenefit>(
     displayBenefits.map((benefit) => [benefit.key, benefit]),
@@ -98,7 +101,7 @@ export function PricingPreview({ initialDisplayBenefits }: PricingPreviewProps) 
       subtitle: t("pricing.basic.subtitle"),
       description: t("pricing.basic.desc"),
       period: t("pricing.perMonth"),
-      cta: t("pricing.basic.cta"),
+      cta: subscriptionWaitlistMode ? t("pricing.waitlist.cta") : t("pricing.basic.cta"),
       tone: "basic",
       recommended: false,
     },
@@ -108,7 +111,7 @@ export function PricingPreview({ initialDisplayBenefits }: PricingPreviewProps) 
       subtitle: t("pricing.standard.subtitle"),
       description: t("pricing.standard.desc"),
       period: t("pricing.perMonth"),
-      cta: t("pricing.standard.cta"),
+      cta: subscriptionWaitlistMode ? t("pricing.waitlist.cta") : t("pricing.standard.cta"),
       tone: "recommended",
       recommended: true,
     },
@@ -118,7 +121,7 @@ export function PricingPreview({ initialDisplayBenefits }: PricingPreviewProps) 
       subtitle: t("pricing.pro.subtitle"),
       description: t("pricing.pro.desc"),
       period: t("pricing.perMonth"),
-      cta: t("pricing.pro.cta"),
+      cta: subscriptionWaitlistMode ? t("pricing.waitlist.cta") : t("pricing.pro.cta"),
       tone: "premium",
       recommended: false,
     },
@@ -266,13 +269,14 @@ export function PricingPreview({ initialDisplayBenefits }: PricingPreviewProps) 
 
             {plan.key !== "free" && plan.key !== "salon" ? (
               <p className="mt-3 text-[10px] text-[var(--app-subtle)]">
-                {t("pricing.recurringNote")}
+                {subscriptionWaitlistMode ? t("pricing.waitlist.note") : t("pricing.recurringNote")}
               </p>
             ) : null}
 
             {plan.key === "basic" || plan.key === "standard" || plan.key === "pro" ? (
               <PortoneSubscriptionButton
                 planKey={plan.key as PaymentPlanKey}
+                subscriptionAccessMode={subscriptionAccessMode}
                 variant={plan.tone === "basic" ? "secondary" : "primary"}
                 className="mt-4 w-full px-3 py-2 text-xs"
               >

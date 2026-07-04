@@ -4,8 +4,10 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import type { AnchorHTMLAttributes, MouseEvent, ReactNode } from "react";
 import { useState } from "react";
+import type { SubscriptionAccessMode } from "../../lib/subscription-access";
 import { useHeaderAccount } from "../layout/HeaderAccountContext";
 import { buttonClassName, type ButtonVariant } from "../ui/Button";
+import { SubscriptionWaitlistForm } from "./SubscriptionWaitlistForm";
 
 export type SelfServeSubscriptionPlanKey = "basic" | "standard" | "pro";
 
@@ -15,7 +17,9 @@ interface PortoneSubscriptionButtonProps
   children: ReactNode;
   variant?: ButtonVariant;
   disabled?: boolean;
+  initialEmail?: string;
   requireAuth?: boolean;
+  subscriptionAccessMode?: SubscriptionAccessMode;
   successRedirectPath?: string;
 }
 
@@ -41,22 +45,35 @@ export function PortoneSubscriptionButton({
   variant = "primary",
   className,
   disabled,
+  initialEmail = "",
   requireAuth = true,
+  subscriptionAccessMode = "waitlist",
   successRedirectPath = "/mypage",
   ...buttonProps
 }: PortoneSubscriptionButtonProps) {
   const [loginPromptOpen, setLoginPromptOpen] = useState(false);
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
   const { isAuthLoaded, isSignedIn } = useHeaderAccount();
   const targetCheckoutPath = checkoutPath(planKey, successRedirectPath);
   const loginHref = signInUrl(targetCheckoutPath);
-  const href = requireAuth && !isSignedIn ? loginHref : targetCheckoutPath;
-  const isNavigationDisabled = Boolean(disabled || (requireAuth && !isAuthLoaded));
-  const shouldPromptForLogin = Boolean(requireAuth && isAuthLoaded && !isSignedIn);
+  const href = subscriptionAccessMode === "checkout" && requireAuth && !isSignedIn ? loginHref : targetCheckoutPath;
+  const isNavigationDisabled = Boolean(
+    disabled || (subscriptionAccessMode === "checkout" && requireAuth && !isAuthLoaded),
+  );
+  const shouldPromptForLogin = Boolean(
+    subscriptionAccessMode === "checkout" && requireAuth && isAuthLoaded && !isSignedIn,
+  );
   const selectedPlanLabel = planLabel(planKey);
 
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    if (isNavigationDisabled) {
+    if (disabled || isNavigationDisabled) {
       event.preventDefault();
+      return;
+    }
+
+    if (subscriptionAccessMode === "waitlist") {
+      event.preventDefault();
+      setWaitlistOpen(true);
       return;
     }
 
@@ -78,6 +95,47 @@ export function PortoneSubscriptionButton({
       >
         {children}
       </Link>
+      {waitlistOpen ? (
+        <div
+          aria-labelledby={`subscription-waitlist-title-${planKey}`}
+          aria-modal="true"
+          className="fixed inset-0 z-[90] flex items-end justify-center bg-black/45 px-3 py-3 sm:items-center sm:px-6"
+          role="dialog"
+        >
+          <div className="w-full max-w-md border border-[var(--app-border)] bg-[var(--app-surface)] p-5 shadow-2xl sm:p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="app-kicker">Subscription Waitlist</p>
+                <h2
+                  className="mt-2 text-2xl font-black tracking-tight text-[var(--app-text)]"
+                  id={`subscription-waitlist-title-${planKey}`}
+                >
+                  {selectedPlanLabel} 오픈 알림을 신청하세요
+                </h2>
+              </div>
+              <button
+                aria-label="닫기"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border)] text-[var(--app-muted)] transition hover:border-[var(--app-border-strong)] hover:text-[var(--app-text)]"
+                onClick={() => setWaitlistOpen(false)}
+                type="button"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
+              현재 PG 연동 준비로 구독 결제는 잠시 대기 중입니다. 신청하시면 결제 오픈 시 우선 안내드리겠습니다.
+            </p>
+            <div className="mt-5">
+              <SubscriptionWaitlistForm
+                initialEmail={initialEmail}
+                initialPlanKey={planKey}
+                lockPlan
+                sourcePath={targetCheckoutPath}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
       {loginPromptOpen ? (
         <div
           aria-labelledby={`subscription-login-title-${planKey}`}

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { getSelfServePlanDisplayBenefits, type PlanDisplayBenefit } from "../../lib/plan-benefit-display";
 import { getCreditsPerStyle } from "../../lib/pricing-plan";
+import type { SubscriptionAccessMode } from "../../lib/subscription-access";
 import type { MemberStyleTarget, MemberStyleTone } from "../../lib/onboarding";
 import type { PersonalColorResult } from "../../lib/fashion-types";
 import { PortoneSubscriptionButton, type SelfServeSubscriptionPlanKey } from "../payments/PortoneSubscriptionButton";
@@ -123,6 +124,7 @@ interface MyPageDashboardTabsProps {
   profile: UserProfileRow | null;
   queryState: QueryState;
   subscription: SubscriptionRow | null;
+  subscriptionAccessMode: SubscriptionAccessMode;
   viewerName: string;
 }
 
@@ -568,14 +570,18 @@ function formatPlanHairFashionUsage(plan: PlanDisplayBenefit) {
 
 function PlanPanel({
   activePlan,
+  email,
   payments,
   refundRequests,
   subscription,
+  subscriptionAccessMode,
 }: {
   activePlan: string;
+  email: string;
   payments: PaymentTransactionRow[];
   refundRequests: RefundRequestRow[];
   subscription: SubscriptionRow | null;
+  subscriptionAccessMode: SubscriptionAccessMode;
 }) {
   const activeSubscription = isActiveSubscription(subscription);
   const cancellationScheduled = isCancellationScheduled(subscription);
@@ -680,11 +686,15 @@ function PlanPanel({
                     </div>
                     <PortoneSubscriptionButton
                       planKey={plan.key as SelfServeSubscriptionPlanKey}
+                      initialEmail={email}
+                      subscriptionAccessMode={subscriptionAccessMode}
                       variant={plan.key === "basic" ? "secondary" : "primary"}
                       className="w-full px-3 py-2 text-xs"
                       successRedirectPath="/mypage"
                     >
-                      {formatPlanLabel(plan.key)} 시작
+                      {subscriptionAccessMode === "waitlist"
+                        ? "오픈 알림 신청"
+                        : `${formatPlanLabel(plan.key)} 시작`}
                     </PortoneSubscriptionButton>
                   </div>
                 ))}
@@ -930,6 +940,7 @@ function ActiveTabPanel({
   memberProfile,
   personalColor,
   subscription,
+  subscriptionAccessMode,
   viewerName,
 }: {
   accountSetupComplete: boolean;
@@ -943,10 +954,20 @@ function ActiveTabPanel({
   memberProfile: MemberProfileRow | null;
   personalColor: PersonalColorResult | null;
   subscription: SubscriptionRow | null;
+  subscriptionAccessMode: SubscriptionAccessMode;
   viewerName: string;
 }) {
   if (activeTab === "plan") {
-    return <PlanPanel activePlan={activePlan} payments={payments} refundRequests={refundRequests} subscription={subscription} />;
+    return (
+      <PlanPanel
+        activePlan={activePlan}
+        email={email}
+        payments={payments}
+        refundRequests={refundRequests}
+        subscription={subscription}
+        subscriptionAccessMode={subscriptionAccessMode}
+      />
+    );
   }
 
   if (activeTab === "aftercare") {
@@ -988,6 +1009,7 @@ export function MyPageDashboardTabs({
   profile,
   queryState,
   subscription,
+  subscriptionAccessMode,
   viewerName,
 }: MyPageDashboardTabsProps) {
   const subscriptionPlan = getCurrentSubscriptionPlanKey(subscription);
@@ -1071,6 +1093,7 @@ export function MyPageDashboardTabs({
         memberProfile={memberProfile}
         personalColor={personalColor}
         subscription={subscription}
+        subscriptionAccessMode={subscriptionAccessMode}
         viewerName={viewerName}
       />
     </AppPage>

@@ -203,6 +203,8 @@ const ko = {
     "pricing.salonPrice": "문의",
     "pricing.salonCredits": "B2B 도입 상담",
     "pricing.recurringNote": "매월 자동 결제 · 언제든 해지 가능",
+    "pricing.waitlist.cta": "오픈 알림 신청",
+    "pricing.waitlist.note": "구독 결제 준비 중 · 웨잇리스트 우선 안내",
     "pricing.noCredits": "0크레딧",
     "pricing.connecting": "결제 연결 중...",
 

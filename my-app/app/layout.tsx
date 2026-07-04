@@ -6,10 +6,12 @@ import { Header } from "../components/layout/Header";
 import { AppClerkProvider } from "../components/providers/AppClerkProvider";
 import { LocaleSync } from "../components/layout/LocaleSync";
 import { PointerGlowProvider } from "../components/providers/PointerGlowProvider";
+import { SubscriptionPaymentNoticeModal } from "../components/layout/SubscriptionPaymentNoticeModal";
 import { ThemeProvider } from "../components/providers/ThemeProvider";
 import { inter, notoSansKR } from "../lib/fonts";
 import { homeSeo } from "../lib/home-content";
 import { getSiteUrl } from "../lib/site-url";
+import { getSubscriptionAccessMode } from "../lib/subscription-access";
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
@@ -55,6 +57,8 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
+  const subscriptionAccessMode = getSubscriptionAccessMode();
+
   return (
     <html lang="ko" className={`${inter.variable} ${notoSansKR.variable}`} suppressHydrationWarning>
       <body className="font-sans">
@@ -71,6 +75,7 @@ export default function RootLayout({
             <Header />
             <main>{children}</main>
             <Footer />
+            {subscriptionAccessMode === "waitlist" ? <SubscriptionPaymentNoticeModal /> : null}
           </ThemeProvider>
         </AppClerkProvider>
       </body>

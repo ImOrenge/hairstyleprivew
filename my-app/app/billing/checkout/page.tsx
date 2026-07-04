@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PortoneCheckoutForm } from "../../../components/payments/PortoneCheckoutForm";
+import { SubscriptionWaitlistForm } from "../../../components/payments/SubscriptionWaitlistForm";
 import { AppPage, Panel, SurfaceCard } from "../../../components/ui/Surface";
 import {
   isSelfServeBillingPlanKey,
@@ -8,6 +9,7 @@ import {
 } from "../../../lib/billing-plan";
 import { buildSignInRedirectUrl } from "../../../lib/clerk";
 import { getSelfServePlanDisplayBenefit, type PlanDisplayBenefit } from "../../../lib/plan-benefit-display";
+import { getSubscriptionAccessMode } from "../../../lib/subscription-access";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -61,11 +63,12 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
   const plan = getSelfServePlanDisplayBenefit(planKey);
   const returnTo = sanitizeReturnTo(readSearchParam(params, "returnTo"));
   const { userId } = await auth();
-  if (!userId) {
+  const subscriptionAccessMode = getSubscriptionAccessMode();
+  if (subscriptionAccessMode === "checkout" && !userId) {
     redirect(buildSignInRedirectUrl(buildCheckoutReturnPath(planKey, returnTo)));
   }
 
-  const clerkUser = await currentUser();
+  const clerkUser = userId ? await currentUser() : null;
   const initialBuyerName =
     clerkUser?.fullName?.trim() ||
     clerkUser?.firstName?.trim() ||
@@ -79,6 +82,69 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
     clerkUser?.primaryPhoneNumber?.phoneNumber?.trim() ||
     clerkUser?.phoneNumbers?.[0]?.phoneNumber?.trim() ||
     "";
+
+  if (subscriptionAccessMode === "waitlist") {
+    return (
+      <AppPage className="grid gap-5 pb-16">
+        <Panel as="section" className="p-5 sm:p-6">
+          <p className="app-kicker">Subscription Waitlist</p>
+          <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
+            구독 오픈 알림 신청
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
+            현재 PG 연동 준비로 구독 결제는 잠시 대기 중입니다. 희망 플랜과 이메일을 남겨주시면
+            결제 오픈 시 우선 안내드리겠습니다.
+          </p>
+        </Panel>
+
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+          <Panel as="section" className="p-5 sm:p-6">
+            <SubscriptionWaitlistForm
+              initialEmail={initialBuyerEmail}
+              initialPlanKey={planKey}
+              lockPlan
+              sourcePath={buildCheckoutReturnPath(planKey, returnTo)}
+            />
+          </Panel>
+
+          <SurfaceCard as="aside" className="h-fit p-5">
+            <p className="app-kicker">선택 플랜</p>
+            <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">
+              {plan.label}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
+              결제 오픈 후 매월 {plan.credits.toLocaleString("ko-KR")} 크레딧이 지급되는 플랜입니다.
+            </p>
+            <div className="mt-5 border-t border-[var(--app-border)] pt-4">
+              <p className="text-xs font-bold uppercase text-[var(--app-muted)]">차감 기준</p>
+              <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
+                <li>헤어 결과 이미지 생성: {plan.creditsPerStyle.toLocaleString("ko-KR")}크레딧</li>
+                <li>패션 룩북 이미지 생성: 확정 헤어 기준 {plan.creditsPerOutfit.toLocaleString("ko-KR")}크레딧</li>
+                <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}크레딧</li>
+              </ul>
+            </div>
+            <div className="mt-5 border-t border-[var(--app-border)] pt-4">
+              <p className="text-xs font-bold uppercase text-[var(--app-muted)]">예상 사용량</p>
+              <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
+                <li>헤어만 사용 시 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회</li>
+                <li>헤어+패션 세트 기준 {formatHairFashionEstimate(plan)}</li>
+                <li>생성 이미지 {plan.retentionLabelKo}</li>
+              </ul>
+            </div>
+            <div className="mt-5 border-t border-[var(--app-border)] pt-4">
+              <p className="text-xs font-bold uppercase text-[var(--app-muted)]">월 결제 금액</p>
+              <p className="mt-1 text-3xl font-black text-[var(--app-text)]">
+                {formatKrw(plan.priceKrw)}
+              </p>
+            </div>
+            <p className="mt-4 text-xs leading-5 text-[var(--app-subtle)]">
+              웨잇리스트 신청은 결제가 아니며, 실제 구독은 PG 연동 후 별도 결제 확인을 거쳐 활성화됩니다.
+            </p>
+          </SurfaceCard>
+        </div>
+      </AppPage>
+    );
+  }
 
   return (
     <AppPage className="grid gap-5 pb-16">

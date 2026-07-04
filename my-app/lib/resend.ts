@@ -107,6 +107,12 @@ type SubscriptionRenewalEmailInput = {
   myPageUrl: string;
 };
 
+type SubscriptionWaitlistConfirmationEmailInput = {
+  to: string;
+  displayName?: string | null;
+  planKey: string;
+};
+
 type CareEmailInput = {
   to: string;
   subject: string;
@@ -894,6 +900,32 @@ export async function sendSubscriptionRenewalEmail(input: SubscriptionRenewalEma
         label: "구독 상태 확인하기",
         url: input.myPageUrl,
       },
+    },
+  });
+}
+
+export async function sendSubscriptionWaitlistConfirmationEmail(input: SubscriptionWaitlistConfirmationEmailInput) {
+  const planLabel = formatPlanLabel(input.planKey);
+
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: "[HairFit] 구독 오픈 알림 신청이 완료되었습니다",
+    source: "subscription_waitlist",
+    layout: {
+      kicker: "Subscription waitlist",
+      title: "구독 오픈 알림 신청이 완료되었습니다",
+      preview: `${planLabel} 플랜 결제 오픈 시 우선 안내드리겠습니다.`,
+      tone: "success",
+      body: [
+        `${greetingName(input.displayName)}님, ${planLabel} 플랜 웨잇리스트 신청이 접수되었습니다.`,
+        "현재 PG 연동 준비로 구독 결제는 잠시 대기 중입니다.",
+        "결제 오픈이 준비되면 입력하신 이메일로 우선 안내드리겠습니다.",
+      ],
+      details: [
+        { label: "희망 플랜", value: planLabel },
+        { label: "상태", value: "오픈 알림 대기" },
+      ],
+      note: "무료 체험과 기존 생성 기능은 가능한 범위에서 계속 이용할 수 있습니다.",
     },
   });
 }

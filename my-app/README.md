@@ -37,6 +37,7 @@ Optional:
 - `PORTONE_V2_API_SECRET` (required for PortOne billing key charges)
 - `PORTONE_V2_WEBHOOK_SECRET` (required for PortOne payment webhooks)
 - `BILLING_KEY_ENCRYPTION_SECRET` (required for encrypted PortOne billing key storage and renewals)
+- `SUBSCRIPTION_ACCESS_MODE` (`waitlist` by default; set `checkout` only when PG checkout is ready)
 - `PRICING_STYLE_COST_USD` (default: `0.16`, assumed cost per style)
 - `PRICING_TARGET_MARGIN` (default: `0.4`, target margin)
 - `PRICING_CREDITS_PER_STYLE` (default/minimum: `10`, credits charged per hair result image)
@@ -155,6 +156,7 @@ Optional pricing and prompt env:
 - `PRICING_PRO_PRICE_KRW`
 - `PRICING_SALON_CREDITS`
 - `PRICING_SALON_PRICE_KRW`
+- `SUBSCRIPTION_ACCESS_MODE`
 
 ## PortOne payment routes
 
