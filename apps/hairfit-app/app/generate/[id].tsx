@@ -1,15 +1,16 @@
 import type { GeneratedVariant, RecommendationSet } from "@hairfit/shared";
-import { HairfitApiError } from "@hairfit/api-client";
+import { HairfitApiError, type GenerationStatus } from "@hairfit/api-client";
 import { BodyText, Button, Card, Chip, Cluster, Divider, Heading, Kicker, Panel, Row, Screen, Stack, Stat } from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AppState, Image, StyleSheet, View } from "react-native";
 import { useHairfitApi } from "../../lib/api";
 import { useGenerationFlow } from "../../lib/generation-flow";
 
 interface GenerationDetail {
   id: string;
-  status: string;
+  status: GenerationStatus;
+  updatedAt?: string | null;
   recommendationSet: RecommendationSet | null;
   selectedVariant: GeneratedVariant | null;
   selectionLocked: boolean;
@@ -58,6 +59,27 @@ function statusTone(status: string): "neutral" | "accent" | "success" | "danger"
   return "neutral";
 }
 
+function isBackgroundGenerationPending(status: GenerationStatus | undefined) {
+  return status === "queued" || status === "processing";
+}
+
+function preserveSignedVariantUrls(
+  current: RecommendationSet | null | undefined,
+  next: RecommendationSet | null,
+) {
+  if (!current || !next) return next;
+  const currentById = new Map(current.variants.map((variant) => [variant.id, variant]));
+  return {
+    ...next,
+    variants: next.variants.map((variant) => {
+      const previous = currentById.get(variant.id);
+      return previous?.outputUrl && previous.generatedImagePath === variant.generatedImagePath
+        ? { ...variant, outputUrl: previous.outputUrl }
+        : variant;
+    }),
+  };
+}
+
 const selectionLockedMessage = "확정한 헤어는 변경할 수 없습니다. 다른 스타일은 새로 생성해 주세요.";
 
 export default function GenerateBoardScreen() {
@@ -67,9 +89,14 @@ export default function GenerateBoardScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const generationId = typeof id === "string" ? id : "";
   const [detail, setDetail] = useState<GenerationDetail | null>(null);
-  const [message, setMessage] = useState("Loading recommendation board...");
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [isAppActive, setIsAppActive] = useState(AppState.currentState === "active");
   const [pendingVariantId, setPendingVariantId] = useState<string | null>(null);
   const [openingVariantId, setOpeningVariantId] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+  const lastUpdatedAtRef = useRef("");
 
   const draftSet = useMemo<RecommendationSet | null>(() => {
     if (!flow.draft || flow.draft.generationId !== generationId || flow.draft.recommendations.length === 0) {
@@ -96,31 +123,101 @@ export default function GenerateBoardScreen() {
     };
   }, [flow.draft, generationId]);
 
-  const load = async () => {
-    if (!generationId) return;
-    setMessage("Loading recommendation board...");
+  const load = useCallback(async (showLoading = false) => {
+    if (!generationId) {
+      setLoadError("생성 번호가 없어 추천 보드를 불러올 수 없습니다.");
+      setIsLoading(false);
+      return;
+    }
+
+    const requestId = ++requestIdRef.current;
+    if (showLoading) {
+      setIsLoading(true);
+      setLoadError(null);
+    }
+
     try {
       const result = await api.getGeneration(generationId);
-      setDetail({
+      if (requestId !== requestIdRef.current) return;
+      setDetail((current) => ({
         id: result.id,
         status: result.status,
-        recommendationSet: result.recommendationSet,
-        selectedVariant: result.selectedVariant as GeneratedVariant | null,
+        updatedAt: result.updatedAt,
+        recommendationSet: preserveSignedVariantUrls(
+          current?.recommendationSet,
+          result.recommendationSet,
+        ),
+        selectedVariant: result.selectedVariant,
         selectionLocked: Boolean(result.selectionLocked),
-      });
-      setMessage(
-        result.selectionLocked
-          ? selectionLockedMessage
-          : "Review the full 3x3 board, retry failed renders, and open any finished card as a detailed result.",
-      );
+      }));
+      if (result.updatedAt) lastUpdatedAtRef.current = result.updatedAt;
+      setLoadError(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to load recommendation board.");
+      if (requestId !== requestIdRef.current) return;
+      setLoadError(error instanceof Error ? error.message : "추천 보드를 불러오지 못했습니다.");
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setIsLoading(false);
+      }
     }
-  };
+  }, [api, generationId]);
+
+  const refreshStatus = useCallback(async () => {
+    if (!generationId) return true;
+    try {
+      const status = await api.getGenerationStatus(generationId);
+      const changed = Boolean(status.updatedAt && status.updatedAt !== lastUpdatedAtRef.current);
+      setDetail((current) =>
+        current && current.status !== status.status ? { ...current, status: status.status } : current,
+      );
+      if (changed || status.terminal) {
+        if (status.updatedAt) lastUpdatedAtRef.current = status.updatedAt;
+        await load();
+      }
+      return status.terminal;
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "생성 상태를 불러오지 못했습니다.");
+      return false;
+    }
+  }, [api, generationId, load]);
 
   useEffect(() => {
-    void load();
-  }, [generationId]);
+    void load(true);
+    return () => {
+      requestIdRef.current += 1;
+    };
+  }, [load]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      const nextIsActive = nextState === "active";
+      setIsAppActive(nextIsActive);
+      if (nextIsActive) {
+        void refreshStatus();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    if (!isAppActive || !detail || !isBackgroundGenerationPending(detail.status)) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const poll = async () => {
+      const terminal = await refreshStatus();
+      if (!cancelled && !terminal) {
+        timer = setTimeout(poll, 3500);
+      }
+    };
+
+    timer = setTimeout(poll, 3500);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [detail?.status, isAppActive, refreshStatus]);
 
   const activeSet = useMemo<RecommendationSet | null>(() => {
     const serverSet = detail?.recommendationSet ?? null;
@@ -137,10 +234,27 @@ export default function GenerateBoardScreen() {
   const failedCount = variants.filter((variant) => variant.status === "failed").length;
   const readyCount = variants.filter(isRenderableVariant).length;
   const selectedVariantId = activeSet?.selectedVariantId || null;
+  const backgroundGenerationPending = !detail || isBackgroundGenerationPending(detail.status);
+  const statusMessage = detail?.selectionLocked
+    ? selectionLockedMessage
+    : isLoading && !detail
+      ? "추천 보드와 생성 상태를 불러오는 중입니다."
+      : isBackgroundGenerationPending(detail?.status)
+        ? "백그라운드에서 헤어스타일을 생성하고 있습니다. 다른 화면으로 이동하거나 앱을 닫아도 계속 진행되며, 완료 시 가입 이메일로 알려드립니다."
+        : detail?.status === "completed"
+          ? "헤어스타일 생성이 완료되었습니다. 준비된 카드를 열어 비교해 보세요. 완료 안내 이메일도 순차 발송됩니다."
+          : detail?.status === "failed"
+            ? "헤어스타일 생성에 실패했습니다. 아래 실패한 카드는 이 앱 세션에 원본 사진이 남아 있을 때 다시 시도할 수 있습니다."
+            : "추천 보드의 최신 상태를 확인해 주세요.";
 
   const runVariant = async (variant: GeneratedVariant, index: number) => {
     if (detail?.selectionLocked) {
       setMessage(selectionLockedMessage);
+      return;
+    }
+
+    if (backgroundGenerationPending) {
+      setMessage("백그라운드 생성이 끝난 뒤 실패한 카드만 다시 시도할 수 있습니다.");
       return;
     }
 
@@ -189,10 +303,10 @@ export default function GenerateBoardScreen() {
     } catch (error) {
       if (error instanceof HairfitApiError && error.status === 409) {
         setMessage(selectionLockedMessage);
-        setOpeningVariantId(null);
         return;
       }
-      // Other save failures should not block result viewing; the result screen exposes the error if selection fails again.
+      setMessage(error instanceof Error ? error.message : "선택한 헤어를 저장하지 못했습니다.");
+      return;
     } finally {
       setOpeningVariantId(null);
     }
@@ -204,11 +318,24 @@ export default function GenerateBoardScreen() {
       <Stack>
         <Kicker>Recommendation Board</Kicker>
         <Heading>Nine tailored hairstyle directions</Heading>
-        <BodyText>{message}</BodyText>
+        <BodyText>{statusMessage}</BodyText>
+        {message ? <BodyText>{message}</BodyText> : null}
       </Stack>
 
       <Panel>
         <Stack>
+          {loadError ? (
+            <Card>
+              <Stack gap={10}>
+                <Kicker>불러오기 오류</Kicker>
+                <BodyText style={styles.errorText}>{loadError}</BodyText>
+                <Button disabled={isLoading} onPress={() => void load(true)}>
+                  {isLoading ? "다시 불러오는 중..." : "다시 불러오기"}
+                </Button>
+              </Stack>
+            </Card>
+          ) : null}
+
           <Row>
             <Stat label="Ready" value={readyCount} />
             <Stat label="Completed" value={completedCount} />
@@ -283,11 +410,22 @@ export default function GenerateBoardScreen() {
                   {openingVariantId === variant.id ? "Opening..." : "Open Result"}
                 </Button>
                 <Button
-                  disabled={!canRender || pendingVariantId === variant.id || variant.status === "generating"}
+                  disabled={
+                    !canRender ||
+                    backgroundGenerationPending ||
+                    pendingVariantId === variant.id ||
+                    variant.status === "generating"
+                  }
                   variant="secondary"
                   onPress={() => runVariant(variant, index)}
                 >
-                  {pendingVariantId === variant.id ? "Retrying..." : variant.status === "completed" ? "Render again" : "Retry"}
+                  {backgroundGenerationPending
+                    ? "백그라운드 생성 중"
+                    : pendingVariantId === variant.id
+                      ? "Retrying..."
+                      : variant.status === "completed"
+                        ? "Render again"
+                        : "Retry"}
                 </Button>
               </Stack>
             </Card>

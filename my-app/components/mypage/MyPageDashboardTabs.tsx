@@ -526,7 +526,7 @@ function UsagePanel({ generations }: { generations: GenerationRow[] }) {
           generations.map((item) => (
             <Link
               key={item.id}
-              href={`/result/${item.id}`}
+              href={item.status === "completed" ? `/result/${item.id}` : `/generate/${item.id}`}
               className="app-card group px-4 py-4 transition hover:-translate-y-0.5 hover:border-[var(--app-border-strong)]"
             >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

@@ -3,6 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const GENERATION_RESULTS_BUCKET = "generation-results";
+const GENERATION_ORIGINALS_PREFIX = "originals/";
 
 interface SupabaseStorageLike {
   storage: SupabaseClient["storage"];
@@ -96,6 +97,72 @@ export async function uploadGenerationResultImage(
 
   const signedUrl = await createGenerationImageSignedUrl(supabase, objectPath);
   return { path: objectPath, signedUrl };
+}
+
+export async function uploadGenerationOriginalImage(
+  supabase: SupabaseStorageLike,
+  input: {
+    userId: string;
+    generationId: string;
+    imageDataUrl: string;
+  },
+) {
+  const parsed = dataUrlToBuffer(input.imageDataUrl);
+  const extension = extensionFromMime(parsed.mimeType);
+  const safeUserId = input.userId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const objectPath = `${GENERATION_ORIGINALS_PREFIX}${safeUserId}/${input.generationId}/reference.${extension}`;
+
+  const { error } = await supabase.storage
+    .from(GENERATION_RESULTS_BUCKET)
+    .upload(objectPath, parsed.buffer, {
+      contentType: parsed.mimeType,
+      upsert: true,
+    });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return { path: objectPath };
+}
+
+export async function downloadGenerationOriginalImageDataUrl(
+  supabase: SupabaseStorageLike,
+  path: string | null | undefined,
+) {
+  const objectPath = typeof path === "string" ? path.trim() : "";
+  if (!objectPath.startsWith(GENERATION_ORIGINALS_PREFIX)) {
+    throw new Error("Generation original image is not available for background processing");
+  }
+
+  const { data, error } = await supabase.storage
+    .from(GENERATION_RESULTS_BUCKET)
+    .download(objectPath);
+
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to download generation original image");
+  }
+
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const mimeType = data.type || "image/webp";
+  return `data:${mimeType};base64,${buffer.toString("base64")}`;
+}
+
+export async function removeGenerationOriginalImage(
+  supabase: SupabaseStorageLike,
+  path: string | null | undefined,
+) {
+  const objectPath = typeof path === "string" ? path.trim() : "";
+  if (!objectPath.startsWith(GENERATION_ORIGINALS_PREFIX)) {
+    return false;
+  }
+
+  const { error } = await supabase.storage.from(GENERATION_RESULTS_BUCKET).remove([objectPath]);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return true;
 }
 
 export async function resolveGenerationImageUrl(

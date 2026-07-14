@@ -41,6 +41,28 @@ interface RecommendationApiResponse {
   error?: string;
 }
 
+interface GenerationStartResponse {
+  code?: string;
+  error?: string;
+}
+
+interface GenerationStatusResponse {
+  status?: "queued" | "processing" | "completed" | "failed";
+  terminal?: boolean;
+  updatedAt?: string;
+  variants?: {
+    total: number;
+    completed: number;
+    failed: number;
+  };
+  error?: string;
+}
+
+interface GenerationDetailResponse {
+  recommendationSet?: { variants?: GeneratedVariant[] } | null;
+  error?: string;
+}
+
 interface GenerationApiResponse {
   id?: string;
   variantId?: string;
@@ -531,6 +553,56 @@ export function SalonWorkspaceWizard({ customerId }: { customerId: string }) {
     };
   };
 
+  const waitForBackgroundGeneration = async (nextGenerationId: string) => {
+    let lastUpdatedAt = "";
+
+    while (true) {
+      const statusResponse = await fetch(
+        `/api/generations/${encodeURIComponent(nextGenerationId)}/status`,
+        { cache: "no-store" },
+      );
+      const statusData = (await statusResponse.json().catch(() => ({}))) as GenerationStatusResponse;
+      if (!statusResponse.ok) {
+        throw new Error(statusData.error || "살롱 헤어 생성 상태를 불러오지 못했습니다.");
+      }
+
+      const counts = statusData.variants || { total: 0, completed: 0, failed: 0 };
+      const settledCount = counts.completed + counts.failed;
+      const percent = counts.total > 0 ? Math.round((settledCount / counts.total) * 100) : 0;
+      setGridGenerationProgress(percent);
+      setProgress(30 + Math.round(percent * 0.6));
+      setPipelineMessage(`백그라운드 생성 중: ${settledCount}/${counts.total} 후보`);
+
+      if (statusData.updatedAt && (statusData.updatedAt !== lastUpdatedAt || statusData.terminal)) {
+        lastUpdatedAt = statusData.updatedAt;
+        const detailResponse = await fetch(`/api/generations/${encodeURIComponent(nextGenerationId)}`, {
+          cache: "no-store",
+        });
+        const detailData = (await detailResponse.json().catch(() => ({}))) as GenerationDetailResponse;
+        if (!detailResponse.ok) {
+          throw new Error(detailData.error || "살롱 헤어 추천 보드를 불러오지 못했습니다.");
+        }
+        if (detailData.recommendationSet?.variants) {
+          setRecommendationGrid((current) => {
+            const currentById = new Map(current.map((variant) => [variant.id, variant]));
+            return detailData.recommendationSet!.variants!.map((variant) => {
+              const previous = currentById.get(variant.id);
+              return previous?.outputUrl && previous.generatedImagePath === variant.generatedImagePath
+                ? { ...variant, outputUrl: previous.outputUrl }
+                : variant;
+            });
+          });
+        }
+      }
+
+      if (statusData.terminal) {
+        return counts;
+      }
+
+      await sleep(3500);
+    }
+  };
+
   const handleGenerate = async () => {
     if (!originalImage || isGenerating || isAdminReadOnly) return;
     if (!styleTarget) {
@@ -580,6 +652,36 @@ export function SalonWorkspaceWizard({ customerId }: { customerId: string }) {
       setRecommendationGrid(recommendations.map(toGeneratedVariant));
       setPipelineState("building_grid", "3x3 헤어 후보 보드를 준비했습니다.");
       setProgress(30);
+
+      const startResponse = await fetch("/api/generations/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generationId: nextGenerationId }),
+      });
+      const startData = (await startResponse.json().catch(() => ({}))) as GenerationStartResponse;
+
+      if (startResponse.ok) {
+        setPipelineState(
+          "generating_image",
+          "백그라운드에서 헤어 후보를 생성합니다. 다른 페이지로 이동하거나 브라우저를 닫아도 계속 진행되며 완료 이메일을 보내드립니다.",
+        );
+        const counts = await waitForBackgroundGeneration(nextGenerationId);
+        setPipelineState("finalizing", "살롱 상담 보드를 정리하고 있습니다.");
+        setProgress(95);
+        if (counts.completed === 0) {
+          throw new Error("모든 헤어 후보 생성에 실패했습니다. 완료 이메일에서 다시 시도할 수 있습니다.");
+        }
+        setPipelineState("completed", "살롱 헤어 상담 보드가 준비되었습니다.");
+        setProgress(100);
+        setCurrentStep("select");
+        return;
+      }
+
+      const canUseLocalLegacyFallback =
+        startData.code === "GENERATION_WORKFLOW_UNAVAILABLE" && process.env.NODE_ENV === "development";
+      if (!canUseLocalLegacyFallback) {
+        throw new Error(startData.error || "백그라운드 헤어 생성을 시작하지 못했습니다.");
+      }
 
       const total = recommendations.length;
       let settledCount = 0;
@@ -877,6 +979,12 @@ export function SalonWorkspaceWizard({ customerId }: { customerId: string }) {
                 <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">3x3 헤어 후보 생성</h2>
                 <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
                   선택한 고객 타깃과 사진 분석 결과로 살롱 상담용 헤어 후보만 생성합니다.
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--app-text)]">
+                  생성 작업이 접수되면 다른 페이지로 이동하거나 브라우저를 닫아도 계속 진행되며, 완료 시 살롱 계정 이메일로 알려드립니다.
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
+                  추천 분석과 작업 접수가 끝날 때까지는 이 화면을 유지해 주세요.
                 </p>
                 <SurfaceCard className="mt-5 px-4 py-3">
                   <div className="flex items-center justify-between gap-4">

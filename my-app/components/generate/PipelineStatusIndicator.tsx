@@ -104,7 +104,12 @@ export function PipelineStatusIndicator({
     : "flex h-full w-full flex-col items-center justify-center gap-5 rounded-[var(--app-radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-6 py-8 text-center";
 
   return (
-    <div className={cn(containerClassName, className)}>
+    <div
+      className={cn(containerClassName, className)}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       <div className={cn("flex gap-4", isOverlay ? "items-start" : "flex-col items-center justify-center gap-5")}>
         <motion.div
           className="relative flex shrink-0 items-center justify-center"
@@ -234,6 +239,12 @@ export function PipelineStatusIndicator({
           </div>
           {!isFailed ? (
             <div
+              role="progressbar"
+              aria-label="헤어스타일 생성 진행률"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={displayProgress}
+              aria-valuetext={`${STAGE_LABELS[stage]} ${displayProgress}%`}
               className={cn(
                 "relative mt-2 h-1.5 overflow-hidden rounded-full",
                 isOverlay ? "bg-white/15" : "bg-[var(--app-border)]",
@@ -263,7 +274,7 @@ export function PipelineStatusIndicator({
               Progress {displayProgress}%
             </p>
           ) : null}
-          {error ? <p className={cn("text-xs", isOverlay ? "text-rose-300" : "text-rose-600")}>{error}</p> : null}
+          {error ? <p role="alert" className={cn("text-xs", isOverlay ? "text-rose-300" : "text-rose-600")}>{error}</p> : null}
         </div>
       </div>
 

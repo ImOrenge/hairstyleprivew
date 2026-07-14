@@ -26,7 +26,11 @@ export function ValidationCheck({ status, message, details }: ValidationCheckPro
     details.faceDetectionEngine === "FaceDetector" ? "FaceDetector" : "미사용";
 
   return (
-    <section className={`rounded-[var(--app-radius-panel)] px-4 py-3 ${toneMap[status]}`}>
+    <section
+      className={`rounded-[var(--app-radius-panel)] px-4 py-3 ${toneMap[status]}`}
+      role={status === "error" ? "alert" : "status"}
+      aria-live="polite"
+    >
       <p className="text-sm font-medium">{message}</p>
       <div className="mt-3 grid gap-1 text-xs">
         <p>파일 형식: {formatCheckState(details.formatValid)}</p>

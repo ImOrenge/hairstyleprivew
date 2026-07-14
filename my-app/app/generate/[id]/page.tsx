@@ -12,7 +12,34 @@ import type { GeneratedVariant, RecommendationSet } from "../../../lib/recommend
 import { useGenerationStore } from "../../../store/useGenerationStore";
 
 interface GenerationDetailsResponse {
+  status?: string;
+  updatedAt?: string | null;
+  error?: string | null;
   recommendationSet?: RecommendationSet | null;
+}
+
+interface GenerationStatusResponse {
+  status?: string;
+  terminal?: boolean;
+  updatedAt?: string | null;
+  error?: string;
+}
+
+function preserveSignedVariantUrls(
+  current: RecommendationSet | null,
+  next: RecommendationSet,
+): RecommendationSet {
+  if (!current) return next;
+  const currentById = new Map(current.variants.map((variant) => [variant.id, variant]));
+  return {
+    ...next,
+    variants: next.variants.map((variant) => {
+      const previous = currentById.get(variant.id);
+      return previous?.outputUrl && previous.generatedImagePath === variant.generatedImagePath
+        ? { ...variant, outputUrl: previous.outputUrl }
+        : variant;
+    }),
+  };
 }
 
 function isRenderableVariant(variant: GeneratedVariant) {
@@ -49,6 +76,8 @@ export default function GenerateBoardPage() {
   const setSelectedVariantId = useGenerationStore((state) => state.setSelectedVariantId);
 
   const [recommendationSet, setRecommendationSet] = useState<RecommendationSet | null>(null);
+  const [generationStatus, setGenerationStatus] = useState<string>("queued");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [retryingVariantId, setRetryingVariantId] = useState<string | null>(null);
   const [isOpening, startOpening] = useTransition();
 
@@ -71,33 +100,72 @@ export default function GenerateBoardPage() {
 
   useEffect(() => {
     let active = true;
+    let pollTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastUpdatedAt = "";
 
-    async function fetchGeneration() {
+    async function fetchGenerationDetail() {
       if (!id || id === "unknown") {
-        return;
+        return false;
       }
 
       const response = await fetch(`/api/generations/${encodeURIComponent(id)}`, {
         method: "GET",
         cache: "no-store",
       });
-
-      if (!response.ok) {
-        return;
-      }
-
       const data = (await response.json().catch(() => null)) as GenerationDetailsResponse | null;
-      if (!active || !data?.recommendationSet) {
-        return;
+      if (!response.ok) {
+        throw new Error(data?.error || "생성 상태를 불러오지 못했습니다.");
       }
+      if (!active) return false;
 
-      setRecommendationSet(data.recommendationSet);
+      setLoadError(null);
+      setGenerationStatus(data?.status || "queued");
+      if (data?.updatedAt) lastUpdatedAt = data.updatedAt;
+      if (data?.recommendationSet) {
+        setRecommendationSet((current) => preserveSignedVariantUrls(current, data.recommendationSet!));
+      }
+      return data?.status === "completed" || data?.status === "failed";
     }
 
-    void fetchGeneration();
+    async function pollGenerationStatus() {
+      try {
+        const response = await fetch(`/api/generations/${encodeURIComponent(id)}/status`, {
+          cache: "no-store",
+        });
+        const data = (await response.json().catch(() => null)) as GenerationStatusResponse | null;
+        if (!response.ok) {
+          throw new Error(data?.error || "생성 상태를 불러오지 못했습니다.");
+        }
+        if (!active) return;
+
+        setGenerationStatus(data?.status || "queued");
+        const changed = Boolean(data?.updatedAt && data.updatedAt !== lastUpdatedAt);
+        if (changed || data?.terminal) {
+          await fetchGenerationDetail();
+        }
+        if (active && !data?.terminal) {
+          pollTimer = setTimeout(pollGenerationStatus, 3500);
+        }
+      } catch (error) {
+        if (!active) return;
+        setLoadError(error instanceof Error ? error.message : "생성 상태를 불러오지 못했습니다.");
+        pollTimer = setTimeout(pollGenerationStatus, 6000);
+      }
+    }
+
+    void fetchGenerationDetail()
+      .then((terminal) => {
+        if (active && !terminal) pollTimer = setTimeout(pollGenerationStatus, 3500);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setLoadError(error instanceof Error ? error.message : "생성 상태를 불러오지 못했습니다.");
+        pollTimer = setTimeout(pollGenerationStatus, 6000);
+      });
 
     return () => {
       active = false;
+      if (pollTimer) clearTimeout(pollTimer);
     };
   }, [id]);
 
@@ -107,6 +175,7 @@ export default function GenerateBoardPage() {
   const failedCount = variants.filter((variant) => variant.status === "failed").length;
   const readyCount = variants.filter(isRenderableVariant).length;
   const selectedVariantId = activeSet?.selectedVariantId || storeSelectedVariantId || null;
+  const backgroundGenerationPending = generationStatus !== "completed" && generationStatus !== "failed";
 
   const handleSelectVariant = (variant: GeneratedVariant) => {
     if (!id || !variant.outputUrl) {
@@ -121,13 +190,25 @@ export default function GenerateBoardPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ selectedVariantId: variant.id }),
-      }).finally(() => {
-        router.push(`/result/${id}?variant=${encodeURIComponent(variant.id)}`);
-      });
+      })
+        .then(async (response) => {
+          const data = (await response.json().catch(() => ({}))) as { error?: string };
+          if (!response.ok) {
+            throw new Error(data.error || "선택한 헤어를 저장하지 못했습니다.");
+          }
+          router.push(`/result/${id}?variant=${encodeURIComponent(variant.id)}`);
+        })
+        .catch((error) => {
+          setLoadError(error instanceof Error ? error.message : "선택한 헤어를 저장하지 못했습니다.");
+        });
     });
   };
 
   const handleRetryVariant = async (variant: GeneratedVariant) => {
+    if (backgroundGenerationPending) {
+      setLoadError("백그라운드 생성이 끝난 뒤 실패한 후보만 다시 시도할 수 있습니다.");
+      return;
+    }
     setRetryingVariantId(variant.id);
 
     try {
@@ -148,8 +229,18 @@ export default function GenerateBoardPage() {
           <div className="space-y-3">
             <h1 className="text-3xl font-black tracking-tight text-[var(--app-text)]">Nine tailored hairstyle directions</h1>
             <p className="max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
-              Review the full 3x3 board, retry failed renders, and open any finished card as a detailed result.
+              생성 중에는 이 페이지를 떠나거나 브라우저를 닫아도 작업이 계속됩니다. 완료되면 가입 이메일로 알려드립니다.
             </p>
+            {generationStatus !== "completed" && generationStatus !== "failed" ? (
+              <p role="status" aria-live="polite" className="text-sm font-semibold text-[var(--app-text)]">
+                백그라운드 생성 중 · 준비된 후보가 자동으로 갱신됩니다.
+              </p>
+            ) : null}
+            {loadError ? (
+              <p role="alert" className="rounded-[var(--app-radius-control)] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+                {loadError}
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               {(activeSet?.analysis.volumeFocus || []).map((item) => (
                 <span key={item} className="app-chip px-3 py-1 text-xs font-medium">
@@ -279,10 +370,18 @@ export default function GenerateBoardPage() {
                   <Button
                     variant="secondary"
                     onClick={() => handleRetryVariant(variant)}
-                    disabled={variant.status === "generating" || retryingVariantId === variant.id}
+                    disabled={
+                      backgroundGenerationPending ||
+                      variant.status === "generating" ||
+                      retryingVariantId === variant.id
+                    }
                     className="rounded-2xl"
                   >
-                    {retryingVariantId === variant.id ? "Retrying..." : "Retry"}
+                    {backgroundGenerationPending
+                      ? "백그라운드 생성 중"
+                      : retryingVariantId === variant.id
+                        ? "Retrying..."
+                        : "Retry"}
                   </Button>
                 </div>
               </div>

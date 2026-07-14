@@ -119,6 +119,15 @@ type CareEmailInput = {
   bodyHtml: string;
 };
 
+type GenerationCompletedEmailInput = {
+  to: string;
+  displayName?: string | null;
+  generationId: string;
+  completedCount: number;
+  failedCount: number;
+  resultUrl: string;
+};
+
 const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
 const RESEND_DEVELOPMENT_SENDER_PATTERN = /@resend\.dev\b/i;
 
@@ -488,6 +497,7 @@ export async function sendEmail({
   text,
   from = defaultFromEmail,
   source = "app",
+  idempotencyKey,
 }: {
   to: string | string[];
   subject: string;
@@ -495,6 +505,7 @@ export async function sendEmail({
   text?: string;
   from?: string;
   source?: string;
+  idempotencyKey?: string;
 }): Promise<SendEmailResult> {
   const resolvedFrom = normalizeFromEmail(from) || defaultFromEmail;
 
@@ -519,13 +530,16 @@ export async function sendEmail({
       return { data: null, error: new Error("Missing RESEND_API_KEY") };
     }
 
-    const { data, error } = await client.emails.send({
+    const payload = {
       from: resolvedFrom,
       to,
       subject,
       html,
       text,
-    });
+    };
+    const { data, error } = idempotencyKey
+      ? await client.emails.send(payload, { idempotencyKey })
+      : await client.emails.send(payload);
 
     if (error) {
       console.error("[Resend] Email send failed:", error);
@@ -575,11 +589,13 @@ function sendTemplatedEmail({
   subject,
   layout,
   source,
+  idempotencyKey,
 }: {
   to: string;
   subject: string;
   layout: EmailLayoutInput;
   source: string;
+  idempotencyKey?: string;
 }) {
   return sendEmail({
     to,
@@ -587,11 +603,62 @@ function sendTemplatedEmail({
     html: renderEmailLayout(layout),
     text: renderText(layout),
     source,
+    idempotencyKey,
   });
 }
 
 function greetingName(displayName?: string | null) {
   return displayName?.trim() || "고객";
+}
+
+export async function sendGenerationCompletedEmail(input: GenerationCompletedEmailInput) {
+  const displayName = greetingName(input.displayName);
+  const totalCount = input.completedCount + input.failedCount;
+  const allFailed = input.completedCount === 0;
+  const hasPartialFailure = input.failedCount > 0;
+  const subject = allFailed
+    ? "[HairFit] 헤어스타일 생성 결과를 확인해 주세요"
+    : hasPartialFailure
+    ? `[HairFit] 헤어스타일 ${input.completedCount}개가 준비되었습니다`
+    : "[HairFit] 헤어스타일 생성이 완료되었습니다";
+
+  return sendTemplatedEmail({
+    to: input.to,
+    subject,
+    source: "generation_completed",
+    idempotencyKey: `generation-completed/${input.generationId}`,
+    layout: {
+      kicker: "HairFit Generation",
+      title: allFailed
+        ? "헤어스타일을 생성하지 못했습니다"
+        : hasPartialFailure
+          ? "완성된 헤어스타일을 확인해 주세요"
+          : "헤어스타일 생성이 완료되었습니다",
+      preview: allFailed
+        ? "요청하신 후보를 생성하지 못했습니다. 다시 시도해 주세요."
+        : hasPartialFailure
+        ? `${totalCount}개 후보 중 ${input.completedCount}개가 준비되었습니다.`
+        : `${input.completedCount}개의 헤어스타일 후보가 모두 준비되었습니다.`,
+      tone: allFailed ? "danger" : hasPartialFailure ? "warning" : "success",
+      body: [
+        `${displayName}님, 요청하신 헤어스타일 생성 작업이 종료되었습니다.`,
+        allFailed
+          ? "이번 작업에서는 준비된 후보가 없습니다. 사진 상태와 크레딧을 확인한 뒤 HairFit에서 다시 시도해 주세요."
+          : hasPartialFailure
+          ? "일부 후보는 생성에 실패했지만, 준비된 결과는 지금 바로 비교하고 선택할 수 있습니다."
+          : "페이지나 앱을 닫은 동안에도 작업을 이어서 완료했습니다. 결과 보드에서 후보를 비교해 보세요.",
+      ],
+      details: [
+        { label: "준비된 후보", value: `${input.completedCount}개` },
+        { label: "생성하지 못한 후보", value: input.failedCount > 0 ? `${input.failedCount}개` : null },
+      ],
+      cta: {
+        label: allFailed ? "HairFit에서 다시 시도" : "결과 보드 열기",
+        url: input.resultUrl,
+      },
+      note: "보안을 위해 이메일에는 사진을 첨부하지 않았습니다. HairFit에 로그인한 뒤 결과를 확인해 주세요.",
+    },
+  });
 }
 
 function getWelcomeEmailRoleCopy(accountType: WelcomeEmailAccountType) {

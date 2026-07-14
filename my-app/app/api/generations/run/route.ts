@@ -3,7 +3,11 @@ import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { runAIEvaluation } from "../../../../lib/ai-evaluation";
 import { getGeminiImageModel, runGeminiImageGeneration } from "../../../../lib/gemini-image";
-import { uploadGenerationResultImage } from "../../../../lib/generation-image-storage";
+import {
+  createGenerationImageSignedUrl,
+  downloadGenerationOriginalImageDataUrl,
+  uploadGenerationResultImage,
+} from "../../../../lib/generation-image-storage";
 import { getPlanEntitlement } from "../../../../lib/plan-entitlements";
 import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { verifyPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
@@ -26,6 +30,7 @@ interface RunGenerationRequest {
   variantId?: string;
   catalogItemId?: string;
   variantLabel?: string;
+  forceFailureMessage?: string;
 }
 
 interface SupabaseRunClient {
@@ -59,6 +64,12 @@ const uuidV4LikeRegex =
 const INSUFFICIENT_CREDITS_CODE = "INSUFFICIENT_CREDITS";
 const INSUFFICIENT_CREDITS_MESSAGE =
   "크레딧이 부족합니다. 크레딧을 충전한 뒤 다시 시도해 주세요.";
+
+function isInternalWorkflowRequest(request: Request) {
+  const expected = process.env.GENERATION_WORKFLOW_CALLBACK_SECRET?.trim();
+  const supplied = request.headers.get("x-hairfit-generation-secret")?.trim();
+  return Boolean(expected && supplied && expected === supplied);
+}
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -263,59 +274,53 @@ async function mergeRecommendationVariant(
 }
 
 async function handlePost(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
+  const body = (await request.json().catch(() => ({}))) as RunGenerationRequest;
+  const internalWorkflowRequest = isInternalWorkflowRequest(request);
+  const authenticated = internalWorkflowRequest ? { userId: null } : await auth();
+  const authenticatedUserId = authenticated.userId;
+  if (!internalWorkflowRequest && !authenticatedUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as RunGenerationRequest;
   const generationId = body.generationId?.trim() || "";
-  const prompt = body.prompt?.trim() || "";
+  const suppliedPrompt = body.prompt?.trim() || "";
   const promptArtifactToken = body.promptArtifactToken?.trim() || "";
   const productRequirements = body.productRequirements?.trim() || null;
   const researchReport = body.researchReport?.trim() || null;
-  const imageDataUrl = body.imageDataUrl?.trim() || "";
+  const suppliedImageDataUrl = body.imageDataUrl?.trim() || "";
   const variantIndex = typeof body.variantIndex === "number" ? body.variantIndex : null;
   const requestedVariantId = body.variantId?.trim() || "";
   const requestedCatalogItemId = body.catalogItemId?.trim() || "";
+  const forceFailureMessage = body.forceFailureMessage?.trim() || "";
 
   if (!generationId || !uuidV4LikeRegex.test(generationId)) {
     return NextResponse.json({ error: "generationId must be a valid UUID" }, { status: 400 });
   }
 
-  if (!prompt) {
+  if (!internalWorkflowRequest && !suppliedPrompt) {
     return NextResponse.json({ error: "prompt is required" }, { status: 400 });
   }
 
-  if (!promptArtifactToken) {
+  if (!internalWorkflowRequest && !promptArtifactToken) {
     return NextResponse.json({ error: "promptArtifactToken is required" }, { status: 400 });
   }
 
-  if (!imageDataUrl) {
+  if (!internalWorkflowRequest && !suppliedImageDataUrl) {
     return NextResponse.json({ error: "imageDataUrl is required" }, { status: 400 });
   }
 
-  if (imageDataUrl.length > 12_000_000) {
+  if (suppliedImageDataUrl.length > 12_000_000) {
     return NextResponse.json({ error: "imageDataUrl is too large" }, { status: 400 });
   }
 
-  const verification = verifyPromptArtifactToken({
-    token: promptArtifactToken,
-    userId,
-    prompt,
-    productRequirements,
-    researchReport,
-  });
-  if (!verification.ok) {
-    return NextResponse.json({ error: "Invalid prompt artifact token" }, { status: 400 });
-  }
-
   const supabase = getSupabaseAdminClient() as unknown as SupabaseRunClient;
-  await ensureUserProfile(userId, supabase);
+  if (authenticatedUserId) {
+    await ensureUserProfile(authenticatedUserId, supabase);
+  }
 
   const { data: generation, error: generationError } = await supabase
     .from("generations")
-    .select("id,user_id,options")
+    .select("id,user_id,options,original_image_path")
     .eq("id", generationId)
     .maybeSingle();
 
@@ -327,7 +332,12 @@ async function handlePost(request: Request) {
     return NextResponse.json({ error: "Generation not found" }, { status: 404 });
   }
 
-  if (generation.user_id !== userId) {
+  const ownerUserId = typeof generation.user_id === "string" ? generation.user_id : "";
+  if (!ownerUserId) {
+    return NextResponse.json({ error: "Generation owner not found" }, { status: 500 });
+  }
+
+  if (!internalWorkflowRequest && ownerUserId !== authenticatedUserId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -343,11 +353,42 @@ async function handlePost(request: Request) {
   }
 
   const targetVariant = recommendationSet.variants[resolvedVariantIndex];
+  const prompt = internalWorkflowRequest ? targetVariant?.prompt || "" : suppliedPrompt;
   if (!targetVariant || targetVariant.prompt !== prompt) {
     return NextResponse.json({ error: "Variant prompt mismatch" }, { status: 400 });
   }
   if (requestedCatalogItemId && targetVariant.catalogItemId !== requestedCatalogItemId) {
     return NextResponse.json({ error: "Catalog item mismatch" }, { status: 400 });
+  }
+
+  if (!internalWorkflowRequest) {
+    const verification = verifyPromptArtifactToken({
+      token: promptArtifactToken,
+      userId: ownerUserId,
+      prompt,
+      productRequirements,
+      researchReport,
+    });
+    if (!verification.ok) {
+      return NextResponse.json({ error: "Invalid prompt artifact token" }, { status: 400 });
+    }
+  }
+
+  if (internalWorkflowRequest && targetVariant.status === "completed" && targetVariant.generatedImagePath) {
+    const signedOutputUrl = await createGenerationImageSignedUrl(
+      supabase,
+      targetVariant.generatedImagePath,
+    ).catch(() => null);
+    return NextResponse.json({
+      id: generationId,
+      variantId: targetVariant.id,
+      variantIndex: resolvedVariantIndex,
+      outputUrl: signedOutputUrl,
+      evaluation: targetVariant.evaluation,
+      generatedImagePath: targetVariant.generatedImagePath,
+      chargedCredits: 0,
+      alreadyCompleted: true,
+    });
   }
 
   const creditCost = recommendationSet.creditChargeAmount ?? getCreditsPerStyle();
@@ -359,6 +400,37 @@ async function handlePost(request: Request) {
   const catalogCycleId = recommendationSet.catalogCycleId ?? targetVariant.catalogCycleId ?? null;
 
   try {
+    if (forceFailureMessage && internalWorkflowRequest) {
+      await mergeRecommendationVariant(supabase, {
+        generationId,
+        variantId: targetVariant.id,
+        variantPatch: {
+          status: "failed",
+          error: forceFailureMessage,
+          outputUrl: null,
+          generatedImagePath: null,
+          evaluation: null,
+          generatedAt: null,
+        },
+        errorMessage: forceFailureMessage,
+        catalogCycleId,
+        analysis: recommendationSet.analysis,
+      });
+      return NextResponse.json({
+        id: generationId,
+        variantId: targetVariant.id,
+        variantIndex: resolvedVariantIndex,
+        failed: true,
+      });
+    }
+
+    const imageDataUrl = internalWorkflowRequest
+      ? await downloadGenerationOriginalImageDataUrl(
+        supabase,
+        typeof generation.original_image_path === "string" ? generation.original_image_path : null,
+      )
+      : suppliedImageDataUrl;
+    const userId = ownerUserId;
     const entitlement = await getPlanEntitlement(supabase, userId);
 
     if (!recommendationSet.creditChargedAt) {

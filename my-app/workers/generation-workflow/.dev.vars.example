@@ -1,0 +1,2 @@
+HAIRFIT_APP_BASE_URL=http://localhost:3000
+GENERATION_WORKFLOW_CALLBACK_SECRET=replace-with-a-shared-random-secret

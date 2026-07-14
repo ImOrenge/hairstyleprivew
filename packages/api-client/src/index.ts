@@ -29,6 +29,29 @@ export interface ApiRequestOptions extends RequestInit {
   auth?: boolean;
 }
 
+export type GenerationStatus = "queued" | "processing" | "completed" | "failed";
+
+export interface GenerationStartResponse {
+  generationId: string;
+  status: GenerationStatus;
+  workflowInstanceId?: string;
+  alreadyStarted?: boolean;
+  terminal?: boolean;
+}
+
+export interface GenerationStatusResponse {
+  generationId: string;
+  status: GenerationStatus;
+  terminal: boolean;
+  variants: {
+    total: number;
+    completed: number;
+    failed: number;
+  };
+  updatedAt: string | null;
+  notificationStatus?: string | null;
+}
+
 export interface AccountStatus {
   accountSetupComplete: boolean;
   accountType: MobileBootstrap["accountType"];
@@ -476,12 +499,27 @@ export class HairfitApiClient {
     });
   }
 
+  startGeneration(generationId: string) {
+    return this.request<GenerationStartResponse>("/api/generations/start", {
+      method: "POST",
+      body: JSON.stringify({ generationId }),
+    });
+  }
+
+  getGenerationStatus(generationId: string) {
+    return this.request<GenerationStatusResponse>(
+      `/api/generations/${encodeURIComponent(generationId)}/status`,
+      { method: "GET" },
+    );
+  }
+
   getGeneration(id: string) {
     return this.request<{
       id: string;
-      status: string;
+      status: GenerationStatus;
+      updatedAt?: string | null;
       recommendationSet: RecommendationSet | null;
-      selectedVariant: unknown | null;
+      selectedVariant: GeneratedVariant | null;
       selectionLocked?: boolean;
       confirmedHairRecord?: {
         id: string;

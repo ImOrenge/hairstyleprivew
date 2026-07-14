@@ -1,0 +1,25 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hairfit-generation-workflow",
+  "main": "src/index.ts",
+  "workers_dev": false,
+  "preview_urls": false,
+  "compatibility_date": "2026-07-14",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "HAIRFIT_APP_BASE_URL": "https://hairfit.beauty"
+  },
+  "triggers": {
+    "crons": ["17 * * * *"]
+  },
+  "workflows": [
+    {
+      "name": "hairfit-generation-workflow",
+      "binding": "GENERATION_WORKFLOW",
+      "class_name": "GenerationWorkflow"
+    }
+  ]
+}

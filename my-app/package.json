@@ -35,6 +35,8 @@
     "portone:billing-key:backfill": "node scripts/backfill-portone-billing-keys.mjs",
     "email-worker:dev": "wrangler dev --config workers/email-router/wrangler.jsonc",
     "email-worker:deploy": "wrangler deploy --config workers/email-router/wrangler.jsonc",
+    "generation-workflow:dev": "wrangler dev --config workers/generation-workflow/wrangler.jsonc",
+    "generation-workflow:deploy": "wrangler deploy --config workers/generation-workflow/wrangler.jsonc",
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",

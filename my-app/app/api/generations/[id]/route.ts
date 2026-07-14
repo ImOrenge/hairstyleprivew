@@ -94,7 +94,7 @@ async function loadGeneration(userId: string, id: string) {
 
   const { data, error } = await supabase
     .from("generations")
-    .select("id,user_id,status,error_message,generated_image_path,generated_assets_expires_at,options,prompt_used")
+    .select("id,user_id,status,error_message,generated_image_path,generated_assets_expires_at,options,prompt_used,updated_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -213,6 +213,7 @@ export async function GET(_request: Request, { params }: Params) {
     {
       id: typeof loaded.data.id === "string" ? loaded.data.id : id,
       status: typeof loaded.data.status === "string" ? loaded.data.status : "failed",
+      updatedAt: typeof loaded.data.updated_at === "string" ? loaded.data.updated_at : null,
       error: typeof loaded.data.error_message === "string" ? loaded.data.error_message : null,
       promptUsed: typeof loaded.data.prompt_used === "string" ? loaded.data.prompt_used : null,
       generatedImagePath:

@@ -23,6 +23,14 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "workflows": [
+    {
+      "name": "hairfit-generation-workflow",
+      "binding": "GENERATION_WORKFLOW",
+      "class_name": "GenerationWorkflow",
+      "script_name": "hairfit-generation-workflow"
+    }
+  ],
   "observability": {
     "enabled": true
   }

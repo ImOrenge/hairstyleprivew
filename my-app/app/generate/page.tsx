@@ -64,7 +64,10 @@ export default function GeneratePage() {
     resetPipeline();
 
     try {
-      await runGridPipeline();
+      const result = await runGridPipeline();
+      if (result.background) {
+        router.replace(`/generate/${result.generationId}`);
+      }
     } catch {
       // The pipeline state already carries the user-facing error.
     }
@@ -88,6 +91,12 @@ export default function GeneratePage() {
           </h1>
           <p className="max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
             업로드한 얼굴 이미지를 기준으로 비율을 읽고, 어울리는 9개의 헤어 방향을 순차적으로 렌더링합니다.
+          </p>
+          <p className="max-w-3xl text-sm font-semibold leading-6 text-[var(--app-text)]">
+            생성이 시작되면 다른 페이지로 이동하거나 브라우저를 닫아도 계속 진행되며, 완료 시 가입 이메일로 알려드립니다.
+          </p>
+          <p className="max-w-3xl text-xs leading-5 text-[var(--app-muted)]">
+            추천 분석 후 결과 보드로 이동하기 전까지는 백그라운드 접수 단계이므로 이 화면을 유지해 주세요.
           </p>
         </div>
 

@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateDesignerBriefs } from "../../../../../../../lib/designer-brief-generator";
+import {
+  removeGenerationOriginalImage,
+  uploadGenerationOriginalImage,
+} from "../../../../../../../lib/generation-image-storage";
+import {
+  createGenerationWorkflowInstance,
+  getGenerationWorkflowBinding,
+} from "../../../../../../../lib/generation-workflow";
 import { getCreditsPerStyle } from "../../../../../../../lib/pricing-plan";
 import { createPromptArtifactToken } from "../../../../../../../lib/prompt-artifact-token";
 import { generateRecommendationSet } from "../../../../../../../lib/recommendation-generator";
@@ -26,6 +35,7 @@ interface GenerateSalonRecommendationsRequest {
 }
 
 interface SalonWorkspaceSupabase {
+  storage: SupabaseClient["storage"];
   from: (table: string) => {
     insert: (values: Record<string, unknown>) => {
       select: (columns: string) => {
@@ -49,12 +59,6 @@ interface SalonWorkspaceUpdateBuilder {
       error: { message: string } | null;
     }>;
   };
-}
-
-function createInlineOriginalImagePath(ownerUserId: string, customerId: string): string {
-  const safeOwner = ownerUserId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const safeCustomer = customerId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  return `inline-salon-upload://${safeOwner}/${safeCustomer}/${Date.now()}`;
 }
 
 export async function POST(request: Request, { params }: Params) {
@@ -149,11 +153,19 @@ export async function POST(request: Request, { params }: Params) {
       creditChargeAmount: creditsRequired,
     };
 
+    const generationId = crypto.randomUUID();
+    const storedOriginal = await uploadGenerationOriginalImage(supabase, {
+      userId: context.userId,
+      generationId,
+      imageDataUrl: referenceImageDataUrl,
+    });
+
     const { data: created, error: createError } = await supabase
       .from("generations")
       .insert({
+        id: generationId,
         user_id: context.userId,
-        original_image_path: createInlineOriginalImagePath(context.userId, customerId),
+        original_image_path: storedOriginal.path,
         prompt_used: recommendationsWithBriefs[0]?.prompt || generated.analysis.summary,
         options: {
           analysis: generated.analysis,
@@ -178,12 +190,64 @@ export async function POST(request: Request, { params }: Params) {
       .single<{ id: string }>();
 
     if (createError) {
+      await removeGenerationOriginalImage(supabase, storedOriginal.path).catch((cleanupError) => {
+        console.error("[salon/recommendations] Failed to clean up uploaded original", cleanupError);
+      });
       return NextResponse.json({ error: createError.message }, { status: 500 });
     }
 
-    const generationId = typeof created?.id === "string" ? created.id : "";
-    if (!generationId) {
+    const createdGenerationId = typeof created?.id === "string" ? created.id : "";
+    if (!createdGenerationId) {
+      await removeGenerationOriginalImage(supabase, storedOriginal.path).catch((cleanupError) => {
+        console.error("[salon/recommendations] Failed to clean up uploaded original", cleanupError);
+      });
       return NextResponse.json({ error: "Failed to create generation record" }, { status: 500 });
+    }
+
+    let backgroundStarted = false;
+    const workflow = await getGenerationWorkflowBinding();
+    if (workflow) {
+      const { error: prepareWorkflowError } = await context.supabase
+        .from("generations")
+        .update({
+          workflow_instance_id: createdGenerationId,
+          workflow_started_at: new Date().toISOString(),
+          completion_notification_status: "pending",
+          completion_notification_error: null,
+        })
+        .eq("id", createdGenerationId);
+
+      if (prepareWorkflowError) {
+        console.error("[salon/recommendations] Failed to prepare background workflow", prepareWorkflowError);
+      } else {
+        try {
+          await createGenerationWorkflowInstance(workflow, {
+            generationId: createdGenerationId,
+            variantCount: variants.length,
+          });
+          backgroundStarted = true;
+        } catch (workflowError) {
+          try {
+            const existing = await workflow.get(createdGenerationId);
+            const existingStatus = await existing.status();
+            backgroundStarted = existingStatus.status !== "unknown";
+          } catch {
+            const message = workflowError instanceof Error
+              ? workflowError.message
+              : "Failed to start background generation";
+            await context.supabase
+              .from("generations")
+              .update({
+                workflow_instance_id: null,
+                workflow_started_at: null,
+                completion_notification_status: "not_requested",
+                completion_notification_error: message,
+              })
+              .eq("id", createdGenerationId);
+            console.error("[salon/recommendations] Failed to start background workflow", workflowError);
+          }
+        }
+      }
     }
 
     const recommendations = recommendationsWithBriefs.map((candidate) => ({
@@ -200,7 +264,7 @@ export async function POST(request: Request, { params }: Params) {
 
     return NextResponse.json(
       {
-        generationId,
+        generationId: createdGenerationId,
         analysis: generated.analysis,
         recommendations,
         catalogCycleId: generated.catalogCycleId,
@@ -209,6 +273,7 @@ export async function POST(request: Request, { params }: Params) {
         model: generated.model,
         promptVersion: generated.promptVersion,
         styleTarget,
+        backgroundStarted,
       },
       { status: 200 },
     );

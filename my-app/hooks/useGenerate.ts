@@ -43,6 +43,16 @@ interface GenerationApiResponse {
   requiredCredits?: number;
 }
 
+interface GenerationStartApiResponse {
+  generationId?: string;
+  workflowInstanceId?: string;
+  alreadyStarted?: boolean;
+  terminal?: boolean;
+  status?: string;
+  code?: string;
+  error?: string;
+}
+
 const GENERATION_MAX_CONCURRENCY = 1;
 const GENERATION_LAUNCH_GAP_MS = 1500;
 const VARIANT_MAX_ATTEMPTS = 2;
@@ -294,7 +304,10 @@ export function useGenerate() {
       const referenceImageDataUrl = await fileToDataUrl(originalImage);
       setProgress(15);
 
-      setPipelineState("analyzing_face", "Analyzing head balance and face proportions.");
+      setPipelineState(
+        "analyzing_face",
+        "얼굴 분석 중입니다. 백그라운드 작업 접수가 끝날 때까지 이 화면을 유지해 주세요.",
+      );
       const promptResponse = await fetch("/api/prompts/generate", {
         method: "POST",
         headers: {
@@ -330,6 +343,32 @@ export function useGenerate() {
 
       setPipelineState("building_grid", "Prepared a 3x3 recommendation grid.");
       setProgress(30);
+
+      const startResponse = await fetch("/api/generations/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generationId }),
+      });
+      const startData = (await startResponse.json().catch(() => ({}))) as GenerationStartApiResponse;
+
+      if (startResponse.ok) {
+        setPipelineState(
+          "generating_image",
+          "백그라운드에서 헤어스타일을 생성하고 있습니다. 다른 페이지로 이동하거나 브라우저를 닫아도 계속 진행됩니다.",
+        );
+        setProgress(35);
+        return {
+          generationId,
+          analysis,
+          background: true,
+        };
+      }
+
+      const canUseLocalLegacyFallback =
+        startData.code === "GENERATION_WORKFLOW_UNAVAILABLE" && process.env.NODE_ENV === "development";
+      if (!canUseLocalLegacyFallback) {
+        throw new Error(startData.error || "백그라운드 생성 작업을 시작하지 못했습니다.");
+      }
 
       const total = recommendations.length;
       let settledCount = 0;
@@ -445,6 +484,7 @@ export function useGenerate() {
       return {
         generationId,
         analysis,
+        background: false,
       };
     } catch (error) {
       const message = toErrorMessage(error, "The recommendation pipeline failed.");

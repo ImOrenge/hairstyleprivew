@@ -1,6 +1,15 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateDesignerBriefs } from "../../../../lib/designer-brief-generator";
+import {
+  removeGenerationOriginalImage,
+  uploadGenerationOriginalImage,
+} from "../../../../lib/generation-image-storage";
+import {
+  createGenerationWorkflowInstance,
+  getGenerationWorkflowBinding,
+} from "../../../../lib/generation-workflow";
 import {
   buildAccountSetupRedirectUrl,
   isMemberStyleTarget,
@@ -27,11 +36,6 @@ interface MemberProfileRow {
   style_target: unknown;
 }
 
-function createInlineOriginalImagePath(userId: string): string {
-  const safeUser = userId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  return `inline-upload://${safeUser}/${Date.now()}`;
-}
-
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
@@ -52,6 +56,12 @@ export async function POST(request: Request) {
   try {
     const supabase = getSupabaseAdminClient() as unknown as {
       from: (table: string) => {
+        update: (values: Record<string, unknown>) => {
+          eq: (
+            column: string,
+            value: string,
+          ) => Promise<{ error: { message: string } | null }>;
+        };
         insert: (values: Record<string, unknown>) => {
           select: (columns: string) => {
             single: () => Promise<{
@@ -73,6 +83,7 @@ export async function POST(request: Request) {
         fn: string,
         params: Record<string, unknown>,
       ) => Promise<{ data: unknown; error: { message: string } | null }>;
+      storage: SupabaseClient["storage"];
     };
 
     const clerkUser = await currentUser();
@@ -154,11 +165,19 @@ export async function POST(request: Request) {
       creditChargeAmount: creditsRequired,
     };
 
+    const generationId = crypto.randomUUID();
+    const storedOriginal = await uploadGenerationOriginalImage(supabase, {
+      userId,
+      generationId,
+      imageDataUrl: referenceImageDataUrl,
+    });
+
     const { data: created, error: createError } = await supabase
       .from("generations")
       .insert({
+        id: generationId,
         user_id: userId,
-        original_image_path: createInlineOriginalImagePath(userId),
+        original_image_path: storedOriginal.path,
         prompt_used: recommendationsWithBriefs[0]?.prompt || generated.analysis.summary,
         options: {
           analysis: generated.analysis,
@@ -179,12 +198,64 @@ export async function POST(request: Request) {
       .single();
 
     if (createError) {
+      await removeGenerationOriginalImage(supabase, storedOriginal.path).catch((cleanupError) => {
+        console.error("[prompts/generate] Failed to clean up uploaded original", cleanupError);
+      });
       return NextResponse.json({ error: createError.message }, { status: 500 });
     }
 
-    const generationId = typeof created?.id === "string" ? created.id : "";
-    if (!generationId) {
+    const createdGenerationId = typeof created?.id === "string" ? created.id : "";
+    if (!createdGenerationId) {
+      await removeGenerationOriginalImage(supabase, storedOriginal.path).catch((cleanupError) => {
+        console.error("[prompts/generate] Failed to clean up uploaded original", cleanupError);
+      });
       return NextResponse.json({ error: "Failed to create generation record" }, { status: 500 });
+    }
+
+    let backgroundStarted = false;
+    const workflow = await getGenerationWorkflowBinding();
+    if (workflow) {
+      const { error: prepareWorkflowError } = await supabase
+        .from("generations")
+        .update({
+          workflow_instance_id: createdGenerationId,
+          workflow_started_at: new Date().toISOString(),
+          completion_notification_status: "pending",
+          completion_notification_error: null,
+        })
+        .eq("id", createdGenerationId);
+
+      if (prepareWorkflowError) {
+        console.error("[prompts/generate] Failed to prepare background workflow", prepareWorkflowError);
+      } else {
+        try {
+          await createGenerationWorkflowInstance(workflow, {
+            generationId: createdGenerationId,
+            variantCount: variants.length,
+          });
+          backgroundStarted = true;
+        } catch (workflowError) {
+          try {
+            const existing = await workflow.get(createdGenerationId);
+            const existingStatus = await existing.status();
+            backgroundStarted = existingStatus.status !== "unknown";
+          } catch {
+            const message = workflowError instanceof Error
+              ? workflowError.message
+              : "Failed to start background generation";
+            await supabase
+              .from("generations")
+              .update({
+                workflow_instance_id: null,
+                workflow_started_at: null,
+                completion_notification_status: "not_requested",
+                completion_notification_error: message,
+              })
+              .eq("id", createdGenerationId);
+            console.error("[prompts/generate] Failed to start background workflow", workflowError);
+          }
+        }
+      }
     }
 
     const recommendations = recommendationsWithBriefs.map((candidate) => ({
@@ -201,7 +272,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        generationId,
+        generationId: createdGenerationId,
         analysis: generated.analysis,
         recommendations,
         catalogCycleId: generated.catalogCycleId,
@@ -209,6 +280,7 @@ export async function POST(request: Request) {
         model: generated.model,
         promptVersion: generated.promptVersion,
         styleTarget,
+        backgroundStarted,
       },
       { status: 200 },
     );

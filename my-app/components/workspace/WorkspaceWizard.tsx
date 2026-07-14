@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { PipelineStatusIndicator } from "../generate/PipelineStatusIndicator";
 import { UploadArea } from "../upload/UploadArea";
+import { ValidationCheck } from "../upload/ValidationCheck";
 import { Button } from "../ui/Button";
 import { Panel, SurfaceCard } from "../ui/Surface";
 import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
@@ -454,7 +455,13 @@ export function WorkspaceWizard() {
   const searchParams = useSearchParams();
   const { isAdminReadOnly } = useAdminReadOnly();
   const { runGridPipeline, resetPipeline } = useGenerate();
-  const { validateImage, resetValidation } = useUpload();
+  const {
+    status: uploadStatus,
+    message: uploadMessage,
+    details: uploadDetails,
+    validateImage,
+    resetValidation,
+  } = useUpload();
 
   const previewUrl = useGenerationStore((state) => state.previewUrl);
   const isGenerating = useGenerationStore((state) => state.isGenerating);
@@ -584,7 +591,11 @@ export function WorkspaceWizard() {
     setSelectedVariantId(null);
 
     try {
-      await runGridPipeline();
+      const result = await runGridPipeline();
+      if (result.background) {
+        router.push(`/generate/${result.generationId}`);
+        return;
+      }
       setCurrentStep("select");
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "헤어 생성 보드를 만들지 못했습니다.");
@@ -741,6 +752,13 @@ export function WorkspaceWizard() {
               disabled={isUploading || isAdminReadOnly}
               previewUrl={previewUrl}
             />
+            <div className="mt-4">
+              <ValidationCheck
+                status={uploadStatus}
+                message={uploadMessage}
+                details={uploadDetails}
+              />
+            </div>
             {previewUrl && !isLoadingPersonalColor && !personalColor ? (
               <SurfaceCard className="mt-4 p-4">
                 <div className="flex items-start gap-3">
@@ -825,6 +843,12 @@ export function WorkspaceWizard() {
                 <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">3x3 헤어 생성</h2>
                 <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
                   얼굴형, 밸런스, 볼륨 전략을 분석한 뒤 9가지 헤어 후보를 생성합니다.
+                </p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--app-text)]">
+                  생성 시작 후 다른 페이지로 이동하거나 브라우저를 닫아도 계속 진행되며, 완료 시 가입 이메일로 알려드립니다.
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
+                  결과 보드로 이동하기 전까지는 추천 분석과 작업 접수 단계이므로 이 화면을 유지해 주세요.
                 </p>
                 {analysisSummary ? (
                   <SurfaceCard className="mt-5 p-4">
