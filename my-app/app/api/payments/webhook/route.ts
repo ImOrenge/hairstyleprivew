@@ -17,8 +17,11 @@ import {
   sendRefundCompletedEmail,
   sendRefundReviewEmail,
   sendSubscriptionRenewalEmail,
+  sendUsagePackFailureEmail,
+  sendUsagePackSuccessEmail,
 } from "../../../../lib/resend";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
+import { getUsagePack, isUsagePackKey, isUsagePackTransaction } from "../../../../lib/usage-pack";
 
 // ─── 타입 ──────────────────────────────────────────────────────────────────
 
@@ -165,6 +168,11 @@ function getMetadataString(metadata: unknown, key: string): string | null {
 function getPlanFromMetadata(metadata: unknown): SelfServeBillingPlanKey | null {
   const plan = getMetadataString(metadata, "plan");
   return isSelfServeBillingPlanKey(plan) ? plan : null;
+}
+
+function getUsagePackFromMetadata(metadata: unknown) {
+  const packKey = getMetadataString(metadata, "usage_pack_key");
+  return isUsagePackKey(packKey) ? getUsagePack(packKey) : null;
 }
 
 function getCreditReasonFromMetadata(metadata: unknown): string {
@@ -500,6 +508,21 @@ async function sendPaymentFailureNotification({
     return;
   }
 
+  const usagePack = getUsagePackFromMetadata(transaction.metadata);
+  if (usagePack) {
+    await sendUsagePackFailureEmail({
+      to: user.email,
+      displayName: user.displayName,
+      packLabel: usagePack.label,
+      amount: transaction.amount,
+      currency: transaction.currency,
+      failureMessage,
+      myPageUrl: buildAppUrl(request, `/billing/usage?pack=${usagePack.key}`),
+      paymentTransactionId: transaction.provider_order_id ?? transaction.id,
+    });
+    return;
+  }
+
   await sendPaymentFailureEmail({
     to: user.email,
     displayName: user.displayName,
@@ -538,6 +561,7 @@ async function sendRefundCompletedNotification({
     to: user.email,
     displayName: user.displayName,
     plan: getPlanFromMetadata(transaction.metadata),
+    purchaseLabel: getUsagePackFromMetadata(transaction.metadata)?.label ?? null,
     refundAmount: transaction.amount,
     currency: transaction.currency,
     paymentTransactionId: transaction.provider_order_id ?? transaction.id,
@@ -571,6 +595,7 @@ async function sendRefundReviewNotification({
     to: user.email,
     displayName: user.displayName,
     plan: getPlanFromMetadata(transaction.metadata),
+    purchaseLabel: getUsagePackFromMetadata(transaction.metadata)?.label ?? null,
     requestedAmount: null,
     currency: transaction.currency,
     paymentTransactionId: transaction.provider_order_id ?? transaction.id,
@@ -939,6 +964,65 @@ export async function POST(request: Request) {
   }
 
   const txRow = confirmation.transaction;
+
+  if (isUsagePackTransaction(txRow.metadata)) {
+    const usagePackKey = getMetadataString(txRow.metadata, "usage_pack_key");
+    if (!isUsagePackKey(usagePackKey)) {
+      console.error("[webhook] 추가 이용권 상품 키 누락:", txRow.id);
+      return NextResponse.json({ error: "usage pack metadata missing" }, { status: 500 });
+    }
+
+    const usagePack = getUsagePack(usagePackKey);
+    if (
+      txRow.amount !== usagePack.priceKrw ||
+      txRow.credits_to_grant !== usagePack.credits
+    ) {
+      console.error("[webhook] 추가 이용권 금액 또는 이용량 불일치:", txRow.id);
+      return NextResponse.json({ error: "usage pack transaction mismatch" }, { status: 409 });
+    }
+
+    const { error: ledgerError } = await supabase.rpc("apply_payment_credits", {
+      p_payment_transaction_id: txRow.id,
+      p_reason: "usage_pack_purchase",
+    });
+
+    if (ledgerError) {
+      console.error("[webhook] 추가 이용권 지급 실패:", ledgerError.message);
+      return NextResponse.json({ error: ledgerError.message }, { status: 500 });
+    }
+
+    if (!confirmation.alreadyPaid) {
+      try {
+        const user = await loadUserEmailRow(supabase, txRow.user_id);
+        if (user) {
+          await sendUsagePackSuccessEmail({
+            to: user.email,
+            displayName: user.displayName,
+            packLabel: usagePack.label,
+            amount: usagePack.priceKrw,
+            currency: txRow.currency,
+            creditsGranted: usagePack.credits,
+            currentCredits: user.credits,
+            paymentTransactionId: paymentId,
+            myPageUrl: buildAppUrl(request, "/mypage?tab=plan"),
+          });
+        }
+      } catch (error) {
+        console.error("[webhook] 추가 이용권 결제 완료 이메일 발송 실패:", error);
+      }
+    }
+
+    return NextResponse.json(
+      {
+        received: true,
+        purchaseType: "usage_pack",
+        pack: usagePack.key,
+        credits: usagePack.credits,
+        alreadyProcessed: confirmation.alreadyPaid,
+      },
+      { status: 200 },
+    );
+  }
 
   if (!txRow.subscription_id) {
     const plan = getPlanFromMetadata(txRow.metadata);

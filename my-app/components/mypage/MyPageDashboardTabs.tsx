@@ -537,7 +537,7 @@ function UsagePanel({ generations }: { generations: GenerationRow[] }) {
                     </span>
                     <span className="text-xs font-medium text-[var(--app-muted)]">{formatDate(item.created_at)}</span>
                     <span className="text-xs font-medium text-[var(--app-muted)]">
-                      {Math.max(0, item.credits_used ?? 0).toLocaleString("ko-KR")} 크레딧
+                      사용 이용량 {Math.max(0, item.credits_used ?? 0).toLocaleString("ko-KR")}
                     </span>
                   </div>
                   <p className="mt-3 text-base font-semibold text-[var(--app-text)]">{formatPrompt(item.prompt_used)}</p>
@@ -562,7 +562,7 @@ function formatPlanHairFashionUsage(plan: PlanDisplayBenefit) {
   }
 
   if (plan.usage.hairFashionRemainderCredits > 0) {
-    return `헤어+패션 약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 · ${plan.usage.hairFashionRemainderCredits.toLocaleString("ko-KR")}크레딧 잔여`;
+    return `헤어+패션 약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 · 남은 이용량 ${plan.usage.hairFashionRemainderCredits.toLocaleString("ko-KR")}`;
   }
 
   return `헤어+패션 약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트`;
@@ -656,6 +656,22 @@ function PlanPanel({
             </div>
           ) : null}
 
+          {activeSubscription ? (
+            <div className="mt-4 border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-3">
+              <p className="text-xs font-bold uppercase text-[var(--app-muted)]">추가 이용량</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
+                정기구독은 유지하고 필요한 서비스 이용량만 단건으로 추가할 수 있습니다.
+              </p>
+              <Link
+                href="/billing/usage"
+                className="mt-3 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-3 py-2 text-xs font-bold text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
+              >
+                추가 이용권 구매
+                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+              </Link>
+            </div>
+          ) : null}
+
           <div className="mt-4 border-t border-[var(--app-border)] pt-4">
             <p className="text-xs font-bold uppercase text-[var(--app-muted)]">월 플랜 결제</p>
             {allowNewSubscription ? (
@@ -671,12 +687,12 @@ function PlanPanel({
                           {formatPlanLabel(plan.key)}
                         </p>
                         <p className="mt-1 text-xs text-[var(--app-muted)]">
-                          {plan.credits.toLocaleString("ko-KR")} 크레딧 / 월
+                          월 제공 이용량 {plan.credits.toLocaleString("ko-KR")}
                         </p>
                         <div className="mt-2 grid gap-1 text-xs leading-5 text-[var(--app-muted)]">
                           <p>헤어 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회</p>
                           <p>{formatPlanHairFashionUsage(plan)}</p>
-                          <p>첫 에프터케어 프로그램 무료 · 주기별 케어 메일 포함 · 추가 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}크레딧</p>
+                          <p>첫 에프터케어 프로그램 무료 · 주기별 케어 메일 포함 · 추가 이용량 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}</p>
                           <p>생성 이미지 {plan.retentionLabelKo}</p>
                         </div>
                       </div>
@@ -730,7 +746,7 @@ function PlanPanel({
                         {formatPaymentStatus(item.status)}
                       </span>
                       <span className="text-xs text-[var(--app-muted)]">
-                        {(item.credits_to_grant ?? 0).toLocaleString("ko-KR")} 크레딧
+                        지급 이용량 {(item.credits_to_grant ?? 0).toLocaleString("ko-KR")}
                       </span>
                     </div>
                     {getPaymentFailureText(item) ? (
@@ -1055,7 +1071,7 @@ export function MyPageDashboardTabs({
       <section className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         <MetricCard
           icon={CreditCard}
-          label="크레딧"
+          label="남은 이용량"
           value={credits.toLocaleString("ko-KR")}
           helper={`헤어 생성 약 ${estimatedStyles.toLocaleString("ko-KR")}회 가능`}
         />
@@ -1069,7 +1085,7 @@ export function MyPageDashboardTabs({
           icon={Activity}
           label="사용량"
           value={usedCredits.toLocaleString("ko-KR")}
-          helper="최근 생성 기록에서 사용한 크레딧"
+          helper="최근 생성 기록에서 사용한 서비스 이용량"
         />
         <MetricCard
           icon={Palette}

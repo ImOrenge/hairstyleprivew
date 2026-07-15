@@ -93,5 +93,5 @@ export function normalizePortoneSdkResponse(
 }
 
 export function formatCompletedPayment(result: MobilePaymentCompleteResponse) {
-  return `${result.creditsGranted.toLocaleString("ko-KR")} credits granted for ${result.plan}.`;
+  return `${result.plan} 플랜의 서비스 이용량 ${result.creditsGranted.toLocaleString("ko-KR")}이 지급되었습니다.`;
 }

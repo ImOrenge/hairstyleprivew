@@ -25,10 +25,38 @@ declare module "@portone/browser-sdk/v2" {
     message?: string;
   }
 
+  interface PaymentOptions {
+    storeId: string;
+    channelKey: string;
+    paymentId: string;
+    orderName: string;
+    totalAmount: number;
+    currency: "KRW";
+    payMethod: "CARD";
+    productType?: "DIGITAL";
+    redirectUrl?: string;
+    customer?: {
+      customerId?: string;
+      fullName?: string;
+      email?: string;
+      phoneNumber?: string;
+    };
+    customData?: Record<string, unknown>;
+  }
+
+  interface PaymentResponse {
+    transactionType: "PAYMENT";
+    txId: string;
+    paymentId: string;
+    code?: string;
+    message?: string;
+  }
+
   const PortOne: {
     requestIssueBillingKey(
       options: IssueBillingKeyOptions,
     ): Promise<IssueBillingKeyResponse>;
+    requestPayment(options: PaymentOptions): Promise<PaymentResponse | undefined>;
   };
 
   export default PortOne;

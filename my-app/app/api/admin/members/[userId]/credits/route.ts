@@ -76,13 +76,13 @@ export async function POST(request: Request, { params }: Params) {
   if (ledgerError) {
     const message = ledgerError.message.toLowerCase();
     if (message.includes("insufficient credits")) {
-      return NextResponse.json({ error: "Insufficient credits for this adjustment" }, { status: 409 });
+      return NextResponse.json({ error: "조정할 수 있는 서비스 이용량이 부족합니다." }, { status: 409 });
     }
     return NextResponse.json({ error: ledgerError.message }, { status: 500 });
   }
 
   if (!ledger) {
-    return NextResponse.json({ error: "Failed to write credit ledger entry" }, { status: 500 });
+    return NextResponse.json({ error: "이용량 조정 내역을 저장하지 못했습니다." }, { status: 500 });
   }
 
   const { data: userRow, error: userError } = await context.supabase

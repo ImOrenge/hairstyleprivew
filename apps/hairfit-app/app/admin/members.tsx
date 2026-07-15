@@ -39,7 +39,7 @@ function MemberCard({ member }: { member: AdminMemberListRow }) {
           <Chip tone={member.account_type === "admin" ? "accent" : "neutral"}>
             {accountTypeLabel(member.account_type)}
           </Chip>
-          <Chip>{member.credits ?? 0} 크레딧</Chip>
+          <Chip>남은 이용량 {member.credits ?? 0}</Chip>
           <Chip>{member.onboarding_completed_at ? "온보딩 완료" : "미완료"}</Chip>
         </Cluster>
         <Heading style={{ fontSize: 20, lineHeight: 26 }}>{title}</Heading>
@@ -104,7 +104,7 @@ export default function AdminMembersScreen() {
       <AdminPageHeader
         title="회원관리"
         countLabel={countLabel}
-        description="Next.js 관리자 회원 목록과 같은 API를 사용해 권한, 온보딩, 크레딧 상태를 확인합니다."
+        description="Next.js 관리자 회원 목록과 같은 API를 사용해 권한, 온보딩, 서비스 이용량 상태를 확인합니다."
       >
         <Stack>
           <TextField value={query} onChangeText={setQuery} placeholder="user id / email / 이름 검색" />

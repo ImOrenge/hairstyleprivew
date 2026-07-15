@@ -393,7 +393,7 @@ export default async function CustomerHomePage() {
           <MetricCard
             helper="헤어와 룩북 생성에 사용됩니다"
             icon={CreditCard}
-            label="크레딧"
+            label="남은 이용량"
             value={dashboard.credits.toLocaleString("ko-KR")}
           />
           <MetricCard

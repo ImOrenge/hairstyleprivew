@@ -215,7 +215,7 @@ function PlanPanel({
             <Card key={payment.id}>
               <BodyText style={styles.strongText}>{formatKrw(payment.amountKrw)}</BodyText>
               <BodyText>
-                {payment.status} / {payment.creditsToGrant.toLocaleString("ko-KR")} 크레딧
+                {payment.status} / 지급 이용량 {payment.creditsToGrant.toLocaleString("ko-KR")}
               </BodyText>
               <BodyText>{formatDate(payment.paidAt ?? payment.createdAt)}</BodyText>
             </Card>
@@ -402,7 +402,7 @@ function AccountPanel({
     { label: "계정 유형", value: accountTypeLabel(me?.accountType ?? null) },
     { label: "계정 설정", value: accountSetupLabel(me?.accountSetupComplete) },
     { label: "플랜", value: formatPlanLabel(me?.planKey) },
-    { label: "크레딧", value: (me?.credits ?? 0).toLocaleString("ko-KR") },
+    { label: "남은 이용량", value: (me?.credits ?? 0).toLocaleString("ko-KR") },
     { label: "서비스", value: services },
     { label: "사용자 ID", value: me?.userId || userId || "-" },
   ];
@@ -608,9 +608,9 @@ export default function MyPageScreen() {
       ) : null}
 
       <MetricGrid>
-        <MetricTile label="크레딧" value={credits.toLocaleString("ko-KR")} helper={`헤어 생성 약 ${estimatedStyles.toLocaleString("ko-KR")}회 가능`} />
+        <MetricTile label="남은 이용량" value={credits.toLocaleString("ko-KR")} helper={`헤어 생성 약 ${estimatedStyles.toLocaleString("ko-KR")}회 가능`} />
         <MetricTile label="플랜" value={activePlan} helper="활성 구독 정보 없음" />
-        <MetricTile label="사용량" value={usedCredits.toLocaleString("ko-KR")} helper="최근 생성 기록에서 사용한 크레딧" />
+        <MetricTile label="사용한 이용량" value={usedCredits.toLocaleString("ko-KR")} helper="최근 생성 기록에서 사용한 서비스 이용량" />
         <MetricTile label="바디프로필" value={customer?.styleProfileReady ? "준비됨" : "필요"} helper="아래 프로필을 완성하세요" />
       </MetricGrid>
 

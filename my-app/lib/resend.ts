@@ -42,6 +42,18 @@ type PaymentSuccessEmailInput = {
   paymentTransactionId: string;
 };
 
+type UsagePackSuccessEmailInput = {
+  to: string;
+  displayName?: string | null;
+  packLabel: string;
+  creditsGranted: number;
+  currentCredits?: number | null;
+  amount: number;
+  currency?: string | null;
+  myPageUrl: string;
+  paymentTransactionId: string;
+};
+
 type PaymentFailureEmailInput = {
   to: string;
   displayName?: string | null;
@@ -54,10 +66,22 @@ type PaymentFailureEmailInput = {
   paymentTransactionId?: string | null;
 };
 
+type UsagePackFailureEmailInput = {
+  to: string;
+  displayName?: string | null;
+  packLabel: string;
+  amount: number;
+  currency?: string | null;
+  failureMessage?: string | null;
+  myPageUrl: string;
+  paymentTransactionId?: string | null;
+};
+
 type RefundCompletedEmailInput = {
   to: string;
   displayName?: string | null;
   plan?: string | null;
+  purchaseLabel?: string | null;
   refundAmount?: number | null;
   currency?: string | null;
   paymentTransactionId?: string | null;
@@ -70,6 +94,7 @@ type RefundReviewEmailInput = {
   to: string;
   displayName?: string | null;
   plan?: string | null;
+  purchaseLabel?: string | null;
   requestedAmount?: number | null;
   currency?: string | null;
   paymentTransactionId?: string | null;
@@ -678,22 +703,58 @@ export async function sendPaymentSuccessEmail(input: PaymentSuccessEmailInput) {
     layout: {
       kicker: "Payment complete",
       title: "결제가 완료되었습니다",
-      preview: `${planLabel} 플랜 크레딧이 충전되었습니다.`,
+      preview: `${planLabel} 플랜의 서비스 이용량이 지급되었습니다.`,
       tone: "success",
       body: [
         `${greetingName(input.displayName)}님, ${planLabel} 플랜 결제가 정상적으로 완료되었습니다.`,
-        "지금부터 충전된 크레딧으로 헤어 추천과 스타일 결과를 계속 이용할 수 있습니다.",
+        "지금부터 지급된 서비스 이용량으로 헤어 추천과 스타일 결과를 계속 이용할 수 있습니다.",
         "결제 내역과 구독 상태는 마이페이지의 플랜/결제 탭에서 확인할 수 있습니다.",
       ],
       details: [
         { label: "플랜", value: planLabel },
         { label: "결제 금액", value: amountText },
-        { label: "충전 크레딧", value: `${formatNumber(input.creditsGranted)} 크레딧` },
+        { label: "지급 이용량", value: formatNumber(input.creditsGranted) },
         {
-          label: "현재 크레딧",
+          label: "남은 이용량",
           value:
             typeof input.currentCredits === "number"
-              ? `${formatNumber(input.currentCredits)} 크레딧`
+              ? formatNumber(input.currentCredits)
+              : null,
+        },
+        { label: "결제 번호", value: input.paymentTransactionId },
+      ],
+      cta: {
+        label: "마이페이지에서 확인하기",
+        url: input.myPageUrl,
+      },
+    },
+  });
+}
+
+export async function sendUsagePackSuccessEmail(input: UsagePackSuccessEmailInput) {
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: "[HairFit] 추가 이용권 결제가 완료되었습니다",
+    source: "usage_pack_success",
+    layout: {
+      kicker: "Usage add-on complete",
+      title: "추가 이용권이 지급되었습니다",
+      preview: `${input.packLabel} 결제가 완료되어 서비스 이용량이 추가되었습니다.`,
+      tone: "success",
+      body: [
+        `${greetingName(input.displayName)}님, ${input.packLabel} 단건결제가 정상적으로 완료되었습니다.`,
+        "지급된 서비스 이용량은 HairFit 내부 기능에서 바로 사용할 수 있습니다.",
+        "기존 정기구독 금액과 다음 결제일은 변경되지 않습니다.",
+      ],
+      details: [
+        { label: "구매 상품", value: input.packLabel },
+        { label: "결제 금액", value: formatMoney(input.amount, input.currency || "KRW") },
+        { label: "지급 이용량", value: formatNumber(input.creditsGranted) },
+        {
+          label: "남은 이용량",
+          value:
+            typeof input.currentCredits === "number"
+              ? formatNumber(input.currentCredits)
               : null,
         },
         { label: "결제 번호", value: input.paymentTransactionId },
@@ -725,7 +786,7 @@ export async function sendPaymentFailureEmail(input: PaymentFailureEmailInput) {
       body: [
         `${greetingName(input.displayName)}님, ${planLabel} 구독 결제가 승인되지 않았습니다.`,
         "카드 한도, 유효기간, 잔액 또는 결제사 승인 상태를 확인해 주세요.",
-        "결제가 정상 처리되면 구독 상태와 크레딧이 자동으로 갱신됩니다.",
+        "결제가 정상 처리되면 구독 상태와 서비스 이용량이 자동으로 갱신됩니다.",
       ],
       details: [
         { label: "플랜", value: planLabel },
@@ -743,8 +804,37 @@ export async function sendPaymentFailureEmail(input: PaymentFailureEmailInput) {
   });
 }
 
+export async function sendUsagePackFailureEmail(input: UsagePackFailureEmailInput) {
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: "[HairFit] 추가 이용권 결제를 완료하지 못했습니다",
+    source: "usage_pack_failure",
+    layout: {
+      kicker: "Usage add-on needs attention",
+      title: "추가 이용권 결제를 완료하지 못했습니다",
+      preview: "카드 승인 상태를 확인한 뒤 추가 이용권 결제를 다시 시도해 주세요.",
+      tone: "warning",
+      body: [
+        `${greetingName(input.displayName)}님, ${input.packLabel} 단건결제가 승인되지 않았습니다.`,
+        "카드 한도, 유효기간, 잔액 또는 결제사 승인 상태를 확인해 주세요.",
+        "기존 정기구독과 현재 서비스 이용량은 이 결제 실패로 변경되지 않습니다.",
+      ],
+      details: [
+        { label: "구매 상품", value: input.packLabel },
+        { label: "결제 금액", value: formatMoney(input.amount, input.currency || "KRW") },
+        { label: "실패 사유", value: input.failureMessage || "카드 승인 실패 또는 결제사 상태 확인 필요" },
+        { label: "결제 번호", value: input.paymentTransactionId },
+      ],
+      cta: {
+        label: "추가 이용권 다시 보기",
+        url: input.myPageUrl,
+      },
+    },
+  });
+}
+
 export async function sendRefundCompletedEmail(input: RefundCompletedEmailInput) {
-  const planLabel = formatPlanLabel(input.plan);
+  const planLabel = input.purchaseLabel?.trim() || formatPlanLabel(input.plan);
   const amountText =
     typeof input.refundAmount === "number" && input.refundAmount > 0
       ? formatMoney(input.refundAmount, input.currency || "KRW")
@@ -757,29 +847,29 @@ export async function sendRefundCompletedEmail(input: RefundCompletedEmailInput)
     layout: {
       kicker: "Refund complete",
       title: "환불 처리가 완료되었습니다",
-      preview: "결제 취소와 크레딧 회수 내역을 확인해 주세요.",
+      preview: "결제 취소와 서비스 이용량 회수 내역을 확인해 주세요.",
       tone: "danger",
       body: [
         `${greetingName(input.displayName)}님, 요청하신 결제의 환불 처리가 완료되었습니다.`,
-        "환불 완료 후 해당 결제로 지급된 크레딧은 정책에 따라 회수됩니다.",
-        "이미 사용된 크레딧이 있는 경우 일부 크레딧은 즉시 회수되지 않을 수 있으며, 해당 내역은 운영 검토 대상으로 기록됩니다.",
+        "환불 완료 후 해당 결제로 지급된 서비스 이용량은 정책에 따라 회수됩니다.",
+        "이미 사용한 이용량이 있는 경우 일부는 즉시 회수되지 않을 수 있으며, 해당 내역은 운영 검토 대상으로 기록됩니다.",
       ],
       details: [
-        { label: "플랜", value: planLabel },
+        { label: input.purchaseLabel ? "구매 상품" : "플랜", value: planLabel },
         { label: "환불 금액", value: amountText },
         { label: "결제 번호", value: input.paymentTransactionId },
         {
-          label: "회수된 크레딧",
+          label: "회수된 이용량",
           value:
             typeof input.creditsClawedBack === "number"
-              ? `${formatNumber(input.creditsClawedBack)} 크레딧`
+              ? formatNumber(input.creditsClawedBack)
               : null,
         },
         {
-          label: "미회수 크레딧",
+          label: "미회수 이용량",
           value:
             typeof input.creditsUnrecovered === "number"
-              ? `${formatNumber(input.creditsUnrecovered)} 크레딧`
+              ? formatNumber(input.creditsUnrecovered)
               : null,
         },
       ],
@@ -792,7 +882,7 @@ export async function sendRefundCompletedEmail(input: RefundCompletedEmailInput)
 }
 
 export async function sendRefundReviewEmail(input: RefundReviewEmailInput) {
-  const planLabel = formatPlanLabel(input.plan);
+  const planLabel = input.purchaseLabel?.trim() || formatPlanLabel(input.plan);
   const amountText =
     typeof input.requestedAmount === "number" && input.requestedAmount > 0
       ? formatMoney(input.requestedAmount, input.currency || "KRW")
@@ -805,15 +895,17 @@ export async function sendRefundReviewEmail(input: RefundReviewEmailInput) {
     layout: {
       kicker: "Refund review",
       title: "환불 요청을 검토 중입니다",
-      preview: "부분 환불은 크레딧 조정 확인 후 처리됩니다.",
+      preview: "부분 환불은 서비스 이용량 조정 확인 후 처리됩니다.",
       tone: "warning",
       body: [
         `${greetingName(input.displayName)}님, 부분 환불 또는 추가 확인이 필요한 결제 건이 접수되었습니다.`,
-        "부분 환불은 결제 금액, 사용한 크레딧, 구독 상태를 함께 확인한 뒤 처리됩니다.",
+        input.purchaseLabel
+          ? "부분 환불은 결제 금액과 사용한 서비스 이용량을 함께 확인한 뒤 처리됩니다."
+          : "부분 환불은 결제 금액, 사용한 서비스 이용량, 구독 상태를 함께 확인한 뒤 처리됩니다.",
         "검토가 완료되면 환불 결과를 다시 안내해 드리겠습니다.",
       ],
       details: [
-        { label: "플랜", value: planLabel },
+        { label: input.purchaseLabel ? "구매 상품" : "플랜", value: planLabel },
         { label: "요청 금액", value: amountText },
         { label: "결제 번호", value: input.paymentTransactionId },
         { label: "접수 상태", value: "운영 검토 중" },
@@ -862,7 +954,7 @@ export async function sendSupportReplyEmail(input: SupportReplyEmailInput) {
 
 export async function sendSubscriptionRenewalEmail(input: SubscriptionRenewalEmailInput) {
   const planLabel = formatPlanLabel(input.plan);
-  const renewalBrandLine = `HairFit ${escapeHtml(planLabel)} 구독이 자동 갱신되어 크레딧이 충전되었습니다.`;
+  const renewalBrandLine = `HairFit ${escapeHtml(planLabel)} 구독이 자동 갱신되어 서비스 이용량이 지급되었습니다.`;
   const subject = `[HairFit] ${formatPlanLabel(input.plan)} 구독이 갱신되었습니다`;
   const amountText =
     typeof input.amount === "number" && input.amount > 0
@@ -876,7 +968,7 @@ export async function sendSubscriptionRenewalEmail(input: SubscriptionRenewalEma
     layout: {
       kicker: "Subscription renewed",
       title: "구독이 갱신되었습니다",
-      preview: "이번 달 크레딧이 새로 충전되었습니다.",
+      preview: "이번 달 서비스 이용량이 새로 지급되었습니다.",
       tone: "success",
       body: [
         `${greetingName(input.displayName)}님, ${planLabel} 월 구독이 정상적으로 갱신되었습니다.`,
@@ -886,12 +978,12 @@ export async function sendSubscriptionRenewalEmail(input: SubscriptionRenewalEma
       details: [
         { label: "플랜", value: planLabel },
         { label: "결제 금액", value: amountText },
-        { label: "충전 크레딧", value: `${formatNumber(input.creditsGranted)} 크레딧` },
+        { label: "지급 이용량", value: formatNumber(input.creditsGranted) },
         {
-          label: "현재 크레딧",
+          label: "남은 이용량",
           value:
             typeof input.currentCredits === "number"
-              ? `${formatNumber(input.currentCredits)} 크레딧`
+              ? formatNumber(input.currentCredits)
               : null,
         },
         { label: "다음 갱신 예정일", value: formatDate(input.periodEnd) },

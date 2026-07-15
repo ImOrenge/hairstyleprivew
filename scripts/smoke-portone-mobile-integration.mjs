@@ -31,13 +31,13 @@ const planBlock = planBlockMatch[0];
 for (const expected of [
   'key: "basic"',
   'price: "9,900 KRW"',
-  'credits: "80 credits"',
+  'credits: "월 제공 이용량 80"',
   'key: "standard"',
   'price: "19,900 KRW"',
-  'credits: "200 credits"',
+  'credits: "월 제공 이용량 200"',
   'key: "pro"',
   'price: "49,900 KRW"',
-  'credits: "600 credits"',
+  'credits: "월 제공 이용량 600"',
 ]) {
   assertIncludes(planBlock, expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), `mobile billing plan list must include ${expected}`);
 }

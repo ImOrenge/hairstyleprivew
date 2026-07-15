@@ -22,7 +22,7 @@ export default function PaymentCompleteScreen() {
       try {
         const result = await api.completeMobilePayment(id);
         if (!cancelled) {
-          setMessage(`${result.creditsGranted.toLocaleString("ko-KR")} credits granted.`);
+          setMessage(`서비스 이용량 ${result.creditsGranted.toLocaleString("ko-KR")}이 지급되었습니다.`);
         }
       } catch (error) {
         if (!cancelled) {

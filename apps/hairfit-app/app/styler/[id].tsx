@@ -89,7 +89,7 @@ export default function StylerResultScreen() {
                   ))}
                 </Cluster>
                 <BodyText>
-                  Genre: {genre ? genreLabelMap[genre] : session.occasion} · Status: {formatStatus(session.status)} · Credits: {session.creditsUsed}
+                  Genre: {genre ? genreLabelMap[genre] : session.occasion} · Status: {formatStatus(session.status)} · 사용 이용량: {session.creditsUsed}
                 </BodyText>
               </Stack>
             </Card>

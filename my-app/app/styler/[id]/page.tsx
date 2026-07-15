@@ -127,7 +127,7 @@ export default function StylerResultPage() {
                 ))}
               </div>
               <p className="mt-4 text-xs text-[var(--app-muted)]">
-                장르: {genre ? genreLabelMap[genre] : session.occasion} · 상태: {formatStatus(session.status)} · 사용 크레딧: {session.creditsUsed}
+                장르: {genre ? genreLabelMap[genre] : session.occasion} · 상태: {formatStatus(session.status)} · 사용 이용량: {session.creditsUsed}
               </p>
             </SurfaceCard>
 

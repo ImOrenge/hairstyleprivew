@@ -152,11 +152,11 @@ export default function AdminMembersPage() {
 
     const delta = Number(draft.delta);
     if (!Number.isInteger(delta) || delta === 0) {
-      setError("크레딧 증감값은 0이 아닌 정수여야 합니다.");
+      setError("이용량 증감값은 0이 아닌 정수여야 합니다.");
       return;
     }
     if (!draft.reason.trim()) {
-      setError("크레딧 조정 사유를 입력해주세요.");
+      setError("이용량 조정 사유를 입력해주세요.");
       return;
     }
 
@@ -170,7 +170,7 @@ export default function AdminMembersPage() {
     const data = (await response.json().catch(() => ({}))) as { error?: string };
 
     if (!response.ok) {
-      setError(data.error || "크레딧 조정에 실패했습니다.");
+      setError(data.error || "이용량 조정에 실패했습니다.");
     } else {
       setCreditDrafts((current) => ({
         ...current,
@@ -222,7 +222,7 @@ export default function AdminMembersPage() {
         <div className="hidden grid-cols-[1.1fr_1fr_0.8fr_1.6fr] gap-3 border-b border-stone-200 bg-stone-50 px-4 py-3 text-xs font-bold text-stone-500 md:grid">
           <span>회원</span>
           <span>권한</span>
-          <span>크레딧</span>
+          <span>서비스 이용량</span>
           <span>액션</span>
         </div>
 
@@ -269,7 +269,7 @@ export default function AdminMembersPage() {
             </div>
 
             <div className="flex items-center justify-between gap-3 md:block">
-              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-stone-400 md:hidden">크레딧</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.12em] text-stone-400 md:hidden">서비스 이용량</p>
               <span className="text-lg font-black text-stone-900">{member.credits || 0}</span>
             </div>
 

@@ -401,7 +401,7 @@ export const mobileServices: Array<{
   {
     key: "customer",
     title: "HairFit",
-    description: "Upload portraits, generate hairstyle boards, style outfits, and manage credits.",
+    description: "Upload portraits, generate hairstyle boards, style outfits, and manage service usage.",
   },
   {
     key: "salon",

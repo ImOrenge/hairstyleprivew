@@ -191,7 +191,7 @@ export async function POST(request: Request) {
 
       if (consumeError) {
         if (consumeError.message.toLowerCase().includes("insufficient credits")) {
-          return NextResponse.json({ error: "크레딧이 부족합니다." }, { status: 409 });
+          return NextResponse.json({ error: "이용 가능한 처리량이 부족합니다." }, { status: 409 });
         }
         return NextResponse.json({ error: consumeError.message }, { status: 500 });
       }

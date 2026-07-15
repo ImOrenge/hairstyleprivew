@@ -49,7 +49,7 @@ const VARIANT_MAX_ATTEMPTS = 2;
 const VARIANT_RETRY_DELAY_MS = 3000;
 const INSUFFICIENT_CREDITS_CODE = "INSUFFICIENT_CREDITS";
 const INSUFFICIENT_CREDITS_MESSAGE =
-  "크레딧이 부족합니다. 크레딧을 충전한 뒤 다시 시도해 주세요.";
+  "이용할 수 있는 처리량이 부족합니다. 추가 이용량을 구매한 뒤 다시 시도해 주세요.";
 
 class GenerationApiError extends Error {
   readonly status: number;
@@ -132,7 +132,7 @@ function isInsufficientCreditsError(error: unknown) {
       (error.status === 409 &&
         (message.includes("insufficient credits") ||
           message.includes("credit") ||
-          message.includes("크레딧")))
+          (message.includes("이용량") || message.includes("크레딧"))))
     );
   }
 
@@ -233,7 +233,7 @@ export function useGenerate() {
           (status === 409 &&
             (normalizedApiError.includes("insufficient credits") ||
               normalizedApiError.includes("credit") ||
-              apiError.includes("크레딧")))
+              (apiError.includes("이용량") || apiError.includes("크레딧"))))
         ) {
           throw new GenerationApiError({
             message: INSUFFICIENT_CREDITS_MESSAGE,

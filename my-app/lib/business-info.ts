@@ -12,6 +12,7 @@ export const footerBusinessInfo = {
     { label: "대표자", value: "장민기" },
     { label: "사업자등록번호", value: "736-42-01637" },
     { label: "사업자등록일", value: "2026년 06월 29일" },
+    { label: "사업장 주소", value: "인천광역시 계양구 효서로 381 213동 302호" },
     {
       label: "연락처",
       value: "010-6350-0913",

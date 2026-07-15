@@ -280,7 +280,7 @@ export async function POST(request: Request) {
     if (Number(userCredits?.credits ?? 0) < aftercareProgramCredits) {
       return NextResponse.json(
         {
-          error: "크레딧이 부족합니다.",
+          error: "이용 가능한 처리량이 부족합니다.",
           requiredCredits: aftercareProgramCredits,
           chargedCredits: 0,
         },
@@ -385,7 +385,7 @@ export async function POST(request: Request) {
       if (isInsufficientCreditsError(consumeError)) {
         return NextResponse.json(
           {
-            error: "크레딧이 부족합니다.",
+            error: "이용 가능한 처리량이 부족합니다.",
             requiredCredits: aftercareProgramCredits,
             chargedCredits: 0,
           },

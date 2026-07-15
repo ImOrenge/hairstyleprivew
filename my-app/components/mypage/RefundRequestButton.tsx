@@ -78,7 +78,7 @@ export function RefundRequestButton({
         />
       </label>
       <p className="text-xs leading-5 text-amber-800">
-        요청 후 관리자가 결제 상태와 사용 크레딧을 확인한 뒤 처리합니다.
+        요청 후 관리자가 결제 상태와 사용한 서비스 이용량을 확인한 뒤 처리합니다.
       </p>
       {error ? <p className="text-xs font-semibold text-rose-600">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
