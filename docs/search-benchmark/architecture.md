@@ -500,12 +500,12 @@ impression -> organic_click -> landing_view -> cta_clicked
 
 | Phase | 범위 | 선행조건 | 완료 기준 |
 | --- | --- | --- | --- |
-| P0 Evidence | 기준선, 경쟁 snapshot, 이벤트 taxonomy | Search Console 접근 확인 | 기준선 날짜·출처·누락값 기록 |
-| P1 Foundation | registry, 정적 route, metadata, sitemap, audit | P0 | pilot slug가 정적 빌드되고 미등록 slug는 404 |
-| P2 Pilot | AI, 얼굴형, 남자, 여자 4페이지 | 승인된 copy·assets | 브라우저·SEO·접근성 게이트 통과 |
-| P3 Trust & Funnel | trust SSoT, CTA source, 이벤트 API | 개인정보·보존 승인 | 민감정보 없는 퍼널 측정 가능 |
-| P4 Expansion | 앞머리, 보브, 살롱 3페이지, 허브 링크 | P2 지표 확인 | 7페이지 고유 콘텐츠·내부 링크 완성 |
-| P5 Optimization | 실험과 월간 결정 루프 | 충분한 표본 | winner·loser·inconclusive 기록과 rollback 가능 |
+| [P0 Evidence](./implementation-plan/phase-00-evidence-baseline.md) | 기준선, 경쟁 snapshot, 이벤트 taxonomy | Search Console 접근 확인 | 기준선 날짜·출처·누락값 기록 |
+| [P1 Foundation](./implementation-plan/phase-01-search-surface-foundation.md) | registry, 정적 route, metadata, sitemap, audit | P0 | pilot slug가 정적 빌드되고 미등록 slug는 404 |
+| [P2 Pilot](./implementation-plan/phase-02-pilot-content-sample-experience.md) | AI, 얼굴형, 남자, 여자 4페이지 | 승인된 copy·assets | 브라우저·SEO·접근성 게이트 통과 |
+| [P3 Trust & Funnel](./implementation-plan/phase-03-trust-funnel-measurement.md) | trust SSoT, CTA source, 이벤트 API | 개인정보·보존 승인 | 민감정보 없는 퍼널 측정 가능 |
+| [P4 Expansion](./implementation-plan/phase-04-content-expansion-operations.md) | 앞머리, 보브, 살롱 3페이지, 허브 링크 | P2 지표 확인 | 7페이지 고유 콘텐츠·내부 링크 완성 |
+| [P5 Optimization](./implementation-plan/phase-05-experiment-optimization.md) | 실험과 월간 결정 루프 | 충분한 표본 | winner·loser·inconclusive 기록과 rollback 가능 |
 
 ## 13. 구현 영향도
 

@@ -93,7 +93,7 @@ decision_refs: []
 
 ## 5. Phase별 아티팩트 계약
 
-## P0. Evidence Baseline
+## [P0. Evidence Baseline](./implementation-plan/phase-00-evidence-baseline.md)
 
 ### 입력
 
@@ -168,7 +168,7 @@ services:
 - [ ] Page ID와 primary intent가 1:1임
 - [ ] 다음 행동이 P1 한 개로 지정됨
 
-## P1. Search Surface Foundation
+## [P1. Search Surface Foundation](./implementation-plan/phase-01-search-surface-foundation.md)
 
 ### 입력
 
@@ -230,7 +230,7 @@ forbidden_claims:
 - [ ] Q-01 통과
 - [ ] 기존 홈·업로드·생성 route에 동작 변화 없음
 
-## P2. Pilot Content and Sample Experience
+## [P2. Pilot Content and Sample Experience](./implementation-plan/phase-02-pilot-content-sample-experience.md)
 
 ### 대상 페이지
 
@@ -289,7 +289,7 @@ forbidden_claims:
 - [ ] 성능 budget 초과 시 승인된 예외 기록
 - [ ] 기존 제품 CTA 목적지까지 source ID가 전달됨
 
-## P3. Trust and Funnel Measurement
+## [P3. Trust and Funnel Measurement](./implementation-plan/phase-03-trust-funnel-measurement.md)
 
 ### 필수 출력
 
@@ -371,7 +371,7 @@ DB 게이트:
 - [ ] 정책·업로드·랜딩의 사진 보존 문구가 동일 버전
 - [ ] 데이터 누락 알림과 purge runbook 검증
 
-## P4. Content Expansion and Operations
+## [P4. Content Expansion and Operations](./implementation-plan/phase-04-content-expansion-operations.md)
 
 ### 대상 페이지
 
@@ -428,7 +428,7 @@ Retire 시 URL을 즉시 삭제하지 않는다. 대체 페이지가 있으면 �
 - [ ] B2C와 B2B CTA 이벤트가 분리됨
 - [ ] retire·rollback 절차 dry-run 완료
 
-## P5. Experiment and Optimization
+## [P5. Experiment and Optimization](./implementation-plan/phase-05-experiment-optimization.md)
 
 ### 필수 출력
 

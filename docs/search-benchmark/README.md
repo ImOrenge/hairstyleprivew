@@ -10,6 +10,18 @@
 
 - [아키텍처](./architecture.md): 벤치마킹 데이터, 목표 시스템 구조, 데이터 모델, 라우트와 컴포넌트 경계
 - [아티팩트 정의](./artifact-specification.md): 단계별 필수 산출물, 스키마, 책임, 검증 기준, 완료 게이트
+- [Phase별 상세 구현 계획](./implementation-plan/README.md): P0~P5 독립 실행 문서, 파일·타입·API·DB·검증·롤백 계약
+
+### Phase별 실행 문서
+
+| Phase | 상세 문서 | 구현 초점 |
+| --- | --- | --- |
+| P0 | [Evidence Baseline](./implementation-plan/phase-00-evidence-baseline.md) | 기준선·경쟁 snapshot·intent map |
+| P1 | [Search Surface Foundation](./implementation-plan/phase-01-search-surface-foundation.md) | registry·정적 route·metadata·audit |
+| P2 | [Pilot Content & Sample Experience](./implementation-plan/phase-02-pilot-content-sample-experience.md) | 4개 pilot·3×3 sample·browser/performance |
+| P3 | [Trust & Funnel Measurement](./implementation-plan/phase-03-trust-funnel-measurement.md) | trust SSoT·event API·DB·scorecard |
+| P4 | [Content Expansion & Operations](./implementation-plan/phase-04-content-expansion-operations.md) | 7개 페이지·후보 승인·retire 운영 |
+| P5 | [Experiment & Optimization](./implementation-plan/phase-05-experiment-optimization.md) | 실험 할당·판정·주기 운영 |
 
 ## 범위
 
@@ -57,6 +69,7 @@
 | W-02 | plan | 목표 검색·전환 아키텍처 정의 | 라우트, 데이터, 컴포넌트, 계측 경계가 연결됨 | 아키텍처 4~11장 | complete |
 | W-03 | plan | 구현 아티팩트와 게이트 정의 | 모든 Phase에 입력·출력·완료조건이 있음 | 아티팩트 정의서 | complete |
 | W-04 | inspect | 문서 교차검증 | 링크·경로·ID·범위 불일치 없음 | Markdown link·fence·ID 검사 | complete |
+| W-05 | plan | P0~P5를 독립 실행 문서로 상세화 | 각 Phase에 파일·계약·절차·검증·롤백·인계가 있음 | implementation-plan 7개 문서 | complete |
 
 ### Acceptance Gates
 
@@ -69,7 +82,7 @@
 
 ### Current Status
 
-`complete — documentation scope only`
+`complete — architecture, artifacts, and phase implementation plans`
 
 ### Next Action
 
