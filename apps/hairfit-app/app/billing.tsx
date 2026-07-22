@@ -11,8 +11,9 @@ import { formatCompletedPayment, normalizePortoneSdkResponse, toPortoneSdkPaymen
 import { BodyText, Button, Card, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, View } from "react-native";
 import { AppScreen } from "../components/app/AppScreen";
+import { GooglePlayBillingScreen } from "../components/billing/GooglePlayBillingScreen";
 import { useSafeBackNavigation } from "../hooks/useSafeBackNavigation";
 import { useHairfitApi } from "../lib/api";
 import {
@@ -30,7 +31,7 @@ function formatPlanLabel(planKey: string | null | undefined) {
   return planKey.charAt(0).toUpperCase() + planKey.slice(1);
 }
 
-export default function BillingScreen() {
+function PortoneBillingScreen() {
   const { isLoaded, isSignedIn, userId } = useAuth();
   const api = useHairfitApi();
   const router = useRouter();
@@ -524,6 +525,10 @@ export default function BillingScreen() {
       ) : null}
     </AppScreen>
   );
+}
+
+export default function BillingScreen() {
+  return Platform.OS === "android" ? <GooglePlayBillingScreen /> : <PortoneBillingScreen />;
 }
 
 const styles = StyleSheet.create({

@@ -57,6 +57,8 @@ interface ConfirmedStyleRow {
 
 interface PaymentRow {
   id?: unknown;
+  provider?: unknown;
+  metadata?: unknown;
   status?: unknown;
   amount?: unknown;
   credits_to_grant?: unknown;
@@ -109,6 +111,8 @@ export interface CustomerHomeGeneration {
 
 export interface CustomerHomePayment {
   id: string;
+  provider: string;
+  productKey: string | null;
   status: string;
   amountKrw: number;
   creditsToGrant: number;
@@ -215,7 +219,7 @@ export async function loadCustomerHomeDashboard(
       .limit(5),
     supabase
       .from<PaymentRow>("payment_transactions")
-      .select("id,status,amount,credits_to_grant,paid_at,created_at")
+      .select("id,provider,metadata,status,amount,credits_to_grant,paid_at,created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(5),
@@ -305,6 +309,10 @@ export async function loadCustomerHomeDashboard(
     })),
     recentPayments: (paymentsRes.data || []).map((row) => ({
       id: text(row.id),
+      provider: text(row.provider),
+      productKey: isRecord(row.metadata)
+        ? nullableText(row.metadata.productKey) ?? nullableText(row.metadata.plan) ?? nullableText(row.metadata.pack)
+        : null,
       status: text(row.status) || "unknown",
       amountKrw: numberValue(row.amount),
       creditsToGrant: numberValue(row.credits_to_grant),

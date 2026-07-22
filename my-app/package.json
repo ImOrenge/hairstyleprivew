@@ -39,6 +39,8 @@
     "portone:cloudflare:secrets": "node scripts/sync-portone-cloudflare-secrets.mjs",
     "portone:billing-secret:generate": "node scripts/generate-billing-secret.mjs",
     "portone:billing-key:backfill": "node scripts/backfill-portone-billing-keys.mjs",
+    "google-play:contract:test": "node --no-warnings --test lib/google-play-contract.test.ts",
+    "google-play:audit": "node --no-warnings scripts/audit-google-play-billing.mjs",
     "email-worker:dev": "wrangler dev --config workers/email-router/wrangler.jsonc",
     "email-worker:deploy": "wrangler deploy --config workers/email-router/wrangler.jsonc",
     "generation-workflow:dev": "wrangler dev --config workers/generation-workflow/wrangler.jsonc",

@@ -18,6 +18,11 @@ import type {
   MobilePaymentCompleteResponse,
   MobilePaymentPlan,
   MobilePaymentPrepareResponse,
+  MobileGooglePlayCatalogResponse,
+  MobileGooglePlayPurchaseIntentRequest,
+  MobileGooglePlayPurchaseIntentResponse,
+  MobileGooglePlayPurchaseVerificationRequest,
+  MobileGooglePlayPurchaseVerificationResponse,
   MobilePushDeviceRegistrationRequest,
   MobilePushDeviceRegistrationResponse,
   MobilePushDeviceRevocationResponse,
@@ -913,6 +918,24 @@ export class HairfitApiClient {
     return this.request<MobilePaymentCompleteResponse>("/api/mobile/payments/complete", {
       method: "POST",
       body: JSON.stringify({ paymentId }),
+    });
+  }
+
+  getGooglePlayCatalog() {
+    return this.request<MobileGooglePlayCatalogResponse>("/api/mobile/google-play/catalog");
+  }
+
+  createGooglePlayPurchaseIntent(input: MobileGooglePlayPurchaseIntentRequest) {
+    return this.request<MobileGooglePlayPurchaseIntentResponse>("/api/mobile/google-play/intents", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  verifyGooglePlayPurchase(input: MobileGooglePlayPurchaseVerificationRequest) {
+    return this.request<MobileGooglePlayPurchaseVerificationResponse>("/api/mobile/google-play/purchases/verify", {
+      method: "POST",
+      body: JSON.stringify(input),
     });
   }
 }

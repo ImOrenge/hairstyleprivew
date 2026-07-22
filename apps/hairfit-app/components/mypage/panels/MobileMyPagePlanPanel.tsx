@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { StyleSheet } from "react-native";
+import { Linking, StyleSheet } from "react-native";
 import { BodyText, Button, Card, Heading, Panel, Stack } from "@hairfit/ui-native";
 import {
   formatMobileMyPageDate as formatDate,
@@ -47,10 +47,30 @@ export function MobileMyPagePlanPanel({
                 {payment.status} / {payment.creditsToGrant.toLocaleString("ko-KR")} 크레딧
               </BodyText>
               <BodyText>{formatDate(payment.paidAt ?? payment.createdAt)}</BodyText>
+              {payment.provider === "google_play" ? (
+                <BodyText>Google Play 결제{payment.productKey ? ` · ${payment.productKey}` : ""}</BodyText>
+              ) : null}
               {refundRequest ? (
                 <BodyText>환불 상태: {refundRequest.status} · {formatKrw(refundRequest.refundAmountKrw)}</BodyText>
-              ) : payment.status === "paid" ? (
+              ) : payment.status === "paid" && payment.provider !== "google_play" ? (
                 <MobileRefundInterviewFlow paymentTransactionId={payment.id} />
+              ) : payment.status === "paid" && payment.provider === "google_play" ? (
+                <Stack gap={8}>
+                  {!payment.productKey?.startsWith("usage") ? (
+                    <Button
+                      variant="secondary"
+                      onPress={() => void Linking.openURL("https://play.google.com/store/account/subscriptions?package=com.hairfit.app")}
+                    >
+                      Google Play에서 구독 관리
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="secondary"
+                    onPress={() => void Linking.openURL("https://hairfit.beauty/support")}
+                  >
+                    결제 지원 문의
+                  </Button>
+                </Stack>
               ) : null}
             </Card>;
           })

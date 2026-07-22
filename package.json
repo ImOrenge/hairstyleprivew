@@ -82,6 +82,8 @@
     "portone:webhook:db:smoke": "npm --prefix my-app run portone:webhook:db:smoke --",
     "portone:webhook:signature:test": "npm --prefix my-app run portone:webhook:signature:test",
     "portone:billing-key:backfill": "npm --prefix my-app run portone:billing-key:backfill --",
+    "google-play:contract:test": "npm --prefix my-app run google-play:contract:test",
+    "google-play:audit": "npm --prefix my-app run google-play:audit",
     "mobile": "npm --workspace @hairfit/app run start --",
     "mobile:android": "npm --workspace @hairfit/app run android --",
     "mobile:bundle": "npm --workspace @hairfit/app run bundle:check",

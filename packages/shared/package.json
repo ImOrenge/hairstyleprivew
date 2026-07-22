@@ -21,7 +21,7 @@
     "./salon/connection-consent": "./src/salon/connection-consent.ts"
   },
   "scripts": {
-    "test": "node --test src/auth/resume-target.test.ts src/auth/generation-entry.test.ts src/billing/generation-credit.test.ts src/billing/paid-action.test.ts src/billing/subscription-policy.test.ts src/generation/contract.test.ts src/generation/funnel.test.ts src/generation/notification.test.ts src/generation/notification-retention-policy.test.ts src/generation/original-retention-policy.test.ts src/generation/upload-validation.test.ts src/result/korean-display-copy.test.ts src/salon/connection-consent.test.ts",
+    "test": "node --test src/auth/resume-target.test.ts src/auth/generation-entry.test.ts src/billing/generation-credit.test.ts src/billing/google-play.test.ts src/billing/paid-action.test.ts src/billing/subscription-policy.test.ts src/generation/contract.test.ts src/generation/funnel.test.ts src/generation/notification.test.ts src/generation/notification-retention-policy.test.ts src/generation/original-retention-policy.test.ts src/generation/upload-validation.test.ts src/result/korean-display-copy.test.ts src/salon/connection-consent.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

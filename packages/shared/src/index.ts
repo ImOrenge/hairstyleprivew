@@ -6,6 +6,7 @@ export * from "./billing/generation-credit";
 export * from "./billing/paid-action";
 export * from "./billing/refund";
 export * from "./billing/subscription-policy";
+export * from "./billing/google-play";
 export * from "./auth/resume-target";
 export * from "./auth/generation-entry";
 export * from "./fixtures/product-contract";
@@ -62,6 +63,8 @@ export interface MobileDashboardGeneration {
 
 export interface MobileDashboardPayment {
   id: string;
+  provider: "portone" | "google_play" | "polar" | string;
+  productKey: string | null;
   status: string;
   amountKrw: number;
   creditsToGrant: number;
