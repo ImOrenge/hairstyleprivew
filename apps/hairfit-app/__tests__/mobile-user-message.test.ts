@@ -1,4 +1,4 @@
-import { mapMobileUserError } from "../lib/mobile-user-message";
+import { isMobileAuthExpired, mapMobileUserError } from "../lib/mobile-user-message";
 
 describe("mobile user-safe errors", () => {
   test.each([
@@ -20,5 +20,11 @@ describe("mobile user-safe errors", () => {
   test("uses the caller-owned safe fallback for unknown failures", () => {
     expect(mapMobileUserError(new Error("private server detail"), "다시 시도해 주세요."))
       .toBe("다시 시도해 주세요.");
+  });
+
+  test("identifies only an expired authentication response", () => {
+    expect(isMobileAuthExpired({ status: 401 })).toBe(true);
+    expect(isMobileAuthExpired({ status: 403 })).toBe(false);
+    expect(isMobileAuthExpired(new Error("network failure"))).toBe(false);
   });
 });

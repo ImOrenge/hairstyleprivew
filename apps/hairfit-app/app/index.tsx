@@ -21,7 +21,7 @@ import {
   Stack,
 } from "@hairfit/ui-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Image, Modal, StyleSheet, Text, View } from "react-native";
 import { AppScreen } from "../components/app/AppScreen";
 import {
@@ -30,6 +30,7 @@ import {
 } from "../hooks/useReducedMotionPreference";
 import { useHairfitApi } from "../lib/api";
 import { useNetworkRecovery } from "../components/app/NetworkRecoveryProvider";
+import { recoverMobileAuthExpiry } from "../lib/mobile-auth-expiry";
 import { mapMobileUserError } from "../lib/mobile-user-message";
 
 type CustomerDashboard = Extract<MobileDashboard, { service: "customer" }>["customer"];
@@ -391,7 +392,9 @@ export default function HairfitHomeScreen() {
   const api = useHairfitApi();
   const { recoveryToken } = useNetworkRecovery();
   const router = useRouter();
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, signOut } = useAuth();
+  const signOutRef = useRef(signOut);
+  signOutRef.current = signOut;
   const [bootstrap, setBootstrap] = useState<MobileBootstrap | null>(null);
   const [dashboard, setDashboard] = useState<Extract<MobileDashboard, { service: "customer" }> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -438,6 +441,12 @@ export default function HairfitHomeScreen() {
       } catch (error) {
         if (!cancelled) {
           setDashboard(null);
+          if (recoverMobileAuthExpiry(error, {
+            navigateToLogin: () => router.replace("/login"),
+            signOut: () => signOutRef.current(),
+          })) {
+            return;
+          }
           setMessage(mapMobileUserError(error, "홈 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
       } finally {
@@ -451,7 +460,7 @@ export default function HairfitHomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [api, isLoaded, isSignedIn, recoveryToken]);
+  }, [api, isLoaded, isSignedIn, recoveryToken, router]);
 
   const shouldPromptAccountSetup = Boolean(
     bootstrap && !bootstrap.accountSetupComplete && (!bootstrap.accountType || bootstrap.accountType === "member"),

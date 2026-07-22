@@ -5,6 +5,10 @@ function readStatus(error: unknown) {
   return typeof error.status === "number" ? error.status : null;
 }
 
+export function isMobileAuthExpired(error: unknown) {
+  return readStatus(error) === 401;
+}
+
 function readErrorName(error: unknown) {
   if (!error || typeof error !== "object" || !("name" in error)) return null;
   return typeof error.name === "string" ? error.name : null;
@@ -17,7 +21,7 @@ export function mapMobileUserError(
 ) {
   const status = readStatus(error);
 
-  if (status === 401) {
+  if (isMobileAuthExpired(error)) {
     return "로그인이 만료되었습니다. 다시 로그인한 뒤 시도해 주세요.";
   }
   if (status === 403) {
