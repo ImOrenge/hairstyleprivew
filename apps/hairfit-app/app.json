@@ -45,7 +45,11 @@
       "apiBaseUrl": "https://hairfit.beauty",
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "4804dea9-2cd3-4117-909f-26ac766c6f6c"
       }
-    }
+    },
+    "owner": "nicholas0913"
   }
 }
