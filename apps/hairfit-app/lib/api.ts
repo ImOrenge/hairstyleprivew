@@ -1,7 +1,7 @@
 import { useAuth } from "@clerk/clerk-expo";
 import { HairfitApiClient } from "@hairfit/api-client";
 import Constants from "expo-constants";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { Platform } from "react-native";
 
 const PRODUCTION_API_BASE_URL = "https://hairfit.beauty";
@@ -34,13 +34,15 @@ export function getHairfitApiBaseUrl() {
 export function useHairfitApi() {
   const { getToken } = useAuth();
   const baseUrl = getHairfitApiBaseUrl();
+  const getTokenRef = useRef(getToken);
+  getTokenRef.current = getToken;
 
   return useMemo(
     () =>
       new HairfitApiClient({
         baseUrl,
-        getAuthToken: (options) => getToken(options),
+        getAuthToken: (options) => getTokenRef.current(options),
       }),
-    [baseUrl, getToken],
+    [baseUrl],
   );
 }
