@@ -1,6 +1,6 @@
 {
   "name": "my-app",
-  "version": "0.14.0",
+  "version": "1.5.0",
   "private": true,
   "scripts": {
     "auth:return-target:test": "node --no-warnings --test lib/clerk.test.ts",
