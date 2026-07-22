@@ -175,7 +175,7 @@ export default function AdminMemberDetailPage() {
         <>
           <section className="grid gap-3 md:grid-cols-4">
             <SummaryCard label="Role" value={asString(user.account_type)} helper={`Joined ${formatDate(user.created_at)}`} />
-            <SummaryCard label="Credits" value={asNumber(user.credits).toLocaleString("ko-KR")} />
+            <SummaryCard label="남은 이용량" value={asNumber(user.credits).toLocaleString("ko-KR")} />
             <SummaryCard label="Hair" value={generations.length} helper="최근 생성" />
             <SummaryCard label="Salon CRM" value={salonCustomers.length} helper="최근 고객" />
           </section>
@@ -202,7 +202,7 @@ export default function AdminMemberDetailPage() {
               renderRow={(row) => `${asString(row.status)} · ${asNumber(row.amount).toLocaleString("ko-KR")}`}
             />
             <DataSection
-              title="크레딧 원장"
+              title="이용량 내역"
               rows={creditLedger}
               renderRow={(row) => `${asString(row.entry_type)} · ${asNumber(row.amount).toLocaleString("ko-KR")} (${asNumber(row.balance_after).toLocaleString("ko-KR")})`}
             />

@@ -68,12 +68,12 @@ assertAbsent(pricingEn, "Unlimited fashion|[13] fashion outfit generation|16 wat
 assertAbsent(pricingKo, 'pricing\\.standard\\.f5', "Standard pricing copy must not expose an unimplemented priority-generation benefit");
 assertAbsent(pricingEn, 'pricing\\.standard\\.f5', "Standard pricing copy must not expose an unimplemented priority-generation benefit");
 assertAbsent(pricingPreview, 'pricing\\.standard\\.f5', "Standard pricing UI must not reference an unimplemented priority-generation benefit");
-assertIncludes(pricingKo, '헤어 결과 이미지는 \\{\\{credits\\}\\}크레딧', "Korean credit note must state the 10-credit hair image rule");
-assertIncludes(pricingKo, '패션 룩북 이미지는 선택한 헤어 기준 \\{\\{outfitCredits\\}\\}크레딧', "Korean credit note must state fashion depends on the selected hair style");
+assertIncludes(pricingKo, '헤어 결과 이미지는 이용량 \\{\\{credits\\}\\}', "Korean usage note must state the hair image usage rule");
+assertIncludes(pricingKo, '패션 룩북 이미지는 확정 헤어 기준 이용량 \\{\\{outfitCredits\\}\\}', "Korean usage note must state fashion depends on confirmed hair");
 assertIncludes(pricingKo, '첫 에프터케어 프로그램은 주기별 케어 메일 포함 무료', "Korean credit note must state aftercare includes scheduled care emails");
-assertIncludes(pricingKo, '추가 생성은 \\{\\{aftercareCredits\\}\\}크레딧', "Korean credit note must state aftercare program charging");
-assertIncludes(pricingEn, 'Hair result images cost \\{\\{credits\\}\\} credits', "English credit note must state the 10-credit hair image rule");
-assertIncludes(pricingEn, 'Fashion lookbook images cost \\{\\{outfitCredits\\}\\} credits from a selected hairstyle', "English credit note must state fashion depends on the selected hair style");
+assertIncludes(pricingKo, '추가 생성은 이용량 \\{\\{aftercareCredits\\}\\}', "Korean usage note must state aftercare program charging");
+assertIncludes(pricingEn, 'Hair result images use \\{\\{credits\\}\\} service units', "English usage note must state the hair image usage rule");
+assertIncludes(pricingEn, 'Fashion lookbook images use \\{\\{outfitCredits\\}\\} service units from a confirmed hair style', "English usage note must state fashion depends on confirmed hair");
 assertIncludes(pricingEn, 'scheduled care emails', "English pricing copy must state aftercare includes scheduled care emails");
 assertIncludes(pricingKo, '"pricing\\.usage\\.hairFashionSetsWithRemainder": "헤어\\+패션 약 \\{\\{sets\\}\\}세트', "Korean pricing copy must show hair+fashion set estimates");
 assertIncludes(pricingKo, '"pricing\\.usage\\.aftercarePolicy": "첫 에프터케어 프로그램 무료 · 주기별 케어 메일 포함', "Korean pricing copy must describe aftercare as a scheduled email program");
@@ -83,9 +83,9 @@ assertIncludes(pricingKo, '"pricing\\.standard\\.f3": "결과 365일 보관 \\+ 
 assertIncludes(pricingKo, '"pricing\\.pro\\.f5": "결과 영구 보관 \\+ 스타일 히스토리"', "Korean Pro copy must state permanent retention");
 assertIncludes(pricingEn, '"pricing\\.standard\\.f3": "Results kept for 365 days \\+ style history"', "English Standard copy must state 365-day retention");
 assertIncludes(pricingEn, '"pricing\\.pro\\.f5": "Permanent results \\+ style history"', "English Pro copy must state permanent retention");
-assertIncludes(billingCheckoutPage, '헤어 결과 이미지 생성: \\{plan\\.creditsPerStyle\\.toLocaleString\\("ko-KR"\\)\\}크레딧', "Checkout must show hair image credit cost");
-assertIncludes(billingCheckoutPage, '패션 룩북 이미지 생성: 선택한 헤어 기준 \\{plan\\.creditsPerOutfit\\.toLocaleString\\("ko-KR"\\)\\}크레딧', "Checkout must show selected-hair fashion cost");
-assertIncludes(billingCheckoutPage, '에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 \\{plan\\.creditsPerAftercareProgram\\.toLocaleString\\("ko-KR"\\)\\}크레딧', "Checkout must show aftercare program policy");
+assertIncludes(billingCheckoutPage, '헤어 결과 이미지 생성: 이용량 \\{plan\\.creditsPerStyle\\.toLocaleString\\("ko-KR"\\)\\} 차감', "Checkout must show hair image usage cost");
+assertIncludes(billingCheckoutPage, '패션 룩북 이미지 생성: 확정 헤어 기준 이용량 \\{plan\\.creditsPerOutfit\\.toLocaleString\\("ko-KR"\\)\\} 차감', "Checkout must show confirmed-hair fashion cost");
+assertIncludes(billingCheckoutPage, '에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 이용량 \\{plan\\.creditsPerAftercareProgram\\.toLocaleString\\("ko-KR"\\)\\} 차감', "Checkout must show aftercare program policy");
 
 const generationAcceptRoute = assertFile("app/api/generations/accept/route.ts");
 const generationDetailRoute = assertFile("app/api/generations/[id]/route.ts");

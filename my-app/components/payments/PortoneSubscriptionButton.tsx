@@ -47,7 +47,7 @@ export function PortoneSubscriptionButton({
   disabled,
   initialEmail = "",
   requireAuth = true,
-  subscriptionAccessMode = "waitlist",
+  subscriptionAccessMode = "checkout",
   successRedirectPath = "/mypage",
   ...buttonProps
 }: PortoneSubscriptionButtonProps) {

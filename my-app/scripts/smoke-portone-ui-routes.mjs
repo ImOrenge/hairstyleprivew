@@ -22,8 +22,10 @@ Usage:
 Checks:
   /billing renders the self-serve Basic/Standard/Pro pricing page.
   /billing/checkout?plan=basic&returnTo=/mypage redirects unauthenticated users to login.
+  /billing/usage?pack=usage80 redirects unauthenticated users to login.
   /mypage?tab=plan redirects unauthenticated users to login while preserving tab=plan.
   /api/payments/billing-key/prepare returns 401 for unauthenticated subscription attempts.
+  /api/payments/usage-packs/prepare returns 401 for unauthenticated add-on attempts.
 `);
 }
 
@@ -61,12 +63,34 @@ async function checkBillingPage(baseUrl) {
     "Standard 시작",
     "Pro 시작",
     "매월 자동 결제",
+    "추가 이용권 보기",
   ]) {
     assertBodyIncludes(body, expected, "/billing");
   }
 
   assert.ok(!body.includes("NaN"), "/billing should not render NaN");
   assert.ok(!body.includes(">undefined<"), "/billing should not render undefined text nodes");
+}
+
+async function checkUsagePackCheckoutPage(baseUrl) {
+  const checkoutPath = "/billing/usage?pack=usage80";
+  const response = await fetchOrExplain(urlFor(baseUrl, checkoutPath), {
+    redirect: "manual",
+  });
+  assert.ok(
+    response.status === 307 || response.status === 308,
+    `/billing/usage should redirect unauthenticated users, got ${response.status}`,
+  );
+
+  const location = response.headers.get("location");
+  assert.ok(location, "/billing/usage redirect should include location header");
+  const redirectUrl = new URL(location, baseUrl);
+  assert.equal(redirectUrl.pathname, "/login", "/billing/usage should redirect to login");
+  assert.equal(
+    redirectUrl.searchParams.get("redirect_url"),
+    checkoutPath,
+    "login redirect should preserve the selected usage pack",
+  );
 }
 
 async function checkBillingCheckoutPage(baseUrl) {
@@ -117,6 +141,16 @@ async function checkPrepareRequiresAuth(baseUrl) {
     body: JSON.stringify({ plan: "basic" }),
   });
   assert.equal(response.status, 401, "billing-key prepare should require auth");
+
+  const usagePackResponse = await fetchOrExplain(
+    urlFor(baseUrl, "/api/payments/usage-packs/prepare"),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pack: "usage80" }),
+    },
+  );
+  assert.equal(usagePackResponse.status, 401, "usage-pack prepare should require auth");
 }
 
 async function main() {
@@ -129,6 +163,7 @@ async function main() {
 
   await checkBillingPage(baseUrl);
   await checkBillingCheckoutPage(baseUrl);
+  await checkUsagePackCheckoutPage(baseUrl);
   await checkMyPagePlanRedirect(baseUrl);
   await checkPrepareRequiresAuth(baseUrl);
 

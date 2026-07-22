@@ -329,7 +329,7 @@ function CustomerHome({
       ) : null}
 
       <MetricGrid>
-        <MetricTile label="크레딧" value={(customer?.credits ?? me?.credits ?? 0).toLocaleString("ko-KR")} helper="헤어와 룩북 생성에 사용" />
+        <MetricTile label="남은 이용량" value={(customer?.credits ?? me?.credits ?? 0).toLocaleString("ko-KR")} helper="헤어와 룩북 생성에 사용" />
         <MetricTile label="플랜" value={customer?.planKey ?? me?.planKey ?? "free"} helper="현재 활성 플랜" />
         <MetricTile
           label="바디 프로필"

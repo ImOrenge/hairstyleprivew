@@ -71,7 +71,7 @@ const uuidV4LikeRegex =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const INSUFFICIENT_CREDITS_CODE = "INSUFFICIENT_CREDITS";
 const INSUFFICIENT_CREDITS_MESSAGE =
-  "크레딧이 부족합니다. 크레딧을 충전한 뒤 다시 시도해 주세요.";
+  "이용 가능한 처리량이 부족합니다. 추가 이용량을 구매한 뒤 다시 시도해 주세요.";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

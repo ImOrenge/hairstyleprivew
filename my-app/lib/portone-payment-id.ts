@@ -3,7 +3,7 @@ import type { SelfServeBillingPlanKey } from "./billing-plan";
 export const PORTONE_PAYMENT_ID_MAX_LENGTH = 32;
 export const PORTONE_BILLING_KEY_ISSUE_ID_MAX_LENGTH = 40;
 
-type PortonePaymentIdSource = "sub" | "mob" | "ren";
+type PortonePaymentIdSource = "sub" | "mob" | "ren" | "use";
 
 const PLAN_CODE: Record<SelfServeBillingPlanKey, string> = {
   basic: "b",
@@ -27,6 +27,15 @@ export function buildPortonePaymentId(
   plan: SelfServeBillingPlanKey,
 ): string {
   const value = `${source}-${PLAN_CODE[plan]}-${Date.now().toString(36)}-${randomToken(12)}`;
+  if (value.length > PORTONE_PAYMENT_ID_MAX_LENGTH) {
+    throw new Error(`PortOne paymentId exceeds ${PORTONE_PAYMENT_ID_MAX_LENGTH} characters`);
+  }
+  return value;
+}
+
+export function buildUsagePackPaymentId(packCode: string): string {
+  const normalizedPackCode = packCode.replace(/[^a-z0-9]/gi, "").slice(-3).toLowerCase() || "add";
+  const value = `use-${normalizedPackCode}-${Date.now().toString(36)}-${randomToken(10)}`;
   if (value.length > PORTONE_PAYMENT_ID_MAX_LENGTH) {
     throw new Error(`PortOne paymentId exceeds ${PORTONE_PAYMENT_ID_MAX_LENGTH} characters`);
   }

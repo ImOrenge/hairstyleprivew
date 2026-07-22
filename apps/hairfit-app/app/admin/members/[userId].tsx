@@ -133,7 +133,7 @@ export default function AdminMemberDetailScreen() {
           <BodyText>앱 회원 상세는 조회 전용입니다. 권한과 크레딧 변경은 웹 관리자에서 진행해 주세요.</BodyText>
           <Cluster>
             <Chip tone={accountType === "admin" ? "accent" : "neutral"}>{accountTypeLabel(accountType)}</Chip>
-            <Chip>{credits.toLocaleString("ko-KR")} 크레딧</Chip>
+            <Chip>남은 이용량 {credits.toLocaleString("ko-KR")}</Chip>
             <Chip>가입 {formatDate(user?.created_at)}</Chip>
           </Cluster>
           <Button variant="secondary" onPress={() => router.push("/admin/members")}>
@@ -164,7 +164,7 @@ export default function AdminMemberDetailScreen() {
             <CountCard label="결제" value={detail.activity.payments.length} />
           </Cluster>
           <ActivityList title="헤어 생성 기록" items={detail.activity.generations} empty="생성 기록이 없습니다." />
-          <ActivityList title="결제/크레딧" items={[...detail.activity.payments, ...detail.activity.creditLedger]} empty="결제 기록이 없습니다." />
+          <ActivityList title="결제/이용량" items={[...detail.activity.payments, ...detail.activity.creditLedger]} empty="결제 기록이 없습니다." />
           <ActivityList title="살롱 고객/애프터케어" items={[...detail.salon.customers, ...detail.salon.aftercareTasks]} empty="살롱 활동이 없습니다." />
         </>
       ) : null}

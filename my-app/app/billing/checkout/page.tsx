@@ -35,7 +35,7 @@ function formatHairFashionEstimate(plan: PlanDisplayBenefit): string {
   }
 
   if (plan.usage.hairFashionRemainderCredits > 0) {
-    return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트, ${plan.usage.hairFashionRemainderCredits.toLocaleString("ko-KR")}크레딧 잔여`;
+    return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트, 남은 이용량 ${plan.usage.hairFashionRemainderCredits.toLocaleString("ko-KR")}`;
   }
 
   return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트`;
@@ -110,14 +110,14 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
               {plan.label}
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-              결제 오픈 후 매월 {plan.credits.toLocaleString("ko-KR")} 크레딧이 지급되는 플랜입니다.
+              결제 오픈 후 매월 서비스 이용량 {plan.credits.toLocaleString("ko-KR")}이 제공되는 플랜입니다.
             </p>
             <div className="mt-5 border-t border-[var(--app-border)] pt-4">
               <p className="text-xs font-bold uppercase text-[var(--app-muted)]">차감 기준</p>
               <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
-                <li>헤어 결과 이미지 생성: {plan.creditsPerStyle.toLocaleString("ko-KR")}크레딧</li>
-                <li>패션 룩북 이미지 생성: 선택한 헤어 기준 {plan.creditsPerOutfit.toLocaleString("ko-KR")}크레딧</li>
-                <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}크레딧</li>
+                <li>헤어 결과 이미지 생성: 이용량 {plan.creditsPerStyle.toLocaleString("ko-KR")} 차감</li>
+                <li>패션 룩북 이미지 생성: 확정 헤어 기준 이용량 {plan.creditsPerOutfit.toLocaleString("ko-KR")} 차감</li>
+                <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 이용량 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")} 차감</li>
               </ul>
             </div>
             <div className="mt-5 border-t border-[var(--app-border)] pt-4">
@@ -172,14 +172,14 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
             {plan.label}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-            매월 {plan.credits.toLocaleString("ko-KR")} 크레딧이 지급됩니다.
+            매월 서비스 이용량 {plan.credits.toLocaleString("ko-KR")}이 제공됩니다.
           </p>
           <div className="mt-5 border-t border-[var(--app-border)] pt-4">
             <p className="text-xs font-bold uppercase text-[var(--app-muted)]">차감 기준</p>
             <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
-              <li>헤어 결과 이미지 생성: {plan.creditsPerStyle.toLocaleString("ko-KR")}크레딧</li>
-              <li>패션 룩북 이미지 생성: 선택한 헤어 기준 {plan.creditsPerOutfit.toLocaleString("ko-KR")}크레딧</li>
-              <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}크레딧</li>
+              <li>헤어 결과 이미지 생성: 이용량 {plan.creditsPerStyle.toLocaleString("ko-KR")} 차감</li>
+              <li>패션 룩북 이미지 생성: 확정 헤어 기준 이용량 {plan.creditsPerOutfit.toLocaleString("ko-KR")} 차감</li>
+              <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 이용량 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")} 차감</li>
             </ul>
           </div>
           <div className="mt-5 border-t border-[var(--app-border)] pt-4">

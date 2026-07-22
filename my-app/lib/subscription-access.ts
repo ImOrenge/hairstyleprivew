@@ -7,9 +7,6 @@ export function isSubscriptionAccessMode(value: unknown): value is SubscriptionA
 }
 
 export function getSubscriptionAccessMode(): SubscriptionAccessMode {
-  const raw =
-    process.env.SUBSCRIPTION_ACCESS_MODE?.trim().toLowerCase() ||
-    process.env.NEXT_PUBLIC_SUBSCRIPTION_ACCESS_MODE?.trim().toLowerCase();
-
-  return raw === "checkout" ? "checkout" : "waitlist";
+  // PG 심사와 실결제 운영 전환을 위해 웨잇리스트 진입을 비활성화한다.
+  return "checkout";
 }
