@@ -88,7 +88,7 @@ export function AdminFilterBar({
   );
 }
 
-export function AdminSummaryGrid({ items }: { items: Array<{ label: string; value: ReactNode }> }) {
+export function AdminSummaryGrid({ items }: { items: { label: string; value: ReactNode }[] }) {
   return (
     <MetricGrid>
       {items.map((item) => (

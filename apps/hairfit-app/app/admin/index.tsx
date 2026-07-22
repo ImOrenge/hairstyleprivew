@@ -11,12 +11,14 @@ import {
   MetricGrid,
   MetricTile,
   Panel,
-  Screen,
   Stack,
 } from "@hairfit/ui-native";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { View } from "react-native";
+import { AppScreen } from "../../components/app/AppScreen";
 import { useHairfitApi } from "../../lib/api";
+import { mapMobileUserError } from "../../lib/mobile-user-message";
 
 function formatKrw(value: number) {
   return value.toLocaleString("ko-KR");
@@ -48,7 +50,7 @@ export default function AdminHomeScreen() {
       } catch (error) {
         if (!cancelled) {
           setDashboard(null);
-          setMessage(error instanceof Error ? error.message : "관리자 대시보드를 불러오지 못했습니다.");
+          setMessage(mapMobileUserError(error, "관리자 대시보드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
       }
     }
@@ -62,12 +64,14 @@ export default function AdminHomeScreen() {
   const kpis = dashboard?.admin.kpis;
 
   return (
-    <Screen>
+    <AppScreen>
       <Panel>
         <Stack>
-          <Kicker>HairFit Admin</Kicker>
+          <Kicker>HairFit 관리자</Kicker>
           <Heading>운영 대시보드</Heading>
-          <BodyText>{message}</BodyText>
+          <View accessibilityLiveRegion="polite">
+            <BodyText>{message}</BodyText>
+          </View>
           <Cluster>
             <Chip tone="accent">통계</Chip>
             <Chip>회원</Chip>
@@ -92,7 +96,7 @@ export default function AdminHomeScreen() {
 
       <Panel>
         <Stack>
-          <Kicker>Admin Dashboard</Kicker>
+          <Kicker>관리자 대시보드</Kicker>
           <Heading>관리 작업</Heading>
           <Card>
             <Stack gap={10}>
@@ -104,6 +108,6 @@ export default function AdminHomeScreen() {
           </Card>
         </Stack>
       </Panel>
-    </Screen>
+    </AppScreen>
   );
 }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { mapWebResponseError } from "../../../../lib/web-user-message";
 
 interface MemberDetailResponse {
   user?: Record<string, unknown>;
@@ -110,7 +111,7 @@ export default function AdminMemberDetailPage() {
       }
 
       if (!response.ok) {
-        setError(nextData.error || "회원 상세를 불러오지 못했습니다.");
+        setError(mapWebResponseError(response.status, "회원 상세를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
         setData(null);
       } else {
         setData(nextData);
@@ -157,13 +158,13 @@ export default function AdminMemberDetailPage() {
       </Link>
 
       <header className="rounded-2xl border border-stone-200 bg-white p-5">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">Admin Member Detail</p>
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">회원 상세</p>
         <h1 className="mt-2 text-2xl font-black text-stone-950">{title}</h1>
         <p className="mt-2 break-all text-sm text-stone-500">{userId}</p>
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
           {error}
         </div>
       ) : null}

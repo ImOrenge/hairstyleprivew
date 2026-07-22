@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminApiContext } from "../../../../../lib/admin-auth";
+import { decodeListCursor, encodeListCursor } from "../../../../../lib/list-cursor";
 import { trimText } from "../../../../../lib/onboarding";
 
 const LEAD_STAGES = ["new", "qualified", "negotiation", "contracted", "dropped"] as const;
@@ -67,6 +68,11 @@ export async function GET(request: Request) {
   const stage = url.searchParams.get("stage");
   const source = url.searchParams.get("source");
   const limit = parseLimit(url.searchParams.get("limit"));
+  const cursorParam = url.searchParams.get("cursor");
+  const cursor = decodeListCursor(cursorParam);
+  if (cursorParam && !cursor) {
+    return NextResponse.json({ error: "Invalid pagination cursor" }, { status: 400 });
+  }
 
   let query = context.supabase
     .from("b2b_leads")
@@ -75,7 +81,12 @@ export async function GET(request: Request) {
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("id", { ascending: false })
+    .limit(limit + 1);
+
+  if (cursor) {
+    query = query.or(`created_at.lt.${cursor.sortValue},and(created_at.eq.${cursor.sortValue},id.lt.${cursor.id})`);
+  }
 
   if (q) {
     query = query.or(
@@ -110,12 +121,21 @@ export async function GET(request: Request) {
     count: (stageRows || []).filter((item) => item.stage === key).length,
   }));
 
+  const rows = data || [];
+  const hasMore = rows.length > limit;
+  const leads = rows.slice(0, limit);
+  const lastLead = leads.at(-1);
+
   return NextResponse.json(
     {
-      leads: data || [],
-      total: count ?? (data || []).length,
+      leads,
+      total: count ?? leads.length,
       stageSummary,
       limit,
+      nextCursor:
+        hasMore && lastLead
+          ? encodeListCursor(lastLead.created_at, lastLead.id)
+          : null,
     },
     { status: 200 },
   );

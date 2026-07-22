@@ -1,4 +1,10 @@
 import { auth } from "@clerk/nextjs/server";
+import {
+  SALON_CONNECTION_CONSENT_COPY,
+  SALON_CONNECTION_CONSENT_SCOPE,
+  SALON_CONNECTION_CONSENT_VERSION,
+  isSalonConnectionConsentAcceptance,
+} from "@hairfit/shared/salon/connection-consent";
 import { NextResponse } from "next/server";
 import { ensureCurrentUserProfile, type ServerSupabaseLike } from "../../../../../lib/style-profile-server";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../../lib/supabase";
@@ -11,35 +17,6 @@ import {
 
 interface Params {
   params: Promise<{ code: string }>;
-}
-
-type QueryError = { message: string } | null;
-type SingleResult = Promise<{ data: Record<string, unknown> | null; error: QueryError }>;
-
-interface MatchQueryBuilder {
-  eq: (column: string, value: unknown) => MatchQueryBuilder;
-  maybeSingle: () => SingleResult;
-}
-
-interface MatchInsertBuilder {
-  select: (columns: string) => {
-    single: () => SingleResult;
-  };
-}
-
-interface MatchUpdateBuilder {
-  eq: (column: string, value: unknown) => MatchUpdateBuilder;
-  select: (columns: string) => {
-    single: () => SingleResult;
-  };
-}
-
-interface MatchSupabase {
-  from: (table: string) => {
-    select: (columns: string) => MatchQueryBuilder;
-    insert: (values: Record<string, unknown>) => MatchInsertBuilder;
-    update: (values: Record<string, unknown>) => MatchUpdateBuilder;
-  };
 }
 
 function isExpired(value: unknown) {
@@ -56,7 +33,7 @@ async function loadInvite(code: string) {
     return { error: "Supabase is not configured", status: 503 as const };
   }
 
-  const supabase = getSupabaseAdminClient() as unknown as MatchSupabase;
+  const supabase = getSupabaseAdminClient();
 
   const { data: invite, error } = await supabase
     .from("salon_match_invites")
@@ -95,21 +72,23 @@ export async function GET(_request: Request, { params }: Params) {
     .maybeSingle();
 
   const { userId } = await auth();
-  let existingStatus: string | null = null;
+  let existing: Record<string, unknown> | null = null;
   if (userId) {
-    const { data: existing } = await loaded.supabase
+    const { data } = await loaded.supabase
       .from("salon_match_requests")
-      .select("status")
+      .select(MATCH_REQUEST_COLUMNS)
       .eq("owner_user_id", ownerUserId)
       .eq("member_user_id", userId)
-      .maybeSingle();
-    existingStatus = typeof existing?.status === "string" ? existing.status : null;
+      .maybeSingle<Record<string, unknown>>();
+    existing = data;
   }
 
   return NextResponse.json(
     {
       authenticated: Boolean(userId),
-      existingStatus,
+      existingStatus: typeof existing?.status === "string" ? existing.status : null,
+      existingMatchRequestId: typeof existing?.id === "string" ? existing.id : null,
+      existingConsentedAt: typeof existing?.consented_at === "string" ? existing.consented_at : null,
       salon: {
         ownerUserId,
         shopName: typeof salonProfile?.shop_name === "string" ? salonProfile.shop_name : "HairFit salon",
@@ -122,13 +101,22 @@ export async function GET(_request: Request, { params }: Params) {
       invite: {
         code: inviteCode,
         expiresAt: typeof loaded.invite.expires_at === "string" ? loaded.invite.expires_at : null,
+        consentVersion:
+          typeof loaded.invite.consent_version === "string"
+            ? loaded.invite.consent_version
+            : SALON_CONNECTION_CONSENT_VERSION,
+      },
+      consent: {
+        version: SALON_CONNECTION_CONSENT_VERSION,
+        scope: SALON_CONNECTION_CONSENT_SCOPE,
+        copy: SALON_CONNECTION_CONSENT_COPY,
       },
     },
-    { status: 200 },
+    { status: 200, headers: { "Cache-Control": "private, no-store" } },
   );
 }
 
-export async function POST(_request: Request, { params }: Params) {
+export async function POST(request: Request, { params }: Params) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -169,57 +157,36 @@ export async function POST(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Member account required" }, { status: 403 });
   }
 
-  const { data: existing, error: existingError } = await loaded.supabase
-    .from("salon_match_requests")
-    .select(MATCH_REQUEST_COLUMNS)
-    .eq("owner_user_id", ownerUserId)
-    .eq("member_user_id", userId)
-    .maybeSingle();
-
-  if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 500 });
+  const body = await request.json().catch(() => null);
+  if (!isSalonConnectionConsentAcceptance(body)) {
+    return NextResponse.json(
+      { error: "공유 범위와 보관 정책을 확인하고 연결에 명시적으로 동의해 주세요." },
+      { status: 400 },
+    );
   }
 
-  if (existing) {
-    if (existing.status === "linked") {
-      return NextResponse.json(
-        { match: normalizeMatchCandidate(existing, userRow), status: "linked" },
-        { status: 200 },
-      );
-    }
+  const { data, error } = await (loaded.supabase as unknown as {
+    rpc: (
+      name: string,
+      params: Record<string, unknown>,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+  }).rpc("accept_salon_match_invite", {
+    p_invite_code: inviteCode,
+    p_member_user_id: userId,
+    p_consent_version: SALON_CONNECTION_CONSENT_VERSION,
+    p_consent_scope: SALON_CONNECTION_CONSENT_SCOPE,
+  });
 
-    const { data: updated, error: updateError } = await loaded.supabase
-      .from("salon_match_requests")
-      .update({
-        invite_id: loaded.invite.id,
-        status: "pending",
-        linked_customer_id: null,
-      })
-      .eq("id", existing.id)
-      .select(MATCH_REQUEST_COLUMNS)
-      .single();
-
-    if (updateError || !updated) {
-      return NextResponse.json({ error: updateError?.message || "Match update failed" }, { status: 500 });
-    }
-
-    return NextResponse.json({ match: normalizeMatchCandidate(updated, userRow), status: "pending" }, { status: 200 });
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+    const message = error?.message || "Match request failed";
+    const status = message.includes("NOT_FOUND_OR_EXPIRED") ? 404 : message.includes("CONSENT_") ? 409 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 
-  const { data: created, error: createError } = await loaded.supabase
-    .from("salon_match_requests")
-    .insert({
-      owner_user_id: ownerUserId,
-      member_user_id: userId,
-      invite_id: loaded.invite.id,
-      status: "pending",
-    })
-    .select(MATCH_REQUEST_COLUMNS)
-    .single();
-
-  if (createError || !created) {
-    return NextResponse.json({ error: createError?.message || "Match request failed" }, { status: 500 });
-  }
-
-  return NextResponse.json({ match: normalizeMatchCandidate(created, userRow), status: "pending" }, { status: 201 });
+  const matchRow = data as Record<string, unknown>;
+  const status = matchRow.status === "linked" ? "linked" : "pending";
+  return NextResponse.json(
+    { match: normalizeMatchCandidate(matchRow, userRow), status },
+    { status: 200, headers: { "Cache-Control": "private, no-store" } },
+  );
 }

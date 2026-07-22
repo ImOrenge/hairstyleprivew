@@ -59,7 +59,7 @@ export default async function SupportPage({ searchParams }: SupportPageProps) {
       <Panel as="section" className="p-5 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <p className="app-kicker">Support Center</p>
+            <p className="app-kicker">고객지원</p>
             <h1 className="mt-3 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
               고객지원센터
             </h1>
@@ -136,6 +136,7 @@ export default async function SupportPage({ searchParams }: SupportPageProps) {
             <Link
               key={post.id}
               href={`/support/posts/${post.id}`}
+              data-pointer-glow="surface"
               className="app-card grid gap-3 p-4 transition hover:-translate-y-0.5 hover:border-[var(--app-border-strong)]"
             >
               <div className="flex flex-wrap items-center gap-2">

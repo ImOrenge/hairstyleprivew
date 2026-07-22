@@ -1,0 +1,78 @@
+id: native.styler.hair-selection-modal
+name: MobileStylerHairSelectionModal
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/components/styler/MobileStylerHairSelectionModal.tsx
+owner: styler-feature
+
+public_api:
+  exports:
+    - MobileStylerHairSelectionModal
+  props:
+    - groups
+    - open
+    - selectedVariantId
+    - isLoading
+    - error
+    - onClose
+    - onSelect
+  events:
+    - close
+    - select-generation-variant
+
+boundaries:
+  owns:
+    - native-modal-rendering
+    - virtualized-hairstyle-list
+    - loading-error-empty-states
+    - accessibility-dismissal
+  delegates:
+    - model-copy-localization: apps/hairfit-app/hooks/useMobileResultTranslations.ts
+  forbidden:
+    - API-client
+    - expo-router
+    - Styler-command-state
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  global_css_changes: false
+
+state:
+  local: []
+  derived:
+    - selectedVariantId-through-FlatList-extraData
+    - Korean-model-copy-with-fail-closed-fallback
+  external_store: false
+
+a11y_contract:
+  modal:
+    - accessibilityViewIsModal
+    - onAccessibilityEscape
+    - Korean-purpose-label
+    - OS-reduced-motion-disables-slide-animation
+  options:
+    - accessibilityRole-button
+    - disabled-and-selected-state
+    - purpose-specific-image-label-and-role
+  status:
+    - polite-loading-live-region
+    - assertive-error-live-region
+  virtualization:
+    - bounded-group-render-batches
+    - selected-state-rerender-marker
+
+test_surface:
+  structure: my-app/lib/styler-decomposition.test.ts
+  jest: apps/hairfit-app/__tests__/styler-copy-and-selection.test.tsx
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  behavioral_change_requires:
+    - VoiceOver-and-TalkBack-modal-test
+
+promotion_blockers:
+  - single-feature-consumer
+  - no-screen-reader-device-evidence

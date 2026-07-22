@@ -1,0 +1,117 @@
+id: web.ui.button
+name: Button
+platform: web
+kind: primitive
+status: stable
+source: my-app/components/ui/Button.tsx
+owner: web-ui
+
+public_api:
+  exports:
+    - Button
+    - buttonClassName
+    - ButtonVariant
+  props:
+    - variant: primary | secondary | ghost | inverse
+    - loading: boolean
+    - loadingLabel: ReactNode
+    - className: string
+    - inherited: ButtonHTMLAttributes<HTMLButtonElement>
+  slots:
+    - children
+  events:
+    - inherited-native-button-events
+  ref:
+    - HTMLButtonElement
+
+dependencies:
+  internal:
+    - my-app/lib/utils.ts#cn
+  external:
+    - react
+  forbidden:
+    - feature-stores
+    - route-state
+    - api-clients
+
+styling:
+  strategy: semantic-data-contract-with-token-utilities
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-button
+  tokens:
+    - --app-radius-control
+    - --app-border
+    - --app-border-strong
+    - --app-surface
+    - --app-surface-muted
+    - --app-text
+    - --app-inverse
+    - --app-inverse-muted
+    - --app-inverse-text
+    - --app-accent
+    - --app-ring
+  variants:
+    - primary
+    - secondary
+    - ghost
+    - inverse
+  data_contract:
+    data-variant: primary | secondary | ghost | inverse
+    data-state: enabled | disabled
+  allows_className: true
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  derived:
+    - disabled-from-native-prop-loading-and-aria-disabled
+    - data-state-enabled-disabled-loading
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  role: native-button
+  keyboard: native-button
+  focus: focus-visible-ring
+  disabled: native-disabled-prop-prevents-activation
+  loading:
+    - native-disabled-prevents-repeat-activation
+    - aria-busy-true
+    - visible-loading-label-replaces-children
+  aria: inherited-native-attributes
+
+test_surface:
+  unit:
+    - my-app/lib/button-stability.test.ts
+    - my-app/lib/global-css-contract.test.ts
+  browser:
+    - tests/web-e2e/button-stability.spec.ts
+  interaction: required
+  visual: required
+  observed_usage:
+    import_files: 50
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+    - focused-interaction-test
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+  style_contract_change_requires:
+    - token-and-class-search
+    - visual-verification
+
+promotion_evidence:
+  - production-primitive-only-fail-closed-e2e-harness
+  - keyboard-activation-and-native-disabled-interaction
+  - loading-label-aria-busy-and-repeat-activation-lock
+  - axe-serious-critical-zero
+  - 320px-light-and-375px-dark-visual-regression
+  - public-b2b-submit-user-e2e
+
+promotion_blockers: []

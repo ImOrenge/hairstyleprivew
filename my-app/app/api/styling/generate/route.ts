@@ -1,22 +1,28 @@
 import { auth } from "@clerk/nextjs/server";
+import type { PaidActionExecutionReceipt, PaidActionQuote } from "@hairfit/shared";
 import { NextResponse } from "next/server";
-import type { FashionRecommendation } from "../../../../lib/fashion-types";
-import { downloadGenerationImageDataUrl } from "../../../../lib/generation-image-storage";
 import {
-  dataUrlToBuffer,
-  getOpenAIImageModel,
-  runOpenAIOutfitGeneration,
-} from "../../../../lib/openai-image";
-import type { GeneratedVariant, RecommendationSet } from "../../../../lib/recommendation-types";
+  arePaidActionQuotesRequired,
+  createPaidActionExecutionQuoteSnapshot,
+  createPaidActionQuoteForUser,
+  PaidActionQuoteContextError,
+  PaidActionQuoteError,
+  validatePaidActionQuoteForExecution,
+} from "../../../../lib/paid-action-quote";
 import {
   countUserCompletedFashionGenerations,
   formatLimitError,
   getPlanEntitlement,
 } from "../../../../lib/plan-entitlements";
-import { getCreditsPerOutfit } from "../../../../lib/pricing-plan";
-import { getSupabaseAdminClient } from "../../../../lib/supabase";
+import type { GeneratedVariant, RecommendationSet } from "../../../../lib/recommendation-types";
 import {
-  BODY_PHOTO_BUCKET,
+  ACCEPTANCE_PAUSE_RETRY_AFTER_SECONDS,
+  isStylingAcceptanceEnabled,
+  STYLING_ACCEPTANCE_PAUSED_CODE,
+} from "../../../../lib/release-rollout";
+import { getSupabaseAdminClient } from "../../../../lib/supabase";
+import { dispatchStylingWorkflowOutbox } from "../../../../lib/styling-workflow-outbox";
+import {
   STYLING_RESULTS_BUCKET,
   createSignedUrl,
   normalizeStyleProfile,
@@ -25,6 +31,23 @@ import {
 
 interface StylingGenerateRequest {
   sessionId?: string;
+  quoteId?: string;
+}
+
+interface StylingBeginResult {
+  canRun: boolean;
+  inProgress: boolean;
+  terminal: boolean;
+  attemptId: string;
+  leaseToken: string | null;
+  creditReceipt: PaidActionExecutionReceipt | null;
+}
+
+interface StylingRpcClient {
+  rpc: (
+    fn: "begin_styling_execution" | "read_styling_credit_receipt",
+    params: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string } | null }>;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -32,10 +55,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
-  if (!isObject(raw) || !isObject(raw.analysis) || !Array.isArray(raw.variants)) {
-    return null;
-  }
-
+  if (!isObject(raw) || !isObject(raw.analysis) || !Array.isArray(raw.variants)) return null;
   return {
     generatedAt: typeof raw.generatedAt === "string" ? raw.generatedAt : new Date().toISOString(),
     analysis: raw.analysis as unknown as RecommendationSet["analysis"],
@@ -47,224 +67,246 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
   };
 }
 
-async function downloadPrivateImageDataUrl(
-  supabase: ServerSupabaseLike,
-  bucket: string,
-  path: string,
-  fallbackMimeType = "image/webp",
-) {
-  const { data, error } = await supabase.storage.from(bucket).download(path);
-  if (error || !data) {
-    throw new Error(error?.message || "Failed to download private image");
-  }
-
-  const arrayBuffer = await data.arrayBuffer();
-  const mimeType = data.type || fallbackMimeType;
-  return `data:${mimeType};base64,${Buffer.from(arrayBuffer).toString("base64")}`;
-}
-
-function extensionFromMime(mimeType: string) {
-  if (mimeType.includes("webp")) return "webp";
-  if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg";
-  return "png";
+function quoteErrorResponse(error: PaidActionQuoteError) {
+  return NextResponse.json(
+    { error: error.message, code: error.code, ...(error.quote ? { quote: error.quote } : {}) },
+    { status: error.status },
+  );
 }
 
 export async function POST(request: Request) {
   const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
-  }
+  if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const body = (await request.json().catch(() => ({}))) as StylingGenerateRequest;
   const sessionId = body.sessionId?.trim() || "";
+  const quoteId = body.quoteId?.trim() || "";
   if (!sessionId) {
     return NextResponse.json({ error: "추천 세션 정보가 필요합니다." }, { status: 400 });
   }
 
   const supabase = getSupabaseAdminClient() as unknown as ServerSupabaseLike;
+  const rpc = supabase as unknown as StylingRpcClient;
+  try {
+    const { data: session, error: sessionError } = await supabase
+      .from("styling_sessions")
+      .select("*")
+      .eq("id", sessionId)
+      .maybeSingle();
+    if (sessionError) throw new Error(sessionError.message);
+    if (!session) return NextResponse.json({ error: "패션 추천 세션을 찾을 수 없습니다." }, { status: 404 });
+    if (session.user_id !== userId) {
+      return NextResponse.json({ error: "이 추천 세션에 접근할 수 없습니다." }, { status: 403 });
+    }
 
-  const { data: session, error: sessionError } = await supabase
-    .from("styling_sessions")
-    .select("*")
-    .eq("id", sessionId)
-    .maybeSingle();
+    const existingImagePath = typeof session.generated_image_path === "string"
+      ? session.generated_image_path
+      : null;
+    if (existingImagePath && session.status === "completed") {
+      const [{ data: receipt }, imageUrl] = await Promise.all([
+        rpc.rpc("read_styling_credit_receipt", {
+          p_styling_session_id: sessionId,
+          p_user_id: userId,
+        }),
+        createSignedUrl(supabase, STYLING_RESULTS_BUCKET, existingImagePath),
+      ]);
+      return NextResponse.json({
+        sessionId,
+        imageUrl,
+        imagePath: existingImagePath,
+        chargedCredits: Number(session.credits_used || 0),
+        creditReceipt: receipt,
+        alreadyCompleted: true,
+      });
+    }
 
-  if (sessionError) {
-    return NextResponse.json({ error: sessionError.message }, { status: 500 });
-  }
-  if (!session) {
-    return NextResponse.json({ error: "패션 추천 세션을 찾을 수 없습니다." }, { status: 404 });
-  }
-  if (session.user_id !== userId) {
-    return NextResponse.json({ error: "이 추천 세션에 접근할 수 없습니다." }, { status: 403 });
-  }
-
-  const existingImagePath = typeof session.generated_image_path === "string" ? session.generated_image_path : null;
-  if (existingImagePath && session.status === "completed") {
-    const imageUrl = await createSignedUrl(supabase, STYLING_RESULTS_BUCKET, existingImagePath);
-    return NextResponse.json({ sessionId, imageUrl, imagePath: existingImagePath }, { status: 200 });
-  }
-
-  const entitlement = await getPlanEntitlement(supabase, userId);
-  if (entitlement.maxFashionGenerations !== null) {
-    const completedFashionGenerations = await countUserCompletedFashionGenerations(supabase, userId);
-    if (completedFashionGenerations >= entitlement.maxFashionGenerations) {
+    if (session.status !== "generating" && !isStylingAcceptanceEnabled()) {
       return NextResponse.json(
-        { error: formatLimitError(entitlement), plan: entitlement.key },
-        { status: 403 },
+        {
+          error: "현재 새 패션 룩북 생성 접수를 잠시 중단했습니다. 진행 중인 작업은 계속 처리됩니다.",
+          code: STYLING_ACCEPTANCE_PAUSED_CODE,
+          retryable: true,
+        },
+        {
+          status: 503,
+          headers: { "Retry-After": String(ACCEPTANCE_PAUSE_RETRY_AFTER_SECONDS) },
+        },
       );
     }
-  }
 
-  const { data: profileRow, error: profileError } = await supabase
-    .from("user_style_profiles")
-    .select("*")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (profileError) {
-    return NextResponse.json({ error: profileError.message }, { status: 500 });
-  }
-
-  const profile = normalizeStyleProfile(profileRow, userId);
-  if (!profile.bodyPhotoPath) {
-    return NextResponse.json({ error: "전신 사진을 먼저 등록해 주세요." }, { status: 409 });
-  }
-
-  const { data: generation, error: generationError } = await supabase
-    .from("generations")
-    .select("id,user_id,options")
-    .eq("id", String(session.generation_id))
-    .maybeSingle();
-
-  if (generationError) {
-    return NextResponse.json({ error: generationError.message }, { status: 500 });
-  }
-  if (!generation || generation.user_id !== userId) {
-    return NextResponse.json({ error: "헤어 추천 결과를 찾을 수 없습니다." }, { status: 404 });
-  }
-
-  const recommendationSet = normalizeRecommendationSet(
-    isObject(generation.options) ? generation.options.recommendationSet : null,
-  );
-  if (!recommendationSet?.selectedVariantId || recommendationSet.selectedVariantId !== session.selected_variant_id) {
-    return NextResponse.json(
-      { error: "패션 룩북은 확정된 헤어스타일을 기준으로만 생성할 수 있습니다." },
-      { status: 409 },
-    );
-  }
-  const selectedVariant = recommendationSet?.variants.find(
-    (variant) => variant.id === session.selected_variant_id,
-  ) || null;
-
-  if (!selectedVariant?.outputUrl && !selectedVariant?.generatedImagePath) {
-    return NextResponse.json({ error: "선택한 헤어스타일 이미지가 아직 준비되지 않았습니다." }, { status: 409 });
-  }
-
-  const recommendation = isObject(session.recommendation)
-    ? (session.recommendation as unknown as FashionRecommendation)
-    : null;
-  if (!recommendation) {
-    return NextResponse.json({ error: "패션 추천 정보가 없습니다." }, { status: 400 });
-  }
-
-  const creditCost = Number(session.credits_used) > 0 ? 0 : getCreditsPerOutfit();
-
-  await supabase
-    .from("styling_sessions")
-    .update({ status: "generating", error_message: null })
-    .eq("id", sessionId);
-
-  try {
-    if (creditCost > 0) {
-      const { error: consumeError } = await supabase.rpc("consume_credits", {
-        p_user_id: userId,
-        p_generation_id: String(session.generation_id),
-        p_amount: creditCost,
-        p_reason: "outfit_styling_usage",
-        p_metadata: {
-          source: "api/styling/generate",
-          stylingSessionId: sessionId,
-          chargedAt: new Date().toISOString(),
-        },
-      });
-
-      if (consumeError) {
-        if (consumeError.message.toLowerCase().includes("insufficient credits")) {
-          return NextResponse.json({ error: "크레딧이 부족합니다." }, { status: 409 });
-        }
-        return NextResponse.json({ error: consumeError.message }, { status: 500 });
+    const entitlement = await getPlanEntitlement(supabase, userId);
+    if (entitlement.maxFashionGenerations !== null) {
+      const completedFashionGenerations = await countUserCompletedFashionGenerations(supabase, userId);
+      if (completedFashionGenerations >= entitlement.maxFashionGenerations) {
+        return NextResponse.json(
+          { error: formatLimitError(entitlement), code: "PLAN_UPGRADE_REQUIRED", plan: entitlement.key },
+          { status: 403 },
+        );
       }
     }
 
-    const bodyImageDataUrl = await downloadPrivateImageDataUrl(
-      supabase,
-      BODY_PHOTO_BUCKET,
-      profile.bodyPhotoPath,
+    const { data: profileRow, error: profileError } = await supabase
+      .from("user_style_profiles")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (profileError) throw new Error(profileError.message);
+    const profile = normalizeStyleProfile(profileRow, userId);
+    if (!profile.bodyPhotoPath) {
+      return NextResponse.json({ error: "전신 사진을 먼저 등록해 주세요." }, { status: 409 });
+    }
+
+    const { data: generation, error: generationError } = await supabase
+      .from("generations")
+      .select("id,user_id,options")
+      .eq("id", String(session.generation_id))
+      .maybeSingle();
+    if (generationError) throw new Error(generationError.message);
+    if (!generation || generation.user_id !== userId) {
+      return NextResponse.json({ error: "헤어 추천 결과를 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    const recommendationSet = normalizeRecommendationSet(
+      isObject(generation.options) ? generation.options.recommendationSet : null,
     );
-    const hairImageDataUrl = await downloadGenerationImageDataUrl(supabase, {
-      outputUrl: selectedVariant.outputUrl,
-      generatedImagePath: selectedVariant.generatedImagePath,
-    });
-    if (!hairImageDataUrl) {
-      throw new Error("선택한 헤어스타일 이미지를 불러오지 못했습니다.");
+    if (!recommendationSet?.selectedVariantId || recommendationSet.selectedVariantId !== session.selected_variant_id) {
+      return NextResponse.json(
+        { error: "패션 룩북은 현재 선택한 헤어스타일을 기준으로만 생성할 수 있습니다." },
+        { status: 409 },
+      );
+    }
+    const selectedVariant = recommendationSet.variants.find(
+      (variant) => variant.id === session.selected_variant_id,
+    ) || null;
+    if (!selectedVariant?.outputUrl && !selectedVariant?.generatedImagePath) {
+      return NextResponse.json({ error: "선택한 헤어스타일 이미지가 아직 준비되지 않았습니다." }, { status: 409 });
     }
 
-    const result = await runOpenAIOutfitGeneration({
-      bodyImageDataUrl,
-      hairImageDataUrl,
-      recommendation,
-      profile,
-      hairVariant: selectedVariant,
-    });
+    if (!isObject(session.recommendation)) {
+      return NextResponse.json({ error: "패션 추천 정보가 없습니다." }, { status: 400 });
+    }
 
-    const parsed = dataUrlToBuffer(result.outputUrl);
-    const extension = extensionFromMime(parsed.mimeType);
-    const objectPath = `${userId}/${sessionId}-${Date.now()}.${extension}`;
-    const { error: uploadError } = await supabase.storage
-      .from(STYLING_RESULTS_BUCKET)
-      .upload(objectPath, parsed.buffer, {
-        contentType: parsed.mimeType,
-        upsert: true,
+    const currentQuote = await createPaidActionQuoteForUser({
+      supabase: getSupabaseAdminClient(),
+      userId,
+      action: "outfit_generation",
+      subjectId: sessionId,
+      billingScope: "customer",
+    });
+    const executionQuote: PaidActionQuote = quoteId
+      ? validatePaidActionQuoteForExecution({ quoteId, userId, currentQuote })
+      : currentQuote;
+    if (!quoteId && arePaidActionQuotesRequired()) {
+      throw new PaidActionQuoteError({
+        message: "룩북 생성 전 최신 크레딧 견적을 확인해 주세요.",
+        code: "QUOTE_REQUIRED",
+        status: 428,
+        quote: currentQuote,
       });
-
-    if (uploadError) {
-      throw new Error(uploadError.message);
     }
 
-    if (existingImagePath && existingImagePath !== objectPath) {
-      await supabase.storage.from(STYLING_RESULTS_BUCKET).remove([existingImagePath]);
+    const { data: beginData, error: beginError } = await rpc.rpc("begin_styling_execution", {
+      p_styling_session_id: sessionId,
+      p_user_id: userId,
+      p_quote: createPaidActionExecutionQuoteSnapshot(executionQuote),
+    });
+    if (beginError) {
+      const upper = beginError.message.toUpperCase();
+      if (upper.includes("QUOTE_CHANGED")) {
+        const quote = await createPaidActionQuoteForUser({
+          supabase: getSupabaseAdminClient(),
+          userId,
+          action: "outfit_generation",
+          subjectId: sessionId,
+          billingScope: "customer",
+        }).catch(() => undefined);
+        return NextResponse.json(
+          { error: "잔액 또는 견적 상태가 변경되었습니다. 최신 견적을 확인해 주세요.", code: "QUOTE_CHANGED", ...(quote ? { quote } : {}) },
+          { status: 409 },
+        );
+      }
+      if (beginError.message.toLowerCase().includes("insufficient credits")) {
+        return NextResponse.json({ error: "크레딧이 부족합니다.", code: "INSUFFICIENT_CREDITS" }, { status: 409 });
+      }
+      if (upper.includes("STYLING_SELECTION_CHANGED")) {
+        return NextResponse.json({ error: "선택한 헤어스타일이 변경되었습니다. 추천을 다시 확인해 주세요." }, { status: 409 });
+      }
+      throw new Error(beginError.message);
+    }
+    if (!isObject(beginData)) throw new Error("룩북 실행 영수증이 올바르지 않습니다.");
+    const beginResult = beginData as unknown as StylingBeginResult;
+
+    if (!beginResult.canRun) {
+      const imagePath = existingImagePath;
+      const imageUrl = imagePath
+        ? await createSignedUrl(supabase, STYLING_RESULTS_BUCKET, imagePath)
+        : null;
+      return NextResponse.json(
+        {
+          sessionId,
+          status: beginResult.terminal ? "completed" : "generating",
+          imageUrl,
+          imagePath,
+          chargedCredits: beginResult.creditReceipt?.chargedCredits ?? 0,
+          creditReceipt: beginResult.creditReceipt,
+          inProgress: beginResult.inProgress,
+        },
+        { status: beginResult.inProgress ? 202 : 200 },
+      );
+    }
+    let workflowDispatchStatus: "started" | "deferred" = "deferred";
+    let workflowRuntime: "cloudflare" | "local" | "unavailable" = "unavailable";
+    try {
+      const dispatch = await dispatchStylingWorkflowOutbox({
+        limit: 10,
+        localBaseUrl: new URL(request.url).origin,
+      });
+      workflowRuntime = dispatch.runtime;
+      workflowDispatchStatus = dispatch.sessionIds.includes(sessionId) ? "started" : "deferred";
+    } catch (dispatchError) {
+      console.warn("[styling/generate] Immediate Workflow dispatch was deferred", {
+        sessionId,
+        error: dispatchError instanceof Error ? dispatchError.message : "Unknown dispatch error",
+      });
     }
 
-    const { error: updateError } = await supabase
-      .from("styling_sessions")
-      .update({
-        status: "completed",
-        generated_image_path: objectPath,
-        credits_used: Number(session.credits_used || 0) + creditCost,
-        error_message: null,
-        model_provider: "openai",
-        model_name: getOpenAIImageModel(),
-      })
-      .eq("id", sessionId);
-
-    if (updateError) {
-      throw new Error(updateError.message);
-    }
-
-    const imageUrl = await createSignedUrl(supabase, STYLING_RESULTS_BUCKET, objectPath);
-    return NextResponse.json({ sessionId, imageUrl, imagePath: objectPath, chargedCredits: creditCost }, { status: 200 });
+    return NextResponse.json(
+      {
+        sessionId,
+        status: "generating",
+        imageUrl: null,
+        imagePath: null,
+        chargedCredits: 0,
+        creditReceipt: beginResult.creditReceipt,
+        inProgress: true,
+        backgroundStarted: true,
+        workflowDispatchStatus,
+        workflowRuntime,
+      },
+      { status: 202 },
+    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "예상하지 못한 오류가 발생했습니다.";
-    await supabase
-      .from("styling_sessions")
-      .update({
-        status: "failed",
-        error_message: message,
-        credits_used: Number(session.credits_used || 0) + creditCost,
-      })
-      .eq("id", sessionId);
+    if (error instanceof PaidActionQuoteError) return quoteErrorResponse(error);
+    if (error instanceof PaidActionQuoteContextError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    const message = error instanceof Error ? error.message : "룩북 생성 접수에 실패했습니다.";
+    const quote = await createPaidActionQuoteForUser({
+      supabase: getSupabaseAdminClient(),
+      userId,
+      action: "outfit_generation",
+      subjectId: sessionId,
+      billingScope: "customer",
+    }).catch(() => undefined);
+    console.error("[styling/generate] acceptance failed", { sessionId, userId, message });
+    return NextResponse.json(
+      {
+        error: "룩북 생성 접수 중 오류가 발생했습니다. 상태를 새로고침한 뒤 다시 확인해 주세요.",
+        code: "STYLING_ACCEPTANCE_FAILED",
+        ...(quote ? { quote } : {}),
+      },
+      { status: 500 },
+    );
   }
 }

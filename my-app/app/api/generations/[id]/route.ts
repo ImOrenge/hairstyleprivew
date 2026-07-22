@@ -1,6 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { readGenerationCreditReceipt } from "../../../../lib/generation-credit-receipt";
+import { readGenerationOriginalRetentionState } from "../../../../lib/generation-original-retention";
+import { getGenerationRetryPath } from "../../../../lib/generation-retry-path";
 import { resolveGenerationImageUrl } from "../../../../lib/generation-image-storage";
 import {
   GENERATION_ASSETS_EXPIRED_MESSAGE,
@@ -44,6 +47,10 @@ interface EqOrderQuery {
 }
 
 interface SupabaseRouteClient {
+  rpc: (
+    name: string,
+    params: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
   from: (table: string) => {
     select: (columns: string) => EqOrderQuery;
     update: (values: Record<string, unknown>) => {
@@ -55,6 +62,10 @@ interface SupabaseRouteClient {
 
 const SELECTION_LOCKED_MESSAGE =
   "이미 확정된 헤어스타일입니다. 다른 스타일은 새로 생성해 주세요.";
+const GENERATION_DETAIL_SELECT =
+  "id,user_id,status,error_message,generated_image_path,original_image_path,generated_assets_expires_at,selected_variant_id,options,prompt_used,updated_at,accepted_at,preparation_status,preparation_error,workflow_instance_id,workflow_started_at";
+const LEGACY_GENERATION_DETAIL_SELECT =
+  "id,user_id,status,error_message,generated_image_path,original_image_path,generated_assets_expires_at,options,prompt_used,updated_at,accepted_at,preparation_status,preparation_error,workflow_instance_id,workflow_started_at";
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -64,7 +75,22 @@ function text(value: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
+function isMissingSelectedVariantColumn(error: { message: string } | null) {
+  return Boolean(
+    error &&
+      /selected_variant_id/i.test(error.message) &&
+      /(does not exist|schema cache|could not find)/i.test(error.message),
+  );
+}
+
+function normalizeSelectedVariantId(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeRecommendationSet(
+  raw: unknown,
+  preferredSelectedVariantId?: unknown,
+): RecommendationSet | null {
   if (!isObject(raw)) {
     return null;
   }
@@ -81,7 +107,9 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
     generatedAt,
     analysis: analysis as unknown as RecommendationSet["analysis"],
     variants: variants as unknown as RecommendationSet["variants"],
-    selectedVariantId: typeof raw.selectedVariantId === "string" ? raw.selectedVariantId : null,
+    selectedVariantId:
+      normalizeSelectedVariantId(preferredSelectedVariantId) ??
+      normalizeSelectedVariantId(raw.selectedVariantId),
     styleTarget: raw.styleTarget === "male" || raw.styleTarget === "female" ? raw.styleTarget : null,
     catalogCycleId: typeof raw.catalogCycleId === "string" ? raw.catalogCycleId : null,
     creditChargedAt: typeof raw.creditChargedAt === "string" ? raw.creditChargedAt : null,
@@ -92,11 +120,21 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
 async function loadGeneration(userId: string, id: string) {
   const supabase = getSupabaseAdminClient() as unknown as SupabaseRouteClient;
 
-  const { data, error } = await supabase
+  let result = await supabase
     .from("generations")
-    .select("id,user_id,status,error_message,generated_image_path,generated_assets_expires_at,options,prompt_used,updated_at")
+    .select(GENERATION_DETAIL_SELECT)
     .eq("id", id)
     .maybeSingle();
+
+  if (isMissingSelectedVariantColumn(result.error)) {
+    result = await supabase
+      .from("generations")
+      .select(LEGACY_GENERATION_DETAIL_SELECT)
+      .eq("id", id)
+      .maybeSingle();
+  }
+
+  const { data, error } = result;
 
   if (error) {
     return { error: error.message, status: 500 as const };
@@ -197,6 +235,7 @@ export async function GET(_request: Request, { params }: Params) {
 
   const rawRecommendationSet = normalizeRecommendationSet(
     isObject(loaded.data.options) ? loaded.data.options.recommendationSet : null,
+    loaded.data.selected_variant_id,
   );
   const recommendationSet = await withSignedVariantUrls(loaded.supabase, rawRecommendationSet);
   const confirmedHairRecordResult = await loadConfirmedHairRecord(loaded.supabase, userId, id.trim());
@@ -205,6 +244,29 @@ export async function GET(_request: Request, { params }: Params) {
   }
 
   const confirmedHairRecord = confirmedHairRecordResult.data;
+  const originalRetention = await readGenerationOriginalRetentionState(
+    loaded.supabase as unknown as ReturnType<typeof getSupabaseAdminClient>,
+    {
+      id: typeof loaded.data.id === "string" ? loaded.data.id : id.trim(),
+      status: loaded.data.status,
+      options: loaded.data.options,
+      original_image_path: loaded.data.original_image_path,
+    },
+  );
+  let creditReceipt = null;
+  let creditReceiptUnavailable = false;
+  try {
+    creditReceipt = await readGenerationCreditReceipt(loaded.supabase, id.trim(), userId);
+  } catch (creditReceiptError) {
+    creditReceiptUnavailable = true;
+    console.warn("Generation credit receipt could not be read", {
+      generationId: id.trim(),
+      error:
+        creditReceiptError instanceof Error
+          ? creditReceiptError.message
+          : "Unknown credit receipt error",
+    });
+  }
   const selectedVariant = recommendationSet?.selectedVariantId
     ? recommendationSet.variants.find((variant) => variant.id === recommendationSet.selectedVariantId) || null
     : recommendationSet?.variants.find((variant) => variant.generatedImagePath) || null;
@@ -213,6 +275,24 @@ export async function GET(_request: Request, { params }: Params) {
     {
       id: typeof loaded.data.id === "string" ? loaded.data.id : id,
       status: typeof loaded.data.status === "string" ? loaded.data.status : "failed",
+      acceptedAt:
+        typeof loaded.data.accepted_at === "string" ? loaded.data.accepted_at : null,
+      preparationStatus:
+        typeof loaded.data.preparation_status === "string"
+          ? loaded.data.preparation_status
+          : "ready",
+      preparationError:
+        typeof loaded.data.preparation_error === "string"
+          ? loaded.data.preparation_error
+          : null,
+      workflowInstanceId:
+        typeof loaded.data.workflow_instance_id === "string"
+          ? loaded.data.workflow_instance_id
+          : null,
+      workflowStartedAt:
+        typeof loaded.data.workflow_started_at === "string"
+          ? loaded.data.workflow_started_at
+          : null,
       updatedAt: typeof loaded.data.updated_at === "string" ? loaded.data.updated_at : null,
       error: typeof loaded.data.error_message === "string" ? loaded.data.error_message : null,
       promptUsed: typeof loaded.data.prompt_used === "string" ? loaded.data.prompt_used : null,
@@ -221,6 +301,11 @@ export async function GET(_request: Request, { params }: Params) {
       options:
         typeof loaded.data.options === "object" && loaded.data.options !== null ? loaded.data.options : null,
       recommendationSet,
+      creditReceipt,
+      creditReceiptUnavailable,
+      retryPath: getGenerationRetryPath(loaded.data.options),
+      originalRetention,
+      selectedVariantId: recommendationSet?.selectedVariantId ?? null,
       selectedVariant,
       selectionLocked: Boolean(confirmedHairRecord),
       confirmedHairRecord,
@@ -256,7 +341,10 @@ export async function PATCH(request: Request, { params }: Params) {
   }
 
   const options = isObject(loaded.data.options) ? loaded.data.options : {};
-  const recommendationSet = normalizeRecommendationSet(options.recommendationSet);
+  const recommendationSet = normalizeRecommendationSet(
+    options.recommendationSet,
+    loaded.data.selected_variant_id,
+  );
   if (!recommendationSet) {
     return NextResponse.json({ error: "Recommendation set not found" }, { status: 400 });
   }
@@ -307,18 +395,30 @@ export async function PATCH(request: Request, { params }: Params) {
 
   recommendationSet.selectedVariantId = selectedVariantId;
 
-  const { error } = await loaded.supabase
+  const generationUpdate = {
+    prompt_used: selectedVariant.prompt,
+    generated_image_path: selectedVariant.generatedImagePath,
+    options: {
+      ...options,
+      analysis: recommendationSet.analysis,
+      recommendationSet,
+    },
+  };
+
+  let { error } = await loaded.supabase
     .from("generations")
     .update({
-      prompt_used: selectedVariant.prompt,
-      generated_image_path: selectedVariant.generatedImagePath,
-      options: {
-        ...options,
-        analysis: recommendationSet.analysis,
-        recommendationSet,
-      },
+      ...generationUpdate,
+      selected_variant_id: selectedVariantId,
     })
     .eq("id", id.trim());
+
+  if (isMissingSelectedVariantColumn(error)) {
+    ({ error } = await loaded.supabase
+      .from("generations")
+      .update(generationUpdate)
+      .eq("id", id.trim()));
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

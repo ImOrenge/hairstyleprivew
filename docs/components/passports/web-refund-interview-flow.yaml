@@ -1,0 +1,100 @@
+id: web.billing.refund-interview-flow
+name: RefundInterviewFlow
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/mypage/RefundInterviewFlow.tsx
+owner: billing-feature
+
+public_api:
+  exports:
+    - RefundInterviewFlow
+  props:
+    - "paymentTransactionId: string"
+    - "disabled?: boolean"
+  events: []
+
+dependencies:
+  internal:
+    - packages/shared/src/billing/refund.ts
+    - my-app/components/ui/Dialog.tsx
+    - my-app/components/ui/Button.tsx
+  external:
+    - next/navigation
+  forbidden:
+    - service-role-client
+    - direct-supabase-client
+    - provider-secret
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: features
+    namespace: f-refund-interview
+  tokens:
+    - --app-text
+    - --app-muted
+    - --app-border
+    - --app-surface
+    - --app-accent
+    - --app-accent-soft
+    - --app-radius-control
+  variants: []
+  allows_className: false
+  inline_styles_allowed: false
+
+state:
+  owned:
+    - open
+    - interview-step
+    - outcome
+    - reason-category
+    - detail
+    - quote
+    - acceptance
+    - submission
+  external_store: false
+side_effects:
+  - authenticated-refund-quote-request
+  - authenticated-refund-submission
+  - last-request-id-local-storage
+
+a11y_contract:
+  dialog: shared-focus-trap-and-trigger-focus-restore
+  steps: labelled-ordered-list
+  choices: native-radio-groups
+  confirmation: native-checkbox
+  errors: role-alert
+  pending: aria-busy-and-dismissal-lock
+  color_only_meaning: forbidden
+
+test_surface:
+  unit: packages/shared/src/billing/refund.test.ts
+  contract: my-app/lib/refund-automation-contract.test.ts
+  interaction: required-before-candidate-promotion
+  accessibility: required-before-candidate-promotion
+  visual: required-before-candidate-promotion
+
+change_policy:
+  current_gate: behavioral-feature-addition
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+  behavioral_change_requires:
+    - refund-contract-test
+    - dialog-keyboard-verification
+  style_contract_change_requires:
+    - f-refund-interview-selector-search
+    - 320-375-1024-visual-verification
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_blockers:
+  - no-authenticated-payment-fixture-browser-evidence
+  - no-portone-sandbox-refund-evidence
+  - no-physical-screen-reader-evidence
+
+residual_risks:
+  - provider-and-ledger-error-copy-needs-staging-evidence

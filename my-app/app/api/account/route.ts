@@ -1,5 +1,16 @@
 import { auth, clerkClient } from "@clerk/nextjs/server";
+import {
+  ACCOUNT_DELETION_CONFIRMATION,
+  type AccountDeletionResponse,
+} from "@hairfit/shared";
 import { NextResponse } from "next/server";
+import {
+  AccountDeletionCleanupError,
+  deleteAccountApplicationData,
+  isIdentityAlreadyDeleted,
+  markAccountIdentityDeletionComplete,
+  markAccountIdentityDeletionFailed,
+} from "../../../lib/account-deletion";
 import {
   isAccountType,
   isMemberStyleTarget,
@@ -262,4 +273,82 @@ export async function GET() {
     const message = error instanceof Error ? error.message : "Unexpected error";
     return NextResponse.json({ error: message }, { status: 500 });
   }
+}
+
+export async function DELETE(request: Request) {
+  const { userId } = await auth({ acceptsToken: "session_token" });
+  if (!userId) {
+    return unauthorized();
+  }
+
+  const body = await request.json().catch(() => null);
+  const confirmation =
+    body && typeof body === "object" && "confirmation" in body
+      ? String(body.confirmation ?? "").trim()
+      : "";
+  if (confirmation !== ACCOUNT_DELETION_CONFIRMATION) {
+    return NextResponse.json(
+      {
+        error: `확인을 위해 '${ACCOUNT_DELETION_CONFIRMATION}'를 정확히 입력해 주세요.`,
+        code: "ACCOUNT_DELETION_CONFIRMATION_REQUIRED",
+      },
+      { status: 400 },
+    );
+  }
+
+  if (!isSupabaseConfigured()) {
+    return NextResponse.json(
+      {
+        error: "계정 데이터 저장소가 연결되지 않아 안전하게 탈퇴할 수 없습니다.",
+        code: "ACCOUNT_DELETION_UNAVAILABLE",
+      },
+      { status: 503 },
+    );
+  }
+
+  const supabase = getSupabaseAdminClient();
+  try {
+    await deleteAccountApplicationData(supabase, userId);
+  } catch (error) {
+    const code =
+      error instanceof AccountDeletionCleanupError
+        ? error.code
+        : "DATABASE_DELETE_FAILED";
+    const message =
+      error instanceof AccountDeletionCleanupError
+        ? error.message
+        : "계정 데이터를 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+    return NextResponse.json({ error: message, code }, { status: 502 });
+  }
+
+  try {
+    const client = await clerkClient();
+    await client.users.deleteUser(userId);
+  } catch (error) {
+    if (!isIdentityAlreadyDeleted(error)) {
+      await markAccountIdentityDeletionFailed(supabase, userId).catch(() => null);
+      return NextResponse.json(
+        {
+          error:
+            "앱 데이터와 사진은 삭제했지만 로그인 계정 삭제 확인이 지연되고 있습니다. 같은 화면에서 다시 시도해 주세요.",
+          code: "IDENTITY_DELETE_PENDING",
+        },
+        { status: 502 },
+      );
+    }
+  }
+
+  const completed = await markAccountIdentityDeletionComplete(supabase, userId);
+  if (completed.error) {
+    console.error("[account-delete] Identity deletion receipt could not be recorded", {
+      errorKind: "identity_receipt_failed",
+    });
+  }
+
+  const response: AccountDeletionResponse = {
+    ok: true,
+    state: "deleted",
+    deletedAt: new Date().toISOString(),
+  };
+  return NextResponse.json(response, { status: 200 });
 }

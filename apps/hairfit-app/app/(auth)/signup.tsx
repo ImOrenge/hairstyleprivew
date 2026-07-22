@@ -1,9 +1,32 @@
 import { useSSO, useSignUp } from "@clerk/clerk-expo";
 import * as AuthSession from "expo-auth-session";
-import { useRouter } from "expo-router";
-import { type ReactNode, useState } from "react";
-import { Platform } from "react-native";
-import { BodyText, Button, Heading, Kicker, Panel, Screen, Stack, TextField, useThemeColors } from "@hairfit/ui-native";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Platform, type TextInput, View } from "react-native";
+import {
+  BodyText,
+  Button,
+  FormScreen,
+  Heading,
+  Kicker,
+  Panel,
+  Stack,
+  TextField,
+  useThemeColors,
+} from "@hairfit/ui-native";
+import {
+  buildAuthRoute,
+  consumeAuthResumePath,
+  parseResumeTargetParam,
+  pendingResumeStore,
+  resolveAuthResumePath,
+} from "../../lib/auth-resume";
+import {
+  mapAuthFormError,
+  validateSignupFields,
+  type AuthFieldErrors,
+  type AuthFormField,
+} from "../../lib/auth-form";
 
 const oauthRedirectUrl = AuthSession.makeRedirectUri({ path: "signup" });
 const webOauthCallbackPath = "/sso-callback";
@@ -77,17 +100,9 @@ function WebOAuthButton({
   );
 }
 
-function errorMessage(error: unknown) {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "object" && error !== null && "errors" in error) {
-    const first = (error as { errors?: Array<{ message?: string }> }).errors?.[0]?.message;
-    if (first) return first;
-  }
-  return "회원가입에 실패했습니다.";
-}
-
 export default function SignupScreen() {
   const router = useRouter();
+  const { resume } = useLocalSearchParams<{ resume?: string | string[] }>();
   const { isLoaded, signUp, setActive } = useSignUp();
   const { startSSOFlow } = useSSO();
   const [name, setName] = useState("");
@@ -98,6 +113,22 @@ export default function SignupScreen() {
   const [pending, setPending] = useState(false);
   const [googlePending, setGooglePending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<AuthFieldErrors>({});
+  const [errorFocus, setErrorFocus] = useState<{
+    field: AuthFormField;
+    request: number;
+  }>({ field: "email", request: 0 });
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const codeRef = useRef<TextInput>(null);
+  const resumeParam = Array.isArray(resume) ? resume[0] : resume;
+  const resumeTarget = useMemo(() => parseResumeTargetParam(resumeParam), [resumeParam]);
+
+  useEffect(() => {
+    if (resumeTarget) {
+      void pendingResumeStore.save(resumeTarget);
+    }
+  }, [resumeTarget]);
 
   const completeSession = async (sessionId: string | null | undefined) => {
     if (!sessionId || !setActive) {
@@ -106,13 +137,42 @@ export default function SignupScreen() {
     }
 
     await setActive({ session: sessionId });
-    router.replace("/");
+    const destination = await consumeAuthResumePath(resumeParam);
+    router.replace(destination as Href);
+  };
+
+  const requestFieldFocus = (field: AuthFormField) => {
+    setErrorFocus((current) => ({ field, request: current.request + 1 }));
+  };
+
+  const clearFieldError = (field: AuthFormField) => {
+    setFieldErrors((current) => current[field]
+      ? { ...current, [field]: undefined }
+      : current);
+  };
+
+  const showAuthError = (error: unknown, fallbackMessage: string) => {
+    const mapped = mapAuthFormError(error, fallbackMessage);
+    const field = mapped.field;
+    if (field) {
+      setMessage(null);
+      setFieldErrors((current) => ({ ...current, [field]: mapped.message }));
+      requestFieldFocus(field);
+    } else {
+      setMessage(mapped.message);
+    }
   };
 
   const createAccount = async () => {
     if (!isLoaded || pending) return;
-    setPending(true);
     setMessage(null);
+    const validation = validateSignupFields({ code, email, needsCode: false, password });
+    setFieldErrors(validation.errors);
+    if (validation.firstInvalidField) {
+      requestFieldFocus(validation.firstInvalidField);
+      return;
+    }
+    setPending(true);
 
     try {
       const result = await signUp.create({
@@ -129,8 +189,9 @@ export default function SignupScreen() {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setNeedsCode(true);
       setMessage("이메일로 받은 인증 코드를 입력해 주세요.");
+      requestFieldFocus("code");
     } catch (error) {
-      setMessage(errorMessage(error));
+      showAuthError(error, "회원가입에 실패했습니다. 입력 내용을 확인하고 다시 시도해 주세요.");
     } finally {
       setPending(false);
     }
@@ -142,6 +203,8 @@ export default function SignupScreen() {
     setMessage(null);
 
     try {
+      const resumePath = await resolveAuthResumePath(resumeParam);
+
       if (Platform.OS === "web") {
         const popup = openOAuthPopup();
         if (!popup) {
@@ -153,14 +216,15 @@ export default function SignupScreen() {
           popup,
           strategy: "oauth_google",
           redirectUrl: webUrl(webOauthCallbackPath),
-          redirectUrlComplete: webUrl("/"),
+          redirectUrlComplete: webUrl(resumePath),
           unsafeMetadata: name.trim() ? { displayName: name.trim() } : undefined,
         });
 
         if (signUp.createdSessionId) {
           await setActive({ session: signUp.createdSessionId });
         }
-        router.replace("/");
+        const destination = await consumeAuthResumePath(resumeParam);
+        router.replace(destination as Href);
         return;
       }
 
@@ -172,13 +236,17 @@ export default function SignupScreen() {
 
       if (result.createdSessionId && result.setActive) {
         await result.setActive({ session: result.createdSessionId });
-        router.replace("/");
+        const destination = await consumeAuthResumePath(resumeParam);
+        router.replace(destination as Href);
         return;
       }
 
       setMessage("Google 회원가입 창이 닫혀 세션이 생성되지 않았습니다.");
     } catch (error) {
-      setMessage(errorMessage(error));
+      setMessage(mapAuthFormError(
+        error,
+        "Google 회원가입을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      ).message);
     } finally {
       setGooglePending(false);
     }
@@ -186,8 +254,14 @@ export default function SignupScreen() {
 
   const verifyCode = async () => {
     if (!isLoaded || pending) return;
-    setPending(true);
     setMessage(null);
+    const validation = validateSignupFields({ code, email, needsCode: true, password });
+    setFieldErrors((current) => ({ ...current, ...validation.errors }));
+    if (validation.firstInvalidField) {
+      requestFieldFocus(validation.firstInvalidField);
+      return;
+    }
+    setPending(true);
 
     try {
       const result = await signUp.attemptEmailAddressVerification({ code: code.trim() });
@@ -198,18 +272,45 @@ export default function SignupScreen() {
 
       setMessage("이메일 인증이 아직 완료되지 않았습니다.");
     } catch (error) {
-      setMessage(errorMessage(error));
+      showAuthError(error, "이메일 인증을 완료하지 못했습니다. 다시 시도해 주세요.");
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <Screen>
+    <FormScreen
+      errorFocusRef={
+        errorFocus.field === "email"
+          ? emailRef
+          : errorFocus.field === "password"
+            ? passwordRef
+            : codeRef
+      }
+      errorFocusRequest={errorFocus.request}
+      footer={
+        needsCode ? (
+          <Button disabled={!isLoaded || pending} onPress={verifyCode}>
+            {pending ? "인증 중..." : "이메일 인증"}
+          </Button>
+        ) : (
+          <Button disabled={!isLoaded || pending} onPress={createAccount}>
+            {pending ? "가입 중..." : "회원가입"}
+          </Button>
+        )
+      }
+      testID="signup-form-screen"
+    >
       <Stack>
-        <Kicker>Signup</Kicker>
+        <Kicker>회원가입</Kicker>
         <Heading>HairFit 계정 만들기</Heading>
-        <BodyText>계정을 만든 뒤 간단한 설정을 완료하면 모바일에서 헤어 생성과 스타일 추천을 바로 시작할 수 있습니다.</BodyText>
+        <BodyText>
+          {resumeTarget
+            ? resumeTarget.kind === "salon-match"
+              ? "계정을 만든 뒤 확인 중이던 살롱 연결 동의 화면으로 돌아갑니다. 기존 HairFit 계정이 있다면 그 계정으로 로그인해 주세요."
+              : "계정을 만든 뒤 안내받은 헤어 생성 결과로 바로 돌아갑니다. 결과 소유 계정이 따로 있다면 그 계정으로 로그인해 주세요."
+            : "계정을 만든 뒤 간단한 설정을 완료하면 모바일에서 헤어 생성과 스타일 추천을 바로 시작할 수 있습니다."}
+        </BodyText>
       </Stack>
 
       <Panel>
@@ -220,44 +321,57 @@ export default function SignupScreen() {
           <TextField label="이름" onChangeText={setName} placeholder="이름" value={name} />
           <TextField
             autoCapitalize="none"
+            error={fieldErrors.email}
             keyboardType="email-address"
             label="이메일"
-            onChangeText={setEmail}
+            onChangeText={(value) => {
+              setEmail(value);
+              clearFieldError("email");
+            }}
             placeholder="you@example.com"
+            ref={emailRef}
             value={email}
           />
           <TextField
+            error={fieldErrors.password}
             label="비밀번호"
-            onChangeText={setPassword}
+            onChangeText={(value) => {
+              setPassword(value);
+              clearFieldError("password");
+            }}
             placeholder="비밀번호"
+            ref={passwordRef}
             secureTextEntry
             value={password}
           />
           {needsCode ? (
             <TextField
               autoCapitalize="none"
+              error={fieldErrors.code}
               keyboardType="number-pad"
               label="이메일 인증 코드"
-              onChangeText={setCode}
+              onChangeText={(value) => {
+                setCode(value);
+                clearFieldError("code");
+              }}
               placeholder="123456"
+              ref={codeRef}
               value={code}
             />
           ) : null}
-          {message ? <BodyText>{message}</BodyText> : null}
-          {needsCode ? (
-            <Button disabled={!code.trim() || pending} onPress={verifyCode}>
-              {pending ? "인증 중..." : "이메일 인증"}
-            </Button>
-          ) : (
-            <Button disabled={!email.trim() || !password || pending} onPress={createAccount}>
-              {pending ? "가입 중..." : "회원가입"}
-            </Button>
-          )}
-          <Button variant="secondary" onPress={() => router.push("/login")}>
+          {message ? (
+            <View accessibilityLiveRegion="polite">
+              <BodyText>{message}</BodyText>
+            </View>
+          ) : null}
+          <Button
+            variant="secondary"
+            onPress={() => router.push(buildAuthRoute("/login", resumeTarget) as Href)}
+          >
             이미 계정이 있어요
           </Button>
         </Stack>
       </Panel>
-    </Screen>
+    </FormScreen>
   );
 }

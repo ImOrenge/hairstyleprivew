@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminApiContext } from "../../../../lib/admin-auth";
+import { loadGenerationNotificationOperations } from "../../../../lib/generation-notification-operations";
 
 const RANGES = [7, 30, 90] as const;
 type RangeDays = (typeof RANGES)[number];
@@ -182,6 +183,16 @@ export async function GET(request: Request) {
     stage,
     count: leads.filter((lead) => lead.stage === stage).length,
   }));
+  const notificationOperations = await loadGenerationNotificationOperations(context.supabase).catch((error) => {
+    console.error("[admin/stats] notification operations unavailable", {
+      error: error instanceof Error ? error.message : "Unknown notification operations error",
+    });
+    return {
+      health: "unavailable" as const,
+      sampledAt: new Date().toISOString(),
+      error: "notification_operations_unavailable",
+    };
+  });
 
   return NextResponse.json(
     {
@@ -215,6 +226,7 @@ export async function GET(request: Request) {
           } => Boolean(item),
         ),
       leadStages: leadStageCounts,
+      notificationOperations,
     },
     { status: 200 },
   );

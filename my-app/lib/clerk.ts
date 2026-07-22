@@ -1,3 +1,5 @@
+import { validateResumeTargetPath } from "@hairfit/shared/auth/resume-target";
+
 type KeyType = "test" | "live" | null;
 
 export type ClerkConfigIssue = "missing_keys" | "mismatched_key_types" | "non_live_production_keys" | null;
@@ -193,18 +195,61 @@ export function getClerkSignUpPath() {
   return "/signup";
 }
 
+const CLERK_RETURN_PATH_ORIGIN = "https://hairfit.invalid";
+const MAX_CLERK_RETURN_PATH_LENGTH = 2048;
+const UNSAFE_RETURN_PATH_CHARACTERS = /[\\\u0000-\u001f\u007f]/;
+
+function decodeReturnPathForSafety(value: string) {
+  let decoded = value;
+
+  try {
+    for (let index = 0; index < 2; index += 1) {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) break;
+      decoded = next;
+    }
+  } catch {
+    return null;
+  }
+
+  return decoded;
+}
+
+export function getSafeClerkReturnPath(returnBackPath?: string | null) {
+  const normalized = (returnBackPath ?? "").trim();
+  if (!normalized || normalized.length > MAX_CLERK_RETURN_PATH_LENGTH) return null;
+  if (!normalized.startsWith("/") || normalized.startsWith("//")) return null;
+  if (UNSAFE_RETURN_PATH_CHARACTERS.test(normalized)) return null;
+
+  const decoded = decodeReturnPathForSafety(normalized);
+  if (!decoded || decoded.startsWith("//") || UNSAFE_RETURN_PATH_CHARACTERS.test(decoded)) return null;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(normalized, CLERK_RETURN_PATH_ORIGIN);
+  } catch {
+    return null;
+  }
+
+  if (parsed.origin !== CLERK_RETURN_PATH_ORIGIN || parsed.username || parsed.password) return null;
+
+  let pathname = parsed.pathname;
+  if (pathname.startsWith("/generate/")) {
+    const generationPath = validateResumeTargetPath(pathname);
+    if (!generationPath) return null;
+    pathname = generationPath;
+  }
+
+  return `${pathname}${parsed.search}${parsed.hash}`;
+}
+
 export function buildSignInRedirectUrl(returnBackPath?: string | null) {
   const basePath = getClerkSignInPath();
-  const normalized = (returnBackPath ?? "").trim();
-  if (!normalized) {
+  const safeReturnPath = getSafeClerkReturnPath(returnBackPath);
+  if (!safeReturnPath) {
     return basePath;
   }
 
-  // Prevent external open redirects; only allow app-relative paths.
-  if (!normalized.startsWith("/")) {
-    return basePath;
-  }
-
-  const encoded = encodeURIComponent(normalized);
+  const encoded = encodeURIComponent(safeReturnPath);
   return `${basePath}?redirect_url=${encoded}`;
 }

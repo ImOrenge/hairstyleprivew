@@ -18,39 +18,32 @@ function assertAbsent(source, expected, label) {
 
 const mobileBilling = read("apps/hairfit-app/app/billing.tsx");
 const mobileComplete = read("apps/hairfit-app/app/payments/complete.tsx");
+const paymentResume = read("apps/hairfit-app/lib/payment-resume.ts");
 const apiClient = read("packages/api-client/src/index.ts");
 const shared = read("packages/shared/src/index.ts");
 const paymentsPortone = read("packages/payments-portone/src/index.ts");
 const mobilePrepareRoute = read("my-app/app/api/mobile/payments/prepare/route.ts");
 const mobileCompleteRoute = read("my-app/app/api/mobile/payments/complete/route.ts");
+const mobileDashboardRoute = read("my-app/app/api/mobile/dashboard/route.ts");
 const mobileSync = read("scripts/mobile-sync-verify.mjs");
 
-const planBlockMatch = mobileBilling.match(/const plans:[\s\S]*?\n\];/);
-assert.ok(planBlockMatch, "mobile billing screen must expose a local plan list");
-const planBlock = planBlockMatch[0];
-for (const expected of [
-  'key: "basic"',
-  'price: "9,900 KRW"',
-  'credits: "80 credits"',
-  'key: "standard"',
-  'price: "19,900 KRW"',
-  'credits: "200 credits"',
-  'key: "pro"',
-  'price: "49,900 KRW"',
-  'credits: "600 credits"',
-]) {
-  assertIncludes(planBlock, expected.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), `mobile billing plan list must include ${expected}`);
-}
-assertAbsent(planBlock, 'key:\\s*"salon"', "mobile self-serve plan list must not expose Salon");
+assertIncludes(mobileBilling, 'dashboard\\?\\.customer\\.billingPlans \\?\\? \\[\\]', "mobile billing must render the server-provided plan catalog");
+assertIncludes(mobileBilling, 'plan\\.priceKrw\\.toLocaleString\\("ko-KR"\\)', "mobile billing must render the server-provided price");
+assertIncludes(mobileBilling, 'plan\\.credits\\.toLocaleString\\("ko-KR"\\)', "mobile billing must render the server-provided credits");
+assertAbsent(mobileBilling, '9,900원|19,900원|49,900원', "mobile billing must not hardcode server-configurable plan prices");
+assertIncludes(mobileDashboardRoute, 'billingPlans: getSelfServeBillingPlans\\(\\)', "mobile dashboard must expose the server-owned self-serve catalog");
 
 assertIncludes(mobileBilling, 'Payment\\s*}\\s*from "@portone/react-native-sdk"', "mobile billing screen must use PortOne React Native SDK");
 assertIncludes(mobileBilling, 'prepareMobilePayment\\(\\{[\\s\\S]*?plan:\\s*selectedPlan,[\\s\\S]*?appScheme:\\s*"hairfit"', "mobile billing screen must prepare a server-side payment for the selected plan");
 assertIncludes(mobileBilling, 'toPortoneSdkPaymentRequest\\(prepared\\)', "mobile billing screen must pass prepared server data to the PortOne SDK");
 assertIncludes(mobileBilling, 'normalizePortoneSdkResponse\\(response, prepared\\.paymentId\\)', "mobile billing screen must normalize SDK completion with the prepared paymentId fallback");
-assertIncludes(mobileBilling, 'completeMobilePayment\\(paymentId\\)', "mobile billing screen must verify completed payments server-side");
+assertIncludes(mobileBilling, 'api\\.completeMobilePayment\\(payment\\.paymentId\\)', "mobile billing screen must verify the stored payment server-side");
 
-assertIncludes(mobileComplete, 'useLocalSearchParams<\\{ paymentId\\?: string \\}>\\(\\)', "mobile payment complete route must read paymentId from deep-link params");
-assertIncludes(mobileComplete, 'completeMobilePayment\\(id\\)', "mobile payment complete route must verify deep-linked payments server-side");
+assertIncludes(mobileComplete, 'useLocalSearchParams<\\{[\\s\\S]*?paymentId\\?: string \\| string\\[\\]', "mobile payment complete route must read a guarded paymentId from deep-link params");
+assertIncludes(mobileComplete, 'completePendingPaymentCallback\\(\\{', "mobile payment complete route must delegate to the stored-payment callback contract");
+assertIncludes(mobileComplete, 'completePayment:\\s*\\(storedPaymentId\\) => api\\.completeMobilePayment\\(storedPaymentId\\)', "mobile payment callback must verify only its stored payment server-side");
+assertIncludes(paymentResume, 'callbackPaymentId !== payment\\.paymentId', "payment callback must reject a deep-link ID that differs from the account-owned receipt");
+assertIncludes(paymentResume, 'kind === "cancelled" \\|\\| kind === "failed"', "payment recovery must clear only authoritative terminal provider states");
 
 assertIncludes(apiClient, 'prepareMobilePayment\\(input: \\{ plan: MobilePaymentPlan; appScheme: string \\}\\)', "API client must expose mobile payment prepare");
 assertIncludes(apiClient, '"/api/mobile/payments/prepare"', "API client must call mobile payment prepare route");
@@ -82,6 +75,8 @@ assertIncludes(mobilePrepareRoute, 'isSelfServeBillingPlanKey\\(body\\.plan\\)',
 assertIncludes(mobilePrepareRoute, 'PLAN_AMOUNT_KRW\\[body\\.plan\\]', "mobile prepare route must use server-side amount");
 assertIncludes(mobilePrepareRoute, 'PLAN_CREDITS\\[body\\.plan\\]', "mobile prepare route must use server-side credits");
 assertIncludes(mobilePrepareRoute, 'PLAN_ORDER_NAME\\[body\\.plan\\]', "mobile prepare route must use server-side order name");
+assertIncludes(mobilePrepareRoute, 'requestedAppScheme !== "hairfit"', "mobile prepare route must reject untrusted app schemes");
+assertIncludes(mobilePrepareRoute, 'const appScheme = "hairfit"', "mobile prepare route must use the registered HairFit callback scheme");
 assertIncludes(mobilePrepareRoute, 'status:\\s*"pending"', "mobile prepare route must create a pending transaction");
 assertIncludes(mobilePrepareRoute, 'source:\\s*"mobile"', "mobile prepare route must tag transaction source as mobile");
 assertIncludes(mobilePrepareRoute, '\\$\\{appScheme\\}://payments/complete\\?paymentId=', "mobile prepare route must return an app-scheme completion URL");

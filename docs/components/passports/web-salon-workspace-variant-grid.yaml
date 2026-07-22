@@ -1,0 +1,77 @@
+id: web.salon.workspace-variant-grid
+name: SalonWorkspaceVariantGrid
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/salon/SalonWorkspaceVariantGrid.tsx
+owner: salon-generation-feature
+
+public_api:
+  exports:
+    - SalonWorkspaceVariantGrid
+  props:
+    - canSubmitGeneration
+    - isConfirming
+    - recommendationGrid
+    - selectedVariantId
+    - semantic-command-events
+  events:
+    - onCheckGeneration
+    - onMoveToGeneration
+    - onSelectVariant
+
+dependencies:
+  internal:
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/Surface.tsx
+    - my-app/hooks/useResultTranslations.ts
+    - my-app/lib/recommendation-types.ts
+  external:
+    - next/image
+    - lucide-react
+  forbidden:
+    - fetch
+    - next-navigation
+    - upload-validation-hook
+    - quote-expiry-hook
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  derived:
+    - variant-status-label
+    - variant-length-label
+    - selected-card-state
+    - Korean-model-copy-with-fail-closed-fallback
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  variant_selection:
+    control: native-button
+    selected: aria-pressed
+    disabled: native-disabled
+  images:
+    alt: variant-label
+  actions: native-button
+
+test_surface:
+  contract: my-app/lib/workspace-decomposition.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  compatible_change_requires:
+    - passport-update
+    - workspace-contract-test
+    - web-typecheck
+
+promotion_blockers:
+  - salon-crm-specific-copy
+  - no-authenticated-visual-regression-evidence
+  - no-keyboard-interaction-evidence

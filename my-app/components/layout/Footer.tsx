@@ -37,7 +37,7 @@ export function Footer() {
           <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
             {footerBusinessInfo.rows.map((item) => (
               <div key={item.label} className="flex min-w-0 flex-wrap gap-x-1.5">
-                <dt className="font-bold text-[var(--app-subtle)]">{item.label}</dt>
+                <dt className="font-bold text-[var(--app-muted)]">{item.label}</dt>
                 <dd className="min-w-0 break-words">
                   {item.href ? (
                     <a href={item.href} className="underline-offset-4 hover:underline">

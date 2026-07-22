@@ -113,7 +113,7 @@ export function PersonalColorResultDetails({ result }: { result: PersonalColorRe
     <Stack>
       <Card>
         <Stack gap={8}>
-          <Kicker>Personal Color Result</Kicker>
+          <Kicker>퍼스널컬러 결과</Kicker>
           <Heading>{formatPersonalColor(result)}</Heading>
           <BodyText>{result.summary}</BodyText>
           <BodyText>신뢰도 {Math.round(result.confidence * 100)}%</BodyText>

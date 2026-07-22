@@ -1,0 +1,83 @@
+id: web.styler.new-feature
+name: StylerNewFeature
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/styler/StylerNewFeature.tsx
+related_source:
+  - my-app/components/styler/useStylerNewController.ts
+  - my-app/components/styler/StylerNewView.tsx
+  - my-app/components/styler/stylerNewModel.ts
+owner: styler-feature
+
+public_api:
+  exports:
+    - StylerNewFeature
+  props: []
+  events:
+    - profile-load-and-save
+    - hairstyle-selection
+    - recommendation-command
+    - quote-refresh
+    - lookbook-generation-command
+    - billing-and-session-navigation
+
+boundaries:
+  feature:
+    owns:
+      - controller-and-view-composition
+  controller:
+    source: my-app/components/styler/useStylerNewController.ts
+    owns:
+      - route-query-hydration
+      - fetch-and-abort-control
+      - wizard-state
+      - recommendation-and-generation-commands
+      - Phase-03-quote-normalization
+      - route-navigation
+  view:
+    source: my-app/components/styler/StylerNewView.tsx
+    delegates:
+      - model-copy-localization: my-app/hooks/useResultTranslations.ts
+    forbidden:
+      - fetch
+      - next-navigation
+      - API-client
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+
+state:
+  controller_owned:
+    - current-step
+    - profile-and-selected-variant
+    - genre-and-recommendation
+    - quote-and-command-status
+    - modal-state
+  view_owned:
+    - translation-cache-refresh-via-shared-hook
+
+a11y_contract:
+  step_controls: native-button
+  hair_modal: web.styler.hair-selection-modal
+
+test_surface:
+  structure: my-app/lib/styler-decomposition.test.ts
+  paid_action: my-app/lib/paid-action-quote.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  compatible_change_requires:
+    - passport-update
+    - styler-decomposition-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - authenticated-Styler-interaction-test
+
+promotion_blockers:
+  - no-authenticated-browser-interaction-evidence
+  - no-small-viewport-visual-regression-evidence
+  - no-durable-Styler-worker

@@ -14,6 +14,14 @@ interface ActorRoleRow {
   account_type?: string | null;
 }
 
+async function loadActorRoleRow(supabase: SupabaseAdminClient, userId: string) {
+  return supabase
+    .from("users")
+    .select("account_type")
+    .eq("id", userId)
+    .maybeSingle<ActorRoleRow>();
+}
+
 function buildSignInRedirect(path: string) {
   return `/login?redirect_url=${encodeURIComponent(path)}`;
 }
@@ -49,30 +57,35 @@ export async function getCurrentActor() {
   }
 
   const supabase = getSupabaseAdminClient();
-  const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
-  if (ensured.error) {
+  let roleResult = await loadActorRoleRow(supabase, userId);
+  if (roleResult.error) {
     return {
       ok: false as const,
       status: 500 as const,
-      error: ensured.error.message,
+      error: roleResult.error.message,
     };
   }
 
-  const { data, error } = await supabase
-    .from("users")
-    .select("account_type")
-    .eq("id", userId)
-    .maybeSingle<ActorRoleRow>();
-
-  if (error) {
-    return {
-      ok: false as const,
-      status: 500 as const,
-      error: error.message,
-    };
+  if (!roleResult.data) {
+    const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
+    if (ensured.error) {
+      return {
+        ok: false as const,
+        status: 500 as const,
+        error: ensured.error.message,
+      };
+    }
+    roleResult = await loadActorRoleRow(supabase, userId);
+    if (roleResult.error || !roleResult.data) {
+      return {
+        ok: false as const,
+        status: 500 as const,
+        error: roleResult.error?.message ?? "User profile was not found after initialization",
+      };
+    }
   }
 
-  const dbAccountType = isAccountType(data?.account_type) ? data.account_type : null;
+  const dbAccountType = isAccountType(roleResult.data.account_type) ? roleResult.data.account_type : null;
   const accountType = dbAccountType ?? (isDevClerkSalonUserId(userId) ? "salon_owner" : null);
   const actor: RbacActor = {
     userId,

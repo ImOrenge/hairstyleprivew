@@ -1,0 +1,112 @@
+id: native.app.virtualized-list-screen
+name: VirtualizedListScreen
+platform: native
+kind: layout
+status: experimental
+source: apps/hairfit-app/components/app/VirtualizedListScreen.tsx
+owner: hairfit-app-shell
+
+public_api:
+  exports:
+    - VirtualizedListScreen
+    - VirtualizedListScreenProps
+  export_surface:
+    - apps/hairfit-app/lib/ui-native.tsx
+  props:
+    - FlatListProps except renderItem
+    - renderItem: ListRenderItemInfo<ItemT> to ReactElement or null
+    - screenStyle: StyleProp<ViewStyle>
+  slots:
+    - FlatList ListHeaderComponent
+    - FlatList ListEmptyComponent
+    - FlatList ListFooterComponent
+  events:
+    - FlatList event surface
+
+dependencies:
+  internal:
+    - apps/hairfit-app/components/app/AppScreen.tsx
+  external:
+    - react
+    - react-native
+  app_specific:
+    - safe-area-inherited-from-AppScreen
+    - FlatList-is-the-only-scroll-owner
+
+styling:
+  strategy: react-native-stylesheet-plus-consumer-list-styles
+  stylesheet: apps/hairfit-app/components/app/VirtualizedListScreen.tsx#styles
+  tokens: []
+  variants:
+    - consumer-provided-screen-style
+    - consumer-provided-list-style
+  allows_style: true
+  global_css_changes: false
+
+state:
+  owned: []
+  derived:
+    - bounded-render-batch-defaults
+    - consumer-overridable-FlatList-performance-props
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  safe_area:
+    owner: AppScreen
+    edges:
+      - top
+      - bottom
+  scrolling:
+    owner: FlatList
+    nested_scroll_view: forbidden
+    keyboard_taps: handled
+    keyboard_dismiss_mode:
+      ios: interactive
+      android: on-drag
+    automatic_keyboard_insets:
+      ios: true
+      android: false
+  list_semantics:
+    owner: React-Native-FlatList-and-consumer-renderItem
+  loading_empty_error:
+    owner: consumer-through-FlatList-components
+  performance:
+    defaults:
+      initialNumToRender: 8
+      maxToRenderPerBatch: 8
+      updateCellsBatchingPeriod: 50
+      windowSize: 7
+    override_owner: consumer
+
+test_surface:
+  interaction: apps/hairfit-app/__tests__/virtualized-list-screen.test.tsx
+  migration_contract: apps/hairfit-app/__tests__/native-screen-migration.test.js
+  native_typecheck: required
+  native_lint: required
+  production_bundle: required
+  device_smoke: required
+  observed_usage:
+    route_consumer_files: 5
+    representative_routes:
+      - apps/hairfit-app/app/admin/members.tsx
+      - apps/hairfit-app/app/salon/customers/index.tsx
+
+change_policy:
+  current_gate: compatible
+  compatible_change_requires:
+    - usage-search
+    - passport-update
+    - native-typecheck
+    - interaction-test
+  behavioral_change_requires:
+    - pagination-and-refresh-interaction-test
+    - iOS-and-Android-device-check
+  breaking_change_requires:
+    - migration-map-update
+    - all-consumer-update
+
+promotion_blockers:
+  - no-iOS-or-Android-long-list-device-evidence
+  - no-100-plus-live-row-performance-evidence
+  - no-200-percent-dynamic-type-evidence

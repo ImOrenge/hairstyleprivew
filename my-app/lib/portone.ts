@@ -66,6 +66,11 @@ export interface PortOneCancelPaymentResult {
   raw: Record<string, unknown>;
 }
 
+export interface PortOneDeleteBillingKeyResult {
+  deleted: boolean;
+  raw: Record<string, unknown>;
+}
+
 // ─── 환경 설정 ─────────────────────────────────────────────────────────────
 
 export function isPortoneConfigured(): boolean {
@@ -320,6 +325,30 @@ export async function getBillingKey(
     );
   }
   return { status: typeof data.status === "string" ? data.status : "UNKNOWN" };
+}
+
+/** Delete a stored billing key after an immediate subscription termination. */
+export async function deleteBillingKey(
+  billingKey: string,
+  reason = "CUSTOMER_REQUEST",
+): Promise<PortOneDeleteBillingKeyResult> {
+  const url = `${PORTONE_API_BASE}/billing-keys/${encodeURIComponent(billingKey)}`;
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      ...authHeader(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ requester: "CUSTOMER", reason }),
+  });
+  if (response.status === 404) return { deleted: true, raw: {} };
+  const data = await readPortoneJson(response);
+  if (!response.ok) {
+    throw new Error(
+      `PortOne 빌링키 삭제 실패: ${formatPortoneHttpError(response.status, data)}`,
+    );
+  }
+  return { deleted: true, raw: data };
 }
 
 // ─── 플랜별 금액 조회 ──────────────────────────────────────────────────────

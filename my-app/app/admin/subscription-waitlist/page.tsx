@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/Button";
+import { mapWebResponseError } from "../../../lib/web-user-message";
 
 type WaitlistStatus = "pending" | "notified" | "converted" | "dismissed";
 type WaitlistPlanKey = "basic" | "standard" | "pro";
@@ -91,7 +92,7 @@ export default function AdminSubscriptionWaitlistPage() {
     const response = await fetch(listUrl, { cache: "no-store" });
     const data = (await response.json().catch(() => ({}))) as WaitlistListResponse;
     if (!response.ok) {
-      setError(data.error || "웨잇리스트를 불러오지 못했습니다.");
+      setError(mapWebResponseError(response.status, "오픈 알림 신청 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
       setIsLoading(false);
       return;
     }
@@ -111,8 +112,8 @@ export default function AdminSubscriptionWaitlistPage() {
   return (
     <div className="space-y-4 pb-10">
       <header className="rounded-2xl border border-stone-200 bg-white p-5">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">Subscription Waitlist</p>
-        <h1 className="mt-2 text-2xl font-black text-stone-950">구독 웨잇리스트</h1>
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">구독 오픈 알림</p>
+        <h1 className="mt-2 text-2xl font-black text-stone-950">구독 오픈 알림 신청</h1>
         <div className="mt-4 grid gap-3">
           <div className="flex flex-wrap gap-2">
             {statusOptions.map((item) => (
@@ -144,20 +145,20 @@ export default function AdminSubscriptionWaitlistPage() {
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
           {error}
         </div>
       ) : null}
 
       {isLoading ? (
         <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">
-          웨잇리스트를 불러오는 중...
+          오픈 알림 신청 목록을 불러오는 중...
         </p>
       ) : null}
 
       {!isLoading && entries.length === 0 ? (
         <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">
-          표시할 웨잇리스트 신청이 없습니다.
+          표시할 오픈 알림 신청이 없습니다.
         </p>
       ) : null}
 

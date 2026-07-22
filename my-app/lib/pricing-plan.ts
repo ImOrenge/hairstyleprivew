@@ -4,10 +4,15 @@ import {
   getBillingPlanPriceKrw,
   type BillingPlanKey,
 } from "./billing-plan";
+import {
+  ADDITIONAL_AFTERCARE_PROGRAM_CREDITS,
+  HAIRSTYLE_GENERATION_CREDITS,
+  OUTFIT_LOOKBOOK_CREDITS,
+} from "@hairfit/shared/billing/policy-selectors";
 
-export const DEFAULT_CREDITS_PER_STYLE = 10;
-export const DEFAULT_CREDITS_PER_OUTFIT = 20;
-export const DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM = 30;
+export const DEFAULT_CREDITS_PER_STYLE = HAIRSTYLE_GENERATION_CREDITS;
+export const DEFAULT_CREDITS_PER_OUTFIT = OUTFIT_LOOKBOOK_CREDITS;
+export const DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM = ADDITIONAL_AFTERCARE_PROGRAM_CREDITS;
 const DEFAULT_STYLE_COST_USD = 0.16;
 const DEFAULT_TARGET_MARGIN = 0.4;
 const DEFAULT_USD_TO_KRW = 1350;
@@ -58,10 +63,7 @@ function formatKrw(value: number): string {
 export function getPricingEconomics(): PricingEconomics {
   const styleCostUsd = Math.max(0.0001, readEnvNumber("PRICING_STYLE_COST_USD", DEFAULT_STYLE_COST_USD));
   const targetMargin = clamp(readEnvNumber("PRICING_TARGET_MARGIN", DEFAULT_TARGET_MARGIN), 0.05, 0.9);
-  const creditsPerStyle = Math.max(
-    DEFAULT_CREDITS_PER_STYLE,
-    Math.round(readEnvNumber("PRICING_CREDITS_PER_STYLE", DEFAULT_CREDITS_PER_STYLE)),
-  );
+  const creditsPerStyle = DEFAULT_CREDITS_PER_STYLE;
   const usdToKrw = Math.max(1, readEnvNumber("PRICING_USD_TO_KRW", DEFAULT_USD_TO_KRW));
   const safetyMultiplier = clamp(readEnvNumber("PRICING_SAFETY_MULTIPLIER", DEFAULT_SAFETY_MULTIPLIER), 1, 3);
 
@@ -86,17 +88,11 @@ export function getCreditsPerStyle(): number {
 }
 
 export function getCreditsPerOutfit(): number {
-  return Math.max(
-    DEFAULT_CREDITS_PER_OUTFIT,
-    Math.round(readEnvNumber("PRICING_CREDITS_PER_OUTFIT", DEFAULT_CREDITS_PER_OUTFIT)),
-  );
+  return DEFAULT_CREDITS_PER_OUTFIT;
 }
 
 export function getCreditsPerAftercareProgram(): number {
-  return Math.max(
-    DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM,
-    Math.round(readEnvNumber("PRICING_CREDITS_PER_AFTERCARE_PROGRAM", DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM)),
-  );
+  return DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM;
 }
 
 export function getSuggestedPricingTiers(): PricingPackTier[] {

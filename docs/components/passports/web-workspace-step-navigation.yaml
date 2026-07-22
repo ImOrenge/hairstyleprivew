@@ -1,0 +1,130 @@
+id: web.workspace.step-navigation
+name: WorkspaceStepNavigation
+platform: web
+kind: composite
+status: stable
+source: my-app/components/workspace/WorkspaceStepNavigation.tsx
+owner: generation-feature
+
+public_api:
+  exports:
+    - WorkspaceStepNavigation
+    - WorkspaceStepNavigationProps
+    - WorkspaceWizardStep
+  props:
+    - "canOpenGenerate: boolean"
+    - "canOpenProgress: boolean"
+    - "canOpenSelect: boolean"
+    - "currentStep: WorkspaceWizardStep"
+    - "mobileOpen: boolean"
+    - "onStepClick: (step: WorkspaceWizardStep) => void"
+    - "onToggleMobile: () => void"
+  events:
+    - onStepClick
+    - onToggleMobile
+
+dependencies:
+  internal:
+    - my-app/lib/utils.ts
+  external:
+    - lucide-react
+  forbidden:
+    - api-client
+    - next-navigation
+    - generation-store
+    - fetch
+
+styling:
+  strategy: global-css-token-contract-with-utility-internals
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-workspace-step-navigation
+  tokens:
+    - --app-radius-control
+    - --app-radius-panel
+    - --app-border
+    - --app-border-strong
+    - --app-surface
+    - --app-surface-muted
+    - --app-text
+    - --app-muted
+    - --app-inverse
+    - --app-inverse-text
+    - --app-accent-strong
+  inline_styles_allowed:
+    - active-progress-width
+  variants:
+    - desktop
+    - mobile
+  data_contract:
+    data-layout: desktop | mobile
+    data-open: true | false
+    data-active: true | false
+    data-enabled: true | false
+
+state:
+  owned: []
+  derived:
+    - active-step-index
+    - active-progress-percent
+    - step-enabled-state
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  steps:
+    control: native-button
+    disabled: native-disabled
+    current: aria-current-step
+    numbered-label: position-label-description
+  desktop:
+    container: labelled-navigation
+  mobile_toggle:
+    control: native-button
+    expanded: aria-expanded
+    controls: workspace-mobile-steps
+    label: state-specific-aria-label
+  mobile_selection:
+    closes-menu-after-enabled-step-selection: true
+  icons:
+    decorative: aria-hidden
+
+test_surface:
+  contract: my-app/lib/workspace-decomposition.test.ts
+  interaction: tests/web-e2e/workspace-flow-stability.spec.ts
+  accessibility: axe-serious-critical-zero
+  visual:
+    - tests/web-e2e/__screenshots__/workspace-flow-stability.spec.ts/workspace-step-navigation-1024-light.png
+    - tests/web-e2e/__screenshots__/workspace-flow-stability.spec.ts/workspace-step-navigation-320-light.png
+    - tests/web-e2e/__screenshots__/workspace-flow-stability.spec.ts/workspace-step-navigation-375-dark.png
+  observed_usage:
+    - my-app/components/workspace/WorkspaceWizard.tsx
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - workspace-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - workspace-flow-interaction-test
+  style_contract_change_requires:
+    - c-workspace-step-navigation-selector-search
+    - desktop-and-mobile-visual-verification
+
+promotion_evidence:
+  - plain-prop-feature-composite-without-store-route-or-fetch-coupling
+  - production-workspace-and-fail-closed-harness-consumers
+  - explicit-four-step-Korean-label-description-and-native-disabled-contract
+  - aria-current-numbered-accessible-name-and-labelled-navigation
+  - mobile-current-step-summary-and-auto-close-after-selection
+  - global-components-layer-c-workspace-step-navigation-layout-and-state-contract
+  - keyboard-enter-and-axe-serious-critical-zero
+  - 1024px-light-320px-light-and-375px-dark-visual-overflow-and-reachability
+
+promotion_blockers: []
+
+residual_risks:
+  - authenticated-workspace-data-transition-visual-not-yet-recorded
+  - physical-screen-reader-and-mobile-safe-area-hardware-not-yet-verified

@@ -13,6 +13,8 @@ export interface PortOnePaymentResult {
   status: PortOnePaymentStatus;
   orderName: string;
   amountTotal: number;
+  amountCancelled?: number;
+  amountCancellable?: number;
   currency: string;
   paidAt: string | null;
   failureCode: string | null;
@@ -36,6 +38,20 @@ export function parsePortonePaymentResult(
         ? paymentData.pgTxId
         : null;
   const paidAt = typeof paymentData.paidAt === "string" ? paymentData.paidAt : null;
+  const amountTotal =
+    typeof amount?.total === "number"
+      ? amount.total
+      : typeof paymentData.totalAmount === "number"
+        ? paymentData.totalAmount
+        : 0;
+  const amountCancelled =
+    typeof amount?.cancelled === "number"
+      ? amount.cancelled
+      : typeof amount?.canceled === "number"
+        ? amount.canceled
+        : typeof paymentData.cancelledAmount === "number"
+          ? paymentData.cancelledAmount
+          : 0;
   const status =
     typeof paymentData.status === "string"
       ? (paymentData.status as PortOnePaymentStatus)
@@ -48,12 +64,12 @@ export function parsePortonePaymentResult(
     transactionId,
     status,
     orderName: typeof paymentData.orderName === "string" ? paymentData.orderName : "",
-    amountTotal:
-      typeof amount?.total === "number"
-        ? amount.total
-        : typeof paymentData.totalAmount === "number"
-          ? paymentData.totalAmount
-          : 0,
+    amountTotal,
+    amountCancelled,
+    amountCancellable:
+      typeof amount?.cancellable === "number"
+        ? amount.cancellable
+        : Math.max(0, amountTotal - amountCancelled),
     currency:
       typeof amount?.currency === "string"
         ? amount.currency

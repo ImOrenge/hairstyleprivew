@@ -14,9 +14,13 @@
       ],
       "@hairfit/ui-native": [
         "lib/ui-native.tsx"
+      ],
+      "@hairfit/ui-native/primitives": [
+        "../../packages/ui-native/src/index.tsx"
       ]
     },
-    "strict": true
+    "strict": true,
+    "types": ["jest"]
   },
   "include": [
     "**/*.ts",

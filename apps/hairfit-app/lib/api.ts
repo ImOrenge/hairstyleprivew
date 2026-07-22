@@ -27,15 +27,19 @@ function readApiBaseUrl() {
   return Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://localhost:3000";
 }
 
+export function getHairfitApiBaseUrl() {
+  return readApiBaseUrl();
+}
+
 export function useHairfitApi() {
   const { getToken } = useAuth();
-  const baseUrl = readApiBaseUrl();
+  const baseUrl = getHairfitApiBaseUrl();
 
   return useMemo(
     () =>
       new HairfitApiClient({
         baseUrl,
-        getAuthToken: () => getToken(),
+        getAuthToken: (options) => getToken(options),
       }),
     [baseUrl, getToken],
   );

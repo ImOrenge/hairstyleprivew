@@ -1,0 +1,74 @@
+id: native.billing.paid-action-quote-card
+name: PaidActionQuoteCard
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/components/billing/PaidActionQuoteCard.tsx
+owner: billing-feature
+
+public_api:
+  exports:
+    - PaidActionQuoteCard
+    - NativePaidActionQuoteCardProps
+    - useNativePaidActionQuoteExpired
+  props:
+    - quote: PaidActionQuote | null
+    - "loading?: boolean"
+    - "error?: string | null"
+    - payerLabel: string
+    - onRefresh: () => void
+    - onOpenBilling: () => void
+
+dependencies:
+  internal:
+    - packages/ui-native/src/index.tsx
+    - packages/shared/src/billing/paid-action.ts
+  external:
+    - react
+    - react-native
+  forbidden:
+    - api-clients
+    - route-state
+
+styling:
+  strategy: react-native-stylesheet-plus-ui-native-tokens
+  stylesheet: apps/hairfit-app/components/billing/PaidActionQuoteCard.tsx#styles
+  tokens:
+    - theme.danger
+    - theme.dangerSoft
+    - theme.accent
+    - theme.accentSoft
+
+state:
+  owned:
+    - expiry-timer
+  external_store: false
+side_effects:
+  - expiry-timeout
+
+a11y_contract:
+  errors: accessibilityLiveRegion-assertive
+  insufficient_balance: accessibilityLiveRegion-polite
+  controls: ui-native-Button
+
+test_surface:
+  unit: shared-quote-normalizer
+  interaction: required
+  device_smoke: required
+  visual: required
+  observed_usage:
+    - apps/hairfit-app/app/generate.tsx
+    - apps/hairfit-app/app/result/[id].tsx
+    - apps/hairfit-app/app/styler/[id].tsx
+    - apps/hairfit-app/app/styler/new.tsx
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+  behavioral_change_requires:
+    - interaction-verification
+
+promotion_blockers:
+  - no-device-or-visual-evidence

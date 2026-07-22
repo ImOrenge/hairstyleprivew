@@ -1,0 +1,111 @@
+id: web.ui.inline-alert
+name: InlineAlert
+platform: web
+kind: feedback
+status: stable
+source: my-app/components/ui/InlineAlert.tsx
+owner: web-ui
+
+public_api:
+  exports:
+    - InlineAlert
+    - InlineAlertProps
+    - InlineAlertTone
+  props:
+    - tone: info | success | warning | danger
+    - title: ReactNode
+    - action: ReactNode
+    - children: ReactNode
+    - inherited: HTMLAttributes<HTMLDivElement>
+
+dependencies:
+  internal:
+    - my-app/lib/utils.ts#cn
+  external:
+    - react
+  forbidden:
+    - feature-stores
+    - api-clients
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-inline-alert
+  tokens:
+    - --app-border
+    - --app-surface-muted
+    - --app-text
+    - --app-muted
+    - --app-success
+    - --app-success-bg
+    - --app-warning
+    - --app-warning-bg
+    - --app-danger
+    - --app-danger-bg
+  variants:
+    - info
+    - success
+    - warning
+    - danger
+  data_contract:
+    data-tone: info | success | warning | danger
+    data-state: visible
+  allows_className: true
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  info-success-warning: role-status-aria-live-polite
+  danger: role-alert-aria-live-assertive
+  updates: aria-atomic-true-by-default
+  custom_role: inherited-role-overrides-default
+  custom_live_and_atomic: inherited-attributes-override-defaults
+
+test_surface:
+  unit:
+    - my-app/lib/form-feedback-stability.test.ts
+    - my-app/lib/global-css-contract.test.ts
+  browser:
+    - tests/web-e2e/form-feedback-stability.spec.ts
+  interaction: passing
+  visual: passing
+  observed_usage:
+    - my-app/components/ui/AsyncBoundary.tsx
+    - my-app/components/billing/PaidActionQuoteCard.tsx
+    - my-app/components/workspace/WorkspaceGenerationSubmission.tsx
+    - my-app/components/aftercare/AftercareConfirmDialog.tsx
+    - my-app/app/result/[id]/page.tsx
+    - my-app/components/result/ComparisonView.tsx
+    - my-app/components/result/FeedbackModal.tsx
+    - my-app/components/payments/SubscriptionWaitlistForm.tsx
+    - my-app/components/styler/StylerNewView.tsx
+    - my-app/components/styler/StylerSessionView.tsx
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+  style_contract_change_requires:
+    - c-inline-alert-selector-search
+    - visual-verification
+
+promotion_evidence:
+  - fail-closed-production-component-harness
+  - all-four-tone-role-and-live-region-contracts
+  - polite-and-assertive-atomic-update-contracts
+  - keyboard-retry-interaction
+  - axe-serious-critical-zero-in-light-and-dark
+  - 320px-light-and-375px-dark-visual-regression
+  - public-b2b-submit-and-generation-status-user-e2e
+
+promotion_blockers: []

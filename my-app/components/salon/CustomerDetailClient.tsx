@@ -4,12 +4,16 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Clock3, LinkIcon, MessageSquarePlus, ScissorsLineDashed, Sparkles } from "lucide-react";
 import { Button } from "../ui/Button";
+import { ConfirmActionDialog } from "../ui/ConfirmActionDialog";
 import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
+import { mapWebResponseError } from "../../lib/web-user-message";
 import type {
   SalonAftercareChannel,
   SalonAftercareTask,
   SalonCustomer,
+  SalonConnectionSummary,
   SalonLinkedMember,
+  SalonMemberHairRecordSummary,
   SalonMemberGenerationSummary,
   SalonVisit,
 } from "../../lib/salon-crm-types";
@@ -20,6 +24,8 @@ interface DetailResponse {
   aftercareTasks?: SalonAftercareTask[];
   linkedMember?: SalonLinkedMember | null;
   linkedMemberGenerations?: SalonMemberGenerationSummary[];
+  linkedMemberHairRecords?: SalonMemberHairRecordSummary[];
+  connection?: SalonConnectionSummary | null;
   error?: string;
 }
 
@@ -62,6 +68,10 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
   const [aftercareTasks, setAftercareTasks] = useState<SalonAftercareTask[]>([]);
   const [linkedMember, setLinkedMember] = useState<SalonLinkedMember | null>(null);
   const [linkedMemberGenerations, setLinkedMemberGenerations] = useState<SalonMemberGenerationSummary[]>([]);
+  const [linkedMemberHairRecords, setLinkedMemberHairRecords] = useState<SalonMemberHairRecordSummary[]>([]);
+  const [connection, setConnection] = useState<SalonConnectionSummary | null>(null);
+  const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -107,6 +117,8 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
       setAftercareTasks(data.aftercareTasks || []);
       setLinkedMember(data.linkedMember || null);
       setLinkedMemberGenerations(data.linkedMemberGenerations || []);
+      setLinkedMemberHairRecords(data.linkedMemberHairRecords || []);
+      setConnection(data.connection || null);
       setProfileForm({
         name: data.customer.name,
         phone: data.customer.phone,
@@ -118,7 +130,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
         nextFollowUpAt: toLocalInputValue(data.customer.nextFollowUpAt),
       });
     } else {
-      setError(data.error || "고객 정보를 불러오지 못했습니다.");
+      setError(mapWebResponseError(response.status, "고객 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
     }
 
     setIsLoading(false);
@@ -150,7 +162,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
     if (response.ok && data.customer) {
       setCustomer(data.customer);
     } else {
-      setError(data.error || "고객 정보를 저장하지 못했습니다.");
+      setError(mapWebResponseError(response.status, "고객 정보를 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요."));
     }
 
     setIsSaving(false);
@@ -174,8 +186,6 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(visitForm),
     });
-    const data = (await response.json().catch(() => ({}))) as { error?: string };
-
     if (response.ok) {
       setVisitForm({
         visitedAt: toLocalInputValue(new Date().toISOString()),
@@ -186,7 +196,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
       });
       await loadDetails();
     } else {
-      setError(data.error || "방문 기록을 추가하지 못했습니다.");
+      setError(mapWebResponseError(response.status, "방문 기록을 추가하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요."));
     }
 
     setIsSaving(false);
@@ -246,6 +256,25 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
     setIsSaving(false);
   }
 
+  async function disconnectMember() {
+    if (!connection || isDisconnecting || isAdminReadOnly) return;
+    setIsDisconnecting(true);
+    setError(null);
+
+    const response = await fetch(`/api/salon/matches/${encodeURIComponent(connection.id)}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: "salon_requested" }),
+    });
+    if (response.ok) {
+      setDisconnectConfirmOpen(false);
+      await loadDetails();
+    } else {
+      setError(mapWebResponseError(response.status, "회원 연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+    }
+    setIsDisconnecting(false);
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-16 pt-6 sm:px-6">
       <header className="flex flex-col gap-3 border-b border-stone-200 pb-5 md:flex-row md:items-end md:justify-between">
@@ -295,7 +324,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
       ) : null}
 
       {error ? (
-        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+        <div role="alert" className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
           {error}
         </div>
       ) : null}
@@ -378,11 +407,24 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
                 <p className="truncate text-sm font-semibold text-emerald-950">{linkedMember.displayName}</p>
                 <p className="mt-1 truncate text-xs text-emerald-700">{linkedMember.email || "-"}</p>
               </div>
+              {connection ? (
+                <div className="mt-3 space-y-3">
+                  <p className="text-xs leading-5 text-stone-500">동의: {formatDateTime(connection.consentedAt)} · 버전 {connection.consentVersion}</p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setDisconnectConfirmOpen(true)}
+                    disabled={isAdminReadOnly}
+                  >
+                    회원 연결 해제
+                  </Button>
+                </div>
+              ) : null}
             </section>
           ) : null}
         </aside>
 
-        <main className="space-y-4">
+        <div className="space-y-4">
           <section className="rounded-md border border-stone-200 bg-white p-4">
             <div className="flex items-center gap-2">
               <ScissorsLineDashed className="h-4 w-4 text-stone-500" />
@@ -465,6 +507,22 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
             </section>
           ) : null}
 
+          {linkedMember && linkedMemberHairRecords.length > 0 ? (
+            <section className="rounded-md border border-stone-200 bg-white">
+              <div className="border-b border-stone-200 px-4 py-3">
+                <h2 className="text-sm font-bold text-stone-950">회원이 확정한 헤어 기록</h2>
+              </div>
+              <div className="divide-y divide-stone-100">
+                {linkedMemberHairRecords.map((record) => (
+                  <article key={record.id} className="px-4 py-4">
+                    <p className="text-sm font-semibold text-stone-950">{record.styleName}</p>
+                    <p className="mt-1 text-xs text-stone-500">{record.serviceType} · {record.serviceDate}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className="rounded-md border border-stone-200 bg-white">
             <div className="border-b border-stone-200 px-4 py-3">
               <h2 className="text-sm font-bold text-stone-950">방문 타임라인</h2>
@@ -507,7 +565,7 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
               ))}
             </div>
           </section>
-        </main>
+        </div>
 
         <aside className="space-y-4">
           <section className="rounded-md border border-stone-200 bg-white p-4">
@@ -591,6 +649,18 @@ export function CustomerDetailClient({ customerId }: { customerId: string }) {
           </section>
         </aside>
       </div>
+      <ConfirmActionDialog
+        open={disconnectConfirmOpen}
+        onOpenChange={setDisconnectConfirmOpen}
+        onConfirm={() => void disconnectMember()}
+        title="회원 연결을 해제할까요?"
+        description="해제 즉시 회원 프로필과 HairFit 생성·확정 기록을 조회할 수 없습니다. 살롱에서 작성한 방문·상담 기록은 일반 고객 기록으로 유지됩니다."
+        confirmLabel="연결 해제"
+        pendingLabel="해제 중…"
+        isPending={isDisconnecting}
+        tone="danger"
+        target={linkedMember?.displayName}
+      />
     </div>
   );
 }

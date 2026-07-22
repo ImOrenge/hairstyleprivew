@@ -7,22 +7,26 @@ import {
   Heading,
   Kicker,
   Panel,
-  Screen,
   Stack,
   colors,
 } from "@hairfit/ui-native";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
+import { AppScreen } from "../components/app/AppScreen";
 import {
   FaceScanOverlay,
   PersonalColorDiagnosisProgress,
   PersonalColorSwatchAnalysisColumn,
 } from "../components/PersonalColorDiagnosisProgress";
 import { PersonalColorResultDetails } from "../components/PersonalColorResultDetails";
+import { PhotoLibraryPermissionRecovery } from "../components/app/PhotoLibraryPermissionRecovery";
 import { useHairfitApi } from "../lib/api";
 import { useGenerationFlow } from "../lib/generation-flow";
+import { mapMobileUserError } from "../lib/mobile-user-message";
+import { getPhotoLibraryPermissionMessage } from "../lib/photo-library-permission";
+import { usePhotoLibraryPermissionRecovery } from "../hooks/usePhotoLibraryPermissionRecovery";
 
 type PersonalColorSource = "upload" | "mypage";
 
@@ -43,6 +47,11 @@ export default function PersonalColorScreen() {
   const [result, setResult] = useState<PersonalColorResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const {
+    openPermissionSettings,
+    photoPermissionRequiresSettings,
+    resolvePhotoLibraryPermission,
+  } = usePhotoLibraryPermissionRecovery();
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -62,12 +71,29 @@ export default function PersonalColorScreen() {
     return flow.imageDataUrl ? "/generate" : "/upload";
   }, [flow.imageDataUrl, source]);
 
+  const handleOpenPermissionSettings = useCallback(async () => {
+    const opened = await openPermissionSettings();
+    setMessage(opened
+      ? "앱 설정에서 사진 권한을 허용한 뒤 HairFit으로 돌아와 다시 선택해 주세요."
+      : "앱 설정을 열지 못했습니다. 기기 설정에서 HairFit의 사진 권한을 직접 허용해 주세요.");
+  }, [openPermissionSettings]);
+
   const pickImage = async () => {
     if (isAnalyzing) return;
 
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      setMessage("Photo library permission is required.");
+    let permission;
+    try {
+      permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    } catch (error) {
+      setMessage(mapMobileUserError(
+        error,
+        "사진 보관함 권한을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      ));
+      return;
+    }
+    const permissionState = resolvePhotoLibraryPermission(permission);
+    if (permissionState !== "granted") {
+      setMessage(getPhotoLibraryPermissionMessage(permissionState));
       return;
     }
 
@@ -80,13 +106,13 @@ export default function PersonalColorScreen() {
     });
 
     if (pickerResult.canceled) {
-      setMessage("Image selection was cancelled.");
+      setMessage("사진 선택을 취소했습니다.");
       return;
     }
 
     const asset = pickerResult.assets[0];
     if (!asset?.uri || !asset.base64) {
-      setMessage("Could not read the selected image.");
+      setMessage("선택한 사진을 읽지 못했습니다. 다른 사진으로 다시 시도해 주세요.");
       return;
     }
 
@@ -113,9 +139,13 @@ export default function PersonalColorScreen() {
     try {
       const analyzed = await api.analyzePersonalColor(imageDataUrl);
       setResult(analyzed.personalColor);
-      setMessage("Personal color result was saved.");
+      setMessage("퍼스널컬러 진단 결과를 저장했습니다.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to analyze personal color.");
+      setMessage(mapMobileUserError(
+        error,
+        "퍼스널컬러를 진단하지 못했습니다. 사진을 확인하고 다시 시도해 주세요.",
+        "photo",
+      ));
     } finally {
       setIsAnalyzing(false);
     }
@@ -123,26 +153,26 @@ export default function PersonalColorScreen() {
 
   if (isLoaded && !isSignedIn) {
     return (
-      <Screen>
+      <AppScreen>
         <Stack>
-          <Kicker>Personal Color</Kicker>
+          <Kicker>퍼스널컬러</Kicker>
           <Heading>로그인이 필요합니다</Heading>
           <BodyText>퍼스널컬러 진단을 진행하려면 먼저 로그인해 주세요.</BodyText>
         </Stack>
-      </Screen>
+      </AppScreen>
     );
   }
 
   return (
-    <Screen>
+    <AppScreen>
       <Panel>
         <Stack>
-          <Kicker>Personal Color</Kicker>
-          <Heading>Personal color diagnosis</Heading>
+          <Kicker>퍼스널컬러</Kicker>
+          <Heading>퍼스널컬러 진단</Heading>
           <BodyText>
             {source === "upload"
-              ? "Use the uploaded portrait, then return to generation after reviewing the result."
-              : "Choose a clear face photo and save the result for styling recommendations."}
+              ? "업로드한 정면 사진으로 진단하고 결과를 확인한 뒤 헤어 생성으로 돌아갑니다."
+              : "얼굴이 선명한 정면 사진을 선택하면 스타일 추천에 사용할 결과를 저장합니다."}
           </BodyText>
         </Stack>
       </Panel>
@@ -151,13 +181,18 @@ export default function PersonalColorScreen() {
         <Stack>
           <View style={styles.preview}>
             {imageUri ? (
-              <Image source={{ uri: imageUri }} style={styles.image} />
+              <Image
+                accessibilityLabel="퍼스널컬러 진단에 사용할 정면 얼굴 사진"
+                accessibilityRole="image"
+                source={{ uri: imageUri }}
+                style={styles.image}
+              />
             ) : (
               <Stack gap={8} style={styles.emptyPreview}>
                 <BodyText style={styles.centerStrong}>
-                  {source === "upload" ? "No upload image found" : "No face photo selected"}
+                  {source === "upload" ? "업로드한 사진이 없습니다" : "선택한 얼굴 사진이 없습니다"}
                 </BodyText>
-                <BodyText style={styles.centerText}>Choose a front-facing face photo to continue.</BodyText>
+                <BodyText style={styles.centerText}>계속하려면 얼굴이 정면으로 보이는 사진을 선택해 주세요.</BodyText>
               </Stack>
             )}
             <FaceScanOverlay active={isAnalyzing} />
@@ -169,20 +204,28 @@ export default function PersonalColorScreen() {
               <PersonalColorSwatchAnalysisColumn />
             </Stack>
           ) : null}
-          {message ? <Card><BodyText>{message}</BodyText></Card> : null}
+          {message ? (
+            <View accessibilityLiveRegion="polite">
+              <Card><BodyText>{message}</BodyText></Card>
+            </View>
+          ) : null}
+          <PhotoLibraryPermissionRecovery
+            onOpenSettings={() => void handleOpenPermissionSettings()}
+            visible={photoPermissionRequiresSettings}
+          />
 
           {!result ? (
             <Card>
               <Stack>
-                <Kicker>Before diagnosis</Kicker>
+                <Kicker>진단 전 확인</Kicker>
                 <BodyText>
-                  The analysis compares warm/cool balance, contrast, best colors, and avoid colors for styling use.
+                  웜·쿨 균형, 대비, 추천 색상과 피하면 좋은 색상을 비교해 스타일링에 활용합니다.
                 </BodyText>
                 <Button disabled={isAnalyzing} onPress={pickImage}>
-                  {imageUri ? "Change photo" : "Choose photo"}
+                  {imageUri ? "사진 변경" : "사진 선택"}
                 </Button>
                 <Button disabled={!imageDataUrl || isAnalyzing} onPress={analyze}>
-                  {isAnalyzing ? "Analyzing..." : "Start diagnosis"}
+                  {isAnalyzing ? "진단 중..." : "퍼스널컬러 진단 시작"}
                 </Button>
               </Stack>
             </Card>
@@ -191,21 +234,21 @@ export default function PersonalColorScreen() {
               <PersonalColorResultDetails result={result} />
               <Stack>
                 <Button onPress={() => router.push(returnPath)}>
-                  {source === "upload" ? "Continue to generation" : "Back to personal color"}
+                  {source === "upload" ? "헤어 생성으로 계속" : "마이페이지로 돌아가기"}
                 </Button>
                 <Button variant="secondary" disabled={isAnalyzing} onPress={pickImage}>
-                  Choose another photo
+                  다른 사진 선택
                 </Button>
               </Stack>
             </Stack>
           )}
 
           <Button variant="secondary" onPress={() => router.push(returnPath)} disabled={isAnalyzing}>
-            Back
+            이전 화면으로
           </Button>
         </Stack>
       </Panel>
-    </Screen>
+    </AppScreen>
   );
 }
 

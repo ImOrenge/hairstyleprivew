@@ -1,0 +1,137 @@
+id: native.app.role-navigation-scaffold
+name: RoleNavigationScaffold
+platform: native
+kind: layout
+status: experimental
+source: apps/hairfit-app/components/app/RoleNavigationScaffold.tsx
+owner: hairfit-app-shell
+
+public_api:
+  exports:
+    - RoleNavigationScaffold
+    - RoleNavigationScaffoldProps
+  export_surface:
+    - apps/hairfit-app/lib/ui-native.tsx
+  props:
+    - children: ReactNode
+  slots:
+    - children
+  events:
+    - primary-route-replace
+
+dependencies:
+  internal:
+    - apps/hairfit-app/lib/role-navigation.ts
+    - packages/ui-native/src/index.tsx#Button
+    - packages/ui-native/src/index.tsx#spacing
+    - packages/ui-native/src/index.tsx#useThemeColors
+  external:
+    - "@clerk/clerk-expo"
+    - expo-router#Stack
+    - react
+    - react-native
+    - react-native-safe-area-context
+  app_specific:
+    - clerk-account-type-metadata
+    - role-route-map
+    - focused-route-hide-policy
+
+styling:
+  strategy: react-native-stylesheet
+  stylesheet: apps/hairfit-app/components/app/RoleNavigationScaffold.tsx#styles
+  tokens:
+    - spacing.xs
+    - spacing.sm
+    - theme.background
+    - theme.border
+  variants:
+    - customer-four-items
+    - salon-three-items
+    - admin-four-items
+    - hidden-focused-route
+  allows_style: false
+  global_css_changes: false
+
+state:
+  owned: []
+  derived:
+    - auth-loaded-and-signed-in
+    - account-role
+    - current-path
+    - selected-navigation-item
+    - focused-route-visibility
+  external_store: Clerk
+side_effects:
+  - expo-router-replace-on-primary-navigation
+
+a11y_contract:
+  container:
+    role: tablist
+    label: role-specific-Korean-label
+  item:
+    role: tab
+    selected: current-route-match
+  safe_area:
+    edges:
+      - bottom
+  dynamic_type:
+    fixed_height: false
+    wrapping: allowed
+  stack_policy:
+    root_navigator: Expo-Router-Stack
+    header: hidden-by-app-shell
+    primary_navigation: replace
+    reason: avoid-back-stack-loop
+
+route_contract:
+  customer:
+    - /
+    - /upload
+    - /mypage
+    - /account
+  salon:
+    - /salon/customers
+    - /salon
+    - /account
+  admin:
+    - /admin/stats
+    - /admin/members
+    - /admin/reviews
+    - /account
+  hidden_prefixes:
+    - auth
+    - generation-and-result
+    - styling
+    - billing-and-payment
+    - personal-color
+    - aftercare
+    - salon-match
+
+test_surface:
+  unit_and_interaction: apps/hairfit-app/__tests__/role-navigation.test.tsx
+  root_router_contract: apps/hairfit-app/__tests__/root-router-layout.test.ts
+  native_typecheck: required
+  native_lint: required
+  mobile_sync: required
+  production_bundle: required
+  device_smoke: required
+  observed_usage:
+    root_layout_consumers: 1
+
+change_policy:
+  current_gate: compatible-plus-behavioral
+  compatible_change_requires:
+    - route-map-test
+    - passport-update
+    - native-typecheck
+  behavioral_change_requires:
+    - selected-tab-interaction-test
+    - Android-back-device-check
+  breaking_change_requires:
+    - route-migration-note
+    - all-role-entry-update
+
+promotion_blockers:
+  - no-authenticated-admin-salon-customer-device-evidence
+  - no-200-percent-dynamic-type-device-evidence
+  - focused-route-hide-policy-not-device-verified

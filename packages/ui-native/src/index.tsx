@@ -1,17 +1,16 @@
-import { createContext, type ReactNode } from "react";
+import { forwardRef, useId, type ReactNode } from "react";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
+  type PressableProps,
   type TextInputProps,
   type TextStyle,
-  useWindowDimensions,
   View,
   type ViewStyle,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 export const colors = {
   background: "#f6f5f1",
@@ -68,118 +67,15 @@ export const spacing = {
   xl: 32,
 };
 
+const LARGE_TEXT_STACK_THRESHOLD = 1.5;
+const COMPACT_SCREEN_WIDTH = 360;
+
+export function shouldStackDenseNativeLayout(fontScale: number, width: number) {
+  return fontScale >= LARGE_TEXT_STACK_THRESHOLD || width < COMPACT_SCREEN_WIDTH;
+}
+
 export function useThemeColors() {
   return darkColors;
-}
-
-export interface HeaderMenuItem {
-  label: string;
-  path: string;
-}
-
-interface HeaderNavigationValue {
-  brandPath: string;
-  isSignedIn: boolean;
-  menuItems: HeaderMenuItem[];
-  onSignOut?: () => void;
-}
-
-const defaultHeaderNavigation: HeaderNavigationValue = {
-  brandPath: "/",
-  isSignedIn: false,
-  menuItems: [{ label: "회원가입", path: "/signup" }],
-};
-
-const HeaderNavigationContext = createContext<HeaderNavigationValue>(defaultHeaderNavigation);
-
-const screenPattern = {
-  lineAlt: "rgba(168, 134, 58, 0.18)",
-  linePrimary: "rgba(208, 176, 106, 0.24)",
-  lineWidth: 1.3,
-  opacity: 0.58,
-  tileSize: 64,
-} as const;
-
-export function HeaderNavigationProvider({
-  children,
-  value,
-}: {
-  children: ReactNode;
-  value: HeaderNavigationValue;
-}) {
-  return <HeaderNavigationContext.Provider value={value}>{children}</HeaderNavigationContext.Provider>;
-}
-
-function PatternLayer() {
-  const { height, width } = useWindowDimensions();
-  const size = Math.max(width, height) * 1.7;
-  const count = Math.ceil((width + height) / screenPattern.tileSize) + 8;
-  const lines = Array.from({ length: count }, (_, index) => index);
-
-  return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      {lines.map((index) => (
-        <View
-          key={`a-${index}`}
-          style={[
-            styles.patternLine,
-            {
-              backgroundColor: screenPattern.linePrimary,
-              height: size,
-              left: index * screenPattern.tileSize - size / 2,
-              top: -height * 0.28,
-              transform: [{ rotate: "45deg" }],
-            },
-          ]}
-        />
-      ))}
-      {lines.map((index) => (
-        <View
-          key={`b-${index}`}
-          style={[
-            styles.patternLine,
-            {
-              backgroundColor: screenPattern.lineAlt,
-              height: size,
-              left: index * screenPattern.tileSize - size / 2,
-              top: -height * 0.28,
-              transform: [{ rotate: "-45deg" }],
-            },
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
-
-export function Screen({
-  children,
-  footerOverlay,
-  style,
-}: {
-  children: ReactNode;
-  footerOverlay?: ReactNode;
-  showHeader?: boolean;
-  style?: ViewStyle;
-}) {
-  const theme = useThemeColors();
-
-  return (
-    <SafeAreaView edges={["top"]} style={[styles.screenFrame, { backgroundColor: theme.background }]}>
-      <PatternLayer />
-      <ScrollView
-        contentContainerStyle={[styles.screen, footerOverlay ? styles.screenWithFooterOverlay : null, style]}
-        keyboardShouldPersistTaps="handled"
-      >
-        {children}
-      </ScrollView>
-      {footerOverlay ? (
-        <View style={[styles.footerOverlay, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
-          {footerOverlay}
-        </View>
-      ) : null}
-    </SafeAreaView>
-  );
 }
 
 export function Stack({ children, gap = spacing.md, style }: { children: ReactNode; gap?: number; style?: ViewStyle }) {
@@ -198,46 +94,94 @@ export function Card({ children, style }: { children: ReactNode; style?: ViewSty
 
 export function Kicker({ children, style }: { children: ReactNode; style?: TextStyle }) {
   const theme = useThemeColors();
-  return <Text style={[styles.kicker, { color: theme.accent }, style]}>{children}</Text>;
+  return <Text allowFontScaling style={[styles.kicker, { color: theme.accent }, style]}>{children}</Text>;
 }
 
 export function Heading({ children, style }: { children: ReactNode; style?: TextStyle }) {
   const theme = useThemeColors();
-  return <Text style={[styles.heading, { color: theme.text }, style]}>{children}</Text>;
+  return <Text allowFontScaling style={[styles.heading, { color: theme.text }, style]}>{children}</Text>;
 }
 
 export function BodyText({ children, style }: { children: ReactNode; style?: TextStyle }) {
   const theme = useThemeColors();
-  return <Text style={[styles.body, { color: theme.muted }, style]}>{children}</Text>;
+  return <Text allowFontScaling style={[styles.body, { color: theme.muted }, style]}>{children}</Text>;
 }
 
 export function FieldLabel({ children }: { children: ReactNode }) {
   const theme = useThemeColors();
-  return <Text style={[styles.fieldLabel, { color: theme.text }]}>{children}</Text>;
+  return <Text allowFontScaling style={[styles.fieldLabel, { color: theme.text }]}>{children}</Text>;
 }
 
-export function TextField({
+export interface TextFieldProps extends TextInputProps {
+  error?: ReactNode;
+  helper?: ReactNode;
+  label?: ReactNode;
+}
+
+export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField({
+  allowFontScaling = true,
+  accessibilityHint,
+  accessibilityLabel,
+  accessibilityState,
+  editable = true,
+  error,
+  helper,
   label,
   style,
   ...props
-}: TextInputProps & { label?: ReactNode }) {
+}, ref) {
   const theme = useThemeColors();
+  const inputId = useId();
+  const labelText = typeof label === "string" ? label : undefined;
+  const invalid = Boolean(error);
+  const description = error ?? helper;
+  const descriptionId = description ? `${inputId}-description` : undefined;
+  const descriptionText = typeof description === "string" ? description : undefined;
 
   return (
     <View style={styles.field}>
       {label ? <FieldLabel>{label}</FieldLabel> : null}
       <TextInput
+        allowFontScaling={allowFontScaling}
+        accessibilityHint={accessibilityHint ?? descriptionText}
+        accessibilityLabel={accessibilityLabel ?? labelText}
+        accessibilityState={{ ...accessibilityState, disabled: !editable }}
+        aria-describedby={descriptionId}
+        aria-errormessage={invalid ? descriptionId : undefined}
+        aria-invalid={invalid}
+        editable={editable}
+        nativeID={inputId}
         placeholderTextColor={theme.muted}
+        ref={ref}
         style={[
           styles.input,
-          { backgroundColor: theme.surface, borderColor: theme.border, color: theme.text },
+          {
+            backgroundColor: theme.surface,
+            borderColor: invalid ? theme.danger : theme.border,
+            color: theme.text,
+            opacity: editable ? 1 : 0.55,
+          },
           style,
         ]}
         {...props}
       />
+      {error ? (
+        <Text
+          allowFontScaling
+          accessibilityLiveRegion="polite"
+          nativeID={descriptionId}
+          style={[styles.fieldMessage, { color: theme.danger }]}
+        >
+          {error}
+        </Text>
+      ) : helper ? (
+        <Text allowFontScaling nativeID={descriptionId} style={[styles.fieldMessage, { color: theme.muted }]}>
+          {helper}
+        </Text>
+      ) : null}
     </View>
   );
-}
+});
 
 export function Stat({
   label,
@@ -250,8 +194,8 @@ export function Stat({
 
   return (
     <View style={[styles.stat, { backgroundColor: theme.surfaceMuted, borderColor: theme.border }]}>
-      <Text style={[styles.statValue, { color: theme.text }]}>{value}</Text>
-      <Text style={[styles.statLabel, { color: theme.muted }]}>{label}</Text>
+      <Text allowFontScaling style={[styles.statValue, { color: theme.text }]}>{value}</Text>
+      <Text allowFontScaling style={[styles.statLabel, { color: theme.muted }]}>{label}</Text>
     </View>
   );
 }
@@ -276,12 +220,20 @@ export function MetricTile({
   value: ReactNode;
 }) {
   const theme = useThemeColors();
+  const { fontScale, width } = useWindowDimensions();
+  const stacked = shouldStackDenseNativeLayout(fontScale, width);
 
   return (
-    <View style={[styles.metricTile, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-      <Text style={[styles.metricLabel, { color: theme.muted }]}>{label}</Text>
-      <Text style={[styles.metricValue, { color: theme.text }]}>{value}</Text>
-      {helper ? <Text style={[styles.metricHelper, { color: theme.muted }]}>{helper}</Text> : null}
+    <View
+      style={[
+        styles.metricTile,
+        stacked ? styles.metricTileLargeText : null,
+        { backgroundColor: theme.surface, borderColor: theme.border },
+      ]}
+    >
+      <Text allowFontScaling style={[styles.metricLabel, { color: theme.muted }]}>{label}</Text>
+      <Text allowFontScaling style={[styles.metricValue, { color: theme.text }]}>{value}</Text>
+      {helper ? <Text allowFontScaling style={[styles.metricHelper, { color: theme.muted }]}>{helper}</Text> : null}
     </View>
   );
 }
@@ -293,7 +245,9 @@ export function Row({
   children: ReactNode;
   style?: ViewStyle;
 }) {
-  return <View style={[styles.row, style]}>{children}</View>;
+  const { fontScale, width } = useWindowDimensions();
+  const stacked = shouldStackDenseNativeLayout(fontScale, width);
+  return <View style={[styles.row, stacked ? styles.rowStacked : null, style]}>{children}</View>;
 }
 
 export function Cluster({
@@ -335,7 +289,7 @@ export function Chip({
 
   return (
     <View style={[styles.chip, { backgroundColor, borderColor: theme.border }]}>
-      <Text style={[styles.chipText, { color }]}>{children}</Text>
+      <Text allowFontScaling style={[styles.chipText, { color }]}>{children}</Text>
     </View>
   );
 }
@@ -345,76 +299,62 @@ export function Divider() {
   return <View style={[styles.divider, { backgroundColor: theme.border }]} />;
 }
 
+export interface ButtonProps extends Omit<PressableProps, "children"> {
+  children: ReactNode;
+  loading?: boolean;
+  loadingLabel?: ReactNode;
+  variant?: "primary" | "secondary" | "ghost";
+}
+
 export function Button({
+  accessibilityRole = "button",
+  accessibilityState,
   children,
   disabled,
+  loading = false,
+  loadingLabel,
   onPress,
+  style,
   variant = "primary",
-}: {
-  children: ReactNode;
-  disabled?: boolean;
-  onPress?: () => void;
-  variant?: "primary" | "secondary" | "ghost";
-}) {
+  ...props
+}: ButtonProps) {
   const theme = useThemeColors();
   const secondary = variant === "secondary" || variant === "ghost";
+  const isDisabled = disabled || loading;
 
   return (
     <Pressable
-      accessibilityRole="button"
-      disabled={disabled}
+      {...props}
+      accessibilityRole={accessibilityRole}
+      accessibilityState={{ ...accessibilityState, busy: loading, disabled: isDisabled }}
+      disabled={isDisabled}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={(state) => [
         styles.button,
         { backgroundColor: theme.inverse, borderColor: theme.inverse },
         variant === "secondary" ? { backgroundColor: theme.surface, borderColor: theme.border } : null,
         variant === "ghost" ? { backgroundColor: "transparent", borderColor: "transparent" } : null,
-        disabled ? styles.buttonDisabled : null,
-        pressed && !disabled ? styles.buttonPressed : null,
+        isDisabled ? styles.buttonDisabled : null,
+        state.pressed && !isDisabled ? styles.buttonPressed : null,
+        typeof style === "function" ? style(state) : style,
       ]}
     >
       <Text
+        allowFontScaling
         style={[
           styles.buttonText,
           { color: theme.inverseText },
           secondary ? { color: theme.text } : null,
-          disabled ? { color: theme.muted } : null,
+          isDisabled ? { color: theme.muted } : null,
         ]}
       >
-        {children}
+        {loading ? loadingLabel ?? children : children}
       </Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  screenFrame: {
-    flex: 1,
-    minHeight: "100%",
-  },
-  screen: {
-    gap: spacing.md,
-    minHeight: "100%",
-    padding: 8,
-    paddingBottom: spacing.xl,
-  },
-  screenWithFooterOverlay: {
-    paddingBottom: 104,
-  },
-  footerOverlay: {
-    borderTopWidth: 1,
-    bottom: 0,
-    left: 0,
-    padding: 8,
-    position: "absolute",
-    right: 0,
-    zIndex: 4,
-  },
-  patternLine: {
-    opacity: screenPattern.opacity,
-    position: "absolute",
-    width: screenPattern.lineWidth,
-  },
   panel: {
     borderRadius: radii.panel,
     borderWidth: 1,
@@ -446,6 +386,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     justifyContent: "space-between",
   },
+  rowStacked: {
+    alignItems: "stretch",
+    flexDirection: "column",
+  },
   cluster: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -458,6 +402,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   chipText: {
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: "800",
   },
@@ -471,6 +416,10 @@ const styles = StyleSheet.create({
   fieldLabel: {
     fontSize: 13,
     fontWeight: "800",
+  },
+  fieldMessage: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   input: {
     borderRadius: radii.control,
@@ -507,6 +456,10 @@ const styles = StyleSheet.create({
     padding: 16,
     width: "47%",
   },
+  metricTileLargeText: {
+    minWidth: "100%",
+    width: "100%",
+  },
   metricLabel: {
     fontSize: 12,
     fontWeight: "800",
@@ -538,7 +491,9 @@ const styles = StyleSheet.create({
     opacity: 0.82,
   },
   buttonText: {
+    flexShrink: 1,
     fontSize: 15,
     fontWeight: "800",
+    textAlign: "center",
   },
 });

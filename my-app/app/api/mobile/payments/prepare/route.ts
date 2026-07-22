@@ -40,9 +40,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "plan is invalid" }, { status: 400 });
   }
 
-  const appScheme = typeof body.appScheme === "string" && body.appScheme.trim()
+  const requestedAppScheme = typeof body.appScheme === "string"
     ? body.appScheme.trim()
-    : "hairfit";
+    : "";
+  if (requestedAppScheme && requestedAppScheme !== "hairfit") {
+    return NextResponse.json({ error: "appScheme is invalid" }, { status: 400 });
+  }
+  const appScheme = "hairfit";
   const config = readPublicPortoneConfig();
   if (!config.storeId) {
     return NextResponse.json({ error: "PortOne store ID is not configured" }, { status: 503 });

@@ -1,0 +1,76 @@
+id: native.styler.session-feature
+name: MobileStylerSessionFeature
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/components/styler/MobileStylerSessionFeature.tsx
+related_source:
+  - apps/hairfit-app/components/styler/useMobileStylerSessionController.ts
+  - apps/hairfit-app/components/styler/MobileStylerSessionView.tsx
+  - apps/hairfit-app/components/styler/mobileStylerSessionModel.ts
+owner: styler-feature
+
+public_api:
+  exports:
+    - MobileStylerSessionFeature
+  props: []
+  events:
+    - session-refresh
+    - quote-refresh
+    - generation-or-retry-command
+    - billing-and-result-navigation
+
+boundaries:
+  controller:
+    source: apps/hairfit-app/components/styler/useMobileStylerSessionController.ts
+    owns:
+      - API-client-calls
+      - request-ID-cancellation
+      - three-second-polling
+      - quote-and-generation-commands
+      - safe-user-error-mapping
+      - route-navigation
+  view:
+    source: apps/hairfit-app/components/styler/MobileStylerSessionView.tsx
+    forbidden:
+      - API-client
+      - expo-router
+      - polling-timer
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  global_css_changes: false
+
+state:
+  controller_owned:
+    - session
+    - quote
+    - polling-and-request-sequences
+    - generation-command
+  view_owned: []
+
+a11y_contract:
+  live_status:
+    - accessibilityLiveRegion-polite
+    - accessibilityState-busy
+    - accessibilityLiveRegion-assertive-on-failure
+  images: purpose-specific-Korean-label-and-image-role
+  actions: native-button
+
+test_surface:
+  structure: my-app/lib/styler-decomposition.test.ts
+  jest: apps/hairfit-app/__tests__/styling-paid-action.test.ts
+  copy_jest: apps/hairfit-app/__tests__/styler-copy-and-selection.test.tsx
+  mobile_sync: scripts/mobile-sync-verify.mjs
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  behavioral_change_requires:
+    - device-polling-retry-and-background-interaction-test
+
+promotion_blockers:
+  - no-authenticated-terminal-session-evidence
+  - no-device-connection-loss-evidence
+  - no-durable-Styler-worker

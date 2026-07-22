@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireMobileService, type MobileServiceKey } from "../../../../lib/mobile-auth";
 import { loadCustomerHomeDashboard } from "../../../../lib/customer-home-data";
+import {
+  getCreditsPerAftercareProgram,
+  getCreditsPerOutfit,
+  getCreditsPerStyle,
+} from "../../../../lib/pricing-plan";
+import { getSelfServeBillingPlans } from "../../../../lib/billing-plan";
 
 const SERVICE_KEYS = ["customer", "salon", "admin"] as const;
 const RANGES = [7, 30, 90] as const;
@@ -295,11 +301,27 @@ export async function GET(request: Request) {
       );
     }
 
+    const customer = await loadCustomerDashboard(supabase, context.userId, context.bootstrap);
     return NextResponse.json(
       {
         service,
         generatedAt,
-        customer: await loadCustomerDashboard(supabase, context.userId, context.bootstrap),
+        customer: {
+          ...customer,
+          creditPolicy: {
+            version: "hairfit-credit-policy-2026-07",
+            hairstyleGeneration: getCreditsPerStyle(),
+            outfitLookbook: getCreditsPerOutfit(),
+            firstAftercareProgram: 0,
+            additionalAftercareProgram: getCreditsPerAftercareProgram(),
+          },
+          billingPlans: getSelfServeBillingPlans().map(({ key, label, priceKrw, credits }) => ({
+            key,
+            label,
+            priceKrw,
+            credits,
+          })),
+        },
       },
       { status: 200 },
     );

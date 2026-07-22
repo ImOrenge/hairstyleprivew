@@ -1,0 +1,95 @@
+id: web.mypage.dashboard
+name: MyPageDashboardTabs
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/mypage/MyPageDashboardTabs.tsx
+related_source:
+  - my-app/components/mypage/MyPageActivePanel.tsx
+  - my-app/components/mypage/MyPageMetricCard.tsx
+  - my-app/components/mypage/MyPageSectionHeader.tsx
+  - my-app/components/mypage/myPageTypes.ts
+  - my-app/components/mypage/myPageFormatters.ts
+  - my-app/components/mypage/myPagePlanSelectors.ts
+  - my-app/components/mypage/myPageRoutes.ts
+  - my-app/components/mypage/panels
+owner: customer-account-feature
+
+public_api:
+  exports:
+    - MyPageDashboardTabs
+  compatibility_exports:
+    - getDisplayName
+    - normalizeMyPageTab
+    - MyPage route data types
+  props:
+    - account-and-viewer-snapshot
+    - active-tab-and-query-state
+    - generation-and-payment-records
+    - personal-color-and-hair-records
+    - subscription-contract
+  events:
+    - account-setup-generation-resume
+    - confirmed-style-guide-open
+
+boundaries:
+  dashboard:
+    owns:
+      - header-and-workspace-cta
+      - metric-composition
+      - tab-and-active-panel-composition
+    forbidden:
+      - fetch
+      - next-navigation-hook
+      - panel-implementation
+  panels:
+    source: my-app/components/mypage/panels
+    owns:
+      - tabpanel-semantics
+      - domain-empty-state
+      - confirmed-style-image-card
+      - AsyncBoundary
+  pure_modules:
+    formatter: my-app/components/mypage/myPageFormatters.ts
+    subscription_selector: my-app/components/mypage/myPagePlanSelectors.ts
+    route_selector: my-app/components/mypage/myPageRoutes.ts
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  server_props: true
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  navigation: web.mypage.tab-navigation
+  panels:
+    role: tabpanel
+    labelled_by: matching-tab-id
+  async_boundary: web.ui.async-boundary
+
+test_surface:
+  structure: my-app/lib/mypage-decomposition.test.ts
+  shell_accessibility: my-app/lib/app-shell-accessibility.test.ts
+  generation_entry_contract: my-app/lib/canonical-generation-entry.test.ts
+  confirmed_style_contract: my-app/lib/confirmed-style-list.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - mypage-decomposition-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - authenticated-mypage-tab-interaction-test
+    - confirmed-style-card-navigation-test
+
+promotion_blockers:
+  - no-authenticated-tab-keyboard-evidence
+  - no-responsive-visual-regression-evidence

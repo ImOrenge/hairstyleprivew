@@ -8,7 +8,8 @@ const eslintConfig = defineConfig([
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
-    ".next/**",
+    // Next build output can use NEXT_DIST_DIR for isolated validation runs.
+    ".next*/**",
     ".open-next/**",
     "out/**",
     "build/**",

@@ -1,0 +1,108 @@
+id: web.upload.area
+name: UploadArea
+platform: web
+kind: form
+status: stable
+source: my-app/components/upload/UploadArea.tsx
+owner: generation-feature
+
+public_api:
+  exports:
+    - UploadArea
+    - UploadAreaProps
+  props:
+    - "onSelectFile: (file: File) => void"
+    - "onRejectFile?: (file: File) => void"
+    - "disabled?: boolean"
+    - "previewUrl?: string | null"
+    - "scanOverlay?: boolean"
+
+dependencies:
+  internal:
+    - my-app/components/ui/Button.tsx
+    - my-app/components/personal-color/PersonalColorDiagnosisProgress.tsx
+  external:
+    - react-dropzone
+    - next/image
+  validation_contract:
+    - image/jpeg
+    - image/png
+    - image/webp
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-upload-area
+  tokens:
+    - --app-border
+    - --app-border-strong
+    - --app-surface
+    - --app-surface-muted
+    - --app-text
+    - --app-muted
+    - --app-danger
+    - --app-danger-bg
+    - --app-shadow
+  variants:
+    - idle
+    - drag-active
+    - drag-reject
+    - disabled
+    - preview
+  data_contract:
+    data-drag-state: idle | active | reject
+    data-disabled: true | false
+    data-preview: true | false
+  allows_className: false
+  inline_styles_allowed: react-dropzone-hidden-input-only
+
+state:
+  owned:
+    - drag-active
+    - drag-reject
+    - accepted-file-name
+  external_store: false
+side_effects:
+  - opens-file-picker
+  - opens-camera-capture
+
+a11y_contract:
+  file_input: labelled-photo-selection
+  camera_input: labelled-camera-capture
+  rejection: forwarded-to-caller-live-region
+
+test_surface:
+  contract: my-app/lib/upload-validation-harness.test.ts
+  interaction: tests/web-e2e/upload-validation.spec.ts
+  accessibility: axe-serious-critical-zero
+  visual:
+    - tests/web-e2e/__screenshots__/upload-validation.spec.ts/upload-validation-320-light.png
+    - tests/web-e2e/__screenshots__/upload-validation.spec.ts/upload-validation-375-dark.png
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - upload-validation-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - upload-interaction-test
+  style_contract_change_requires:
+    - c-upload-area-selector-search
+    - responsive-visual-verification
+
+promotion_evidence:
+  - three-consumers-across-customer-salon-and-fail-closed-production-harness
+  - public-props-drag-disabled-preview-and-camera-contract-recorded
+  - global-components-layer-c-upload-area-token-and-data-state-contract
+  - rejected-mime-valid-image-file-picker-and-camera-controls-interaction
+  - axe-serious-critical-zero
+  - 320px-light-and-375px-dark-visual-overflow-and-file-name-reachability
+
+promotion_blockers: []
+
+residual_risks:
+  - authenticated-customer-and-salon-workspace-integration-visuals-not-yet-recorded
+  - physical-camera-capture-and-screen-reader-hardware-not-yet-verified

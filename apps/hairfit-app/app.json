@@ -7,15 +7,37 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.hairfit.app"
+      "bundleIdentifier": "com.hairfit.app",
+      "associatedDomains": [
+        "applinks:hairfit.beauty"
+      ]
     },
     "android": {
-      "package": "com.hairfit.app"
+      "package": "com.hairfit.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "hairfit.beauty",
+              "pathPrefix": "/generate/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "plugins": [
       "expo-router",
       "expo-secure-store",
-      "@portone/react-native-sdk/plugin"
+      "expo-notifications",
+      "@portone/react-native-sdk/plugin",
+      "expo-web-browser"
     ],
     "extra": {
       "apiBaseUrl": "https://hairfit.beauty",

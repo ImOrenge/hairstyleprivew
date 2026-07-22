@@ -1,0 +1,123 @@
+id: native.app.form-screen
+name: FormScreen
+platform: native
+kind: layout
+status: experimental
+source: apps/hairfit-app/components/app/FormScreen.tsx
+owner: hairfit-app-shell
+
+public_api:
+  exports:
+    - FormScreen
+    - FormScreenProps
+  export_surface:
+    - apps/hairfit-app/lib/ui-native.tsx
+  props:
+    - children: ReactNode
+    - footer: ReactNode (required)
+    - contentContainerStyle: StyleProp<ViewStyle>
+    - footerStyle: StyleProp<ViewStyle>
+    - keyboardVerticalOffset: number (default 0)
+    - errorFocusRef: RefObject<TextInput | null>
+    - errorFocusRequest: number (default 0; monotonic request token)
+    - testID: string
+  slots:
+    - children
+    - footer
+  events: []
+  test_id_contract:
+    - testID
+    - testID-content
+    - testID-footer
+
+dependencies:
+  internal:
+    - apps/hairfit-app/components/app/AppScreen.tsx
+    - packages/ui-native/src/index.tsx#spacing
+    - packages/ui-native/src/index.tsx#useThemeColors
+  external:
+    - react
+    - react-native
+  app_specific:
+    - safe-area-inherited-from-AppScreen
+    - normal-flow-submit-footer
+
+styling:
+  strategy: react-native-stylesheet
+  stylesheet: apps/hairfit-app/components/app/FormScreen.tsx#styles
+  tokens:
+    - spacing.sm
+    - spacing.md
+    - spacing.lg
+    - theme.background
+    - theme.border
+  variants:
+    - ios-padding-keyboard-avoidance
+    - android-height-keyboard-avoidance
+    - web-no-keyboard-avoidance
+  allows_style: true
+  global_css_changes: false
+
+state:
+  owned: []
+  derived:
+    - platform-keyboard-behavior
+    - optional-derived-test-ids
+    - last-handled-error-focus-request
+  external_store: false
+side_effects:
+  - focuses-consumer-owned-input-on-new-positive-request
+
+a11y_contract:
+  safe_area:
+    owner: AppScreen
+    edges:
+      - top
+      - bottom
+  keyboard:
+    ios_behavior: padding
+    android_behavior: height
+    web_behavior: none
+    persist_taps: handled
+    ios_dismiss_mode: interactive
+    other_dismiss_mode: on-drag
+  footer:
+    position: normal-flow-inside-keyboard-frame
+    home_indicator_protection: inherited-bottom-safe-area
+  error_focus:
+    owner: FormScreen-request-coordinator-and-consumer-ref
+    status: standardized-for-migrated-forms
+    target: errorFocusRef.current
+    trigger: new-positive-errorFocusRequest
+    duplicate_request: ignored
+
+test_surface:
+  interaction: apps/hairfit-app/__tests__/form-screen.test.tsx
+  native_typecheck: required
+  native_lint: required
+  production_bundle: required
+  device_smoke: required
+  observed_usage:
+    route_consumer_files: 3
+    representative_routes:
+      - apps/hairfit-app/app/(auth)/login.tsx
+      - apps/hairfit-app/app/(auth)/signup.tsx
+      - apps/hairfit-app/app/(auth)/forgot-password.tsx
+
+change_policy:
+  current_gate: compatible-plus-behavioral
+  compatible_change_requires:
+    - usage-search
+    - passport-update
+    - native-typecheck
+  behavioral_change_requires:
+    - interaction-test
+    - iOS-and-Android-keyboard-device-check
+  breaking_change_requires:
+    - migration-note
+    - all-consumer-update
+
+promotion_blockers:
+  - remaining-form-consumer-migration-incomplete
+  - no-iOS-or-Android-keyboard-device-evidence
+  - no-200-percent-dynamic-type-evidence

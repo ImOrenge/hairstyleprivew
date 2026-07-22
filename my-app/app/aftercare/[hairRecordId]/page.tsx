@@ -130,7 +130,7 @@ export default async function AftercareDetailPage({ params }: Params) {
   }
 
   return (
-    <AppPage as="main" className="flex max-w-6xl flex-col gap-6 pb-16 pt-8">
+    <AppPage className="flex max-w-6xl flex-col gap-6 pb-16 pt-8">
       <div>
         <Link href="/aftercare" className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--app-muted)] hover:text-[var(--app-text)]">
           <ArrowLeft className="h-4 w-4" />

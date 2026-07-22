@@ -3,9 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { HeaderAccountProvider, useHeaderAccount } from "./HeaderAccountContext";
-import { HeaderRoleNavLinks } from "./HeaderRoleNavLinks";
+import { HeaderRoleNavLinks, isCurrentNavigationPath } from "./HeaderRoleNavLinks";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ThemeToggle } from "./ThemeToggle";
 import { HeaderAuthSlot, MobileHeaderAuthSlot, MobileSignupMenuLink } from "./HeaderAuthSlot";
@@ -29,8 +30,10 @@ function HeaderBrandLink() {
 }
 
 export function Header() {
+  const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  const isSupportPage = isCurrentNavigationPath(pathname, "/support");
   const mobileMenuLinkClassName =
     "rounded-[var(--app-radius-control)] px-3 py-2.5 text-[var(--app-muted)] transition hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)]";
 
@@ -41,7 +44,11 @@ export function Header() {
           <HeaderBrandLink />
 
           <nav className="hidden items-center gap-4 text-sm font-semibold md:flex">
-            <Link href="/support" className="text-[var(--app-muted)] hover:text-[var(--app-text)]">
+            <Link
+              href="/support"
+              className="text-[var(--app-muted)] hover:text-[var(--app-text)]"
+              aria-current={isSupportPage ? "page" : undefined}
+            >
               고객지원
             </Link>
             <HeaderRoleNavLinks />
@@ -72,7 +79,12 @@ export function Header() {
         {isMobileMenuOpen ? (
           <div className="border-t border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.10)] md:hidden">
             <nav className="mx-auto flex w-full max-w-[82rem] flex-col gap-1 text-sm font-semibold">
-              <Link href="/support" className={mobileMenuLinkClassName} onClick={closeMobileMenu}>
+              <Link
+                href="/support"
+                className={mobileMenuLinkClassName}
+                onClick={closeMobileMenu}
+                aria-current={isSupportPage ? "page" : undefined}
+              >
                 고객지원
               </Link>
               <HeaderRoleNavLinks className={mobileMenuLinkClassName} onClick={closeMobileMenu} />

@@ -4,6 +4,11 @@ import {
   createGenerationWorkflowInstance,
   getGenerationWorkflowBinding,
 } from "../../../../lib/generation-workflow";
+import { dispatchGenerationWorkflowOutbox } from "../../../../lib/generation-workflow-outbox";
+import {
+  getGenerationCompletionNotificationState,
+  toLegacyGenerationNotificationStatus,
+} from "../../../../lib/generation-notification-outbox";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 
 interface StartGenerationRequest {
@@ -38,7 +43,7 @@ export async function POST(request: Request) {
   const supabase = getSupabaseAdminClient();
   const { data: generation, error: generationError } = await supabase
     .from("generations")
-    .select("id,user_id,status,options,workflow_instance_id,completion_notification_status")
+    .select("id,user_id,status,options,accepted_at,preparation_status,workflow_instance_id,completion_notification_status")
     .eq("id", generationId)
     .maybeSingle();
 
@@ -55,19 +60,84 @@ export async function POST(request: Request) {
   const terminal = generation.status === "completed" || generation.status === "failed";
   const workflowInstanceId =
     typeof generation.workflow_instance_id === "string" ? generation.workflow_instance_id : null;
-  const notificationFinished =
-    generation.completion_notification_status === "sent" ||
-    generation.completion_notification_status === "skipped";
-  if (terminal && (notificationFinished || !workflowInstanceId)) {
+  if (terminal) {
+    let notification = null;
+    try {
+      notification = await getGenerationCompletionNotificationState(generationId, supabase);
+    } catch (error) {
+      console.warn("Falling back to the legacy generation notification state", {
+        generationId,
+        error: error instanceof Error ? error.message : "Unknown outbox read error",
+      });
+    }
+
     return NextResponse.json(
-      { generationId, status: generation.status, terminal: true },
+      {
+        generationId,
+        status: generation.status,
+        terminal: true,
+        notificationStatus: toLegacyGenerationNotificationStatus(
+          notification,
+          generation.completion_notification_status,
+        ),
+        notification: notification
+          ? {
+              status: notification.status,
+              attemptCount: notification.attemptCount,
+              maxAttempts: notification.maxAttempts,
+              nextAttemptAt: ["pending", "sending", "retry_wait"].includes(
+                notification.status,
+              )
+                ? notification.availableAt
+                : null,
+              sentAt: notification.sentAt,
+              terminalAt: notification.terminalAt,
+            }
+          : null,
+      },
       { status: 200 },
     );
   }
 
   const variantCount = getVariantCount(generation.options);
-  if (variantCount === 0) {
+  const durableAcceptance = Boolean(generation.accepted_at);
+  const preparationStatus =
+    typeof generation.preparation_status === "string"
+      ? generation.preparation_status
+      : "ready";
+  if (variantCount === 0 && !durableAcceptance) {
     return NextResponse.json({ error: "Recommendation variants not found" }, { status: 409 });
+  }
+
+  if (durableAcceptance && !workflowInstanceId) {
+    const dispatch = await dispatchGenerationWorkflowOutbox({
+      limit: 10,
+      localBaseUrl: new URL(request.url).origin,
+    }).catch((error) => ({
+      bindingAvailable: false,
+      claimed: 0,
+      dispatched: 0,
+      deferred: 1,
+      generationIds: [] as string[],
+      errors: [{
+        generationId,
+        error: error instanceof Error ? error.message : "Workflow dispatch was deferred",
+      }],
+    }));
+    return NextResponse.json(
+      {
+        generationId,
+        acceptedAt: generation.accepted_at,
+        preparationStatus,
+        workflowStatus:
+          dispatch.generationIds.includes(generationId) && dispatch.dispatched > 0
+            ? "dispatched"
+            : "queued",
+        status: generation.status,
+        alreadyStarted: true,
+      },
+      { status: 202 },
+    );
   }
 
   const workflow = await getGenerationWorkflowBinding();
@@ -115,7 +185,7 @@ export async function POST(request: Request) {
         }
         const recreated = await createGenerationWorkflowInstance(workflow, {
           generationId,
-          variantCount,
+          ...(variantCount > 0 ? { variantCount } : {}),
         });
         return NextResponse.json(
           {
@@ -143,7 +213,7 @@ export async function POST(request: Request) {
       try {
         const recreated = await createGenerationWorkflowInstance(workflow, {
           generationId,
-          variantCount,
+          ...(variantCount > 0 ? { variantCount } : {}),
         });
         return NextResponse.json(
           {
@@ -185,7 +255,7 @@ export async function POST(request: Request) {
   try {
     const instance = await createGenerationWorkflowInstance(workflow, {
       generationId,
-      variantCount,
+      ...(variantCount > 0 ? { variantCount } : {}),
     });
     return NextResponse.json(
       {

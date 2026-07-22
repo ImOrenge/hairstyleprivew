@@ -7,6 +7,12 @@ const nativeAppRoot = path.join(root, "apps", "hairfit-app");
 const mapPath = path.join(root, "docs", "mobile-port-map.md");
 const apiClientPath = path.join(root, "packages", "api-client", "src", "index.ts");
 const nativeUiPath = path.join(root, "packages", "ui-native", "src", "index.tsx");
+const nativeUiBridgePath = path.join(nativeAppRoot, "lib", "ui-native.tsx");
+const appScreenPath = path.join(nativeAppRoot, "components", "app", "AppScreen.tsx");
+const formScreenPath = path.join(nativeAppRoot, "components", "app", "FormScreen.tsx");
+const sharedIndexPath = path.join(root, "packages", "shared", "src", "index.ts");
+const generationContractPath = path.join(root, "packages", "shared", "src", "generation", "contract.ts");
+const billingContractPath = path.join(root, "packages", "shared", "src", "billing", "policy-selectors.ts");
 const rootPackagePath = path.join(root, "package.json");
 const nativePackagePath = path.join(nativeAppRoot, "package.json");
 const nativeAppJsonPath = path.join(nativeAppRoot, "app.json");
@@ -34,8 +40,209 @@ const expectedAppIdentity = {
 const removedAppDirs = ["apps/customer-mobile", "apps/admin-mobile", "apps/salon-mobile"];
 
 const expectedRoutes = [
-  { route: "/", file: "apps/hairfit-app/app/index.tsx", markers: ["getMobileMe", "MobileBootstrap", "/salon/customers", "/admin"] },
-  { route: "/mypage", file: "apps/hairfit-app/app/mypage.tsx", markers: ['getMobileDashboard("customer")'] },
+  {
+    route: "/",
+    file: "apps/hairfit-app/app/index.tsx",
+    markers: ["getMobileMe", "MobileBootstrap", "/salon/customers", "/admin", "onRequestClose", "onAccessibilityEscape", "useNetworkRecovery", "recoveryToken"],
+  },
+  {
+    route: "/account",
+    file: "apps/hairfit-app/app/account.tsx",
+    markers: ["getMobileMe", "signOut", "getRoleHomeRoute"],
+    relatedFiles: [
+      {
+        file: "apps/hairfit-app/app/_layout.tsx",
+        markers: ["RoleNavigationScaffold", "<Stack screenOptions={{ headerShown: false }} />", "NetworkRecoveryProvider"],
+      },
+      {
+        file: "apps/hairfit-app/components/app/RoleNavigationScaffold.tsx",
+        markers: ['accessibilityRole="tablist"', 'accessibilityRole="tab"', "router.replace"],
+      },
+      {
+        file: "apps/hairfit-app/lib/role-navigation.ts",
+        markers: ["getRoleNavigationItems", "isRoleNavigationHidden", "resolveRoleNavigationRole"],
+      },
+    ],
+  },
+  {
+    route: "/login",
+    file: "apps/hairfit-app/app/(auth)/login.tsx",
+    markers: ["validateLoginFields", "mapAuthFormError", "beginSecondFactor", "AuthSecondFactorPanel", "errorFocusRequest"],
+    relatedFiles: [
+      {
+        file: "apps/hairfit-app/lib/auth-form.ts",
+        markers: ["validateLoginFields", "validateSignupFields", "mapAuthFormError"],
+      },
+    ],
+  },
+  {
+    route: "/forgot-password",
+    file: "apps/hairfit-app/app/(auth)/forgot-password.tsx",
+    markers: ["findPasswordResetEmailFactor", "resetPassword", "beginSecondFactor", "consumeAuthResumePath"],
+    relatedFiles: [
+      {
+        file: "apps/hairfit-app/components/auth/AuthSecondFactorPanel.tsx",
+        markers: ["accessibilityState", "TextField", "onSelect", "onCancel"],
+      },
+      {
+        file: "apps/hairfit-app/lib/auth-resume.ts",
+        markers: ["AUTH_RESUME_WINDOW_MS", "pending-resume-target.v2", "signOutAndClearAuthResume"],
+      },
+    ],
+  },
+  {
+    route: "/signup",
+    file: "apps/hairfit-app/app/(auth)/signup.tsx",
+    markers: ["validateSignupFields", "mapAuthFormError", "errorFocusRequest"],
+  },
+  {
+    route: "/upload",
+    file: "apps/hairfit-app/app/upload.tsx",
+    markers: [
+      "prepareGenerationDraft",
+      "isUploadingPortrait",
+      "useSafeBackNavigation",
+      "PhotoLibraryPermissionRecovery",
+      "usePhotoLibraryPermissionRecovery",
+      "mapMobileUserError",
+    ],
+    relatedFiles: [
+      {
+        file: "apps/hairfit-app/hooks/useSafeBackNavigation.ts",
+        markers: ["BackHandler.addEventListener", '"hardwareBackPress"', "router.canGoBack", "consumeSafeBackNavigation"],
+      },
+      {
+        file: "apps/hairfit-app/lib/photo-library-permission.ts",
+        markers: ["canAskAgain", ': "settings"', "openPhotoLibrarySettings"],
+      },
+      {
+        file: "apps/hairfit-app/hooks/usePhotoLibraryPermissionRecovery.ts",
+        markers: ["getPhotoLibraryPermissionState", "photoPermissionRequiresSettings", "Linking.openSettings"],
+      },
+      {
+        file: "apps/hairfit-app/lib/mobile-user-message.ts",
+        markers: ["mapMobileUserError", "status === 401", "status === 413", "status === 429"],
+      },
+      {
+        file: "apps/hairfit-app/components/app/PhotoLibraryPermissionRecovery.tsx",
+        markers: ["앱 설정 열기", 'accessibilityLiveRegion="polite"', "onOpenSettings"],
+      },
+    ],
+  },
+  {
+    route: "/personal-color",
+    file: "apps/hairfit-app/app/personal-color.tsx",
+    markers: [
+      "PersonalColorDiagnosisProgress",
+      "PersonalColorSwatchAnalysisColumn",
+      "PhotoLibraryPermissionRecovery",
+      "usePhotoLibraryPermissionRecovery",
+      "mapMobileUserError",
+    ],
+    relatedFiles: [
+      {
+        file: "apps/hairfit-app/components/PersonalColorDiagnosisProgress.tsx",
+        markers: [
+          "useReducedMotionPreference",
+          "accessibilityValue",
+          "팔레트 비교 과정",
+          "실제 측정 점수가 아닙니다",
+        ],
+      },
+      {
+        file: "apps/hairfit-app/hooks/useReducedMotionPreference.ts",
+        markers: [
+          "AccessibilityInfo.isReduceMotionEnabled",
+          '"reduceMotionChanged"',
+          "resolveMotionAwareModalAnimation",
+        ],
+      },
+    ],
+  },
+  {
+    route: "/generate",
+    file: "apps/hairfit-app/app/generate.tsx",
+    markers: ["createPaidActionQuote", "acceptGenerationDraft", "draftReceiptHydrated", "acceptedAt", "useSafeBackNavigation"],
+  },
+  {
+    route: "/generate/[id]",
+    file: "apps/hairfit-app/app/generate/[id].tsx",
+    markers: ["getGenerationStatus", "AppState.addEventListener", "백그라운드 생성 중", "useSafeBackNavigation", "networkAvailability", "recoveryToken"],
+  },
+  {
+    route: "/styler/new",
+    file: "apps/hairfit-app/app/styler/new.tsx",
+    markers: ["MobileStylerNewFeature"],
+    relatedFiles: [
+      {
+        file: "apps/hairfit-app/components/styler/MobileStylerNewFeature.tsx",
+        markers: ["useSafeBackNavigation", "isBackNavigationBlocked", "notifyBackNavigationBlocked"],
+      },
+      {
+        file: "apps/hairfit-app/components/styler/useMobileStylerNewController.ts",
+        markers: ["usePhotoLibraryPermissionRecovery", "mapMobileUserError", "openBodyPhotoPermissionSettings", "deleteBodyPhoto", "hairListError"],
+      },
+      {
+        file: "packages/api-client/src/index.ts",
+        markers: ["deleteBodyPhoto()"],
+      },
+      {
+        file: "apps/hairfit-app/components/styler/MobileStylerNewView.tsx",
+        markers: ["PhotoLibraryPermissionRecovery", "photoPermissionRequiresSettings", "전신 사진 개인정보 안내", "3 견적·생성"],
+      },
+      {
+        file: "apps/hairfit-app/components/styler/MobileStylerHairSelectionModal.tsx",
+        markers: ["onRequestClose={onClose}", "onAccessibilityEscape={onClose}", "최근 완성 결과에서 하나를 선택하세요", 'accessibilityLiveRegion="assertive"'],
+      },
+    ],
+  },
+  {
+    route: "/styler/[id]",
+    file: "apps/hairfit-app/app/styler/[id].tsx",
+    markers: ["MobileStylerSessionFeature"],
+    relatedFiles: [
+      {
+        file: "apps/hairfit-app/components/styler/useMobileStylerSessionController.ts",
+        markers: ["mapMobileUserError", "refreshSession({ silent: true })", "stylingQuoteRefreshMessage"],
+      },
+      {
+        file: "apps/hairfit-app/components/styler/MobileStylerSessionView.tsx",
+        markers: ["생성 실패 안내", 'accessibilityLiveRegion="assertive"', 'accessibilityRole="image"'],
+      },
+    ],
+  },
+  {
+    route: "/mypage",
+    file: "apps/hairfit-app/app/mypage.tsx",
+    markers: ['getMobileDashboard("customer")', "MobileMyPageActivePanel", "MobileMyPageTabNavigation"],
+    relatedFiles: [
+      {
+        file: "apps/hairfit-app/lib/mypage.ts",
+        markers: ["generationDestination", "getMobileMyPageTabHref"],
+      },
+      {
+        file: "apps/hairfit-app/components/mypage/panels/MobileMyPagePlanPanel.tsx",
+        markers: ['router.push("/billing")'],
+      },
+    ],
+  },
+  {
+    route: "/billing",
+    file: "apps/hairfit-app/app/billing.tsx",
+    markers: [
+      'getMobileDashboard("customer")',
+      "creditPolicy",
+      "prepareMobilePayment",
+      "completeMobilePayment",
+      'router.replace("/mypage?tab=plan")',
+      "useSafeBackNavigation",
+    ],
+  },
+  {
+    route: "/payments/complete",
+    file: "apps/hairfit-app/app/payments/complete.tsx",
+    markers: ["completePendingPaymentCallback", "isVerifying", "useSafeBackNavigation"],
+  },
   { route: "/salon", file: "apps/hairfit-app/app/salon/index.tsx", markers: ['getMobileDashboard("salon")', 'router.push("/salon/customers")'] },
   {
     route: "/salon/customers",
@@ -70,7 +277,6 @@ const expectedApiContracts = [
     clientMethod: "completeMobilePayment",
     clientPath: "/api/mobile/payments/complete",
   },
-  { route: "/api/onboarding", file: "my-app/app/api/onboarding/route.ts", clientMethod: "submitOnboarding", clientPath: "/api/onboarding" },
   {
     route: "/api/prompts/generate",
     file: "my-app/app/api/prompts/generate/route.ts",
@@ -83,20 +289,83 @@ const expectedApiContracts = [
     clientMethod: "runGeneration",
     clientPath: "/api/generations/run",
   },
+  {
+    route: "/api/generations/start",
+    file: "my-app/app/api/generations/start/route.ts",
+    clientMethod: "startGeneration",
+    clientPath: "/api/generations/start",
+  },
+  {
+    route: "/api/generations/[id]/status",
+    file: "my-app/app/api/generations/[id]/status/route.ts",
+    clientMethod: "getGenerationStatus",
+    clientPath: "/api/generations/${encodeURIComponent(generationId)}/status",
+  },
   { route: "/api/mobile/aftercare", file: "my-app/app/api/mobile/aftercare/route.ts", clientMethod: "getAftercareRecords", clientPath: "/api/mobile/aftercare" },
 ];
 
-const expectedUiMarkers = [
+const expectedNativePrimitiveMarkers = [
   'background: "#f6f5f1"',
-  'surface: "#ffffff"',
-  'text: "#191816"',
-  'accent: "#a8863a"',
   'background: "#050505"',
-  "function MetricGrid",
-  "function MetricTile",
-  'width: "47%"',
-  "minWidth: 142",
-  "borderRadius: radii.panel",
+  "export function MetricGrid",
+  "export function MetricTile",
+  "export interface TextFieldProps extends TextInputProps",
+  "forwardRef<TextInput, TextFieldProps>",
+  "error?: ReactNode",
+  "aria-describedby",
+  "aria-errormessage",
+  "allowFontScaling",
+  "shouldStackDenseNativeLayout",
+  'accessibilityLiveRegion="polite"',
+  'accessibilityRole = "button"',
+  "accessibilityRole={accessibilityRole}",
+  "export interface ButtonProps extends Omit<PressableProps",
+  "loading?: boolean",
+  "busy: loading",
+];
+
+const forbiddenNativeUiMarkers = [
+  "export function Screen",
+  "export function AppScreen",
+  "HeaderNavigationProvider",
+  "SafeAreaView",
+  "screenPattern",
+];
+
+const expectedUiBridgeMarkers = [
+  'export * from "../../../packages/ui-native/src/index"',
+  "AppScreen as Screen",
+  'from "../components/app/AppScreen"',
+  "RoleNavigationScaffold",
+];
+
+const expectedAppScreenMarkers = [
+  "export function AppScreen",
+  "SafeAreaView",
+  "PatternLayer",
+  "footerOverlay?: ReactNode",
+  "인터넷 연결이 끊겼습니다",
+  'accessibilityLiveRegion="assertive"',
+];
+
+const expectedFormScreenMarkers = [
+  "errorFocusRef",
+  "errorFocusRequest",
+  ".focus()",
+];
+
+const expectedGenerationContractMarkers = [
+  'export const GENERATION_STATUSES = ["queued", "processing", "completed", "failed"]',
+  "export function normalizeGenerationStatus",
+  "export function generationDestination",
+  "export function isGenerationSelectionLocked",
+];
+
+const expectedBillingContractMarkers = [
+  "export interface ProductCreditPolicySnapshot",
+  "export const DEFAULT_PRODUCT_CREDIT_POLICY",
+  "export function estimateHairstyleGenerations",
+  "export function aftercareProgramCredits",
 ];
 
 function readArgValue(name) {
@@ -197,6 +466,12 @@ function checkStaticSync() {
   const rootPackageText = readText(rootPackagePath) ?? "";
   const apiClientText = readText(apiClientPath) ?? "";
   const nativeUiText = readText(nativeUiPath) ?? "";
+  const nativeUiBridgeText = readText(nativeUiBridgePath) ?? "";
+  const appScreenText = readText(appScreenPath) ?? "";
+  const formScreenText = readText(formScreenPath) ?? "";
+  const sharedIndexText = readText(sharedIndexPath) ?? "";
+  const generationContractText = readText(generationContractPath) ?? "";
+  const billingContractText = readText(billingContractPath) ?? "";
   const pages = walk(webAppRoot, (file) => file.endsWith("page.tsx")).map((file) => normalizeRoute(file, "page.tsx"));
 
   if (map.missing) errors.push("docs/mobile-port-map.md is missing.");
@@ -255,6 +530,25 @@ function checkStaticSync() {
       checks.push({ label: `${contract.route} includes ${marker}`, ok });
       if (!ok) errors.push(`${contract.file} is missing marker: ${marker}`);
     }
+
+    for (const related of contract.relatedFiles ?? []) {
+      const relatedText = readText(path.join(root, related.file));
+      const relatedExists = relatedText !== null;
+      checks.push({
+        label: `${contract.route} related file ${related.file} exists`,
+        ok: relatedExists,
+      });
+      if (!relatedExists) {
+        errors.push(`Missing native route dependency: ${related.file}`);
+        continue;
+      }
+
+      for (const marker of related.markers) {
+        const ok = relatedText.includes(marker);
+        checks.push({ label: `${contract.route} related file includes ${marker}`, ok });
+        if (!ok) errors.push(`${related.file} is missing marker: ${marker}`);
+      }
+    }
   }
 
   for (const row of rows.filter((row) => row.source.startsWith("/") && !row.source.startsWith("/api/") && row.status !== "inventory")) {
@@ -275,10 +569,61 @@ function checkStaticSync() {
     }
   }
 
-  for (const marker of expectedUiMarkers) {
+  for (const marker of expectedNativePrimitiveMarkers) {
     const ok = nativeUiText.includes(marker);
-    checks.push({ label: `native UI marker ${marker}`, ok });
-    if (!ok) errors.push(`Native UI package missing marker: ${marker}`);
+    checks.push({ label: `native primitive marker ${marker}`, ok });
+    if (!ok) errors.push(`Native UI primitive package missing marker: ${marker}`);
+  }
+
+  for (const marker of ["response.status === 401", "skipCache: true"]) {
+    const ok = apiClientText.includes(marker);
+    checks.push({ label: `API auth recovery marker ${marker}`, ok });
+    if (!ok) errors.push(`API client auth recovery is missing marker: ${marker}`);
+  }
+
+  for (const marker of forbiddenNativeUiMarkers) {
+    const ok = !nativeUiText.includes(marker);
+    checks.push({ label: `native primitive package excludes ${marker}`, ok });
+    if (!ok) errors.push(`Native UI primitive package still owns app-shell marker: ${marker}`);
+  }
+
+  for (const marker of expectedUiBridgeMarkers) {
+    const ok = nativeUiBridgeText.includes(marker);
+    checks.push({ label: `native UI bridge marker ${marker}`, ok });
+    if (!ok) errors.push(`Native UI app bridge missing marker: ${marker}`);
+  }
+
+  for (const marker of expectedAppScreenMarkers) {
+    const ok = appScreenText.includes(marker);
+    checks.push({ label: `AppScreen marker ${marker}`, ok });
+    if (!ok) errors.push(`App-owned Screen implementation missing marker: ${marker}`);
+  }
+
+  for (const marker of expectedFormScreenMarkers) {
+    const ok = formScreenText.includes(marker);
+    checks.push({ label: `FormScreen marker ${marker}`, ok });
+    if (!ok) errors.push(`App-owned FormScreen implementation missing marker: ${marker}`);
+  }
+
+  for (const marker of expectedGenerationContractMarkers) {
+    const ok = generationContractText.includes(marker);
+    checks.push({ label: `shared generation contract ${marker}`, ok });
+    if (!ok) errors.push(`Shared generation contract missing marker: ${marker}`);
+  }
+
+  for (const marker of expectedBillingContractMarkers) {
+    const ok = billingContractText.includes(marker);
+    checks.push({ label: `shared billing contract ${marker}`, ok });
+    if (!ok) errors.push(`Shared billing contract missing marker: ${marker}`);
+  }
+
+  for (const marker of [
+    'export * from "./billing/policy-selectors"',
+    'export * from "./generation/contract"',
+  ]) {
+    const ok = sharedIndexText.includes(marker);
+    checks.push({ label: `shared package export ${marker}`, ok });
+    if (!ok) errors.push(`Shared package index missing contract export: ${marker}`);
   }
 
   const mapText = readText(mapPath) ?? "";
@@ -366,8 +711,18 @@ function formatReport(staticResult, runtimeResult) {
   const allWarnings = runtimeResult ? [...staticResult.warnings, ...runtimeResult.warnings] : staticResult.warnings;
   const runtimeLines = runtimeResult
     ? runtimeResult.checks.map((check) => (check.ok ? `- ${check.name}: ${check.status}` : `- ${check.name}: failed (${check.error})`))
-    : ["- Not run. Use `npm run mobile:sync:runtime` for local API and Metro smoke checks."];
-  const verdict = allErrors.length === 0 ? (runtimeResult ? "AUTOMATED PASS" : "STATIC PASS") : "FAIL";
+    : [
+        "- Not run. No runtime claim is made by this report.",
+        "- Use `npm run mobile:sync:runtime` when the local API and Metro are already running.",
+      ];
+  const verdict =
+    allErrors.length > 0
+      ? "FAIL"
+      : !runtimeResult
+        ? "STATIC CONTRACT PASS"
+        : runtimeResult.warnings.length > 0
+          ? "STATIC PASS; RUNTIME SMOKE PARTIAL"
+          : "STATIC + RUNTIME SMOKE PASS";
 
   return `# Mobile Web-App Sync Verification Report
 
@@ -377,6 +732,8 @@ Generated: ${new Date().toISOString()}
 
 ${verdict}
 
+This report is a source-contract and availability smoke report. It is not an authenticated native-device E2E result, and it does not promote any route to \`verified\`.
+
 ## Status Counts
 
 - inventory: ${staticResult.counts.inventory}
@@ -384,11 +741,12 @@ ${verdict}
 - ported: ${staticResult.counts.ported}
 - verified: ${staticResult.counts.verified}
 
-## Static Sync Checks
+## Static Contract Checks
 
 - Native target: apps/hairfit-app
 - Web page routes inventoried: ${staticResult.pages.length}
 - Checks passed: ${staticResult.checks.filter((check) => check.ok).length}/${staticResult.checks.length}
+- Scope: source files, route map, package ownership, and shared contract markers only
 
 ## Runtime Smoke
 

@@ -12,7 +12,7 @@ interface AIEvaluationViewProps {
 export function AIEvaluationView({ evaluation }: AIEvaluationViewProps) {
   const t = useT();
   const { score, comment, tips } = evaluation;
-  const { translate, hasTranslated } = useResultTranslations([comment, ...tips]);
+  const { translate } = useResultTranslations([comment, ...tips]);
 
   const getScoreColors = (value: number) => {
     if (value >= 85) {
@@ -42,6 +42,7 @@ export function AIEvaluationView({ evaluation }: AIEvaluationViewProps) {
 
   return (
     <motion.section
+      data-pointer-glow="surface"
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: "easeOut" }}
@@ -93,11 +94,8 @@ export function AIEvaluationView({ evaluation }: AIEvaluationViewProps) {
 
         <div className="space-y-2">
           <p className="text-base font-medium leading-7 text-[var(--app-text)] sm:text-lg">
-            {translate(comment) || comment}
+            {translate(comment, "얼굴형과 스타일의 조화를 기준으로 평가했습니다.")}
           </p>
-          {hasTranslated(comment) ? (
-            <p className="text-sm leading-6 text-[var(--app-muted)]">{comment}</p>
-          ) : null}
         </div>
 
         <div className="h-px w-full bg-[var(--app-border)]" />
@@ -110,6 +108,7 @@ export function AIEvaluationView({ evaluation }: AIEvaluationViewProps) {
           <ul className="grid gap-3 sm:grid-cols-2">
             {tips.map((tip, index) => (
               <motion.li
+                data-pointer-glow="surface"
                 key={`${tip}-${index}`}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -121,11 +120,8 @@ export function AIEvaluationView({ evaluation }: AIEvaluationViewProps) {
                 </span>
                 <div className="space-y-1">
                   <p className="text-sm font-medium leading-6 text-[var(--app-text)]">
-                    {translate(tip) || tip}
+                    {translate(tip, `스타일 완성도를 높이는 관리 포인트 ${index + 1}입니다.`)}
                   </p>
-                  {hasTranslated(tip) ? (
-                    <p className="text-xs leading-5 text-[var(--app-subtle)]">{tip}</p>
-                  ) : null}
                 </div>
               </motion.li>
             ))}

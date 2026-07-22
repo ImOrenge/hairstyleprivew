@@ -1,0 +1,69 @@
+id: native.mypage.async-boundary
+name: MobileMyPageAsyncBoundary
+platform: native
+kind: feedback
+status: experimental
+source: apps/hairfit-app/components/mypage/MobileMyPageAsyncBoundary.tsx
+owner: customer-account-feature
+
+public_api:
+  exports:
+    - MobileMyPageAsyncBoundary
+  props:
+    - children
+    - pending
+    - error
+    - isEmpty
+    - loadingText
+    - emptyText
+  events: []
+
+dependencies:
+  internal: []
+  external:
+    - "@hairfit/ui-native"
+    - react-native
+  forbidden:
+    - api-client
+    - router
+    - auth-hook
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  global_css_changes: false
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  derived:
+    - pending-state
+    - error-state
+    - empty-state
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  pending:
+    role: progressbar
+    live_region: polite
+  error:
+    role: alert
+    live_region: polite
+  empty:
+    visible_text: required
+
+test_surface:
+  contract: my-app/lib/mypage-decomposition.test.ts
+  interaction: required
+  device: required
+
+change_policy:
+  current_gate: compatible
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+    - native-component-test
+
+promotion_blockers:
+  - mypage-only-consumers
+  - no-screen-reader-device-evidence

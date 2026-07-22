@@ -158,7 +158,7 @@ export async function countUserCompletedFashionGenerations(
 
 export function formatLimitError(entitlement: PlanEntitlement) {
   if (entitlement.maxFashionGenerations === 0) {
-    return `${entitlement.label} 플랜은 패션 룩북 이미지를 생성할 수 없습니다. 확정된 헤어와 추가 크레딧이 필요합니다.`;
+    return `${entitlement.label} 플랜은 패션 룩북 이미지를 생성할 수 없습니다. 선택한 헤어와 추가 크레딧이 필요합니다.`;
   }
 
   return `${entitlement.label} 플랜은 패션 룩북을 최대 ${entitlement.maxFashionGenerations}개까지 생성할 수 있습니다.`;

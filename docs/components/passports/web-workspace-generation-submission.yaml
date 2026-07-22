@@ -1,0 +1,72 @@
+id: web.workspace.generation-submission
+name: WorkspaceGenerationSubmission
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/workspace/WorkspaceGenerationSubmission.tsx
+owner: generation-feature
+
+public_api:
+  exports:
+    - WorkspaceGenerationSubmission
+  props:
+    - actionError
+    - analysisSummary
+    - draft-and-quote-state
+    - pipeline-state
+    - previewUrl
+    - semantic-command-events
+
+dependencies:
+  internal:
+    - my-app/components/generate/PipelineStatusIndicator.tsx
+    - my-app/components/billing/PaidActionQuoteCard.tsx
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/InlineAlert.tsx
+    - my-app/components/ui/Surface.tsx
+  external:
+    - "@hairfit/shared"
+    - lucide-react
+  forbidden:
+    - fetch
+    - next-navigation
+    - generation-store
+    - generation-command-hook
+    - upload-validation-hook
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+  inline_styles_allowed: false
+
+state:
+  owned:
+    - quote-expiry-presentation-clock
+  domain_state_owned: false
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  draft_status:
+    - role-status
+    - aria-live-polite
+    - aria-atomic-true
+  actions: native-button
+
+test_surface:
+  contract: my-app/lib/workspace-decomposition.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  compatible_change_requires:
+    - passport-update
+    - workspace-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - authenticated-workspace-interaction-test
+
+promotion_blockers:
+  - customer-generation-specific-copy
+  - no-authenticated-visual-regression-evidence

@@ -1,0 +1,126 @@
+id: web.generate.pipeline-status-indicator
+name: PipelineStatusIndicator
+platform: web
+kind: feedback
+status: stable
+source: my-app/components/generate/PipelineStatusIndicator.tsx
+owner: generation-feature
+
+public_api:
+  exports:
+    - PipelineStatusIndicator
+    - PipelineStatusIndicatorProps
+  props:
+    - stage: PipelineStage
+    - message: string
+    - error: string | null
+    - progress: number
+    - "mode?: panel | overlay"
+    - "className?: string"
+  slots: []
+  events: []
+
+dependencies:
+  internal:
+    - packages/shared/src/index.ts#PipelineStage
+    - my-app/lib/utils.ts#cn
+  external:
+    - react
+    - framer-motion
+  feature_coupling:
+    - generation-pipeline-stage-model
+
+styling:
+  strategy: global-css-token-contract-with-utility-internals
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-pipeline-status
+  tokens:
+    - --app-radius-panel
+    - --app-border
+    - --app-surface
+    - --app-surface-muted
+    - --app-text
+    - --app-muted
+    - --app-subtle
+    - --app-accent-soft
+    - --app-accent-strong
+    - --app-inverse
+    - --app-success
+    - --app-ring
+  variants:
+    - panel
+    - overlay
+  data_contract:
+    data-mode: panel | overlay
+    data-stage: PipelineStage
+    data-state: idle | running | completed | failed
+    data-step-state: active | done | upcoming
+  allows_className: true
+  inline_styles_allowed:
+    - svg-progress-geometry
+
+state:
+  owned: []
+  derived:
+    - idle
+    - running
+    - completed
+    - failed
+    - clamped-progress
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  status:
+    role: status
+    live: polite
+    atomic: true
+    busy: while-running
+  progress:
+    role: progressbar
+    min: 0
+    max: 100
+    current: derived-from-progress
+  error:
+    role: alert
+  motion:
+    respects-reduced-motion: true
+
+test_surface:
+  contract: my-app/lib/generation-progress-parity.test.ts
+  interaction: tests/web-e2e/generation-progress.spec.ts
+  accessibility: axe-serious-critical-zero
+  visual:
+    - tests/web-e2e/__screenshots__/generation-progress.spec.ts/pipeline-status-320-light.png
+    - tests/web-e2e/__screenshots__/generation-progress.spec.ts/pipeline-status-375-dark.png
+  observed_usage:
+    consumer_files: 2
+
+change_policy:
+  current_gate: promotion-complete
+  behavioral_change_requires:
+    - stage-matrix-test
+    - generation-progress-interaction-test
+  style_contract_change_requires:
+    - token-and-mode-search
+    - visual-verification
+  breaking_change_requires:
+    - pipeline-stage-usage-search
+    - migration-note
+
+promotion_evidence:
+  - two-production-consumers-and-fail-closed-production-harness
+  - shared-pipeline-stage-type-with-store-compatibility-re-export
+  - Korean-stage-message-processing-and-progress-copy
+  - global-components-layer-c-pipeline-status-mode-stage-and-state-contract
+  - idle-running-completed-failed-and-clamped-progress-contract
+  - axe-serious-critical-zero
+  - 320px-light-and-375px-dark-visual-overflow-full-label-and-current-step-contrast
+
+promotion_blockers: []
+
+residual_risks:
+  - authenticated-customer-and-salon-workspace-integration-visuals-not-yet-recorded
+  - physical-screen-reader-and-browser-zoom-verification-not-yet-complete

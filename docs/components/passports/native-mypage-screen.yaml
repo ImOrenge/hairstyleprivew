@@ -1,0 +1,99 @@
+id: native.mypage.screen
+name: MyPageScreen
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/app/mypage.tsx
+related_source:
+  - apps/hairfit-app/components/mypage/MobileMyPageActivePanel.tsx
+  - apps/hairfit-app/components/mypage/panels
+  - apps/hairfit-app/lib/mypage.ts
+owner: customer-account-feature
+
+public_api:
+  exports:
+    - default Expo route component
+  props: []
+  events:
+    - tab-route-navigation
+    - workspace-navigation
+    - account-setup-generation-resume
+    - confirmed-style-guide-open
+
+boundaries:
+  route_screen:
+    owns:
+      - auth-aware-mobile-me-load
+      - customer-dashboard-load
+      - setup-tab-override
+      - metrics-and-active-panel-composition
+  panels:
+    source: apps/hairfit-app/components/mypage/panels
+    owns:
+      - panel-local-state-and-commands
+      - MobileMyPageAsyncBoundary
+  pure_module:
+    source: apps/hairfit-app/lib/mypage.ts
+    owns:
+      - labels-and-formatters
+      - tab-normalization
+      - tab-and-generation-route-selection
+
+dependencies:
+  internal:
+    - apps/hairfit-app/lib/api.ts
+    - apps/hairfit-app/lib/mypage.ts
+    - apps/hairfit-app/components/mypage/MobileMyPageActivePanel.tsx
+    - apps/hairfit-app/components/mypage/MobileMyPageTabNavigation.tsx
+  external:
+    - "@clerk/clerk-expo"
+    - "@hairfit/shared"
+    - "@hairfit/ui-native"
+    - expo-router
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  global_css_changes: false
+  inline_styles_allowed: existing-panel-only
+
+state:
+  route_owned:
+    - customer-dashboard
+    - recent-confirmed-style-cards
+    - mobile-bootstrap
+    - loading-and-partial-error
+    - enum-account-setup-continuation
+  panel_owned:
+    - style-profile-load
+    - account-form-and-save
+  external_store: false
+
+a11y_contract:
+  navigation: native.mypage.tab-navigation
+  async_boundary: native.mypage.async-boundary
+  footer_cta: native-button
+
+test_surface:
+  structure: my-app/lib/mypage-decomposition.test.ts
+  jest: apps/hairfit-app/__tests__
+  generation_entry_interaction: apps/hairfit-app/__tests__/generation-entry-screen.test.tsx
+  confirmed_style_interaction: apps/hairfit-app/__tests__/confirmed-style-list.test.tsx
+  mobile_sync: scripts/mobile-sync-verify.mjs
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - mypage-decomposition-contract-test
+    - native-typecheck
+    - mobile-sync
+  behavioral_change_requires:
+    - iOS-and-Android-device-interaction-test
+    - confirmed-style-card-navigation-jest
+
+promotion_blockers:
+  - no-authenticated-device-evidence
+  - no-screen-reader-tab-evidence
+  - no-device-visual-regression-evidence

@@ -36,7 +36,7 @@ interface GeminiGenerateResponse {
   };
 }
 
-const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3-pro-image-preview";
+const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3-pro-image";
 
 function requiredEnv(name: string): string {
   const value = process.env[name];
@@ -97,13 +97,13 @@ export async function runGeminiOutfitGeneration(
 
   const prompt = `
 You are a fashion lookbook image-generation agent.
-Use the first image as the customer's full-body reference and the second image as the confirmed hairstyle reference.
+Use the first image as the customer's full-body reference and the second image as the selected hairstyle reference.
 Generate a realistic full-body lookbook outfit image, not a guaranteed exact virtual fitting.
 
 Global constraints:
 - Preserve the person's identity, face, hairstyle impression, body proportions, skin tone, pose category, and natural body scale.
 - Do not make the customer thinner, taller, younger, older, or change ethnicity.
-- Keep the confirmed hairstyle visible and consistent with the second reference image.
+- Keep the selected hairstyle visible and consistent with the second reference image.
 - Change clothing, shoes, and accessories only.
 - Do not add hats, heavy scarves, or collars that hide the hairstyle.
 - Render a clean editorial shopping lookbook image with the full outfit visible.
@@ -117,7 +117,7 @@ Customer profile:
 - Exposure preference: ${request.profile.exposurePreference ?? "balanced"}
 - Avoid items: ${request.profile.avoidItems.join(", ") || "none"}
 
-Confirmed hairstyle: ${request.hairVariant.label}
+Selected hairstyle: ${request.hairVariant.label}
 Outfit headline: ${request.recommendation.headline}
 Fashion genre: ${request.recommendation.genre}
 Legacy occasion: ${request.recommendation.occasion || "none"}

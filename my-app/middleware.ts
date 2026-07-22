@@ -2,6 +2,11 @@ import { clerkClient, clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { buildSignInRedirectUrl, getClerkConfigState, isDevClerkSalonUserId } from "./lib/clerk";
+import {
+  getCanonicalGenerationEntryPath,
+  getLegacyGenerationEntrySource,
+} from "./lib/canonical-generation-entry";
+import { isAuthorizedGenerationWorkflowCallback } from "./lib/generation-workflow-callback-auth";
 import { isAccountType, parseOnboardingMetadata } from "./lib/onboarding";
 import { getSubscriptionAccessMode } from "./lib/subscription-access";
 
@@ -36,6 +41,10 @@ const isPublicSubscriptionWaitlistRoute = createRouteMatcher([
 const isBillingCheckoutRoute = createRouteMatcher(["/billing/checkout(.*)"]);
 const isAccountApiRoute = createRouteMatcher(["/api/account"]);
 const isMobileApiRoute = createRouteMatcher(["/api/mobile(.*)"]);
+const isMobileGenerationApiRoute = createRouteMatcher([
+  "/api/prompts/generate",
+  "/api/generations(.*)",
+]);
 const isMemberProfileApiRoute = createRouteMatcher(["/api/member-profile"]);
 const isAdminPageRoute = createRouteMatcher(["/admin(.*)"]);
 const isAdminNamespaceApiRoute = createRouteMatcher(["/api/admin(.*)"]);
@@ -48,6 +57,29 @@ const isSalonRoute = createRouteMatcher(["/salon(.*)"]);
 const isHomeRoute = createRouteMatcher(["/home(.*)"]);
 const isMyPageRoute = createRouteMatcher(["/mypage"]);
 const isWorkspaceRoute = createRouteMatcher(["/workspace(.*)"]);
+
+function redirectLegacyGenerationEntry(req: NextRequest) {
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    return null;
+  }
+
+  const targetPath = getCanonicalGenerationEntryPath(req.nextUrl.pathname);
+  const source = getLegacyGenerationEntrySource(req.nextUrl.pathname);
+  if (!targetPath || !source) {
+    return null;
+  }
+
+  const targetUrl = new URL(targetPath, req.url);
+  console.info(
+    "[generation-entry] legacy route redirected",
+    JSON.stringify({ source, target: targetPath }),
+  );
+
+  const response = NextResponse.redirect(targetUrl, 307);
+  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("x-hairfit-generation-entry", `legacy-${source}`);
+  return response;
+}
 
 function hasValidCatalogAdminSecret(req: NextRequest) {
   const providedSecrets = [
@@ -73,7 +105,8 @@ function clerkConfigRequiredResponse(req: NextRequest) {
     return NextResponse.json({ error: "Authentication is not configured" }, { status: 503 });
   }
 
-  return NextResponse.redirect(new URL("/login", req.url));
+  const returnBackPath = `${url.pathname}${url.search}`;
+  return NextResponse.redirect(new URL(buildSignInRedirectUrl(returnBackPath), req.url));
 }
 
 function isMutationRequest(req: NextRequest) {
@@ -105,7 +138,12 @@ function getMobileCorsHeaders(req: NextRequest) {
 }
 
 function isMobileSessionApiRoute(req: NextRequest) {
-  return isMobileApiRoute(req) || isMemberProfileApiRoute(req) || isAccountApiRoute(req);
+  return (
+    isMobileApiRoute(req) ||
+    isMobileGenerationApiRoute(req) ||
+    isMemberProfileApiRoute(req) ||
+    isAccountApiRoute(req)
+  );
 }
 
 function withMobileCors(req: NextRequest, response: NextResponse) {
@@ -160,8 +198,17 @@ async function loadDbAccount(userId: string) {
 
 const clerkAppMiddleware = hasClerkConfig
   ? clerkMiddleware(async (auth, req) => {
+      const legacyGenerationRedirect = redirectLegacyGenerationEntry(req);
+      if (legacyGenerationRedirect) {
+        return legacyGenerationRedirect;
+      }
+
       if (isMobileSessionApiRoute(req) && req.method === "OPTIONS") {
         return mobileCorsPreflight(req);
+      }
+
+      if (await isAuthorizedGenerationWorkflowCallback(req)) {
+        return NextResponse.next();
       }
 
       if (
@@ -251,9 +298,18 @@ const proxy = hasClerkConfig && clerkAppMiddleware
   ? (req: NextRequest, event: NextFetchEvent) => {
       return clerkAppMiddleware(req, event);
     }
-  : (req: NextRequest) => {
+  : async (req: NextRequest) => {
+      const legacyGenerationRedirect = redirectLegacyGenerationEntry(req);
+      if (legacyGenerationRedirect) {
+        return legacyGenerationRedirect;
+      }
+
       if (isMobileSessionApiRoute(req) && req.method === "OPTIONS") {
         return mobileCorsPreflight(req);
+      }
+
+      if (await isAuthorizedGenerationWorkflowCallback(req)) {
+        return NextResponse.next();
       }
 
       if (

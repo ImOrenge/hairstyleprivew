@@ -8,10 +8,12 @@ import type {
   SalonCustomer,
   SalonCustomerSource,
   SalonCustomerStyleTarget,
+  SalonConnectionSummary,
   SalonLinkedMember,
   SalonMatchCandidate,
   SalonMatchInvite,
   SalonMatchStatus,
+  SalonMemberHairRecordSummary,
   SalonMemberGenerationSummary,
   SalonServiceType,
   SalonVisit,
@@ -24,11 +26,13 @@ export const VISIT_COLUMNS =
 export const AFTERCARE_COLUMNS =
   "id,owner_user_id,customer_id,channel,status,scheduled_for,template_key,note,completed_at,created_at,updated_at";
 export const MATCH_INVITE_COLUMNS =
-  "id,owner_user_id,code,active,expires_at,created_at,updated_at";
+  "id,owner_user_id,code,active,consent_version,expires_at,superseded_at,superseded_by,created_at,updated_at";
 export const MATCH_REQUEST_COLUMNS =
-  "id,owner_user_id,member_user_id,invite_id,status,linked_customer_id,created_at,updated_at";
+  "id,owner_user_id,member_user_id,invite_id,status,linked_customer_id,consent_version,consent_scope,consented_at,linked_at,revoked_at,revoked_by_user_id,revocation_reason,created_at,updated_at";
 export const LINKED_MEMBER_COLUMNS = "id,email,display_name,avatar_url";
 export const GENERATION_SUMMARY_COLUMNS = "id,status,prompt_used,options,created_at";
+export const HAIR_RECORD_SUMMARY_COLUMNS =
+  "id,generation_id,style_name,service_type,service_date,created_at";
 
 type QueryError = { message: string } | null;
 type QueryResult<T> = Promise<{ data: T | null; error: QueryError }>;
@@ -197,7 +201,10 @@ export function normalizeMatchInvite(row: Record<string, unknown>, inviteUrl?: s
     ownerUserId: stringField(row, "owner_user_id"),
     code: stringField(row, "code"),
     active: row.active === true,
+    consentVersion: stringField(row, "consent_version"),
     expiresAt: nullableStringField(row, "expires_at"),
+    supersededAt: nullableStringField(row, "superseded_at"),
+    supersededBy: nullableStringField(row, "superseded_by"),
     createdAt: stringField(row, "created_at"),
     updatedAt: stringField(row, "updated_at"),
     inviteUrl,
@@ -241,6 +248,13 @@ export function normalizeMatchCandidate(
     inviteId: nullableStringField(row, "invite_id"),
     status: isSalonMatchStatus(row.status) ? row.status : "pending",
     linkedCustomerId: nullableStringField(row, "linked_customer_id"),
+    consentVersion: nullableStringField(row, "consent_version"),
+    consentScope: isRecord(row.consent_scope) ? row.consent_scope : null,
+    consentedAt: nullableStringField(row, "consented_at"),
+    linkedAt: nullableStringField(row, "linked_at"),
+    revokedAt: nullableStringField(row, "revoked_at"),
+    revokedByUserId: nullableStringField(row, "revoked_by_user_id"),
+    revocationReason: nullableStringField(row, "revocation_reason"),
     createdAt: stringField(row, "created_at"),
     updatedAt: stringField(row, "updated_at"),
     member,
@@ -274,6 +288,34 @@ export function normalizeGenerationSummary(row: Record<string, unknown>): SalonM
     promptUsed: nullableStringField(row, "prompt_used"),
     styleLabel,
     generatedImagePath: nullableStringField(row, "generated_image_path"),
+    createdAt: stringField(row, "created_at"),
+  };
+}
+
+export function normalizeConnectionSummary(row: Record<string, unknown>): SalonConnectionSummary {
+  return {
+    id: stringField(row, "id"),
+    ownerUserId: stringField(row, "owner_user_id"),
+    memberUserId: stringField(row, "member_user_id"),
+    status: isSalonMatchStatus(row.status) ? row.status : "pending",
+    linkedCustomerId: nullableStringField(row, "linked_customer_id"),
+    consentVersion: nullableStringField(row, "consent_version"),
+    consentScope: isRecord(row.consent_scope) ? row.consent_scope : null,
+    consentedAt: nullableStringField(row, "consented_at"),
+    linkedAt: nullableStringField(row, "linked_at"),
+    revokedAt: nullableStringField(row, "revoked_at"),
+    createdAt: stringField(row, "created_at"),
+    updatedAt: stringField(row, "updated_at"),
+  };
+}
+
+export function normalizeHairRecordSummary(row: Record<string, unknown>): SalonMemberHairRecordSummary {
+  return {
+    id: stringField(row, "id"),
+    generationId: nullableStringField(row, "generation_id"),
+    styleName: stringField(row, "style_name"),
+    serviceType: stringField(row, "service_type"),
+    serviceDate: stringField(row, "service_date"),
     createdAt: stringField(row, "created_at"),
   };
 }

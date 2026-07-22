@@ -1,0 +1,85 @@
+id: web.workspace.variant-selection
+name: WorkspaceVariantSelection
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/workspace/WorkspaceVariantSelection.tsx
+owner: generation-feature
+
+public_api:
+  exports:
+    - WorkspaceVariantSelection
+  props:
+    - actionError
+    - generationId
+    - isSavingSelection
+    - recommendationGrid
+    - resultHref
+    - selectedVariant
+    - selectedVariantId
+    - stylerHref
+    - semantic-command-events
+  events:
+    - onOpenAftercareConfirm
+    - onRegenerate
+    - onSelectVariant
+    - onShowGenerationStep
+
+dependencies:
+  internal:
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/Surface.tsx
+    - my-app/hooks/useResultTranslations.ts
+    - my-app/lib/recommendation-types.ts
+  external:
+    - next/link
+    - lucide-react
+  forbidden:
+    - fetch
+    - next-navigation
+    - generation-store
+    - generation-command-hook
+    - upload-validation-hook
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  derived:
+    - variant-status-label
+    - variant-length-label
+    - selected-card-state
+    - Korean-model-copy-with-fail-closed-fallback
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  variant_selection:
+    control: native-button
+    selected: aria-pressed
+    disabled: native-disabled
+  images:
+    alt: variant-label
+  actions: native-link-or-button
+
+test_surface:
+  contract: my-app/lib/workspace-decomposition.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  compatible_change_requires:
+    - passport-update
+    - workspace-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - authenticated-workspace-interaction-test
+
+promotion_blockers:
+  - customer-generation-specific-routes-and-copy
+  - no-authenticated-visual-regression-evidence
+  - no-keyboard-interaction-evidence

@@ -56,7 +56,11 @@ export function ReviewCarousel() {
         </InverseCard>
       </div>
 
-      <div className="-mx-5 mt-5 overflow-x-auto sm:-mx-6" aria-label={t("reviews.title")}>
+      <div
+        className="-mx-5 mt-5 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-accent)] sm:-mx-6"
+        aria-label={`${t("reviews.title")} — 좌우로 스크롤할 수 있습니다`}
+        tabIndex={0}
+      >
         <div className="review-roll gap-3 px-5 sm:px-6">
           {rollingReviews.map((review, index) => (
             <InverseCard

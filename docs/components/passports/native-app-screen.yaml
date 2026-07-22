@@ -1,0 +1,123 @@
+id: native.app.app-screen
+name: AppScreen
+platform: native
+kind: layout
+status: experimental
+source: apps/hairfit-app/components/app/AppScreen.tsx
+related_source:
+  - apps/hairfit-app/components/app/FormScreen.tsx
+  - apps/hairfit-app/components/app/VirtualizedListScreen.tsx
+  - apps/hairfit-app/components/app/RoleNavigationScaffold.tsx
+owner: hairfit-app-shell
+
+public_api:
+  exports:
+    - AppScreen
+    - AppScreenProps
+    - HeaderNavigationProvider
+    - HeaderMenuItem
+  compatibility_exports:
+    - apps/hairfit-app/lib/ui-native.tsx#Screen
+  props:
+    - children: ReactNode
+    - footerOverlay: ReactNode
+    - scroll: boolean (default true)
+    - style: StyleProp<ViewStyle>
+    - showHeader: boolean (deprecated and ignored)
+  slots:
+    - children
+    - footerOverlay
+  events: []
+
+dependencies:
+  internal:
+    - packages/ui-native/src/index.tsx#spacing
+    - packages/ui-native/src/index.tsx#useThemeColors
+    - apps/hairfit-app/components/app/NetworkRecoveryProvider.tsx#useNetworkRecovery
+  external:
+    - react
+    - react-native
+    - react-native-safe-area-context
+  app_specific:
+    - pattern-background
+    - safe-area-policy
+    - footer-overlay-policy
+
+styling:
+  strategy: react-native-stylesheet
+  stylesheet: apps/hairfit-app/components/app/AppScreen.tsx#styles
+  tokens:
+    - spacing.md
+    - spacing.xl
+    - theme.background
+    - theme.border
+  variants:
+    - scroll-content
+    - scroll-content-with-footer-overlay
+  allows_style: true
+  runtime_styles_allowed:
+    - pattern-lines-from-window-dimensions
+
+state:
+  owned: []
+  derived:
+    - window-dimensions
+    - footer-overlay-presence
+    - offline-network-notice
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  safe_area:
+    edges:
+      - top
+      - bottom
+  keyboard:
+    persist_taps: handled
+    dismiss_mode:
+      ios: interactive
+      android: on-drag
+    automatic_insets:
+      ios: true
+      android: false
+    avoidance: FormScreen-owns-KeyboardAvoidingView-for-auth-forms
+  fixed_footer:
+    bottom_safe_area_owner: nested-SafeAreaView
+    outer_bottom_edge_disabled_when-footer-present: true
+  scrolling:
+    container: ScrollView
+  navigation:
+    owner: Expo-Router-layouts
+  network_status:
+    offline: assertive-alert
+    copy: input-preserved-and-automatic-read-refresh
+
+test_surface:
+  unit: apps/hairfit-app/__tests__/form-screen.test.tsx (composed shell)
+  network_recovery: apps/hairfit-app/__tests__/network-recovery.test.tsx
+  interaction: required
+  migration_contract: apps/hairfit-app/__tests__/native-screen-migration.test.js
+  visual: required
+  device_smoke: required
+  observed_usage:
+    screen_alias_jsx_files: 2
+    direct_route_or_feature_consumers: 22
+    direct_composite_consumers: 2
+
+change_policy:
+  current_gate: compatible-plus-behavioral-migration
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+  behavioral_change_requires:
+    - keyboard-safe-area-footer-device-check
+  breaking_change_requires:
+    - Screen-alias-usage-search
+    - compatibility-migration-note
+
+promotion_blockers:
+  - two-aftercare-Screen-alias-consumers-remain-outside-current-goal
+  - footer-overlay-spacing-is-fixed
+  - scroll-screen-and-page-scaffold-not-yet-split
+  - deprecated-compatibility-provider-and-showHeader-remain
+  - no-device-or-visual-evidence

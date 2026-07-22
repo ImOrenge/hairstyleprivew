@@ -1,29 +1,49 @@
 "use client";
 
 import { useCallback } from "react";
-import type {
-  FaceAnalysisSummary,
-  GeneratedVariant,
-  HairDesignerBrief,
-  RecommendationCandidate,
-} from "../lib/recommendation-types";
+import {
+  isPaidActionQuoteExpired,
+  normalizeGenerationCreditReceipt,
+  normalizePaidActionQuote,
+  type GenerationCreditReceipt,
+  type PaidActionQuote,
+} from "@hairfit/shared";
+import type { GeneratedVariant } from "../lib/recommendation-types";
+import {
+  doesGenerationOwnerSnapshotMatch,
+  getGenerationOwnerSnapshot,
+  type GenerationOwnerSnapshot,
+} from "../lib/generation-owner-state";
 import { convertImageSrcToWebpDataUrl } from "../lib/webp-client";
-import { useGenerationStore } from "../store/useGenerationStore";
+import { mapWebUserError } from "../lib/web-user-message";
+import {
+  useGenerationStore,
+  type GenerationDraftReceipt,
+} from "../store/useGenerationStore";
 
-interface RecommendationApiResponse {
+interface GenerationDraftApiResponse {
+  draftId?: string;
+  clientRequestId?: string;
+  uploadedAt?: string;
+  expiresAt?: string;
+  state?: string;
+  alreadyUploaded?: boolean;
+  code?: string;
+  redirectTo?: string;
+  error?: string;
+}
+
+interface GenerationAcceptanceApiResponse {
   generationId?: string;
-  analysis?: FaceAnalysisSummary;
-  recommendations?: Array<
-    RecommendationCandidate & {
-      designerBrief?: HairDesignerBrief | null;
-      promptArtifactToken?: string;
-    }
-  >;
-  catalogCycleId?: string;
+  acceptedAt?: string;
+  preparationStatus?: string;
+  backgroundStarted?: boolean;
+  workflowDispatchStatus?: string;
   creditsRequired?: number;
-  model?: string;
-  promptVersion?: string;
-  styleTarget?: "male" | "female";
+  requiredCredits?: number;
+  creditReceipt?: GenerationCreditReceipt | null;
+  billingMode?: "reserved_v1" | "legacy_unmanaged";
+  quote?: PaidActionQuote;
   code?: string;
   redirectTo?: string;
   error?: string;
@@ -43,20 +63,6 @@ interface GenerationApiResponse {
   requiredCredits?: number;
 }
 
-interface GenerationStartApiResponse {
-  generationId?: string;
-  workflowInstanceId?: string;
-  alreadyStarted?: boolean;
-  terminal?: boolean;
-  status?: string;
-  code?: string;
-  error?: string;
-}
-
-const GENERATION_MAX_CONCURRENCY = 1;
-const GENERATION_LAUNCH_GAP_MS = 1500;
-const VARIANT_MAX_ATTEMPTS = 2;
-const VARIANT_RETRY_DELAY_MS = 3000;
 const INSUFFICIENT_CREDITS_CODE = "INSUFFICIENT_CREDITS";
 const INSUFFICIENT_CREDITS_MESSAGE =
   "크레딧이 부족합니다. 크레딧을 충전한 뒤 다시 시도해 주세요.";
@@ -78,49 +84,6 @@ class GenerationApiError extends Error {
     this.code = input.code;
     this.requiredCredits = input.requiredCredits;
   }
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function runStaggeredPool<T>(
-  items: T[],
-  worker: (item: T, index: number) => Promise<void>,
-) {
-  const activeTasks = new Set<Promise<void>>();
-
-  for (const [index, item] of items.entries()) {
-    while (activeTasks.size >= GENERATION_MAX_CONCURRENCY) {
-      await Promise.race(activeTasks);
-    }
-
-    const task = worker(item, index)
-      .catch(() => undefined)
-      .finally(() => {
-        activeTasks.delete(task);
-      });
-    activeTasks.add(task);
-
-    if (index < items.length - 1) {
-      await sleep(GENERATION_LAUNCH_GAP_MS);
-    }
-  }
-
-  await Promise.allSettled(activeTasks);
-}
-
-function summarizeVariantFailures(errors: string[]) {
-  const uniqueErrors = Array.from(new Set(errors.map((item) => item.trim()).filter(Boolean)));
-  if (uniqueErrors.length === 0) {
-    return "All recommendation variants failed.";
-  }
-
-  if (uniqueErrors.includes(INSUFFICIENT_CREDITS_MESSAGE)) {
-    return INSUFFICIENT_CREDITS_MESSAGE;
-  }
-
-  return `All recommendation variants failed. First error: ${uniqueErrors[0]}`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -157,12 +120,6 @@ function toErrorMessage(error: unknown, fallback: string) {
   return rawErrorMessage(error, fallback);
 }
 
-function pushUniqueFailure(errors: string[], message: string) {
-  if (!errors.includes(message)) {
-    errors.push(message);
-  }
-}
-
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -172,35 +129,205 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
-function toGeneratedVariant(
-  candidate: RecommendationCandidate & {
-    designerBrief?: HairDesignerBrief | null;
-    promptArtifactToken?: string;
-  },
-): GeneratedVariant {
-  return {
-    ...candidate,
-    status: "queued",
-    outputUrl: null,
-    generatedImagePath: null,
-    evaluation: null,
-    designerBrief: candidate.designerBrief ?? null,
-    error: null,
-    generatedAt: null,
-  };
+const draftUploadPromises = new Map<string, Promise<GenerationDraftReceipt>>();
+const generationQuotePromises = new Map<string, Promise<PaidActionQuote>>();
+
+class GenerationOwnerChangedError extends Error {
+  constructor() {
+    super("로그인 계정 또는 기준 사진이 변경되어 이전 생성 응답을 무시했습니다.");
+    this.name = "GenerationOwnerChangedError";
+  }
+}
+
+function captureGenerationOwnerSnapshot() {
+  const snapshot = getGenerationOwnerSnapshot(useGenerationStore.getState());
+  if (!snapshot) throw new GenerationOwnerChangedError();
+  return snapshot;
+}
+
+function isGenerationOwnerSnapshotCurrent(snapshot: GenerationOwnerSnapshot) {
+  return doesGenerationOwnerSnapshotMatch(useGenerationStore.getState(), snapshot);
+}
+
+function assertGenerationOwnerCurrent(snapshot: GenerationOwnerSnapshot) {
+  if (!isGenerationOwnerSnapshotCurrent(snapshot)) {
+    throw new GenerationOwnerChangedError();
+  }
 }
 
 export function useGenerate() {
-  const originalImage = useGenerationStore((state) => state.originalImage);
   const setIsGenerating = useGenerationStore((state) => state.setIsGenerating);
   const setProgress = useGenerationStore((state) => state.setProgress);
   const setPipelineState = useGenerationStore((state) => state.setPipelineState);
   const setPipelineError = useGenerationStore((state) => state.setPipelineError);
   const clearLatestResult = useGenerationStore((state) => state.clearLatestResult);
   const resetPipeline = useGenerationStore((state) => state.resetPipeline);
-  const initializeRecommendationSession = useGenerationStore((state) => state.initializeRecommendationSession);
   const updateRecommendationVariant = useGenerationStore((state) => state.updateRecommendationVariant);
-  const setGridGenerationProgress = useGenerationStore((state) => state.setGridGenerationProgress);
+  const beginDraftUpload = useGenerationStore((state) => state.beginDraftUpload);
+  const completeDraftUpload = useGenerationStore((state) => state.completeDraftUpload);
+  const failDraftUpload = useGenerationStore((state) => state.failDraftUpload);
+  const beginGenerationQuote = useGenerationStore((state) => state.beginGenerationQuote);
+  const completeGenerationQuote = useGenerationStore((state) => state.completeGenerationQuote);
+  const failGenerationQuote = useGenerationStore((state) => state.failGenerationQuote);
+  const setAcceptedGeneration = useGenerationStore((state) => state.setAcceptedGeneration);
+
+  const prepareGenerationDraft = useCallback(async () => {
+    const current = useGenerationStore.getState();
+    const ownerSnapshot = captureGenerationOwnerSnapshot();
+    if (current.draftReceipt?.state === "ready") {
+      return current.draftReceipt;
+    }
+    if (!current.originalImage) {
+      const message = "생성 전에 기준 사진을 업로드해 주세요.";
+      setPipelineError(message);
+      throw new Error(message);
+    }
+
+    const sourceImage = current.originalImage;
+    const clientRequestId = current.clientRequestId || crypto.randomUUID();
+    const requestKey = `${ownerSnapshot.ownerId}:${ownerSnapshot.ownerRevision}:${clientRequestId}`;
+    const existingUpload = draftUploadPromises.get(requestKey);
+    if (existingUpload) {
+      return existingUpload;
+    }
+
+    beginDraftUpload(clientRequestId);
+    const uploadPromise = (async () => {
+      try {
+        const referenceImageDataUrl = await fileToDataUrl(sourceImage);
+        assertGenerationOwnerCurrent(ownerSnapshot);
+        const response = await fetch("/api/generations/drafts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientRequestId, referenceImageDataUrl }),
+        });
+        const data = (await response.json().catch(() => ({}))) as GenerationDraftApiResponse;
+        assertGenerationOwnerCurrent(ownerSnapshot);
+
+        if (!response.ok) {
+          if (data.redirectTo) {
+            window.location.assign(data.redirectTo);
+          }
+          throw new GenerationApiError({
+            message: "사진을 안전하게 업로드하지 못했습니다.",
+            status: response.status,
+            code: data.code,
+          });
+        }
+        if (
+          !data.draftId ||
+          data.clientRequestId !== clientRequestId ||
+          !data.uploadedAt ||
+          !data.expiresAt ||
+          data.state !== "ready" ||
+          typeof data.alreadyUploaded !== "boolean"
+        ) {
+          throw new Error("사진 업로드 응답이 완전하지 않습니다.");
+        }
+
+        const latest = useGenerationStore.getState();
+        if (
+          !doesGenerationOwnerSnapshotMatch(latest, ownerSnapshot) ||
+          latest.clientRequestId !== clientRequestId ||
+          latest.originalImage !== sourceImage
+        ) {
+          throw new Error("사진이 변경되어 새 업로드를 준비합니다.");
+        }
+
+        const receipt: GenerationDraftReceipt = {
+          draftId: data.draftId,
+          clientRequestId,
+          uploadedAt: data.uploadedAt,
+          expiresAt: data.expiresAt,
+          state: "ready",
+          alreadyUploaded: data.alreadyUploaded,
+        };
+        completeDraftUpload(receipt);
+        return receipt;
+      } catch (error) {
+        if (!isGenerationOwnerSnapshotCurrent(ownerSnapshot)) {
+          throw new GenerationOwnerChangedError();
+        }
+        const message =
+          error instanceof GenerationOwnerChangedError
+            ? error.message
+            : mapWebUserError(
+                error,
+                "사진을 안전하게 업로드하지 못했습니다. 사진을 확인하고 다시 시도해 주세요.",
+                "photo",
+              );
+        failDraftUpload(clientRequestId, message);
+        throw new Error(message);
+      } finally {
+        draftUploadPromises.delete(requestKey);
+      }
+    })();
+
+    draftUploadPromises.set(requestKey, uploadPromise);
+    return uploadPromise;
+  }, [beginDraftUpload, completeDraftUpload, failDraftUpload, setPipelineError]);
+
+  const prepareGenerationQuote = useCallback(async (options: { force?: boolean } = {}) => {
+    const current = useGenerationStore.getState();
+    const ownerSnapshot = captureGenerationOwnerSnapshot();
+    const draftId = current.draftReceipt?.draftId;
+    if (!draftId) {
+      const message = "사진 보안 업로드가 끝난 뒤 크레딧 견적을 확인할 수 있습니다.";
+      throw new Error(message);
+    }
+    if (
+      !options.force &&
+      current.generationQuote?.subjectId === draftId &&
+      !isPaidActionQuoteExpired(current.generationQuote, Date.now() + 10_000)
+    ) {
+      return current.generationQuote;
+    }
+
+    const requestKey = `${ownerSnapshot.ownerId}:${ownerSnapshot.ownerRevision}:${draftId}`;
+    const existingRequest = generationQuotePromises.get(requestKey);
+    if (existingRequest) return existingRequest;
+
+    beginGenerationQuote(draftId);
+    const requestPromise = (async () => {
+      try {
+        const response = await fetch("/api/paid-actions/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "hair_generation",
+            subjectId: draftId,
+            billingScope: "customer",
+          }),
+        });
+        const data = (await response.json().catch(() => ({}))) as {
+          quote?: unknown;
+          error?: string;
+        };
+        assertGenerationOwnerCurrent(ownerSnapshot);
+        if (!response.ok) {
+          throw new Error(data.error || "최신 크레딧 견적을 불러오지 못했습니다.");
+        }
+        const quote = normalizePaidActionQuote(data.quote);
+        if (!quote || quote.action !== "hair_generation" || quote.subjectId !== draftId) {
+          throw new Error("서버 크레딧 견적이 현재 생성 작업과 일치하지 않습니다.");
+        }
+        completeGenerationQuote(draftId, quote);
+        return quote;
+      } catch (error) {
+        if (!isGenerationOwnerSnapshotCurrent(ownerSnapshot)) {
+          throw new GenerationOwnerChangedError();
+        }
+        const message = rawErrorMessage(error, "최신 크레딧 견적을 불러오지 못했습니다.");
+        failGenerationQuote(draftId, message);
+        throw new Error(message);
+      } finally {
+        generationQuotePromises.delete(requestKey);
+      }
+    })();
+
+    generationQuotePromises.set(requestKey, requestPromise);
+    return requestPromise;
+  }, [beginGenerationQuote, completeGenerationQuote, failGenerationQuote]);
 
   const requestImageGeneration = useCallback(
     async (payload: {
@@ -208,10 +335,11 @@ export function useGenerate() {
       variantIndex: number;
       variantId: string;
       catalogItemId?: string;
-      variantLabel: string;
-      prompt: string;
-      promptArtifactToken: string;
-      imageDataUrl: string;
+      variantLabel?: string;
+      prompt?: string;
+      promptArtifactToken?: string;
+      imageDataUrl?: string;
+      reuseStoredOriginal?: boolean;
     }) => {
       const response = await fetch("/api/generations/run", {
         method: "POST",
@@ -286,226 +414,137 @@ export function useGenerate() {
   );
 
   const runGridPipeline = useCallback(async () => {
-    if (!originalImage) {
-      const message = "Upload a reference photo before generating recommendations.";
-      setPipelineError(message);
-      setPipelineState("failed", message);
-      throw new Error(message);
-    }
-
-    setIsGenerating(true);
-    setProgress(5);
-    setGridGenerationProgress(0);
+    const ownerSnapshot = captureGenerationOwnerSnapshot();
     clearLatestResult();
     setPipelineError(null);
 
     try {
-      setPipelineState("validating", "Checking the uploaded portrait.");
-      const referenceImageDataUrl = await fileToDataUrl(originalImage);
-      setProgress(15);
-
-      setPipelineState(
-        "analyzing_face",
-        "얼굴 분석 중입니다. 백그라운드 작업 접수가 끝날 때까지 이 화면을 유지해 주세요.",
-      );
-      const promptResponse = await fetch("/api/prompts/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          referenceImageDataUrl,
-        }),
-      });
-
-      const promptData = (await promptResponse.json().catch(() => ({}))) as RecommendationApiResponse;
-      if (!promptResponse.ok) {
-        if (promptData.code === "MEMBER_GENDER_REQUIRED" && promptData.redirectTo) {
-          window.location.assign(promptData.redirectTo);
-        }
-        throw new Error(promptData.error || "Failed to build hairstyle recommendations.");
+      const draft = await prepareGenerationDraft();
+      assertGenerationOwnerCurrent(ownerSnapshot);
+      const latest = useGenerationStore.getState();
+      if (latest.draftReceipt?.draftId !== draft.draftId) {
+        throw new Error("사진이 변경되어 새 접수 준비가 필요합니다.");
+      }
+      const displayedQuote = latest.generationQuote;
+      if (!displayedQuote || displayedQuote.subjectId !== draft.draftId) {
+        await prepareGenerationQuote({ force: true });
+        assertGenerationOwnerCurrent(ownerSnapshot);
+        throw new GenerationApiError({
+          message: "최신 크레딧 견적을 준비했습니다. 잔액과 차감 후 잔액을 확인한 뒤 다시 접수해 주세요.",
+          status: 428,
+          code: "QUOTE_REQUIRED",
+        });
+      }
+      if (isPaidActionQuoteExpired(displayedQuote)) {
+        await prepareGenerationQuote({ force: true });
+        assertGenerationOwnerCurrent(ownerSnapshot);
+        throw new GenerationApiError({
+          message: "견적 유효 시간이 지나 최신 견적을 불러왔습니다. 내용을 확인한 뒤 다시 접수해 주세요.",
+          status: 409,
+          code: "QUOTE_EXPIRED",
+        });
+      }
+      const quote = displayedQuote;
+      if (quote.subjectId !== draft.draftId) {
+        throw new Error("크레딧 견적 대상이 현재 사진과 일치하지 않습니다.");
+      }
+      if (!quote.isAllowed) {
+        throw new GenerationApiError({
+          message: `크레딧이 ${quote.shortfallCredits} 부족합니다. 충전 후 최신 견적을 다시 확인해 주세요.`,
+          status: 409,
+          code: INSUFFICIENT_CREDITS_CODE,
+          requiredCredits: quote.costCredits,
+        });
       }
 
-      if (!promptData.generationId || !promptData.analysis || !promptData.recommendations?.length) {
-        throw new Error("Recommendation response is incomplete.");
-      }
-
-      const generationId = promptData.generationId;
-      const analysis = promptData.analysis;
-      const recommendations = promptData.recommendations;
-
-      const workingGrid = recommendations.map(toGeneratedVariant);
-      initializeRecommendationSession({
-        generationId,
-        analysisSummary: analysis,
-        recommendationGrid: workingGrid,
-      });
-
-      setPipelineState("building_grid", "Prepared a 3x3 recommendation grid.");
+      setIsGenerating(true);
       setProgress(30);
+      setPipelineState("validating", "생성 작업을 안전하게 접수하고 있습니다.");
 
-      const startResponse = await fetch("/api/generations/start", {
+      const response = await fetch("/api/generations/accept", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ generationId }),
+        body: JSON.stringify({ draftId: draft.draftId, quoteId: quote.quoteId }),
       });
-      const startData = (await startResponse.json().catch(() => ({}))) as GenerationStartApiResponse;
+      const data = (await response.json().catch(() => ({}))) as GenerationAcceptanceApiResponse;
+      assertGenerationOwnerCurrent(ownerSnapshot);
 
-      if (startResponse.ok) {
-        setPipelineState(
-          "generating_image",
-          "백그라운드에서 헤어스타일을 생성하고 있습니다. 다른 페이지로 이동하거나 브라우저를 닫아도 계속 진행됩니다.",
-        );
-        setProgress(35);
-        return {
-          generationId,
-          analysis,
-          background: true,
-        };
+      if (!response.ok) {
+        const refreshedQuote = normalizePaidActionQuote(data.quote);
+        if (refreshedQuote?.subjectId === draft.draftId) {
+          completeGenerationQuote(draft.draftId, refreshedQuote);
+        }
+        if (data.redirectTo) {
+          window.location.assign(data.redirectTo);
+        }
+        throw new GenerationApiError({
+          message: data.error || "헤어스타일 생성 작업을 접수하지 못했습니다.",
+          status: response.status,
+          code: data.code,
+          requiredCredits: data.requiredCredits ?? data.creditsRequired,
+        });
+      }
+      if (
+        !data.generationId ||
+        !data.acceptedAt ||
+        !data.preparationStatus ||
+        typeof data.backgroundStarted !== "boolean" ||
+        !data.workflowDispatchStatus
+      ) {
+        throw new Error("작업 접수 응답이 완전하지 않습니다.");
       }
 
-      const canUseLocalLegacyFallback =
-        startData.code === "GENERATION_WORKFLOW_UNAVAILABLE" && process.env.NODE_ENV === "development";
-      if (!canUseLocalLegacyFallback) {
-        throw new Error(startData.error || "백그라운드 생성 작업을 시작하지 못했습니다.");
+      const creditReceipt = data.creditReceipt == null
+        ? null
+        : normalizeGenerationCreditReceipt(data.creditReceipt);
+      if (data.billingMode === "reserved_v1" && !creditReceipt) {
+        throw new Error("크레딧 예약 영수증을 확인하지 못했습니다.");
       }
 
-      const total = recommendations.length;
-      let settledCount = 0;
-      let completedCount = 0;
-      let insufficientCreditsSeen = false;
-      const failedMessages: string[] = [];
-
-      for (const candidate of recommendations) {
-        if (!candidate.promptArtifactToken) {
-          updateRecommendationVariant(candidate.id, {
-            status: "failed",
-            error: "Missing prompt artifact token.",
-          });
-        }
-      }
-
-      setPipelineState("generating_image", "Rendering the 3x3 hairstyle variants.");
-
-      await runStaggeredPool(recommendations, async (candidate, index) => {
-        const finishVariant = () => {
-          settledCount += 1;
-          const percent = Math.round((settledCount / total) * 100);
-          setGridGenerationProgress(percent);
-          setProgress(30 + Math.round(percent * 0.6));
-        };
-
-        if (!candidate.promptArtifactToken) {
-          failedMessages.push("Missing prompt artifact token.");
-          finishVariant();
-          return;
-        }
-
-        try {
-          for (let attempt = 1; attempt <= VARIANT_MAX_ATTEMPTS; attempt += 1) {
-            const isRetry = attempt > 1;
-            setPipelineState(
-              "generating_image",
-              `${isRetry ? "Retrying" : "Rendering"} hairstyle variant ${index + 1} of ${total}.`,
-            );
-            updateRecommendationVariant(candidate.id, {
-              status: "generating",
-              error: null,
-            });
-
-            try {
-              const result = await requestImageGeneration({
-                generationId,
-                variantIndex: index,
-                variantId: candidate.id,
-                catalogItemId: candidate.catalogItemId,
-                variantLabel: candidate.label,
-                prompt: candidate.prompt,
-                promptArtifactToken: candidate.promptArtifactToken,
-                imageDataUrl: referenceImageDataUrl,
-              });
-
-              completedCount += 1;
-              updateRecommendationVariant(candidate.id, {
-                status: "completed",
-                outputUrl: result.outputUrl,
-                generatedImagePath: result.generatedImagePath,
-                evaluation: result.evaluation,
-                error: null,
-                generatedAt: new Date().toISOString(),
-              });
-              return;
-            } catch (error) {
-              const message = toErrorMessage(error, "Variant generation failed.");
-              if (isInsufficientCreditsError(error)) {
-                insufficientCreditsSeen = true;
-                pushUniqueFailure(failedMessages, message);
-                updateRecommendationVariant(candidate.id, {
-                  status: "failed",
-                  error: message,
-                });
-                return;
-              }
-
-              if (attempt < VARIANT_MAX_ATTEMPTS) {
-                updateRecommendationVariant(candidate.id, {
-                  status: "generating",
-                  error: `Attempt ${attempt} failed: ${message}. Retrying...`,
-                });
-                await sleep(VARIANT_RETRY_DELAY_MS);
-                continue;
-              }
-
-              pushUniqueFailure(failedMessages, message);
-              updateRecommendationVariant(candidate.id, {
-                status: "failed",
-                error: message,
-              });
-            }
-          }
-        } finally {
-          finishVariant();
-        }
-      });
-
-      setPipelineState("finalizing", "Finalizing the recommendation board.");
-      setProgress(95);
-
-      if (completedCount === 0) {
-        if (insufficientCreditsSeen) {
-          throw new Error(INSUFFICIENT_CREDITS_MESSAGE);
-        }
-        throw new Error(summarizeVariantFailures(failedMessages));
-      }
-
-      setPipelineState("completed", "Your 3x3 hairstyle recommendation grid is ready.");
-      setProgress(100);
+      setAcceptedGeneration(data.generationId);
+      setPipelineState(
+        "generating_image",
+        creditReceipt
+          ? `작업 접수와 ${creditReceipt.reservedCredits}크레딧 예약이 완료되었습니다. 이제 다른 페이지로 이동하거나 브라우저를 닫아도 계속 진행됩니다.`
+          : "작업 접수가 완료되었습니다. 이제 다른 페이지로 이동하거나 브라우저를 닫아도 계속 진행됩니다.",
+      );
+      setProgress(35);
 
       return {
-        generationId,
-        analysis,
-        background: false,
+        generationId: data.generationId,
+        acceptedAt: data.acceptedAt,
+        preparationStatus: data.preparationStatus,
+        backgroundStarted: data.backgroundStarted,
+        workflowDispatchStatus: data.workflowDispatchStatus,
+        creditsRequired: creditReceipt?.reservedCredits ?? data.creditsRequired,
+        creditReceipt,
+        billingMode: data.billingMode,
+        background: true as const,
       };
     } catch (error) {
-      const message = toErrorMessage(error, "The recommendation pipeline failed.");
+      if (!isGenerationOwnerSnapshotCurrent(ownerSnapshot)) {
+        throw new GenerationOwnerChangedError();
+      }
+      const message = toErrorMessage(error, "헤어스타일 생성 작업을 접수하지 못했습니다.");
       setPipelineError(message);
       setPipelineState("failed", message);
       setProgress(0);
       throw new Error(message);
     } finally {
-      setIsGenerating(false);
+      if (isGenerationOwnerSnapshotCurrent(ownerSnapshot)) {
+        setIsGenerating(false);
+      }
     }
   }, [
     clearLatestResult,
-    initializeRecommendationSession,
-    originalImage,
-    requestImageGeneration,
-    setGridGenerationProgress,
+    completeGenerationQuote,
+    prepareGenerationDraft,
+    prepareGenerationQuote,
+    setAcceptedGeneration,
     setIsGenerating,
     setPipelineError,
     setPipelineState,
     setProgress,
-    updateRecommendationVariant,
   ]);
 
   const retryRecommendationVariant = useCallback(
@@ -513,15 +552,6 @@ export function useGenerate() {
       generationId: string;
       variant: GeneratedVariant;
     }) => {
-      if (!originalImage) {
-        throw new Error("Original image is missing.");
-      }
-
-      if (!payload.variant.promptArtifactToken) {
-        throw new Error("Prompt artifact token is missing.");
-      }
-
-      const imageDataUrl = await fileToDataUrl(originalImage);
       updateRecommendationVariant(payload.variant.id, {
         status: "generating",
         error: null,
@@ -533,10 +563,7 @@ export function useGenerate() {
           variantIndex: Math.max(0, payload.variant.rank - 1),
           variantId: payload.variant.id,
           catalogItemId: payload.variant.catalogItemId,
-          variantLabel: payload.variant.label,
-          prompt: payload.variant.prompt,
-          promptArtifactToken: payload.variant.promptArtifactToken,
-          imageDataUrl,
+          reuseStoredOriginal: true,
         });
 
         updateRecommendationVariant(payload.variant.id, {
@@ -555,10 +582,12 @@ export function useGenerate() {
         throw error;
       }
     },
-    [originalImage, requestImageGeneration, updateRecommendationVariant],
+    [requestImageGeneration, updateRecommendationVariant],
   );
 
   return {
+    prepareGenerationDraft,
+    prepareGenerationQuote,
     runGridPipeline,
     retryRecommendationVariant,
     resetPipeline,

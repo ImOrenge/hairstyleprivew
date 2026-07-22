@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowRight, CalendarDays, Scissors } from "lucide-react";
 import { AppPage, Panel, SurfaceCard } from "../../components/ui/Surface";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
+import { getConfirmedStyleMediaFromRelation } from "../../lib/confirmed-style-media";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 
 interface HairRecordRow {
@@ -13,6 +14,8 @@ interface HairRecordRow {
   service_date: string;
   next_visit_target_days: number;
   created_at: string;
+  generation?: unknown;
+  selected_variant_image_url?: string | null;
 }
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -53,23 +56,26 @@ export default async function AftercarePage() {
     const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase
       .from("user_hair_records")
-      .select("id,style_name,service_type,service_date,next_visit_target_days,created_at")
+      .select("id,style_name,service_type,service_date,next_visit_target_days,created_at,generation:generations(selected_variant_id,options)")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
 
     if (!error && data) {
-      records = data as HairRecordRow[];
+      records = (data as HairRecordRow[]).map((record) => ({
+        ...record,
+        selected_variant_image_url: getConfirmedStyleMediaFromRelation(record.generation).selectedVariantImageUrl,
+      }));
     }
   }
 
   return (
-    <AppPage as="main" className="flex flex-col gap-6 pb-16 pt-8">
+    <AppPage className="flex flex-col gap-6 pb-16 pt-8">
       <Panel as="section" className="px-6 py-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-xs font-bold uppercase text-emerald-600">Aftercare</p>
-            <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)]">에프터케어</h1>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)]">시술 확정 목록</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">
               확정한 헤어스타일별 드라이, 트리트먼트, 고데기, 스타일링 방법을 다시 확인하세요.
             </p>
@@ -105,9 +111,24 @@ export default async function AftercarePage() {
             <Link
               key={record.id}
               href={`/aftercare/${record.id}`}
-              className="app-card group p-5 transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_20px_60px_-40px_rgba(15,23,42,0.35)]"
+              data-pointer-glow="surface"
+              className="app-card group overflow-hidden transition hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-[0_20px_60px_-40px_rgba(15,23,42,0.35)]"
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="aspect-[4/5] overflow-hidden bg-[var(--app-surface-muted)]">
+                {record.selected_variant_image_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={record.selected_variant_image_url}
+                    alt={`${record.style_name} 시술 확정 스타일`}
+                    className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center px-5 text-center text-sm font-semibold text-[var(--app-muted)]">
+                    확정 스타일 이미지 준비 중
+                  </div>
+                )}
+              </div>
+              <div className="flex items-start justify-between gap-4 p-5 pb-0">
                 <div className="min-w-0">
                   <p className="text-xs font-bold text-emerald-600">
                     {SERVICE_LABELS[record.service_type] || record.service_type}
@@ -118,12 +139,12 @@ export default async function AftercarePage() {
                   <ArrowRight className="h-4 w-4" />
                 </span>
               </div>
-              <div className="mt-5 grid gap-3 text-sm text-[var(--app-muted)]">
+              <div className="grid gap-3 p-5 text-sm text-[var(--app-muted)]">
                 <p className="flex items-center gap-2">
                   <CalendarDays className="h-4 w-4 text-[var(--app-subtle)]" />
                   시술일 {formatDate(record.service_date)}
                 </p>
-                <p className="app-card px-3 py-2">
+                <p data-pointer-glow="surface" className="app-card px-3 py-2">
                   권장 재방문: {nextVisitDate(record.service_date, record.next_visit_target_days)}
                 </p>
               </div>

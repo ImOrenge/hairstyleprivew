@@ -1,0 +1,110 @@
+id: web.ui.form-field
+name: FormField
+platform: web
+kind: form
+status: stable
+source: my-app/components/ui/FormField.tsx
+owner: web-ui
+
+public_api:
+  exports:
+    - FormField
+    - FormFieldProps
+    - FormFieldControlProps
+  props:
+    - label: ReactNode
+    - children: "(controlProps: FormFieldControlProps) => ReactNode"
+    - description: ReactNode
+    - error: ReactNode
+    - required: boolean
+    - id: string
+    - disabled: boolean
+    - className: string
+
+dependencies:
+  internal:
+    - my-app/lib/utils.ts#cn
+  external:
+    - react
+  forbidden:
+    - submit-logic
+    - validation-schema
+    - feature-stores
+    - api-clients
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-form-field
+  tokens:
+    - --app-text
+    - --app-muted
+    - --app-danger
+  variants:
+    - default
+    - required
+    - invalid
+    - disabled
+  data_contract:
+    data-state: ready | invalid | disabled
+    data-invalid: true when error exists
+    data-disabled: true when disabled
+  allows_className: true
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  derived:
+    - invalid-from-error
+    - disabled-from-prop
+    - data-state-from-error-and-disabled
+    - describedby-from-description-and-error
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  label: htmlFor-matches-control-id
+  description: aria-describedby
+  error:
+    - aria-invalid
+    - aria-errormessage
+    - aria-live-polite
+    - aria-atomic-true
+  required: native-required-plus-visible-marker
+
+test_surface:
+  unit:
+    - my-app/lib/form-feedback-stability.test.ts
+    - my-app/lib/global-css-contract.test.ts
+  browser:
+    - tests/web-e2e/form-feedback-stability.spec.ts
+  interaction: passing
+  visual: passing
+  observed_usage:
+    - my-app/components/home/B2BLeadForm.tsx
+    - my-app/components/result/FeedbackModal.tsx
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+  style_contract_change_requires:
+    - c-form-field-selector-search
+    - visual-verification
+
+promotion_evidence:
+  - fail-closed-production-component-harness
+  - label-description-error-id-association
+  - required-disabled-and-keyboard-focus-interaction
+  - polite-atomic-dynamic-error-announcement
+  - axe-serious-critical-zero-in-light-and-dark
+  - 320px-light-and-375px-dark-visual-regression
+  - public-b2b-form-submit-user-e2e
+
+promotion_blockers: []

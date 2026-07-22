@@ -1,38 +1,27 @@
 import { NextResponse } from "next/server";
+import {
+  adminActionErrorMessage,
+  adminActionHttpStatus,
+  isUuid,
+  parseAdminActionResult,
+} from "../../../../../../lib/admin-action-receipt";
 import { getAdminApiContext } from "../../../../../../lib/admin-auth";
 import { trimText } from "../../../../../../lib/onboarding";
+import { callSupabaseRpc } from "../../../../../../lib/supabase-rpc";
 
 interface Params {
   params: Promise<{ userId: string }>;
 }
 
 interface AdjustCreditsRequestBody {
+  actionKey?: unknown;
+  expectedBalance?: unknown;
   delta?: unknown;
   reason?: unknown;
 }
 
-interface LedgerInsertResult {
-  id: number;
-  user_id: string;
-  amount: number;
-  balance_after: number;
-  reason: string | null;
-  created_at: string;
-}
-
-interface UserCreditRow {
-  id: string;
-  credits: number;
-}
-
-function parseDelta(value: unknown) {
-  if (typeof value !== "number" || !Number.isInteger(value)) {
-    return null;
-  }
-  if (value === 0) {
-    return null;
-  }
-  return value;
+function parseInteger(value: unknown) {
+  return typeof value === "number" && Number.isInteger(value) ? value : null;
 }
 
 export async function POST(request: Request, { params }: Params) {
@@ -48,58 +37,48 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const body = (await request.json().catch(() => ({}))) as AdjustCreditsRequestBody;
-  const delta = parseDelta(body.delta);
+  const actionKey = isUuid(body.actionKey) ? body.actionKey : null;
+  const expectedBalance = parseInteger(body.expectedBalance);
+  const delta = parseInteger(body.delta);
   const reason = trimText(body.reason, 240);
 
-  if (delta === null) {
+  if (!actionKey) {
+    return NextResponse.json({ error: "actionKey must be a UUID" }, { status: 400 });
+  }
+  if (expectedBalance === null || expectedBalance < 0) {
+    return NextResponse.json({ error: "expectedBalance must be a non-negative integer" }, { status: 400 });
+  }
+  if (delta === null || delta === 0) {
     return NextResponse.json({ error: "delta must be a non-zero integer" }, { status: 400 });
   }
   if (!reason) {
     return NextResponse.json({ error: "reason is required" }, { status: 400 });
   }
 
-  const { data: ledger, error: ledgerError } = await context.supabase
-    .from("credit_ledger")
-    .insert({
-      user_id: targetUserId,
-      entry_type: "adjustment",
-      amount: delta,
-      reason,
-      metadata: {
-        source: "admin_dashboard",
-        adminUserId: context.userId,
-      },
-    })
-    .select("id,user_id,amount,balance_after,reason,created_at")
-    .maybeSingle<LedgerInsertResult>();
+  const { data, error } = await callSupabaseRpc(context.supabase, "execute_admin_credit_adjustment", {
+    p_action_key: actionKey,
+    p_actor_user_id: context.userId,
+    p_target_user_id: targetUserId,
+    p_expected_balance: expectedBalance,
+    p_delta: delta,
+    p_reason: reason,
+  });
 
-  if (ledgerError) {
-    const message = ledgerError.message.toLowerCase();
-    if (message.includes("insufficient credits")) {
-      return NextResponse.json({ error: "Insufficient credits for this adjustment" }, { status: 409 });
-    }
-    return NextResponse.json({ error: ledgerError.message }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (!ledger) {
-    return NextResponse.json({ error: "Failed to write credit ledger entry" }, { status: 500 });
+  const result = parseAdminActionResult(data);
+  if (!result) {
+    return NextResponse.json({ error: "Invalid admin action receipt" }, { status: 500 });
   }
 
-  const { data: userRow, error: userError } = await context.supabase
-    .from("users")
-    .select("id,credits")
-    .eq("id", targetUserId)
-    .maybeSingle<UserCreditRow>();
-
-  if (userError) {
-    return NextResponse.json({ error: userError.message }, { status: 500 });
-  }
-
+  const status = adminActionHttpStatus(result);
   return NextResponse.json(
     {
-      ledger,
-      user: userRow,
+      ...result,
+      error: status >= 400 ? adminActionErrorMessage(result) : undefined,
     },
-    { status: 200 },
+    { status },
   );
 }

@@ -1,5 +1,13 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import {
+  getGenerationCompletionNotificationState,
+  toLegacyGenerationNotificationStatus,
+} from "../../../../../lib/generation-notification-outbox";
+import { readGenerationCreditReceipt } from "../../../../../lib/generation-credit-receipt";
+import { readGenerationOriginalRetentionState } from "../../../../../lib/generation-original-retention";
+import { getGenerationRetryPath } from "../../../../../lib/generation-retry-path";
+import { dispatchGenerationWorkflowOutbox } from "../../../../../lib/generation-workflow-outbox";
 import { getSupabaseAdminClient } from "../../../../../lib/supabase";
 
 interface Params {
@@ -32,7 +40,7 @@ function countVariants(options: unknown) {
   );
 }
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -42,7 +50,7 @@ export async function GET(_request: Request, { params }: Params) {
   const supabase = getSupabaseAdminClient();
   const { data: generation, error } = await supabase
     .from("generations")
-    .select("id,user_id,status,options,updated_at,completion_notification_status")
+    .select("id,user_id,status,options,original_image_path,updated_at,accepted_at,preparation_status,preparation_error,workflow_instance_id,workflow_started_at,completion_notification_status")
     .eq("id", generationId)
     .maybeSingle();
 
@@ -58,12 +66,127 @@ export async function GET(_request: Request, { params }: Params) {
 
   const counts = countVariants(generation.options);
   const terminal = generation.status === "completed" || generation.status === "failed";
+  if (
+    process.env.NODE_ENV === "development" &&
+    !terminal &&
+    generation.accepted_at &&
+    !generation.workflow_instance_id
+  ) {
+    await dispatchGenerationWorkflowOutbox({
+      limit: 10,
+      localBaseUrl: new URL(request.url).origin,
+    }).catch((dispatchError) => {
+      console.warn("[generation-status] Local Workflow dispatch was deferred", {
+        generationId,
+        error: dispatchError instanceof Error ? dispatchError.message : "Unknown dispatch error",
+      });
+    });
+  }
+  let workflowDispatch = null;
+  try {
+    const { data: outbox, error: outboxError } = await supabase
+      .from("generation_workflow_outbox")
+      .select("status,attempt_count,available_at,dispatched_at,updated_at")
+      .eq("generation_id", generationId)
+      .maybeSingle();
+    if (outboxError) throw outboxError;
+    workflowDispatch = outbox
+      ? {
+          status: outbox.status,
+          attemptCount: outbox.attempt_count,
+          availableAt: outbox.available_at,
+          dispatchedAt: outbox.dispatched_at,
+          updatedAt: outbox.updated_at,
+        }
+      : null;
+  } catch (workflowDispatchError) {
+    console.warn("Generation Workflow dispatch state could not be read", {
+      generationId,
+      error:
+        workflowDispatchError instanceof Error
+          ? workflowDispatchError.message
+          : "Unknown Workflow outbox read error",
+    });
+    workflowDispatch = {
+      status: "unavailable",
+      attemptCount: 0,
+      availableAt: null,
+      dispatchedAt: null,
+      updatedAt: null,
+    };
+  }
+  let creditReceipt = null;
+  let creditReceiptUnavailable = false;
+  try {
+    creditReceipt = await readGenerationCreditReceipt(
+      supabase,
+      generationId,
+      userId,
+    );
+  } catch (creditReceiptError) {
+    creditReceiptUnavailable = true;
+    console.warn("Generation credit receipt could not be read", {
+      generationId,
+      error:
+        creditReceiptError instanceof Error
+          ? creditReceiptError.message
+          : "Unknown credit receipt error",
+    });
+  }
+  let notification = null;
+  if (terminal) {
+    try {
+      notification = await getGenerationCompletionNotificationState(generationId, supabase);
+    } catch (notificationError) {
+      console.warn("Falling back to the legacy generation notification state", {
+        generationId,
+        error:
+          notificationError instanceof Error
+            ? notificationError.message
+            : "Unknown outbox read error",
+      });
+    }
+  }
+  const originalRetention = await readGenerationOriginalRetentionState(supabase, {
+    id: generationId,
+    status: generation.status,
+    options: generation.options,
+    original_image_path: generation.original_image_path,
+  });
+
   return NextResponse.json({
     generationId,
     status: generation.status,
     terminal,
+    acceptedAt: generation.accepted_at,
+    preparationStatus: generation.preparation_status || "ready",
+    preparationError: generation.preparation_error,
+    workflowInstanceId: generation.workflow_instance_id,
+    workflowStartedAt: generation.workflow_started_at,
+    workflowDispatch,
     variants: counts,
     updatedAt: generation.updated_at,
-    notificationStatus: generation.completion_notification_status,
+    creditReceipt,
+    creditReceiptUnavailable,
+    retryPath: getGenerationRetryPath(generation.options),
+    originalRetention,
+    notificationStatus: toLegacyGenerationNotificationStatus(
+      notification,
+      generation.completion_notification_status,
+    ),
+    notification: notification
+      ? {
+          status: notification.status,
+          attemptCount: notification.attemptCount,
+          maxAttempts: notification.maxAttempts,
+          nextAttemptAt: ["pending", "sending", "retry_wait"].includes(
+            notification.status,
+          )
+            ? notification.availableAt
+            : null,
+          sentAt: notification.sentAt,
+          terminalAt: notification.terminalAt,
+        }
+      : null,
   });
 }

@@ -2,17 +2,7 @@
 
 import { useEffect } from "react";
 
-const GLOW_TARGET_SELECTOR = [
-  ".app-panel",
-  ".app-panel-muted",
-  ".app-card",
-  ".app-card-plain",
-  ".app-inverse",
-  ".app-inverse-card",
-  ".app-inverse-card-strong",
-  ".hf-panel",
-  ".hf-panel-inverse",
-].join(",");
+const GLOW_TARGET_SELECTOR = '[data-pointer-glow="surface"]';
 
 export function PointerGlowProvider() {
   useEffect(() => {

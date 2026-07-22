@@ -36,7 +36,7 @@ export default async function SupportNewPage({ searchParams }: SupportNewPagePro
         고객지원센터로 돌아가기
       </Link>
       <Panel className="p-5 sm:p-6">
-        <p className="app-kicker">New Support Post</p>
+        <p className="app-kicker">새 문의</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-[var(--app-text)]">게시글 작성</h1>
         <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
           작성한 글은 즉시 공개됩니다. 개인정보, 결제정보, 민감한 사진 설명은 포함하지 마세요.

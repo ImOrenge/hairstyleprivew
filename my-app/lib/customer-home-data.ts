@@ -1,5 +1,7 @@
 import "server-only";
 
+import { getGenerationVariantMediaSummary } from "@hairfit/shared";
+
 import {
   STYLING_RESULTS_BUCKET,
   createSignedUrl,
@@ -7,6 +9,7 @@ import {
   normalizeStyleProfile,
   type ServerSupabaseLike,
 } from "./style-profile-server";
+import { getConfirmedStyleMediaFromRelation } from "./confirmed-style-media";
 
 interface QueryResult<T> {
   data: T[] | null;
@@ -39,6 +42,17 @@ interface GenerationRow {
   generated_image_path?: unknown;
   options?: unknown;
   created_at?: unknown;
+}
+
+interface ConfirmedStyleRow {
+  id?: unknown;
+  generation_id?: unknown;
+  style_name?: unknown;
+  service_type?: unknown;
+  service_date?: unknown;
+  next_visit_target_days?: unknown;
+  created_at?: unknown;
+  generation?: unknown;
 }
 
 interface PaymentRow {
@@ -102,6 +116,35 @@ export interface CustomerHomePayment {
   createdAt: string;
 }
 
+interface RefundRow {
+  id?: unknown;
+  payment_transaction_id?: unknown;
+  status?: unknown;
+  outcome_choice?: unknown;
+  reason_category?: unknown;
+  decision?: unknown;
+  risk_codes?: unknown;
+  amount_krw?: unknown;
+  original_amount_krw?: unknown;
+  credits_to_claw_back?: unknown;
+  requested_at?: unknown;
+  completed_at?: unknown;
+  support_case_id?: unknown;
+  failed_message?: unknown;
+}
+
+export interface CustomerHomeConfirmedStyle {
+  id: string;
+  generationId: string | null;
+  styleName: string;
+  serviceType: string;
+  serviceDate: string;
+  nextVisitTargetDays: number;
+  selectedVariantId: string | null;
+  selectedVariantImageUrl: string | null;
+  confirmedAt: string;
+}
+
 export interface CustomerHomeStylingSession {
   id: string;
   generationId: string;
@@ -124,8 +167,10 @@ export interface CustomerHomeDashboard {
   credits: number;
   planKey: string | null;
   styleProfileReady: boolean;
+  recentConfirmedStyles: CustomerHomeConfirmedStyle[];
   recentGenerations: CustomerHomeGeneration[];
   recentPayments: CustomerHomePayment[];
+  recentRefundRequests: import("@hairfit/shared").RefundRequestSummary[];
   recentStylingSessions: CustomerHomeStylingSession[];
 }
 
@@ -146,32 +191,6 @@ function numberValue(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function selectedVariantSummary(options: unknown) {
-  const recommendationSet = isRecord(options) && isRecord(options.recommendationSet)
-    ? options.recommendationSet
-    : null;
-  const variants = Array.isArray(recommendationSet?.variants)
-    ? recommendationSet.variants.filter(isRecord)
-    : [];
-  const selectedId = nullableText(recommendationSet?.selectedVariantId);
-  const selected = selectedId ? variants.find((item) => item.id === selectedId) : null;
-  const fallbackWithImage = variants.find((item) => nullableText(item.outputUrl));
-  const fallbackCompleted = variants.find((item) => item.status === "completed");
-  const fallback = variants[0] ?? null;
-  const variant = selected ?? fallbackWithImage ?? fallbackCompleted ?? fallback;
-  const completedVariantCount = variants.filter(
-    (item) => item.status === "completed" || nullableText(item.outputUrl) || nullableText(item.generatedImagePath),
-  ).length;
-
-  return {
-    selectedVariantId: selectedId,
-    selectedVariantLabel: nullableText(variant?.label),
-    selectedVariantImageUrl: nullableText(variant?.outputUrl),
-    completedVariantCount,
-    totalVariantCount: variants.length,
-  };
-}
-
 function recommendationText(recommendation: unknown, key: "headline" | "summary" | "genre") {
   return isRecord(recommendation) ? nullableText(recommendation[key]) : null;
 }
@@ -181,10 +200,16 @@ export async function loadCustomerHomeDashboard(
   userId: string,
   bootstrap: { credits: number; planKey: string | null },
 ): Promise<CustomerHomeDashboard> {
-  const [generationsRes, paymentsRes, styleProfileRes, stylingSessionsRes] = await Promise.all([
+  const [generationsRes, confirmedStylesRes, paymentsRes, refundRequestsRes, styleProfileRes, stylingSessionsRes] = await Promise.all([
     supabase
       .from<GenerationRow>("generations")
       .select("id,status,prompt_used,generated_image_path,options,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase
+      .from<ConfirmedStyleRow>("user_hair_records")
+      .select("id,generation_id,style_name,service_type,service_date,next_visit_target_days,created_at,generation:generations(selected_variant_id,options)")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(5),
@@ -194,6 +219,12 @@ export async function loadCustomerHomeDashboard(
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(5),
+    supabase
+      .from<RefundRow>("payment_refund_requests")
+      .select("id,payment_transaction_id,status,outcome_choice,reason_category,decision,risk_codes,amount_krw,original_amount_krw,credits_to_claw_back,requested_at,completed_at,support_case_id,failed_message")
+      .eq("user_id", userId)
+      .order("requested_at", { ascending: false })
+      .limit(10),
     supabase
       .from<StyleProfileRow>("user_style_profiles")
       .select("height_cm,body_shape,top_size,bottom_size,fit_preference,color_preference,exposure_preference,avoid_items,body_photo_path,body_photo_consent_at,updated_at")
@@ -207,7 +238,7 @@ export async function loadCustomerHomeDashboard(
       .limit(5),
   ]);
 
-  const error = generationsRes.error || paymentsRes.error || styleProfileRes.error || stylingSessionsRes.error;
+  const error = generationsRes.error || confirmedStylesRes.error || paymentsRes.error || refundRequestsRes.error || styleProfileRes.error || stylingSessionsRes.error;
   if (error) {
     throw new Error(error.message);
   }
@@ -250,12 +281,26 @@ export async function loadCustomerHomeDashboard(
     credits: bootstrap.credits,
     planKey: bootstrap.planKey,
     styleProfileReady: isStyleProfileComplete(profile),
+    recentConfirmedStyles: (confirmedStylesRes.data || []).map((row) => {
+      const media = getConfirmedStyleMediaFromRelation(row.generation);
+      return {
+        id: text(row.id),
+        generationId: nullableText(row.generation_id),
+        styleName: nullableText(row.style_name) || "확정 헤어스타일",
+        serviceType: nullableText(row.service_type) || "other",
+        serviceDate: text(row.service_date),
+        nextVisitTargetDays: numberValue(row.next_visit_target_days),
+        selectedVariantId: media.selectedVariantId,
+        selectedVariantImageUrl: media.selectedVariantImageUrl,
+        confirmedAt: text(row.created_at),
+      };
+    }),
     recentGenerations: (generationsRes.data || []).map((row) => ({
       id: text(row.id),
       status: text(row.status) || "unknown",
       promptUsed: nullableText(row.prompt_used),
       generatedImagePath: nullableText(row.generated_image_path),
-      ...selectedVariantSummary(isRecord(row.options) ? row.options : null),
+      ...getGenerationVariantMediaSummary(isRecord(row.options) ? row.options : null),
       createdAt: text(row.created_at),
     })),
     recentPayments: (paymentsRes.data || []).map((row) => ({
@@ -265,6 +310,21 @@ export async function loadCustomerHomeDashboard(
       creditsToGrant: numberValue(row.credits_to_grant),
       paidAt: nullableText(row.paid_at),
       createdAt: text(row.created_at),
+    })),
+    recentRefundRequests: (refundRequestsRes.data || []).map((row) => ({
+      id: text(row.id),
+      paymentTransactionId: text(row.payment_transaction_id),
+      status: (text(row.status) || "pending") as import("@hairfit/shared").RefundRequestStatus,
+      outcome: (text(row.outcome_choice) || "immediate_refund_and_cancel") as import("@hairfit/shared").RefundOutcome,
+      reasonCategory: (text(row.reason_category) || "other") as import("@hairfit/shared").RefundReasonCategory,
+      decision: (text(row.decision) || "manual") as import("@hairfit/shared").RefundDecision,
+      riskCodes: Array.isArray(row.risk_codes) ? row.risk_codes.filter((value): value is import("@hairfit/shared").RefundRiskCode => typeof value === "string") : [],
+      refundAmountKrw: numberValue(row.amount_krw ?? row.original_amount_krw),
+      creditsToClawBack: numberValue(row.credits_to_claw_back),
+      requestedAt: text(row.requested_at),
+      completedAt: nullableText(row.completed_at),
+      supportCaseId: nullableText(row.support_case_id),
+      failureMessage: nullableText(row.failed_message),
     })),
     recentStylingSessions,
   };

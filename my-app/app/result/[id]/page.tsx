@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import {
+  resolveGenerationResultSelection,
+  type GenerationDetailApiResponse,
+} from "@hairfit/shared";
 import { ActionToolbar } from "../../../components/result/ActionToolbar";
 import { AIEvaluationView } from "../../../components/result/AIEvaluationView";
 import { ComparisonView } from "../../../components/result/ComparisonView";
@@ -9,25 +13,21 @@ import { DesignerBriefCard } from "../../../components/result/DesignerBriefCard"
 import { FeedbackModal } from "../../../components/result/FeedbackModal";
 import { SelectedVariantCard } from "../../../components/result/SelectedVariantCard";
 import { VariantSwitcherGrid } from "../../../components/result/VariantSwitcherGrid";
+import { Button } from "../../../components/ui/Button";
+import { InlineAlert } from "../../../components/ui/InlineAlert";
 import { AppPage } from "../../../components/ui/Surface";
 import { type AIEvaluationResult } from "../../../lib/ai-evaluation";
 import type { GeneratedVariant, RecommendationSet } from "../../../lib/recommendation-types";
 import { convertImageSrcToWebpDataUrl } from "../../../lib/webp-client";
+import { mapWebResponseError, mapWebUserError } from "../../../lib/web-user-message";
 import { useGenerationStore } from "../../../store/useGenerationStore";
 import { useResultTranslations } from "../../../hooks/useResultTranslations";
+import { useAuthenticatedFetch } from "../../../hooks/useAuthenticatedFetch";
 
-interface GenerationDetailsResponse {
-  recommendationSet?: RecommendationSet | null;
-  selectedVariant?: GeneratedVariant | null;
-  generatedImagePath?: string | null;
-  selectionLocked?: boolean;
-  confirmedHairRecord?: {
-    id: string;
-    styleName: string;
-    serviceType: string;
-    serviceDate: string;
-    createdAt: string;
-  } | null;
+interface GenerationDetailsResponse extends Omit<
+  GenerationDetailApiResponse<RecommendationSet, GeneratedVariant>,
+  "options"
+> {
   options?: {
     aiEvaluation?: AIEvaluationResult;
   } | null;
@@ -37,6 +37,7 @@ const SELECTION_LOCKED_MESSAGE =
   "시술 확정 후에는 이 결과 안에서 다른 스타일로 바꿀 수 없습니다. 다른 스타일은 다시 생성해 주세요.";
 
 export default function ResultPage() {
+  const authenticatedFetch = useAuthenticatedFetch();
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -60,6 +61,9 @@ export default function ResultPage() {
   const [selectionLocked, setSelectionLocked] = useState(false);
   const [confirmedHairRecord, setConfirmedHairRecord] = useState<GenerationDetailsResponse["confirmedHairRecord"]>(null);
   const [selectionNotice, setSelectionNotice] = useState<string | null>(null);
+  const [isLoadingResult, setIsLoadingResult] = useState(true);
+  const [resultLoadError, setResultLoadError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [isSwitching, startSwitching] = useTransition();
 
   const requestedVariantId = searchParams.get("variant");
@@ -97,53 +101,81 @@ export default function ResultPage() {
 
     async function fetchGeneration() {
       if (!id || id === "unknown") {
+        setResultLoadError("결과 주소가 올바르지 않습니다. 결과 목록에서 다시 열어 주세요.");
+        setIsLoadingResult(false);
         return;
       }
 
-      const response = await fetch(`/api/generations/${encodeURIComponent(id)}`, {
-        method: "GET",
-        cache: "no-store",
-      });
+      setIsLoadingResult(true);
+      setResultLoadError(null);
 
-      if (!response.ok) {
-        return;
-      }
+      try {
+        const response = await authenticatedFetch(`/api/generations/${encodeURIComponent(id)}`, {
+          method: "GET",
+          cache: "no-store",
+        });
 
-      const data = (await response.json().catch(() => null)) as GenerationDetailsResponse | null;
-      if (!data || !active) {
-        return;
-      }
+        if (!response.ok) {
+          setResultLoadError(
+            mapWebResponseError(
+              response.status,
+              response.status === 404
+                ? "이 결과를 찾을 수 없습니다. 결과 목록에서 다시 열어 주세요."
+                : "결과를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            ),
+          );
+          return;
+        }
 
-      if (data.recommendationSet) {
-        setRecommendationSet(data.recommendationSet);
-      }
+        const data = (await response.json().catch(() => null)) as GenerationDetailsResponse | null;
+        if (!data || !active) {
+          return;
+        }
 
-      const serverSelectedVariantId =
-        data.selectedVariant?.id ||
-        data.recommendationSet?.selectedVariantId ||
-        data.recommendationSet?.variants.find((variant) => variant.outputUrl)?.id ||
-        null;
-      const nextSelectionLocked = Boolean(data.selectionLocked);
-      const nextSelectedVariantId =
-        (!nextSelectionLocked ? requestedVariantId : null) || serverSelectedVariantId;
+        void authenticatedFetch(`/api/generations/${encodeURIComponent(id)}/events`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ event: "result_opened", source: "web" }),
+          keepalive: true,
+        }).catch(() => undefined);
 
-      setSelectedVariantIdState(nextSelectedVariantId);
-      setSelectionLocked(nextSelectionLocked);
-      setConfirmedHairRecord(data.confirmedHairRecord || null);
-      setSelectionNotice(
-        nextSelectionLocked && requestedVariantId && requestedVariantId !== serverSelectedVariantId
-          ? SELECTION_LOCKED_MESSAGE
-          : null,
-      );
+        if (data.recommendationSet) {
+          setRecommendationSet(data.recommendationSet);
+        }
 
-      if (data.selectedVariant?.evaluation) {
-        setServerEvaluation(data.selectedVariant.evaluation);
-      } else if (data.options?.aiEvaluation) {
-        setServerEvaluation(data.options.aiEvaluation);
-      }
+        const selection = resolveGenerationResultSelection({
+          recommendationSet: data.recommendationSet,
+          selectedVariant: data.selectedVariant,
+          confirmedHairRecord: data.confirmedHairRecord,
+          requestedVariantId,
+        });
 
-      if (data.generatedImagePath) {
-        setDbOutputUrl(data.generatedImagePath);
+        setSelectedVariantIdState(selection.selectedVariantId);
+        setSelectionLocked(selection.selectionLocked);
+        setConfirmedHairRecord(data.confirmedHairRecord || null);
+        setSelectionNotice(
+          selection.selectionLocked && selection.requestedVariantIgnored
+            ? SELECTION_LOCKED_MESSAGE
+            : null,
+        );
+
+        if (data.selectedVariant?.evaluation) {
+          setServerEvaluation(data.selectedVariant.evaluation);
+        } else if (data.options?.aiEvaluation) {
+          setServerEvaluation(data.options.aiEvaluation);
+        }
+
+        if (data.generatedImagePath) {
+          setDbOutputUrl(data.generatedImagePath);
+        }
+      } catch (error) {
+        if (active) {
+          setResultLoadError(mapWebUserError(error, "결과를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
+        }
+      } finally {
+        if (active) {
+          setIsLoadingResult(false);
+        }
       }
     }
 
@@ -152,32 +184,41 @@ export default function ResultPage() {
     return () => {
       active = false;
     };
-  }, [id, requestedVariantId]);
+  }, [authenticatedFetch, id, reloadKey, requestedVariantId]);
 
   const activeSet = recommendationSet || storeBackedSet;
   const currentVariant =
     (selectedVariantId
       ? activeSet?.variants.find((variant) => variant.id === selectedVariantId)
       : null) ||
-    (requestedVariantId ? activeSet?.variants.find((variant) => variant.id === requestedVariantId) : null) ||
     activeSet?.variants.find((variant) => variant.outputUrl) ||
     null;
 
   const evaluation = currentVariant?.evaluation || (currentVariant ? null : serverEvaluation);
-  const activeSelectedVariantId = currentVariant?.id || selectedVariantId || requestedVariantId || null;
-  const { translate } = useResultTranslations([currentVariant?.reason || ""]);
+  const activeSelectedVariantId = currentVariant?.id || selectedVariantId || null;
+  const { translate } = useResultTranslations([
+    currentVariant?.label || "",
+    currentVariant?.reason || "",
+  ]);
+  const currentVariantLabel = currentVariant
+    ? translate(currentVariant.label, `추천 스타일 ${currentVariant.rank}`)
+    : "헤어 결과";
 
-  const beforeImage = previewUrl || "https://placehold.co/900x1200?text=Original";
+  const beforeImage = previewUrl || null;
   const rawAfterImage =
     currentVariant?.outputUrl ||
     (storeGenerationId === id ? latestOutputUrl : null) ||
     dbOutputUrl ||
-    "https://placehold.co/900x1200?text=Generated";
-  const [afterImage, setAfterImage] = useState(rawAfterImage);
+    null;
+  const [afterImage, setAfterImage] = useState<string | null>(rawAfterImage);
 
   useEffect(() => {
     let active = true;
     const applyWebp = async () => {
+      if (!rawAfterImage) {
+        setAfterImage(null);
+        return;
+      }
       const webpSrc = await convertImageSrcToWebpDataUrl(rawAfterImage);
       if (active) {
         setAfterImage(webpSrc || rawAfterImage);
@@ -190,9 +231,7 @@ export default function ResultPage() {
     };
   }, [rawAfterImage]);
 
-  const hasRealOutput = Boolean(
-    afterImage && !afterImage.includes("placehold.co/900x1200?text=Generated"),
-  );
+  const hasRealOutput = Boolean(afterImage);
 
   const handleSwitchVariant = (variant: GeneratedVariant) => {
     if (selectionLocked && variant.id !== activeSelectedVariantId) {
@@ -211,7 +250,7 @@ export default function ResultPage() {
       setSelectedVariantIdState(variant.id);
       setSelectionNotice(null);
       void (async () => {
-        const response = await fetch(`/api/generations/${encodeURIComponent(id)}`, {
+        const response = await authenticatedFetch(`/api/generations/${encodeURIComponent(id)}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -232,7 +271,11 @@ export default function ResultPage() {
           }
           setSelectedVariantId(previousVariantId);
           setSelectedVariantIdState(previousVariantId);
-          setSelectionNotice(data?.error || SELECTION_LOCKED_MESSAGE);
+          setSelectionNotice(
+            data?.selectionLocked || response.status === 409
+              ? SELECTION_LOCKED_MESSAGE
+              : mapWebResponseError(response.status, "선택한 헤어를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요."),
+          );
         }
       })();
     });
@@ -247,15 +290,39 @@ export default function ResultPage() {
   return (
     <AppPage className="flex flex-col gap-6 pb-32">
       <header className="space-y-2 text-center">
-        <p className="app-kicker">선택한 헤어스타일</p>
+        <p className="app-kicker">
+          {selectionLocked ? "시술 계획 확정됨" : activeSelectedVariantId ? "비교 중인 선택 스타일" : "생성 완료"}
+        </p>
         <h1 className="text-3xl font-black tracking-tight text-[var(--app-text)]">
-          {currentVariant?.label || "헤어 결과"}
+          {currentVariantLabel}
         </h1>
         <p className="mx-auto max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
-          {translate(currentVariant?.reason) ||
-            "선택한 헤어 결과를 원본 사진과 비교하고, AI 분석과 디자이너 상담 브리프를 확인하세요."}
+          {translate(
+            currentVariant?.reason,
+            "선택한 헤어 결과를 원본 사진과 비교하고, AI 분석과 디자이너 상담 브리프를 확인하세요.",
+          )}
         </p>
       </header>
+
+      {isLoadingResult && !activeSet ? (
+        <InlineAlert tone="info" title="결과를 불러오는 중입니다">
+          생성 상태와 선택 정보를 확인하고 있습니다.
+        </InlineAlert>
+      ) : null}
+
+      {resultLoadError ? (
+        <InlineAlert
+          tone="danger"
+          title="결과를 불러오지 못했습니다"
+          action={
+            <Button type="button" variant="secondary" onClick={() => setReloadKey((value) => value + 1)}>
+              다시 시도
+            </Button>
+          }
+        >
+          {resultLoadError}
+        </InlineAlert>
+      ) : null}
 
       {!hasRealOutput ? (
         <p className="w-full border border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-800 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
@@ -266,11 +333,11 @@ export default function ResultPage() {
       <DesignerBriefCard
         variant={currentVariant}
         analysis={activeSet?.analysis || null}
-        imageUrl={afterImage}
+        imageUrl={afterImage || ""}
         hasRealOutput={hasRealOutput}
       />
 
-      <ComparisonView beforeImage={beforeImage} afterImage={afterImage} />
+      {afterImage ? <ComparisonView beforeImage={beforeImage} afterImage={afterImage} /> : null}
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] xl:items-start">
         <SelectedVariantCard
@@ -302,6 +369,7 @@ export default function ResultPage() {
         hasEvaluation={Boolean(evaluation)}
         selectedVariantId={activeSelectedVariantId}
         selectionLocked={selectionLocked}
+        confirmedHairRecordId={confirmedHairRecord?.id || null}
       />
       <div className="flex w-full justify-center">
         <FeedbackModal generationId={id} />

@@ -31,13 +31,18 @@ Optional:
 - `PROMPT_LLM_MODEL` (default: `gemini-2.5-pro`, deep-research prompt-agent)
 - `PROMPT_RESEARCH_MODEL` (default: `PROMPT_LLM_MODEL`, grounded deep-research stage)
 - `PROMPT_DEEP_RESEARCH_GROUNDING` (default: `true`, enables Google Search grounding in deep-research stage)
-- `GEMINI_IMAGE_MODEL` (default: `gemini-3-pro-image-preview`, Nano Banana Pro line)
+- `AFTERCARE_LLM_MODEL` (default: `gemini-3.5-flash`, aftercare guide and scheduled care copy)
+- `GEMINI_IMAGE_MODEL` (default: `gemini-3-pro-image`, Nano Banana Pro GA line)
 - `NEXT_PUBLIC_PORTONE_V2_STORE_ID` or `PORTONE_V2_STORE_ID` (required for PortOne billing key issuance)
 - `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY` or `PORTONE_V2_CHANNEL_KEY` (optional PortOne channel key)
 - `PORTONE_V2_API_SECRET` (required for PortOne billing key charges)
 - `PORTONE_V2_WEBHOOK_SECRET` (required for PortOne payment webhooks)
 - `BILLING_KEY_ENCRYPTION_SECRET` (required for encrypted PortOne billing key storage and renewals)
 - `SUBSCRIPTION_ACCESS_MODE` (`waitlist` by default; set `checkout` only when PG checkout is ready)
+- `GENERATION_ACCEPTANCE_ENABLED` (`true` by default; set `false` to pause only new hair-generation acceptance while accepted work drains)
+- `STYLING_ACCEPTANCE_ENABLED` (`true` by default; set `false` to pause only new Styler acceptance while generating work drains)
+- `PAID_ACTION_QUOTES_REQUIRED` (`true` by default; `false` is an incident-only monitored legacy compatibility switch)
+- `GENERATION_PUSH_ENABLED` (`false` until Expo production credentials and physical-device evidence are ready)
 - `PRICING_STYLE_COST_USD` (default: `0.16`, assumed cost per style)
 - `PRICING_TARGET_MARGIN` (default: `0.4`, target margin)
 - `PRICING_CREDITS_PER_STYLE` (default/minimum: `10`, credits charged per hair result image)
@@ -130,6 +135,8 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 
 Clerk note:
 - In local development (`http://localhost:*`), use `pk_test_` / `sk_test_` keys.
+- Authenticated protected-page Playwright uses `npm run web:protected-e2e` from the repository root. Set `E2E_CLERK_USER_EMAIL` to an existing development-instance `+clerk_test` customer in `.env.local`; the suite never creates a user or accepts live keys.
+- Run `npm run web:protected-e2e:preflight` to check only the number of eligible existing users without printing addresses or mutating Clerk.
 - `pk_live_` keys are domain-restricted and will not render Clerk widgets on localhost.
 - Production builds must use `pk_live_` / `sk_live_` keys. The app treats Clerk test keys as unconfigured when `NODE_ENV=production` so deployments cannot silently run against a development Clerk instance. On Cloudflare, set `CLERK_PUBLISHABLE_KEY=pk_live_...` so the runtime can override a local test `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` from `.env.local`.
 - Confirm `CLERK_SECRET_KEY` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` come from the same live Clerk instance. A mismatched live key pair can render the sign-in widget but fail after authentication.
@@ -140,6 +147,7 @@ Optional pricing and prompt env:
 - `PROMPT_LLM_MODEL`
 - `PROMPT_RESEARCH_MODEL`
 - `PROMPT_DEEP_RESEARCH_GROUNDING`
+- `AFTERCARE_LLM_MODEL`
 - `GEMINI_IMAGE_MODEL`
 - `PRICING_STYLE_COST_USD`
 - `PRICING_TARGET_MARGIN`
@@ -157,6 +165,10 @@ Optional pricing and prompt env:
 - `PRICING_SALON_CREDITS`
 - `PRICING_SALON_PRICE_KRW`
 - `SUBSCRIPTION_ACCESS_MODE`
+- `GENERATION_ACCEPTANCE_ENABLED`
+- `STYLING_ACCEPTANCE_ENABLED`
+- `PAID_ACTION_QUOTES_REQUIRED`
+- `GENERATION_PUSH_ENABLED`
 
 ## PortOne payment routes
 

@@ -1,0 +1,140 @@
+id: web.ui.dialog
+name: Dialog
+platform: web
+kind: feedback
+status: stable
+source: my-app/components/ui/Dialog.tsx
+owner: web-ui
+
+public_api:
+  exports:
+    - Dialog
+    - DialogProps
+    - DialogSize
+  props:
+    - open: boolean
+    - onOpenChange: "(open: boolean) => void"
+    - title: ReactNode
+    - description: ReactNode
+    - children: ReactNode
+    - footer: ReactNode
+    - dismissible: boolean
+    - showCloseButton: boolean
+    - closeLabel: string
+    - "size: sm | md | lg | xl"
+  related_components:
+    - my-app/components/ui/ConfirmActionDialog.tsx
+  related_contracts:
+    - docs/components/modal-coordinator-contract.md
+
+dependencies:
+  internal:
+    - my-app/lib/utils.ts#cn
+  external:
+    - react
+    - react-dom
+  forbidden:
+    - feature-stores
+    - route-state
+    - api-clients
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-dialog
+  tokens:
+    - --app-border
+    - --app-surface
+    - --app-surface-muted
+    - --app-text
+    - --app-muted
+    - --app-inverse
+    - --app-ring
+    - --app-shadow
+  variants:
+    - dismissible
+    - non-dismissible
+    - size-sm
+    - size-md
+    - size-lg
+    - size-xl
+  data_contract:
+    data-state: open
+    data-dismissible: true | false
+    data-size: sm | md | lg | xl
+    data-pointer-glow: surface
+  allows_className: true
+  inline_styles_allowed: false
+
+state:
+  owned:
+    - portal-target
+    - focus-restore-target
+  controlled:
+    - open
+  derived:
+    - data-dismissible-from-dismissible-prop
+  external_store: false
+side_effects:
+  - body-scroll-lock-while-open
+  - document-keydown-listener-while-open
+
+a11y_contract:
+  role: dialog
+  keyboard:
+    - escape-dismisses-when-dismissible
+    - tab-and-shift-tab-cycle-within-top-dialog
+  focus:
+    - first-focusable-on-open
+    - trigger-focus-restored-on-close
+  aria:
+    - aria-modal
+    - aria-labelledby
+    - aria-describedby-when-description-exists
+
+test_surface:
+  unit:
+    - my-app/lib/admin-high-risk-action.test.ts#static-keyboard-and-aria-contract
+    - my-app/lib/dialog-e2e-harness.test.ts
+  browser:
+    - tests/web-e2e/dialog-components.spec.ts
+  interaction: required
+  visual: required
+  observed_usage:
+    - my-app/components/aftercare/AftercareConfirmDialog.tsx
+    - my-app/components/layout/SubscriptionPaymentNoticeModal.tsx
+    - my-app/components/upload/FaceGuideOverlay.tsx
+    - my-app/components/payments/PortoneSubscriptionButton.tsx
+    - my-app/components/home/AccountSetupPromptModal.tsx
+    - my-app/components/result/FeedbackModal.tsx
+    - my-app/components/styler/StylerHairSelectionModal.tsx
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+    - interaction-test-or-manual-record
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+  style_contract_change_requires:
+    - c-dialog-selector-search
+    - visual-verification
+
+promotion_evidence:
+  - feature-and-route-business-logic-independent-feedback-primitive
+  - seven-production-consumers-plus-confirm-action-wrapper
+  - public-api-css-token-variant-state-and-a11y-contract-recorded
+  - focus-entry-tab-cycle-escape-top-dialog-and-trigger-restore-interaction
+  - body-scroll-lock-and-automatic-dialog-priority-runtime-verification
+  - axe-serious-critical-zero
+  - 320px-light-and-375px-dark-runtime-layout-verification
+
+promotion_blockers: []
+
+residual_risks:
+  - physical-screen-reader-announcement-order-not-yet-verified
+  - authenticated-admin-success-and-conflict-results-belong-to-confirm-action-dialog-gate

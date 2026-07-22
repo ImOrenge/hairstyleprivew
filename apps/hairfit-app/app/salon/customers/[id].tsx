@@ -1,9 +1,12 @@
 import { useAuth } from "@clerk/clerk-expo";
 import type { SalonCustomerDetailResponse } from "@hairfit/api-client";
-import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Screen, Stack } from "@hairfit/ui-native";
+import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { Alert, View } from "react-native";
+import { AppScreen } from "../../../components/app/AppScreen";
 import { useHairfitApi } from "../../../lib/api";
+import { mapMobileUserError } from "../../../lib/mobile-user-message";
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "-";
@@ -21,6 +24,8 @@ export default function SalonCustomerDetailScreen() {
   const [detail, setDetail] = useState<SalonCustomerDetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [disconnectPending, setDisconnectPending] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,7 +48,7 @@ export default function SalonCustomerDetailScreen() {
       } catch (loadError) {
         if (!cancelled) {
           setDetail(null);
-          setError(loadError instanceof Error ? loadError.message : "고객 상세를 불러오지 못했습니다.");
+          setError(mapMobileUserError(loadError, "고객 상세를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
       } finally {
         if (!cancelled) {
@@ -56,15 +61,40 @@ export default function SalonCustomerDetailScreen() {
     return () => {
       cancelled = true;
     };
-  }, [api, customerId, isLoaded, isSignedIn]);
+  }, [api, customerId, isLoaded, isSignedIn, reloadKey]);
+
+  const disconnectMember = async () => {
+    if (!detail?.connection || disconnectPending) return;
+    setDisconnectPending(true);
+    setError(null);
+    try {
+      await api.revokeSalonConnection(detail.connection.id, "salon_requested");
+      setReloadKey((current) => current + 1);
+    } catch (disconnectError) {
+      setError(mapMobileUserError(disconnectError, "회원 연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요."));
+    } finally {
+      setDisconnectPending(false);
+    }
+  };
+
+  const confirmDisconnect = () => {
+    Alert.alert(
+      "회원 연결을 해제할까요?",
+      "해제 즉시 회원 프로필과 HairFit 생성·확정 기록을 볼 수 없습니다. 살롱 작성 방문·상담 기록은 일반 고객 기록으로 유지됩니다.",
+      [
+        { text: "취소", style: "cancel" },
+        { text: "연결 해제", style: "destructive", onPress: () => void disconnectMember() },
+      ],
+    );
+  };
 
   const customer = detail?.customer;
 
   return (
-    <Screen>
+    <AppScreen>
       <Panel>
         <Stack>
-          <Kicker>Salon CRM</Kicker>
+          <Kicker>살롱 고객 관리</Kicker>
           <Heading>{customer?.name || "고객 상세"}</Heading>
           <BodyText>{customer?.phone || customer?.email || customerId}</BodyText>
           <Cluster>
@@ -85,9 +115,11 @@ export default function SalonCustomerDetailScreen() {
       ) : null}
 
       {error ? (
-        <Card>
-          <BodyText>{error}</BodyText>
-        </Card>
+        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+          <Card>
+            <BodyText>{error}</BodyText>
+          </Card>
+        </View>
       ) : null}
 
       {detail ? (
@@ -113,6 +145,11 @@ export default function SalonCustomerDetailScreen() {
               ) : (
                 <BodyText>연결된 회원이 없습니다.</BodyText>
               )}
+              {detail.connection ? (
+                <Button variant="secondary" disabled={disconnectPending} onPress={confirmDisconnect}>
+                  {disconnectPending ? "연결 해제 중..." : "회원 연결 해제"}
+                </Button>
+              ) : null}
               {detail.linkedMemberGenerations.map((generation) => (
                 <Card key={generation.id}>
                   <Stack gap={8}>
@@ -121,6 +158,15 @@ export default function SalonCustomerDetailScreen() {
                       <Chip>{formatDate(generation.createdAt)}</Chip>
                     </Cluster>
                     <BodyText>{generation.styleLabel || generation.promptUsed || generation.id}</BodyText>
+                  </Stack>
+                </Card>
+              ))}
+              {detail.linkedMemberHairRecords.map((record) => (
+                <Card key={record.id}>
+                  <Stack gap={8}>
+                    <Chip tone="success">확정 헤어</Chip>
+                    <BodyText>{record.styleName}</BodyText>
+                    <BodyText>{record.serviceType} · {record.serviceDate}</BodyText>
                   </Stack>
                 </Card>
               ))}
@@ -166,6 +212,6 @@ export default function SalonCustomerDetailScreen() {
           </Panel>
         </>
       ) : null}
-    </Screen>
+    </AppScreen>
   );
 }

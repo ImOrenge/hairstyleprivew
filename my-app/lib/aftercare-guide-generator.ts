@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getAftercareLlmModel } from "./aftercare-model";
 import type { FaceAnalysisSummary, HairDesignerBrief } from "./recommendation-types";
 import type { ServiceType } from "./hair-care-generator";
 
@@ -270,7 +271,7 @@ export async function generateAftercareGuide(input: GenerateAftercareGuideInput)
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: getAftercareLlmModel(),
       generationConfig: {
         responseMimeType: "application/json",
         temperature: 0.45,

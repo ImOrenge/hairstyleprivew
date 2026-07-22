@@ -6,9 +6,22 @@
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./auth/resume-target": "./src/auth/resume-target.ts",
+    "./auth/generation-entry": "./src/auth/generation-entry.ts",
+    "./billing/paid-action": "./src/billing/paid-action.ts",
+    "./billing/policy-selectors": "./src/billing/policy-selectors.ts",
+    "./billing/subscription-policy": "./src/billing/subscription-policy.ts",
+    "./fixtures/generation-notification": "./src/fixtures/generation-notification.ts",
+    "./fixtures/generation-selection": "./src/fixtures/generation-selection.ts",
+    "./fixtures/generation-selection-lock": "./src/fixtures/generation-selection-lock.ts",
+    "./generation/notification": "./src/generation/notification.ts",
+    "./generation/notification-retention-policy": "./src/generation/notification-retention-policy.ts",
+    "./generation/original-retention-policy": "./src/generation/original-retention-policy.ts",
+    "./salon/connection-consent": "./src/salon/connection-consent.ts"
   },
   "scripts": {
+    "test": "node --test src/auth/resume-target.test.ts src/auth/generation-entry.test.ts src/billing/generation-credit.test.ts src/billing/paid-action.test.ts src/billing/subscription-policy.test.ts src/generation/contract.test.ts src/generation/funnel.test.ts src/generation/notification.test.ts src/generation/notification-retention-policy.test.ts src/generation/original-retention-policy.test.ts src/generation/upload-validation.test.ts src/result/korean-display-copy.test.ts src/salon/connection-consent.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

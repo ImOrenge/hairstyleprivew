@@ -185,6 +185,7 @@ export function FashionDemoShowcase() {
 
               return (
                 <button
+                  data-pointer-glow={isActive ? undefined : "surface"}
                   key={look.id}
                   type="button"
                   onClick={() => setActiveId(look.id)}

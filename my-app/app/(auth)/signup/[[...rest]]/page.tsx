@@ -27,13 +27,10 @@ export default function SignupPage() {
   const hasClerkKey = clerkConfig.canUseClerkFrontend;
 
   if (!hasClerkKey) {
-    const reasonText =
-      clerkConfig.issue === "mismatched_key_types"
-        ? "Clerk publishable key와 secret key의 환경이 서로 다릅니다. pk_test_에는 sk_test_, pk_live_에는 sk_live_를 함께 사용해 주세요."
-        : "Clerk 키가 설정되지 않았습니다. my-app/.env.local에 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY와 CLERK_SECRET_KEY를 설정해 주세요.";
+    const reasonText = "회원가입 기능을 준비하지 못했습니다. 잠시 후 다시 열거나 고객지원으로 문의해 주세요.";
 
     return (
-      <AppPage as="main" className="max-w-xl pb-16 pt-8">
+      <AppPage className="max-w-xl pb-16 pt-8">
         <Panel className="p-5 sm:p-6">
           <h1 className="text-2xl font-bold text-[var(--app-text)]">회원가입</h1>
           <p className="mt-3 text-sm text-[var(--app-muted)]">{reasonText}</p>
@@ -43,7 +40,7 @@ export default function SignupPage() {
   }
 
   return (
-    <AppPage as="main" className="flex max-w-md justify-center pb-16 pt-8">
+    <AppPage className="flex max-w-md justify-center pb-16 pt-8">
       <SignUp
         path="/signup"
         signInUrl="/login"

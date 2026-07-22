@@ -58,7 +58,7 @@ interface GeminiGenerateResponse {
   };
 }
 
-const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3-pro-image-preview";
+const DEFAULT_GEMINI_IMAGE_MODEL = "gemini-3-pro-image";
 const IMAGE_GENERATION_AGENT_INSTRUCTION = `
 You are the hairstyle image-generation agent.
 You receive a deep-research report, a product requirements document, and a final prompt from the prompt agent.

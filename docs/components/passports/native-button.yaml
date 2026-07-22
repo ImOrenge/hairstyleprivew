@@ -1,0 +1,101 @@
+id: native.ui.button
+name: Button
+platform: native
+kind: primitive
+status: candidate
+source: packages/ui-native/src/index.tsx
+owner: native-ui
+
+public_api:
+  exports:
+    - Button
+    - ButtonProps
+  props:
+    - children: ReactNode
+    - loading: boolean
+    - loadingLabel: ReactNode
+    - variant: primary | secondary | ghost
+    - inherited: PressableProps excluding children
+  slots:
+    - children
+  events:
+    - inherited-Pressable-events
+
+dependencies:
+  internal:
+    - packages/ui-native/src/index.tsx#useThemeColors
+  external:
+    - react
+    - react-native
+  forbidden:
+    - expo-router
+    - safe-area-context
+    - app-feature-state
+
+styling:
+  strategy: react-native-stylesheet
+  stylesheet: packages/ui-native/src/index.tsx#styles
+  tokens:
+    - colors
+    - darkColors
+    - radii.control
+    - spacing.sm
+    - spacing.md
+  variants:
+    - primary
+    - secondary
+    - ghost
+  allows_style: true
+  runtime_styles_allowed:
+    - Pressable-state-style
+    - consumer-style-override
+
+state:
+  owned: []
+  derived:
+    - disabled-or-loading
+    - pressed
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  role:
+    default: button
+    consumer_override: inherited-accessibilityRole
+  state:
+    - busy-from-loading
+    - disabled-from-disabled-or-loading
+    - selected-from-consumer-accessibilityState
+  activation:
+    - disabled-while-loading
+    - onPress-forwarded
+  label: inherited-accessibilityLabel
+  test_id: inherited-testID
+  dynamic_type:
+    text_scaling: allowFontScaling-enabled
+    wrapping: flexible-centered-multiline-label
+
+test_surface:
+  unit:
+    present: apps/hairfit-app/__tests__/ui-native.test.tsx
+    verification: role-loading-disabled-and-dynamic-type-contract-passing-2026-07-17
+  interaction: required
+  visual: required
+  observed_usage:
+    jsx_files: 36
+
+change_policy:
+  current_gate: compatible-behavioral
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+    - focused-component-test
+  behavioral_change_requires:
+    - press-loading-disabled-interaction-test
+  breaking_change_requires:
+    - alias-and-import-usage-search
+    - migration-note
+
+promotion_blockers:
+  - theme-selection-contract-is-not-final
+  - no-platform-visual-evidence

@@ -1,0 +1,111 @@
+id: web.billing.subscription-policy-disclosure
+name: SubscriptionPolicyDisclosure
+platform: web
+kind: data-display
+status: candidate
+source: my-app/components/billing/SubscriptionPolicyDisclosure.tsx
+owner: billing-feature
+
+public_api:
+  exports:
+    - SubscriptionPolicyDisclosure
+    - SubscriptionPolicyDisclosureProps
+  props:
+    - "compact?: boolean"
+    - "className?: string"
+  events: []
+
+dependencies:
+  internal:
+    - packages/shared/src/billing/subscription-policy.ts
+    - my-app/lib/utils.ts
+  external:
+    - next/link
+  forbidden:
+    - api-clients
+    - feature-stores
+    - billing-mutations
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-subscription-policy
+  tokens:
+    - --app-text
+    - --app-muted
+    - --app-border
+    - --app-surface-muted
+    - --app-radius-control
+    - --app-ring
+  data_contract:
+    data-density: default | compact
+    data-policy-count: shared-policy-item-count
+    data-policy-id: renewal | creditGrant | unusedCredits | cancellation
+  allows_className: true
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  derived:
+    - compact-density
+  external_store: false
+side_effects: []
+
+a11y_contract:
+  region: labelled-section
+  policy_items: semantic-list
+  links:
+    - descriptive-visible-labels
+    - labelled-navigation
+    - 44px-minimum-target
+    - visible-focus-ring
+  color_only_meaning: forbidden
+
+test_surface:
+  unit: packages/shared/src/billing/subscription-policy.test.ts
+  contract: my-app/lib/billing-content-contract.test.ts
+  stability_contract: my-app/lib/subscription-policy-disclosure-stability.test.ts
+  interaction: tests/web-e2e/subscription-policy-stability.spec.ts
+  accessibility: axe-serious-critical-zero
+  visual:
+    - tests/web-e2e/__screenshots__/subscription-policy-stability.spec.ts/subscription-policy-1024-default-light.png
+    - tests/web-e2e/__screenshots__/subscription-policy-stability.spec.ts/subscription-policy-320-compact-light.png
+    - tests/web-e2e/__screenshots__/subscription-policy-stability.spec.ts/subscription-policy-375-default-dark.png
+  observed_usage:
+    - my-app/app/billing/page.tsx
+    - my-app/app/billing/checkout/page.tsx
+    - my-app/components/payments/PortoneCheckoutForm.tsx
+
+change_policy:
+  current_gate: candidate-stabilization-complete
+  compatible_change_requires:
+    - passport-update
+    - shared-policy-test
+    - typecheck
+  behavioral_change_requires:
+    - billing-content-contract-test
+    - subscription-policy-browser-interaction-test
+  style_contract_change_requires:
+    - c-subscription-policy-selector-search
+    - default-and-compact-visual-verification
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_blockers:
+  - no-authenticated-checkout-browser-evidence
+
+candidate_evidence:
+  - three-production-consumers-and-one-fail-closed-harness-consumer
+  - shared-policy-source-without-api-store-or-mutation-dependencies
+  - semantic-four-item-list-and-labelled-related-link-navigation
+  - tokenized-global-components-layer-density-and-policy-id-contract
+  - keyboard-terms-navigation-and-all-link-reachability
+  - axe-serious-critical-zero
+  - 1024px-light-320px-light-and-375px-dark-visual-and-overflow-verification
+
+residual_risks:
+  - authenticated-checkout-order-summary-and-live-portone-layout-not-yet-recorded
+  - physical-screen-reader-and-200-percent-text-verification-not-yet-complete

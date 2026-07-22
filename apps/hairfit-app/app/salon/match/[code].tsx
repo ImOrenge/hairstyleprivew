@@ -1,9 +1,14 @@
 import { useAuth } from "@clerk/clerk-expo";
 import type { SalonMatchInviteResponse } from "@hairfit/api-client";
-import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Screen, Stack } from "@hairfit/ui-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { createSalonConnectionConsentAcceptance } from "@hairfit/shared";
+import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { Switch, View } from "react-native";
+import { AppScreen } from "../../../components/app/AppScreen";
 import { useHairfitApi } from "../../../lib/api";
+import { buildAuthRoute, saveSalonMatchResumeTarget } from "../../../lib/auth-resume";
+import { mapMobileUserError } from "../../../lib/mobile-user-message";
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "-";
@@ -22,6 +27,7 @@ export default function SalonMatchScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [consentChecked, setConsentChecked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +44,7 @@ export default function SalonMatchScreen() {
       } catch (loadError) {
         if (!cancelled) {
           setInvite(null);
-          setMessage(loadError instanceof Error ? loadError.message : "초대 정보를 불러오지 못했습니다.");
+          setMessage(mapMobileUserError(loadError, "초대 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
       } finally {
         if (!cancelled) {
@@ -56,29 +62,30 @@ export default function SalonMatchScreen() {
   const acceptInvite = async () => {
     if (!inviteCode || pending) return;
     if (!isLoaded || !isSignedIn) {
-      router.push("/login");
+      const target = await saveSalonMatchResumeTarget(inviteCode);
+      router.push(buildAuthRoute("/login", target) as Href);
       return;
     }
 
     setPending(true);
     setMessage(null);
     try {
-      const result = await api.acceptSalonMatchInvite(inviteCode);
+      const result = await api.acceptSalonMatchInvite(inviteCode, createSalonConnectionConsentAcceptance());
       setMessage(result.status === "linked" ? "이미 연결된 살롱입니다." : "살롱 연결 요청을 보냈습니다.");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "살롱 연결 요청에 실패했습니다.");
+      setMessage(mapMobileUserError(error, "살롱 연결 요청에 실패했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setPending(false);
     }
   };
 
   return (
-    <Screen>
+    <AppScreen>
       <Panel>
         <Stack>
-          <Kicker>Salon Match</Kicker>
+          <Kicker>살롱 연결</Kicker>
           <Heading>{invite?.salon.shopName || "살롱 연결 초대"}</Heading>
-          <BodyText>Next.js 살롱 매칭 초대와 같은 초대 조회/수락 API를 사용합니다.</BodyText>
+          <BodyText>공유 범위와 연결 해제 후 처리 방식을 확인한 뒤 동의할 수 있습니다.</BodyText>
           {invite ? (
             <Cluster>
               <Chip>{invite.authenticated ? "로그인됨" : "로그인 필요"}</Chip>
@@ -104,18 +111,48 @@ export default function SalonMatchScreen() {
             <BodyText>{invite.salon.contactPhone || "연락처 미등록"}</BodyText>
             <BodyText>{invite.salon.region || "지역 미등록"}</BodyText>
             {invite.salon.instagramHandle ? <BodyText>@{invite.salon.instagramHandle}</BodyText> : null}
-            <Button disabled={pending} onPress={acceptInvite}>
-              {pending ? "요청 중..." : isSignedIn ? "살롱 연결 요청" : "로그인하고 연결"}
-            </Button>
+            {invite.existingStatus === "pending" || invite.existingStatus === "linked" ? (
+              <>
+                <Card>
+                  <BodyText>{invite.existingStatus === "linked" ? "이미 연결된 살롱입니다." : "살롱의 연결 확인을 기다리고 있습니다."}</BodyText>
+                </Card>
+                <Button variant="secondary" onPress={() => router.push("/salon/connections")}>연결 상태 확인·해제</Button>
+              </>
+            ) : (
+              <>
+                <Card>
+                  <Stack gap={10}>
+                    <Kicker>연결 동의 안내</Kicker>
+                    <BodyText>{invite.consent.copy.purpose}</BodyText>
+                    <BodyText style={{ fontWeight: "900" }}>살롱에 공유</BodyText>
+                    {invite.consent.copy.sharedItems.map((item) => <BodyText key={item}>• {item}</BodyText>)}
+                    <BodyText style={{ fontWeight: "900" }}>공유하지 않음</BodyText>
+                    {invite.consent.copy.excludedItems.map((item) => <BodyText key={item}>• {item}</BodyText>)}
+                    <BodyText>{invite.consent.copy.retention}</BodyText>
+                    <BodyText>{invite.consent.copy.revocation}</BodyText>
+                  </Stack>
+                </Card>
+                <View style={{ alignItems: "center", flexDirection: "row", gap: 12 }}>
+                  <Switch accessibilityLabel="살롱 연결 동의" onValueChange={setConsentChecked} value={consentChecked} />
+                  <BodyText style={{ flex: 1 }}>공유 범위와 해제 후 처리를 확인했으며 살롱 연결에 동의합니다.</BodyText>
+                </View>
+                <Button disabled={pending || !consentChecked} onPress={acceptInvite}>
+                  {pending ? "동의 처리 중..." : isSignedIn ? "동의하고 연결 요청" : "동의하고 로그인"}
+                </Button>
+                <Button variant="secondary" onPress={() => router.replace("/mypage")}>동의하지 않음</Button>
+              </>
+            )}
           </Stack>
         </Panel>
       ) : null}
 
       {message ? (
-        <Card>
-          <BodyText>{message}</BodyText>
-        </Card>
+        <View accessibilityLiveRegion="polite">
+          <Card>
+            <BodyText>{message}</BodyText>
+          </Card>
+        </View>
       ) : null}
-    </Screen>
+    </AppScreen>
   );
 }

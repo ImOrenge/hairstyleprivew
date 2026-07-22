@@ -161,7 +161,7 @@ async function fetchUsersByIds(
 function resolveHtml(html: string, user: UserRow) {
   return html
     .replace(/\{\{APP_URL\}\}/g, APP_URL)
-    .replace(/\{\{CTA_URL\}\}/g, `${APP_URL}/upload`)
+    .replace(/\{\{CTA_URL\}\}/g, `${APP_URL}/workspace`)
     .replace(/\{\{USER_NAME\}\}/g, user.display_name ?? "customer");
 }
 

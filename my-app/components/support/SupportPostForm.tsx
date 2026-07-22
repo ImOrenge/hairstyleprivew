@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
+import { mapWebResponseError } from "../../lib/web-user-message";
 import { Button } from "../ui/Button";
 import {
   SUPPORT_POST_KIND_DESCRIPTIONS,
@@ -46,7 +47,7 @@ export function SupportPostForm({ initialKind }: SupportPostFormProps) {
     const data = (await response.json().catch(() => ({}))) as CreatePostResponse;
 
     if (!response.ok || !data.post?.id) {
-      setError(data.error || "게시글 등록에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "게시글 등록에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요."));
       setIsSubmitting(false);
       return;
     }
@@ -56,7 +57,7 @@ export function SupportPostForm({ initialKind }: SupportPostFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="app-panel grid gap-4 p-5 sm:p-6">
+    <form data-pointer-glow="surface" onSubmit={handleSubmit} className="app-panel grid gap-4 p-5 sm:p-6">
       <div className="grid gap-2">
         <label className="text-sm font-black text-[var(--app-text)]" htmlFor="support-kind">
           게시판
@@ -110,7 +111,7 @@ export function SupportPostForm({ initialKind }: SupportPostFormProps) {
       </div>
 
       {error ? (
-        <p className="rounded-[var(--app-radius-control)] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
+        <p role="alert" className="rounded-[var(--app-radius-control)] border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700">
           {error}
         </p>
       ) : null}

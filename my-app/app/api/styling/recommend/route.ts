@@ -80,7 +80,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "패션 장르를 다시 선택해 주세요." }, { status: 400 });
   }
 
-  const supabase = getSupabaseAdminClient() as unknown as ServerSupabaseLike;
+  const adminSupabase = getSupabaseAdminClient();
+  const supabase = adminSupabase as unknown as ServerSupabaseLike;
   const ensured = await ensureCurrentUserProfile(userId, supabase);
   if (ensured.error) {
     return NextResponse.json({ error: ensured.error.message }, { status: 500 });
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
   }
   if (!recommendationSet.selectedVariantId || recommendationSet.selectedVariantId !== selectedVariantId) {
     return NextResponse.json(
-      { error: "패션 룩북은 확정된 헤어스타일을 기준으로만 생성할 수 있습니다." },
+      { error: "패션 룩북은 선택한 헤어스타일을 기준으로만 생성할 수 있습니다." },
       { status: 409 },
     );
   }
@@ -136,6 +137,34 @@ export async function POST(request: Request) {
   const profile = normalizeStyleProfile(profileRow, userId);
   if (!isStyleProfileComplete(profile)) {
     return NextResponse.json({ error: "바디 프로필을 먼저 완성해 주세요." }, { status: 409 });
+  }
+
+  const { data: existingSession, error: existingSessionError } = await adminSupabase
+    .from("styling_sessions")
+    .select("id,status,recommendation")
+    .eq("user_id", userId)
+    .eq("generation_id", generationId)
+    .eq("selected_variant_id", selectedVariantId)
+    .eq("genre", genre)
+    .in("status", ["recommended", "failed", "generating"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (existingSessionError) {
+    return NextResponse.json({ error: existingSessionError.message }, { status: 500 });
+  }
+  if (existingSession && isObject(existingSession.recommendation)) {
+    return NextResponse.json(
+      {
+        sessionId: existingSession.id,
+        status: existingSession.status,
+        recommendation: existingSession.recommendation as unknown as FashionRecommendation,
+        profile: profile satisfies StyleProfile,
+        selectedVariant,
+        idempotentReplay: true,
+      },
+      { status: 200 },
+    );
   }
 
   const catalog = await ensureFashionCatalogAvailable();

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { CSSProperties, useState } from "react";
+import { CSSProperties, type KeyboardEvent, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Camera, CheckCircle2, Grid3X3, Shirt, Sparkles } from "lucide-react";
@@ -192,6 +192,7 @@ const DEMO_PROFILES: Record<DemoGender, DemoProfile> = {
 export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
   const t = useT();
   const [activeDemoGender, setActiveDemoGender] = useState<DemoGender>("male");
+  const genderTabRefs = useRef<Partial<Record<DemoGender, HTMLButtonElement | null>>>({});
   const titleLines = t("hero.title").split("\n");
   const activeDemo = DEMO_PROFILES[activeDemoGender];
   const visibleAvatars = avatars.slice(0, 4);
@@ -205,6 +206,26 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
     { icon: Sparkles, label: t("hero.workflow.analysis"), detail: t("hero.workflow.analysisDetail") },
     { icon: Grid3X3, label: t("hero.workflow.grid"), detail: t("hero.workflow.gridDetail") },
   ];
+
+  function handleGenderTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentGender: DemoGender) {
+    const currentIndex = DEMO_GENDERS.indexOf(currentGender);
+    let nextGender: DemoGender | null = null;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextGender = DEMO_GENDERS[(currentIndex + 1) % DEMO_GENDERS.length];
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextGender = DEMO_GENDERS[(currentIndex - 1 + DEMO_GENDERS.length) % DEMO_GENDERS.length];
+    } else if (event.key === "Home") {
+      nextGender = DEMO_GENDERS[0];
+    } else if (event.key === "End") {
+      nextGender = DEMO_GENDERS[DEMO_GENDERS.length - 1];
+    }
+
+    if (!nextGender) return;
+    event.preventDefault();
+    setActiveDemoGender(nextGender);
+    genderTabRefs.current[nextGender]?.focus();
+  }
 
   return (
     <InverseSection as="section" className="relative overflow-hidden p-0">
@@ -245,7 +266,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
 
           <InverseCard className="grid content-between gap-4 p-4 sm:p-5">
             <div>
-              <p className="app-inverse-kicker">Product Proof</p>
+              <p className="app-inverse-kicker">제품 신뢰 지표</p>
               <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-inverse-text)]">
                 AI 헤어 분석에서 패션 룩북까지 이어지는 하나의 스타일 시스템
               </h2>
@@ -341,11 +362,18 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
               return (
                 <button
                   key={gender}
+                  id={`hero-demo-tab-${gender}`}
+                  ref={(node) => {
+                    genderTabRefs.current[gender] = node;
+                  }}
                   type="button"
                   role="tab"
                   aria-selected={isActive}
+                  aria-controls="hero-demo-panel"
+                  tabIndex={isActive ? 0 : -1}
                   className={`${styles.genderTab} ${isActive ? styles.genderTabActive : ""}`}
                   onClick={() => setActiveDemoGender(gender)}
+                  onKeyDown={(event) => handleGenderTabKeyDown(event, gender)}
                 >
                   {t(profile.labelKey)}
                 </button>
@@ -353,7 +381,13 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
             })}
           </div>
 
-          <div className={styles.workflowLayout}>
+          <div
+            id="hero-demo-panel"
+            role="tabpanel"
+            aria-labelledby={`hero-demo-tab-${activeDemoGender}`}
+            tabIndex={0}
+            className={styles.workflowLayout}
+          >
             <div className={styles.photoFrame}>
               <Image
                 key={activeDemo.originalImage}

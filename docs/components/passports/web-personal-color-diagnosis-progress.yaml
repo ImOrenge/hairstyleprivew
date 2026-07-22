@@ -1,0 +1,104 @@
+id: web.personal-color.diagnosis-progress
+name: PersonalColorDiagnosisProgress
+platform: web
+kind: feedback
+status: candidate
+source: my-app/components/personal-color/PersonalColorDiagnosisProgress.tsx
+owner: personal-color-feature
+
+public_api:
+  exports:
+    - FaceScanOverlay
+    - PersonalColorDiagnosisProgress
+    - PersonalColorSwatchAnalysisColumn
+  props:
+    - FaceScanOverlay.active: boolean
+    - PersonalColorDiagnosisProgress.className: string
+    - PersonalColorSwatchAnalysisColumn.className: string
+  events: []
+
+dependencies:
+  internal:
+    - my-app/app/globals.css#personal-color-motion
+  external:
+    - react
+  forbidden:
+    - api-progress-values
+    - generated-analysis-scores
+    - server-state-ownership
+
+styling:
+  strategy: tailwind-plus-global-motion-classes
+  global_css_changes: false
+  root_namespaces:
+    - c-personal-color-progress
+    - c-personal-color-face-scan
+    - c-personal-color-analysis-preview
+  motion_classes:
+    - personal-color-scan-line
+    - personal-color-panel-flow
+    - personal-color-pulse
+  reduced_motion:
+    css: prefers-reduced-motion-disables-visual-animation
+    javascript: matchMedia-prevents-message-timer
+
+state:
+  owned:
+    - diagnosis-message-index
+    - prefers-reduced-motion
+  derived: []
+  external_store: false
+side_effects:
+  - reduced-motion-media-query-subscription
+  - message-rotation-timer-only-when-motion-is-allowed
+
+a11y_contract:
+  status:
+    role: status
+    live_region: polite
+    atomic: true
+    content: fixed-truthful-analysis-request-status
+  visual_stage:
+    semantic_visibility: aria-hidden
+    reason: timer-driven-copy-is-illustrative-not-server-progress
+  analysis_preview:
+    semantic_visibility: decorative-and-aria-hidden
+    copy: explicitly-not-a-score-or-progress-value
+  motion:
+    reduced_preference: static-first-message-and-static-visuals
+
+test_surface:
+  source_contract:
+    present: my-app/lib/personal-color-progress.test.ts
+    verification: no-fake-live-score-fixed-status-and-fail-closed-harness-3-of-3-passing-2026-07-19
+  browser_interaction:
+    present: tests/web-e2e/personal-color-progress-stability.spec.ts
+    verification: truthful-status-overlay-toggle-and-reduced-motion-3-of-3-passing-2026-07-19
+  browser_visual:
+    present: tests/web-e2e/__screenshots__/personal-color-progress-stability.spec.ts
+    verification: 1024-light-motion-320-light-reduced-375-dark-reduced-overflow-zero-and-axe-zero
+  typecheck: required
+  observed_usage:
+    consumer_files: 3
+    production_consumer_files: 2
+    harness_consumer_files: 1
+    representative_consumers:
+      - my-app/components/personal-color/PersonalColorDiagnosisPageClient.tsx
+      - my-app/components/upload/UploadArea.tsx
+
+change_policy:
+  current_gate: candidate-promotion
+  compatible_change_requires:
+    - passport-update
+    - web-typecheck
+    - focused-source-contract-test
+  behavioral_change_requires:
+    - reduced-motion-browser-check
+    - screen-reader-status-check
+  breaking_change_requires:
+    - all-consumer-update
+    - migration-note
+
+promotion_blockers:
+  - no-authenticated-personal-color-flow-evidence
+  - no-real-screen-reader-evidence

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/Button";
 
 const STAGES = ["new", "qualified", "negotiation", "contracted", "dropped"] as const;
@@ -42,6 +42,7 @@ interface LeadListResponse {
   leads?: LeadRow[];
   total?: number;
   stageSummary?: StageSummary[];
+  nextCursor?: string | null;
   error?: string;
 }
 
@@ -67,16 +68,36 @@ function toDateTimeLocal(iso: string | null) {
   return local.toISOString().slice(0, 16);
 }
 
+const stageLabels: Record<LeadStage, string> = {
+  new: "신규",
+  qualified: "검증 완료",
+  negotiation: "협상 중",
+  contracted: "계약 완료",
+  dropped: "종료",
+};
+
+function sourceLabel(source: LeadRow["source"]) {
+  return source === "public_form" ? "웹 문의" : "관리자 등록";
+}
+
+function webhookLabel(lead: LeadRow) {
+  if (lead.webhook_delivered) return "전달 완료";
+  if (lead.webhook_error) return "전달 실패 — 상세 로그 확인 필요";
+  return "미전달";
+}
+
 export default function AdminB2BPage() {
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState<"all" | LeadStage>("all");
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [total, setTotal] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [stageSummary, setStageSummary] = useState<StageSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyLeadId, setBusyLeadId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, LeadDraft>>({});
+  const listAbortController = useRef<AbortController | null>(null);
 
   const listUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -90,34 +111,52 @@ export default function AdminB2BPage() {
     return `/api/admin/b2b/leads?${params.toString()}`;
   }, [query, stageFilter]);
 
-  const loadLeads = useCallback(async () => {
+  const loadLeads = useCallback(async (cursor?: string) => {
+    listAbortController.current?.abort();
+    const controller = new AbortController();
+    listAbortController.current = controller;
     setIsLoading(true);
     setError(null);
 
-    const response = await fetch(listUrl, { cache: "no-store" });
-    const data = (await response.json().catch(() => ({}))) as LeadListResponse;
-    if (!response.ok) {
-      setError(data.error || "B2B 리드 목록을 불러오지 못했습니다.");
-      setIsLoading(false);
-      return;
-    }
-
-    const nextLeads = data.leads || [];
-    setLeads(nextLeads);
-    setTotal(data.total || nextLeads.length);
-    setStageSummary(data.stageSummary || []);
-    setDrafts((current) => {
-      const merged = { ...current };
-      for (const lead of nextLeads) {
-        merged[lead.id] = {
-          stage: merged[lead.id]?.stage || lead.stage,
-          ownerNote: merged[lead.id]?.ownerNote ?? lead.owner_note ?? "",
-          lastContactedAt: merged[lead.id]?.lastContactedAt ?? toDateTimeLocal(lead.last_contacted_at),
-        };
+    try {
+      const url = new URL(listUrl, window.location.origin);
+      if (cursor) url.searchParams.set("cursor", cursor);
+      const response = await fetch(`${url.pathname}${url.search}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const data = (await response.json().catch(() => ({}))) as LeadListResponse;
+      if (!response.ok) {
+        setError(
+          response.status === 401 || response.status === 403
+            ? "관리자 권한을 확인한 뒤 다시 시도해 주세요."
+            : "B2B 리드 목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+        return;
       }
-      return merged;
-    });
-    setIsLoading(false);
+
+      const nextLeads = data.leads || [];
+      setLeads((current) => (cursor ? [...current, ...nextLeads] : nextLeads));
+      if (!cursor) setTotal(data.total ?? nextLeads.length);
+      setNextCursor(data.nextCursor || null);
+      setStageSummary(data.stageSummary || []);
+      setDrafts((current) => {
+        const merged = { ...current };
+        for (const lead of nextLeads) {
+          merged[lead.id] = {
+            stage: merged[lead.id]?.stage || lead.stage,
+            ownerNote: merged[lead.id]?.ownerNote ?? lead.owner_note ?? "",
+            lastContactedAt: merged[lead.id]?.lastContactedAt ?? toDateTimeLocal(lead.last_contacted_at),
+          };
+        }
+        return merged;
+      });
+    } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === "AbortError") return;
+      setError("B2B 리드 목록 네트워크 요청에 실패했습니다. 다시 시도해 주세요.");
+    } finally {
+      if (!controller.signal.aborted) setIsLoading(false);
+    }
   }, [listUrl]);
 
   useEffect(() => {
@@ -125,7 +164,10 @@ export default function AdminB2BPage() {
       void loadLeads();
     }, 180);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      listAbortController.current?.abort();
+    };
   }, [loadLeads]);
 
   async function handleSave(leadId: string) {
@@ -135,40 +177,50 @@ export default function AdminB2BPage() {
     setBusyLeadId(leadId);
     setError(null);
 
-    const response = await fetch(`/api/admin/b2b/leads/${encodeURIComponent(leadId)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        stage: draft.stage,
-        ownerNote: draft.ownerNote,
-        lastContactedAt: draft.lastContactedAt || null,
-      }),
-    });
-    const data = (await response.json().catch(() => ({}))) as { error?: string };
-    if (!response.ok) {
-      setError(data.error || "리드 저장에 실패했습니다.");
-    } else {
-      await loadLeads();
+    try {
+      const response = await fetch(`/api/admin/b2b/leads/${encodeURIComponent(leadId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stage: draft.stage,
+          ownerNote: draft.ownerNote,
+          lastContactedAt: draft.lastContactedAt || null,
+        }),
+      });
+      if (!response.ok) {
+        setError("리드 변경사항을 저장하지 못했습니다. 최신 목록을 확인한 뒤 다시 시도해 주세요.");
+      } else {
+        await loadLeads();
+      }
+    } catch {
+      setError("리드 저장 중 네트워크 문제가 발생했습니다. 다시 시도해 주세요.");
+    } finally {
+      setBusyLeadId(null);
     }
-
-    setBusyLeadId(null);
   }
 
   return (
     <div className="space-y-4 pb-10">
       <header className="rounded-2xl border border-stone-200 bg-white p-5">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">Admin Dashboard</p>
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">관리자 대시보드</p>
         <h1 className="mt-2 text-2xl font-black text-stone-950">B2B</h1>
-        <p className="mt-2 text-sm text-stone-600">총 {total}건</p>
+        <p className="mt-2 text-sm text-stone-600">
+          현재 {leads.length.toLocaleString("ko-KR")} / 총 {total.toLocaleString("ko-KR")}건
+        </p>
+        <p className="mt-1 text-xs leading-5 text-stone-500">
+          도입 문의를 조회하고 단계와 운영 메모를 변경할 수 있습니다. 저장 버튼을 눌러야 변경 내용이 반영됩니다.
+        </p>
 
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
           <input
+            aria-label="B2B 리드 검색"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="회사명 / 담당자 / 이메일 검색"
             className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
           />
           <select
+            aria-label="B2B 리드 단계 필터"
             value={stageFilter}
             onChange={(event) => setStageFilter(event.target.value as "all" | LeadStage)}
             className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
@@ -176,7 +228,7 @@ export default function AdminB2BPage() {
             <option value="all">전체 단계</option>
             {STAGES.map((stage) => (
               <option key={stage} value={stage}>
-                {stage}
+                {stageLabels[stage]}
               </option>
             ))}
           </select>
@@ -185,7 +237,7 @@ export default function AdminB2BPage() {
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-5">
           {STAGES.map((stage) => (
             <div key={stage} className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm">
-              <p className="font-semibold text-stone-700">{stage}</p>
+              <p className="font-semibold text-stone-700">{stageLabels[stage]}</p>
               <p className="text-lg font-black text-stone-900">
                 {stageSummary.find((item) => item.stage === stage)?.count || 0}
               </p>
@@ -195,13 +247,13 @@ export default function AdminB2BPage() {
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
           {error}
         </div>
       ) : null}
 
-      <section className="space-y-3">
-        {isLoading ? <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">불러오는 중...</p> : null}
+      <section className="space-y-3" aria-busy={isLoading}>
+        {isLoading && leads.length === 0 ? <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">불러오는 중...</p> : null}
         {!isLoading && leads.length === 0 ? (
           <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">리드가 없습니다.</p>
         ) : null}
@@ -215,11 +267,12 @@ export default function AdminB2BPage() {
                   {lead.contact_name} · {lead.email} {lead.phone ? `· ${lead.phone}` : ""}
                 </p>
                 <p className="mt-1 text-xs text-stone-400">
-                  접수: {formatDate(lead.created_at)} / 소스: {lead.source}
+                  접수: {formatDate(lead.created_at)} / 유입: {sourceLabel(lead.source)}
                 </p>
               </div>
               <div className="w-full sm:max-w-[220px]">
                 <select
+                  aria-label={`${lead.company_name} 리드 단계`}
                   value={drafts[lead.id]?.stage || lead.stage}
                   onChange={(event) =>
                     setDrafts((current) => ({
@@ -238,7 +291,7 @@ export default function AdminB2BPage() {
                 >
                   {STAGES.map((stage) => (
                     <option key={stage} value={stage}>
-                      {stage}
+                      {stageLabels[stage]}
                     </option>
                   ))}
                 </select>
@@ -282,9 +335,9 @@ export default function AdminB2BPage() {
                 {lead.current_tools || "-"}
               </p>
               <p className="sm:col-span-2">
-                <span className="font-bold text-stone-900">웹훅</span>
+                <span className="font-bold text-stone-900">외부 전달</span>
                 <br />
-                {lead.webhook_delivered ? "delivered" : lead.webhook_error || "not delivered"}
+                {webhookLabel(lead)}
               </p>
               {lead.source_page ? (
                 <p className="sm:col-span-2">
@@ -299,8 +352,10 @@ export default function AdminB2BPage() {
               {lead.message}
             </p>
 
-            <div className="mt-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_220px_96px]">
+            <p className="mt-3 text-xs font-bold text-stone-600">아래 항목은 저장 버튼을 누르면 운영 정보가 변경됩니다.</p>
+            <div className="mt-2 grid gap-2 md:grid-cols-[minmax(0,1fr)_220px_96px]">
               <textarea
+                aria-label={`${lead.company_name} 운영 메모`}
                 rows={3}
                 value={drafts[lead.id]?.ownerNote ?? lead.owner_note ?? ""}
                 onChange={(event) =>
@@ -320,6 +375,7 @@ export default function AdminB2BPage() {
                 className="rounded-lg border border-stone-300 px-3 py-2 text-sm outline-none focus:border-stone-900"
               />
               <input
+                aria-label={`${lead.company_name} 최근 연락 시각`}
                 type="datetime-local"
                 value={drafts[lead.id]?.lastContactedAt ?? toDateTimeLocal(lead.last_contacted_at)}
                 onChange={(event) =>
@@ -348,6 +404,17 @@ export default function AdminB2BPage() {
             </div>
           </article>
         ))}
+
+        {nextCursor ? (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isLoading}
+            onClick={() => void loadLeads(nextCursor)}
+          >
+            {isLoading ? "불러오는 중..." : "B2B 리드 더 보기"}
+          </Button>
+        ) : null}
       </section>
     </div>
   );

@@ -1,22 +1,24 @@
+import {
+  HAIRSTYLE_GENERATION_CREDITS,
+  normalizeGenerationCreditReceipt,
+  type PaidActionQuote,
+} from "@hairfit/shared";
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { generateDesignerBriefs } from "../../../../../../../lib/designer-brief-generator";
+import { POST as uploadGenerationDraft } from "../../../../../generations/drafts/route";
+import { dispatchGenerationWorkflowOutbox } from "../../../../../../../lib/generation-workflow-outbox";
 import {
-  removeGenerationOriginalImage,
-  uploadGenerationOriginalImage,
-} from "../../../../../../../lib/generation-image-storage";
+  arePaidActionQuotesRequired,
+  createPaidActionQuoteForUser,
+  PaidActionQuoteContextError,
+  PaidActionQuoteError,
+  validatePaidActionQuoteForExecution,
+} from "../../../../../../../lib/paid-action-quote";
 import {
-  createGenerationWorkflowInstance,
-  getGenerationWorkflowBinding,
-} from "../../../../../../../lib/generation-workflow";
-import { getCreditsPerStyle } from "../../../../../../../lib/pricing-plan";
-import { createPromptArtifactToken } from "../../../../../../../lib/prompt-artifact-token";
-import { generateRecommendationSet } from "../../../../../../../lib/recommendation-generator";
-import type {
-  GeneratedVariant,
-  MemberStyleTarget,
-  RecommendationSet,
-} from "../../../../../../../lib/recommendation-types";
+  getGeneratedAssetsExpiresAt,
+  getPlanEntitlement,
+} from "../../../../../../../lib/plan-entitlements";
+import type { MemberStyleTarget } from "../../../../../../../lib/recommendation-types";
 import {
   CUSTOMER_COLUMNS,
   getSalonOwnerContext,
@@ -29,43 +31,35 @@ interface Params {
 }
 
 interface GenerateSalonRecommendationsRequest {
+  draftId?: unknown;
+  quoteId?: unknown;
+  clientRequestId?: unknown;
   referenceImageDataUrl?: unknown;
   styleTarget?: unknown;
   photoConsentConfirmed?: unknown;
 }
 
-interface SalonWorkspaceSupabase {
-  storage: SupabaseClient["storage"];
-  from: (table: string) => {
-    insert: (values: Record<string, unknown>) => {
-      select: (columns: string) => {
-        single: <T = Record<string, unknown>>() => Promise<{
-          data: T | null;
-          error: { message: string; code?: string } | null;
-        }>;
-      };
-    };
-    update: (values: Record<string, unknown>) => {
-      eq: (column: string, value: unknown) => SalonWorkspaceUpdateBuilder;
-    };
-  };
+interface DurableSalonClient {
+  rpc: (
+    name: string,
+    params: Record<string, unknown>,
+  ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
 }
 
-interface SalonWorkspaceUpdateBuilder {
-  eq: (column: string, value: unknown) => SalonWorkspaceUpdateBuilder;
-  select: (columns: string) => {
-    single: <T = Record<string, unknown>>() => Promise<{
-      data: T | null;
-      error: { message: string } | null;
-    }>;
-  };
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function readJson(response: Response) {
+  return (await response.json().catch(() => ({}))) as Record<string, unknown>;
 }
 
 export async function POST(request: Request, { params }: Params) {
   const context = await getSalonOwnerContext();
-  if (!context.ok) {
-    return context.response;
-  }
+  if (!context.ok) return context.response;
 
   const { id } = await params;
   const customerId = id?.trim();
@@ -79,33 +73,103 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   const body = (await request.json().catch(() => ({}))) as GenerateSalonRecommendationsRequest;
-  const referenceImageDataUrl = typeof body.referenceImageDataUrl === "string"
-    ? body.referenceImageDataUrl.trim()
-    : "";
+  const quoteId = typeof body.quoteId === "string" ? body.quoteId.trim() : "";
+  if (quoteId.length > 4096) {
+    return NextResponse.json({ error: "quoteId is too large" }, { status: 400 });
+  }
   const styleTarget: MemberStyleTarget | null = isSalonCustomerStyleTarget(body.styleTarget)
     ? body.styleTarget
     : loaded.customer.styleTarget;
-
-  if (!referenceImageDataUrl) {
-    return NextResponse.json({ error: "referenceImageDataUrl is required" }, { status: 400 });
-  }
-
-  if (referenceImageDataUrl.length > 12_000_000) {
-    return NextResponse.json({ error: "referenceImageDataUrl is too large" }, { status: 400 });
-  }
-
   if (!styleTarget) {
     return NextResponse.json({ error: "styleTarget must be selected before generation" }, { status: 400 });
   }
-
   if (body.photoConsentConfirmed !== true) {
     return NextResponse.json({ error: "photoConsentConfirmed is required" }, { status: 400 });
   }
 
+  let draftId = typeof body.draftId === "string" ? body.draftId.trim() : "";
+  if (draftId && !UUID_PATTERN.test(draftId)) {
+    return NextResponse.json({ error: "draftId must be a valid UUID" }, { status: 400 });
+  }
+
+  // Legacy salon clients can still send the portrait here. Current clients
+  // pre-upload it so the final acceptance command is small and close-safe.
+  if (!draftId) {
+    const referenceImageDataUrl = typeof body.referenceImageDataUrl === "string"
+      ? body.referenceImageDataUrl.trim()
+      : "";
+    if (!referenceImageDataUrl) {
+      return NextResponse.json({ error: "draftId or referenceImageDataUrl is required" }, { status: 400 });
+    }
+    const suppliedRequestId = typeof body.clientRequestId === "string"
+      ? body.clientRequestId.trim()
+      : "";
+    if (suppliedRequestId && !UUID_PATTERN.test(suppliedRequestId)) {
+      return NextResponse.json({ error: "clientRequestId must be a valid UUID" }, { status: 400 });
+    }
+    const uploadResponse = await uploadGenerationDraft(
+      new Request(request.url, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          clientRequestId: suppliedRequestId || crypto.randomUUID(),
+          referenceImageDataUrl,
+        }),
+      }),
+    );
+    const upload = await readJson(uploadResponse);
+    if (!uploadResponse.ok) {
+      return NextResponse.json(upload, { status: uploadResponse.status });
+    }
+    draftId = typeof upload.draftId === "string" ? upload.draftId : "";
+  }
+
+  if (!draftId) {
+    return NextResponse.json({ error: "Portrait draft could not be resolved" }, { status: 500 });
+  }
+
   try {
-    const supabase = context.supabase as unknown as SalonWorkspaceSupabase;
+    const quoteSupabase = context.supabase as unknown as Parameters<
+      typeof createPaidActionQuoteForUser
+    >[0]["supabase"];
+    const createCurrentQuote = () => createPaidActionQuoteForUser({
+      supabase: quoteSupabase,
+      userId: context.userId,
+      action: "hair_generation",
+      subjectId: draftId,
+      billingScope: "salon",
+    });
+    let executionQuote: PaidActionQuote | null = null;
+    const { data: draftContext, error: draftContextError } = await context.supabase
+      .from("generation_upload_drafts")
+      .select("state,user_id")
+      .eq("id", draftId)
+      .maybeSingle<{ state?: unknown; user_id?: unknown }>();
+    if (draftContextError) throw new Error(draftContextError.message);
+    const isAcceptanceReplay =
+      draftContext?.user_id === context.userId && draftContext.state === "accepted";
+
+    if (!isAcceptanceReplay) {
+      const currentQuote = await createCurrentQuote();
+      if (!quoteId && arePaidActionQuotesRequired()) {
+        throw new PaidActionQuoteError({
+          message: "생성 전 최신 살롱 크레딧 견적을 확인해 주세요.",
+          code: "QUOTE_REQUIRED",
+          status: 428,
+          quote: currentQuote,
+        });
+      }
+      if (quoteId) {
+        executionQuote = validatePaidActionQuoteForExecution({
+          quoteId,
+          userId: context.userId,
+          currentQuote,
+        });
+      }
+    }
+
     const consentAt = loaded.customer.photoGenerationConsentAt || new Date().toISOString();
-    const { error: customerUpdateError } = await supabase
+    const { error: customerUpdateError } = await context.supabase
       .from("salon_customers")
       .update({
         style_target: styleTarget,
@@ -115,170 +179,186 @@ export async function POST(request: Request, { params }: Params) {
       .eq("id", customerId)
       .select(CUSTOMER_COLUMNS)
       .single<Record<string, unknown>>();
-
     if (customerUpdateError) {
       return NextResponse.json({ error: customerUpdateError.message }, { status: 500 });
     }
 
-    const generated = await generateRecommendationSet(referenceImageDataUrl, styleTarget);
-    const designerBriefs = await generateDesignerBriefs({
-      analysis: generated.analysis,
-      candidates: generated.recommendations,
-    });
-    const recommendationsWithBriefs = generated.recommendations.map((candidate) => ({
-      ...candidate,
-      designerBrief: designerBriefs[candidate.id] ?? null,
-    }));
-
-    const creditsRequired = getCreditsPerStyle();
-    const now = new Date().toISOString();
-    const variants: GeneratedVariant[] = recommendationsWithBriefs.map((candidate) => ({
-      ...candidate,
-      status: "queued",
-      outputUrl: null,
-      generatedImagePath: null,
-      evaluation: null,
-      error: null,
-      generatedAt: null,
-    }));
-
-    const recommendationSet: RecommendationSet = {
-      generatedAt: now,
-      analysis: generated.analysis,
-      variants,
-      selectedVariantId: null,
-      styleTarget,
-      catalogCycleId: generated.catalogCycleId,
-      creditChargedAt: null,
-      creditChargeAmount: creditsRequired,
-    };
-
-    const generationId = crypto.randomUUID();
-    const storedOriginal = await uploadGenerationOriginalImage(supabase, {
-      userId: context.userId,
-      generationId,
-      imageDataUrl: referenceImageDataUrl,
-    });
-
-    const { data: created, error: createError } = await supabase
-      .from("generations")
-      .insert({
-        id: generationId,
-        user_id: context.userId,
-        original_image_path: storedOriginal.path,
-        prompt_used: recommendationsWithBriefs[0]?.prompt || generated.analysis.summary,
-        options: {
-          analysis: generated.analysis,
-          recommendationSet,
-          catalogCycleId: generated.catalogCycleId,
-          promptVersion: generated.promptVersion,
-          promptModel: generated.model,
-          promptSource: "salon-workspace-api",
+    const entitlement = await getPlanEntitlement(
+      context.supabase as unknown as Parameters<typeof getPlanEntitlement>[0],
+      context.userId,
+    );
+    const generatedAssetsExpiresAt = getGeneratedAssetsExpiresAt(entitlement);
+    const creditsRequired = HAIRSTYLE_GENERATION_CREDITS;
+    const durableClient = context.supabase as unknown as DurableSalonClient;
+    const { data: acceptData, error: acceptError } = await durableClient.rpc(
+      "accept_generation_upload_draft",
+      {
+        p_draft_id: draftId,
+        p_user_id: context.userId,
+        p_style_target: styleTarget,
+        p_options: {
+          styleTarget,
+          promptSource: "salon-durable-generation-acceptance",
+          acceptanceVersion: "generation-acceptance-v2-credit-reservation",
+          payerScope: "salon",
+          ...(executionQuote
+            ? {
+                creditQuote: {
+                  action: executionQuote.action,
+                  subjectId: executionQuote.subjectId,
+                  billingScope: executionQuote.billingScope,
+                  policyVersion: executionQuote.policyVersion,
+                  costCredits: executionQuote.costCredits,
+                  currentBalance: executionQuote.currentBalance,
+                  balanceAfter: executionQuote.balanceAfter,
+                  isAllowed: executionQuote.isAllowed,
+                  expiresAt: executionQuote.expiresAt,
+                  quoteFingerprint: createHash("sha256")
+                    .update(executionQuote.quoteId)
+                    .digest("hex"),
+                },
+              }
+            : {}),
           salonContext: {
             customerId,
             mode: "salon-crm-workspace",
             styleTarget,
           },
-          styleTarget,
         },
-        status: "queued",
-        credits_used: creditsRequired,
-        model_provider: "gemini",
-        model_name: generated.model,
-      })
-      .select("id")
-      .single<{ id: string }>();
-
-    if (createError) {
-      await removeGenerationOriginalImage(supabase, storedOriginal.path).catch((cleanupError) => {
-        console.error("[salon/recommendations] Failed to clean up uploaded original", cleanupError);
-      });
-      return NextResponse.json({ error: createError.message }, { status: 500 });
-    }
-
-    const createdGenerationId = typeof created?.id === "string" ? created.id : "";
-    if (!createdGenerationId) {
-      await removeGenerationOriginalImage(supabase, storedOriginal.path).catch((cleanupError) => {
-        console.error("[salon/recommendations] Failed to clean up uploaded original", cleanupError);
-      });
-      return NextResponse.json({ error: "Failed to create generation record" }, { status: 500 });
-    }
-
-    let backgroundStarted = false;
-    const workflow = await getGenerationWorkflowBinding();
-    if (workflow) {
-      const { error: prepareWorkflowError } = await context.supabase
-        .from("generations")
-        .update({
-          workflow_instance_id: createdGenerationId,
-          workflow_started_at: new Date().toISOString(),
-          completion_notification_status: "pending",
-          completion_notification_error: null,
-        })
-        .eq("id", createdGenerationId);
-
-      if (prepareWorkflowError) {
-        console.error("[salon/recommendations] Failed to prepare background workflow", prepareWorkflowError);
-      } else {
-        try {
-          await createGenerationWorkflowInstance(workflow, {
-            generationId: createdGenerationId,
-            variantCount: variants.length,
-          });
-          backgroundStarted = true;
-        } catch (workflowError) {
-          try {
-            const existing = await workflow.get(createdGenerationId);
-            const existingStatus = await existing.status();
-            backgroundStarted = existingStatus.status !== "unknown";
-          } catch {
-            const message = workflowError instanceof Error
-              ? workflowError.message
-              : "Failed to start background generation";
-            await context.supabase
-              .from("generations")
-              .update({
-                workflow_instance_id: null,
-                workflow_started_at: null,
-                completion_notification_status: "not_requested",
-                completion_notification_error: message,
-              })
-              .eq("id", createdGenerationId);
-            console.error("[salon/recommendations] Failed to start background workflow", workflowError);
-          }
-        }
+        p_credits_used: creditsRequired,
+        p_generated_assets_expires_at: generatedAssetsExpiresAt,
+      },
+    );
+    if (acceptError) {
+      if (acceptError.message.toUpperCase().includes("QUOTE_CHANGED")) {
+        const currentQuote = await createCurrentQuote().catch(() => undefined);
+        return NextResponse.json(
+          {
+            error: "살롱 계정 잔액 또는 견적 유효 시간이 변경되었습니다. 최신 견적을 확인한 뒤 다시 접수해 주세요.",
+            code: "QUOTE_CHANGED",
+            ...(currentQuote ? { quote: currentQuote } : {}),
+          },
+          { status: 409 },
+        );
       }
+      if (acceptError.message.toLowerCase().includes("insufficient credits")) {
+        const currentQuote = await createCurrentQuote().catch(() => undefined);
+        return NextResponse.json(
+          {
+            error: "살롱 계정의 크레딧이 부족합니다. 크레딧을 충전한 뒤 다시 시도해 주세요.",
+            code: "INSUFFICIENT_CREDITS",
+            requiredCredits: creditsRequired,
+            ...(currentQuote ? { quote: currentQuote } : {}),
+          },
+          { status: 409 },
+        );
+      }
+      console.error("[salon-generation-accept] Durable acceptance RPC failed", {
+        userId: context.userId,
+        customerId,
+        draftId,
+        code: acceptError.code,
+        message: acceptError.message,
+      });
+      return NextResponse.json(
+        { error: "살롱 헤어스타일 생성 작업을 접수하지 못했습니다. 잠시 후 다시 시도해 주세요." },
+        { status: 409 },
+      );
     }
 
-    const recommendations = recommendationsWithBriefs.map((candidate) => ({
-      ...candidate,
-      promptArtifactToken: createPromptArtifactToken({
-        userId: context.userId,
-        prompt: candidate.prompt,
-        productRequirements: null,
-        researchReport: null,
-        model: generated.model,
-        promptVersion: generated.promptVersion,
-      }),
-    }));
+    const acceptance = isObject(acceptData) ? acceptData : {};
+    const rawCreditReceipt = acceptance.creditReceipt ?? acceptance.credit_receipt;
+    const creditReceipt = rawCreditReceipt == null
+      ? null
+      : normalizeGenerationCreditReceipt(rawCreditReceipt);
+    if (rawCreditReceipt != null && !creditReceipt) {
+      throw new Error("Salon generation credit reservation receipt is invalid");
+    }
+
+    const { data: generation, error: generationError } = await context.supabase
+      .from("generations")
+      .select("id,user_id,status,accepted_at,preparation_status")
+      .eq("id", draftId)
+      .maybeSingle();
+    if (generationError) throw new Error(generationError.message);
+    if (!generation || generation.user_id !== context.userId || !generation.accepted_at) {
+      throw new Error("Salon generation acceptance receipt could not be reconciled");
+    }
+
+    const dispatch = await dispatchGenerationWorkflowOutbox({
+      limit: 10,
+      localBaseUrl: new URL(request.url).origin,
+    }).catch(() => null);
+    const dispatchedNow = Boolean(
+      dispatch?.generationIds.includes(draftId) && dispatch.dispatched > 0,
+    );
 
     return NextResponse.json(
       {
-        generationId: createdGenerationId,
-        analysis: generated.analysis,
-        recommendations,
-        catalogCycleId: generated.catalogCycleId,
-        creditsRequired,
+        generationId: draftId,
+        acceptedAt: generation.accepted_at,
+        status: generation.status,
+        preparationStatus: generation.preparation_status || "queued",
+        workflowDispatchStatus: dispatchedNow ? "dispatched" : "queued",
+        backgroundStarted: true,
+        analysis: null,
+        recommendations: [],
+        catalogCycleId: null,
+        creditsRequired: creditReceipt?.reservedCredits ?? creditsRequired,
+        creditReceipt,
+        billingMode:
+          typeof acceptance.billingMode === "string"
+            ? acceptance.billingMode
+            : creditReceipt
+              ? "reserved_v1"
+              : "legacy_unmanaged",
+        creditPayer: "salon_account",
         customerId,
-        model: generated.model,
-        promptVersion: generated.promptVersion,
+        model: null,
+        promptVersion: null,
         styleTarget,
-        backgroundStarted,
       },
-      { status: 200 },
+      { status: 202 },
     );
   } catch (error) {
+    if (error instanceof PaidActionQuoteError) {
+      return NextResponse.json(
+        {
+          error: error.message,
+          code: error.code,
+          ...(error.quote ? { quote: error.quote } : {}),
+        },
+        { status: error.status },
+      );
+    }
+    if (error instanceof PaidActionQuoteContextError) {
+      if (error.status >= 500) {
+        console.error("[salon-generation-accept] Failed to load quote context", {
+          userId: context.userId,
+          customerId,
+          draftId,
+          message: error.message,
+        });
+      }
+      return NextResponse.json(
+        {
+          error: error.status >= 500
+            ? "살롱 계정의 최신 크레딧 견적을 확인하지 못했습니다. 잠시 후 다시 시도해 주세요."
+            : error.message,
+        },
+        { status: error.status },
+      );
+    }
     const message = error instanceof Error ? error.message : "Unexpected error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[salon-generation-accept] Unexpected acceptance failure", {
+      userId: context.userId,
+      customerId,
+      draftId,
+      message,
+    });
+    return NextResponse.json(
+      { error: "살롱 헤어스타일 생성 작업을 접수하지 못했습니다. 잠시 후 다시 시도해 주세요." },
+      { status: 500 },
+    );
   }
 }

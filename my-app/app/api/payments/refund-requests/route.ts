@@ -1,12 +1,18 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { mapRefundRequestRow, drainRefundExecutions } from "../../../../lib/refund-automation";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
+import { callSupabaseRpc } from "../../../../lib/supabase-rpc";
 
 interface RefundRequestBody {
   paymentTransactionId?: unknown;
   refundType?: unknown;
   amountKrw?: unknown;
   reason?: unknown;
+  quoteId?: unknown;
+  idempotencyKey?: unknown;
+  acceptedAmountKrw?: unknown;
+  answers?: unknown;
 }
 
 interface PaymentTransactionRow {
@@ -78,6 +84,51 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as RefundRequestBody;
+  const quoteId = trimText(body.quoteId, 80);
+  if (quoteId) {
+    const idempotencyKey = trimText(body.idempotencyKey, 80);
+    const acceptedAmountKrw =
+      typeof body.acceptedAmountKrw === "number" && Number.isInteger(body.acceptedAmountKrw)
+        ? body.acceptedAmountKrw
+        : null;
+    const answers =
+      body.answers && typeof body.answers === "object" && !Array.isArray(body.answers)
+        ? (body.answers as Record<string, unknown>)
+        : null;
+    if (!/^[0-9a-f-]{36}$/i.test(quoteId) || !/^[0-9a-f-]{36}$/i.test(idempotencyKey)) {
+      return NextResponse.json({ error: "환불 견적 또는 요청 키가 올바르지 않습니다." }, { status: 400 });
+    }
+    if (acceptedAmountKrw === null || acceptedAmountKrw < 0 || !answers) {
+      return NextResponse.json({ error: "확인한 환불 금액과 인터뷰 답변이 필요합니다." }, { status: 400 });
+    }
+
+    const supabase = getSupabaseAdminClient();
+    const { data, error } = await callSupabaseRpc(supabase, "submit_payment_refund_request", {
+      p_user_id: userId,
+      p_quote_id: quoteId,
+      p_idempotency_key: idempotencyKey,
+      p_accepted_amount_krw: acceptedAmountKrw,
+      p_answers: answers,
+    });
+    if (error) {
+      const status = error.message.includes("expired") || error.message.includes("changed") ? 409 : 400;
+      return NextResponse.json({ error: error.message }, { status });
+    }
+    let refundRequest = mapRefundRequestRow(data as never);
+    if (refundRequest.decision === "automatic") {
+      await drainRefundExecutions(1).catch(() => null);
+      const refreshed = await getSupabaseAdminClient()
+        .from("payment_refund_requests")
+        .select("id,payment_transaction_id,status,outcome_choice,reason_category,decision,risk_codes,amount_krw,original_amount_krw,credits_to_claw_back,requested_at,completed_at,support_case_id,failed_message")
+        .eq("id", refundRequest.id)
+        .single();
+      if (refreshed.data) refundRequest = mapRefundRequestRow(refreshed.data as never);
+    }
+    return NextResponse.json(
+      { refundRequest, executionMode: refundRequest.decision },
+      { status: refundRequest.status === "completed" ? 200 : 202 },
+    );
+  }
   const paymentTransactionId = trimText(body.paymentTransactionId, 80);
   const reason = trimText(body.reason, 500);
   const refundType = normalizeRefundType(body.refundType);

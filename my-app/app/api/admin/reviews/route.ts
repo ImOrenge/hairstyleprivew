@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminApiContext } from "../../../../lib/admin-auth";
+import { decodeListCursor, encodeListCursor } from "../../../../lib/list-cursor";
 import { trimText } from "../../../../lib/onboarding";
 
 interface ReviewRow {
@@ -39,6 +40,11 @@ export async function GET(request: Request) {
   const q = escapeSearchValue(trimText(url.searchParams.get("q"), 100));
   const visibility = url.searchParams.get("visibility");
   const limit = parseLimit(url.searchParams.get("limit"));
+  const cursorParam = url.searchParams.get("cursor");
+  const cursor = decodeListCursor(cursorParam);
+  if (cursorParam && !cursor) {
+    return NextResponse.json({ error: "Invalid pagination cursor" }, { status: 400 });
+  }
 
   let query = context.supabase
     .from("generation_reviews")
@@ -47,7 +53,12 @@ export async function GET(request: Request) {
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("id", { ascending: false })
+    .limit(limit + 1);
+
+  if (cursor) {
+    query = query.or(`created_at.lt.${cursor.sortValue},and(created_at.eq.${cursor.sortValue},id.lt.${cursor.id})`);
+  }
 
   if (q) {
     query = query.or(`comment.ilike.%${q}%,user_id.ilike.%${q}%,generation_id.ilike.%${q}%`);
@@ -64,11 +75,20 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  const rows = data || [];
+  const hasMore = rows.length > limit;
+  const reviews = rows.slice(0, limit);
+  const lastReview = reviews.at(-1);
+
   return NextResponse.json(
     {
-      reviews: data || [],
-      total: count ?? (data || []).length,
+      reviews,
+      total: count ?? reviews.length,
       limit,
+      nextCursor:
+        hasMore && lastReview
+          ? encodeListCursor(lastReview.created_at, lastReview.id)
+          : null,
     },
     { status: 200 },
   );

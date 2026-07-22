@@ -1,0 +1,108 @@
+id: web.workspace.accepted-generation-status
+name: WorkspaceAcceptedGenerationStatus
+platform: web
+kind: feedback
+status: stable
+source: my-app/components/workspace/WorkspaceAcceptedGenerationStatus.tsx
+owner: generation-feature
+
+public_api:
+  exports:
+    - WorkspaceAcceptedGenerationStatus
+    - WorkspaceAcceptedGenerationStatusProps
+  props:
+    - "acceptedProgress: GenerationJobProgressPresentation"
+    - "onResetPhoto: () => void"
+    - "onShowHome: () => void"
+    - "onShowStatus: () => void"
+    - "reservedCredits: number | null"
+  events:
+    - onResetPhoto
+    - onShowHome
+    - onShowStatus
+
+dependencies:
+  internal:
+    - my-app/components/generate/GenerationJobProgressCard.tsx
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/Surface.tsx
+  external:
+    - "@hairfit/shared"
+    - lucide-react
+  forbidden:
+    - fetch
+    - next-navigation
+    - generation-store
+    - generation-command-hook
+    - upload-validation-hook
+
+styling:
+  strategy: global-css-token-contract-with-utility-internals
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-workspace-accepted-status
+  tokens:
+    - --app-surface
+    - --app-surface-muted
+    - --app-text
+    - --app-muted
+    - --app-success
+    - --app-success-bg
+  data_contract:
+    data-reserved-credits: unknown | confirmed
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  accepted_status:
+    - role-status
+    - aria-live-polite
+    - aria-atomic-true
+    - section-labelled-by-heading
+  notification:
+    static-information-not-duplicate-live-region
+  actions: native-button
+  icons: aria-hidden
+
+test_surface:
+  contract: my-app/lib/workspace-decomposition.test.ts
+  durable_acceptance: my-app/lib/generation-durable-acceptance.test.ts
+  interaction: tests/web-e2e/workspace-flow-stability.spec.ts
+  accessibility: axe-serious-critical-zero
+  visual:
+    - tests/web-e2e/__screenshots__/workspace-flow-stability.spec.ts/workspace-accepted-status-1024-light.png
+    - tests/web-e2e/__screenshots__/workspace-flow-stability.spec.ts/workspace-accepted-status-320-light.png
+    - tests/web-e2e/__screenshots__/workspace-flow-stability.spec.ts/workspace-accepted-status-375-dark.png
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - workspace-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - workspace-flow-interaction-test
+  style_contract_change_requires:
+    - c-workspace-accepted-status-selector-search
+    - desktop-and-mobile-visual-verification
+
+promotion_evidence:
+  - plain-prop-feature-feedback-without-store-route-fetch-or-command-hook-coupling
+  - production-workspace-and-fail-closed-harness-consumers
+  - durable-acceptance-background-continuation-and-email-copy-contract
+  - composed-stable-generation-progress-card
+  - single-polite-atomic-acceptance-announcement-without-nested-static-live-region
+  - global-components-layer-c-workspace-accepted-status-credit-state-contract
+  - three-actions-keyboard-trial-click-and-axe-serious-critical-zero
+  - 1024px-light-320px-light-and-375px-dark-visual-overflow-and-action-reachability
+
+promotion_blockers: []
+
+residual_risks:
+  - authenticated-real-acceptance-receipt-and-server-transition-visual-not-yet-recorded
+  - actual-email-delivery-and-physical-screen-reader-announcement-order-not-yet-verified

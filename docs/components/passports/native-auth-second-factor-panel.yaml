@@ -1,0 +1,104 @@
+id: native.auth.second-factor-panel
+name: AuthSecondFactorPanel
+platform: native
+kind: form
+status: candidate
+source: apps/hairfit-app/components/auth/AuthSecondFactorPanel.tsx
+owner: auth-feature
+
+public_api:
+  exports:
+    - AuthSecondFactorPanel
+    - AuthSecondFactorPanelProps
+  props:
+    - code: string
+    - codeInputRef: RefObject<TextInput | null>
+    - error: string
+    - option: AuthSecondFactorOption
+    - options: AuthSecondFactorOption[]
+    - pending: boolean (default false)
+    - onCancel: () => void
+    - onChangeCode: (value: string) => void
+    - onSelect: (option: AuthSecondFactorOption) => void
+  slots: []
+  events:
+    - onCancel
+    - onChangeCode
+    - onSelect
+
+dependencies:
+  internal:
+    - packages/ui-native/src/index.tsx
+    - apps/hairfit-app/lib/auth-second-factor.ts
+  external:
+    - react
+    - react-native
+  forbidden:
+    - Clerk resource access
+    - routing
+    - API requests
+    - SecureStore access
+
+styling:
+  strategy: ui-native composition
+  stylesheet: none
+  tokens:
+    - inherited from Panel, Stack, Button, TextField
+  variants:
+    - selected factor button
+    - pending disabled
+    - inline error
+  allows_style: false
+  global_css_changes: false
+
+state:
+  owned: []
+  controlled:
+    - selected option
+    - code
+    - error
+    - pending
+  external_store: false
+side_effects: []
+
+a11y_contract:
+  strategy_options:
+    role: native button
+    selected_state: accessibilityState.selected
+  code_field:
+    accessible_name: selected factor label
+    error: TextField aria-invalid and polite live message
+    focus: parent-provided ref coordinated by FormScreen
+  cancel:
+    role: native button
+    behavior: parent decides safe reset or login return
+
+test_surface:
+  interaction: apps/hairfit-app/__tests__/auth-form-screen.test.tsx
+  model: apps/hairfit-app/__tests__/auth-recovery-model.test.ts
+  native_typecheck: required
+  native_lint: required
+  production_bundle: required
+  observed_usage:
+    route_consumer_files: 2
+    representative_routes:
+      - apps/hairfit-app/app/(auth)/login.tsx
+      - apps/hairfit-app/app/(auth)/forgot-password.tsx
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - usage-search
+    - passport-update
+    - native-typecheck
+  behavioral_change_requires:
+    - interaction-test
+    - keyboard-and-screen-reader-device-check
+  breaking_change_requires:
+    - both-route-consumer-update
+    - migration-note
+
+promotion_blockers:
+  - no-Clerk-real-account-MFA-evidence
+  - no-iOS-or-Android-keyboard-device-evidence
+  - no-VoiceOver-or-TalkBack-evidence

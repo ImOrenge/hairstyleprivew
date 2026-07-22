@@ -9,7 +9,7 @@ interface AdminLayoutProps {
 
 const adminLinks = [
   { href: "/admin/members", label: "회원관리" },
-  { href: "/admin/subscription-waitlist", label: "웨잇리스트" },
+  { href: "/admin/subscription-waitlist", label: "오픈 알림" },
   { href: "/admin/refunds", label: "환불" },
   { href: "/admin/b2b", label: "B2B" },
   { href: "/admin/inbox", label: "메일함" },
@@ -26,7 +26,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
 
   return (
     <div className="app-page flex flex-col gap-4 lg:flex-row lg:gap-5">
-      <aside className="app-panel sticky top-20 hidden h-fit min-w-[210px] p-4 lg:block">
+      <aside data-pointer-glow="surface" className="app-panel sticky top-20 hidden h-fit min-w-[210px] p-4 lg:block">
         <p className="app-kicker">관리자</p>
         <AdminSectionNav links={adminLinks} variant="rail" />
       </aside>

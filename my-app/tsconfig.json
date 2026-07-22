@@ -1,8 +1,13 @@
 {
   "compilerOptions": {
     "target": "ES2017",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "allowJs": true,
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
@@ -19,7 +24,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     }
   },
   "include": [
@@ -28,7 +35,26 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts"
+    "**/*.mts",
+    ".next-e2e/types/**/*.ts",
+    ".next-e2e/dev/types/**/*.ts",
+    ".next-funnel-validation/types/**/*.ts",
+    ".next-funnel-validation/dev/types/**/*.ts",
+    ".next-dto-validation/types/**/*.ts",
+    ".next-dto-validation/dev/types/**/*.ts",
+    ".next-selected-variant-validation/types/**/*.ts",
+    ".next-selected-variant-validation/dev/types/**/*.ts",
+    ".next-selected-variant-final/types/**/*.ts",
+    ".next-selected-variant-final/dev/types/**/*.ts",
+    ".next-auth-e2e/types/**/*.ts",
+    ".next-auth-e2e/dev/types/**/*.ts",
+    ".next-protected-e2e/types/**/*.ts",
+    ".next-protected-e2e/dev/types/**/*.ts",
+    ".next-billing-validation/types/**/*.ts",
+    ".next-billing-validation/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "supabase/functions"]
+  "exclude": [
+    "node_modules",
+    "supabase/functions"
+  ]
 }

@@ -1,9 +1,11 @@
 import { useAuth } from "@clerk/clerk-expo";
-import type {
-  MobileBootstrap,
-  MobileDashboard,
-  MobileDashboardGeneration,
-  MobileDashboardStylingSession,
+import {
+  deriveGenerationDisplayStatus,
+  getStylingSessionStatusPresentation,
+  type MobileBootstrap,
+  type MobileConfirmedStyle,
+  type MobileDashboard,
+  type MobileDashboardStylingSession,
 } from "@hairfit/shared";
 import {
   BodyText,
@@ -16,13 +18,19 @@ import {
   MetricGrid,
   MetricTile,
   Panel,
-  Screen,
   Stack,
 } from "@hairfit/ui-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { Image, Modal, StyleSheet, Text, View } from "react-native";
+import { AppScreen } from "../components/app/AppScreen";
+import {
+  resolveMotionAwareModalAnimation,
+  useReducedMotionPreference,
+} from "../hooks/useReducedMotionPreference";
 import { useHairfitApi } from "../lib/api";
+import { useNetworkRecovery } from "../components/app/NetworkRecoveryProvider";
+import { mapMobileUserError } from "../lib/mobile-user-message";
 
 type CustomerDashboard = Extract<MobileDashboard, { service: "customer" }>["customer"];
 
@@ -45,23 +53,6 @@ function formatDate(value: string | null | undefined) {
   });
 }
 
-function statusLabel(value: string | null | undefined) {
-  const status = value?.toLowerCase();
-  if (status === "completed") return "완료";
-  if (status === "failed" || status === "error") return "실패";
-  if (status === "processing" || status === "running" || status === "generating") return "생성 중";
-  if (status === "queued" || status === "pending" || status === "recommended") return "준비됨";
-  return value || "확인 중";
-}
-
-function statusTone(value: string | null | undefined): "neutral" | "accent" | "success" | "danger" {
-  const status = value?.toLowerCase();
-  if (status === "completed") return "success";
-  if (status === "failed" || status === "error") return "danger";
-  if (status === "processing" || status === "running" || status === "generating") return "accent";
-  return "neutral";
-}
-
 function genreLabel(value: string | null | undefined) {
   const labels: Record<string, string> = {
     minimal: "미니멀",
@@ -76,18 +67,24 @@ function genreLabel(value: string | null | undefined) {
   return value ? labels[value] ?? value : "스타일";
 }
 
-function generationRoute(item: MobileDashboardGeneration) {
-  if (item.selectedVariantId) {
-    return `/result/${item.id}?variant=${encodeURIComponent(item.selectedVariantId)}`;
-  }
-  return `/generate/${item.id}`;
-}
+const serviceLabels: Record<string, string> = {
+  cut: "커트",
+  perm: "펌",
+  color: "염색",
+  bleach: "탈색",
+  treatment: "트리트먼트",
+  other: "기타 시술",
+};
 
 function findSelectedHair(customer: CustomerDashboard | null) {
   if (!customer) return null;
   return (
     customer.recentGenerations.find(
-      (item) => item.selectedVariantId && item.status.toLowerCase() === "completed",
+      (item) => item.selectedVariantId && deriveGenerationDisplayStatus({
+        status: item.status,
+        completedVariantCount: item.completedVariantCount,
+        totalVariantCount: item.totalVariantCount,
+      }) === "completed",
     ) ??
     customer.recentGenerations.find((item) => item.selectedVariantId) ??
     null
@@ -127,36 +124,46 @@ function buildCta(customer: CustomerDashboard | null) {
 }
 
 function PreviewBox({
+  accessibilityLabel,
   aspectRatio = 4 / 5,
   source,
 }: {
+  accessibilityLabel: string;
   aspectRatio?: number;
   source: string | null;
 }) {
   return (
     <View style={[styles.preview, { aspectRatio }]}>
-      {source ? <Image source={{ uri: source }} style={styles.previewImage} /> : <BodyText>이미지 준비 중</BodyText>}
+      {source ? (
+        <Image
+          accessibilityLabel={accessibilityLabel}
+          accessibilityRole="image"
+          source={{ uri: source }}
+          style={styles.previewImage}
+        />
+      ) : <BodyText>이미지 준비 중</BodyText>}
     </View>
   );
 }
 
-function HairHistoryCard({ item }: { item: MobileDashboardGeneration }) {
+function ConfirmedStyleCard({ item }: { item: MobileConfirmedStyle }) {
   const router = useRouter();
 
   return (
     <Card>
       <Stack gap={10}>
-        <PreviewBox source={item.selectedVariantImageUrl} />
+        <PreviewBox
+          accessibilityLabel={`${item.styleName} 시술 확정 스타일`}
+          source={item.selectedVariantImageUrl}
+        />
         <Cluster>
-          <Chip tone={statusTone(item.status)}>{statusLabel(item.status)}</Chip>
-          <Chip>{formatDate(item.createdAt)}</Chip>
+          <Chip tone="success">시술 확정</Chip>
+          <Chip>{serviceLabels[item.serviceType] || item.serviceType}</Chip>
         </Cluster>
-        <Heading style={styles.cardHeading}>{item.selectedVariantLabel || "3x3 헤어 추천 보드"}</Heading>
-        <BodyText>
-          완료 후보 {item.completedVariantCount}/{item.totalVariantCount || 9}
-        </BodyText>
-        <Button variant="secondary" onPress={() => router.push(generationRoute(item))}>
-          열기
+        <Heading style={styles.cardHeading}>{item.styleName}</Heading>
+        <BodyText>시술일 {formatDate(item.serviceDate)}</BodyText>
+        <Button variant="secondary" onPress={() => router.push(`/aftercare/${item.id}`)}>
+          관리 가이드 보기
         </Button>
       </Stack>
     </Card>
@@ -165,13 +172,18 @@ function HairHistoryCard({ item }: { item: MobileDashboardGeneration }) {
 
 function StyleHistoryCard({ item }: { item: MobileDashboardStylingSession }) {
   const router = useRouter();
+  const presentation = getStylingSessionStatusPresentation(item.status);
 
   return (
     <Card>
       <Stack gap={10}>
-        <PreviewBox aspectRatio={3 / 4} source={item.imageUrl} />
+        <PreviewBox
+          accessibilityLabel={`${item.headline || genreLabel(item.genre)} 패션 추천 결과`}
+          aspectRatio={3 / 4}
+          source={item.imageUrl}
+        />
         <Cluster>
-          <Chip tone={statusTone(item.status)}>{statusLabel(item.status)}</Chip>
+          <Chip tone={presentation.tone}>{presentation.labelKo}</Chip>
           <Chip>{genreLabel(item.genre)}</Chip>
         </Cluster>
         <Heading style={styles.cardHeading}>{item.headline || "패션 추천"}</Heading>
@@ -209,14 +221,14 @@ function LoginPromptScreen() {
   const router = useRouter();
 
   return (
-    <Screen>
+    <AppScreen>
       <View style={styles.loginHero}>
         <Stack gap={18} style={styles.loginHeroContent}>
           <View style={styles.loginLogoMark}>
             <Text style={styles.loginLogoText}>HairFit</Text>
           </View>
           <Stack gap={10}>
-            <Kicker>AI Hair Preview</Kicker>
+            <Kicker>AI 헤어 미리보기</Kicker>
             <Heading style={styles.loginHeroTitle}>내 얼굴에 어울리는 헤어스타일을 먼저 확인하세요</Heading>
             <BodyText style={styles.loginHeroText}>
               사진 한 장으로 헤어 후보를 비교하고, 선택한 스타일에 맞춘 코디와 관리 기록까지 이어갑니다.
@@ -227,7 +239,7 @@ function LoginPromptScreen() {
           </Button>
         </Stack>
       </View>
-    </Screen>
+    </AppScreen>
   );
 }
 
@@ -240,12 +252,19 @@ function AccountSetupModal({
   onClose: () => void;
   onOpenSettings: () => void;
 }) {
+  const reduceMotion = useReducedMotionPreference();
+
   return (
-    <Modal animationType="fade" transparent visible={open} onRequestClose={onClose}>
+    <Modal
+      animationType={resolveMotionAwareModalAnimation(reduceMotion, "fade")}
+      transparent
+      visible={open}
+      onRequestClose={onClose}
+    >
       <View style={styles.modalBackdrop}>
-        <View style={styles.modalPanel}>
+        <View accessibilityViewIsModal onAccessibilityEscape={onClose} style={styles.modalPanel}>
           <Stack gap={12}>
-            <Kicker>Account Setup</Kicker>
+            <Kicker>계정 설정</Kicker>
             <Heading style={styles.modalHeading}>계정 설정을 먼저 완료해 주세요</Heading>
             <BodyText>
               닉네임, 성별, 선호 톤을 저장하면 헤어 생성과 스타일 추천을 바로 사용할 수 있습니다.
@@ -276,19 +295,19 @@ function CustomerHome({
   const secondaryCta = buildCta(customer);
   const showSecondaryCta = secondaryCta.route !== "/upload";
   const selectedHair = findSelectedHair(customer);
-  const hairItems = (customer?.recentGenerations ?? []).slice(0, 3);
+  const confirmedStyleItems = (customer?.recentConfirmedStyles ?? []).slice(0, 3);
   const stylingItems = (customer?.recentStylingSessions ?? []).slice(0, 3);
   const styleEmptyRoute = selectedHair?.selectedVariantId
     ? `/styler/new?generationId=${encodeURIComponent(selectedHair.id)}&variant=${encodeURIComponent(selectedHair.selectedVariantId)}`
     : "/upload";
 
   return (
-    <Screen>
+    <AppScreen>
       <Panel>
         <Stack>
-          <Kicker>App Home</Kicker>
+          <Kicker>앱 홈</Kicker>
           <Heading>{displayName(me)}님의 스타일 홈</Heading>
-          <BodyText>헤어 생성 기록과 패션 추천 기록을 이어서 확인하고 다음 스타일 작업을 바로 시작하세요.</BodyText>
+          <BodyText>시술 확정 스타일과 패션 추천 기록을 이어서 확인하고 다음 스타일 작업을 바로 시작하세요.</BodyText>
           <Button variant="secondary" onPress={() => router.push("/mypage")}>
             마이페이지
           </Button>
@@ -296,9 +315,11 @@ function CustomerHome({
       </Panel>
 
       {message ? (
-        <Card>
-          <BodyText>{message}</BodyText>
-        </Card>
+        <View accessibilityLiveRegion="polite">
+          <Card>
+            <BodyText>{message}</BodyText>
+          </Card>
+        </View>
       ) : null}
 
       {isLoading ? (
@@ -336,19 +357,20 @@ function CustomerHome({
 
       <Panel>
         <Stack>
-          <Kicker>Hair History</Kicker>
-          <Heading style={styles.sectionHeading}>헤어 생성 기록</Heading>
-          {hairItems.length === 0 ? (
-            <EmptyHistoryCard button="새 헤어 만들기" route="/upload" title="아직 헤어 생성 기록이 없습니다." />
+          <Kicker>확정 스타일</Kicker>
+          <Heading style={styles.sectionHeading}>시술 확정 목록</Heading>
+          {confirmedStyleItems.length === 0 ? (
+            <EmptyHistoryCard button="스타일 찾기" route="/upload" title="아직 시술 확정한 스타일이 없습니다." />
           ) : (
-            hairItems.map((item) => <HairHistoryCard item={item} key={item.id} />)
+            confirmedStyleItems.map((item) => <ConfirmedStyleCard item={item} key={item.id} />)
           )}
+          <Button variant="secondary" onPress={() => router.push("/aftercare")}>시술 확정 전체 보기</Button>
         </Stack>
       </Panel>
 
       <Panel>
         <Stack>
-          <Kicker>Style History</Kicker>
+          <Kicker>스타일 기록</Kicker>
           <Heading style={styles.sectionHeading}>스타일 추천 기록</Heading>
           {stylingItems.length === 0 ? (
             <EmptyHistoryCard
@@ -361,12 +383,13 @@ function CustomerHome({
           )}
         </Stack>
       </Panel>
-    </Screen>
+    </AppScreen>
   );
 }
 
 export default function HairfitHomeScreen() {
   const api = useHairfitApi();
+  const { recoveryToken } = useNetworkRecovery();
   const router = useRouter();
   const { isLoaded, isSignedIn } = useAuth();
   const [bootstrap, setBootstrap] = useState<MobileBootstrap | null>(null);
@@ -385,7 +408,7 @@ export default function HairfitHomeScreen() {
         setBootstrap(null);
         setDashboard(null);
         setIsLoading(false);
-        setMessage("로그인하면 헤어 생성 기록과 스타일 추천 기록을 확인할 수 있습니다.");
+        setMessage("로그인하면 시술 확정 스타일과 스타일 추천 기록을 확인할 수 있습니다.");
         return;
       }
 
@@ -415,7 +438,7 @@ export default function HairfitHomeScreen() {
       } catch (error) {
         if (!cancelled) {
           setDashboard(null);
-          setMessage(error instanceof Error ? error.message : "홈 정보를 불러오지 못했습니다.");
+          setMessage(mapMobileUserError(error, "홈 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
       } finally {
         if (!cancelled) {
@@ -428,7 +451,7 @@ export default function HairfitHomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [api, isLoaded, isSignedIn]);
+  }, [api, isLoaded, isSignedIn, recoveryToken]);
 
   const shouldPromptAccountSetup = Boolean(
     bootstrap && !bootstrap.accountSetupComplete && (!bootstrap.accountType || bootstrap.accountType === "member"),
@@ -466,11 +489,11 @@ export default function HairfitHomeScreen() {
 
   if (isSignedIn && isLoading && !bootstrap) {
     return (
-      <Screen>
+      <AppScreen>
         <Card>
           <BodyText>홈 정보를 불러오는 중...</BodyText>
         </Card>
-      </Screen>
+      </AppScreen>
     );
   }
 
@@ -491,11 +514,11 @@ export default function HairfitHomeScreen() {
   }
 
   return (
-    <Screen>
+    <AppScreen>
       <Card>
         <BodyText>{message || "계정 화면으로 이동하는 중입니다."}</BodyText>
       </Card>
-    </Screen>
+    </AppScreen>
   );
 }
 

@@ -1,0 +1,806 @@
+{
+  "schema_version": 1,
+  "registry_id": "hairfit.frontend.components",
+  "updated_at": "2026-07-19",
+  "baseline": {
+    "git_branch": "develop/2026-07-14-generation-completion-notifications",
+    "git_head": "eb77c7f5421b9b8ac44e540e66931573f4097a41",
+    "working_tree": "dirty",
+    "record": "docs/components/component-baseline-2026-07-15.md"
+  },
+  "policy": {
+    "allowed_kinds": [
+      "primitive",
+      "layout",
+      "composite",
+      "data-display",
+      "form",
+      "feedback",
+      "feature",
+      "page"
+    ],
+    "allowed_statuses": [
+      "experimental",
+      "candidate",
+      "stable",
+      "deprecated"
+    ],
+    "stable_requires": [
+      "documented-public-api",
+      "documented-style-contract",
+      "accessibility-contract",
+      "passing-relevant-tests",
+      "visual-or-runtime-evidence"
+    ],
+    "stable_component_count": 13
+  },
+  "scan": {
+    "source_roots": [
+      "my-app/app",
+      "my-app/components",
+      "apps/hairfit-app/app",
+      "apps/hairfit-app/components",
+      "apps/hairfit-app/lib",
+      "packages/ui-native/src"
+    ],
+    "excluded": [
+      "**/.open-next/**",
+      "**/.next/**",
+      "**/.expo/**",
+      "**/dist/**",
+      "**/node_modules/**",
+      "**/android/**/build/**",
+      "**/ios/**/build/**",
+      "**/src_legacy_scaffold/**"
+    ],
+    "candidate_inventory_excludes": [
+      "route-page-files",
+      "generated-artifacts",
+      "legacy-scaffolds"
+    ]
+  },
+  "components": [
+    {
+      "id": "web.ui.button",
+      "name": "Button",
+      "platform": "web",
+      "kind": "primitive",
+      "status": "stable",
+      "source": "my-app/components/ui/Button.tsx",
+      "owner": "web-ui",
+      "passport": "docs/components/passports/web-button.yaml",
+      "observed_usage": {
+        "import_files": 50,
+        "scope": "my-app source TSX"
+      }
+    },
+    {
+      "id": "web.ui.surface",
+      "name": "Surface family",
+      "platform": "web",
+      "kind": "layout",
+      "status": "stable",
+      "source": "my-app/components/ui/Surface.tsx",
+      "owner": "web-ui",
+      "passport": "docs/components/passports/web-surface.yaml",
+      "observed_usage": {
+        "import_files": 23,
+        "scope": "my-app source TSX"
+      }
+    },
+    {
+      "id": "web.generate.pipeline-status-indicator",
+      "name": "PipelineStatusIndicator",
+      "platform": "web",
+      "kind": "feedback",
+      "status": "stable",
+      "source": "my-app/components/generate/PipelineStatusIndicator.tsx",
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/web-pipeline-status-indicator.yaml",
+      "observed_usage": {
+        "consumer_files": 2,
+        "scope": "my-app source TSX"
+      }
+    },
+    {
+      "id": "web.workspace.step-navigation",
+      "name": "WorkspaceStepNavigation",
+      "platform": "web",
+      "kind": "composite",
+      "status": "stable",
+      "source": "my-app/components/workspace/WorkspaceStepNavigation.tsx",
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/web-workspace-step-navigation.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "test_harness_files": 1,
+        "scope": "my-app customer workspace and fail-closed E2E harness"
+      }
+    },
+    {
+      "id": "web.workspace.customer-generation",
+      "name": "WorkspaceWizard",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/workspace/WorkspaceWizard.tsx",
+      "related_source": [
+        "my-app/components/workspace/useCustomerGenerationController.ts",
+        "my-app/components/workspace/customerGenerationAdapter.ts"
+      ],
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/web-workspace-wizard.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app workspace route"
+      }
+    },
+    {
+      "id": "web.workspace.generation-submission",
+      "name": "WorkspaceGenerationSubmission",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/workspace/WorkspaceGenerationSubmission.tsx",
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/web-workspace-generation-submission.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app customer workspace source TSX"
+      }
+    },
+    {
+      "id": "web.workspace.accepted-generation-status",
+      "name": "WorkspaceAcceptedGenerationStatus",
+      "platform": "web",
+      "kind": "feedback",
+      "status": "stable",
+      "source": "my-app/components/workspace/WorkspaceAcceptedGenerationStatus.tsx",
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/web-workspace-accepted-generation-status.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "test_harness_files": 1,
+        "scope": "my-app customer workspace and fail-closed E2E harness"
+      }
+    },
+    {
+      "id": "web.workspace.variant-selection",
+      "name": "WorkspaceVariantSelection",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/workspace/WorkspaceVariantSelection.tsx",
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/web-workspace-variant-selection.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app customer workspace source TSX"
+      }
+    },
+    {
+      "id": "web.salon.workspace",
+      "name": "SalonWorkspaceWizard",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/salon/SalonWorkspaceWizard.tsx",
+      "related_source": [
+        "my-app/components/salon/useSalonGenerationController.ts",
+        "my-app/components/salon/salonGenerationAdapter.ts"
+      ],
+      "owner": "salon-generation-feature",
+      "passport": "docs/components/passports/web-salon-workspace-wizard.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app salon customer workspace route"
+      }
+    },
+    {
+      "id": "web.salon.workspace-step-navigation",
+      "name": "SalonWorkspaceStepNavigation",
+      "platform": "web",
+      "kind": "composite",
+      "status": "experimental",
+      "source": "my-app/components/salon/SalonWorkspaceStepNavigation.tsx",
+      "owner": "salon-generation-feature",
+      "passport": "docs/components/passports/web-salon-workspace-step-navigation.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app salon workspace source TSX"
+      }
+    },
+    {
+      "id": "web.salon.workspace-variant-grid",
+      "name": "SalonWorkspaceVariantGrid",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/salon/SalonWorkspaceVariantGrid.tsx",
+      "owner": "salon-generation-feature",
+      "passport": "docs/components/passports/web-salon-workspace-variant-grid.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app salon workspace source TSX"
+      }
+    },
+    {
+      "id": "web.mypage.dashboard",
+      "name": "MyPageDashboardTabs",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/mypage/MyPageDashboardTabs.tsx",
+      "related_source": [
+        "my-app/components/mypage/MyPageActivePanel.tsx",
+        "my-app/components/mypage/myPageTypes.ts",
+        "my-app/components/mypage/myPageFormatters.ts",
+        "my-app/components/mypage/myPagePlanSelectors.ts",
+        "my-app/components/mypage/myPageRoutes.ts",
+        "my-app/components/mypage/panels"
+      ],
+      "owner": "customer-account-feature",
+      "passport": "docs/components/passports/web-mypage-dashboard.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app MyPage route"
+      }
+    },
+    {
+      "id": "web.mypage.tab-navigation",
+      "name": "MyPageTabNavigation",
+      "platform": "web",
+      "kind": "composite",
+      "status": "candidate",
+      "source": "my-app/components/mypage/MyPageTabNavigation.tsx",
+      "owner": "customer-account-feature",
+      "passport": "docs/components/passports/web-mypage-tab-navigation.yaml",
+      "observed_usage": {
+        "consumer_files": 2,
+        "production_consumer_files": 1,
+        "harness_consumer_files": 1,
+        "scope": "my-app MyPage dashboard and fail-closed E2E harness"
+      }
+    },
+    {
+      "id": "native.mypage.screen",
+      "name": "MyPageScreen",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/app/mypage.tsx",
+      "related_source": [
+        "apps/hairfit-app/components/mypage/MobileMyPageActivePanel.tsx",
+        "apps/hairfit-app/components/mypage/panels",
+        "apps/hairfit-app/lib/mypage.ts"
+      ],
+      "owner": "customer-account-feature",
+      "passport": "docs/components/passports/native-mypage-screen.yaml",
+      "observed_usage": {
+        "route_files": 1,
+        "scope": "HairFit app MyPage route"
+      }
+    },
+    {
+      "id": "native.mypage.tab-navigation",
+      "name": "MobileMyPageTabNavigation",
+      "platform": "native",
+      "kind": "composite",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/mypage/MobileMyPageTabNavigation.tsx",
+      "owner": "customer-account-feature",
+      "passport": "docs/components/passports/native-mypage-tab-navigation.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit app MyPage screen"
+      }
+    },
+    {
+      "id": "native.mypage.async-boundary",
+      "name": "MobileMyPageAsyncBoundary",
+      "platform": "native",
+      "kind": "feedback",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/mypage/MobileMyPageAsyncBoundary.tsx",
+      "owner": "customer-account-feature",
+      "passport": "docs/components/passports/native-mypage-async-boundary.yaml",
+      "observed_usage": {
+        "consumer_files": 6,
+        "scope": "HairFit app MyPage panels"
+      }
+    },
+    {
+      "id": "web.generate.generation-job-progress-card",
+      "name": "GenerationJobProgressCard",
+      "platform": "web",
+      "kind": "feedback",
+      "status": "stable",
+      "source": "my-app/components/generate/GenerationJobProgressCard.tsx",
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/web-generation-job-progress-card.yaml",
+      "observed_usage": {
+        "production_consumer_files": 2,
+        "scope": "my-app generation detail page and accepted workspace status"
+      }
+    },
+    {
+      "id": "native.generate.generation-job-progress-card",
+      "name": "GenerationJobProgressCard",
+      "platform": "native",
+      "kind": "feedback",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/generation/GenerationJobProgressCard.tsx",
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/native-generation-job-progress-card.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit app generation detail screen"
+      }
+    },
+    {
+      "id": "web.ui.dialog",
+      "name": "Dialog",
+      "platform": "web",
+      "kind": "feedback",
+      "status": "stable",
+      "source": "my-app/components/ui/Dialog.tsx",
+      "related_source": [
+        "my-app/components/ui/ConfirmActionDialog.tsx"
+      ],
+      "owner": "web-ui",
+      "passport": "docs/components/passports/web-dialog.yaml",
+      "observed_usage": {
+        "production_consumer_files": 7,
+        "scope": "my-app source TSX excluding the related ConfirmActionDialog wrapper"
+      }
+    },
+    {
+      "id": "web.ui.confirm-action-dialog",
+      "name": "ConfirmActionDialog",
+      "platform": "web",
+      "kind": "feedback",
+      "status": "experimental",
+      "source": "my-app/components/ui/ConfirmActionDialog.tsx",
+      "owner": "web-ui",
+      "passport": "docs/components/passports/web-confirm-action-dialog.yaml",
+      "observed_usage": {
+        "production_consumer_files": 9,
+        "scope": "my-app source TSX excluding the E2E harness"
+      }
+    },
+    {
+      "id": "web.aftercare.aftercare-confirm-dialog",
+      "name": "AftercareConfirmDialog",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/aftercare/AftercareConfirmDialog.tsx",
+      "owner": "aftercare-feature",
+      "passport": "docs/components/passports/web-aftercare-confirm-dialog.yaml",
+      "observed_usage": {
+        "production_consumer_files": 2,
+        "scope": "my-app result and workspace source TSX"
+      }
+    },
+    {
+      "id": "web.ui.async-boundary",
+      "name": "AsyncBoundary",
+      "platform": "web",
+      "kind": "data-display",
+      "status": "stable",
+      "source": "my-app/components/ui/AsyncBoundary.tsx",
+      "owner": "web-ui",
+      "passport": "docs/components/passports/web-async-boundary.yaml",
+      "observed_usage": {
+        "production_consumer_files": 3,
+        "scope": "my-app route boundaries and Styler source TSX"
+      }
+    },
+    {
+      "id": "web.ui.inline-alert",
+      "name": "InlineAlert",
+      "platform": "web",
+      "kind": "feedback",
+      "status": "stable",
+      "source": "my-app/components/ui/InlineAlert.tsx",
+      "owner": "web-ui",
+      "passport": "docs/components/passports/web-inline-alert.yaml",
+      "observed_usage": {
+        "component_consumer_files": 10,
+        "scope": "my-app source TSX"
+      }
+    },
+    {
+      "id": "web.ui.form-field",
+      "name": "FormField",
+      "platform": "web",
+      "kind": "form",
+      "status": "stable",
+      "source": "my-app/components/ui/FormField.tsx",
+      "owner": "web-ui",
+      "passport": "docs/components/passports/web-form-field.yaml",
+      "observed_usage": {
+        "production_consumer_files": 2,
+        "scope": "my-app source TSX"
+      }
+    },
+    {
+      "id": "web.billing.paid-action-quote-card",
+      "name": "PaidActionQuoteCard",
+      "platform": "web",
+      "kind": "feature",
+      "status": "stable",
+      "source": "my-app/components/billing/PaidActionQuoteCard.tsx",
+      "owner": "billing-feature",
+      "passport": "docs/components/passports/web-paid-action-quote-card.yaml",
+      "observed_usage": {
+        "production_consumer_files": 5,
+        "harness_consumer_files": 1,
+        "scope": "my-app generation, styler, aftercare, and fail-closed E2E harness source TSX"
+      }
+    },
+    {
+      "id": "web.billing.subscription-policy-disclosure",
+      "name": "SubscriptionPolicyDisclosure",
+      "platform": "web",
+      "kind": "data-display",
+      "status": "candidate",
+      "source": "my-app/components/billing/SubscriptionPolicyDisclosure.tsx",
+      "owner": "billing-feature",
+      "passport": "docs/components/passports/web-subscription-policy-disclosure.yaml",
+      "observed_usage": {
+        "production_consumer_files": 3,
+        "harness_consumer_files": 1,
+        "scope": "billing selection, checkout summary, checkout form, and fail-closed E2E harness"
+      }
+    },
+    {
+      "id": "web.billing.portone-subscription-button",
+      "name": "PortoneSubscriptionButton",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/payments/PortoneSubscriptionButton.tsx",
+      "owner": "billing-feature",
+      "passport": "docs/components/passports/web-portone-subscription-button.yaml",
+      "observed_usage": {
+        "production_consumer_files": 2,
+        "scope": "my-app pricing preview and MyPage plan panel"
+      }
+    },
+    {
+      "id": "web.billing.subscription-waitlist-form",
+      "name": "SubscriptionWaitlistForm",
+      "platform": "web",
+      "kind": "form",
+      "status": "candidate",
+      "source": "my-app/components/payments/SubscriptionWaitlistForm.tsx",
+      "owner": "billing-feature",
+      "passport": "docs/components/passports/web-subscription-waitlist-form.yaml",
+      "observed_usage": {
+        "production_consumer_files": 3,
+        "harness_consumer_files": 1,
+        "scope": "my-app checkout page, subscription notice, plan selection, and fail-closed E2E harness source TSX"
+      }
+    },
+    {
+      "id": "web.personal-color.diagnosis-progress",
+      "name": "PersonalColorDiagnosisProgress",
+      "platform": "web",
+      "kind": "feedback",
+      "status": "candidate",
+      "source": "my-app/components/personal-color/PersonalColorDiagnosisProgress.tsx",
+      "owner": "personal-color-feature",
+      "passport": "docs/components/passports/web-personal-color-diagnosis-progress.yaml",
+      "observed_usage": {
+        "consumer_files": 3,
+        "production_consumer_files": 2,
+        "harness_consumer_files": 1,
+        "scope": "personal color diagnosis page, upload preview, and fail-closed E2E harness source TSX"
+      }
+    },
+    {
+      "id": "native.ui.button",
+      "name": "Button",
+      "platform": "native",
+      "kind": "primitive",
+      "status": "candidate",
+      "source": "packages/ui-native/src/index.tsx",
+      "owner": "native-ui",
+      "passport": "docs/components/passports/native-button.yaml",
+      "observed_usage": {
+        "jsx_files": 36,
+        "scope": "apps/hairfit-app source TSX"
+      }
+    },
+    {
+      "id": "native.billing.paid-action-quote-card",
+      "name": "PaidActionQuoteCard",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/billing/PaidActionQuoteCard.tsx",
+      "owner": "billing-feature",
+      "passport": "docs/components/passports/native-paid-action-quote-card.yaml",
+      "observed_usage": {
+        "production_consumer_files": 4,
+        "scope": "Expo generation, styler, and aftercare source TSX"
+      }
+    },
+    {
+      "id": "native.ui.text-field",
+      "name": "TextField",
+      "platform": "native",
+      "kind": "primitive",
+      "status": "candidate",
+      "source": "packages/ui-native/src/index.tsx",
+      "owner": "native-ui",
+      "passport": "docs/components/passports/native-text-field.yaml",
+      "observed_usage": {
+        "jsx_files": 11,
+        "scope": "apps/hairfit-app source TSX"
+      }
+    },
+    {
+      "id": "native.app.app-screen",
+      "name": "AppScreen",
+      "platform": "native",
+      "kind": "layout",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/app/AppScreen.tsx",
+      "owner": "hairfit-app-shell",
+      "passport": "docs/components/passports/native-app-screen.yaml",
+      "observed_usage": {
+        "screen_alias_jsx_files": 2,
+        "direct_route_or_feature_consumers": 22,
+        "direct_composite_consumers": 2,
+        "scope": "apps/hairfit-app source TSX"
+      }
+    },
+    {
+      "id": "native.app.form-screen",
+      "name": "FormScreen",
+      "platform": "native",
+      "kind": "layout",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/app/FormScreen.tsx",
+      "owner": "hairfit-app-shell",
+      "passport": "docs/components/passports/native-form-screen.yaml",
+      "observed_usage": {
+        "route_consumer_files": 3,
+        "representative_routes": [
+          "apps/hairfit-app/app/(auth)/login.tsx",
+          "apps/hairfit-app/app/(auth)/signup.tsx",
+          "apps/hairfit-app/app/(auth)/forgot-password.tsx"
+        ]
+      }
+    },
+    {
+      "id": "native.app.virtualized-list-screen",
+      "name": "VirtualizedListScreen",
+      "platform": "native",
+      "kind": "layout",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/app/VirtualizedListScreen.tsx",
+      "owner": "hairfit-app-shell",
+      "passport": "docs/components/passports/native-virtualized-list-screen.yaml",
+      "observed_usage": {
+        "route_consumer_files": 5,
+        "representative_routes": [
+          "apps/hairfit-app/app/admin/members.tsx",
+          "apps/hairfit-app/app/salon/customers/index.tsx"
+        ]
+      }
+    },
+    {
+      "id": "native.app.photo-library-permission-recovery",
+      "name": "PhotoLibraryPermissionRecovery",
+      "platform": "native",
+      "kind": "feedback",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/app/PhotoLibraryPermissionRecovery.tsx",
+      "owner": "hairfit-app-shell",
+      "passport": "docs/components/passports/native-photo-library-permission-recovery.yaml",
+      "observed_usage": {
+        "consumer_files": 3,
+        "scope": "portrait upload, personal color, and Styler body-photo flows"
+      }
+    },
+    {
+      "id": "native.app.role-navigation-scaffold",
+      "name": "RoleNavigationScaffold",
+      "platform": "native",
+      "kind": "layout",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/app/RoleNavigationScaffold.tsx",
+      "owner": "hairfit-app-shell",
+      "passport": "docs/components/passports/native-role-navigation-scaffold.yaml",
+      "observed_usage": {
+        "root_layout_consumers": 1,
+        "scope": "apps/hairfit-app/app/_layout.tsx"
+      }
+    },
+    {
+      "id": "web.styler.new-feature",
+      "name": "StylerNewFeature",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/styler/StylerNewFeature.tsx",
+      "owner": "styler-feature",
+      "passport": "docs/components/passports/web-styler-new-feature.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app Styler new route"
+      }
+    },
+    {
+      "id": "web.salon.connections-feature",
+      "name": "SalonConnectionsClient",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/salon/SalonConnectionsClient.tsx",
+      "owner": "salon-feature",
+      "passport": "docs/components/passports/web-salon-connections-feature.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app member salon connections route"
+      }
+    },
+    {
+      "id": "web.styler.session-feature",
+      "name": "StylerSessionFeature",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/styler/StylerSessionFeature.tsx",
+      "owner": "styler-feature",
+      "passport": "docs/components/passports/web-styler-session-feature.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app Styler session route"
+      }
+    },
+    {
+      "id": "web.styler.hair-selection-modal",
+      "name": "StylerHairSelectionModal",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/styler/StylerHairSelectionModal.tsx",
+      "owner": "styler-feature",
+      "passport": "docs/components/passports/web-styler-hair-selection-modal.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "my-app Styler new view"
+      }
+    },
+    {
+      "id": "native.styler.new-feature",
+      "name": "MobileStylerNewFeature",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/styler/MobileStylerNewFeature.tsx",
+      "owner": "styler-feature",
+      "passport": "docs/components/passports/native-styler-new-feature.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit app Styler new route"
+      }
+    },
+    {
+      "id": "native.styler.session-feature",
+      "name": "MobileStylerSessionFeature",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/styler/MobileStylerSessionFeature.tsx",
+      "owner": "styler-feature",
+      "passport": "docs/components/passports/native-styler-session-feature.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit app Styler session route"
+      }
+    },
+    {
+      "id": "native.styler.hair-selection-modal",
+      "name": "MobileStylerHairSelectionModal",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/styler/MobileStylerHairSelectionModal.tsx",
+      "owner": "styler-feature",
+      "passport": "docs/components/passports/native-styler-hair-selection-modal.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit app Styler new view"
+      }
+    },
+    {
+      "id": "native.auth.second-factor-panel",
+      "name": "AuthSecondFactorPanel",
+      "platform": "native",
+      "kind": "form",
+      "status": "candidate",
+      "source": "apps/hairfit-app/components/auth/AuthSecondFactorPanel.tsx",
+      "owner": "auth-feature",
+      "passport": "docs/components/passports/native-auth-second-factor-panel.yaml",
+      "observed_usage": {
+        "consumer_files": 2,
+        "scope": "HairFit app login and password reset routes"
+      }
+    },
+    {
+      "id": "native.app.network-recovery-provider",
+      "name": "NetworkRecoveryProvider",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/app/NetworkRecoveryProvider.tsx",
+      "owner": "hairfit-app-shell",
+      "passport": "docs/components/passports/native-network-recovery-provider.yaml",
+      "observed_usage": {
+        "consumer_files": 5,
+        "scope": "HairFit app root, home, generation result, result detail, and Styler recovery"
+      }
+    },
+    {
+      "id": "web.upload.area",
+      "name": "UploadArea",
+      "platform": "web",
+      "kind": "form",
+      "status": "stable",
+      "source": "my-app/components/upload/UploadArea.tsx",
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/web-upload-area.yaml",
+      "observed_usage": {
+        "consumer_files": 3,
+        "scope": "customer workspace, salon workspace, E2E harness"
+      }
+    },
+    {
+      "id": "web.upload.validation-check",
+      "name": "ValidationCheck",
+      "platform": "web",
+      "kind": "feedback",
+      "status": "stable",
+      "source": "my-app/components/upload/ValidationCheck.tsx",
+      "owner": "generation-feature",
+      "passport": "docs/components/passports/web-upload-validation-check.yaml",
+      "observed_usage": {
+        "consumer_files": 2,
+        "scope": "customer workspace and E2E harness"
+      }
+    },
+    {
+      "id": "web.billing.refund-interview-flow",
+      "name": "RefundInterviewFlow",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/mypage/RefundInterviewFlow.tsx",
+      "owner": "billing-feature",
+      "passport": "docs/components/passports/web-refund-interview-flow.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "authenticated web mypage payment history"
+      }
+    },
+    {
+      "id": "native.billing.refund-interview-flow",
+      "name": "MobileRefundInterviewFlow",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/mypage/MobileRefundInterviewFlow.tsx",
+      "owner": "billing-feature",
+      "passport": "docs/components/passports/native-refund-interview-flow.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit app mypage payment history"
+      }
+    }
+  ]
+}

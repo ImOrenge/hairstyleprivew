@@ -1,0 +1,79 @@
+id: native.generate.generation-job-progress-card
+name: GenerationJobProgressCard
+platform: native
+kind: feedback
+status: experimental
+source: apps/hairfit-app/components/generation/GenerationJobProgressCard.tsx
+owner: generation-feature
+
+public_api:
+  exports:
+    - GenerationJobProgressCard
+  props:
+    - presentation: GenerationJobProgressPresentation
+    - "lastCheckedAt?: Date | null"
+    - "refreshing?: boolean"
+    - "onRefresh?: () => void"
+  events:
+    - onRefresh
+
+dependencies:
+  internal:
+    - packages/shared/src/generation/contract.ts
+    - packages/ui-native/src/index.tsx
+  external:
+    - react-native
+  forbidden:
+    - api-client
+    - route-state
+
+styling:
+  strategy: react-native-stylesheet-plus-ui-native-primitives
+  stylesheet: apps/hairfit-app/components/generation/GenerationJobProgressCard.tsx#styles
+  runtime_styles_allowed:
+    - progress-width-from-presentation
+
+state:
+  owned: []
+  derived:
+    - reached-step
+    - formatted-last-checked-time
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  status:
+    live: polite
+  progress:
+    role: progressbar
+    min: 0
+    max: 100
+    current: presentation-progress-percent
+  steps:
+    container: list
+    children: individually-labeled-accessible-views
+  refresh:
+    control: ui-native-Button
+    disabled-while-refreshing: true
+
+test_surface:
+  unit: packages/shared/src/generation/contract.test.ts
+  parity: my-app/lib/generation-progress-parity.test.ts
+  interaction: apps/hairfit-app/__tests__/generation-job-progress-card.test.tsx
+  visual: required
+  device_smoke: required
+  observed_usage:
+    - apps/hairfit-app/app/generate/[id].tsx
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+  behavioral_change_requires:
+    - shared-stage-matrix-test
+    - generation-progress-parity-contract-test
+    - device-smoke
+
+promotion_blockers:
+  - no-device-or-visual-evidence

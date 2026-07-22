@@ -74,7 +74,7 @@ export default async function SupportPostPage({ params }: SupportPostPageProps) 
       </Panel>
 
       <Panel as="section" className="p-5 sm:p-6">
-        <p className="app-kicker">Official Reply</p>
+        <p className="app-kicker">공식 답변</p>
         <h2 className="mt-2 text-xl font-black text-[var(--app-text)]">관리자 답변</h2>
         {post.adminAnswer ? (
           <>

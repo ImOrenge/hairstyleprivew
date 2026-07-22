@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminApiContext } from "../../../../lib/admin-auth";
+import { decodeListCursor, encodeListCursor } from "../../../../lib/list-cursor";
 import { trimText } from "../../../../lib/onboarding";
 
 const OUTBOUND_EMAIL_STATUSES = ["sent", "failed", "skipped"] as const;
@@ -52,6 +53,11 @@ export async function GET(request: Request) {
   const status = url.searchParams.get("status");
   const source = trimText(url.searchParams.get("source"), 80);
   const limit = parseLimit(url.searchParams.get("limit"));
+  const cursorParam = url.searchParams.get("cursor");
+  const cursor = decodeListCursor(cursorParam);
+  if (cursorParam && !cursor) {
+    return NextResponse.json({ error: "Invalid pagination cursor" }, { status: 400 });
+  }
 
   let query = context.supabase
     .from("outbound_emails")
@@ -60,7 +66,12 @@ export async function GET(request: Request) {
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("id", { ascending: false })
+    .limit(limit + 1);
+
+  if (cursor) {
+    query = query.or(`created_at.lt.${cursor.sortValue},and(created_at.eq.${cursor.sortValue},id.lt.${cursor.id})`);
+  }
 
   if (q) {
     query = query.or(
@@ -117,13 +128,22 @@ export async function GET(request: Request) {
     .map(([key, value]) => ({ source: key, count: value }))
     .sort((a, b) => b.count - a.count || a.source.localeCompare(b.source));
 
+  const rows = data || [];
+  const hasMore = rows.length > limit;
+  const emails = rows.slice(0, limit);
+  const lastEmail = emails.at(-1);
+
   return NextResponse.json(
     {
-      emails: data || [],
-      total: count ?? (data || []).length,
+      emails,
+      total: count ?? emails.length,
       statusSummary,
       sourceSummary,
       limit,
+      nextCursor:
+        hasMore && lastEmail
+          ? encodeListCursor(lastEmail.created_at, lastEmail.id)
+          : null,
     },
     { status: 200 },
   );

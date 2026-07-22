@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminApiContext } from "../../../../lib/admin-auth";
 import { isAccountType, trimText } from "../../../../lib/onboarding";
+import { decodeListCursor, encodeListCursor } from "../../../../lib/list-cursor";
 
 interface MemberListRow {
   id: string;
@@ -36,6 +37,11 @@ export async function GET(request: Request) {
   const q = escapeSearchValue(trimText(url.searchParams.get("q"), 80));
   const accountTypeParam = url.searchParams.get("accountType");
   const limit = parseLimit(url.searchParams.get("limit"));
+  const cursorParam = url.searchParams.get("cursor");
+  const cursor = decodeListCursor(cursorParam);
+  if (cursorParam && !cursor) {
+    return NextResponse.json({ error: "Invalid pagination cursor" }, { status: 400 });
+  }
 
   let query = context.supabase
     .from("users")
@@ -44,7 +50,12 @@ export async function GET(request: Request) {
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .order("id", { ascending: false })
+    .limit(limit + 1);
+
+  if (cursor) {
+    query = query.or(`created_at.lt.${cursor.sortValue},and(created_at.eq.${cursor.sortValue},id.lt.${cursor.id})`);
+  }
 
   if (q) {
     query = query.or(`id.ilike.%${q}%,email.ilike.%${q}%,display_name.ilike.%${q}%`);
@@ -62,12 +73,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const members = data || [];
+  const rows = data || [];
+  const hasMore = rows.length > limit;
+  const members = rows.slice(0, limit);
+  const lastMember = members.at(-1);
   return NextResponse.json(
     {
       members,
       total: count ?? members.length,
       limit,
+      nextCursor:
+        hasMore && lastMember
+          ? encodeListCursor(lastMember.created_at, lastMember.id)
+          : null,
     },
     { status: 200 },
   );

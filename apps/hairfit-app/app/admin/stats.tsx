@@ -11,14 +11,15 @@ import {
   MetricGrid,
   MetricTile,
   Panel,
-  Screen,
   Stack,
 } from "@hairfit/ui-native";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { View, type DimensionValue } from "react-native";
+import { AppScreen } from "../../components/app/AppScreen";
 import { useHairfitApi } from "../../lib/api";
 import { AdminTabs } from "../../lib/admin-ui";
+import { mapMobileUserError } from "../../lib/mobile-user-message";
 
 type RangeDays = 7 | 30 | 90;
 
@@ -59,7 +60,7 @@ export default function AdminStatsScreen() {
       } catch (loadError) {
         if (!cancelled) {
           setDashboard(null);
-          setError(loadError instanceof Error ? loadError.message : "통계 데이터를 불러오지 못했습니다.");
+          setError(mapMobileUserError(loadError, "통계 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
       } finally {
         if (!cancelled) {
@@ -75,7 +76,7 @@ export default function AdminStatsScreen() {
   }, [api, isLoaded, isSignedIn, range]);
 
   const kpis = dashboard?.admin.kpis;
-  const daily = dashboard?.admin.daily ?? [];
+  const daily = useMemo(() => dashboard?.admin.daily ?? [], [dashboard?.admin.daily]);
   const maxDaily = useMemo(() => {
     if (!daily.length) return 1;
     return Math.max(
@@ -87,12 +88,12 @@ export default function AdminStatsScreen() {
   }, [daily]);
 
   return (
-    <Screen>
+    <AppScreen>
       <AdminTabs activePath="/admin/stats" />
 
       <Panel>
         <Stack>
-          <Kicker>Admin Dashboard</Kicker>
+          <Kicker>관리자 대시보드</Kicker>
           <Heading>통계</Heading>
           <BodyText>운영 지표를 최근 기간 기준으로 집계합니다.</BodyText>
           <Cluster>
@@ -130,14 +131,16 @@ export default function AdminStatsScreen() {
           </MetricGrid>
 
           {error ? (
-            <Card>
-              <Stack gap={12}>
-                <BodyText>{error}</BodyText>
-                <Button variant="secondary" onPress={() => router.push("/")}>
-                  홈으로 돌아가기
-                </Button>
-              </Stack>
-            </Card>
+            <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+              <Card>
+                <Stack gap={12}>
+                  <BodyText>{error}</BodyText>
+                  <Button variant="secondary" onPress={() => router.push("/")}>
+                    홈으로 돌아가기
+                  </Button>
+                </Stack>
+              </Card>
+            </View>
           ) : null}
 
           <Panel>
@@ -194,6 +197,6 @@ export default function AdminStatsScreen() {
           </Panel>
         </>
       ) : null}
-    </Screen>
+    </AppScreen>
   );
 }

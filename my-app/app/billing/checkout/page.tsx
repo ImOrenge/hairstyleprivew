@@ -1,12 +1,14 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PortoneCheckoutForm } from "../../../components/payments/PortoneCheckoutForm";
+import { SubscriptionPolicyDisclosure } from "../../../components/billing/SubscriptionPolicyDisclosure";
 import { SubscriptionWaitlistForm } from "../../../components/payments/SubscriptionWaitlistForm";
 import { AppPage, Panel, SurfaceCard } from "../../../components/ui/Surface";
 import {
   isSelfServeBillingPlanKey,
   type SelfServeBillingPlanKey,
 } from "../../../lib/billing-plan";
+import { normalizeBillingReturnTarget } from "../../../lib/billing-return-target";
 import { buildSignInRedirectUrl } from "../../../lib/clerk";
 import { getSelfServePlanDisplayBenefit, type PlanDisplayBenefit } from "../../../lib/plan-benefit-display";
 import { getSubscriptionAccessMode } from "../../../lib/subscription-access";
@@ -39,11 +41,6 @@ function formatHairFashionEstimate(plan: PlanDisplayBenefit): string {
   return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트`;
 }
 
-function sanitizeReturnTo(value: string): string {
-  if (!value.startsWith("/") || value.startsWith("//")) return "/mypage";
-  return value;
-}
-
 function buildCheckoutReturnPath(planKey: SelfServeBillingPlanKey, returnTo: string): string {
   const params = new URLSearchParams({ plan: planKey });
   if (returnTo) {
@@ -61,7 +58,7 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
 
   const planKey = planParam as SelfServeBillingPlanKey;
   const plan = getSelfServePlanDisplayBenefit(planKey);
-  const returnTo = sanitizeReturnTo(readSearchParam(params, "returnTo"));
+  const returnTo = normalizeBillingReturnTarget(params.returnTo);
   const { userId } = await auth();
   const subscriptionAccessMode = getSubscriptionAccessMode();
   if (subscriptionAccessMode === "checkout" && !userId) {
@@ -87,13 +84,13 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
     return (
       <AppPage className="grid gap-5 pb-16">
         <Panel as="section" className="p-5 sm:p-6">
-          <p className="app-kicker">Subscription Waitlist</p>
+          <p className="app-kicker">구독 오픈 알림</p>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
             구독 오픈 알림 신청
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
-            현재 PG 연동 준비로 구독 결제는 잠시 대기 중입니다. 희망 플랜과 이메일을 남겨주시면
-            결제 오픈 시 우선 안내드리겠습니다.
+            현재 정기 결제를 준비하고 있습니다. 희망 플랜과 이메일을 남겨주시면
+            결제가 열릴 때 우선 안내드리겠습니다.
           </p>
         </Panel>
 
@@ -119,7 +116,7 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
               <p className="text-xs font-bold uppercase text-[var(--app-muted)]">차감 기준</p>
               <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
                 <li>헤어 결과 이미지 생성: {plan.creditsPerStyle.toLocaleString("ko-KR")}크레딧</li>
-                <li>패션 룩북 이미지 생성: 확정 헤어 기준 {plan.creditsPerOutfit.toLocaleString("ko-KR")}크레딧</li>
+                <li>패션 룩북 이미지 생성: 선택한 헤어 기준 {plan.creditsPerOutfit.toLocaleString("ko-KR")}크레딧</li>
                 <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}크레딧</li>
               </ul>
             </div>
@@ -138,7 +135,7 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
               </p>
             </div>
             <p className="mt-4 text-xs leading-5 text-[var(--app-subtle)]">
-              웨잇리스트 신청은 결제가 아니며, 실제 구독은 PG 연동 후 별도 결제 확인을 거쳐 활성화됩니다.
+              오픈 알림 신청은 결제가 아니며, 실제 구독은 정기 결제가 열린 뒤 별도 결제 확인을 거쳐 활성화됩니다.
             </p>
           </SurfaceCard>
         </div>
@@ -149,12 +146,12 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
   return (
     <AppPage className="grid gap-5 pb-16">
       <Panel as="section" className="p-5 sm:p-6">
-        <p className="app-kicker">PortOne Checkout</p>
+        <p className="app-kicker">정기 결제</p>
         <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
           결제수단 선택
         </h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
-          결제수단과 구매자 정보를 확인한 뒤 PortOne 보안 결제창에서 카드 정보를 입력합니다.
+          결제수단과 구매자 정보를 확인한 뒤 안전한 결제창에서 카드 정보를 입력합니다.
         </p>
       </Panel>
 
@@ -181,7 +178,7 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
             <p className="text-xs font-bold uppercase text-[var(--app-muted)]">차감 기준</p>
             <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
               <li>헤어 결과 이미지 생성: {plan.creditsPerStyle.toLocaleString("ko-KR")}크레딧</li>
-              <li>패션 룩북 이미지 생성: 확정 헤어 기준 {plan.creditsPerOutfit.toLocaleString("ko-KR")}크레딧</li>
+              <li>패션 룩북 이미지 생성: 선택한 헤어 기준 {plan.creditsPerOutfit.toLocaleString("ko-KR")}크레딧</li>
               <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}크레딧</li>
             </ul>
           </div>
@@ -199,8 +196,12 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
               {formatKrw(plan.priceKrw)}
             </p>
           </div>
+          <div className="mt-5 border-t border-[var(--app-border)] pt-4">
+            <h3 className="text-xs font-bold uppercase text-[var(--app-muted)]">정기결제·해지 정책</h3>
+            <SubscriptionPolicyDisclosure compact className="mt-3" />
+          </div>
           <p className="mt-4 text-xs leading-5 text-[var(--app-subtle)]">
-            결제 완료 여부는 서버의 PortOne 결제 조회와 웹훅으로 최종 확정됩니다.
+            카드 승인과 HairFit의 결제 확인이 모두 끝난 뒤 구독이 활성화됩니다.
           </p>
         </SurfaceCard>
       </div>

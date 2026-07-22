@@ -6,7 +6,9 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle2, ImagePlus, RefreshCw, Sparkles } from "lucide-react";
 import type { PersonalColorResult } from "../../lib/fashion-types";
-import { readOriginalImageFromCache, saveOriginalImageToCache } from "../../lib/uploadImageCache";
+import { getGenerationOwnerSnapshot } from "../../lib/generation-owner-state";
+import { mapWebUserError } from "../../lib/web-user-message";
+import { useGenerationStore } from "../../store/useGenerationStore";
 import { Button } from "../ui/Button";
 import { Panel, SurfaceCard } from "../ui/Surface";
 import {
@@ -70,6 +72,8 @@ function formatContrast(value?: string | null) {
 export function PersonalColorDiagnosisPageClient() {
   const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cachedOriginalImage = useGenerationStore((state) => state.originalImage);
+  const setOriginalImage = useGenerationStore((state) => state.setOriginalImage);
   const [imageDataUrl, setImageDataUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [personalColor, setPersonalColor] = useState<PersonalColorResult | null>(null);
@@ -93,7 +97,7 @@ export function PersonalColorDiagnosisPageClient() {
       }
 
       setIsLoadingCachedImage(true);
-      const cachedFile = await readOriginalImageFromCache();
+      const cachedFile = cachedOriginalImage;
       if (!active) {
         return;
       }
@@ -110,7 +114,7 @@ export function PersonalColorDiagnosisPageClient() {
     return () => {
       active = false;
     };
-  }, [isUploadSource]);
+  }, [cachedOriginalImage, isUploadSource]);
 
   useEffect(() => {
     return () => {
@@ -125,6 +129,11 @@ export function PersonalColorDiagnosisPageClient() {
       return;
     }
 
+    const ownerSnapshot = isUploadSource
+      ? getGenerationOwnerSnapshot(useGenerationStore.getState())
+      : null;
+    if (isUploadSource && !ownerSnapshot) return;
+
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
     }
@@ -135,7 +144,7 @@ export function PersonalColorDiagnosisPageClient() {
     setError(null);
 
     if (isUploadSource) {
-      await saveOriginalImageToCache(file);
+      setOriginalImage(file, ownerSnapshot!);
     }
   };
 
@@ -161,7 +170,7 @@ export function PersonalColorDiagnosisPageClient() {
 
       setPersonalColor(data.personalColor);
     } catch (analyzeError) {
-      setError(analyzeError instanceof Error ? analyzeError.message : "퍼스널컬러 진단에 실패했습니다.");
+      setError(mapWebUserError(analyzeError, "퍼스널컬러 진단에 실패했습니다. 잠시 후 다시 시도해 주세요.", "photo"));
     } finally {
       setIsAnalyzing(false);
     }
@@ -172,7 +181,7 @@ export function PersonalColorDiagnosisPageClient() {
       <Panel as="section" className="overflow-hidden p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <p className="app-kicker">Personal Color</p>
+            <p className="app-kicker">퍼스널컬러</p>
             <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
               퍼스널컬러 진단
             </h1>
@@ -272,7 +281,7 @@ export function PersonalColorDiagnosisPageClient() {
           ) : null}
 
           {error ? (
-            <SurfaceCard className="border-rose-200 bg-rose-50 p-4">
+            <SurfaceCard role="alert" className="border-rose-200 bg-rose-50 p-4">
               <p className="text-sm font-bold text-rose-700">{error}</p>
               <Button type="button" variant="secondary" className="mt-3" onClick={handleAnalyze} disabled={!imageDataUrl}>
                 <RefreshCw className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -285,7 +294,7 @@ export function PersonalColorDiagnosisPageClient() {
             <SurfaceCard className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="app-kicker">Diagnosis Saved</p>
+                  <p className="app-kicker">진단 저장 완료</p>
                   <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">
                     {formatTone(personalColor.tone)} · {formatContrast(personalColor.contrast)}
                   </h2>

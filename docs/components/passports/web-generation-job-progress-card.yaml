@@ -1,0 +1,125 @@
+id: web.generate.generation-job-progress-card
+name: GenerationJobProgressCard
+platform: web
+kind: feedback
+status: stable
+source: my-app/components/generate/GenerationJobProgressCard.tsx
+owner: generation-feature
+
+public_api:
+  exports:
+    - GenerationJobProgressCard
+    - GenerationJobProgressCardProps
+  props:
+    - presentation: GenerationJobProgressPresentation
+    - "lastCheckedAt?: Date | null"
+    - "refreshing?: boolean"
+    - "onRefresh?: () => void"
+  events:
+    - onRefresh
+
+dependencies:
+  internal:
+    - packages/shared/src/generation/contract.ts
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/Surface.tsx
+  external:
+    - react
+  forbidden:
+    - api-client
+    - route-state
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-generation-job-progress
+  tokens:
+    - --app-radius-control
+    - --app-border
+    - --app-border-strong
+    - --app-surface-muted
+    - --app-text
+    - --app-muted
+    - --app-accent
+    - --app-success
+    - --app-danger
+    - --app-ring
+  variants:
+    - neutral
+    - accent
+    - success
+    - danger
+  data_contract:
+    data-tone: neutral | accent | success | danger
+    data-terminal: true | false
+  inline_styles_allowed:
+    - progress-width-from-presentation
+
+state:
+  owned: []
+  derived:
+    - reached-step
+    - current-step
+    - formatted-last-checked-time
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  status:
+    role: status
+    live: polite
+    atomic: true
+    busy: while-non-terminal
+  progress:
+    role: progressbar
+    min: 0
+    max: 100
+    current: presentation-progress-percent
+  steps:
+    container: ordered-list
+    current: aria-current-step
+  refresh:
+    control: Button
+    disabled-while-refreshing: true
+
+test_surface:
+  unit: packages/shared/src/generation/contract.test.ts
+  parity: my-app/lib/generation-progress-parity.test.ts
+  interaction: tests/web-e2e/generation-progress.spec.ts
+  accessibility: axe-serious-critical-zero
+  visual:
+    - tests/web-e2e/__screenshots__/generation-progress.spec.ts/generation-job-progress-320-light.png
+    - tests/web-e2e/__screenshots__/generation-progress.spec.ts/generation-job-progress-375-dark.png
+  observed_usage:
+    - my-app/app/generate/[id]/page.tsx
+    - my-app/components/workspace/WorkspaceAcceptedGenerationStatus.tsx
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - web-typecheck
+  behavioral_change_requires:
+    - shared-stage-matrix-test
+    - generation-progress-parity-contract-test
+    - generation-progress-interaction-test
+  style_contract_change_requires:
+    - c-generation-job-progress-selector-search
+    - responsive-visual-verification
+
+promotion_evidence:
+  - two-production-consumers-and-fail-closed-production-harness
+  - shared-server-state-copy-refresh-and-variant-summary-contract
+  - global-components-layer-c-generation-job-progress-tone-and-terminal-contract
+  - queued-preparing-retry-ready-failed-interaction-and-refresh-state
+  - polite-atomic-busy-status-and-progressbar-contract
+  - axe-serious-critical-zero
+  - 320px-light-and-375px-dark-visual-overflow-and-refresh-reachability
+
+promotion_blockers: []
+
+residual_risks:
+  - authenticated-workspace-server-transition-visual-not-yet-recorded
+  - physical-screen-reader-announcement-order-not-yet-verified

@@ -7,6 +7,7 @@ const workspaceRoot = path.resolve(appDir, "..");
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
 
 const nextConfig: NextConfig = {
+    distDir: process.env.NEXT_DIST_DIR?.trim() || ".next",
     outputFileTracingRoot: workspaceRoot,
     images: {
         formats: ["image/avif", "image/webp"],

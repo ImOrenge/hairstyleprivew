@@ -1,0 +1,247 @@
+name: Release candidate external gates
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: Public HTTPS HairFit application URL
+        required: true
+        default: https://hairfit.beauty
+        type: string
+      run_clerk_protected_e2e:
+        description: Run existing test-user Clerk protected-page E2E
+        required: true
+        default: true
+        type: boolean
+      run_generation_notification_preflight:
+        description: Verify deployed callback, secret fingerprint, and Resend sender
+        required: true
+        default: true
+        type: boolean
+      run_app_link_association_preflight:
+        description: Verify deployed AASA and Android Asset Links associations
+        required: true
+        default: true
+        type: boolean
+      run_generation_notification_staging_db_smoke:
+        description: Run write-and-cleanup notification outbox concurrency smoke against staging DB
+        required: true
+        default: false
+        type: boolean
+      run_environment_readiness_preflight:
+        description: Read-only DB migration/schema, sender, app-link, Worker secret/version gate
+        required: true
+        default: true
+        type: boolean
+      expected_worker_version_id:
+        description: Wrangler version ID expected to receive 100 percent of generation Worker traffic
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-external-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  clerk-protected-web:
+    name: Clerk protected web E2E
+    if: ${{ inputs.run_clerk_protected_e2e }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: release-candidate
+    env:
+      CI: "true"
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.E2E_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.E2E_CLERK_SECRET_KEY }}
+      E2E_CLERK_USER_EMAIL: ${{ secrets.E2E_CLERK_USER_EMAIL }}
+      E2E_CLERK_ADMIN_EMAIL: ${{ secrets.E2E_CLERK_ADMIN_EMAIL }}
+      E2E_CLERK_SALON_EMAIL: ${{ secrets.E2E_CLERK_SALON_EMAIL }}
+      E2E_OWNED_GENERATION_ID: ${{ secrets.E2E_OWNED_GENERATION_ID }}
+      E2E_FOREIGN_GENERATION_ID: ${{ secrets.E2E_FOREIGN_GENERATION_ID }}
+      E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --fund=false
+
+      - name: Verify existing Clerk fixture without mutation
+        run: npm run web:protected-e2e:preflight
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run protected customer-page E2E
+        run: npm run web:protected-e2e
+
+  generation-notification-preflight:
+    name: Generation callback and sender preflight
+    if: ${{ inputs.run_generation_notification_preflight }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release-candidate
+    env:
+      CI: "true"
+      HAIRFIT_APP_BASE_URL: ${{ inputs.app_url }}
+      GENERATION_WORKFLOW_CALLBACK_SECRET: ${{ secrets.GENERATION_WORKFLOW_CALLBACK_SECRET }}
+      GENERATION_WORKFLOW_CALLBACK_SECRET_FINGERPRINT: ${{ secrets.GENERATION_WORKFLOW_CALLBACK_SECRET_FINGERPRINT }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --fund=false
+
+      - name: Verify deployed callback and mail configuration
+        run: npm --prefix my-app run generation:notification:preflight -- --mode=deploy --appUrl="$HAIRFIT_APP_BASE_URL"
+
+  app-link-association-preflight:
+    name: Universal and App Link association preflight
+    if: ${{ inputs.run_app_link_association_preflight }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release-candidate
+    env:
+      APP_LINK_BASE_URL: ${{ inputs.app_url }}
+      HAIRFIT_APPLE_TEAM_ID: ${{ secrets.HAIRFIT_APPLE_TEAM_ID }}
+      HAIRFIT_ANDROID_CERT_SHA256: ${{ secrets.HAIRFIT_ANDROID_CERT_SHA256 }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --fund=false
+
+      - name: Verify deployed association files and operating identifiers
+        run: npm run app-links:external:check
+
+  generation-notification-staging-db-smoke:
+    name: Generation notification staging DB concurrency smoke
+    if: ${{ inputs.run_generation_notification_staging_db_smoke }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: release-candidate
+    env:
+      STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      STAGING_DATABASE_EXPECTED_HOST: ${{ secrets.STAGING_DATABASE_EXPECTED_HOST }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Run fenced concurrency smoke against staging
+        run: >-
+          npm run generation:notification:staging-db-smoke --
+          --databaseUrl="$STAGING_DATABASE_URL"
+          --environment=staging
+          --expectedHost="$STAGING_DATABASE_EXPECTED_HOST"
+          --confirmStagingWrite=I_UNDERSTAND_THIS_WRITES_EPHEMERAL_FIXTURES
+          --artifactDir=.artifacts/generation-notification-staging
+
+      - name: Upload redacted staging smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: generation-notification-staging-smoke-${{ github.run_attempt }}
+          path: .artifacts/generation-notification-staging/
+          if-no-files-found: error
+          retention-days: 30
+
+  release-environment-readiness:
+    name: Integrated release environment readiness
+    if: ${{ inputs.run_environment_readiness_preflight }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: release-candidate
+    env:
+      CI: "true"
+      HAIRFIT_APP_BASE_URL: ${{ inputs.app_url }}
+      APP_LINK_BASE_URL: ${{ inputs.app_url }}
+      GENERATION_WORKFLOW_CALLBACK_SECRET: ${{ secrets.GENERATION_WORKFLOW_CALLBACK_SECRET }}
+      GENERATION_WORKFLOW_CALLBACK_SECRET_FINGERPRINT: ${{ secrets.GENERATION_WORKFLOW_CALLBACK_SECRET_FINGERPRINT }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+      HAIRFIT_APPLE_TEAM_ID: ${{ secrets.HAIRFIT_APPLE_TEAM_ID }}
+      HAIRFIT_ANDROID_CERT_SHA256: ${{ secrets.HAIRFIT_ANDROID_CERT_SHA256 }}
+      RELEASE_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      RELEASE_DATABASE_EXPECTED_HOST: ${{ secrets.STAGING_DATABASE_EXPECTED_HOST }}
+      HAIRFIT_EXPECTED_WORKER_VERSION_ID: ${{ inputs.expected_worker_version_id }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --fund=false
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Run read-only integrated environment preflight
+        run: >-
+          npm run release:environment:preflight --
+          --mode=deployed
+          --environment=staging
+          --appUrl="$HAIRFIT_APP_BASE_URL"
+          --artifactDir=.artifacts/release-environment
+
+      - name: Upload redacted environment evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-environment-readiness-${{ github.run_attempt }}
+          path: .artifacts/release-environment/
+          if-no-files-found: error
+          retention-days: 30

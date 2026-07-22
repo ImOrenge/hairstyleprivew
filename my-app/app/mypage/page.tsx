@@ -15,6 +15,7 @@ import {
   type UserStyleProfileRow,
 } from "../../components/mypage/MyPageDashboardTabs";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
+import { getConfirmedStyleMediaFromRelation } from "../../lib/confirmed-style-media";
 import type { PersonalColorResult } from "../../lib/fashion-types";
 import { isMemberStyleTarget, isMemberStyleTone } from "../../lib/onboarding";
 import { normalizeStyleProfile } from "../../lib/style-profile-server";
@@ -58,6 +59,10 @@ interface SubscriptionQueryRow extends SubscriptionRow {
   pg_billing_key?: string | null;
   pg_billing_key_encrypted?: string | null;
   pg_billing_key_hash?: string | null;
+}
+
+interface HairRecordQueryRow extends HairRecordRow {
+  generation?: unknown;
 }
 
 function toSafeSubscription(row: SubscriptionQueryRow | null): SubscriptionRow | null {
@@ -195,8 +200,8 @@ export default async function MyPage({
         .eq("user_id", userId)
         .maybeSingle(),
       supabase
-        .from<HairRecordRow>("user_hair_records")
-        .select("id,style_name,service_type,service_date,next_visit_target_days,created_at")
+        .from<HairRecordQueryRow>("user_hair_records")
+        .select("id,generation_id,style_name,service_type,service_date,next_visit_target_days,created_at,generation:generations(selected_variant_id,options)")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(5),
@@ -229,7 +234,16 @@ export default async function MyPage({
     if (!styleProfileResult.error) {
       personalColor = normalizeStyleProfile(styleProfileResult.data as Record<string, unknown> | null, userId).personalColor;
     }
-    if (!hairRecordResult.error && hairRecordResult.data) hairRecords = hairRecordResult.data;
+    if (!hairRecordResult.error && hairRecordResult.data) {
+      hairRecords = hairRecordResult.data.map((record) => {
+        const media = getConfirmedStyleMediaFromRelation(record.generation);
+        return {
+          ...record,
+          selected_variant_id: media.selectedVariantId,
+          selected_variant_image_url: media.selectedVariantImageUrl,
+        };
+      });
+    }
     if (!subscriptionResult.error) subscription = toSafeSubscription(subscriptionResult.data);
   }
 

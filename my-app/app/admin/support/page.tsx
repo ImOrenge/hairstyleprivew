@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/Button";
+import { mapWebResponseError } from "../../../lib/web-user-message";
 import {
   SUPPORT_POST_KIND_LABELS,
   SUPPORT_POST_KINDS,
@@ -154,7 +155,7 @@ export default function AdminSupportPage() {
     const response = await fetch(postsUrl, { cache: "no-store" });
     const data = (await response.json().catch(() => ({}))) as PostsResponse;
     if (!response.ok) {
-      setError(data.error || "고객지원 게시글을 불러오지 못했습니다.");
+      setError(mapWebResponseError(response.status, "고객지원 게시글을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
       setIsLoading(false);
       return;
     }
@@ -179,7 +180,7 @@ export default function AdminSupportPage() {
     const response = await fetch("/api/admin/support/faqs", { cache: "no-store" });
     const data = (await response.json().catch(() => ({}))) as FaqsResponse;
     if (!response.ok) {
-      setError(data.error || "FAQ를 불러오지 못했습니다.");
+      setError(mapWebResponseError(response.status, "FAQ를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
       return;
     }
     setFaqs(data.faqs || []);
@@ -234,7 +235,7 @@ export default function AdminSupportPage() {
     const data = (await response.json().catch(() => ({}))) as SavePostResponse;
 
     if (!response.ok || !data.post) {
-      setError(data.error || "게시글 관리 정보 저장에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "게시글 관리 정보 저장에 실패했습니다. 잠시 후 다시 시도해 주세요."));
       setBusyId(null);
       return;
     }
@@ -277,7 +278,7 @@ export default function AdminSupportPage() {
     const data = (await response.json().catch(() => ({}))) as FaqsResponse;
 
     if (!response.ok || !data.faq) {
-      setError(data.error || "FAQ 저장에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "FAQ 저장에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요."));
       setBusyId(null);
       return;
     }
@@ -301,9 +302,8 @@ export default function AdminSupportPage() {
     setBusyId(selectedFaqId);
     setError(null);
     const response = await fetch(`/api/admin/support/faqs/${encodeURIComponent(selectedFaqId)}`, { method: "DELETE" });
-    const data = (await response.json().catch(() => ({}))) as { error?: string };
     if (!response.ok) {
-      setError(data.error || "FAQ 삭제에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "FAQ 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요."));
       setBusyId(null);
       return;
     }
@@ -317,7 +317,7 @@ export default function AdminSupportPage() {
   return (
     <div className="grid gap-4 pb-10">
       <header className="rounded-2xl border border-stone-200 bg-white p-5">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">Admin Support</p>
+        <p className="text-xs font-black uppercase tracking-[0.16em] text-stone-400">고객지원 관리</p>
         <h1 className="mt-2 text-2xl font-black text-stone-950">고객지원센터 관리</h1>
         <p className="mt-2 text-sm text-stone-600">게시글 {postTotal}건 / FAQ {faqs.length}건</p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -331,10 +331,10 @@ export default function AdminSupportPage() {
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div>
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div>
       ) : null}
       {notice ? (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{notice}</div>
+        <div role="status" aria-live="polite" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">{notice}</div>
       ) : null}
 
       {mode === "posts" ? (

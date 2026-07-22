@@ -1,0 +1,128 @@
+id: web.ui.confirm-action-dialog
+name: ConfirmActionDialog
+platform: web
+kind: feedback
+status: experimental
+source: my-app/components/ui/ConfirmActionDialog.tsx
+owner: web-ui
+
+public_api:
+  exports:
+    - ConfirmActionDialog
+    - ConfirmActionDialogProps
+  props:
+    - open: boolean
+    - "onOpenChange: (open: boolean) => void"
+    - "onConfirm: () => void"
+    - title: ReactNode
+    - description: ReactNode
+    - confirmLabel: string
+    - cancelLabel: string
+    - pendingLabel: string
+    - isPending: boolean
+    - confirmDisabled: boolean
+    - "tone: default | danger"
+    - target: ReactNode
+    - beforeValue: ReactNode
+    - afterValue: ReactNode
+    - confirmationSlot: ReactNode
+
+dependencies:
+  internal:
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/Dialog.tsx
+  external:
+    - react
+  forbidden:
+    - feature-stores
+    - route-state
+    - api-clients
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-confirm-dialog
+  tokens:
+    - --app-border
+    - --app-surface-muted
+    - --app-text
+    - --app-muted
+  variants:
+    - default
+    - danger
+  allows_className: false
+  inline_styles_allowed: false
+
+state:
+  controlled:
+    - open
+    - isPending
+    - confirmDisabled
+  owned: []
+  external_store: false
+side_effects:
+  - inherits-dialog-body-scroll-lock
+  - inherits-dialog-document-keydown-listener
+
+a11y_contract:
+  dialog: inherits-web-ui-dialog-focus-dismissal-and-aria-contract
+  confirmation:
+    - consumer-provides-visible-label-for-confirmation-input
+    - confirm-button-disabled-until-consumer-contract-is-satisfied
+    - pending-state-prevents-dismissal-and-repeat-submit
+  controls: ui-Button
+
+test_surface:
+  unit:
+    - my-app/lib/admin-high-risk-action.test.ts
+    - my-app/lib/dialog-e2e-harness.test.ts
+  browser:
+    - tests/web-e2e/dialog-components.spec.ts#high-risk-confirmation
+    - tests/web-e2e/dialog-components.spec.ts#responsive-high-risk-confirmation
+  interaction: required
+  visual:
+    - tests/web-e2e/__screenshots__/dialog-components.spec.ts/confirm-action-dialog-320-light.png
+    - tests/web-e2e/__screenshots__/dialog-components.spec.ts/confirm-action-dialog-375-dark.png
+  observed_usage:
+    - my-app/app/generate/[id]/page.tsx
+    - my-app/app/admin/members/page.tsx
+    - my-app/app/admin/refunds/page.tsx
+    - my-app/components/mypage/AccountDeletionCard.tsx
+    - my-app/components/mypage/SubscriptionCancelButton.tsx
+    - my-app/components/result/ActionToolbar.tsx
+    - my-app/components/salon/CustomerDetailClient.tsx
+    - my-app/components/salon/CustomerListClient.tsx
+    - my-app/components/salon/SalonConnectionsClient.tsx
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+    - contract-test
+  behavioral_change_requires:
+    - keyboard-focus-interaction-verification
+    - pending-dismissal-and-repeat-submit-verification
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+  style_contract_change_requires:
+    - c-confirm-dialog-selector-search
+    - visual-verification
+
+promotion_evidence:
+  - nine-production-consumers-share-one-high-risk-confirmation-wrapper
+  - target-before-after-danger-and-consumer-confirmation-slot-contract-recorded
+  - typed-confirmation-lock-pending-repeat-submit-and-dismissal-prevention
+  - trigger-focus-restoration-and-live-completion-status-runtime-verification
+  - axe-serious-critical-zero
+  - 320px-light-and-375px-dark-visual-and-horizontal-overflow-verification
+
+promotion_blockers:
+  - no-authenticated-admin-success-and-error-evidence
+
+residual_risks:
+  - authenticated-admin-member-and-refund-success-conflict-provider-pending-results-not-yet-verified
+  - physical-screen-reader-announcement-order-not-yet-verified

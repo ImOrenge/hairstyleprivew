@@ -11,9 +11,9 @@ export const metadata: Metadata = {
 
 export default function B2BContactPage() {
   return (
-    <AppPage as="main" className="grid max-w-5xl gap-8 py-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
-      <header className="space-y-4">
-        <p className="app-kicker">B2B Contact</p>
+    <AppPage className="grid max-w-5xl gap-8 py-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
+      <header className="min-w-0 space-y-4">
+        <p className="app-kicker">B2B 도입 문의</p>
         <h1 className="text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
           살롱 도입 상담을 신청하세요
         </h1>

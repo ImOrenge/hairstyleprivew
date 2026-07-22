@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import {
+  GENERATION_UPLOAD_MAX_MEGABYTES,
+  GENERATION_UPLOAD_MIN_DIMENSION,
+  validateGenerationUploadMetadata,
+} from "@hairfit/shared";
+import type { UploadStatus, UploadValidationDetails } from "../lib/upload-validation-contract";
 
-export type UploadStatus = "idle" | "checking" | "success" | "error";
-
-const MAX_FILE_SIZE_MB = 10;
-const MIN_RESOLUTION = 512;
-
-type FaceDetectionEngine = "FaceDetector" | "none";
+export type { UploadStatus, UploadValidationDetails } from "../lib/upload-validation-contract";
 
 type FaceDetectorCtor = new (options?: {
   fastMode?: boolean;
@@ -19,18 +20,7 @@ type FaceDetectorCtor = new (options?: {
 interface UploadResult {
   ok: boolean;
   message: string;
-}
-
-export interface UploadValidationDetails {
-  formatValid: boolean | null;
-  sizeValid: boolean | null;
-  resolutionValid: boolean | null;
-  faceValid: boolean | null;
-  faceDetectionSupported: boolean;
-  faceDetectionEngine: FaceDetectionEngine;
-  width: number | null;
-  height: number | null;
-  sizeMB: number | null;
+  userMessage: string;
 }
 
 const defaultDetails: UploadValidationDetails = {
@@ -104,21 +94,29 @@ export function useUpload() {
     setDetails(defaultDetails);
     setMessage("이미지 유효성을 확인하고 있습니다...");
 
-    const isImage = file.type.startsWith("image/");
     const sizeMB = Number((file.size / 1024 / 1024).toFixed(2));
+    const metadataValidation = validateGenerationUploadMetadata({
+      mimeType: file.type,
+      byteSize: file.size,
+    });
 
-    if (!isImage) {
+    if (!metadataValidation.ok) {
       setStatus("error");
-      setDetails((prev) => ({ ...prev, formatValid: false, sizeMB }));
-      setMessage("이미지 파일만 업로드할 수 있습니다.");
-      return { ok: false, message: "invalid_type" };
-    }
-
-    if (sizeMB > MAX_FILE_SIZE_MB) {
-      setStatus("error");
-      setDetails((prev) => ({ ...prev, formatValid: true, sizeValid: false, sizeMB }));
-      setMessage(`파일 크기가 ${MAX_FILE_SIZE_MB}MB를 초과했습니다.`);
-      return { ok: false, message: "too_large" };
+      setDetails((prev) => ({
+        ...prev,
+        formatValid: metadataValidation.code === "unsupported_type" ? false : true,
+        sizeValid:
+          metadataValidation.code === "too_large" || metadataValidation.code === "invalid_file"
+            ? false
+            : null,
+        sizeMB,
+      }));
+      setMessage(metadataValidation.messageKo);
+      return {
+        ok: false,
+        message: metadataValidation.code,
+        userMessage: metadataValidation.messageKo,
+      };
     }
 
     setDetails((prev) => ({ ...prev, formatValid: true, sizeValid: true, sizeMB }));
@@ -130,10 +128,21 @@ export function useUpload() {
       setStatus("error");
       setDetails((prev) => ({ ...prev, resolutionValid: false }));
       setMessage("이미지를 읽을 수 없습니다. 다른 파일을 시도해 주세요.");
-      return { ok: false, message: "load_failed" };
+      return {
+        ok: false,
+        message: "load_failed",
+        userMessage: "이미지를 읽을 수 없습니다. 다른 파일을 시도해 주세요.",
+      };
     }
 
-    if (dimensions.width < MIN_RESOLUTION || dimensions.height < MIN_RESOLUTION) {
+    const dimensionValidation = validateGenerationUploadMetadata({
+      mimeType: file.type,
+      byteSize: file.size,
+      width: dimensions.width,
+      height: dimensions.height,
+    });
+
+    if (!dimensionValidation.ok) {
       setStatus("error");
       setDetails((prev) => ({
         ...prev,
@@ -141,8 +150,12 @@ export function useUpload() {
         height: dimensions.height,
         resolutionValid: false,
       }));
-      setMessage(`최소 ${MIN_RESOLUTION}x${MIN_RESOLUTION} 이상의 사진이 필요합니다.`);
-      return { ok: false, message: "too_small" };
+      setMessage(dimensionValidation.messageKo);
+      return {
+        ok: false,
+        message: dimensionValidation.code,
+        userMessage: dimensionValidation.messageKo,
+      };
     }
 
     setMessage("얼굴 감지를 수행하고 있습니다...");
@@ -161,7 +174,11 @@ export function useUpload() {
         faceValid: false,
       }));
       setMessage("얼굴이 감지되지 않았습니다. 정면 얼굴 사진으로 다시 시도해 주세요.");
-      return { ok: false, message: "face_not_detected" };
+      return {
+        ok: false,
+        message: "face_not_detected",
+        userMessage: "얼굴이 감지되지 않았습니다. 정면 얼굴 사진으로 다시 시도해 주세요.",
+      };
     }
 
     if (browserFaceResult.supported && browserFaceResult.detected === true) {
@@ -176,7 +193,7 @@ export function useUpload() {
         faceValid: true,
       }));
       setMessage("얼굴 감지가 확인되었습니다. 생성 페이지로 이동할 수 있습니다.");
-      return { ok: true, message: "ok" };
+      return { ok: true, message: "ok", userMessage: "얼굴 감지가 확인되었습니다." };
     }
 
     setStatus("success");
@@ -190,7 +207,7 @@ export function useUpload() {
       faceValid: null,
     }));
     setMessage("업로드 가능한 사진입니다. (현재 환경에서 얼굴 자동 감지를 사용할 수 없습니다)");
-    return { ok: true, message: "ok" };
+    return { ok: true, message: "ok", userMessage: "업로드 가능한 사진입니다." };
   }, []);
 
   const resetValidation = useCallback(() => {
@@ -200,6 +217,8 @@ export function useUpload() {
   }, []);
 
   return {
+    maxFileSizeMB: GENERATION_UPLOAD_MAX_MEGABYTES,
+    minResolution: GENERATION_UPLOAD_MIN_DIMENSION,
     status,
     message,
     details,

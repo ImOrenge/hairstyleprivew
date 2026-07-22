@@ -1,6 +1,16 @@
 import type {
+  AccountDeletionResponse,
   GeneratedVariant,
-  HairstyleGenerationGroup,
+  GenerationAcceptanceApiResponse,
+  GenerationCreditReceipt,
+  GenerationDetailApiResponse,
+  GenerationOriginalRetentionState,
+  GenerationDraftApiResponse,
+  GenerationFunnelClientSource,
+  GenerationSelectionApiResponse,
+  GenerationStartApiResponse,
+  GenerationStatus,
+  GenerationStatusApiResponse,
   MobileAftercareGuideResponse,
   MobileAftercareListResponse,
   MobileBootstrap,
@@ -8,20 +18,39 @@ import type {
   MobilePaymentCompleteResponse,
   MobilePaymentPlan,
   MobilePaymentPrepareResponse,
+  MobilePushDeviceRegistrationRequest,
+  MobilePushDeviceRegistrationResponse,
+  MobilePushDeviceRevocationResponse,
+  MobilePushDeviceStatusResponse,
+  PaidActionQuoteRequest,
+  PaidActionQuoteResponse,
+  PaidActionExecutionReceipt,
+  RefundQuoteRequest,
+  RefundQuoteResponse,
+  RefundRequestResponse,
+  RefundRequestSummary,
+  RefundRequestSubmission,
   PersonalColorResult,
   RecommendationSet,
   ServiceType,
   StyleProfile,
   FashionGenre,
-  FashionRecommendation,
-  StylingSessionDetails,
+  StylingGenerateApiResponse,
+  StylingHairstyleListApiSuccess,
+  StylingProfileApiSuccess,
+  StylingRecommendApiSuccess,
+  StylingSessionApiSuccess,
   MemberStyleTarget,
   MemberStyleTone,
+  SalonConnectionConsentAcceptance,
 } from "@hairfit/shared";
+
+export { LatestRequestGuard } from "./latest-request-guard";
+export type { GenerationStatus };
 
 export interface HairfitApiClientOptions {
   baseUrl: string;
-  getAuthToken?: () => Promise<string | null> | string | null;
+  getAuthToken?: (options?: { skipCache?: boolean }) => Promise<string | null> | string | null;
   fetchImpl?: typeof fetch;
 }
 
@@ -29,28 +58,10 @@ export interface ApiRequestOptions extends RequestInit {
   auth?: boolean;
 }
 
-export type GenerationStatus = "queued" | "processing" | "completed" | "failed";
-
-export interface GenerationStartResponse {
-  generationId: string;
-  status: GenerationStatus;
-  workflowInstanceId?: string;
-  alreadyStarted?: boolean;
-  terminal?: boolean;
-}
-
-export interface GenerationStatusResponse {
-  generationId: string;
-  status: GenerationStatus;
-  terminal: boolean;
-  variants: {
-    total: number;
-    completed: number;
-    failed: number;
-  };
-  updatedAt: string | null;
-  notificationStatus?: string | null;
-}
+export type GenerationStartResponse = GenerationStartApiResponse;
+export type GenerationDraftResponse = GenerationDraftApiResponse;
+export type GenerationAcceptanceResponse = GenerationAcceptanceApiResponse;
+export type GenerationStatusResponse = GenerationStatusApiResponse;
 
 export interface AccountStatus {
   accountSetupComplete: boolean;
@@ -216,6 +227,7 @@ export interface SalonCustomerDetailResponse {
   customer: SalonCustomer;
   visits: SalonVisit[];
   aftercareTasks: SalonAftercareTask[];
+  connection: SalonConnection | null;
   linkedMember: {
     id: string;
     email: string;
@@ -230,11 +242,69 @@ export interface SalonCustomerDetailResponse {
     generatedImagePath: string | null;
     createdAt: string;
   }>;
+  linkedMemberHairRecords: Array<{
+    id: string;
+    generationId: string | null;
+    styleName: string;
+    serviceType: string;
+    serviceDate: string;
+    createdAt: string;
+  }>;
+}
+
+export interface SalonConnection {
+  id: string;
+  ownerUserId: string;
+  memberUserId: string;
+  status: "pending" | "linked" | "revoked";
+  linkedCustomerId: string | null;
+  consentVersion: string | null;
+  consentScope: Record<string, unknown> | null;
+  consentedAt: string | null;
+  linkedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SalonMatchCandidate {
+  id: string;
+  ownerUserId: string;
+  memberUserId: string;
+  inviteId: string | null;
+  status: "pending" | "linked" | "revoked";
+  linkedCustomerId: string | null;
+  consentVersion: string | null;
+  consentScope: Record<string, unknown> | null;
+  consentedAt: string | null;
+  linkedAt: string | null;
+  revokedAt: string | null;
+  revokedByUserId: string | null;
+  revocationReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+  member: {
+    id: string;
+    email: string;
+    displayName: string;
+    avatarUrl: string | null;
+  };
+}
+
+export interface SalonMemberConnection extends SalonConnection {
+  salon: {
+    shopName: string;
+    managerName: string;
+    contactPhone: string;
+    region: string;
+  };
 }
 
 export interface SalonMatchInviteResponse {
   authenticated: boolean;
   existingStatus: string | null;
+  existingMatchRequestId: string | null;
+  existingConsentedAt: string | null;
   salon: {
     ownerUserId: string;
     shopName: string;
@@ -247,6 +317,18 @@ export interface SalonMatchInviteResponse {
   invite: {
     code: string;
     expiresAt: string | null;
+    consentVersion: string;
+  };
+  consent: {
+    version: string;
+    scope: Record<string, unknown>;
+    copy: {
+      purpose: string;
+      sharedItems: readonly string[];
+      excludedItems: readonly string[];
+      retention: string;
+      revocation: string;
+    };
   };
 }
 
@@ -302,11 +384,24 @@ export class HairfitApiClient {
       }
     }
 
-    const response = await this.fetchImpl(`${this.baseUrl}${path}`, {
+    const execute = () => this.fetchImpl(`${this.baseUrl}${path}`, {
       credentials: "include",
       ...options,
       headers,
     });
+    let response = await execute();
+
+    if (response.status === 401 && shouldAttachAuth && this.getAuthToken) {
+      try {
+        const refreshedToken = await this.getAuthToken({ skipCache: true });
+        if (refreshedToken) {
+          headers.set("Authorization", `Bearer ${refreshedToken}`);
+          response = await execute();
+        }
+      } catch {
+        // Preserve the original 401 so callers can route to sign-in with context.
+      }
+    }
     const payload = await response.json().catch(() => null);
 
     if (!response.ok) {
@@ -324,8 +419,36 @@ export class HairfitApiClient {
     return this.request<MobileBootstrap>("/api/mobile/me");
   }
 
+  getMobilePushDeviceStatus(installationId: string) {
+    const params = new URLSearchParams({ installationId });
+    return this.request<MobilePushDeviceStatusResponse>(
+      `/api/mobile/push-devices?${params.toString()}`,
+    );
+  }
+
+  registerMobilePushDevice(input: MobilePushDeviceRegistrationRequest) {
+    return this.request<MobilePushDeviceRegistrationResponse>("/api/mobile/push-devices", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  revokeMobilePushDevice(installationId: string, reason = "user_disabled") {
+    return this.request<MobilePushDeviceRevocationResponse>("/api/mobile/push-devices", {
+      method: "DELETE",
+      body: JSON.stringify({ installationId, reason }),
+    });
+  }
+
   getAccountStatus() {
     return this.request<AccountStatus>("/api/account");
+  }
+
+  deleteAccount(confirmation: string) {
+    return this.request<AccountDeletionResponse>("/api/account", {
+      method: "DELETE",
+      body: JSON.stringify({ confirmation }),
+    });
   }
 
   getMobileDashboard(service: "customer" | "salon" | "admin", options: { range?: 7 | 30 | 90 } = {}) {
@@ -337,12 +460,13 @@ export class HairfitApiClient {
     return this.request<MobileDashboard>(`/api/mobile/dashboard?${params.toString()}`);
   }
 
-  listAdminMembers(options: { q?: string; accountType?: string; limit?: number } = {}) {
+  listAdminMembers(options: { q?: string; accountType?: string; limit?: number; cursor?: string } = {}) {
     const params = new URLSearchParams();
     appendParam(params, "q", options.q);
     appendParam(params, "accountType", options.accountType);
     appendParam(params, "limit", options.limit);
-    return this.request<{ members: AdminMemberListRow[]; total: number; limit: number }>(
+    appendParam(params, "cursor", options.cursor);
+    return this.request<{ members: AdminMemberListRow[]; total: number; limit: number; nextCursor: string | null }>(
       `/api/admin/members${querySuffix(params)}`,
     );
   }
@@ -351,52 +475,82 @@ export class HairfitApiClient {
     return this.request<AdminMemberDetailResponse>(`/api/admin/members/${encodeURIComponent(userId)}`);
   }
 
-  listAdminReviews(options: { q?: string; visibility?: "visible" | "hidden"; limit?: number } = {}) {
+  listAdminReviews(options: { q?: string; visibility?: "visible" | "hidden"; limit?: number; cursor?: string } = {}) {
     const params = new URLSearchParams();
     appendParam(params, "q", options.q);
     appendParam(params, "visibility", options.visibility);
     appendParam(params, "limit", options.limit);
-    return this.request<{ reviews: AdminReviewRow[]; total: number; limit: number }>(
+    appendParam(params, "cursor", options.cursor);
+    return this.request<{ reviews: AdminReviewRow[]; total: number; limit: number; nextCursor: string | null }>(
       `/api/admin/reviews${querySuffix(params)}`,
     );
   }
 
-  listAdminInboundEmails(options: { q?: string; status?: "new" | "read" | "archived"; mailbox?: "support" | "business" | "general"; limit?: number } = {}) {
+  createRefundQuote(input: RefundQuoteRequest) {
+    return this.request<RefundQuoteResponse>("/api/payments/refund-quotes", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  submitRefundRequest(input: RefundRequestSubmission) {
+    return this.request<RefundRequestResponse>("/api/payments/refund-requests", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  getRefundRequest(requestId: string) {
+    return this.request<{ refundRequest: RefundRequestSummary }>(
+      `/api/payments/refund-requests/${encodeURIComponent(requestId)}`,
+    );
+  }
+
+  listAdminInboundEmails(options: { q?: string; status?: "new" | "read" | "archived"; mailbox?: "support" | "business" | "general"; limit?: number; cursor?: string } = {}) {
     const params = new URLSearchParams();
     appendParam(params, "q", options.q);
     appendParam(params, "status", options.status);
     appendParam(params, "mailbox", options.mailbox);
     appendParam(params, "limit", options.limit);
+    appendParam(params, "cursor", options.cursor);
     return this.request<{
       emails: AdminInboundEmailRow[];
       total: number;
       statusSummary: Array<{ status: AdminInboundEmailRow["status"]; count: number }>;
       mailboxSummary: Array<{ mailbox: AdminInboundEmailRow["mailbox"]; count: number }>;
       limit: number;
+      nextCursor: string | null;
     }>(`/api/admin/inbound-emails${querySuffix(params)}`);
   }
 
-  listAdminB2bLeads(options: { q?: string; stage?: AdminB2bLeadRow["stage"]; source?: AdminB2bLeadRow["source"]; limit?: number } = {}) {
+  listAdminB2bLeads(options: { q?: string; stage?: AdminB2bLeadRow["stage"]; source?: AdminB2bLeadRow["source"]; limit?: number; cursor?: string } = {}) {
     const params = new URLSearchParams();
     appendParam(params, "q", options.q);
     appendParam(params, "stage", options.stage);
     appendParam(params, "source", options.source);
     appendParam(params, "limit", options.limit);
+    appendParam(params, "cursor", options.cursor);
     return this.request<{
       leads: AdminB2bLeadRow[];
       total: number;
       stageSummary: Array<{ stage: AdminB2bLeadRow["stage"]; count: number }>;
       limit: number;
+      nextCursor: string | null;
     }>(`/api/admin/b2b/leads${querySuffix(params)}`);
   }
 
-  listSalonCustomers(options: { q?: string; source?: "manual" | "linked_member"; aftercareStatus?: "pending" | "overdue" } = {}) {
+  listSalonCustomers(options: { q?: string; source?: "manual" | "linked_member"; aftercareStatus?: "pending" | "overdue"; limit?: number; cursor?: string } = {}) {
     const params = new URLSearchParams();
     appendParam(params, "q", options.q);
     appendParam(params, "source", options.source);
     appendParam(params, "aftercareStatus", options.aftercareStatus);
+    appendParam(params, "limit", options.limit);
+    appendParam(params, "cursor", options.cursor);
     return this.request<{
       customers: SalonCustomer[];
+      limit: number;
+      total: number;
+      nextCursor: string | null;
       summary: {
         totalCustomers: number;
         linkedMembers: number;
@@ -407,6 +561,26 @@ export class HairfitApiClient {
     }>(`/api/salon/customers${querySuffix(params)}`);
   }
 
+  listSalonMatchCandidates(options: { q?: string; status?: "pending" | "linked" | "all"; limit?: number; cursor?: string } = {}) {
+    const params = new URLSearchParams();
+    appendParam(params, "q", options.q);
+    appendParam(params, "status", options.status);
+    appendParam(params, "limit", options.limit);
+    appendParam(params, "cursor", options.cursor);
+    return this.request<{
+      candidates: SalonMatchCandidate[];
+      limit: number;
+      nextCursor: string | null;
+    }>(`/api/salon/matches${querySuffix(params)}`);
+  }
+
+  linkSalonMatchCandidate(requestId: string) {
+    return this.request<{ customer: SalonCustomer; match: SalonMatchCandidate }>(
+      `/api/salon/matches/${encodeURIComponent(requestId)}/link`,
+      { method: "POST" },
+    );
+  }
+
   getSalonCustomer(customerId: string) {
     return this.request<SalonCustomerDetailResponse>(`/api/salon/customers/${encodeURIComponent(customerId)}`);
   }
@@ -415,10 +589,25 @@ export class HairfitApiClient {
     return this.request<SalonMatchInviteResponse>(`/api/salon/match/${encodeURIComponent(code)}`, { auth: false });
   }
 
-  acceptSalonMatchInvite(code: string) {
+  acceptSalonMatchInvite(code: string, consent: SalonConnectionConsentAcceptance) {
     return this.request<{ match: unknown; status: string }>(`/api/salon/match/${encodeURIComponent(code)}`, {
       method: "POST",
+      body: JSON.stringify(consent),
     });
+  }
+
+  listSalonConnections() {
+    return this.request<{ connections: SalonMemberConnection[] }>("/api/salon/connections");
+  }
+
+  revokeSalonConnection(requestId: string, reason = "user_requested") {
+    return this.request<{ connection: SalonConnection }>(
+      `/api/salon/matches/${encodeURIComponent(requestId)}`,
+      {
+        method: "DELETE",
+        body: JSON.stringify({ reason }),
+      },
+    );
   }
 
   saveAccountSetup(input: {
@@ -439,6 +628,7 @@ export class HairfitApiClient {
       model: string;
       promptVersion: string;
       styleTarget: MemberStyleTarget;
+      backgroundStarted: boolean;
     }>("/api/prompts/generate", {
       method: "POST",
       body: JSON.stringify({ referenceImageDataUrl }),
@@ -493,9 +683,62 @@ export class HairfitApiClient {
       evaluation: unknown | null;
       generatedImagePath: string | null;
       chargedCredits: number;
+      creditReceipt?: GenerationCreditReceipt | null;
     }>("/api/generations/run", {
       method: "POST",
       body: JSON.stringify(input),
+    });
+  }
+
+  translateResultCopy(texts: string[]) {
+    return this.request<{ translations: string[] }>("/api/result-translations", {
+      method: "POST",
+      body: JSON.stringify({ texts }),
+    });
+  }
+
+  prepareGenerationDraft(input: {
+    clientRequestId: string;
+    referenceImageDataUrl: string;
+  }) {
+    return this.request<GenerationDraftResponse>("/api/generations/drafts", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  retryGenerationVariant(input: {
+    generationId: string;
+    variantId: string;
+    variantIndex: number;
+    catalogItemId?: string | null;
+  }) {
+    return this.request<{
+      id: string;
+      variantId: string;
+      variantIndex: number;
+      outputUrl: string | null;
+      generatedImagePath: string | null;
+      evaluation: unknown | null;
+      chargedCredits: number;
+      creditReceipt?: GenerationCreditReceipt | null;
+    }>("/api/generations/run", {
+      method: "POST",
+      body: JSON.stringify({ ...input, reuseStoredOriginal: true }),
+    });
+  }
+
+  createPaidActionQuote(input: PaidActionQuoteRequest) {
+    return this.request<PaidActionQuoteResponse>("/api/paid-actions/quote", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  acceptGenerationDraft(draftId: string, quoteId?: string) {
+    return this.request<GenerationAcceptanceResponse>("/api/generations/accept", {
+      method: "POST",
+      body: JSON.stringify({ draftId, ...(quoteId ? { quoteId } : {}) }),
     });
   }
 
@@ -514,36 +757,35 @@ export class HairfitApiClient {
   }
 
   getGeneration(id: string) {
+    return this.request<GenerationDetailApiResponse>(`/api/generations/${encodeURIComponent(id)}`);
+  }
+
+  abandonGenerationRetry(id: string) {
     return this.request<{
-      id: string;
-      status: GenerationStatus;
-      updatedAt?: string | null;
-      recommendationSet: RecommendationSet | null;
-      selectedVariant: GeneratedVariant | null;
-      selectionLocked?: boolean;
-      confirmedHairRecord?: {
-        id: string;
-        styleName: string;
-        serviceType: string;
-        serviceDate: string;
-        createdAt: string;
-      } | null;
-    }>(`/api/generations/${encodeURIComponent(id)}`);
+      ok: true;
+      cleanup: {
+        generationId: string;
+        cleanupId: string | null;
+        cleanupStatus: string;
+      };
+      originalRetention: GenerationOriginalRetentionState;
+    }>(`/api/generations/${encodeURIComponent(id)}/abandon-retry`, {
+      method: "POST",
+    });
+  }
+
+  recordGenerationResultOpened(id: string, source: GenerationFunnelClientSource) {
+    return this.request<{ accepted: true; event: "result_opened" }>(
+      `/api/generations/${encodeURIComponent(id)}/events`,
+      {
+        method: "POST",
+        body: JSON.stringify({ event: "result_opened", source }),
+      },
+    );
   }
 
   patchSelectedVariant(generationId: string, selectedVariantId: string) {
-    return this.request<{
-      ok: true;
-      selectedVariantId: string;
-      selectionLocked?: boolean;
-      confirmedHairRecord?: {
-        id: string;
-        styleName: string;
-        serviceType: string;
-        serviceDate: string;
-        createdAt: string;
-      } | null;
-    }>(
+    return this.request<GenerationSelectionApiResponse>(
       `/api/generations/${encodeURIComponent(generationId)}`,
       {
         method: "PATCH",
@@ -553,7 +795,7 @@ export class HairfitApiClient {
   }
 
   getStyleProfile() {
-    return this.request<{ profile: StyleProfile }>("/api/style-profile");
+    return this.request<StylingProfileApiSuccess>("/api/style-profile");
   }
 
   analyzePersonalColor(referenceImageDataUrl: string) {
@@ -588,8 +830,14 @@ export class HairfitApiClient {
     });
   }
 
+  deleteBodyPhoto() {
+    return this.request<{ profile: StyleProfile }>("/api/style-profile/body-photo", {
+      method: "DELETE",
+    });
+  }
+
   getStylingHairstyles() {
-    return this.request<{ generations: HairstyleGenerationGroup[] }>("/api/styling/hairstyles");
+    return this.request<StylingHairstyleListApiSuccess>("/api/styling/hairstyles");
   }
 
   recommendStyling(input: {
@@ -597,32 +845,21 @@ export class HairfitApiClient {
     selectedVariantId: string;
     genre: FashionGenre;
   }) {
-    return this.request<{
-      sessionId: string | null;
-      status: string;
-      recommendation: FashionRecommendation;
-      profile: StyleProfile;
-      selectedVariant: GeneratedVariant;
-    }>("/api/styling/recommend", {
+    return this.request<StylingRecommendApiSuccess>("/api/styling/recommend", {
       method: "POST",
       body: JSON.stringify(input),
     });
   }
 
-  generateStyling(sessionId: string) {
-    return this.request<{
-      sessionId: string;
-      imageUrl?: string | null;
-      imagePath?: string | null;
-      chargedCredits?: number;
-    }>("/api/styling/generate", {
+  generateStyling(sessionId: string, quoteId?: string) {
+    return this.request<StylingGenerateApiResponse>("/api/styling/generate", {
       method: "POST",
-      body: JSON.stringify({ sessionId }),
+      body: JSON.stringify({ sessionId, ...(quoteId ? { quoteId } : {}) }),
     });
   }
 
   getStylingSession(sessionId: string) {
-    return this.request<{ session: StylingSessionDetails }>(
+    return this.request<StylingSessionApiSuccess>(
       `/api/styling/${encodeURIComponent(sessionId)}`,
     );
   }
@@ -632,6 +869,7 @@ export class HairfitApiClient {
     selectedVariantId: string;
     serviceType: ServiceType;
     serviceDate: string;
+    quoteId: string;
   }) {
     return this.request<{
       hairRecordId: string;
@@ -644,6 +882,10 @@ export class HairfitApiClient {
       redirectTo: string;
       alreadyConfirmed?: boolean;
       selectionLocked?: boolean;
+      chargedCredits: number;
+      firstAftercareProgramFreeUsed: boolean;
+      aftercareProgramCreditCost: number;
+      creditReceipt: PaidActionExecutionReceipt | null;
     }>("/api/hair-records", {
       method: "POST",
       body: JSON.stringify(input),

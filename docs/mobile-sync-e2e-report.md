@@ -1,10 +1,12 @@
 # Mobile Web-App Sync Verification Report
 
-Generated: 2026-05-16T04:55:54.332Z
+Generated: 2026-07-15T03:28:44.748Z
 
 ## Verdict
 
-AUTOMATED PASS
+STATIC + RUNTIME SMOKE PASS
+
+This report is a source-contract and availability smoke report. It is not an authenticated native-device E2E result, and it does not promote any route to `verified`.
 
 ## Status Counts
 
@@ -13,11 +15,12 @@ AUTOMATED PASS
 - ported: 28
 - verified: 0
 
-## Static Sync Checks
+## Static Contract Checks
 
 - Native target: apps/hairfit-app
-- Web page routes inventoried: 35
-- Checks passed: 63/63
+- Web page routes inventoried: 38
+- Checks passed: 103/103
+- Scope: source files, route map, package ownership, and shared contract markers only
 
 ## Runtime Smoke
 
@@ -35,4 +38,4 @@ AUTOMATED PASS
 
 ## Notes
 
-- Web page routes inventoried: 35
+- Web page routes inventoried: 38

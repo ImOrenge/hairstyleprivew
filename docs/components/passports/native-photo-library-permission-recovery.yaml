@@ -1,0 +1,90 @@
+id: native.app.photo-library-permission-recovery
+name: PhotoLibraryPermissionRecovery
+platform: native
+kind: feedback
+status: experimental
+source: apps/hairfit-app/components/app/PhotoLibraryPermissionRecovery.tsx
+owner: hairfit-app-shell
+
+public_api:
+  exports:
+    - PhotoLibraryPermissionRecovery
+    - PhotoLibraryPermissionRecoveryProps
+  props:
+    - visible: boolean (required)
+    - onOpenSettings: () => void (required)
+  events:
+    - onOpenSettings
+
+dependencies:
+  internal:
+    - packages/ui-native/src/index.tsx#BodyText
+    - packages/ui-native/src/index.tsx#Button
+    - packages/ui-native/src/index.tsx#Card
+    - packages/ui-native/src/index.tsx#Stack
+  external:
+    - react-native
+  forbidden:
+    - expo-image-picker
+    - Linking
+    - feature-api-state
+
+styling:
+  strategy: native-ui-primitives-only
+  global_css_changes: false
+  allows_style: false
+
+state:
+  owned: []
+  derived:
+    - visible-from-consumer-permission-state
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  announcement:
+    live_region: polite
+    content: settings-only-permission-recovery-explanation
+  action:
+    label: 앱 설정 열기
+    hint: operating-system-HairFit-settings
+    role: inherited-native-button
+  hidden:
+    behavior: returns-null-when-visible-false
+
+test_surface:
+  interaction:
+    present: apps/hairfit-app/__tests__/photo-library-permission-recovery.test.tsx
+    verification: visibility-copy-and-settings-cta-passing-2026-07-17
+  permission_contract:
+    present: apps/hairfit-app/__tests__/photo-library-permission.test.ts
+  hook_contract:
+    present: apps/hairfit-app/__tests__/photo-library-permission-hook.test.tsx
+  adoption_contract:
+    present: scripts/mobile-sync-verify.mjs
+    scope: portrait-upload-personal-color-and-Styler-source-markers
+  native_typecheck: required
+  device_smoke: required
+  observed_usage:
+    consumer_files: 3
+    representative_consumers:
+      - apps/hairfit-app/app/upload.tsx
+      - apps/hairfit-app/app/personal-color.tsx
+      - apps/hairfit-app/components/styler/MobileStylerNewView.tsx
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+    - focused-component-test
+  behavioral_change_requires:
+    - settings-cta-interaction-test
+    - iOS-and-Android-permission-device-check
+  breaking_change_requires:
+    - all-consumer-update
+    - migration-note
+
+promotion_blockers:
+  - no-iOS-or-Android-settings-return-evidence
+  - no-VoiceOver-or-TalkBack-evidence

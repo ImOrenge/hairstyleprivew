@@ -4,7 +4,12 @@ import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 export interface GenerationWorkflowParams {
   generationId: string;
-  variantCount: number;
+  /**
+   * Legacy workflow payloads already contain the recommendation count.
+   * Durable-acceptance payloads omit it because recommendation preparation is
+   * the first persisted Workflow step.
+   */
+  variantCount?: number;
 }
 
 export interface GenerationWorkflowInstance {

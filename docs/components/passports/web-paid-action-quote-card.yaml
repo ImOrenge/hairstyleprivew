@@ -1,0 +1,129 @@
+id: web.billing.paid-action-quote-card
+name: PaidActionQuoteCard
+platform: web
+kind: feature
+status: stable
+source: my-app/components/billing/PaidActionQuoteCard.tsx
+owner: billing-feature
+
+public_api:
+  exports:
+    - PaidActionQuoteCard
+    - PaidActionQuoteCardProps
+    - usePaidActionQuoteExpired
+  props:
+    - quote: PaidActionQuote | null
+    - "loading?: boolean"
+    - "error?: string | null"
+    - payerLabel: string
+    - billingHref: string
+    - onRefresh: () => void
+  events:
+    - onRefresh
+
+dependencies:
+  internal:
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/InlineAlert.tsx
+    - my-app/components/ui/Surface.tsx
+    - packages/shared/src/billing/paid-action.ts
+  external:
+    - next/link
+    - react
+  forbidden:
+    - api-clients
+    - feature-stores
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-paid-action-quote
+  tokens:
+    - --app-text
+    - --app-muted
+    - --app-border
+    - --app-surface-muted
+    - --app-radius-control
+    - --app-warning
+    - --app-danger
+  data_contract:
+    data-state: loading | unavailable | ready | free | expired | insufficient | error
+    data-allowed: unknown | true | false
+  allows_className: false
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  derived:
+    - quote-expired-from-server-expiry-and-browser-clock
+  external_store: false
+side_effects:
+  - quote-expiry-timeout-while-quote-is-present
+  - window-focus-listener-while-quote-is-present
+  - document-visibility-listener-while-quote-is-present
+
+a11y_contract:
+  region:
+    - semantic-section
+    - aria-labelledby-generated-heading-id
+    - aria-describedby-generated-summary-id
+    - aria-busy-during-refresh
+  state_summary:
+    - single-role-status
+    - aria-live-polite
+    - aria-atomic-true
+  money_summary: semantic-dl
+  expiry: time-datetime
+  notices:
+    - visually-distinct-without-duplicate-live-region
+    - insufficient-balance-link-action
+  refresh: single-native-button-position
+
+test_surface:
+  unit: shared-quote-normalizer
+  contract: my-app/lib/paid-action-quote-card-stability.test.ts
+  interaction: tests/web-e2e/paid-action-quote-stability.spec.ts
+  accessibility: axe-serious-critical-zero
+  visual:
+    - tests/web-e2e/__screenshots__/paid-action-quote-stability.spec.ts/paid-action-quote-1024-ready-light.png
+    - tests/web-e2e/__screenshots__/paid-action-quote-stability.spec.ts/paid-action-quote-320-unavailable-light.png
+    - tests/web-e2e/__screenshots__/paid-action-quote-stability.spec.ts/paid-action-quote-375-insufficient-dark.png
+  observed_usage:
+    - my-app/app/styler/[id]/page.tsx
+    - my-app/app/styler/new/page.tsx
+    - my-app/components/aftercare/AftercareConfirmDialog.tsx
+    - my-app/components/salon/SalonWorkspaceWizard.tsx
+    - my-app/components/workspace/WorkspaceWizard.tsx
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+  behavioral_change_requires:
+    - paid-action-contract-test
+    - quote-interaction-verification
+  style_contract_change_requires:
+    - c-paid-action-quote-selector-search
+    - desktop-and-mobile-visual-verification
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_evidence:
+  - five-production-consumers-and-one-fail-closed-harness-consumer
+  - plain-prop-feature-boundary-without-api-store-or-route-dependency
+  - explicit-loading-unavailable-ready-free-expired-insufficient-and-error-states
+  - one-refresh-position-with-keyboard-loading-and-expiry-recovery-verification
+  - labelled-busy-section-and-single-polite-atomic-state-summary
+  - tokenized-global-components-layer-c-paid-action-quote-contract
+  - axe-serious-critical-zero-and-mobile-action-reachability
+  - 1024px-light-320px-light-and-375px-dark-visual-overflow-verification
+
+promotion_blockers: []
+
+residual_risks:
+  - authenticated-real-quote-api-balance-change-and-return-from-billing-visual-not-yet-recorded
+  - physical-screen-reader-announcement-order-not-yet-verified

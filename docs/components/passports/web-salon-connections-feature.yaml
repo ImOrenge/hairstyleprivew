@@ -1,0 +1,74 @@
+id: web.salon.connections-feature
+name: SalonConnectionsClient
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/salon/SalonConnectionsClient.tsx
+related_source:
+  - my-app/app/salon/connections/page.tsx
+  - my-app/app/api/salon/connections/route.ts
+  - my-app/app/api/salon/matches/[requestId]/route.ts
+owner: salon-feature
+
+public_api:
+  exports:
+    - SalonConnectionsClient
+  props: []
+  events:
+    - connection-list-refresh
+    - revoke-confirmation
+    - connection-revoked
+
+boundaries:
+  client:
+    owns:
+      - authenticated-connection-list-fetch
+      - revoke-confirmation-state
+      - revoke-request-and-list-reconciliation
+  server:
+    owns:
+      - participant-authorization
+      - audit-ledger-write
+      - member-derived-data-access-revocation
+  forbidden:
+    - direct-supabase-write
+    - client-authz-decision
+    - optimistic-revoke-before-server-success
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+
+state:
+  server_owned:
+    - connection-status
+    - consent-version-and-time
+    - revocation-audit
+  client_owned:
+    - loading
+    - error
+    - confirm-target
+    - pending-request-id
+
+a11y_contract:
+  confirmation: ConfirmActionDialog
+  error_feedback: role-alert
+  actions: native-button-and-link
+  empty_state: descriptive-text
+
+test_surface:
+  contract: my-app/lib/salon-connection-consent.test.ts
+  database: my-app/supabase/tests/salon_connection_consent_revocation_smoke.sql
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  behavioral_change_requires:
+    - participant-authorization-test
+    - revocation-data-gate-test
+    - confirmation-interaction-test
+
+promotion_blockers:
+  - no-authenticated-browser-revocation-evidence
+  - no-staging-migration-evidence

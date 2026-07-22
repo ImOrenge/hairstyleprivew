@@ -1,0 +1,91 @@
+id: native.billing.refund-interview-flow
+name: MobileRefundInterviewFlow
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/components/mypage/MobileRefundInterviewFlow.tsx
+owner: billing-feature
+
+public_api:
+  exports:
+    - MobileRefundInterviewFlow
+  props:
+    - "paymentTransactionId: string"
+    - "onSubmitted?: (request: RefundRequestSummary) => void"
+  events:
+    - onSubmitted
+
+dependencies:
+  internal:
+    - packages/shared/src/billing/refund.ts
+    - packages/api-client/src/index.ts
+    - packages/ui-native/src/index.tsx
+  external:
+    - react-native
+  forbidden:
+    - service-role-client
+    - provider-secret
+
+styling:
+  strategy: react-native-stylesheet-with-shared-theme
+  global_css:
+    file: none
+    layer: none
+    namespace: native-refund-interview
+  tokens:
+    - ui-native-theme-colors
+  variants: []
+  allows_className: false
+  inline_styles_allowed: dynamic-theme-color-only
+
+state:
+  owned:
+    - modal-open
+    - interview-step
+    - outcome
+    - reason-category
+    - detail
+    - quote
+    - acceptance
+    - submission
+  external_store: false
+side_effects:
+  - authenticated-refund-quote-request
+  - authenticated-refund-submission
+  - accessibility-announcement
+
+a11y_contract:
+  modal: native-page-sheet-and-android-back
+  choices: radio-role-and-checked-state
+  confirmation: checkbox-role-and-checked-state
+  errors: alert-live-region
+  pending: button-busy-and-dismissal-lock
+  dynamic_type: enabled
+  color_only_meaning: forbidden
+
+test_surface:
+  unit: packages/shared/src/billing/refund.test.ts
+  contract: my-app/lib/refund-automation-contract.test.ts
+  interaction: required-before-candidate-promotion
+  accessibility: required-before-candidate-promotion
+  visual: required-before-candidate-promotion
+
+change_policy:
+  current_gate: behavioral-feature-addition
+  compatible_change_requires:
+    - passport-update
+    - app-typecheck
+  behavioral_change_requires:
+    - refund-contract-test
+    - native-modal-interaction-test
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_blockers:
+  - no-ios-android-authenticated-refund-evidence
+  - no-portone-sandbox-refund-evidence
+  - no-voiceover-talkback-evidence
+
+residual_risks:
+  - provider-and-ledger-error-copy-needs-staging-evidence

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../components/ui/Button";
 
 const INBOUND_STATUSES = ["new", "read", "archived"] as const;
@@ -121,6 +121,7 @@ interface InboxResponse {
   total?: number;
   statusSummary?: StatusSummary[];
   mailboxSummary?: MailboxSummary[];
+  nextCursor?: string | null;
   error?: string;
 }
 
@@ -129,6 +130,7 @@ interface OutboundInboxResponse {
   total?: number;
   statusSummary?: OutboundStatusSummary[];
   sourceSummary?: SourceSummary[];
+  nextCursor?: string | null;
   error?: string;
 }
 
@@ -152,7 +154,7 @@ function formatBytes(value: number) {
 }
 
 function sourceLabel(source: string) {
-  return sourceLabels[source] || source;
+  return sourceLabels[source] || "기타 발송";
 }
 
 export default function AdminInboxPage() {
@@ -166,6 +168,8 @@ export default function AdminInboxPage() {
   const [outboundEmails, setOutboundEmails] = useState<OutboundEmail[]>([]);
   const [total, setTotal] = useState(0);
   const [outboundTotal, setOutboundTotal] = useState(0);
+  const [inboundNextCursor, setInboundNextCursor] = useState<string | null>(null);
+  const [outboundNextCursor, setOutboundNextCursor] = useState<string | null>(null);
   const [statusSummary, setStatusSummary] = useState<StatusSummary[]>([]);
   const [outboundStatusSummary, setOutboundStatusSummary] = useState<OutboundStatusSummary[]>([]);
   const [mailboxSummary, setMailboxSummary] = useState<MailboxSummary[]>([]);
@@ -179,6 +183,8 @@ export default function AdminInboxPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const inboundAbortController = useRef<AbortController | null>(null);
+  const outboundAbortController = useRef<AbortController | null>(null);
 
   const inboundListUrl = useMemo(() => {
     const params = new URLSearchParams();
@@ -220,56 +226,94 @@ export default function AdminInboxPage() {
     [outboundEmails, outboundSelectionId],
   );
 
-  const loadInboundEmails = useCallback(async () => {
+  const loadInboundEmails = useCallback(async (cursor?: string) => {
+    inboundAbortController.current?.abort();
+    const controller = new AbortController();
+    inboundAbortController.current = controller;
     setIsLoading(true);
     setError(null);
 
-    const response = await fetch(inboundListUrl, { cache: "no-store" });
-    const data = (await response.json().catch(() => ({}))) as InboxResponse;
-    if (!response.ok) {
-      setError(data.error || "수신 메일을 불러오지 못했습니다.");
-      setIsLoading(false);
-      return;
-    }
+    try {
+      const url = new URL(inboundListUrl, window.location.origin);
+      if (cursor) url.searchParams.set("cursor", cursor);
+      const response = await fetch(`${url.pathname}${url.search}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const data = (await response.json().catch(() => ({}))) as InboxResponse;
+      if (!response.ok) {
+        setError(
+          response.status === 401 || response.status === 403
+            ? "관리자 권한을 확인한 뒤 다시 시도해 주세요."
+            : "수신 메일을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+        return;
+      }
 
-    const nextEmails = data.emails || [];
-    setEmails(nextEmails);
-    setTotal(data.total || nextEmails.length);
-    setStatusSummary(data.statusSummary || []);
-    setMailboxSummary(data.mailboxSummary || []);
-    setSelection((current) => {
-      const nextEmail =
-        (current.id ? nextEmails.find((email) => email.id === current.id) : null) ?? nextEmails[0] ?? null;
-      return {
-        id: nextEmail?.id ?? null,
-        status: nextEmail?.status ?? "new",
-        note: nextEmail?.admin_note || "",
-      };
-    });
-    setIsLoading(false);
+      const nextEmails = data.emails || [];
+      setEmails((current) => (cursor ? [...current, ...nextEmails] : nextEmails));
+      if (!cursor) setTotal(data.total ?? nextEmails.length);
+      setInboundNextCursor(data.nextCursor || null);
+      setStatusSummary(data.statusSummary || []);
+      setMailboxSummary(data.mailboxSummary || []);
+      setSelection((current) => {
+        if (cursor && current.id) return current;
+        const nextEmail =
+          (current.id ? nextEmails.find((email) => email.id === current.id) : null) ?? nextEmails[0] ?? null;
+        return {
+          id: nextEmail?.id ?? null,
+          status: nextEmail?.status ?? "new",
+          note: nextEmail?.admin_note || "",
+        };
+      });
+    } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === "AbortError") return;
+      setError("수신 메일 네트워크 요청에 실패했습니다. 다시 시도해 주세요.");
+    } finally {
+      if (!controller.signal.aborted) setIsLoading(false);
+    }
   }, [inboundListUrl]);
 
-  const loadOutboundEmails = useCallback(async () => {
+  const loadOutboundEmails = useCallback(async (cursor?: string) => {
+    outboundAbortController.current?.abort();
+    const controller = new AbortController();
+    outboundAbortController.current = controller;
     setIsLoading(true);
     setError(null);
 
-    const response = await fetch(outboundListUrl, { cache: "no-store" });
-    const data = (await response.json().catch(() => ({}))) as OutboundInboxResponse;
-    if (!response.ok) {
-      setError(data.error || "보낸 메일을 불러오지 못했습니다.");
-      setIsLoading(false);
-      return;
-    }
+    try {
+      const url = new URL(outboundListUrl, window.location.origin);
+      if (cursor) url.searchParams.set("cursor", cursor);
+      const response = await fetch(`${url.pathname}${url.search}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      const data = (await response.json().catch(() => ({}))) as OutboundInboxResponse;
+      if (!response.ok) {
+        setError(
+          response.status === 401 || response.status === 403
+            ? "관리자 권한을 확인한 뒤 다시 시도해 주세요."
+            : "보낸 메일을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        );
+        return;
+      }
 
-    const nextEmails = data.emails || [];
-    setOutboundEmails(nextEmails);
-    setOutboundTotal(data.total || nextEmails.length);
-    setOutboundStatusSummary(data.statusSummary || []);
-    setSourceSummary(data.sourceSummary || []);
-    setOutboundSelectionId((current) => {
-      return (current ? nextEmails.find((email) => email.id === current)?.id : null) ?? nextEmails[0]?.id ?? null;
-    });
-    setIsLoading(false);
+      const nextEmails = data.emails || [];
+      setOutboundEmails((current) => (cursor ? [...current, ...nextEmails] : nextEmails));
+      if (!cursor) setOutboundTotal(data.total ?? nextEmails.length);
+      setOutboundNextCursor(data.nextCursor || null);
+      setOutboundStatusSummary(data.statusSummary || []);
+      setSourceSummary(data.sourceSummary || []);
+      setOutboundSelectionId((current) => {
+        if (cursor && current) return current;
+        return (current ? nextEmails.find((email) => email.id === current)?.id : null) ?? nextEmails[0]?.id ?? null;
+      });
+    } catch (loadError) {
+      if (loadError instanceof DOMException && loadError.name === "AbortError") return;
+      setError("보낸 메일 네트워크 요청에 실패했습니다. 다시 시도해 주세요.");
+    } finally {
+      if (!controller.signal.aborted) setIsLoading(false);
+    }
   }, [outboundListUrl]);
 
   useEffect(() => {
@@ -281,32 +325,40 @@ export default function AdminInboxPage() {
       }
     }, 180);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+      inboundAbortController.current?.abort();
+      outboundAbortController.current?.abort();
+    };
   }, [loadInboundEmails, loadOutboundEmails, mode]);
 
   async function updateEmail(emailId: string, updates: { status?: EmailStatus; adminNote?: string }) {
     setBusyId(emailId);
     setError(null);
 
-    const response = await fetch(`/api/admin/inbound-emails/${encodeURIComponent(emailId)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
-    const data = (await response.json().catch(() => ({}))) as { email?: InboundEmail; error?: string };
-    if (!response.ok || !data.email) {
-      setError(data.error || "수신 메일 상태 업데이트에 실패했습니다.");
-      setBusyId(null);
-      return;
-    }
+    try {
+      const response = await fetch(`/api/admin/inbound-emails/${encodeURIComponent(emailId)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+      const data = (await response.json().catch(() => ({}))) as { email?: InboundEmail };
+      if (!response.ok || !data.email) {
+        setError("수신 메일 상태를 변경하지 못했습니다. 최신 목록을 확인한 뒤 다시 시도해 주세요.");
+        return;
+      }
 
-    setEmails((current) => current.map((email) => (email.id === emailId ? data.email! : email)));
-    setSelection((current) =>
-      current.id === emailId
-        ? { id: emailId, status: data.email!.status, note: data.email!.admin_note || "" }
-        : current,
-    );
-    setBusyId(null);
+      setEmails((current) => current.map((email) => (email.id === emailId ? data.email! : email)));
+      setSelection((current) =>
+        current.id === emailId
+          ? { id: emailId, status: data.email!.status, note: data.email!.admin_note || "" }
+          : current,
+      );
+    } catch {
+      setError("수신 메일 상태 변경 중 네트워크 문제가 발생했습니다. 다시 시도해 주세요.");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   const inboundDetailText = selectedEmail?.text_body || selectedEmail?.html_body || "";
@@ -326,8 +378,13 @@ export default function AdminInboxPage() {
         </h1>
         <p className="mt-2 text-sm text-stone-600">
           {mode === "inbound"
-            ? `Cloudflare Email Routing으로 들어온 메일 ${total}건 · 비즈니스 수신 ${BUSINESS_INBOUND_EMAIL}`
-            : `HairFit 앱에서 Resend로 발송을 시도한 메일 ${outboundTotal}건`}
+            ? `현재 ${emails.length.toLocaleString("ko-KR")} / 총 ${total.toLocaleString("ko-KR")}건 · 비즈니스 수신 ${BUSINESS_INBOUND_EMAIL}`
+            : `현재 ${outboundEmails.length.toLocaleString("ko-KR")} / 총 ${outboundTotal.toLocaleString("ko-KR")}건 · HairFit 앱 발송 기록`}
+        </p>
+        <p className="mt-1 text-xs leading-5 text-stone-500">
+          {mode === "inbound"
+            ? "수신 메일을 조회하고 읽음·보관 상태와 관리자 메모를 변경할 수 있습니다."
+            : "보낸 메일은 발송 결과를 확인하는 조회 전용 기록입니다."}
         </p>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -351,6 +408,7 @@ export default function AdminInboxPage() {
 
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px]">
           <input
+            aria-label={mode === "inbound" ? "수신 메일 검색" : "보낸 메일 검색"}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={
@@ -362,6 +420,7 @@ export default function AdminInboxPage() {
           />
           {mode === "inbound" ? (
             <select
+              aria-label="수신 메일 상태 필터"
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as "all" | EmailStatus)}
               className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
@@ -375,6 +434,7 @@ export default function AdminInboxPage() {
             </select>
           ) : (
             <select
+              aria-label="보낸 메일 상태 필터"
               value={outboundStatusFilter}
               onChange={(event) => setOutboundStatusFilter(event.target.value as "all" | OutboundEmailStatus)}
               className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
@@ -389,6 +449,7 @@ export default function AdminInboxPage() {
           )}
           {mode === "inbound" ? (
             <select
+              aria-label="수신함 필터"
               value={mailboxFilter}
               onChange={(event) => setMailboxFilter(event.target.value as "all" | InboundMailbox)}
               className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
@@ -402,6 +463,7 @@ export default function AdminInboxPage() {
             </select>
           ) : (
             <select
+              aria-label="보낸 메일 유형 필터"
               value={sourceFilter}
               onChange={(event) => setSourceFilter(event.target.value)}
               className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
@@ -456,15 +518,15 @@ export default function AdminInboxPage() {
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
           {error}
         </div>
       ) : null}
 
       {mode === "inbound" ? (
-        <section className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <section className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]" aria-busy={isLoading}>
           <div className="space-y-2">
-            {isLoading ? (
+            {isLoading && emails.length === 0 ? (
               <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">
                 메일을 불러오는 중...
               </p>
@@ -505,6 +567,16 @@ export default function AdminInboxPage() {
                 <p className="mt-2 text-xs text-stone-400">{formatDate(email.received_at)}</p>
               </button>
             ))}
+            {inboundNextCursor ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isLoading}
+                onClick={() => void loadInboundEmails(inboundNextCursor)}
+              >
+                {isLoading ? "불러오는 중..." : "수신 메일 더 보기"}
+              </Button>
+            ) : null}
           </div>
 
           <article className="min-h-[520px] rounded-2xl border border-stone-200 bg-white p-5">
@@ -596,6 +668,7 @@ export default function AdminInboxPage() {
 
                 <div className="grid gap-3 md:grid-cols-[180px_minmax(0,1fr)_96px]">
                   <select
+                    aria-label="수신 메일 상태"
                     value={selection.status}
                     onChange={(event) =>
                       setSelection((current) => ({ ...current, status: event.target.value as EmailStatus }))
@@ -609,6 +682,7 @@ export default function AdminInboxPage() {
                     ))}
                   </select>
                   <textarea
+                    aria-label="수신 메일 관리자 메모"
                     rows={3}
                     value={selection.note}
                     onChange={(event) => setSelection((current) => ({ ...current, note: event.target.value }))}
@@ -633,9 +707,9 @@ export default function AdminInboxPage() {
           </article>
         </section>
       ) : (
-        <section className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <section className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]" aria-busy={isLoading}>
           <div className="space-y-2">
-            {isLoading ? (
+            {isLoading && outboundEmails.length === 0 ? (
               <p className="rounded-2xl border border-stone-200 bg-white px-4 py-8 text-sm text-stone-500">
                 메일을 불러오는 중...
               </p>
@@ -672,6 +746,16 @@ export default function AdminInboxPage() {
                 <p className="mt-2 text-xs text-stone-400">{formatDate(email.sent_at || email.created_at)}</p>
               </button>
             ))}
+            {outboundNextCursor ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={isLoading}
+                onClick={() => void loadOutboundEmails(outboundNextCursor)}
+              >
+                {isLoading ? "불러오는 중..." : "보낸 메일 더 보기"}
+              </Button>
+            ) : null}
           </div>
 
           <article className="min-h-[520px] rounded-2xl border border-stone-200 bg-white p-5">
@@ -715,8 +799,8 @@ export default function AdminInboxPage() {
                 </div>
 
                 {selectedOutboundEmail.error_message ? (
-                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
-                    {selectedOutboundEmail.error_message}
+                  <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+                    발송 실패가 기록되었습니다. 상세 원인은 운영 로그에서 확인해 주세요.
                   </div>
                 ) : null}
 

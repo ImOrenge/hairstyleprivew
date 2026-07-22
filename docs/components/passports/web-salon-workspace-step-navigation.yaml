@@ -1,0 +1,70 @@
+id: web.salon.workspace-step-navigation
+name: SalonWorkspaceStepNavigation
+platform: web
+kind: composite
+status: experimental
+source: my-app/components/salon/SalonWorkspaceStepNavigation.tsx
+owner: salon-generation-feature
+
+public_api:
+  exports:
+    - SalonWorkspaceStepNavigation
+    - SalonWorkspaceWizardStep
+  props:
+    - "canOpenGenerate: boolean"
+    - "canOpenProgress: boolean"
+    - "canOpenSelect: boolean"
+    - "currentStep: SalonWorkspaceWizardStep"
+    - "onStepChange: (step: SalonWorkspaceWizardStep) => void"
+  events:
+    - onStepChange
+
+dependencies:
+  internal:
+    - my-app/lib/utils.ts
+  external:
+    - lucide-react
+  forbidden:
+    - fetch
+    - next-navigation
+    - upload-validation-hook
+    - quote-expiry-hook
+
+styling:
+  strategy: tailwind-utility-contract-with-global-tokens
+  global_css_changes: false
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  derived:
+    - step-enabled-state
+    - active-step-state
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  container: aria-label
+  steps:
+    control: native-button
+    current: aria-current-step
+    disabled: native-disabled
+  icons:
+    decorative: aria-hidden
+
+test_surface:
+  contract: my-app/lib/workspace-decomposition.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  compatible_change_requires:
+    - passport-update
+    - workspace-contract-test
+    - web-typecheck
+
+promotion_blockers:
+  - salon-specific-copy
+  - no-authenticated-visual-regression-evidence
+  - no-keyboard-interaction-evidence

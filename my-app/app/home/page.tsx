@@ -20,7 +20,7 @@ import { buildSignInRedirectUrl } from "../../lib/clerk";
 import {
   loadCustomerHomeDashboard,
   type CustomerHomeDashboard,
-  type CustomerHomeGeneration,
+  type CustomerHomeConfirmedStyle,
   type CustomerHomeStylingSession,
 } from "../../lib/customer-home-data";
 import { isAccountType, isMemberStyleTarget, parseOnboardingMetadata } from "../../lib/onboarding";
@@ -45,9 +45,11 @@ const emptyDashboard: CustomerHomeDashboard = {
   credits: 0,
   planKey: null,
   styleProfileReady: false,
+  recentConfirmedStyles: [],
   recentGenerations: [],
   recentPayments: [],
   recentStylingSessions: [],
+  recentRefundRequests: [],
 };
 
 function formatDate(value: string | null | undefined) {
@@ -81,6 +83,15 @@ function statusClassName(value: string | null | undefined) {
   return "bg-[var(--app-surface-muted)] text-[var(--app-muted)] ring-1 ring-[var(--app-border)]";
 }
 
+const serviceLabels: Record<string, string> = {
+  cut: "커트",
+  perm: "펌",
+  color: "염색",
+  bleach: "탈색",
+  treatment: "트리트먼트",
+  other: "기타 시술",
+};
+
 function genreLabel(value: string | null | undefined) {
   const labels: Record<string, string> = {
     minimal: "미니멀",
@@ -95,11 +106,8 @@ function genreLabel(value: string | null | undefined) {
   return value ? labels[value] ?? value : "스타일";
 }
 
-function generationHref(item: CustomerHomeGeneration) {
-  if (item.selectedVariantId) {
-    return `/result/${item.id}?variant=${encodeURIComponent(item.selectedVariantId)}`;
-  }
-  return `/generate/${item.id}`;
+function confirmedStyleHref(item: CustomerHomeConfirmedStyle) {
+  return `/aftercare/${encodeURIComponent(item.id)}`;
 }
 
 function stylingHref(item: CustomerHomeStylingSession) {
@@ -156,7 +164,13 @@ function PreviewFrame({
   return (
     <div className={`relative overflow-hidden bg-[var(--app-surface-muted)] ${aspect}`}>
       {src ? (
-        <img src={src} alt={alt} className="h-full w-full object-cover" />
+        <img
+          src={src}
+          alt={alt}
+          className="h-full w-full object-cover"
+          decoding="async"
+          loading="lazy"
+        />
       ) : (
         <div className="flex h-full items-center justify-center px-4 text-center text-sm font-semibold text-[var(--app-muted)]">
           이미지 준비 중
@@ -357,7 +371,7 @@ export default async function CustomerHomePage() {
   const secondaryCta = buildCta(dashboard);
   const showSecondaryCta = secondaryCta.href !== "/workspace";
   const CtaIcon = ImagePlus;
-  const hairItems = dashboard.recentGenerations.slice(0, 3);
+  const confirmedStyleItems = dashboard.recentConfirmedStyles.slice(0, 3);
   const stylingItems = dashboard.recentStylingSessions.slice(0, 3);
   const selectedHair = findSelectedHair(dashboard);
   const styleEmptyHref = selectedHair?.selectedVariantId
@@ -370,12 +384,12 @@ export default async function CustomerHomePage() {
       <Panel as="section" className="p-5 sm:p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="app-kicker">App Home</p>
+            <p className="app-kicker">앱 홈</p>
             <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
               {viewerName}님의 스타일 홈
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
-              헤어 생성 기록과 패션 추천 기록을 이어서 확인하고, 다음 스타일 작업을 바로 시작하세요.
+              시술 확정 스타일과 패션 추천 기록을 이어서 확인하고, 다음 스타일 작업을 바로 시작하세요.
             </p>
           </div>
           <Link
@@ -452,8 +466,8 @@ export default async function CustomerHomePage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <SurfaceCard className="px-4 py-3">
-                <p className="text-xs font-black text-[var(--app-muted)]">헤어 기록</p>
-                <p className="mt-2 text-2xl font-black text-[var(--app-text)]">{dashboard.recentGenerations.length}</p>
+                <p className="text-xs font-black text-[var(--app-muted)]">시술 확정</p>
+                <p className="mt-2 text-2xl font-black text-[var(--app-text)]">{dashboard.recentConfirmedStyles.length}</p>
               </SurfaceCard>
               <SurfaceCard className="px-4 py-3">
                 <p className="text-xs font-black text-[var(--app-muted)]">스타일 기록</p>
@@ -472,37 +486,40 @@ export default async function CustomerHomePage() {
         <Panel as="section" className="p-5">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="app-kicker">Hair History</p>
-              <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">헤어 생성 기록</h2>
+              <p className="app-kicker">확정 스타일</p>
+              <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">시술 확정 목록</h2>
             </div>
-            <Link href="/mypage?tab=usage" className="text-sm font-bold text-[var(--app-muted)] hover:text-[var(--app-text)]">
+            <Link href="/mypage?tab=aftercare" className="text-sm font-bold text-[var(--app-muted)] hover:text-[var(--app-text)]">
               전체 보기
             </Link>
           </div>
 
           <div className="mt-5 grid gap-3">
-            {hairItems.length === 0 ? (
-              <EmptyCard href="/workspace" label="새 헤어 만들기" title="아직 헤어 생성 기록이 없습니다." />
+            {confirmedStyleItems.length === 0 ? (
+              <EmptyCard href="/workspace" label="스타일 찾기" title="아직 시술 확정한 스타일이 없습니다." />
             ) : (
-              hairItems.map((item) => (
+              confirmedStyleItems.map((item) => (
                 <Link
                   key={item.id}
-                  href={generationHref(item)}
+                  href={confirmedStyleHref(item)}
+                  data-pointer-glow="surface"
                   className="app-card grid gap-3 overflow-hidden transition hover:-translate-y-0.5 hover:border-[var(--app-border-strong)] sm:grid-cols-[8rem_minmax(0,1fr)]"
                 >
-                  <PreviewFrame alt={item.selectedVariantLabel || "헤어 생성 결과"} src={item.selectedVariantImageUrl} />
+                  <PreviewFrame alt={`${item.styleName} 시술 확정 스타일`} src={item.selectedVariantImageUrl} />
                   <div className="min-w-0 p-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-[var(--app-radius-control)] px-2.5 py-1 text-xs font-bold ${statusClassName(item.status)}`}>
-                        {statusLabel(item.status)}
+                      <span className="rounded-[var(--app-radius-control)] bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">
+                        시술 확정
                       </span>
-                      <span className="text-xs font-semibold text-[var(--app-muted)]">{formatDate(item.createdAt)}</span>
+                      <span className="text-xs font-semibold text-[var(--app-muted)]">
+                        {serviceLabels[item.serviceType] || item.serviceType}
+                      </span>
                     </div>
                     <h3 className="mt-3 truncate text-base font-black text-[var(--app-text)]">
-                      {item.selectedVariantLabel || "3x3 헤어 추천 보드"}
+                      {item.styleName}
                     </h3>
                     <p className="mt-1 text-sm leading-5 text-[var(--app-muted)]">
-                      완료 후보 {item.completedVariantCount}/{item.totalVariantCount || 9}
+                      시술일 {formatDate(item.serviceDate)} · 관리 가이드 보기
                     </p>
                   </div>
                 </Link>
@@ -514,7 +531,7 @@ export default async function CustomerHomePage() {
         <Panel as="section" className="p-5">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="app-kicker">Style History</p>
+              <p className="app-kicker">스타일 기록</p>
               <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">스타일 추천 기록</h2>
             </div>
             <Link href="/styler/new" className="text-sm font-bold text-[var(--app-muted)] hover:text-[var(--app-text)]">
@@ -534,6 +551,7 @@ export default async function CustomerHomePage() {
                 <Link
                   key={item.id}
                   href={stylingHref(item)}
+                  data-pointer-glow="surface"
                   className="app-card grid gap-3 overflow-hidden transition hover:-translate-y-0.5 hover:border-[var(--app-border-strong)] sm:grid-cols-[8rem_minmax(0,1fr)]"
                 >
                   <PreviewFrame alt={item.headline || "스타일 추천 결과"} aspect="aspect-[3/4]" src={item.imageUrl} />

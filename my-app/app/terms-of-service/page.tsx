@@ -1,4 +1,5 @@
 import { AppPage, Panel, SurfaceCard } from "../../components/ui/Surface";
+import { SUBSCRIPTION_BILLING_POLICY_KO } from "@hairfit/shared";
 
 const sections = [
   {
@@ -49,8 +50,7 @@ const sections = [
   {
     title: "7. 결제, 크레딧 및 환불",
     items: [
-      "유료 플랜 및 크레딧 이용은 결제 시 안내된 비용 및 정책에 따릅니다.",
-      "크레딧은 서비스 내 공지된 정책에 따라 유효기간이 설정되거나 조정될 수 있습니다.",
+      ...SUBSCRIPTION_BILLING_POLICY_KO.map((item) => `${item.title}: ${item.description}`),
       "환불 요청은 관련 법령 및 회사의 환불 정책에 의거하여 검토됩니다.",
     ],
   },
@@ -92,13 +92,13 @@ const sections = [
 
 export default function TermsOfServicePage() {
   return (
-    <AppPage as="main" className="max-w-4xl pb-16 pt-8">
+    <AppPage className="max-w-4xl pb-16 pt-8">
       <Panel as="header" className="p-5 sm:p-6">
-        <p className="app-kicker">Legal</p>
+        <p className="app-kicker">법적 고지</p>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
           이용 약관
         </h1>
-        <p className="mt-2 text-sm text-[var(--app-muted)]">최종 수정일: 2026-02-12</p>
+        <p className="mt-2 text-sm text-[var(--app-muted)]">최종 수정일: 2026-07-18</p>
       </Panel>
 
       <SurfaceCard as="section" className="mt-5 space-y-3 p-5 text-sm leading-6 text-[var(--app-muted)] sm:p-6">

@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import type { PaidActionQuote, PipelineStage } from "@hairfit/shared";
 import type {
   FaceAnalysisSummary,
   GeneratedVariant,
@@ -11,22 +12,41 @@ import {
   readOriginalImageFromCache,
   saveOriginalImageToCache,
 } from "../lib/uploadImageCache";
+import {
+  createGenerationOwnerReset,
+  doesGenerationOwnerSnapshotMatch,
+  GENERATION_PIPELINE_IDLE_MESSAGE,
+  isGenerationOwnerCurrent,
+  normalizeGenerationOwnerId,
+  type GenerationOwnerSnapshot,
+} from "../lib/generation-owner-state";
 import { convertImageFileToWebp } from "../lib/webp-client";
 
-export type PipelineStage =
-  | "idle"
-  | "validating"
-  | "analyzing_face"
-  | "building_grid"
-  | "generating_image"
-  | "finalizing"
-  | "completed"
-  | "failed";
+export type { PipelineStage } from "@hairfit/shared";
+
+export interface GenerationDraftReceipt {
+  draftId: string;
+  clientRequestId: string;
+  uploadedAt: string;
+  expiresAt: string;
+  state: "ready";
+  alreadyUploaded: boolean;
+}
 
 interface GenerationState {
   originalImage: File | null;
   previewUrl: string | null;
   imageHydrated: boolean;
+  generationOwnerId: string | null;
+  generationOwnerRevision: number;
+  generationOwnerBound: boolean;
+  draftReceipt: GenerationDraftReceipt | null;
+  draftUploading: boolean;
+  draftUploadError: string | null;
+  generationQuote: PaidActionQuote | null;
+  generationQuoteLoading: boolean;
+  generationQuoteError: string | null;
+  clientRequestId: string | null;
   isGenerating: boolean;
   progress: number;
   pipelineStage: PipelineStage;
@@ -39,12 +59,20 @@ interface GenerationState {
   recommendationGrid: GeneratedVariant[];
   selectedVariantId: string | null;
   gridGenerationProgress: number;
-  setOriginalImage: (file: File) => void;
+  bindGenerationOwner: (ownerId: string | null) => Promise<void>;
+  setOriginalImage: (file: File, ownerSnapshot: GenerationOwnerSnapshot) => boolean;
   clearOriginalImage: () => void;
   setIsGenerating: (status: boolean) => void;
   setProgress: (value: number) => void;
   setPipelineState: (stage: PipelineStage, message?: string) => void;
   setPipelineError: (message: string | null) => void;
+  beginDraftUpload: (clientRequestId: string) => void;
+  completeDraftUpload: (receipt: GenerationDraftReceipt) => void;
+  failDraftUpload: (clientRequestId: string, message: string) => void;
+  beginGenerationQuote: (draftId: string) => void;
+  completeGenerationQuote: (draftId: string, quote: PaidActionQuote) => void;
+  failGenerationQuote: (draftId: string, message: string) => void;
+  clearDraftReceipt: () => void;
   resetPipeline: () => void;
   setLatestResult: (payload: { predictionId: string; outputUrl: string | null }) => void;
   clearLatestResult: () => void;
@@ -59,20 +87,29 @@ interface GenerationState {
     patch: Partial<GeneratedVariant> & { status?: RecommendationVariantStatus },
   ) => void;
   setGridGenerationProgress: (value: number) => void;
+  setAcceptedGeneration: (generationId: string) => void;
   setSelectedVariantId: (variantId: string | null) => void;
   clearRecommendationSession: () => void;
 }
-
-const initialPipelineMessage = "Review your upload and generate a 3x3 recommendation grid.";
 
 export const useGenerationStore = create<GenerationState>((set, get) => ({
   originalImage: null,
   previewUrl: null,
   imageHydrated: false,
+  generationOwnerId: null,
+  generationOwnerRevision: 0,
+  generationOwnerBound: false,
+  draftReceipt: null,
+  draftUploading: false,
+  draftUploadError: null,
+  generationQuote: null,
+  generationQuoteLoading: false,
+  generationQuoteError: null,
+  clientRequestId: null,
   isGenerating: false,
   progress: 0,
   pipelineStage: "idle",
-  pipelineMessage: initialPipelineMessage,
+  pipelineMessage: GENERATION_PIPELINE_IDLE_MESSAGE,
   pipelineError: null,
   latestPredictionId: null,
   latestOutputUrl: null,
@@ -81,54 +118,79 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
   recommendationGrid: [],
   selectedVariantId: null,
   gridGenerationProgress: 0,
-  setOriginalImage: (file) =>
+  bindGenerationOwner: async (ownerId) => {
+    const normalizedOwnerId = ownerId === null ? null : normalizeGenerationOwnerId(ownerId);
+    const current = get();
+
+    if (current.generationOwnerBound && current.generationOwnerId === normalizedOwnerId) {
+      if (normalizedOwnerId && !current.imageHydrated) {
+        await get().hydrateOriginalImage();
+      }
+      return;
+    }
+
+    if (current.previewUrl) {
+      URL.revokeObjectURL(current.previewUrl);
+    }
+
+    const nextRevision = current.generationOwnerRevision + 1;
+    set(createGenerationOwnerReset(normalizedOwnerId, nextRevision));
+
+    if (normalizedOwnerId) {
+      await get().hydrateOriginalImage();
+    }
+  },
+  setOriginalImage: (file, ownerSnapshot) => {
+    const current = get();
+    const ownerId = current.generationOwnerId;
+    if (
+      !current.generationOwnerBound ||
+      !ownerId ||
+      !doesGenerationOwnerSnapshotMatch(current, ownerSnapshot)
+    ) {
+      return false;
+    }
+
+    const nextRevision = current.generationOwnerRevision + 1;
+    void saveOriginalImageToCache(ownerId, file);
+
     set((state) => {
+      if (!doesGenerationOwnerSnapshotMatch(state, ownerSnapshot)) {
+        return state;
+      }
       if (state.previewUrl) {
         URL.revokeObjectURL(state.previewUrl);
       }
 
-      void saveOriginalImageToCache(file);
-
       return {
+        ...createGenerationOwnerReset(ownerId, nextRevision),
         originalImage: file,
         previewUrl: URL.createObjectURL(file),
         imageHydrated: true,
-        pipelineStage: "idle",
-        pipelineMessage: initialPipelineMessage,
-        pipelineError: null,
-        latestPredictionId: null,
-        latestOutputUrl: null,
-        generationId: null,
-        analysisSummary: null,
-        recommendationGrid: [],
-        selectedVariantId: null,
-        gridGenerationProgress: 0,
       };
-    }),
-  clearOriginalImage: () =>
+    });
+    return true;
+  },
+  clearOriginalImage: () => {
+    const current = get();
+    const ownerId = current.generationOwnerId;
+    const nextRevision = current.generationOwnerRevision + 1;
+    if (ownerId) {
+      void clearOriginalImageCache(ownerId);
+    }
+
     set((state) => {
       if (state.previewUrl) {
         URL.revokeObjectURL(state.previewUrl);
       }
 
-      void clearOriginalImageCache();
-
       return {
-        originalImage: null,
-        previewUrl: null,
+        ...createGenerationOwnerReset(ownerId, nextRevision),
         imageHydrated: true,
-        pipelineStage: "idle",
         pipelineMessage: "Upload a photo to start the recommendation grid.",
-        pipelineError: null,
-        latestPredictionId: null,
-        latestOutputUrl: null,
-        generationId: null,
-        analysisSummary: null,
-        recommendationGrid: [],
-        selectedVariantId: null,
-        gridGenerationProgress: 0,
       };
-    }),
+    });
+  },
   setIsGenerating: (status) => set(() => ({ isGenerating: status })),
   setProgress: (value) => set(() => ({ progress: value })),
   setPipelineState: (stage, message) =>
@@ -138,10 +200,79 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
       ...(stage !== "failed" ? { pipelineError: null } : {}),
     })),
   setPipelineError: (message) => set(() => ({ pipelineError: message })),
+  beginDraftUpload: (clientRequestId) =>
+    set(() => ({
+      clientRequestId,
+      draftReceipt: null,
+      draftUploading: true,
+      draftUploadError: null,
+      generationQuote: null,
+      generationQuoteLoading: false,
+      generationQuoteError: null,
+    })),
+  completeDraftUpload: (receipt) =>
+    set((state) =>
+      state.clientRequestId === receipt.clientRequestId
+        ? {
+            draftReceipt: receipt,
+            draftUploading: false,
+            draftUploadError: null,
+          }
+        : state,
+    ),
+  failDraftUpload: (clientRequestId, message) =>
+    set((state) =>
+      state.clientRequestId === clientRequestId
+        ? {
+            draftUploading: false,
+            draftUploadError: message,
+          }
+        : state,
+    ),
+  beginGenerationQuote: (draftId) =>
+    set((state) =>
+      state.draftReceipt?.draftId === draftId
+        ? {
+            generationQuote: null,
+            generationQuoteLoading: true,
+            generationQuoteError: null,
+          }
+        : state,
+    ),
+  completeGenerationQuote: (draftId, quote) =>
+    set((state) =>
+      state.draftReceipt?.draftId === draftId && quote.subjectId === draftId
+        ? {
+            generationQuote: quote,
+            generationQuoteLoading: false,
+            generationQuoteError: null,
+          }
+        : state,
+    ),
+  failGenerationQuote: (draftId, message) =>
+    set((state) =>
+      state.draftReceipt?.draftId === draftId
+        ? {
+            generationQuote: null,
+            generationQuoteLoading: false,
+            generationQuoteError: message,
+          }
+        : state,
+    ),
+  clearDraftReceipt: () =>
+    set(() => ({
+      draftReceipt: null,
+      draftUploading: false,
+      draftUploadError: null,
+      generationQuote: null,
+      generationQuoteLoading: false,
+      generationQuoteError: null,
+      clientRequestId: null,
+    })),
   resetPipeline: () =>
     set(() => ({
       pipelineStage: "idle",
-      pipelineMessage: initialPipelineMessage,
+      pipelineMessage: GENERATION_PIPELINE_IDLE_MESSAGE,
       pipelineError: null,
       progress: 0,
       gridGenerationProgress: 0,
@@ -151,18 +282,47 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
   clearLatestResult: () =>
     set(() => ({ latestPredictionId: null, latestOutputUrl: null })),
   hydrateOriginalImage: async () => {
-    if (get().imageHydrated || get().originalImage) {
+    const initial = get();
+    const ownerId = initial.generationOwnerId;
+    const ownerRevision = initial.generationOwnerRevision;
+
+    if (!initial.generationOwnerBound) {
+      return;
+    }
+
+    if (!ownerId) {
       set(() => ({ imageHydrated: true }));
       return;
     }
 
-    const cachedFile = await readOriginalImageFromCache();
-    const normalizedFile = cachedFile ? await convertImageFileToWebp(cachedFile) : null;
-    if (normalizedFile && normalizedFile !== cachedFile) {
-      void saveOriginalImageToCache(normalizedFile);
+    if (initial.imageHydrated || initial.originalImage) {
+      set(() => ({ imageHydrated: true }));
+      return;
+    }
+
+    let normalizedFile: File | null = null;
+    try {
+      const cachedFile = await readOriginalImageFromCache(ownerId);
+      normalizedFile = cachedFile ? await convertImageFileToWebp(cachedFile) : null;
+      if (normalizedFile && normalizedFile !== cachedFile) {
+        void saveOriginalImageToCache(ownerId, normalizedFile);
+      }
+    } catch {
+      normalizedFile = null;
     }
 
     set((state) => {
+      if (
+        !isGenerationOwnerCurrent(
+          state.generationOwnerId,
+          state.generationOwnerRevision,
+          ownerId,
+          ownerRevision,
+        )
+      ) {
+        return state;
+      }
+
       if (state.originalImage) {
         return { imageHydrated: true };
       }
@@ -179,6 +339,13 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
         originalImage: normalizedFile,
         previewUrl: URL.createObjectURL(normalizedFile),
         imageHydrated: true,
+        draftReceipt: null,
+        draftUploading: false,
+        draftUploadError: null,
+        generationQuote: null,
+        generationQuoteLoading: false,
+        generationQuoteError: null,
+        clientRequestId: null,
       };
     });
   },
@@ -213,6 +380,12 @@ export const useGenerationStore = create<GenerationState>((set, get) => ({
       };
     }),
   setGridGenerationProgress: (value) => set(() => ({ gridGenerationProgress: value })),
+  setAcceptedGeneration: (generationId) =>
+    set(() => ({
+      generationId,
+      latestPredictionId: generationId,
+      latestOutputUrl: null,
+    })),
   setSelectedVariantId: (variantId) =>
     set((state) => {
       const selectedVariant = variantId

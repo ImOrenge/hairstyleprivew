@@ -19,6 +19,7 @@ import {
   sendSubscriptionRenewalEmail,
 } from "../../../../lib/resend";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
+import { callSupabaseRpc } from "../../../../lib/supabase-rpc";
 
 // ─── 타입 ──────────────────────────────────────────────────────────────────
 
@@ -442,40 +443,54 @@ function isMissingRelation(message: string) {
 }
 
 async function markRefundRequestAfterCancellation(
-  supabase: {
-    from: (table: string) => {
-      update: (v: Record<string, unknown>) => {
-        eq: (c: string, v: unknown) => Promise<{ error: { message: string } | null }>;
-      };
-    };
-  },
+  supabase: { rpc: unknown },
   transaction: PortonePaymentTransactionRow,
   eventType: string,
   status: "completed" | "manual_review_required",
   details: Record<string, unknown>,
 ) {
-  const now = new Date().toISOString();
-  const { error } = await supabase
-    .from("payment_refund_requests")
-    .update({
-      status,
-      completed_at: status === "completed" ? now : null,
-      failed_code: null,
-      failed_message: null,
-      metadata: {
-        source: "portone-webhook",
-        eventType,
-        paymentTransactionId: transaction.id,
-        ...details,
-      },
-    })
-    .eq("payment_transaction_id", transaction.id);
+  const { error } = await callSupabaseRpc(supabase, "mark_payment_refund_after_cancellation", {
+    p_payment_transaction_id: transaction.id,
+    p_status: status,
+    p_metadata_patch: {
+      source: "portone-webhook",
+      eventType,
+      paymentTransactionId: transaction.id,
+      ...details,
+    },
+  });
 
   if (error && !isMissingRelation(error.message)) {
     return { ok: false as const, message: error.message };
   }
 
   return { ok: true as const };
+}
+
+async function tryFinalizeAutomatedRefund(
+  supabase: { rpc: unknown },
+  transaction: PortonePaymentTransactionRow,
+  eventType: string,
+  eventData: Record<string, unknown>,
+) {
+  const cancellation = isRecord(eventData.cancellation) ? eventData.cancellation : eventData;
+  const providerCancelId =
+    readStr(cancellation.id) ||
+    readStr(cancellation.cancellationId) ||
+    readStr(eventData.cancellationId);
+  const { data, error } = await callSupabaseRpc(supabase, "finalize_automated_refund", {
+    p_payment_transaction_id: transaction.id,
+    p_provider_cancel_id: providerCancelId,
+    p_event_type: eventType,
+    p_metadata: { source: "portone-webhook", eventType },
+  });
+  if (error) {
+    if (isMissingRelation(error.message) || error.message.toLowerCase().includes("function")) {
+      return { handled: false as const, error: null };
+    }
+    return { handled: false as const, error: error.message };
+  }
+  return { handled: Boolean(data), error: null };
 }
 
 async function sendPaymentFailureNotification({
@@ -777,6 +792,25 @@ export async function POST(request: Request) {
       return paymentEventFailureResponse(result, "결제 취소 이벤트 반영 실패");
     }
 
+    const automated = await tryFinalizeAutomatedRefund(supabase, result.transaction, type, data);
+    if (automated.error) {
+      return NextResponse.json({ error: automated.error }, { status: 500 });
+    }
+    if (automated.handled) {
+      try {
+        await sendRefundCompletedNotification({
+          supabase,
+          request,
+          transaction: result.transaction,
+          eventType: type,
+          clawback: null,
+        });
+      } catch (err) {
+        console.error("[webhook] 자동 환불 완료 이메일 발송 실패:", err);
+      }
+      return NextResponse.json({ received: true, eventType: type, automatedRefund: true }, { status: 200 });
+    }
+
     const subscriptionSync = await syncSubscriptionAfterUnsuccessfulPayment({
       supabase,
       transaction: result.transaction,
@@ -854,6 +888,14 @@ export async function POST(request: Request) {
       return paymentEventFailureResponse(result, "부분취소 이벤트 반영 실패");
     }
 
+    const automated = await tryFinalizeAutomatedRefund(supabase, result.transaction, type, data);
+    if (automated.error) {
+      return NextResponse.json({ error: automated.error }, { status: 500 });
+    }
+    if (automated.handled) {
+      return NextResponse.json({ received: true, eventType: type, automatedRefund: true }, { status: 200 });
+    }
+
     const refundRequestUpdate = await markRefundRequestAfterCancellation(
       supabase,
       result.transaction,
@@ -895,6 +937,16 @@ export async function POST(request: Request) {
 
     if (!result.ok) {
       return paymentEventFailureResponse(result, "대기 이벤트 반영 실패");
+    }
+
+    if (CANCEL_PENDING_EVENTS.has(type)) {
+      const pending = await callSupabaseRpc(supabase, "mark_automated_refund_cancel_pending", {
+        p_payment_transaction_id: result.transaction.id,
+        p_event_type: type,
+      });
+      if (pending.error && !isMissingRelation(pending.error.message)) {
+        return NextResponse.json({ error: pending.error.message }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ received: true, eventType: type }, { status: 200 });

@@ -1,10 +1,12 @@
-import { ButtonHTMLAttributes, forwardRef } from "react";
+import { ButtonHTMLAttributes, forwardRef, type ReactNode } from "react";
 import { cn } from "../../lib/utils";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "inverse";
 
-interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
+  loading?: boolean;
+  loadingLabel?: ReactNode;
 }
 
 const variantClassMap: Record<ButtonVariant, string> = {
@@ -16,20 +18,41 @@ const variantClassMap: Record<ButtonVariant, string> = {
 
 export function buttonClassName(variant: ButtonVariant = "primary", className?: string) {
   return cn(
-    "inline-flex items-center justify-center rounded-[var(--app-radius-control)] px-4 py-2 text-sm font-semibold uppercase tracking-[0.04em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-ring)] disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
+    "c-button inline-flex items-center justify-center rounded-[var(--app-radius-control)] px-4 py-2 text-sm font-semibold uppercase tracking-[0.04em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-ring)] disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
     variantClassMap[variant],
     className,
   );
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "primary", ...props }, ref) => {
+  (
+    {
+      children,
+      className,
+      variant = "primary",
+      disabled,
+      loading = false,
+      loadingLabel = "처리 중…",
+      ...props
+    },
+    ref,
+  ) => {
+    const isAriaDisabled = props["aria-disabled"] === true || props["aria-disabled"] === "true";
+    const isDisabled = Boolean(disabled || loading || isAriaDisabled);
+    const state = loading ? "loading" : isDisabled ? "disabled" : "enabled";
+
     return (
       <button
-        ref={ref}
-        className={buttonClassName(variant, className)}
         {...props}
-      />
+        ref={ref}
+        aria-busy={loading ? true : props["aria-busy"]}
+        className={buttonClassName(variant, className)}
+        data-state={state}
+        data-variant={variant}
+        disabled={isDisabled}
+      >
+        {loading ? loadingLabel : children}
+      </button>
     );
   },
 );

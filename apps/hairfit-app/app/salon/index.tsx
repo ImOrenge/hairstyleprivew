@@ -11,12 +11,14 @@ import {
   MetricGrid,
   MetricTile,
   Panel,
-  Screen,
   Stack,
 } from "@hairfit/ui-native";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { View } from "react-native";
+import { AppScreen } from "../../components/app/AppScreen";
 import { useHairfitApi } from "../../lib/api";
+import { mapMobileUserError } from "../../lib/mobile-user-message";
 
 export default function SalonHomeScreen() {
   const router = useRouter();
@@ -44,7 +46,7 @@ export default function SalonHomeScreen() {
       } catch (error) {
         if (!cancelled) {
           setDashboard(null);
-          setMessage(error instanceof Error ? error.message : "살롱 대시보드를 불러오지 못했습니다.");
+          setMessage(mapMobileUserError(error, "살롱 대시보드를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
         }
       }
     }
@@ -58,12 +60,14 @@ export default function SalonHomeScreen() {
   const summary = dashboard?.salon.summary;
 
   return (
-    <Screen>
+    <AppScreen>
       <Panel>
         <Stack>
-          <Kicker>HairFit Salon</Kicker>
+          <Kicker>HairFit 살롱</Kicker>
           <Heading>살롱 CRM</Heading>
-          <BodyText>{message}</BodyText>
+          <View accessibilityLiveRegion="polite">
+            <BodyText>{message}</BodyText>
+          </View>
           <Cluster>
             <Chip tone="accent">고객</Chip>
             <Chip>매칭</Chip>
@@ -91,6 +95,6 @@ export default function SalonHomeScreen() {
           <BodyText>권한 확인 후 살롱 데이터가 표시됩니다.</BodyText>
         </Card>
       )}
-    </Screen>
+    </AppScreen>
   );
 }

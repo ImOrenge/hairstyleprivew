@@ -25,25 +25,6 @@ begin
 end
 $$;
 
-alter table public.users
-  add column if not exists account_type text,
-  add column if not exists onboarding_completed_at timestamptz;
-
-do $$
-begin
-  if not exists (
-    select 1
-      from pg_constraint
-     where conname = 'users_account_type_check'
-       and conrelid = 'public.users'::regclass
-  ) then
-    alter table public.users
-      add constraint users_account_type_check
-      check (account_type is null or account_type in ('member', 'salon_owner'));
-  end if;
-end
-$$;
-
 create table if not exists public.salon_customers (
   id uuid primary key default gen_random_uuid(),
   owner_user_id text not null references public.users(id) on delete cascade,

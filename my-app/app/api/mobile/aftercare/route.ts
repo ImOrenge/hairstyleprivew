@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getConfirmedStyleMediaFromRelation } from "../../../../lib/confirmed-style-media";
 import { getMobileApiContext } from "../../../../lib/mobile-auth";
 
 interface HairRecordRow {
@@ -9,6 +10,7 @@ interface HairRecordRow {
   service_date?: unknown;
   next_visit_target_days?: unknown;
   created_at?: unknown;
+  generation?: unknown;
 }
 
 interface QueryResult<T> {
@@ -51,7 +53,7 @@ export async function GET() {
     const supabase = context.supabase as unknown as MobileAftercareSupabase;
     const { data, error } = await supabase
       .from<HairRecordRow>("user_hair_records")
-      .select("id,generation_id,style_name,service_type,service_date,next_visit_target_days,created_at")
+      .select("id,generation_id,style_name,service_type,service_date,next_visit_target_days,created_at,generation:generations(selected_variant_id,options)")
       .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -62,15 +64,20 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        records: (data || []).map((row) => ({
-          id: text(row.id),
-          generationId: nullableText(row.generation_id),
-          styleName: text(row.style_name) || "Hair style",
-          serviceType: text(row.service_type) || "other",
-          serviceDate: text(row.service_date),
-          nextVisitTargetDays: numberValue(row.next_visit_target_days),
-          createdAt: text(row.created_at),
-        })),
+        records: (data || []).map((row) => {
+          const media = getConfirmedStyleMediaFromRelation(row.generation);
+          return {
+            id: text(row.id),
+            generationId: nullableText(row.generation_id),
+            styleName: text(row.style_name) || "확정 헤어스타일",
+            serviceType: text(row.service_type) || "other",
+            serviceDate: text(row.service_date),
+            nextVisitTargetDays: numberValue(row.next_visit_target_days),
+            selectedVariantId: media.selectedVariantId,
+            selectedVariantImageUrl: media.selectedVariantImageUrl,
+            createdAt: text(row.created_at),
+          };
+        }),
       },
       { status: 200 },
     );

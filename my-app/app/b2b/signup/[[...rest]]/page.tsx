@@ -3,9 +3,9 @@ import { AppPage, Panel } from "../../../../components/ui/Surface";
 
 export default function B2BSignupPage() {
   return (
-    <AppPage as="main" className="max-w-2xl pb-16 pt-8">
+    <AppPage className="max-w-2xl pb-16 pt-8">
       <Panel className="p-5 sm:p-6">
-        <p className="app-kicker">B2B Signup</p>
+        <p className="app-kicker">B2B 계정 등록</p>
         <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)]">
           B2B 신규 가입은 도입 문의로 접수합니다
         </h1>

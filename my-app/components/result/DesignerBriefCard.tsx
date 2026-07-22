@@ -84,14 +84,29 @@ export function DesignerBriefCard({
   hasRealOutput,
 }: DesignerBriefCardProps) {
   const [copied, setCopied] = useState(false);
-  const brief = variant?.designerBrief || buildFallbackBrief(variant, analysis);
-  const { translate, hasTranslated } = useResultTranslations([
+  const { translate: translateVariant } = useResultTranslations([
+    variant?.label,
+    variant?.reason,
+  ]);
+  const displayVariant = variant
+    ? {
+        ...variant,
+        label: translateVariant(variant.label, `추천 스타일 ${variant.rank}`),
+        reason: translateVariant(
+          variant.reason,
+          "얼굴형과 전체 균형을 고려한 추천 스타일입니다.",
+        ),
+      }
+    : null;
+  const brief = variant?.designerBrief || buildFallbackBrief(displayVariant, analysis);
+  const { translate } = useResultTranslations([
     brief.headline,
     brief.consultationSummary,
     brief.cutDirection,
     brief.volumeTextureDirection,
     brief.stylingDirection,
     ...brief.cautionNotes,
+    ...brief.salonKeywords,
   ]);
 
   const handleCopy = async () => {
@@ -117,7 +132,7 @@ export function DesignerBriefCard({
           {hasRealOutput ? (
             <Image
               src={imageUrl}
-              alt={variant?.label || "선택한 헤어스타일"}
+              alt={displayVariant?.label || "선택한 헤어스타일"}
               fill
               unoptimized
               sizes="(min-width: 1024px) 34rem, 100vw"
@@ -130,7 +145,7 @@ export function DesignerBriefCard({
           )}
           <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5">
             <p className="text-[11px] font-bold uppercase text-white/55">디자이너 상담 브리프</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight">{variant?.label || "선택 대기 중"}</h2>
+            <h2 className="mt-2 text-2xl font-black tracking-tight">{displayVariant?.label || "선택 대기 중"}</h2>
           </div>
         </div>
 
@@ -139,11 +154,8 @@ export function DesignerBriefCard({
             <div>
               <p className="text-xs font-bold uppercase text-amber-200/80">헤어 상담 브리프</p>
               <h3 className="mt-2 text-3xl font-black leading-tight tracking-tight">
-                {translate(brief.headline) || brief.headline}
+                {translate(brief.headline, `${displayVariant?.label || "선택한 스타일"} 디자이너 브리프`)}
               </h3>
-              {hasTranslated(brief.headline) ? (
-                <p className="mt-2 text-sm text-stone-300">{brief.headline}</p>
-              ) : null}
             </div>
             <button
               type="button"
@@ -156,11 +168,8 @@ export function DesignerBriefCard({
 
           <InverseCard className="p-4">
             <p className="text-sm font-medium leading-7 text-stone-100">
-              {translate(brief.consultationSummary) || brief.consultationSummary}
+              {translate(brief.consultationSummary, "얼굴형과 전체 균형을 기준으로 스타일을 제안합니다.")}
             </p>
-            {hasTranslated(brief.consultationSummary) ? (
-              <p className="mt-2 text-xs leading-6 text-stone-300">{brief.consultationSummary}</p>
-            ) : null}
           </InverseCard>
 
           <div className="grid gap-3">
@@ -168,11 +177,8 @@ export function DesignerBriefCard({
               <InverseCard key={section.label} className="p-4">
                 <p className="text-[11px] font-black uppercase text-amber-200/75">{section.label}</p>
                 <p className="mt-2 text-sm leading-6 text-stone-100">
-                  {translate(section.value) || section.value}
+                  {translate(section.value, `${section.label}은 현장에서 얼굴 비율을 보며 조정해 주세요.`)}
                 </p>
-                {hasTranslated(section.value) ? (
-                  <p className="mt-2 text-xs leading-5 text-stone-300">{section.value}</p>
-                ) : null}
               </InverseCard>
             ))}
           </div>
@@ -183,10 +189,7 @@ export function DesignerBriefCard({
               <ul className="mt-3 space-y-2">
                 {brief.cautionNotes.map((note, index) => (
                   <li key={`${note}-${index}`} className="border border-rose-200/10 bg-rose-200/10 px-3 py-2 text-xs leading-5 text-rose-50">
-                    <p>{translate(note) || note}</p>
-                    {hasTranslated(note) ? (
-                      <p className="mt-1 text-[11px] text-rose-100/80">{note}</p>
-                    ) : null}
+                    <p>{translate(note, "현장에서 얼굴 비율과 모발 상태를 확인해 조정해 주세요.")}</p>
                   </li>
                 ))}
               </ul>
@@ -197,7 +200,7 @@ export function DesignerBriefCard({
               <div className="mt-3 flex flex-wrap gap-2">
                 {brief.salonKeywords.map((keyword, index) => (
                   <span key={`${keyword}-${index}`} className="border border-amber-200 bg-amber-200 px-3 py-1 text-xs font-black text-stone-950">
-                    {keyword}
+                    {translate(keyword, `추천 키워드 ${index + 1}`)}
                   </span>
                 ))}
               </div>

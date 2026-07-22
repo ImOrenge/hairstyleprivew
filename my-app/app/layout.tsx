@@ -4,6 +4,7 @@ import "./globals.css";
 import { Footer } from "../components/layout/Footer";
 import { Header } from "../components/layout/Header";
 import { AppClerkProvider } from "../components/providers/AppClerkProvider";
+import { GenerationAuthBoundary } from "../components/providers/GenerationAuthBoundary";
 import { LocaleSync } from "../components/layout/LocaleSync";
 import { PointerGlowProvider } from "../components/providers/PointerGlowProvider";
 import { SubscriptionPaymentNoticeModal } from "../components/layout/SubscriptionPaymentNoticeModal";
@@ -70,10 +71,15 @@ export default function RootLayout({
             disableTransitionOnChange
             scriptProps={{ "data-cfasync": "false" }}
           >
+            <a href="#main-content" className="c-skip-link">
+              본문 바로가기
+            </a>
             <LocaleSync />
             <PointerGlowProvider />
             <Header />
-            <main>{children}</main>
+            <main id="main-content" tabIndex={-1}>
+              <GenerationAuthBoundary>{children}</GenerationAuthBoundary>
+            </main>
             <Footer />
             {subscriptionAccessMode === "waitlist" ? <SubscriptionPaymentNoticeModal /> : null}
           </ThemeProvider>

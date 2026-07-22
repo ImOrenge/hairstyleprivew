@@ -1,8 +1,8 @@
 ﻿"use client";
 
 import { motion, useReducedMotion } from "framer-motion";
+import type { PipelineStage } from "@hairfit/shared";
 import { cn } from "../../lib/utils";
-import type { PipelineStage } from "../../store/useGenerationStore";
 
 const STAGE_ORDER: PipelineStage[] = [
   "validating",
@@ -14,14 +14,14 @@ const STAGE_ORDER: PipelineStage[] = [
 ];
 
 const STAGE_LABELS: Record<PipelineStage, string> = {
-  idle: "Idle",
-  validating: "Validate Photo",
-  analyzing_face: "Analyze Face",
-  building_grid: "Build Grid",
-  generating_image: "Render Variants",
-  finalizing: "Finalize",
-  completed: "Complete",
-  failed: "Failed",
+  idle: "대기",
+  validating: "사진 확인",
+  analyzing_face: "얼굴 분석",
+  building_grid: "추천 구성",
+  generating_image: "후보 생성",
+  finalizing: "결과 정리",
+  completed: "완료",
+  failed: "실패",
 };
 
 const STAGE_THEME: Record<
@@ -65,7 +65,7 @@ const STAGE_THEME: Record<
   },
 };
 
-interface PipelineStatusIndicatorProps {
+export interface PipelineStatusIndicatorProps {
   stage: PipelineStage;
   message: string;
   error: string | null;
@@ -99,16 +99,18 @@ export function PipelineStatusIndicator({
   const activityDashArray = `${circumference * 0.2} ${circumference}`;
   const trackClassName = isOverlay ? "text-white/20" : "text-[var(--app-border)]";
   const progressClassName = isOverlay && !isCompleted && !isFailed ? "text-white" : theme.accent;
-  const containerClassName = isOverlay
-    ? "w-full rounded-[var(--app-radius-panel)] border border-white/15 bg-black/70 px-4 py-4 text-left text-white shadow-[0_18px_60px_-30px_rgba(0,0,0,0.7)] backdrop-blur-md"
-    : "flex h-full w-full flex-col items-center justify-center gap-5 rounded-[var(--app-radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface)] px-6 py-8 text-center";
+  const state = isCompleted ? "completed" : isFailed ? "failed" : isRunning ? "running" : "idle";
 
   return (
     <div
-      className={cn(containerClassName, className)}
+      className={cn("c-pipeline-status", className)}
+      data-mode={mode}
+      data-stage={stage}
+      data-state={state}
       role="status"
       aria-live="polite"
       aria-atomic="true"
+      aria-busy={isRunning || undefined}
     >
       <div className={cn("flex gap-4", isOverlay ? "items-start" : "flex-col items-center justify-center gap-5")}>
         <motion.div
@@ -210,10 +212,10 @@ export function PipelineStatusIndicator({
           </div>
         </motion.div>
 
-        <div className={cn("space-y-1", isOverlay ? "flex-1" : "")}>
-          <p className={cn("text-sm font-semibold", isOverlay ? "text-white" : theme.text)}>{message}</p>
+        <div className={cn("c-pipeline-status__copy space-y-1", isOverlay ? "flex-1" : "")}>
+          <p className={cn("c-pipeline-status__message text-sm font-semibold", isOverlay ? "text-white" : theme.text)}>{message}</p>
           <div className={cn("flex flex-wrap items-center gap-2 text-xs", isOverlay ? "text-white/70" : "text-[var(--app-muted)]")}>
-            <span>Current stage: {STAGE_LABELS[stage]}</span>
+            <span>현재 단계: {STAGE_LABELS[stage]}</span>
             {isRunning ? (
               <span
                 className={cn(
@@ -221,7 +223,7 @@ export function PipelineStatusIndicator({
                   isOverlay ? "bg-white/15 text-white" : "bg-[var(--app-surface-muted)] text-[var(--app-accent-strong)]",
                 )}
               >
-                Processing
+                처리 중
                 <span className="inline-flex w-4 justify-between">
                   {[0, 1, 2].map((index) => (
                     <motion.span
@@ -244,9 +246,10 @@ export function PipelineStatusIndicator({
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={displayProgress}
-              aria-valuetext={`${STAGE_LABELS[stage]} ${displayProgress}%`}
+              aria-valuetext={`${STAGE_LABELS[stage]} · ${displayProgress}%`}
+              data-state={state}
               className={cn(
-                "relative mt-2 h-1.5 overflow-hidden rounded-full",
+                "c-pipeline-status__progress relative mt-2 h-1.5 overflow-hidden rounded-full",
                 isOverlay ? "bg-white/15" : "bg-[var(--app-border)]",
               )}
             >
@@ -271,31 +274,27 @@ export function PipelineStatusIndicator({
           ) : null}
           {!isFailed ? (
             <p className={cn("text-[11px]", isOverlay ? "text-white/60" : "text-[var(--app-subtle)]")}>
-              Progress {displayProgress}%
+              진행률 {displayProgress}%
             </p>
           ) : null}
           {error ? <p role="alert" className={cn("text-xs", isOverlay ? "text-rose-300" : "text-rose-600")}>{error}</p> : null}
         </div>
       </div>
 
-      <div className={cn("grid grid-cols-6 gap-2", isOverlay ? "mt-4" : "w-full max-w-md")}>
+      <div className={cn("c-pipeline-status__steps", isOverlay ? "mt-4" : "w-full max-w-md")}>
         {STAGE_ORDER.map((value, index) => {
           const isDone = currentIndex >= 0 && index < currentIndex;
           const isActive = value === stage;
-          const dotClassName = isActive
-            ? isOverlay
-              ? "bg-white text-black"
-              : "bg-[var(--app-inverse)]"
-            : isDone
-              ? "bg-emerald-500"
-              : isOverlay
-                ? "bg-white/25"
-                : "bg-[var(--app-border)]";
+          const stepState = isActive ? "active" : isDone ? "done" : "upcoming";
 
           return (
-            <div key={value} className="flex min-w-0 flex-col items-center gap-1">
+            <div
+              key={value}
+              className="c-pipeline-status__step"
+              data-step-state={stepState}
+            >
               <motion.span
-                className={cn("h-2.5 w-2.5 rounded-full transition", dotClassName)}
+                className="c-pipeline-status__step-dot"
                 animate={
                   isActive && isRunning && !shouldReduceMotion
                     ? {
@@ -306,7 +305,7 @@ export function PipelineStatusIndicator({
                 }
                 transition={{ duration: 1.1, repeat: Infinity, ease: "easeInOut" }}
               />
-              <span className={cn("w-full truncate text-center text-[10px] leading-3", isOverlay ? "text-white/65" : "text-[var(--app-muted)]")}>
+              <span className="c-pipeline-status__step-label">
                 {STAGE_LABELS[value]}
               </span>
             </div>

@@ -1,0 +1,125 @@
+id: web.billing.subscription-waitlist-form
+name: SubscriptionWaitlistForm
+platform: web
+kind: form
+status: candidate
+source: my-app/components/payments/SubscriptionWaitlistForm.tsx
+owner: billing-feature
+
+public_api:
+  exports:
+    - SubscriptionWaitlistForm
+    - SubscriptionWaitlistFormProps
+  props:
+    - initialEmail
+    - initialPlanKey
+    - lockPlan
+    - sourcePath
+    - onSubmitted
+  events:
+    - submit-waitlist
+    - submit-success
+
+dependencies:
+  internal:
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/FormField.tsx
+    - my-app/components/ui/InlineAlert.tsx
+    - my-app/lib/billing-plan.ts
+  external:
+    - react
+
+boundaries:
+  owns:
+    - email-plan-use-case-input
+    - client-validation
+    - waitlist-request
+    - safe-user-message-mapping
+  forbidden:
+    - subscription-checkout
+    - raw-server-error-rendering
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-subscription-waitlist
+  data_contract:
+    data-state: idle | invalid | submitting | success | error
+    data-plan-locked: true | false
+  shared_contracts:
+    - web.ui.button
+    - web.ui.form-field
+    - web.ui.inline-alert
+  tokens:
+    - --app-ring
+  inline_styles_allowed: false
+
+state:
+  local:
+    - email
+    - planKey
+    - useCase
+    - submitState
+    - message
+    - emailTouched
+    - emailError
+  external_store: false
+
+side_effects:
+  - post-subscription-waitlist-request
+  - abort-inflight-request-on-unmount
+
+a11y_contract:
+  labels:
+    - FormField-generated-control-association
+  fields:
+    - email-inputmode-and-autocomplete
+    - connected-description-error-and-required-state
+    - invalid-submit-focuses-email
+    - controls-disabled-while-submitting
+  feedback:
+    - success-role-status-polite
+    - failure-role-alert-assertive
+
+test_surface:
+  structure: my-app/lib/dialog-adoption.test.ts
+  contract: my-app/lib/subscription-waitlist-form-stability.test.ts
+  interaction: tests/web-e2e/subscription-waitlist-stability.spec.ts
+  accessibility: axe-serious-critical-zero
+  visual:
+    - tests/web-e2e/__screenshots__/subscription-waitlist-stability.spec.ts/subscription-waitlist-1024-duplicate-light.png
+    - tests/web-e2e/__screenshots__/subscription-waitlist-stability.spec.ts/subscription-waitlist-320-invalid-light.png
+    - tests/web-e2e/__screenshots__/subscription-waitlist-stability.spec.ts/subscription-waitlist-375-success-dark.png
+  observed_usage:
+    - my-app/app/billing/checkout/page.tsx
+    - my-app/components/layout/SubscriptionPaymentNoticeModal.tsx
+    - my-app/components/payments/PortoneSubscriptionButton.tsx
+
+change_policy:
+  current_gate: candidate-stabilization-complete
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+  behavioral_change_requires:
+    - form-submit-interaction-test
+  style_contract_change_requires:
+    - c-subscription-waitlist-selector-search
+    - mobile-invalid-and-success-visual-verification
+
+promotion_blockers:
+  - authenticated-email-delivery-evidence-missing
+
+candidate_evidence:
+  - three-production-consumers-and-one-fail-closed-harness-consumer
+  - FormField-Button-InlineAlert-composition-without-checkout-side-effects
+  - inline-invalid-email-focus-and-connected-error-contract
+  - one-request-fencing-submit-lock-and-unmount-abort-contract
+  - safe-429-retry-success-and-duplicate-update-browser-flow
+  - axe-serious-critical-zero
+  - 1024px-light-320px-light-and-375px-dark-visual-and-overflow-verification
+
+residual_risks:
+  - live-supabase-write-and-confirmation-email-receipt-not-yet-recorded
+  - authenticated-dialog-close-during-request-and-physical-screen-reader-not-yet-verified

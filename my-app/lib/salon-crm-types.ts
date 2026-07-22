@@ -59,7 +59,10 @@ export interface SalonMatchInvite {
   ownerUserId: string;
   code: string;
   active: boolean;
+  consentVersion: string;
   expiresAt: string | null;
+  supersededAt: string | null;
+  supersededBy: string | null;
   createdAt: string;
   updatedAt: string;
   inviteUrl?: string;
@@ -72,6 +75,13 @@ export interface SalonMatchCandidate {
   inviteId: string | null;
   status: SalonMatchStatus;
   linkedCustomerId: string | null;
+  consentVersion: string | null;
+  consentScope: Record<string, unknown> | null;
+  consentedAt: string | null;
+  linkedAt: string | null;
+  revokedAt: string | null;
+  revokedByUserId: string | null;
+  revocationReason: string | null;
   createdAt: string;
   updatedAt: string;
   member: {
@@ -96,4 +106,28 @@ export interface SalonMemberGenerationSummary {
   styleLabel: string | null;
   generatedImagePath: string | null;
   createdAt: string;
+}
+
+export interface SalonMemberHairRecordSummary {
+  id: string;
+  generationId: string | null;
+  styleName: string;
+  serviceType: string;
+  serviceDate: string;
+  createdAt: string;
+}
+
+export interface SalonConnectionSummary {
+  id: string;
+  ownerUserId: string;
+  memberUserId: string;
+  status: SalonMatchStatus;
+  linkedCustomerId: string | null;
+  consentVersion: string | null;
+  consentScope: Record<string, unknown> | null;
+  consentedAt: string | null;
+  linkedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

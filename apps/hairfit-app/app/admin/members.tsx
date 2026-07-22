@@ -1,8 +1,10 @@
 import { useAuth } from "@clerk/clerk-expo";
 import type { AdminMemberListRow } from "@hairfit/api-client";
-import { BodyText, Button, Card, Chip, Cluster, Heading, Screen, Stack, TextField } from "@hairfit/ui-native";
+import { BodyText, Button, Card, Chip, Cluster, Heading, Stack, TextField } from "@hairfit/ui-native";
 import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { RefreshControl, View } from "react-native";
+import { VirtualizedListScreen } from "../../components/app/VirtualizedListScreen";
 import { AdminEmptyCard, AdminPageHeader, AdminTabs } from "../../lib/admin-ui";
 import { useHairfitApi } from "../../lib/api";
 
@@ -58,20 +60,24 @@ export default function AdminMembersScreen() {
   const { isLoaded, isSignedIn } = useAuth();
   const [members, setMembers] = useState<AdminMemberListRow[]>([]);
   const [total, setTotal] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [accountType, setAccountType] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestSequence = useRef(0);
 
-  const load = async () => {
+  const load = useCallback(async (options: { append?: boolean } = {}) => {
     if (!isLoaded) return;
     if (!isSignedIn) {
       setMembers([]);
       setTotal(0);
+      setNextCursor(null);
       setError("관리자 계정으로 로그인해야 회원 목록을 볼 수 있습니다.");
       return;
     }
 
+    const sequence = ++requestSequence.current;
     setIsLoading(true);
     setError(null);
     try {
@@ -79,32 +85,39 @@ export default function AdminMembersScreen() {
         q: query.trim() || undefined,
         accountType: accountType || undefined,
         limit: 80,
+        cursor: options.append ? nextCursor || undefined : undefined,
       });
-      setMembers(result.members);
-      setTotal(result.total);
-    } catch (loadError) {
-      setMembers([]);
-      setTotal(0);
-      setError(loadError instanceof Error ? loadError.message : "회원 목록을 불러오지 못했습니다.");
+      if (sequence !== requestSequence.current) return;
+      setMembers((current) => (options.append ? [...current, ...result.members] : result.members));
+      if (!options.append) setTotal(result.total);
+      setNextCursor(result.nextCursor);
+    } catch {
+      if (sequence !== requestSequence.current) return;
+      if (!options.append) {
+        setMembers([]);
+        setTotal(0);
+        setNextCursor(null);
+      }
+      setError("회원 목록을 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.");
     } finally {
-      setIsLoading(false);
+      if (sequence === requestSequence.current) setIsLoading(false);
     }
-  };
+  }, [accountType, api, isLoaded, isSignedIn, nextCursor, query]);
 
   useEffect(() => {
     void load();
-  }, [api, isLoaded, isSignedIn, accountType]);
+  }, [accountType, api, isLoaded, isSignedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const countLabel = useMemo(() => `총 ${total.toLocaleString("ko-KR")}명`, [total]);
 
-  return (
-    <Screen>
+  const listHeader = (
+    <Stack>
       <AdminTabs activePath="/admin/members" />
 
       <AdminPageHeader
         title="회원관리"
         countLabel={countLabel}
-        description="Next.js 관리자 회원 목록과 같은 API를 사용해 권한, 온보딩, 크레딧 상태를 확인합니다."
+        description="앱 회원관리는 조회 전용입니다. 회원·권한·온보딩·크레딧 상태를 확인하고, 권한과 크레딧 변경은 웹 관리자에서 진행해 주세요."
       >
         <Stack>
           <TextField value={query} onChangeText={setQuery} placeholder="user id / email / 이름 검색" />
@@ -119,25 +132,42 @@ export default function AdminMembersScreen() {
               </Button>
             ))}
           </Cluster>
-          <Button variant="secondary" disabled={isLoading} onPress={load}>
+          <Button variant="secondary" disabled={isLoading} onPress={() => void load()}>
             {isLoading ? "조회 중..." : "검색"}
           </Button>
         </Stack>
       </AdminPageHeader>
 
       {error ? (
-        <Card>
-          <BodyText>{error}</BodyText>
-        </Card>
+        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+          <Card>
+            <Stack gap={10}>
+              <BodyText>{error}</BodyText>
+              <Button variant="secondary" onPress={() => void load()}>다시 시도</Button>
+            </Stack>
+          </Card>
+        </View>
       ) : null}
+      <BodyText>현재 {members.length.toLocaleString("ko-KR")} / 총 {total.toLocaleString("ko-KR")}명</BodyText>
+    </Stack>
+  );
 
-      <Stack>
-        {isLoading ? <AdminEmptyCard>회원 목록을 불러오는 중입니다.</AdminEmptyCard> : null}
-        {!isLoading && members.length === 0 ? <AdminEmptyCard>조회된 회원이 없습니다.</AdminEmptyCard> : null}
-        {members.map((member) => (
-          <MemberCard key={member.id} member={member} />
-        ))}
-      </Stack>
-    </Screen>
+  return (
+    <VirtualizedListScreen
+        data={members}
+        keyExtractor={(member) => member.id}
+        renderItem={({ item }) => <MemberCard member={item} />}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ListHeaderComponent={listHeader}
+        ListHeaderComponentStyle={{ marginBottom: 16 }}
+        ListEmptyComponent={!isLoading ? <AdminEmptyCard>조회된 회원이 없습니다.</AdminEmptyCard> : null}
+        ListFooterComponent={nextCursor ? (
+          <Button variant="secondary" disabled={isLoading} onPress={() => void load({ append: true })}>
+            {isLoading ? "불러오는 중..." : "회원 더 보기"}
+          </Button>
+        ) : null}
+        contentContainerStyle={{ gap: 0, padding: 8, paddingBottom: 32 }}
+        refreshControl={<RefreshControl refreshing={isLoading && members.length > 0} onRefresh={() => void load()} />}
+    />
   );
 }

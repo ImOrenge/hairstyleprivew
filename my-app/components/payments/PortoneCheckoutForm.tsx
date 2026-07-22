@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { mapWebUserError } from "../../lib/web-user-message";
 import { Button } from "../ui/Button";
+import { SubscriptionPolicyDisclosure } from "../billing/SubscriptionPolicyDisclosure";
 import type { SelfServeSubscriptionPlanKey } from "./PortoneSubscriptionButton";
 
 type BillingKeyMethod = "CARD";
@@ -209,9 +211,8 @@ export function PortoneCheckoutForm({
 
       window.location.assign(successRedirectUrl(successRedirectPath, planKey, result));
     } catch (err) {
-      const message = err instanceof Error ? err.message : "구독 처리 중 오류가 발생했습니다.";
       console.error(`[portone-checkout] ${planKey} subscription failed:`, err);
-      setError(message);
+      setError(mapWebUserError(err, "구독 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setPending(false);
     }
@@ -309,10 +310,15 @@ export function PortoneCheckoutForm({
       </div>
 
       {error ? (
-        <p className="rounded-md border border-[var(--app-danger)] bg-[var(--app-surface-muted)] p-3 text-xs font-semibold text-[var(--app-danger)]">
+        <p role="alert" className="rounded-md border border-[var(--app-danger)] bg-[var(--app-surface-muted)] p-3 text-xs font-semibold text-[var(--app-danger)]">
           {error}
         </p>
       ) : null}
+
+      <div className="rounded-md border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-3">
+        <p className="mb-2 text-xs font-black text-[var(--app-text)]">결제 전 필수 안내</p>
+        <SubscriptionPolicyDisclosure compact />
+      </div>
 
       <Button type="submit" disabled={pending} className="h-11 w-full">
         {pending ? "결제 연결 중..." : "결제단계로 진행하기"}

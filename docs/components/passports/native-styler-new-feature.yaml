@@ -1,0 +1,89 @@
+id: native.styler.new-feature
+name: MobileStylerNewFeature
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/components/styler/MobileStylerNewFeature.tsx
+related_source:
+  - apps/hairfit-app/components/styler/useMobileStylerNewController.ts
+  - apps/hairfit-app/components/styler/MobileStylerNewView.tsx
+  - apps/hairfit-app/components/styler/mobileStylerModel.ts
+  - apps/hairfit-app/hooks/useSafeBackNavigation.ts
+owner: styler-feature
+
+public_api:
+  exports:
+    - MobileStylerNewFeature
+  props: []
+  events:
+    - profile-load-save-and-photo-upload
+    - private-body-photo-delete
+    - hairstyle-selection
+    - recommendation-command
+    - quote-refresh
+    - lookbook-generation-command
+    - billing-and-session-navigation
+    - guarded-screen-exit
+
+boundaries:
+  controller:
+    source: apps/hairfit-app/components/styler/useMobileStylerNewController.ts
+    owns:
+      - route-param-hydration
+      - API-client-calls
+      - request-ID-cancellation
+      - photo-picker
+      - private-photo-delete-command
+      - safe-user-error-mapping
+      - wizard-state-and-commands
+      - Phase-03-quote-normalization
+      - route-navigation
+      - back-navigation-block-state
+  view:
+    source: apps/hairfit-app/components/styler/MobileStylerNewView.tsx
+    delegates:
+      - model-copy-localization: apps/hairfit-app/hooks/useMobileResultTranslations.ts
+    forbidden:
+      - API-client
+      - expo-router
+      - request-lifecycle-state
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  global_css_changes: false
+
+state:
+  controller_owned:
+    - profile-form
+    - selected-hairstyle
+    - genre-and-recommendation
+    - quote-and-command-status
+    - modal-state
+    - hair-list-error-state
+  view_owned:
+    - translation-cache-refresh-via-shared-hook
+
+a11y_contract:
+  controls: native-button-and-text-field
+  hair_modal: native.styler.hair-selection-modal
+  status: accessibilityLiveRegion-polite
+  images: purpose-specific-Korean-label-and-image-role
+  android_back: blocked-during-critical-commands
+
+test_surface:
+  structure: my-app/lib/styler-decomposition.test.ts
+  jest: apps/hairfit-app/__tests__/styling-paid-action.test.ts
+  copy_and_selection_jest: apps/hairfit-app/__tests__/styler-copy-and-selection.test.tsx
+  safe_back_jest: apps/hairfit-app/__tests__/safe-back-navigation.test.ts
+  mobile_sync: scripts/mobile-sync-verify.mjs
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: behavioral
+  behavioral_change_requires:
+    - iOS-and-Android-Styler-interaction-test
+
+promotion_blockers:
+  - no-authenticated-device-evidence
+  - no-photo-permission-denial-device-evidence

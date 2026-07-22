@@ -1,0 +1,73 @@
+id: web.styler.hair-selection-modal
+name: StylerHairSelectionModal
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/styler/StylerHairSelectionModal.tsx
+owner: styler-feature
+
+public_api:
+  exports:
+    - StylerHairSelectionModal
+  props:
+    - open
+    - groups
+    - isLoading
+    - error
+    - selectedVariantId
+    - onClose
+    - onSelect
+  events:
+    - close
+    - select-generation-variant
+
+boundaries:
+  owns:
+    - loading-error-empty-states
+    - hairstyle-group-rendering
+  delegates:
+    - modal-rendering-and-keyboard: web.ui.dialog
+    - async-state-precedence: web.ui.async-boundary
+    - model-copy-localization: my-app/hooks/useResultTranslations.ts
+  forbidden:
+    - fetch
+    - next-navigation-hooks
+    - Styler-command-state
+
+styling:
+  strategy: shared-dialog-contract-plus-existing-tailwind-utilities
+  shared_contract:
+    component: web.ui.dialog
+    size: xl
+    namespace: c-dialog
+
+state:
+  local:
+    - translation-cache-refresh-via-shared-hook
+  external_store: false
+
+a11y_contract:
+  role: dialog
+  aria_modal: true
+  label: delegated-dialog-title
+  keyboard:
+    - Escape-close-via-dialog
+    - Tab-and-Shift-Tab-focus-trap-via-dialog
+    - trigger-focus-restore-via-dialog
+    - native-button-selection
+  selection:
+    - aria-pressed
+
+test_surface:
+  structure: my-app/lib/styler-decomposition.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: behavioral
+  behavioral_change_requires:
+    - keyboard-and-focus-interaction-test
+
+promotion_blockers:
+  - authenticated-browser-keyboard-evidence-missing
+  - single-feature-consumer

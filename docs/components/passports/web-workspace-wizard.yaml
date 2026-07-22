@@ -1,0 +1,120 @@
+id: web.workspace.customer-generation
+name: WorkspaceWizard
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/workspace/WorkspaceWizard.tsx
+related_source:
+  - my-app/components/workspace/useCustomerGenerationController.ts
+  - my-app/components/workspace/customerGenerationAdapter.ts
+  - my-app/components/workspace/WorkspaceStepNavigation.tsx
+  - my-app/components/workspace/WorkspaceAcceptedGenerationStatus.tsx
+  - my-app/components/workspace/WorkspaceGenerationSubmission.tsx
+  - my-app/components/workspace/WorkspaceVariantSelection.tsx
+owner: generation-feature
+
+public_api:
+  exports:
+    - WorkspaceWizard
+  props: []
+  events: []
+
+boundaries:
+  view:
+    owns:
+      - workspace-layout
+      - customer-copy
+      - plain-prop-child-composition
+    forbidden:
+      - fetch
+      - next-navigation
+      - generation-store
+      - generation-command-hook
+      - upload-validation-hook
+  controller:
+    source: my-app/components/workspace/useCustomerGenerationController.ts
+    owns:
+      - owner-scoped-image-hydration
+      - draft-and-quote-preparation
+      - step-transition-guards
+      - generation-acceptance-command
+      - selected-variant-command
+      - customer-route-navigation
+    external_store:
+      source: my-app/store/useGenerationStore.ts
+      subscription: one-shallow-selector
+  adapter:
+    source: my-app/components/workspace/customerGenerationAdapter.ts
+    owns:
+      - GET /api/style-profile
+      - PATCH /api/generations/:generationId
+    side_effects:
+      - customer-profile-read
+      - customer-selection-write
+
+dependencies:
+  internal:
+    - my-app/components/workspace/useCustomerGenerationController.ts
+    - my-app/components/workspace/WorkspaceStepNavigation.tsx
+    - my-app/components/workspace/WorkspaceAcceptedGenerationStatus.tsx
+    - my-app/components/workspace/WorkspaceGenerationSubmission.tsx
+    - my-app/components/workspace/WorkspaceVariantSelection.tsx
+    - my-app/components/upload/UploadArea.tsx
+    - my-app/components/generate/GenerationJobProgressCard.tsx
+    - my-app/components/generate/PipelineStatusIndicator.tsx
+    - my-app/components/billing/PaidActionQuoteCard.tsx
+  external:
+    - next/link
+    - lucide-react
+    - "@hairfit/shared"
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+  inline_styles_allowed:
+    - personal-color-swatch-background
+
+state:
+  view_owned: []
+  controller_owned:
+    - current-step
+    - accepted-generation-guide
+    - upload-busy
+    - selection-save-busy
+    - action-error
+    - mobile-step-overlay-open
+    - aftercare-confirm-open
+    - personal-color
+  external_store_direct_in_view: false
+
+a11y_contract:
+  step_navigation: web.workspace.step-navigation
+  async_status:
+    - role-status
+    - aria-live-polite
+  variant_selection:
+    control: native-button
+    selected: aria-pressed
+
+test_surface:
+  controller_contract: my-app/lib/workspace-decomposition.test.ts
+  canonical_entry: my-app/lib/canonical-generation-entry.test.ts
+  durable_acceptance: my-app/lib/generation-durable-acceptance.test.ts
+  owner_isolation: my-app/lib/generation-owner-state.test.ts
+  upload_validation_contract: my-app/lib/upload-validation-harness.test.ts
+  upload_interaction: tests/web-e2e/upload-validation.spec.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  compatible_change_requires:
+    - passport-update
+    - workspace-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - authenticated-workspace-interaction-test
+
+promotion_blockers:
+  - no-authenticated-visual-regression-evidence
+  - no-keyboard-interaction-evidence

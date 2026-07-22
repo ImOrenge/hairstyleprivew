@@ -1,0 +1,68 @@
+id: web.styler.session-feature
+name: StylerSessionFeature
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/styler/StylerSessionFeature.tsx
+related_source:
+  - my-app/components/styler/useStylerSessionController.ts
+  - my-app/components/styler/StylerSessionView.tsx
+  - my-app/components/styler/stylerSessionModel.ts
+owner: styler-feature
+
+public_api:
+  exports:
+    - StylerSessionFeature
+  props: []
+  events:
+    - session-refresh
+    - quote-refresh
+    - generation-or-retry-command
+    - billing-navigation
+
+boundaries:
+  controller:
+    source: my-app/components/styler/useStylerSessionController.ts
+    owns:
+      - session-fetch-and-request-sequence
+      - three-second-polling
+      - AbortController-cleanup
+      - quote-and-generation-commands
+      - receipt-normalization
+  view:
+    source: my-app/components/styler/StylerSessionView.tsx
+    forbidden:
+      - fetch
+      - next-navigation
+      - polling-timer
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+
+state:
+  controller_owned:
+    - session
+    - quote
+    - loading-and-error
+    - generation-command
+  view_owned: []
+
+a11y_contract:
+  status_feedback: InlineAlert
+  actions: native-button-and-link
+
+test_surface:
+  structure: my-app/lib/styler-decomposition.test.ts
+  paid_action: my-app/lib/paid-action-atomic-execution.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  behavioral_change_requires:
+    - authenticated-polling-and-retry-interaction-test
+
+promotion_blockers:
+  - no-authenticated-terminal-session-evidence
+  - no-connection-loss-runtime-evidence

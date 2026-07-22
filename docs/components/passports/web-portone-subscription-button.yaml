@@ -1,0 +1,92 @@
+id: web.billing.portone-subscription-button
+name: PortoneSubscriptionButton
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/payments/PortoneSubscriptionButton.tsx
+owner: billing-feature
+
+public_api:
+  exports:
+    - PortoneSubscriptionButton
+    - SelfServeSubscriptionPlanKey
+  props:
+    - planKey
+    - children
+    - variant
+    - disabled
+    - initialEmail
+    - requireAuth
+    - subscriptionAccessMode
+    - successRedirectPath
+  events:
+    - open-waitlist
+    - open-login-prompt
+    - navigate-checkout
+
+dependencies:
+  internal:
+    - my-app/components/layout/HeaderAccountContext.tsx
+    - my-app/components/payments/SubscriptionWaitlistForm.tsx
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/Dialog.tsx
+  external:
+    - next/link
+    - react
+
+boundaries:
+  owns:
+    - checkout-return-target-construction
+    - auth-aware-navigation-choice
+    - waitlist-and-login-prompt-state
+  delegates:
+    - modal-focus-keyboard-and-scroll: web.ui.dialog
+  forbidden:
+    - payment-provider-request
+    - subscription-write
+
+styling:
+  strategy: shared-button-and-dialog-contracts
+  shared_contracts:
+    - web.ui.button
+    - web.ui.dialog
+  global_css_changes: false
+
+state:
+  local:
+    - loginPromptOpen
+    - waitlistOpen
+  external:
+    - header-auth-account
+
+a11y_contract:
+  trigger:
+    - link-semantics
+    - aria-disabled-while-auth-loading
+  dialogs:
+    - labelled-title-and-description
+    - Escape-dismissal
+    - focus-trap
+    - trigger-focus-restore
+    - body-scroll-lock
+
+test_surface:
+  structure: my-app/lib/dialog-adoption.test.ts
+  interaction: required
+  visual: required
+  observed_usage:
+    - my-app/components/home/PricingPreview.tsx
+    - my-app/components/mypage/panels/MyPagePlanPanel.tsx
+
+change_policy:
+  current_gate: behavioral
+  behavioral_change_requires:
+    - dialog-interaction-or-manual-record
+    - typecheck
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_blockers:
+  - no-automated-browser-interaction-test
+  - checkout-and-auth-runtime-evidence-missing

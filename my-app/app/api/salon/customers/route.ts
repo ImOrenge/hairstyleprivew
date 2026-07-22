@@ -11,6 +11,7 @@ import {
   runList,
   trimString,
 } from "../../../../lib/salon-crm";
+import { decodeListCursor, encodeListCursor } from "../../../../lib/list-cursor";
 
 interface CreateCustomerRequest {
   source?: unknown;
@@ -28,6 +29,12 @@ function escapeSearchValue(value: string) {
   return value.replace(/[%,()]/g, "");
 }
 
+function parseLimit(raw: string | null) {
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) return 100;
+  return Math.min(100, Math.max(10, Math.floor(parsed)));
+}
+
 export async function GET(request: Request) {
   const context = await getSalonOwnerContext("read");
   if (!context.ok) {
@@ -38,15 +45,26 @@ export async function GET(request: Request) {
   const q = escapeSearchValue(trimString(url.searchParams.get("q"), 80));
   const source = url.searchParams.get("source");
   const aftercareStatus = url.searchParams.get("aftercareStatus");
+  const limit = parseLimit(url.searchParams.get("limit"));
+  const cursorParam = url.searchParams.get("cursor");
+  const cursor = decodeListCursor(cursorParam);
+  if (cursorParam && !cursor) {
+    return NextResponse.json({ error: "Invalid pagination cursor" }, { status: 400 });
+  }
 
   try {
     let query = context.supabase
       .from("salon_customers")
-      .select(CUSTOMER_COLUMNS)
+      .select(CUSTOMER_COLUMNS, { count: "exact" })
       .eq("owner_user_id", context.userId)
       .is("archived_at", null)
       .order("updated_at", { ascending: false })
-      .limit(100);
+      .order("id", { ascending: false })
+      .limit(limit + 1);
+
+    if (cursor) {
+      query = query.or(`updated_at.lt.${cursor.sortValue},and(updated_at.eq.${cursor.sortValue},id.lt.${cursor.id})`);
+    }
 
     if (q) {
       query = query.or(`name.ilike.%${q}%,phone.ilike.%${q}%,email.ilike.%${q}%`);
@@ -56,12 +74,20 @@ export async function GET(request: Request) {
       query = query.eq("source", source);
     }
 
-    const { data, error } = await runList<Record<string, unknown>>(query);
+    const { data, error, count } = (await query) as unknown as {
+      data: Record<string, unknown>[] | null;
+      error: { message: string } | null;
+      count: number | null;
+    };
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    let customers = (data || []).map(normalizeCustomer);
+    const rows = data || [];
+    const hasMore = rows.length > limit;
+    const pageRows = rows.slice(0, limit);
+    let customers = pageRows.map(normalizeCustomer);
+    const lastRow = pageRows.at(-1);
 
     if (aftercareStatus === "pending") {
       const now = new Date().toISOString();
@@ -91,8 +117,14 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         customers,
+        limit,
+        total: count ?? customers.length,
+        nextCursor:
+          hasMore && lastRow
+            ? encodeListCursor(String(lastRow.updated_at || ""), String(lastRow.id || ""))
+            : null,
         summary: {
-          totalCustomers: customers.length,
+          totalCustomers: count ?? customers.length,
           linkedMembers: customers.filter((customer) => customer.isLinkedMember).length,
           pendingAftercare: pendingAftercare.length,
           dueToday: pendingAftercare.filter((task) => task.scheduledFor <= todayIso).length,

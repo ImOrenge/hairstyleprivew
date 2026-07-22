@@ -1,43 +1,66 @@
 import { useClerk } from "@clerk/clerk-expo";
-import { useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { BodyText, Heading, Panel, Screen, Stack } from "@hairfit/ui-native";
+import { BodyText, Heading, Panel, Stack } from "@hairfit/ui-native";
+import { View } from "react-native";
+import { AppScreen } from "../components/app/AppScreen";
+import {
+  buildAuthRoute,
+  parseResumeTargetParam,
+  resolveAuthResumePath,
+  resolveAuthResumeTarget,
+} from "../lib/auth-resume";
+import { mapMobileUserError } from "../lib/mobile-user-message";
 
 export default function SsoCallbackScreen() {
   const clerk = useClerk();
   const router = useRouter();
+  const { resume } = useLocalSearchParams<{ resume?: string | string[] }>();
   const [message, setMessage] = useState("외부 인증을 완료하는 중입니다.");
+  const resumeParam = Array.isArray(resume) ? resume[0] : resume;
 
   useEffect(() => {
-    void clerk
-      .handleRedirectCallback(
+    let active = true;
+
+    void (async () => {
+      const target = parseResumeTargetParam(resumeParam) ?? await resolveAuthResumeTarget();
+      const destination = await resolveAuthResumePath(resumeParam);
+
+      await clerk.handleRedirectCallback(
         {
-          signInUrl: "/login",
-          signUpUrl: "/signup",
-          signInFallbackRedirectUrl: "/",
-          signInForceRedirectUrl: "/",
-          signUpFallbackRedirectUrl: "/",
-          signUpForceRedirectUrl: "/",
-          continueSignUpUrl: "/",
+          signInUrl: buildAuthRoute("/login", target),
+          signUpUrl: buildAuthRoute("/signup", target),
+          signInFallbackRedirectUrl: destination,
+          signUpFallbackRedirectUrl: destination,
+          continueSignUpUrl: buildAuthRoute("/signup", target),
         },
-        async (to) => {
-          router.replace(to);
+        async () => {
+          if (active) {
+            router.replace(destination as Href);
+          }
         },
-      )
-      .catch((error: unknown) => {
-        const errorMessage = error instanceof Error ? error.message : "외부 인증 콜백 처리에 실패했습니다.";
-        setMessage(errorMessage);
-      });
-  }, [clerk, router]);
+      );
+    })().catch((error: unknown) => {
+      if (active) {
+        setMessage(mapMobileUserError(error, "외부 인증을 완료하지 못했습니다. 로그인 화면에서 다시 시도해 주세요."));
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [clerk, resumeParam, router]);
 
   return (
-    <Screen>
+    <AppScreen>
       <Panel>
         <Stack>
           <Heading>인증 확인</Heading>
-          <BodyText>{message}</BodyText>
+          <View accessibilityLiveRegion="polite">
+            <BodyText>{message}</BodyText>
+          </View>
         </Stack>
       </Panel>
-    </Screen>
+    </AppScreen>
   );
 }

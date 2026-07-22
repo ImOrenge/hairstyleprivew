@@ -1,0 +1,120 @@
+id: web.ui.surface
+name: Surface family
+platform: web
+kind: layout
+status: stable
+source: my-app/components/ui/Surface.tsx
+owner: web-ui
+
+public_api:
+  exports:
+    - SurfaceProps
+    - AppPage
+    - Panel
+    - SurfaceCard
+    - InverseSection
+    - InverseCard
+  props:
+    - as: T extends ElementType
+    - className: string
+    - children: ReactNode
+    - inherited: ComponentPropsWithoutRef<T> matched to as
+  slots:
+    - children
+  events:
+    - inherited-selected-element-events
+
+dependencies:
+  internal:
+    - my-app/lib/utils.ts#cn
+  external:
+    - react
+  forbidden:
+    - feature-stores
+    - route-state
+    - api-clients
+
+styling:
+  strategy: semantic-data-contract-with-legacy-aliases
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-surface
+  tokens:
+    - --app-bg
+    - --app-surface
+    - --app-surface-muted
+    - --app-border
+    - --app-text
+    - --app-inverse
+    - --app-inverse-text
+    - --app-radius-panel
+    - --app-shadow
+    - --app-component-pattern-line
+    - --app-component-pattern-line-alt
+  variants:
+    - page
+    - panel
+    - card
+    - inverse-section
+    - inverse-card
+  data_contract:
+    data-surface: page | panel | card | inverse | inverse-card
+    data-pointer-glow: surface on non-page variants
+  compatibility_aliases:
+    - app-page
+    - app-panel
+    - app-card
+    - app-inverse
+    - app-inverse-card
+  allows_className: true
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  role: native-selected-by-as
+  keyboard: native-selected-element
+  heading_structure: consumer-owned
+  landmark_semantics: consumer-owned
+
+test_surface:
+  unit:
+    - my-app/lib/surface-stability.test.ts
+  interaction:
+    - tests/web-e2e/surface-stability.spec.ts#polymorphic-semantics-keyboard-axe
+  visual:
+    - tests/web-e2e/__screenshots__/surface-stability.spec.ts/surface-matrix-320-light.png
+    - tests/web-e2e/__screenshots__/surface-stability.spec.ts/surface-matrix-375-dark.png
+  observed_usage:
+    import_files: 23
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - polymorphic-prop-typecheck
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+  style_contract_change_requires:
+    - app-namespace-and-token-search
+    - responsive-visual-verification
+
+promotion_evidence:
+  - element-aware SurfaceProps<T> and anchor/landmark/section/article typecheck
+  - semantic c-surface selectors isolated in the components cascade layer
+  - legacy app and hf aliases preserved without selector removal
+  - contract test 3/3 and production Chromium matrix 3/3
+  - keyboard fragment navigation and serious-or-critical axe violations 0
+  - 320px light and 375px dark visual baselines with horizontal overflow 0
+
+promotion_blockers: []
+
+residual_risks:
+  - legacy app and hf aliases remain unlayered until direct class consumers are migrated
+  - consumer-selected landmark hierarchy still requires page-level review
+  - actual screen-reader and authenticated feature-device validation remain external gates

@@ -1,0 +1,101 @@
+id: web.salon.workspace
+name: SalonWorkspaceWizard
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/salon/SalonWorkspaceWizard.tsx
+related_source:
+  - my-app/components/salon/useSalonGenerationController.ts
+  - my-app/components/salon/salonGenerationAdapter.ts
+  - my-app/components/salon/SalonWorkspaceStepNavigation.tsx
+  - my-app/components/salon/SalonWorkspaceVariantGrid.tsx
+owner: salon-generation-feature
+
+public_api:
+  exports:
+    - SalonWorkspaceWizard
+  props:
+    - "customerId: string"
+  events: []
+
+boundaries:
+  view:
+    owns:
+      - salon-workspace-layout
+      - consent-and-crm-form-rendering
+      - plain-prop-child-composition
+    forbidden:
+      - fetch
+      - next-navigation
+      - upload-validation-hook
+      - quote-expiry-hook
+  controller:
+    source: my-app/components/salon/useSalonGenerationController.ts
+    owns:
+      - customer-and-consent-state
+      - salon-quote-request-fencing
+      - background-generation-polling
+      - generation-step-transitions
+      - salon-visit-and-crm-confirmation
+  adapter:
+    source: my-app/components/salon/salonGenerationAdapter.ts
+    owns:
+      - salon-customer-read
+      - paid-action-quote
+      - generation-draft-create
+      - generation-status-and-detail-read
+      - salon-generation-acceptance
+      - salon-crm-confirmation
+
+dependencies:
+  internal:
+    - my-app/components/salon/useSalonGenerationController.ts
+    - my-app/components/salon/SalonWorkspaceStepNavigation.tsx
+    - my-app/components/salon/SalonWorkspaceVariantGrid.tsx
+    - my-app/components/billing/PaidActionQuoteCard.tsx
+    - my-app/components/generate/PipelineStatusIndicator.tsx
+  external:
+    - next/link
+    - next/image
+    - lucide-react
+
+state:
+  view_owned: []
+  controller_owned:
+    - customer-consent-and-style-target
+    - draft-and-preview
+    - quote-and-credit-receipt
+    - generation-progress-and-variants
+    - salon-visit-and-crm-form
+  external_store_direct_in_view: false
+
+a11y_contract:
+  alerts:
+    - visible-error
+    - visible-success
+  async_status:
+    - role-status
+    - aria-live-polite
+  form_controls: native-label-associated
+
+test_surface:
+  structure: my-app/lib/workspace-decomposition.test.ts
+  billing: my-app/lib/generation-credit-reservation.test.ts
+  durable_acceptance: my-app/lib/generation-durable-acceptance.test.ts
+  upload_validation_contract: my-app/lib/upload-validation-harness.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: patch
+  compatible_change_requires:
+    - passport-update
+    - workspace-contract-test
+    - generation-workflow-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - authenticated-salon-owner-interaction-test
+
+promotion_blockers:
+  - no-authenticated-salon-owner-visual-regression-evidence
+  - no-keyboard-interaction-evidence

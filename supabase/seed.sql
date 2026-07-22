@@ -33,7 +33,7 @@ with demo_generation as (
     'completed'::public.generation_status,
     5,
     'gemini',
-    'gemini-3-pro-image-preview'
+    'gemini-3-pro-image'
   where not exists (
     select 1
       from public.generations

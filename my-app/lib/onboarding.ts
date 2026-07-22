@@ -1,3 +1,8 @@
+import {
+  getGenerationAccountSetupPath,
+  type AccountSetupContinuation,
+} from "@hairfit/shared/auth/generation-entry";
+
 export const ACCOUNT_TYPES = ["member", "salon_owner", "admin"] as const;
 export const ONBOARDING_ACCOUNT_TYPES = ["member", "salon_owner"] as const;
 export const MEMBER_STYLE_TARGETS = ["male", "female"] as const;
@@ -10,7 +15,7 @@ export type MemberStyleTarget = (typeof MEMBER_STYLE_TARGETS)[number];
 export type MemberStyleTone = (typeof MEMBER_STYLE_TONES)[number];
 
 const DEFAULT_RETURN_URL = "/mypage";
-export const ACCOUNT_SETUP_PATH = "/mypage?tab=account&setup=1";
+export const ACCOUNT_SETUP_PATH = getGenerationAccountSetupPath("generation-upload");
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -41,8 +46,10 @@ export function normalizeAppPath(value: string | null | undefined, fallback = DE
   return trimmed;
 }
 
-export function buildAccountSetupRedirectUrl() {
-  return ACCOUNT_SETUP_PATH;
+export function buildAccountSetupRedirectUrl(
+  continuation: AccountSetupContinuation = "generation-upload",
+) {
+  return getGenerationAccountSetupPath(continuation);
 }
 
 export function parseOnboardingMetadata(metadata: unknown) {

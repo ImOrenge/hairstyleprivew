@@ -1,0 +1,108 @@
+id: native.ui.text-field
+name: TextField
+platform: native
+kind: primitive
+status: candidate
+source: packages/ui-native/src/index.tsx
+owner: native-ui
+
+public_api:
+  exports:
+    - TextField
+    - TextFieldProps
+  props:
+    - label: ReactNode
+    - helper: ReactNode
+    - error: ReactNode
+    - ref: forwarded TextInput ref
+    - allowFontScaling: boolean (default true)
+    - inherited: TextInputProps
+  slots:
+    - label
+    - helper
+    - error
+  events:
+    - inherited-TextInput-events
+
+dependencies:
+  internal:
+    - packages/ui-native/src/index.tsx#FieldLabel
+    - packages/ui-native/src/index.tsx#useThemeColors
+  external:
+    - react
+    - react-native
+  forbidden:
+    - form-feature-state
+    - api-clients
+    - route-state
+
+styling:
+  strategy: react-native-stylesheet
+  stylesheet: packages/ui-native/src/index.tsx#styles
+  tokens:
+    - colors
+    - darkColors
+    - radii.control
+    - spacing.xs
+    - spacing.sm
+    - spacing.md
+  variants:
+    - default
+    - error
+    - disabled
+  allows_style: true
+  runtime_styles_allowed:
+    - invalid-border-color
+    - editable-opacity
+    - consumer-style-override
+
+state:
+  owned: []
+  derived:
+    - invalid-from-error
+    - disabled-from-editable
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  label:
+    string-label-fallback: accessibilityLabel
+    explicit-accessibilityLabel: forwarded
+  disabled:
+    editable: false
+    accessibilityState: disabled
+  invalid:
+    aria-invalid: true-when-error
+    aria-errormessage: error-or-helper-nativeID-when-invalid
+  error:
+    accessibilityLiveRegion: polite
+  helper:
+    relationship-to-input: aria-describedby-to-helper-or-error-nativeID
+  dynamic_type:
+    input: allowFontScaling-default-true
+    label-helper-error: allowFontScaling-enabled
+
+test_surface:
+  unit:
+    present: apps/hairfit-app/__tests__/ui-native.test.tsx
+    verification: ref-description-error-and-dynamic-type-contract-passing-2026-07-17
+  interaction: required
+  visual: required
+  observed_usage:
+    jsx_files: 11
+
+change_policy:
+  current_gate: compatible-behavioral
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+    - focused-component-test
+  behavioral_change_requires:
+    - label-error-disabled-interaction-test
+  breaking_change_requires:
+    - prop-and-import-usage-search
+    - migration-note
+
+promotion_blockers:
+  - non-string-label-has-no-derived-accessibility-label
+  - no-platform-visual-evidence

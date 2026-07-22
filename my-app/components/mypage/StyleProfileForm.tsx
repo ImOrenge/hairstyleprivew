@@ -4,6 +4,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { mapWebResponseError } from "../../lib/web-user-message";
 import { Button } from "../ui/Button";
 import type { StyleProfile } from "../../lib/fashion-types";
 import { useAdminReadOnly } from "../../hooks/useAdminReadOnly";
@@ -96,7 +97,7 @@ export function StyleProfileForm({
         setAvoidText((data.profile.avoidItems || []).join(", "));
         setError(null);
       } else {
-        setError(data.error || "바디 프로필을 불러오지 못했습니다.");
+        setError(mapWebResponseError(response.status, "바디 프로필을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
       }
       setIsLoading(false);
     }
@@ -140,7 +141,7 @@ export function StyleProfileForm({
       setAvoidText((data.profile.avoidItems || []).join(", "));
       setMessage("바디 프로필을 저장했습니다.");
     } else {
-      setError(data.error || "바디 프로필 저장에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "바디 프로필 저장에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요."));
     }
     setIsSaving(false);
   };
@@ -169,7 +170,7 @@ export function StyleProfileForm({
       setAvoidText((data.profile.avoidItems || []).join(", "));
       setMessage("전신 참고 사진을 저장했습니다.");
     } else {
-      setError(data.error || "전신 사진 업로드에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "전신 사진 업로드에 실패했습니다. 사진을 확인한 뒤 다시 시도해 주세요.", "photo"));
     }
     setIsUploading(false);
   };
@@ -189,7 +190,7 @@ export function StyleProfileForm({
       setProfile({ ...initialProfile, ...data.profile });
       setMessage("전신 참고 사진을 삭제했습니다.");
     } else {
-      setError(data.error || "전신 사진 삭제에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "전신 사진 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요."));
     }
     setIsUploading(false);
   };
@@ -244,7 +245,13 @@ export function StyleProfileForm({
           <div className="space-y-3">
             <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-stone-200 bg-stone-100">
               {profile.bodyPhotoUrl ? (
-                <img src={profile.bodyPhotoUrl} alt="전신 참고 사진" className="h-full w-full object-cover" />
+                <img
+                  src={profile.bodyPhotoUrl}
+                  alt="전신 참고 사진"
+                  className="h-full w-full object-cover"
+                  decoding="async"
+                  loading="lazy"
+                />
               ) : (
                 <div className="flex h-full items-center justify-center px-6 text-center text-sm text-stone-500">
                   패션 룩북 생성을 위해 전신 참고 사진을 업로드하세요.
@@ -281,7 +288,7 @@ export function StyleProfileForm({
             <div className="rounded-2xl border border-stone-200 bg-white p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold uppercase text-stone-400">Personal Color</p>
+                  <p className="text-xs font-bold uppercase text-stone-400">퍼스널컬러</p>
                   <p className="mt-1 text-sm font-semibold text-stone-900">
                     {profile.personalColor
                       ? `${formatTone(profile.personalColor.tone)} · ${formatContrast(profile.personalColor.contrast)}`
@@ -410,8 +417,8 @@ export function StyleProfileForm({
               <Button type="button" onClick={handleSave} disabled={isSaving || isAdminReadOnly}>
                 {isSaving ? "저장 중..." : "바디 프로필 저장"}
               </Button>
-              {message ? <p className="text-sm font-medium text-emerald-700">{message}</p> : null}
-              {error ? <p className="text-sm font-medium text-rose-600">{error}</p> : null}
+              {message ? <p role="status" aria-live="polite" className="text-sm font-medium text-emerald-700">{message}</p> : null}
+              {error ? <p role="alert" className="text-sm font-medium text-rose-600">{error}</p> : null}
             </div>
           </fieldset>
         </div>

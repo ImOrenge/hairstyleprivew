@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  needsKoreanDisplayTranslation,
+  resolveKoreanDisplayCopy,
+} from "@hairfit/shared";
 
 const translationCache = new Map<string, string>();
 
 function normalizeText(text: string | null | undefined): string {
   return text?.trim() ?? "";
-}
-
-function needsTranslation(text: string): boolean {
-  return /[A-Za-z]/.test(text) && !/[가-힣]/.test(text);
 }
 
 export function useResultTranslations(texts: Array<string | null | undefined>) {
@@ -31,7 +31,7 @@ export function useResultTranslations(texts: Array<string | null | undefined>) {
   useEffect(() => {
     const parsedTexts = JSON.parse(cacheKey) as string[];
     const pendingTexts = parsedTexts.filter(
-      (text) => needsTranslation(text) && !translationCache.has(text),
+      (text) => needsKoreanDisplayTranslation(text) && !translationCache.has(text),
     );
 
     if (pendingTexts.length === 0) {
@@ -78,27 +78,12 @@ export function useResultTranslations(texts: Array<string | null | undefined>) {
     };
   }, [cacheKey]);
 
-  const translate = (text: string | null | undefined) => {
+  const translate = (text: string | null | undefined, fallback = "") => {
     const normalized = normalizeText(text);
-    if (!normalized) {
-      return "";
-    }
-
-    return translationCache.get(normalized) || normalized;
-  };
-
-  const hasTranslated = (text: string | null | undefined) => {
-    const normalized = normalizeText(text);
-    if (!normalized || !needsTranslation(normalized)) {
-      return false;
-    }
-
-    const translated = translationCache.get(normalized);
-    return Boolean(translated && translated !== normalized);
+    return resolveKoreanDisplayCopy(normalized, translationCache.get(normalized), fallback);
   };
 
   return {
     translate,
-    hasTranslated,
   };
 }

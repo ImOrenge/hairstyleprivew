@@ -5,28 +5,37 @@
   "main": "expo-router/entry",
   "scripts": {
     "android": "node ../../scripts/expo-start-with-env.mjs --android",
+    "bundle:check": "expo export --platform all --output-dir .expo/bundle-check --clear",
     "ios": "node ../../scripts/expo-start-with-env.mjs --ios",
+    "lint": "eslint --config eslint.config.js .",
     "start": "node ../../scripts/expo-start-with-env.mjs",
+    "test": "jest --runInBand",
+    "test:auth": "jest --runInBand __tests__/auth-resume.test.ts",
+    "test:components": "jest --runInBand __tests__/ui-native.test.tsx",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "web": "node ../../scripts/expo-start-with-env.mjs --web"
   },
   "dependencies": {
-    "@clerk/clerk-expo": "^2.19.31",
+    "@clerk/clerk-expo": "^2.19.42",
     "@hairfit/api-client": "0.0.0",
     "@hairfit/config": "0.0.0",
     "@hairfit/payments-portone": "0.0.0",
     "@hairfit/shared": "0.0.0",
     "@hairfit/ui-native": "0.0.0",
     "@portone/react-native-sdk": "^0.6.0",
-    "expo": "^55.0.18",
+    "expo": "^55.0.28",
     "expo-constants": "^55.0.15",
-    "expo-image-picker": "^55.0.19",
-    "expo-intent-launcher": "~55.0.12",
-    "expo-linking": "^55.0.14",
-    "expo-router": "^55.0.13",
-    "expo-secure-store": "^55.0.13",
-    "expo-status-bar": "^55.0.5",
-    "expo-web-browser": "^55.0.14",
+    "expo-crypto": "~55.0.17",
+    "expo-device": "~55.0.19",
+    "expo-image-picker": "~55.0.22",
+    "expo-intent-launcher": "~55.0.14",
+    "expo-linking": "~55.0.16",
+    "expo-network": "~55.0.16",
+    "expo-notifications": "~55.0.25",
+    "expo-router": "~55.0.17",
+    "expo-secure-store": "~55.0.16",
+    "expo-status-bar": "~55.0.6",
+    "expo-web-browser": "~55.0.18",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-native": "0.83.6",
@@ -36,7 +45,24 @@
     "react-native-webview": "13.16.0"
   },
   "devDependencies": {
+    "@testing-library/react-native": "^14.0.1",
+    "@types/jest": "29.5.14",
     "@types/react": "^19.2.14",
+    "eslint": "9.39.5",
+    "eslint-config-expo": "~55.0.1",
+    "jest": "~29.7.0",
+    "jest-expo": "~55.0.20",
     "typescript": "^5"
+  },
+  "jest": {
+    "moduleNameMapper": {
+      "^react$": "<rootDir>/node_modules/react",
+      "^react/(.*)$": "<rootDir>/node_modules/react/$1"
+    },
+    "preset": "jest-expo",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/.expo/"
+    ]
   }
 }

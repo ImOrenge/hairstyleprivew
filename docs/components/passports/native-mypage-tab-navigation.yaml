@@ -1,0 +1,65 @@
+id: native.mypage.tab-navigation
+name: MobileMyPageTabNavigation
+platform: native
+kind: composite
+status: experimental
+source: apps/hairfit-app/components/mypage/MobileMyPageTabNavigation.tsx
+owner: customer-account-feature
+
+public_api:
+  exports:
+    - MobileMyPageTabNavigation
+  props:
+    - "activeTab: MobileMyPageTabId"
+    - "onSelectTab: (tab: MobileMyPageTabId) => void"
+  events:
+    - onSelectTab
+
+dependencies:
+  internal:
+    - apps/hairfit-app/lib/mypage.ts
+  external:
+    - "@hairfit/ui-native"
+    - react-native
+  forbidden:
+    - useRouter
+    - api-client
+    - auth-hook
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  global_css_changes: false
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  derived:
+    - active-tab-variant
+    - selected-accessibility-state
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  container:
+    role: tablist
+  tab:
+    role: tab
+    selected: accessibilityState.selected
+  control: ui-native-button
+
+test_surface:
+  contract: my-app/lib/mypage-decomposition.test.ts
+  interaction: required
+  device: required
+
+change_policy:
+  current_gate: patch
+  compatible_change_requires:
+    - passport-update
+    - mypage-decomposition-contract-test
+    - native-typecheck
+
+promotion_blockers:
+  - customer-mypage-route-contract
+  - no-iOS-VoiceOver-evidence
+  - no-Android-TalkBack-evidence

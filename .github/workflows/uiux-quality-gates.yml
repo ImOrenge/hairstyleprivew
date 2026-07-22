@@ -1,0 +1,194 @@
+name: UIUX quality gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "develop/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: uiux-quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: "true"
+
+jobs:
+  contracts-and-build:
+    name: Contracts, types, lint, and Next build
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --fund=false
+
+      - name: Reject high and critical dependency advisories
+        run: npm audit --audit-level=high
+
+      - name: Verify Supabase migration mirror
+        run: npm run supabase:migrations:mirror:check
+
+      - name: Lint all workspaces
+        run: npm run lint:all
+
+      - name: Type-check all workspaces
+        run: npm run typecheck
+
+      - name: Verify component registry
+        run: npm run component-registry:validate
+
+      - name: Verify generation and paid-action contracts
+        run: |
+          npm run generation-workflow:contract:test
+          npm run generation-entry:contract:test
+          npm run release-rollout:contract:test
+          npm run notification-retention:contract:test
+          npm run generation:original-retention:contract:test
+          npm run paid-action:contract:test
+          npm run styling-workflow:contract:test
+
+      - name: Verify account, admin, result, and UI contracts
+        run: |
+          npm run account-deletion:contract:test
+          npm run admin-high-risk:contract:test
+          npm run result-ux:contract:test
+          npm run list-pagination:contract:test
+          npm run salon-consent:contract:test
+          npm run ui-shell:contract:test
+          npm run global-css:contract:test
+          npm run dialog-accessibility:contract:test
+          npm run user-safe-error:contract:test
+          npm run copy-terminology:contract:test
+          npm run web-image:contract:test
+
+      - name: Verify shared and Expo suites
+        run: |
+          npm --workspace @hairfit/shared test
+          npm --workspace @hairfit/app test
+
+      - name: Build Next.js production application
+        run: npm run build
+
+  database-fresh-chain:
+    name: PostgreSQL fresh chain and smoke tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: hairfit_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d hairfit_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      LOCAL_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/hairfit_ci
+      PGPASSWORD: postgres
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --fund=false
+
+      - name: Apply complete migration chain to an empty database
+        run: npm run supabase:migrations:fresh:check -- --databaseUrl="$LOCAL_DATABASE_URL"
+
+      - name: Run all database smoke suites
+        run: |
+          for smoke in my-app/supabase/tests/*_smoke.sql; do
+            echo "Running $smoke"
+            psql --no-psqlrc -v ON_ERROR_STOP=1 --dbname "$LOCAL_DATABASE_URL" -f "$smoke"
+          done
+
+  public-web-e2e:
+    name: Public and auth-entry web accessibility and visual E2E
+    # Visual baselines were captured on the repository's Windows verification lane.
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --fund=false
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Build isolated production application
+        run: npm run web:e2e:build
+
+      - name: Run public Playwright suite
+        run: npm run web:e2e
+
+      - name: Run login and signup entry Playwright suite
+        run: npm run web:auth-e2e
+
+      - name: Upload Playwright failure evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: public-web-e2e-${{ github.run_attempt }}
+          path: |
+            .artifacts/playwright/
+            .artifacts/playwright-auth/
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 14
+
+  expo-bundle:
+    name: Expo three-platform export
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit --fund=false
+
+      - name: Export web, iOS, and Android bundles
+        run: npm run mobile:bundle

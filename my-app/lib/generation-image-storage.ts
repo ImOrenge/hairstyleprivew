@@ -72,7 +72,6 @@ export async function uploadGenerationResultImage(
     generationId: string;
     variantId: string;
     imageDataUrl: string;
-    previousPath?: string | null;
   },
 ) {
   const parsed = dataUrlToBuffer(input.imageDataUrl);
@@ -91,12 +90,10 @@ export async function uploadGenerationResultImage(
     throw new Error(error.message);
   }
 
-  if (isStorageImagePath(input.previousPath) && input.previousPath !== objectPath) {
-    await supabase.storage.from(GENERATION_RESULTS_BUCKET).remove([input.previousPath]);
-  }
-
-  const signedUrl = await createGenerationImageSignedUrl(supabase, objectPath);
-  return { path: objectPath, signedUrl };
+  // Ownership moves to the database only after the fenced completion RPC.
+  // Signing and previous-artifact cleanup therefore happen in the route after
+  // that commit is confirmed.
+  return { path: objectPath };
 }
 
 export async function uploadGenerationOriginalImage(
@@ -154,6 +151,23 @@ export async function removeGenerationOriginalImage(
 ) {
   const objectPath = typeof path === "string" ? path.trim() : "";
   if (!objectPath.startsWith(GENERATION_ORIGINALS_PREFIX)) {
+    return false;
+  }
+
+  const { error } = await supabase.storage.from(GENERATION_RESULTS_BUCKET).remove([objectPath]);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return true;
+}
+
+export async function removeGenerationResultImage(
+  supabase: SupabaseStorageLike,
+  path: string | null | undefined,
+) {
+  const objectPath = typeof path === "string" ? path.trim() : "";
+  if (!isStorageImagePath(objectPath) || objectPath.startsWith(GENERATION_ORIGINALS_PREFIX)) {
     return false;
   }
 

@@ -34,6 +34,38 @@ interface RenewalFailureSubscriptionRow {
   renewal_failure_count: number | null;
 }
 
+interface RefundPolicyRow {
+  policy_version: string | null;
+}
+
+async function usesCreditLotRefundPolicy(
+  supabase: SupabaseRefundClient,
+  refundRequestId: string,
+) {
+  const { data, error } = await supabase
+    .from("payment_refund_requests")
+    .select("policy_version")
+    .eq("id", refundRequestId)
+    .maybeSingle<RefundPolicyRow>();
+  if (error) throw new Error(error.message);
+  return Boolean(data?.policy_version);
+}
+
+async function finalizeCreditLotRefund(
+  supabase: SupabaseRefundClient,
+  transaction: PortonePaymentTransactionRow,
+  payment: PortOnePaymentResult,
+  eventType: string,
+) {
+  const { error } = await supabase.rpc("finalize_automated_refund", {
+    p_payment_transaction_id: transaction.id,
+    p_provider_cancel_id: null,
+    p_event_type: eventType,
+    p_metadata: { source: "portone-refund-approval", portonePayment: payment },
+  });
+  if (error) throw new Error(error.message);
+}
+
 export interface CreditClawbackRow {
   clawback_id: string;
   ledger_id: number | null;
@@ -203,6 +235,21 @@ export async function finalizePortoneRefundFromLookup({
       throw new Error(result.message);
     }
 
+    if (await usesCreditLotRefundPolicy(supabase, refundRequestId)) {
+      await finalizeCreditLotRefund(
+        supabase,
+        result.transaction,
+        payment,
+        "Transaction.PartialCancelled",
+      );
+      return {
+        status: "completed",
+        payment,
+        transaction: result.transaction,
+        creditClawback: null,
+      };
+    }
+
     return {
       status: "manual_review_required",
       payment,
@@ -235,6 +282,21 @@ export async function finalizePortoneRefundFromLookup({
 
   if (!result.ok) {
     throw new Error(result.message);
+  }
+
+  if (await usesCreditLotRefundPolicy(supabase, refundRequestId)) {
+    await finalizeCreditLotRefund(
+      supabase,
+      result.transaction,
+      payment,
+      "Transaction.Cancelled",
+    );
+    return {
+      status: "completed",
+      payment,
+      transaction: result.transaction,
+      creditClawback: null,
+    };
   }
 
   await syncSubscriptionAfterFullRefund(supabase, result.transaction);

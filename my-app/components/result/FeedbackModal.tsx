@@ -1,7 +1,11 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { mapWebUserError, UserSafeError } from "../../lib/web-user-message";
 import { Button } from "../ui/Button";
+import { Dialog } from "../ui/Dialog";
+import { FormField } from "../ui/FormField";
+import { InlineAlert } from "../ui/InlineAlert";
 
 interface FeedbackModalProps {
   generationId: string;
@@ -12,10 +16,17 @@ interface ExistingReviewPayload {
     rating: number;
     comment: string;
   } | null;
-  error?: string;
 }
 
 const STAR_VALUES = [1, 2, 3, 4, 5] as const;
+
+function reviewRequestError(status: number, action: "load" | "save") {
+  if (status === 401) return "로그인 상태를 확인한 뒤 다시 시도해 주세요.";
+  if (status === 403) return "이 결과의 리뷰를 확인하거나 수정할 권한이 없습니다.";
+  if (status === 404) return "리뷰할 생성 결과를 찾지 못했습니다.";
+  if (status === 429) return "요청이 많습니다. 잠시 후 다시 시도해 주세요.";
+  return action === "load" ? "리뷰를 불러오지 못했습니다." : "리뷰 저장에 실패했습니다.";
+}
 
 export function FeedbackModal({ generationId }: FeedbackModalProps) {
   const normalizedGenerationId = generationId.trim();
@@ -57,7 +68,7 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
         );
         const payload = (await response.json().catch(() => null)) as ExistingReviewPayload | null;
         if (!response.ok) {
-          throw new Error(payload?.error || "리뷰를 불러오지 못했습니다.");
+          throw new UserSafeError(reviewRequestError(response.status, "load"));
         }
 
         if (cancelled) {
@@ -81,7 +92,7 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
         if (cancelled) {
           return;
         }
-        setError(loadError instanceof Error ? loadError.message : "리뷰를 불러오지 못했습니다.");
+        setError(mapWebUserError(loadError, "리뷰를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
       } finally {
         if (!cancelled) {
           setLoadingExisting(false);
@@ -130,15 +141,14 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
         }),
       });
 
-      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) {
-        throw new Error(payload?.error || "리뷰 저장에 실패했습니다.");
+        throw new UserSafeError(reviewRequestError(response.status, "save"));
       }
 
       setHasExistingReview(true);
       setSubmitted(true);
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "리뷰 저장에 실패했습니다.");
+      setError(mapWebUserError(submitError, "리뷰 저장에 실패했습니다. 잠시 후 다시 시도해 주세요."));
     } finally {
       setSubmitting(false);
     }
@@ -150,87 +160,105 @@ export function FeedbackModal({ generationId }: FeedbackModalProps) {
         리뷰 작성하기
       </Button>
 
-      {open ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-5">
-          <div className="app-panel w-full max-w-md p-5">
-            <h3 className="text-lg font-semibold text-[var(--app-text)]">결과 리뷰 작성</h3>
-            <p className="mt-1 text-sm text-[var(--app-muted)]">
-              결과에 대한 별점과 후기를 남겨 주시면 품질 개선에 반영합니다.
+      <Dialog
+        id="result-feedback"
+        open={open}
+        onOpenChange={(nextOpen) => {
+          if (nextOpen) {
+            setOpen(true);
+          } else {
+            handleClose();
+          }
+        }}
+        dismissible={!submitting}
+        showCloseButton={!submitting}
+        size="sm"
+        title="결과 리뷰 작성"
+        description="결과에 대한 별점과 후기를 남겨 주시면 품질 개선에 반영합니다."
+        footer={
+          <>
+            <Button variant="ghost" onClick={handleClose} disabled={submitting}>
+              닫기
+            </Button>
+            <Button onClick={handleSubmit} disabled={!canSubmit || submitting || loadingExisting}>
+              {submitting ? "저장 중..." : hasExistingReview ? "리뷰 수정 저장" : "리뷰 저장"}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4" aria-busy={loadingExisting || submitting}>
+          {loadingExisting ? (
+            <p className="text-sm text-[var(--app-muted)]" role="status" aria-live="polite">
+              기존 리뷰를 불러오는 중...
             </p>
+          ) : (
+            <>
+              {hasExistingReview ? (
+                <InlineAlert tone="info">기존 리뷰가 있습니다. 수정 후 다시 저장할 수 있습니다.</InlineAlert>
+              ) : null}
 
-            {loadingExisting ? (
-              <p className="mt-4 text-sm text-[var(--app-muted)]">기존 리뷰를 불러오는 중...</p>
-            ) : (
-              <>
-                {hasExistingReview ? (
-                  <p className="mt-4 rounded-[var(--app-radius-control)] border border-[var(--app-accent)] bg-[var(--app-surface-muted)] px-3 py-2 text-sm text-[var(--app-text)]">
-                    기존 리뷰가 있습니다. 수정 후 다시 저장할 수 있습니다.
-                  </p>
-                ) : null}
+              {submitted ? <InlineAlert tone="success">리뷰가 저장되었습니다.</InlineAlert> : null}
 
-                {submitted ? (
-                  <div className="mt-4 rounded-[var(--app-radius-control)] border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
-                    리뷰가 저장되었습니다.
-                  </div>
-                ) : null}
+              <fieldset disabled={submitting}>
+                <legend className="text-sm font-medium text-[var(--app-text)]">별점</legend>
+                <div className="mt-2 flex items-center gap-1">
+                  {STAR_VALUES.map((value) => {
+                    const active = rating !== null && value <= rating;
 
-                <div className="mt-4">
-                  <p className="text-sm font-medium text-[var(--app-text)]">별점</p>
-                  <div className="mt-2 flex items-center gap-1">
-                    {STAR_VALUES.map((value) => {
-                      const active = rating !== null && value <= rating;
-
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          onClick={() => setRating(value)}
-                          className={`text-2xl leading-none transition ${
+                    return (
+                      <label className="cursor-pointer" key={value}>
+                        <input
+                          className="peer sr-only"
+                          type="radio"
+                          name="review-rating"
+                          value={value}
+                          checked={rating === value}
+                          onChange={() => setRating(value)}
+                        />
+                        <span
+                          aria-hidden="true"
+                          className={`inline-block rounded-sm px-0.5 text-2xl leading-none transition peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[var(--app-ring)] ${
                             active ? "text-[var(--app-accent)]" : "text-[var(--app-subtle)] hover:text-[var(--app-muted)]"
                           }`}
-                          aria-label={`${value}점`}
-                          disabled={submitting}
                         >
                           ★
-                        </button>
-                      );
-                    })}
-                    <span className="ml-2 text-sm text-[var(--app-muted)]">{rating ? `${rating} / 5` : "선택 전"}</span>
-                  </div>
+                        </span>
+                        <span className="sr-only">{value}점</span>
+                      </label>
+                    );
+                  })}
+                  <span className="ml-2 text-sm text-[var(--app-muted)]" aria-live="polite">
+                    {rating ? `${rating} / 5` : "선택 전"}
+                  </span>
                 </div>
+              </fieldset>
 
-                <div className="mt-4">
-                  <label htmlFor="review-comment" className="text-sm font-medium text-[var(--app-text)]">
-                    후기
-                  </label>
+              <FormField
+                id="review-comment"
+                label="후기"
+                required
+                disabled={submitting}
+                description={`${trimmedComment.length}/800자 · 5자 이상 입력해 주세요.`}
+                error={comment.length > 0 && trimmedComment.length < 5 ? "후기는 5자 이상 입력해 주세요." : undefined}
+              >
+                {(controlProps) => (
                   <textarea
-                    id="review-comment"
+                    {...controlProps}
                     value={comment}
                     onChange={(event) => setComment(event.target.value)}
                     placeholder="예: 스타일이 자연스럽고 상담 전에 방향을 정하는 데 도움이 되었어요."
                     rows={4}
                     maxLength={800}
-                    className="app-input mt-2 w-full resize-y px-3 py-2 text-sm transition focus:ring-2 focus:ring-[var(--app-ring)]"
-                    disabled={submitting}
+                    className="app-input w-full resize-y px-3 py-2 text-sm transition focus:ring-2 focus:ring-[var(--app-ring)]"
                   />
-                  <p className="mt-1 text-right text-xs text-[var(--app-subtle)]">{trimmedComment.length}/800</p>
-                </div>
+                )}
+              </FormField>
 
-                {error ? <p className="mt-2 text-sm text-rose-600">{error}</p> : null}
-
-                <div className="mt-5 flex items-center justify-end gap-2">
-                  <Button variant="ghost" onClick={handleClose} disabled={submitting}>
-                    닫기
-                  </Button>
-                  <Button onClick={handleSubmit} disabled={!canSubmit || submitting}>
-                    {submitting ? "저장 중..." : hasExistingReview ? "리뷰 수정 저장" : "리뷰 저장"}
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
+              {error ? <InlineAlert tone="danger">{error}</InlineAlert> : null}
+            </>
+          )}
         </div>
-      ) : null}
+      </Dialog>
     </>
   );
 }

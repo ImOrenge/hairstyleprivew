@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
+import { SALON_CONNECTION_CONSENT_VERSION } from "@hairfit/shared/salon/connection-consent";
 import {
   AFTERCARE_COLUMNS,
   CUSTOMER_COLUMNS,
   GENERATION_SUMMARY_COLUMNS,
+  HAIR_RECORD_SUMMARY_COLUMNS,
   LINKED_MEMBER_COLUMNS,
+  MATCH_REQUEST_COLUMNS,
   VISIT_COLUMNS,
   getSalonOwnerContext,
   isSalonCustomerStyleTarget,
   loadOwnerCustomer,
   normalizeAftercareTask,
   normalizeCustomer,
+  normalizeConnectionSummary,
   normalizeGenerationSummary,
+  normalizeHairRecordSummary,
   normalizeLinkedMember,
   normalizeVisit,
   parseNullableIso,
@@ -82,9 +87,28 @@ export async function GET(_request: Request, { params }: Params) {
 
   let linkedMember = null;
   let linkedMemberGenerations: ReturnType<typeof normalizeGenerationSummary>[] = [];
+  let linkedMemberHairRecords: ReturnType<typeof normalizeHairRecordSummary>[] = [];
+  let connection = null;
 
   if (loaded.customer.linkedUserId) {
-    const [memberResult, generationResult] = await Promise.all([
+    const { data: connectionRow, error: connectionError } = await context.supabase
+      .from("salon_match_requests")
+      .select(MATCH_REQUEST_COLUMNS)
+      .eq("owner_user_id", context.userId)
+      .eq("member_user_id", loaded.customer.linkedUserId)
+      .eq("linked_customer_id", customerId)
+      .eq("status", "linked")
+      .eq("consent_version", SALON_CONNECTION_CONSENT_VERSION)
+      .is("revoked_at", null)
+      .maybeSingle<Record<string, unknown>>();
+
+    if (connectionError) {
+      return NextResponse.json({ error: connectionError.message }, { status: 500 });
+    }
+
+    if (connectionRow) {
+      connection = normalizeConnectionSummary(connectionRow);
+      const [memberResult, generationResult, hairRecordResult] = await Promise.all([
       context.supabase
         .from("users")
         .select(LINKED_MEMBER_COLUMNS)
@@ -97,19 +121,32 @@ export async function GET(_request: Request, { params }: Params) {
           .eq("user_id", loaded.customer.linkedUserId)
           .order("created_at", { ascending: false })
           .limit(5),
-      ),
-    ]);
+        ),
+        runList<Record<string, unknown>>(
+          context.supabase
+            .from("user_hair_records")
+            .select(HAIR_RECORD_SUMMARY_COLUMNS)
+            .eq("user_id", loaded.customer.linkedUserId)
+            .order("created_at", { ascending: false })
+            .limit(5),
+        ),
+      ]);
 
-    if (memberResult.error) {
-      return NextResponse.json({ error: memberResult.error.message }, { status: 500 });
+      if (memberResult.error) {
+        return NextResponse.json({ error: memberResult.error.message }, { status: 500 });
+      }
+
+      if (generationResult.error) {
+        return NextResponse.json({ error: generationResult.error.message }, { status: 500 });
+      }
+      if (hairRecordResult.error) {
+        return NextResponse.json({ error: hairRecordResult.error.message }, { status: 500 });
+      }
+
+      linkedMember = normalizeLinkedMember(memberResult.data);
+      linkedMemberGenerations = (generationResult.data || []).map(normalizeGenerationSummary);
+      linkedMemberHairRecords = (hairRecordResult.data || []).map(normalizeHairRecordSummary);
     }
-
-    if (generationResult.error) {
-      return NextResponse.json({ error: generationResult.error.message }, { status: 500 });
-    }
-
-    linkedMember = normalizeLinkedMember(memberResult.data);
-    linkedMemberGenerations = (generationResult.data || []).map(normalizeGenerationSummary);
   }
 
   return NextResponse.json(
@@ -117,10 +154,12 @@ export async function GET(_request: Request, { params }: Params) {
       customer: loaded.customer,
       visits: (visitsResult.data || []).map(normalizeVisit),
       aftercareTasks: (aftercareResult.data || []).map(normalizeAftercareTask),
+      connection,
       linkedMember,
       linkedMemberGenerations,
+      linkedMemberHairRecords,
     },
-    { status: 200 },
+    { status: 200, headers: { "Cache-Control": "private, no-store" } },
   );
 }
 

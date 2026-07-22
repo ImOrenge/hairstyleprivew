@@ -1,0 +1,102 @@
+id: web.aftercare.aftercare-confirm-dialog
+name: AftercareConfirmDialog
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/aftercare/AftercareConfirmDialog.tsx
+owner: aftercare-feature
+
+public_api:
+  exports:
+    - AftercareConfirmDialog
+    - AftercareConfirmDialogProps
+  props:
+    - generationId: string
+    - selectedVariantId: string
+    - open: boolean
+    - "onOpenChange: (open: boolean) => void"
+  events:
+    - onOpenChange
+
+dependencies:
+  internal:
+    - my-app/components/billing/PaidActionQuoteCard.tsx
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/Dialog.tsx
+    - my-app/components/ui/InlineAlert.tsx
+    - packages/shared/src/billing/paid-action.ts
+  external:
+    - lucide-react
+    - next/navigation
+    - react
+  feature_coupling:
+    - POST /api/paid-actions/quote
+    - POST /api/hair-records
+    - result-page-billing-return-target
+    - aftercare-route-navigation
+
+styling:
+  strategy: existing-global-app-contract-plus-composed-components
+  global_css:
+    file: my-app/app/globals.css
+    namespaces:
+      - app-input
+      - app-kicker
+      - app-panel
+      - c-dialog
+  tokens:
+    - --app-text
+    - --app-subtle
+  allows_className: false
+  inline_styles_allowed: false
+
+state:
+  controlled:
+    - open
+  owned:
+    - service-type
+    - service-date-kst-calendar-key
+    - quote-loading-value-and-error
+    - submit-loading-and-error
+  external_store: false
+side_effects:
+  - fetch-latest-aftercare-quote-when-open
+  - abort-in-flight-quote-fetch-when-closed
+  - post-aftercare-execution-on-confirm
+  - navigate-to-allowlisted-aftercare-route-on-success
+
+a11y_contract:
+  dialog: inherits-web-ui-dialog-focus-dismissal-and-aria-contract
+  fields:
+    - wrapping-label-for-service-select
+    - wrapping-label-for-service-date-input
+  decorative_icon: aria-hidden
+  errors: InlineAlert-danger
+  controls: ui-Button
+
+test_surface:
+  unit: absent
+  interaction: required
+  integration: required
+  visual: required
+  observed_usage:
+    - my-app/components/result/ActionToolbar.tsx
+    - my-app/components/workspace/WorkspaceWizard.tsx
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+  behavioral_change_requires:
+    - quote-expiry-and-refresh-interaction-verification
+    - submit-and-dialog-dismissal-interaction-verification
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_blockers:
+  - domain-api-and-route-orchestration-is-feature-specific
+  - no-focused-aftercare-dialog-interaction-test
+  - no-authenticated-browser-success-and-error-evidence
+  - no-responsive-visual-regression-evidence

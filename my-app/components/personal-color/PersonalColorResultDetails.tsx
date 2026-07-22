@@ -151,7 +151,7 @@ export function PersonalColorResultDetails({ result }: { result: PersonalColorRe
   return (
     <div className="grid gap-5">
       <div>
-        <p className="app-kicker">Personal Color Result</p>
+        <p className="app-kicker">퍼스널컬러 결과</p>
         <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">
           {formatTone(result.tone)} · {formatContrast(result.contrast)}
         </h2>

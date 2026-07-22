@@ -26,6 +26,7 @@ interface PlanBlueprint {
 interface PricingPreviewProps {
   initialDisplayBenefits: PlanDisplayBenefit[];
   subscriptionAccessMode: SubscriptionAccessMode;
+  successRedirectPath?: string;
 }
 
 function usageLine(benefit: PlanDisplayBenefit, t: ReturnType<typeof useT>) {
@@ -75,7 +76,11 @@ function featureLines(plan: PlanBlueprint, benefit: PlanDisplayBenefit, t: Retur
   return [...base, t("pricing.basic.f2"), t("pricing.basic.f3")];
 }
 
-export function PricingPreview({ initialDisplayBenefits, subscriptionAccessMode }: PricingPreviewProps) {
+export function PricingPreview({
+  initialDisplayBenefits,
+  subscriptionAccessMode,
+  successRedirectPath = "/mypage",
+}: PricingPreviewProps) {
   const t = useT();
   const subscriptionWaitlistMode = subscriptionAccessMode === "waitlist";
   const displayBenefits = initialDisplayBenefits;
@@ -279,6 +284,7 @@ export function PricingPreview({ initialDisplayBenefits, subscriptionAccessMode 
                 subscriptionAccessMode={subscriptionAccessMode}
                 variant={plan.tone === "basic" ? "secondary" : "primary"}
                 className="mt-4 w-full px-3 py-2 text-xs"
+                successRedirectPath={successRedirectPath}
               >
                 {plan.cta}
               </PortoneSubscriptionButton>

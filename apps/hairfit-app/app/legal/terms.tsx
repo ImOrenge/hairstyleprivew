@@ -1,4 +1,6 @@
-import { BodyText, Card, Heading, Kicker, Panel, Screen, Stack } from "@hairfit/ui-native";
+import { BodyText, Card, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
+import { SUBSCRIPTION_BILLING_POLICY_KO } from "@hairfit/shared";
+import { AppScreen } from "../../components/app/AppScreen";
 
 const sections = [
   {
@@ -25,7 +27,7 @@ const sections = [
   {
     title: "4. 결제와 환불",
     items: [
-      "유료 플랜과 크레딧은 결제 화면에 표시된 조건에 따릅니다.",
+      ...SUBSCRIPTION_BILLING_POLICY_KO.map((item) => `${item.title}: ${item.description}`),
       "환불은 관련 법령과 회사의 환불 정책에 따라 검토됩니다.",
     ],
   },
@@ -40,12 +42,12 @@ const sections = [
 
 export default function TermsScreen() {
   return (
-    <Screen>
+    <AppScreen>
       <Panel>
         <Stack>
-          <Kicker>Legal</Kicker>
+          <Kicker>법적 고지</Kicker>
           <Heading>이용 약관</Heading>
-          <BodyText>최종 수정일: 2026-02-12</BodyText>
+          <BodyText>최종 수정일: 2026-07-18</BodyText>
         </Stack>
       </Panel>
 
@@ -65,6 +67,6 @@ export default function TermsScreen() {
           </Stack>
         </Card>
       ))}
-    </Screen>
+    </AppScreen>
   );
 }

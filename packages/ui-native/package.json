@@ -6,17 +6,21 @@
   "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "exports": {
-    ".": "./src/index.tsx"
+    ".": "./src/index.tsx",
+    "./primitives": "./src/index.tsx"
   },
   "scripts": {
+    "lint": "eslint --config eslint.config.cjs .",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {
-    "react": ">=19",
-    "react-native": ">=0.85"
+    "react": "^19.2.0",
+    "react-native": "0.83.6"
   },
   "devDependencies": {
     "@types/react": "^19",
+    "eslint": "9.39.5",
+    "eslint-config-expo": "~55.0.1",
     "typescript": "^5"
   }
 }

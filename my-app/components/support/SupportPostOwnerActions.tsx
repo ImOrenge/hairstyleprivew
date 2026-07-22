@@ -3,16 +3,13 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Save, Trash2, X } from "lucide-react";
+import { mapWebResponseError } from "../../lib/web-user-message";
 import { Button } from "../ui/Button";
 
 interface SupportPostOwnerActionsProps {
   postId: string;
   title: string;
   body: string;
-}
-
-interface UpdatePostResponse {
-  error?: string;
 }
 
 export function SupportPostOwnerActions({ body, postId, title }: SupportPostOwnerActionsProps) {
@@ -35,10 +32,8 @@ export function SupportPostOwnerActions({ body, postId, title }: SupportPostOwne
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: nextTitle, body: nextBody }),
     });
-    const data = (await response.json().catch(() => ({}))) as UpdatePostResponse;
-
     if (!response.ok) {
-      setError(data.error || "게시글 수정에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "게시글 수정에 실패했습니다. 잠시 후 다시 시도해 주세요."));
       setIsBusy(false);
       return;
     }
@@ -60,10 +55,8 @@ export function SupportPostOwnerActions({ body, postId, title }: SupportPostOwne
     const response = await fetch(`/api/support/posts/${encodeURIComponent(postId)}`, {
       method: "DELETE",
     });
-    const data = (await response.json().catch(() => ({}))) as UpdatePostResponse;
-
     if (!response.ok) {
-      setError(data.error || "게시글 삭제에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "게시글 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요."));
       setIsBusy(false);
       return;
     }
@@ -83,7 +76,7 @@ export function SupportPostOwnerActions({ body, postId, title }: SupportPostOwne
           <Trash2 className="h-4 w-4" aria-hidden="true" />
           삭제
         </Button>
-        {error ? <p className="text-sm font-semibold text-rose-700">{error}</p> : null}
+        {error ? <p role="alert" className="text-sm font-semibold text-rose-700">{error}</p> : null}
       </div>
     );
   }
@@ -107,7 +100,7 @@ export function SupportPostOwnerActions({ body, postId, title }: SupportPostOwne
         rows={8}
         className="app-input px-3 py-2 text-sm leading-6"
       />
-      {error ? <p className="text-sm font-semibold text-rose-700">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm font-semibold text-rose-700">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" className="h-9 gap-2 px-3 text-xs" disabled={isBusy}>
           <Save className="h-4 w-4" aria-hidden="true" />

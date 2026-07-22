@@ -1,3 +1,26 @@
+import type { ProductCreditPolicySnapshot } from "./billing/policy-selectors";
+import type { RefundRequestSummary } from "./billing/refund";
+
+export * from "./billing/policy-selectors";
+export * from "./billing/generation-credit";
+export * from "./billing/paid-action";
+export * from "./billing/refund";
+export * from "./billing/subscription-policy";
+export * from "./auth/resume-target";
+export * from "./auth/generation-entry";
+export * from "./fixtures/product-contract";
+export * from "./fixtures/generation-selection";
+export * from "./fixtures/generation-selection-lock";
+export * from "./fixtures/generation-notification";
+export * from "./generation/contract";
+export * from "./generation/funnel";
+export * from "./generation/notification";
+export * from "./generation/notification-retention-policy";
+export * from "./generation/original-retention-policy";
+export * from "./generation/upload-validation";
+export * from "./salon/connection-consent";
+export * from "./styling/contract";
+
 export type MobileServiceKey = "customer" | "salon" | "admin";
 
 export type PortStatus = "inventory" | "scaffolded" | "ported" | "verified";
@@ -46,6 +69,15 @@ export interface MobileDashboardPayment {
   createdAt: string;
 }
 
+export type MobileRefundRequest = RefundRequestSummary;
+
+export interface MobileBillingPlanSummary {
+  key: MobilePaymentPlan;
+  label: string;
+  priceKrw: number;
+  credits: number;
+}
+
 export interface MobileDashboardStylingSession {
   id: string;
   generationId: string;
@@ -64,12 +96,28 @@ export interface MobileDashboardStylingSession {
   updatedAt: string | null;
 }
 
+export interface MobileConfirmedStyle {
+  id: string;
+  generationId: string | null;
+  styleName: string;
+  serviceType: ServiceType | string;
+  serviceDate: string;
+  nextVisitTargetDays: number;
+  selectedVariantId: string | null;
+  selectedVariantImageUrl: string | null;
+  confirmedAt: string;
+}
+
 export interface MobileCustomerDashboard {
   credits: number;
+  creditPolicy?: ProductCreditPolicySnapshot;
+  billingPlans?: MobileBillingPlanSummary[];
   planKey: string | null;
   styleProfileReady: boolean;
+  recentConfirmedStyles: MobileConfirmedStyle[];
   recentGenerations: MobileDashboardGeneration[];
   recentPayments: MobileDashboardPayment[];
+  recentRefundRequests: MobileRefundRequest[];
   recentStylingSessions: MobileDashboardStylingSession[];
 }
 
@@ -334,17 +382,237 @@ export interface StylingSessionDetails {
   creditsUsed: number;
   generatedImagePath?: string | null;
   imageUrl: string | null;
+  creditReceipt?: import("./billing/paid-action").PaidActionExecutionReceipt | null;
+  completionNotificationStatus?:
+    | "pending"
+    | "sending"
+    | "retry_wait"
+    | "sent"
+    | "skipped"
+    | "dead_letter"
+    | "delivery_unknown"
+    | null;
+  completionNotificationSentAt?: string | null;
   createdAt: string;
   updatedAt?: string | null;
 }
 
-export interface HairstyleGenerationGroup {
+export interface HairstyleGenerationGroup<
+  TAnalysis extends FaceAnalysisSummary = FaceAnalysisSummary,
+  TVariant extends GeneratedVariant = GeneratedVariant,
+> {
   id: string;
   createdAt: string;
   status: string;
   selectedVariantId: string | null;
-  analysis: FaceAnalysisSummary;
-  variants: GeneratedVariant[];
+  analysis: TAnalysis;
+  variants: TVariant[];
+}
+
+export {
+  needsKoreanDisplayTranslation,
+  resolveKoreanDisplayCopy,
+} from "./result/korean-display-copy";
+
+export interface ConfirmedHairRecordSummary {
+  id: string;
+  styleName: string;
+  serviceType: string;
+  serviceDate: string;
+  createdAt: string;
+}
+
+export interface GenerationStartApiResponse {
+  generationId: string;
+  status: import("./generation/contract").GenerationStatus;
+  workflowInstanceId?: string;
+  alreadyStarted?: boolean;
+  terminal?: boolean;
+}
+
+export interface GenerationDraftApiResponse {
+  draftId: string;
+  clientRequestId: string;
+  uploadedAt: string;
+  expiresAt: string;
+  state: "ready";
+  alreadyUploaded: boolean;
+}
+
+export interface GenerationAcceptanceApiResponse {
+  generationId: string;
+  acceptedAt: string;
+  preparationStatus: import("./generation/contract").GenerationPreparationStatus;
+  backgroundStarted: boolean;
+  workflowDispatchStatus: import("./generation/contract").GenerationWorkflowDispatchStatus;
+  creditsRequired: number;
+  creditReceipt: import("./billing/generation-credit").GenerationCreditReceipt | null;
+  billingMode: "reserved_v1" | "legacy_unmanaged";
+}
+
+export interface GenerationStatusApiResponse {
+  generationId: string;
+  status: import("./generation/contract").GenerationStatus;
+  terminal: boolean;
+  variants: { total: number; completed: number; failed: number };
+  updatedAt: string | null;
+  acceptedAt?: string | null;
+  preparationStatus?: import("./generation/contract").GenerationPreparationStatus;
+  preparationError?: string | null;
+  workflowInstanceId?: string | null;
+  workflowStartedAt?: string | null;
+  workflowDispatch?: {
+    status: import("./generation/contract").GenerationWorkflowDispatchStatus;
+    attemptCount: number;
+    availableAt: string | null;
+    dispatchedAt: string | null;
+    updatedAt: string | null;
+  } | null;
+  notificationStatus?: string | null;
+  creditReceipt?: import("./billing/generation-credit").GenerationCreditReceipt | null;
+  creditReceiptUnavailable?: boolean;
+  retryPath?: string;
+  originalRetention?: import("./generation/original-retention-policy").GenerationOriginalRetentionState;
+}
+
+export interface GenerationDetailApiResponse<
+  TRecommendationSet extends RecommendationSet = RecommendationSet,
+  TVariant extends GeneratedVariant = GeneratedVariant,
+> {
+  id: string;
+  status: import("./generation/contract").GenerationStatus;
+  updatedAt?: string | null;
+  acceptedAt?: string | null;
+  preparationStatus?: import("./generation/contract").GenerationPreparationStatus;
+  preparationError?: string | null;
+  workflowInstanceId?: string | null;
+  workflowStartedAt?: string | null;
+  error?: string | null;
+  promptUsed?: string | null;
+  generatedImagePath?: string | null;
+  options?: Record<string, unknown> | null;
+  creditReceipt?: import("./billing/generation-credit").GenerationCreditReceipt | null;
+  creditReceiptUnavailable?: boolean;
+  retryPath?: string;
+  originalRetention?: import("./generation/original-retention-policy").GenerationOriginalRetentionState;
+  recommendationSet: TRecommendationSet | null;
+  selectedVariantId: string | null;
+  selectedVariant: TVariant | null;
+  selectionLocked?: boolean;
+  confirmedHairRecord?: ConfirmedHairRecordSummary | null;
+}
+
+export interface GenerationSelectionApiResponse {
+  ok: true;
+  selectedVariantId: string;
+  selectionLocked?: boolean;
+  confirmedHairRecord?: ConfirmedHairRecordSummary | null;
+}
+
+export type MobilePushPermissionStatus = "granted" | "denied" | "undetermined";
+export type MobilePushPlatform = "ios" | "android";
+
+export interface MobilePushDeviceRegistrationRequest {
+  installationId: string;
+  expoPushToken: string;
+  nativePushToken?: string | null;
+  platform: MobilePushPlatform;
+  projectId: string;
+  appVersion?: string | null;
+}
+
+export interface MobilePushDeviceRegistrationResponse {
+  deviceId: string;
+  installationId: string;
+  enabled: boolean;
+  permissionStatus: MobilePushPermissionStatus;
+  registeredAt: string;
+}
+
+export interface MobilePushDeviceStatusResponse {
+  installationId: string;
+  registered: boolean;
+  enabled: boolean;
+  permissionStatus: MobilePushPermissionStatus;
+  lastRegisteredAt: string | null;
+  invalidReason: string | null;
+}
+
+export interface MobilePushDeviceRevocationResponse {
+  installationId: string;
+  revoked: boolean;
+}
+
+export interface StylingProfileApiResponse {
+  profile?: StyleProfile;
+  error?: string;
+}
+
+export interface StylingProfileApiSuccess {
+  profile: StyleProfile;
+}
+
+export interface StylingRecommendApiResponse<
+  TRecommendation extends FashionRecommendation = FashionRecommendation,
+  TProfile extends StyleProfile = StyleProfile,
+  TVariant extends GeneratedVariant = GeneratedVariant,
+> {
+  sessionId?: string | null;
+  status?: string;
+  recommendation?: TRecommendation;
+  profile?: TProfile;
+  selectedVariant?: TVariant;
+  error?: string;
+}
+
+export interface StylingRecommendApiSuccess {
+  sessionId: string | null;
+  status: string;
+  recommendation: FashionRecommendation;
+  profile: StyleProfile;
+  selectedVariant: GeneratedVariant;
+}
+
+export interface StylingGenerateApiResponse {
+  sessionId?: string;
+  status?: string;
+  imageUrl?: string | null;
+  imagePath?: string | null;
+  chargedCredits?: number;
+  quote?: import("./billing/paid-action").PaidActionQuote;
+  creditReceipt?: import("./billing/paid-action").PaidActionExecutionReceipt | null;
+  inProgress?: boolean;
+  alreadyCompleted?: boolean;
+  backgroundStarted?: boolean;
+  workflowDispatchStatus?: "started" | "deferred";
+  workflowRuntime?: "cloudflare" | "local" | "unavailable";
+  error?: string;
+  code?: import("./billing/paid-action").PaidActionQuoteErrorCode | string;
+}
+
+export interface StylingQuoteApiResponse {
+  quote?: import("./billing/paid-action").PaidActionQuote;
+  error?: string;
+}
+
+export interface StylingHairstyleListApiResponse<
+  TGeneration extends HairstyleGenerationGroup = HairstyleGenerationGroup,
+> {
+  generations?: TGeneration[];
+  error?: string;
+}
+
+export interface StylingHairstyleListApiSuccess {
+  generations: HairstyleGenerationGroup[];
+}
+
+export interface StylingSessionApiResponse {
+  session?: StylingSessionDetails;
+  error?: string;
+}
+
+export interface StylingSessionApiSuccess {
+  session: StylingSessionDetails;
 }
 
 export interface AftercareGuideSection {
@@ -381,6 +649,8 @@ export interface MobileAftercareRecord {
   serviceType: ServiceType | string;
   serviceDate: string;
   nextVisitTargetDays: number;
+  selectedVariantId: string | null;
+  selectedVariantImageUrl: string | null;
   createdAt: string;
 }
 
@@ -423,3 +693,4 @@ export const initialMobileRoutePorts: MobileRoutePort[] = [
   { webRoute: "/salon/customers", mobileRoute: "/salon/customers", service: "salon", status: "scaffolded", notes: "CRM list" },
   { webRoute: "/admin/stats", mobileRoute: "/admin/stats", service: "admin", status: "scaffolded", notes: "KPI view" },
 ];
+export * from "./account-deletion";

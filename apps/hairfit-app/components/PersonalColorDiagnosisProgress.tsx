@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
-import { colors, radii, spacing } from "@hairfit/ui-native";
+import { colors, radii, spacing } from "@hairfit/ui-native/primitives";
+import { useReducedMotionPreference } from "../hooks/useReducedMotionPreference";
 
 const diagnosisMessages = [
   "얼굴 톤 기준점을 잡는 중",
@@ -49,11 +50,14 @@ function getAnalysisScore(base: number, drift: number, tick: number, index: numb
 export function FaceScanOverlay({ active }: { active: boolean }) {
   const scan = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
+  const reduceMotion = useReducedMotionPreference();
 
   useEffect(() => {
-    if (!active) {
+    if (!active || reduceMotion !== false) {
       scan.stopAnimation();
       pulse.stopAnimation();
+      scan.setValue(reduceMotion ? 0.5 : 0);
+      pulse.setValue(reduceMotion ? 1 : 0);
       return;
     }
 
@@ -88,7 +92,7 @@ export function FaceScanOverlay({ active }: { active: boolean }) {
       scanAnimation.stop();
       pulseAnimation.stop();
     };
-  }, [active, pulse, scan]);
+  }, [active, pulse, reduceMotion, scan]);
 
   if (!active) {
     return null;
@@ -127,8 +131,18 @@ export function PersonalColorDiagnosisProgress() {
   const flow = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
   const [messageIndex, setMessageIndex] = useState(0);
+  const reduceMotion = useReducedMotionPreference();
 
   useEffect(() => {
+    if (reduceMotion !== false) {
+      flow.stopAnimation();
+      pulse.stopAnimation();
+      flow.setValue(0);
+      pulse.setValue(reduceMotion ? 1 : 0);
+      setMessageIndex(0);
+      return;
+    }
+
     const flowAnimation = Animated.loop(
       Animated.timing(flow, {
         toValue: 1,
@@ -164,14 +178,20 @@ export function PersonalColorDiagnosisProgress() {
       pulseAnimation.stop();
       clearInterval(messageTimer);
     };
-  }, [flow, pulse]);
+  }, [flow, pulse, reduceMotion]);
 
   return (
-    <View accessibilityLiveRegion="polite" accessibilityRole="progressbar" style={styles.progressPanel}>
+    <View
+      accessible
+      accessibilityLiveRegion="polite"
+      accessibilityRole="progressbar"
+      accessibilityValue={{ text: diagnosisMessages[messageIndex] }}
+      style={styles.progressPanel}
+    >
       <View style={styles.progressHeader}>
         <View>
-          <Text style={styles.kicker}>Personal Color Scan</Text>
-          <Text style={styles.progressMessage}>{diagnosisMessages[messageIndex]}</Text>
+          <Text allowFontScaling style={styles.kicker}>퍼스널컬러 분석</Text>
+          <Text allowFontScaling style={styles.progressMessage}>{diagnosisMessages[messageIndex]}</Text>
         </View>
         <Animated.View style={[styles.statusDot, { opacity: pulse }]} />
       </View>
@@ -215,14 +235,16 @@ export function PersonalColorDiagnosisProgress() {
 
 export function PersonalColorSwatchAnalysisColumn() {
   const [tick, setTick] = useState(0);
+  const reduceMotion = useReducedMotionPreference();
 
   useEffect(() => {
+    if (reduceMotion !== false) return;
     const timer = setInterval(() => {
       setTick((current) => current + 1);
     }, 720);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [reduceMotion]);
 
   const sortedSwatches = analysisSwatches
     .map((swatch, index) => ({
@@ -231,19 +253,21 @@ export function PersonalColorSwatchAnalysisColumn() {
     }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 6);
-  const leadingScore = sortedSwatches[0]?.score ?? 0;
-  const toneBalance = Math.max(0, Math.min(100, 50 + Math.round(Math.sin(tick * 0.64) * 18)));
-  const contrastSignal = Math.max(0, Math.min(100, 58 + Math.round(Math.cos(tick * 0.5) * 21)));
 
   return (
-    <View accessibilityLabel="실시간 스와처값 계산" style={styles.analysisPanel}>
+    <View
+      accessibilityElementsHidden
+      accessible={false}
+      importantForAccessibility="no-hide-descendants"
+      style={styles.analysisPanel}
+    >
       <View style={styles.analysisHeader}>
         <View>
-          <Text style={styles.kicker}>Live Swatch Matrix</Text>
-          <Text style={styles.analysisTitle}>스와처값 계산</Text>
+          <Text allowFontScaling style={styles.kicker}>팔레트 비교 과정</Text>
+          <Text allowFontScaling style={styles.analysisTitle}>팔레트 비교 과정</Text>
         </View>
         <View style={styles.analysisBadge}>
-          <Text style={styles.analysisBadgeText}>{leadingScore}%</Text>
+          <Text allowFontScaling style={styles.analysisBadgeText}>미리보기</Text>
         </View>
       </View>
 
@@ -253,9 +277,9 @@ export function PersonalColorSwatchAnalysisColumn() {
             <View style={styles.analysisRowHeader}>
               <View style={styles.analysisNameGroup}>
                 <View style={[styles.analysisDot, { backgroundColor: swatch.hex }]} />
-                <Text style={styles.analysisName} numberOfLines={1}>{swatch.label}</Text>
+                <Text allowFontScaling style={styles.analysisName}>{swatch.label}</Text>
               </View>
-              <Text style={styles.analysisScore}>{swatch.score}%</Text>
+              <Text allowFontScaling style={styles.analysisScore}>대조 중</Text>
             </View>
             <View style={styles.analysisBarTrack}>
               <View style={[styles.analysisBar, { width: `${swatch.score}%` }]} />
@@ -266,16 +290,18 @@ export function PersonalColorSwatchAnalysisColumn() {
 
       <View style={styles.signalGrid}>
         <View style={styles.signalTile}>
-          <Text style={styles.signalLabel}>Warm / Cool</Text>
-          <Text style={styles.signalValue}>{toneBalance}%</Text>
+          <Text allowFontScaling style={styles.signalLabel}>웜 / 쿨</Text>
+          <Text allowFontScaling style={styles.signalValue}>시각화</Text>
         </View>
         <View style={styles.signalTile}>
-          <Text style={styles.signalLabel}>Contrast</Text>
-          <Text style={styles.signalValue}>{contrastSignal}%</Text>
+          <Text allowFontScaling style={styles.signalLabel}>대비</Text>
+          <Text allowFontScaling style={styles.signalValue}>시각화</Text>
         </View>
       </View>
 
-      <Text style={styles.analysisHelper}>얼굴 톤 기준점과 팔레트 스와치를 동시에 대조하고 있습니다.</Text>
+      <Text allowFontScaling style={styles.analysisHelper}>
+        움직이는 막대는 분석 과정을 설명하는 시각화이며 실제 측정 점수가 아닙니다.
+      </Text>
     </View>
   );
 }
@@ -338,8 +364,10 @@ const styles = StyleSheet.create({
     width: 16,
   },
   analysisHeader: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
     justifyContent: "space-between",
   },
   analysisHelper: {
@@ -350,6 +378,7 @@ const styles = StyleSheet.create({
   analysisName: {
     color: colors.text,
     flex: 1,
+    flexShrink: 1,
     fontSize: 12,
     fontWeight: "800",
   },
@@ -371,8 +400,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   analysisRowHeader: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
     justifyContent: "space-between",
   },
@@ -441,6 +471,7 @@ const styles = StyleSheet.create({
   },
   signalGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
   },
   signalLabel: {
@@ -455,6 +486,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.control,
     borderWidth: 1,
     flex: 1,
+    minWidth: 120,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },

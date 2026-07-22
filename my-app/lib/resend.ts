@@ -1,10 +1,23 @@
+import type { GenerationCreditReceipt } from "@hairfit/shared";
 import { Resend } from "resend";
+import { isAmbiguousResendDeliveryError } from "./resend-delivery-classification";
 import { getSiteUrl } from "./site-url";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "./supabase";
 
-type SendEmailResult = {
+export type SendEmailResult = {
   data: { id?: string } | null;
   error: unknown;
+  deliveryUncertain: boolean;
+};
+
+export type PreparedEmailPayload = {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  from: string;
+  source: string;
+  idempotencyKey: string;
 };
 
 type OutboundEmailStatus = "sent" | "failed" | "skipped";
@@ -119,13 +132,34 @@ type CareEmailInput = {
   bodyHtml: string;
 };
 
-type GenerationCompletedEmailInput = {
+type RefundStatusEmailInput = {
+  to: string;
+  displayName?: string | null;
+  requestId: string;
+  eventType: "submitted" | "manual_review" | "cancel_pending" | "completed" | "failed" | "period_end_scheduled";
+  refundAmount?: number | null;
+  myPageUrl: string;
+};
+
+export type GenerationCompletedEmailInput = {
   to: string;
   displayName?: string | null;
   generationId: string;
   completedCount: number;
   failedCount: number;
   resultUrl: string;
+  retryUrl?: string;
+  creditReceipt?: GenerationCreditReceipt | null;
+};
+
+export type StylingCompletedEmailInput = {
+  to: string;
+  displayName?: string | null;
+  sessionId: string;
+  terminalKind: "completed" | "failed";
+  resultUrl: string;
+  chargedCredits: number;
+  refundedCredits: number;
 };
 
 const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
@@ -521,13 +555,21 @@ export async function sendEmail({
       status: "skipped",
       error: new Error("Missing RESEND_API_KEY"),
     });
-    return { data: null, error: new Error("Missing RESEND_API_KEY") };
+    return {
+      data: null,
+      error: new Error("Missing RESEND_API_KEY"),
+      deliveryUncertain: false,
+    };
   }
 
   try {
     const client = getResendClient();
     if (!client) {
-      return { data: null, error: new Error("Missing RESEND_API_KEY") };
+      return {
+        data: null,
+        error: new Error("Missing RESEND_API_KEY"),
+        deliveryUncertain: false,
+      };
     }
 
     const payload = {
@@ -554,7 +596,11 @@ export async function sendEmail({
         providerMessageId: getProviderMessageId(data),
         error,
       });
-      return { data, error };
+      return {
+        data,
+        error,
+        deliveryUncertain: isAmbiguousResendDeliveryError(error),
+      };
     }
 
     await recordOutboundEmail({
@@ -567,7 +613,7 @@ export async function sendEmail({
       status: "sent",
       providerMessageId: getProviderMessageId(data),
     });
-    return { data: data ?? null, error: null };
+    return { data: data ?? null, error: null, deliveryUncertain: false };
   } catch (error) {
     console.error("[Resend] Unexpected email send error:", error);
     await recordOutboundEmail({
@@ -580,7 +626,7 @@ export async function sendEmail({
       status: "failed",
       error,
     });
-    return { data: null, error };
+    return { data: null, error, deliveryUncertain: true };
   }
 }
 
@@ -611,23 +657,27 @@ function greetingName(displayName?: string | null) {
   return displayName?.trim() || "고객";
 }
 
-export async function sendGenerationCompletedEmail(input: GenerationCompletedEmailInput) {
+export function prepareGenerationCompletedEmail(
+  input: GenerationCompletedEmailInput,
+): PreparedEmailPayload {
   const displayName = greetingName(input.displayName);
   const totalCount = input.completedCount + input.failedCount;
   const allFailed = input.completedCount === 0;
   const hasPartialFailure = input.failedCount > 0;
+  const refundedCredits = input.creditReceipt?.state === "refunded"
+    ? input.creditReceipt.refundedCredits
+    : 0;
+  const chargedCredits = input.creditReceipt?.state === "charged"
+    ? input.creditReceipt.chargedCredits
+    : 0;
+  const newGenerationUrl = input.retryUrl || new URL("/generate", input.resultUrl).toString();
   const subject = allFailed
     ? "[HairFit] 헤어스타일 생성 결과를 확인해 주세요"
     : hasPartialFailure
     ? `[HairFit] 헤어스타일 ${input.completedCount}개가 준비되었습니다`
     : "[HairFit] 헤어스타일 생성이 완료되었습니다";
 
-  return sendTemplatedEmail({
-    to: input.to,
-    subject,
-    source: "generation_completed",
-    idempotencyKey: `generation-completed/${input.generationId}`,
-    layout: {
+  const layout: EmailLayoutInput = {
       kicker: "HairFit Generation",
       title: allFailed
         ? "헤어스타일을 생성하지 못했습니다"
@@ -635,7 +685,9 @@ export async function sendGenerationCompletedEmail(input: GenerationCompletedEma
           ? "완성된 헤어스타일을 확인해 주세요"
           : "헤어스타일 생성이 완료되었습니다",
       preview: allFailed
-        ? "요청하신 후보를 생성하지 못했습니다. 다시 시도해 주세요."
+        ? refundedCredits > 0
+          ? `요청하신 후보를 생성하지 못해 ${refundedCredits}크레딧을 전액 복구했습니다.`
+          : "요청하신 후보를 생성하지 못했습니다. 다시 시도해 주세요."
         : hasPartialFailure
         ? `${totalCount}개 후보 중 ${input.completedCount}개가 준비되었습니다.`
         : `${input.completedCount}개의 헤어스타일 후보가 모두 준비되었습니다.`,
@@ -643,7 +695,9 @@ export async function sendGenerationCompletedEmail(input: GenerationCompletedEma
       body: [
         `${displayName}님, 요청하신 헤어스타일 생성 작업이 종료되었습니다.`,
         allFailed
-          ? "이번 작업에서는 준비된 후보가 없습니다. 사진 상태와 크레딧을 확인한 뒤 HairFit에서 다시 시도해 주세요."
+          ? refundedCredits > 0
+            ? `이번 작업에서는 준비된 후보가 없어 예약했던 ${refundedCredits}크레딧을 전액 복구했습니다. HairFit에서 새 생성으로 다시 접수해 주세요.`
+            : "이번 작업에서는 준비된 후보가 없습니다. 사진 상태와 크레딧을 확인한 뒤 HairFit에서 다시 시도해 주세요."
           : hasPartialFailure
           ? "일부 후보는 생성에 실패했지만, 준비된 결과는 지금 바로 비교하고 선택할 수 있습니다."
           : "페이지나 앱을 닫은 동안에도 작업을 이어서 완료했습니다. 결과 보드에서 후보를 비교해 보세요.",
@@ -651,14 +705,89 @@ export async function sendGenerationCompletedEmail(input: GenerationCompletedEma
       details: [
         { label: "준비된 후보", value: `${input.completedCount}개` },
         { label: "생성하지 못한 후보", value: input.failedCount > 0 ? `${input.failedCount}개` : null },
+        {
+          label: refundedCredits > 0 ? "복구 크레딧" : "사용 크레딧",
+          value:
+            refundedCredits > 0
+              ? `${refundedCredits}크레딧 · 복구 완료`
+              : chargedCredits > 0
+                ? `${chargedCredits}크레딧 · 차감 완료`
+                : null,
+        },
       ],
       cta: {
         label: allFailed ? "HairFit에서 다시 시도" : "결과 보드 열기",
-        url: input.resultUrl,
+        url: allFailed ? newGenerationUrl : input.resultUrl,
       },
       note: "보안을 위해 이메일에는 사진을 첨부하지 않았습니다. HairFit에 로그인한 뒤 결과를 확인해 주세요.",
+  };
+
+  return {
+    to: input.to,
+    from: defaultFromEmail,
+    subject,
+    html: renderEmailLayout(layout),
+    text: renderText(layout),
+    source: "generation_completed",
+    idempotencyKey: `generation-completed/${input.generationId}`,
+  };
+}
+
+export async function sendGenerationCompletedEmail(input: GenerationCompletedEmailInput) {
+  return sendEmail(prepareGenerationCompletedEmail(input));
+}
+
+export function prepareStylingCompletedEmail(
+  input: StylingCompletedEmailInput,
+): PreparedEmailPayload {
+  const completed = input.terminalKind === "completed";
+  const displayName = greetingName(input.displayName);
+  const subject = completed
+    ? "[HairFit] 패션 룩북 생성이 완료되었습니다"
+    : "[HairFit] 패션 룩북 작업 결과를 확인해 주세요";
+  const layout: EmailLayoutInput = {
+    kicker: "HairFit Styling",
+    title: completed ? "패션 룩북이 준비되었습니다" : "패션 룩북을 생성하지 못했습니다",
+    preview: completed
+      ? "앱이나 페이지를 닫은 동안에도 백그라운드 작업을 완료했습니다."
+      : input.refundedCredits > 0
+        ? `${input.refundedCredits}크레딧을 자동 복구했습니다.`
+        : "작업 상태와 크레딧 내역을 확인해 주세요.",
+    tone: completed ? "success" : "danger",
+    body: [
+      `${displayName}님, 요청하신 패션 룩북 생성 작업이 종료되었습니다.`,
+      completed
+        ? "앱이나 페이지를 닫은 뒤에도 서버에서 생성을 이어서 완료했습니다. HairFit에 로그인해 결과 이미지를 확인해 주세요."
+        : input.refundedCredits > 0
+          ? `이미지를 완성하지 못해 예약했던 ${input.refundedCredits}크레딧을 자동 복구했습니다. 세션 화면에서 상태를 확인한 뒤 다시 접수할 수 있습니다.`
+          : "이미지를 완성하지 못했습니다. 세션 화면에서 처리 상태를 확인해 주세요.",
+    ],
+    details: [
+      {
+        label: completed ? "사용 크레딧" : "복구 크레딧",
+        value: completed && input.chargedCredits > 0
+          ? `${input.chargedCredits}크레딧 · 차감 완료`
+          : !completed && input.refundedCredits > 0
+            ? `${input.refundedCredits}크레딧 · 복구 완료`
+            : null,
+      },
+    ],
+    cta: {
+      label: completed ? "룩북 결과 열기" : "작업 상태 확인하기",
+      url: input.resultUrl,
     },
-  });
+    note: "보안을 위해 이메일에는 전신 사진과 생성 이미지를 첨부하지 않았습니다. HairFit에 로그인한 뒤 확인해 주세요.",
+  };
+
+  return {
+    to: input.to,
+    from: defaultFromEmail,
+    subject,
+    html: renderEmailLayout(layout),
+    text: renderText(layout),
+    source: "styling_completed",
+    idempotencyKey: `styling-completed/${input.sessionId}`,
+  };
 }
 
 function getWelcomeEmailRoleCopy(accountType: WelcomeEmailAccountType) {
@@ -890,6 +1019,40 @@ export async function sendRefundReviewEmail(input: RefundReviewEmailInput) {
         url: input.supportUrl,
       },
       note: "긴급한 확인이 필요하면 고객지원으로 문의해 주세요.",
+    },
+  });
+}
+
+export async function sendRefundStatusEmail(input: RefundStatusEmailInput) {
+  const content = {
+    submitted: ["환불 요청이 접수되었습니다", "자동 처리 가능 여부를 확인하고 있습니다.", "Request received", "default"],
+    manual_review: ["환불 요청을 검토 중입니다", "안전한 처리를 위해 담당자가 결제와 이용 내역을 확인합니다.", "Manual review", "warning"],
+    cancel_pending: ["결제 취소가 접수되었습니다", "결제사에서 최종 취소 상태를 확인하고 있습니다.", "Cancellation pending", "warning"],
+    completed: ["환불 처리가 완료되었습니다", "결제 취소와 구독 종료 처리가 완료되었습니다.", "Refund complete", "success"],
+    failed: ["환불 자동 처리를 완료하지 못했습니다", "담당자가 이어서 확인할 수 있도록 요청을 보존했습니다.", "Action required", "danger"],
+    period_end_scheduled: ["다음 정기결제가 중단되었습니다", "현재 이용기간과 크레딧은 종료일까지 그대로 유지됩니다.", "Renewal stopped", "success"],
+  } as const;
+  const [title, description, kicker, tone] = content[input.eventType];
+  const amountText = typeof input.refundAmount === "number"
+    ? formatMoney(input.refundAmount, "KRW")
+    : null;
+  return sendTemplatedEmail({
+    to: input.to,
+    subject: `[HairFit] ${title}`,
+    source: `refund_${input.eventType}`,
+    idempotencyKey: `refund/${input.requestId}/${input.eventType}`,
+    layout: {
+      kicker,
+      title,
+      preview: description,
+      tone,
+      body: [`${greetingName(input.displayName)}님, ${description}`],
+      details: [
+        { label: "요청 번호", value: input.requestId },
+        { label: "환불 금액", value: amountText },
+      ],
+      cta: { label: "환불 상태 확인하기", url: input.myPageUrl },
+      note: "페이지나 앱을 닫아도 같은 요청 번호로 처리 상태를 다시 확인할 수 있습니다.",
     },
   });
 }

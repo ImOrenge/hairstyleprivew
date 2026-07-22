@@ -1,8 +1,10 @@
 import { useAuth } from "@clerk/clerk-expo";
 import type { AdminMemberDetailResponse } from "@hairfit/api-client";
-import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Screen, Stack } from "@hairfit/ui-native";
+import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { View } from "react-native";
+import { AppScreen } from "../../../components/app/AppScreen";
 import { AdminTabs } from "../../../lib/admin-ui";
 import { useHairfitApi } from "../../../lib/api";
 
@@ -96,10 +98,10 @@ export default function AdminMemberDetailScreen() {
         if (!cancelled) {
           setDetail(result);
         }
-      } catch (loadError) {
+      } catch {
         if (!cancelled) {
           setDetail(null);
-          setError(loadError instanceof Error ? loadError.message : "회원 상세를 불러오지 못했습니다.");
+          setError("회원 상세를 불러오지 못했습니다. 네트워크를 확인한 뒤 다시 시도해 주세요.");
         }
       } finally {
         if (!cancelled) {
@@ -120,7 +122,7 @@ export default function AdminMemberDetailScreen() {
   const credits = readNumber(user, "credits") ?? 0;
 
   return (
-    <Screen>
+    <AppScreen>
       <AdminTabs activePath="/admin/members" />
 
       <Panel>
@@ -128,6 +130,7 @@ export default function AdminMemberDetailScreen() {
           <Kicker>회원 상세</Kicker>
           <Heading>{displayName}</Heading>
           <BodyText>{targetUserId}</BodyText>
+          <BodyText>앱 회원 상세는 조회 전용입니다. 권한과 크레딧 변경은 웹 관리자에서 진행해 주세요.</BodyText>
           <Cluster>
             <Chip tone={accountType === "admin" ? "accent" : "neutral"}>{accountTypeLabel(accountType)}</Chip>
             <Chip>{credits.toLocaleString("ko-KR")} 크레딧</Chip>
@@ -146,9 +149,11 @@ export default function AdminMemberDetailScreen() {
       ) : null}
 
       {error ? (
-        <Card>
-          <BodyText>{error}</BodyText>
-        </Card>
+        <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
+          <Card>
+            <BodyText>{error}</BodyText>
+          </Card>
+        </View>
       ) : null}
 
       {detail ? (
@@ -163,6 +168,6 @@ export default function AdminMemberDetailScreen() {
           <ActivityList title="살롱 고객/애프터케어" items={[...detail.salon.customers, ...detail.salon.aftercareTasks]} empty="살롱 활동이 없습니다." />
         </>
       ) : null}
-    </Screen>
+    </AppScreen>
   );
 }

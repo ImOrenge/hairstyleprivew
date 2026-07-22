@@ -1,0 +1,63 @@
+id: native.app.network-recovery-provider
+name: NetworkRecoveryProvider
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/components/app/NetworkRecoveryProvider.tsx
+owner: hairfit-app-shell
+
+public_api:
+  exports:
+    - NetworkRecoveryProvider
+    - useNetworkRecovery
+    - resolveNetworkAvailability
+  values:
+    - availability: unknown | online | offline
+    - recoveryToken: monotonic-number
+
+boundaries:
+  owns:
+    - Expo-network-state-subscription
+    - offline-to-online-transition-detection
+    - one-recovery-token-per-observed-transition
+  delegates:
+    - request-retry-after-transition: feature-consumers
+    - offline-user-notice: native.app.app-screen
+    - expired-Clerk-token-refresh: packages/api-client/src/index.ts
+  forbidden:
+    - feature-API-calls
+    - route-navigation
+    - automatic-paid-command-replay
+
+state:
+  local:
+    - previous-known-availability
+    - recovery-token
+  derived:
+    - availability-from-isConnected-and-isInternetReachable
+  external_store: false
+
+a11y_contract:
+  visible_status_owner: native.app.app-screen
+  offline_notice: assertive-alert
+  recovery_behavior: refresh-read-models-without-resubmitting-write-commands
+
+test_surface:
+  jest: apps/hairfit-app/__tests__/network-recovery.test.tsx
+  adoption_jest: apps/hairfit-app/__tests__/network-recovery-adoption.test.ts
+  API_auth_retry_jest: apps/hairfit-app/__tests__/api-client-auth-retry.test.ts
+  device_smoke: required
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+    - network-recovery-jest
+  behavioral_change_requires:
+    - iOS-and-Android-offline-online-device-test
+
+promotion_blockers:
+  - no-physical-device-airplane-mode-evidence
+  - no-live-Clerk-expired-session-evidence
+  - no-slow-network-timing-evidence

@@ -10,3 +10,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
+
+# Local Playwright reports and retry artifacts. Visual baselines under tests/ stay tracked.
+.artifacts/playwright/
+.artifacts/playwright-auth/
+.artifacts/playwright-protected/
+.artifacts/generation-notification-staging/
+playwright/.clerk/
+my-app/.next-e2e/
+my-app/.next-*/

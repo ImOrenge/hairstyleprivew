@@ -1,0 +1,112 @@
+id: web.mypage.tab-navigation
+name: MyPageTabNavigation
+platform: web
+kind: composite
+status: candidate
+source: my-app/components/mypage/MyPageTabNavigation.tsx
+owner: customer-account-feature
+
+public_api:
+  exports:
+    - MyPageTabNavigation
+    - MyPageTabNavigationProps
+  props:
+    - "activeTab: MyPageTabId"
+    - "queryState: MyPageQueryState"
+  events:
+    - native-link-navigation
+
+dependencies:
+  internal:
+    - my-app/components/mypage/myPageRoutes.ts
+    - my-app/components/ui/Surface.tsx
+  external:
+    - next/link
+    - lucide-react
+    - react
+  forbidden:
+    - fetch
+    - next-navigation-hook
+    - account-store
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+  inline_styles_allowed: false
+  root_namespaces:
+    - c-mypage-tab-navigation
+  responsive_overflow:
+    - navigation-boundary-min-width-zero
+    - tablist-local-horizontal-scroll
+
+state:
+  owned:
+    - tab-element-refs-for-focus-navigation
+  derived:
+    - active-tab-state
+  external_store: false
+side_effects:
+  - keyboard-focus-movement-within-tablist
+
+a11y_contract:
+  container:
+    role: tablist
+    aria_label: required
+    orientation: horizontal
+  tab:
+    role: tab
+    selected: aria-selected
+    current: active-tab-aria-current-page
+    controls: active-tab-only-matching-rendered-panel-id
+    tab_stop: active-zero-inactive-minus-one
+  interaction:
+    focus_navigation: ArrowLeft-ArrowRight-wrap-and-Home-End
+    activation: native-link-Enter-navigation
+
+test_surface:
+  contract:
+    present: my-app/lib/mypage-decomposition.test.ts
+    verification: tab-panel-route-and-fail-closed-harness-5-of-5-passing-2026-07-19
+  interaction:
+    present: tests/web-e2e/mypage-tab-navigation-stability.spec.ts
+    verification: query-preservation-roving-focus-wrap-home-end-and-active-panel-3-of-3-passing-2026-07-19
+  visual:
+    present: tests/web-e2e/__screenshots__/mypage-tab-navigation-stability.spec.ts
+    verification: 1024-light-320-light-375-dark-local-scroll-overflow-zero-and-axe-zero
+  observed_usage:
+    consumer_files: 2
+    production_consumer_files: 1
+    harness_consumer_files: 1
+    representative_consumers:
+      - my-app/components/mypage/MyPageDashboardTabs.tsx
+      - my-app/components/e2e/MyPageTabNavigationHarness.tsx
+
+change_policy:
+  current_gate: candidate-promotion
+  compatible_change_requires:
+    - passport-update
+    - mypage-decomposition-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - keyboard-browser-check
+    - responsive-overflow-check
+  breaking_change_requires:
+    - all-panel-and-route-consumer-update
+    - migration-note
+
+promotion_blockers:
+  - no-authenticated-customer-mypage-browser-evidence
+  - no-real-screen-reader-evidence
+
+candidate_evidence:
+  - production-dashboard-and-fail-closed-harness-consumers
+  - query-preserving-native-link-contract
+  - one-tab-stop-with-arrow-wrap-home-and-end-focus-navigation
+  - active-tab-only-panel-control-reference
+  - document-overflow-zero-with-local-horizontal-tab-scroll
+  - axe-serious-critical-zero
+  - 1024px-light-320px-light-and-375px-dark-visual-verification
+
+residual_risks:
+  - authenticated-route-navigation-and-back-forward-state-not-yet-recorded
+  - physical-screen-reader-and-200-percent-text-not-yet-verified

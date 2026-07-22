@@ -1,7 +1,13 @@
 "use client";
 
+import {
+  getGenerationContinuationPath,
+  parseAccountSetupContinuation,
+} from "@hairfit/shared/auth/generation-entry";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import type { MemberStyleTarget, MemberStyleTone } from "../../lib/onboarding";
+import { mapWebResponseError } from "../../lib/web-user-message";
 import { Button } from "../ui/Button";
 import { SurfaceCard } from "../ui/Surface";
 
@@ -34,6 +40,9 @@ export function MemberGenderForm({
   initialPreferredStyleTone,
   initialStyleTarget,
 }: MemberGenderFormProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const accountSetupContinuation = parseAccountSetupContinuation(searchParams.get("continue"));
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [styleTarget, setStyleTarget] = useState<MemberStyleTarget | "">(initialStyleTarget ?? "");
   const [preferredStyleTone, setPreferredStyleTone] = useState<MemberStyleTone>(initialPreferredStyleTone);
@@ -75,7 +84,7 @@ export function MemberGenderForm({
     } | null;
 
     if (!response.ok) {
-      setError(data?.error || "계정 설정 저장에 실패했습니다.");
+      setError(mapWebResponseError(response.status, "계정 설정 저장에 실패했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요."));
       setIsSaving(false);
       return;
     }
@@ -87,15 +96,22 @@ export function MemberGenderForm({
     setStyleTarget(nextTarget);
     setDisplayName(nextName);
     setPreferredStyleTone(nextTone);
-    setMessage("계정 설정이 저장되었습니다.");
+    setMessage(
+      accountSetupContinuation
+        ? "계정 설정이 저장되었습니다. 생성 화면으로 돌아갑니다."
+        : "계정 설정이 저장되었습니다.",
+    );
     setIsSaving(false);
+    if (accountSetupContinuation) {
+      router.replace(getGenerationContinuationPath(accountSetupContinuation, "web"));
+    }
   };
 
   return (
     <SurfaceCard className="mt-4 px-4 py-4">
       <div className="space-y-4">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--app-muted)]">Account Setup</p>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--app-muted)]">계정 설정</p>
           <p className="mt-2 text-sm font-semibold text-[var(--app-text)]">
             현재 성별: {formatGender(savedStyleTarget)}
           </p>
@@ -158,8 +174,8 @@ export function MemberGenderForm({
           <Button type="button" onClick={handleSave} disabled={!canSave || isSaving}>
             {isSaving ? "저장 중..." : "계정 설정 저장"}
           </Button>
-          {message ? <p className="text-sm font-medium text-emerald-700">{message}</p> : null}
-          {error ? <p className="text-sm font-medium text-rose-700">{error}</p> : null}
+          {message ? <p role="status" aria-live="polite" className="text-sm font-medium text-emerald-700">{message}</p> : null}
+          {error ? <p role="alert" className="text-sm font-medium text-rose-700">{error}</p> : null}
         </div>
       </div>
     </SurfaceCard>

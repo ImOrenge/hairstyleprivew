@@ -1,0 +1,120 @@
+id: web.ui.async-boundary
+name: AsyncBoundary
+platform: web
+kind: data-display
+status: stable
+source: my-app/components/ui/AsyncBoundary.tsx
+owner: web-ui
+
+public_api:
+  exports:
+    - AsyncBoundary
+    - AsyncBoundaryProps
+  props:
+    - pending: boolean
+    - error: unknown
+    - isEmpty: boolean
+    - children: ReactNode
+    - loadingTitle: ReactNode
+    - loadingDescription: ReactNode
+    - errorTitle: ReactNode
+    - errorDescription: ReactNode
+    - emptyTitle: ReactNode
+    - emptyDescription: ReactNode
+    - errorAction: ReactNode
+    - emptyAction: ReactNode
+
+dependencies:
+  internal:
+    - my-app/components/ui/InlineAlert.tsx
+    - my-app/lib/utils.ts#cn
+  external:
+    - react
+  forbidden:
+    - hidden-data-fetching
+    - feature-stores
+    - api-clients
+
+styling:
+  strategy: global-css-token-contract
+  global_css:
+    file: my-app/app/globals.css
+    layer: components
+    namespace: c-async-boundary
+  tokens:
+    - --app-border
+    - --app-accent-strong
+    - --app-text
+    - --app-muted
+  variants:
+    - pending
+    - error
+    - empty
+    - ready
+  data_contract:
+    data-async-state: error | pending | empty
+  allows_className: true
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  precedence:
+    - error
+    - pending
+    - empty
+    - ready
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  loading: role-status-aria-busy-polite-atomic
+  error: delegated-to-inline-alert
+  empty: role-status-polite-atomic
+  motion: spinner-animation-disabled-when-reduced-motion-is-requested
+
+test_surface:
+  unit:
+    - my-app/lib/async-boundary-stability.test.ts
+  interaction:
+    - tests/web-e2e/async-boundary-stability.spec.ts#precedence-live-regions-actions-reduced-motion
+  visual:
+    - tests/web-e2e/__screenshots__/async-boundary-stability.spec.ts/async-boundary-320-light.png
+    - tests/web-e2e/__screenshots__/async-boundary-stability.spec.ts/async-boundary-375-dark.png
+  observed_usage:
+    - my-app/app/error.tsx
+    - my-app/app/loading.tsx
+    - my-app/components/styler/StylerHairSelectionModal.tsx
+    - my-app/components/mypage/panels/MyPageAccountPanel.tsx
+    - my-app/components/mypage/panels/MyPageAftercarePanel.tsx
+    - my-app/components/mypage/panels/MyPageBodyProfilePanel.tsx
+    - my-app/components/mypage/panels/MyPagePersonalColorPanel.tsx
+    - my-app/components/mypage/panels/MyPagePlanPanel.tsx
+    - my-app/components/mypage/panels/MyPageUsagePanel.tsx
+
+change_policy:
+  current_gate: promotion-complete
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+  style_contract_change_requires:
+    - c-async-boundary-selector-search
+    - visual-verification
+
+promotion_evidence:
+  - pure resolver fixes error then pending then empty then ready precedence
+  - explicit error pending and empty data contracts
+  - assertive error and polite atomic pending and empty live regions
+  - keyboard-operable recovery actions
+  - reduced-motion spinner animation removal
+  - serious-or-critical axe violations 0
+  - 320px light and 375px dark visual baselines with horizontal overflow 0
+  - contract test 3/3 and production Chromium matrix 3/3
+
+promotion_blockers: []
+
+residual_risks:
+  - ready state intentionally renders children without a wrapper or data attribute
+  - actual VoiceOver TalkBack and authenticated data transition evidence remains external

@@ -102,7 +102,7 @@ export async function POST(request: Request) {
           "Rules:",
           "- Keep the same order and number of items as the input array.",
           "- Translate into concise, natural Korean suitable for UI and hairstyle analysis.",
-          "- Preserve hairstyle names, IDs, product names, numbers, and proper nouns.",
+          "- Transliterate hairstyle names into natural Korean. Preserve IDs, numbers, and the HairFit brand only when required.",
           "- If an item is already Korean or should remain unchanged, return it as-is.",
           "- Do not add explanations or markdown fences.",
         ].join("\n"),

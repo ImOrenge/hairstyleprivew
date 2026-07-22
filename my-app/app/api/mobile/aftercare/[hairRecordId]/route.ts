@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getConfirmedStyleMediaFromRelation } from "../../../../../lib/confirmed-style-media";
 import type { AftercareGuide, AftercareSectionKey } from "../../../../../lib/aftercare-guide-generator";
 import { getMobileApiContext } from "../../../../../lib/mobile-auth";
 
@@ -14,6 +15,7 @@ interface HairRecordRow {
   service_date?: unknown;
   next_visit_target_days?: unknown;
   created_at?: unknown;
+  generation?: unknown;
 }
 
 interface GuideRow {
@@ -71,6 +73,7 @@ function parseGuide(raw: unknown): AftercareGuide | null {
 }
 
 function toRecord(row: HairRecordRow) {
+  const media = getConfirmedStyleMediaFromRelation(row.generation);
   return {
     id: text(row.id),
     generationId: nullableText(row.generation_id),
@@ -78,6 +81,8 @@ function toRecord(row: HairRecordRow) {
     serviceType: text(row.service_type) || "other",
     serviceDate: text(row.service_date),
     nextVisitTargetDays: numberValue(row.next_visit_target_days),
+    selectedVariantId: media.selectedVariantId,
+    selectedVariantImageUrl: media.selectedVariantImageUrl,
     createdAt: text(row.created_at),
   };
 }
@@ -98,7 +103,7 @@ export async function GET(_request: Request, { params }: Params) {
     const supabase = context.supabase as unknown as MobileAftercareSupabase;
     const { data: record, error: recordError } = await supabase
       .from<HairRecordRow>("user_hair_records")
-      .select("id,generation_id,style_name,service_type,service_date,next_visit_target_days,created_at")
+      .select("id,generation_id,style_name,service_type,service_date,next_visit_target_days,created_at,generation:generations(selected_variant_id,options)")
       .eq("id", id)
       .eq("user_id", context.userId)
       .maybeSingle();

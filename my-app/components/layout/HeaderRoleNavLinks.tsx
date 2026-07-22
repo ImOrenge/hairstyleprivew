@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import type { MouseEventHandler } from "react";
 import type { AccountType } from "../../lib/onboarding";
 import { useT } from "../../lib/i18n/useT";
@@ -17,6 +18,12 @@ interface HeaderNavItem {
 }
 
 const defaultClassName = "text-[var(--app-muted)] hover:text-[var(--app-text)]";
+
+export function isCurrentNavigationPath(pathname: string, href: string) {
+  const hrefPathname = href.split(/[?#]/, 1)[0] || "/";
+
+  return pathname === hrefPathname || (hrefPathname !== "/" && pathname.startsWith(`${hrefPathname}/`));
+}
 
 function getCompleteNavItems(accountType: AccountType | null, t: ReturnType<typeof useT>): HeaderNavItem[] {
   if (accountType === "member") {
@@ -54,6 +61,7 @@ export function HeaderRoleNavLinks({
   onClick,
 }: HeaderRoleNavLinksProps) {
   const t = useT();
+  const pathname = usePathname();
   const { isSignedIn, isRoleLoaded, accountType, accountSetupComplete } = useHeaderAccount();
 
   if (!isSignedIn || !isRoleLoaded) {
@@ -65,7 +73,13 @@ export function HeaderRoleNavLinks({
   return (
     <>
       {navItems.map((item) => (
-        <Link key={item.href} href={item.href} onClick={onClick} className={className}>
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={onClick}
+          className={className}
+          aria-current={isCurrentNavigationPath(pathname, item.href) ? "page" : undefined}
+        >
           {item.label}
         </Link>
       ))}

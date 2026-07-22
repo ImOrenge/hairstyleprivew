@@ -44,10 +44,6 @@ export async function POST(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Member user is missing" }, { status: 400 });
   }
 
-  if (matchRequest.status === "revoked") {
-    return NextResponse.json({ error: "Match request was revoked" }, { status: 409 });
-  }
-
   const { data: member, error: memberError } = await context.supabase
     .from("users")
     .select(LINKED_MEMBER_COLUMNS)
@@ -62,84 +58,54 @@ export async function POST(_request: Request, { params }: Params) {
     return NextResponse.json({ error: "Member not found" }, { status: 404 });
   }
 
-  const { data: existingCustomer, error: existingError } = await context.supabase
-    .from("salon_customers")
-    .select(CUSTOMER_COLUMNS)
-    .eq("owner_user_id", context.userId)
-    .eq("linked_user_id", memberUserId)
-    .is("archived_at", null)
-    .maybeSingle<Record<string, unknown>>();
-
-  if (existingError) {
-    return NextResponse.json({ error: existingError.message }, { status: 500 });
-  }
-
-  if (existingCustomer) {
-    await context.supabase
-      .from("salon_match_requests")
-      .update({
-        status: "linked",
-        linked_customer_id: existingCustomer.id,
-      })
-      .eq("id", matchRequestId);
-
-    return NextResponse.json(
-      {
-        customer: normalizeCustomer(existingCustomer),
-        match: normalizeMatchCandidate(
-          { ...matchRequest, status: "linked", linked_customer_id: existingCustomer.id },
-          member,
-        ),
-      },
-      { status: 200 },
-    );
-  }
-
   const email = typeof member.email === "string" ? member.email : "";
   const displayName = typeof member.display_name === "string" && member.display_name.trim()
     ? member.display_name.trim()
     : email || "HairFit member";
 
-  const { data: createdCustomer, error: createError } = await context.supabase
-    .from("salon_customers")
-    .insert({
-      owner_user_id: context.userId,
-      linked_user_id: memberUserId,
-      source: "linked_member",
-      name: displayName.slice(0, 120),
-      phone: null,
-      email: email || null,
-      memo: null,
-      consent_sms: false,
-      consent_kakao: false,
-    })
-    .select(CUSTOMER_COLUMNS)
-    .single<Record<string, unknown>>();
+  const { data: linkedMatch, error: linkError } = await (context.supabase as unknown as {
+    rpc: (
+      name: string,
+      params: Record<string, unknown>,
+    ) => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
+  }).rpc("link_salon_match_request", {
+    p_request_id: matchRequestId,
+    p_owner_user_id: context.userId,
+    p_member_display_name: displayName,
+    p_member_email: email,
+  });
 
-  if (createError || !createdCustomer) {
-    const isDuplicate = createError?.message.toLowerCase().includes("duplicate");
+  if (linkError || !linkedMatch) {
+    const message = linkError?.message || "Customer link failed";
+    const isConflict = message.includes("CONSENT_REQUIRED") || message.includes("REVOKED") || message.toLowerCase().includes("duplicate");
     return NextResponse.json(
-      { error: isDuplicate ? "This member is already linked to your customer list" : createError?.message || "Customer creation failed" },
-      { status: isDuplicate ? 409 : 500 },
+      { error: isConflict ? "회원의 현재 동의가 없거나 연결 상태가 변경되었습니다." : message },
+      { status: isConflict ? 409 : 500 },
     );
   }
 
-  await context.supabase
-    .from("salon_match_requests")
-    .update({
-      status: "linked",
-      linked_customer_id: createdCustomer.id,
-    })
-    .eq("id", matchRequestId);
+  const linkedCustomerId =
+    typeof linkedMatch.linked_customer_id === "string" ? linkedMatch.linked_customer_id : "";
+  if (!linkedCustomerId) {
+    return NextResponse.json({ error: "Linked customer is missing" }, { status: 500 });
+  }
+
+  const { data: linkedCustomer, error: customerError } = await context.supabase
+    .from("salon_customers")
+    .select(CUSTOMER_COLUMNS)
+    .eq("owner_user_id", context.userId)
+    .eq("id", linkedCustomerId)
+    .maybeSingle<Record<string, unknown>>();
+
+  if (customerError || !linkedCustomer) {
+    return NextResponse.json({ error: customerError?.message || "Linked customer not found" }, { status: 500 });
+  }
 
   return NextResponse.json(
     {
-      customer: normalizeCustomer(createdCustomer),
-      match: normalizeMatchCandidate(
-        { ...matchRequest, status: "linked", linked_customer_id: createdCustomer.id },
-        member,
-      ),
+      customer: normalizeCustomer(linkedCustomer),
+      match: normalizeMatchCandidate(linkedMatch, member),
     },
-    { status: 201 },
+    { status: 200, headers: { "Cache-Control": "private, no-store" } },
   );
 }

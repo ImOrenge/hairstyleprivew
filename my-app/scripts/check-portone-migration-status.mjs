@@ -149,6 +149,30 @@ const schemaChecks = [
       "updated_at",
     ],
   },
+  {
+    id: "REFUND-AUTO-01",
+    migration: "20260722030531_refund_automation_credit_lots.sql",
+    table: "credit_grant_lots",
+    columns: ["id", "payment_transaction_id", "remaining_credits", "held_credits", "reconciliation_status"],
+  },
+  {
+    id: "REFUND-AUTO-02",
+    migration: "20260722030531_refund_automation_credit_lots.sql",
+    table: "payment_refund_quotes",
+    columns: ["id", "decision", "risk_codes", "refund_amount_krw", "expires_at"],
+  },
+  {
+    id: "REFUND-AUTO-03",
+    migration: "20260722030531_refund_automation_credit_lots.sql",
+    table: "refund_support_cases",
+    columns: ["id", "refund_request_id", "priority", "status"],
+  },
+  {
+    id: "REFUND-AUTO-04",
+    migration: "20260722030531_refund_automation_credit_lots.sql",
+    table: "refund_notification_outbox",
+    columns: ["id", "event_type", "status", "lease_token", "lease_expires_at"],
+  },
 ];
 
 const rpcChecks = [
@@ -205,6 +229,19 @@ const rpcChecks = [
       p_metadata: { smoke: false, source: "portone:migration:check" },
     },
     expectedError: [/payment transaction not found/i],
+  },
+  {
+    id: "REFUND-AUTO-05",
+    migration: "20260722030531_refund_automation_credit_lots.sql",
+    name: "submit_payment_refund_request",
+    params: {
+      p_user_id: "",
+      p_quote_id: randomUUID(),
+      p_idempotency_key: randomUUID(),
+      p_accepted_amount_krw: 0,
+      p_answers: {},
+    },
+    expectedError: [/invalid_refund_submission/i],
   },
 ];
 
