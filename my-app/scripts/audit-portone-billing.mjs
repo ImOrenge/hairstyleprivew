@@ -92,6 +92,7 @@ const generationDetailRoute = assertFile("app/api/generations/[id]/route.ts");
 const generationExportRoute = assertFile("app/api/generations/[id]/export/route.ts");
 const stylingRecommendRoute = assertFile("app/api/styling/recommend/route.ts");
 const stylingGenerateRoute = assertFile("app/api/styling/generate/route.ts");
+const stylingWorkflowExecution = assertFile("lib/styling-workflow-execution.ts");
 const hairRecordsRoute = assertFile("app/api/hair-records/route.ts");
 const aftercareCreditMigration = assertFile("supabase/migrations/202607030001_plan_credit_policy_aftercare.sql");
 const paidActionAtomicMigration = assertFile("supabase/migrations/20260715173000_paid_action_atomic_execution.sql");
@@ -107,7 +108,7 @@ assertIncludes(hairRecordsRoute, 'validatePaidActionQuoteForExecution', "Afterca
 assertIncludes(hairRecordsRoute, 'createPaidActionExecutionQuoteSnapshot', "Aftercare route must pass an audited quote snapshot to the database");
 assertIncludes(hairRecordsRoute, 'execute_aftercare_program', "Aftercare route must atomically persist the program and ledger through one RPC");
 assertIncludes(stylingGenerateRoute, 'begin_styling_execution', "Styler must atomically reserve the shared 20-credit price");
-assertIncludes(stylingGenerateRoute, 'settle_styling_execution', "Styler must commit or refund its reservation through settlement");
+assertIncludes(stylingWorkflowExecution, 'settle_styling_execution', "Styler Workflow must commit or refund its reservation through settlement");
 assertIncludes(paidActionAtomicMigration, 'create table if not exists public\\.aftercare_free_claims', "Aftercare migration must serialize the first-free claim per user");
 assertIncludes(paidActionAtomicMigration, 'create or replace function public\\.execute_aftercare_program', "Aftercare migration must provide an atomic execution RPC");
 assertIncludes(paidActionAtomicMigration, "reason = 'outfit_styling_usage'", "Styler migration must preserve and audit its usage ledger reason");
@@ -259,7 +260,7 @@ assertIncludes(webhookDbSmokeScript, 'pending events should keep subscription ac
 assertIncludes(refundSmokeScript, 'payment_refund_requests', "refund smoke must verify the refund request ledger");
 assertIncludes(refundSmokeScript, 'cancelPortonePayment', "refund smoke must verify the PortOne cancellation client");
 assertIncludes(refundSmokeScript, 'finalizePortoneRefundFromLookup', "refund smoke must verify approval finalization");
-assertIncludes(refundSmokeScript, 'RefundRequestButton', "refund smoke must verify mypage refund UX");
+assertIncludes(refundSmokeScript, 'RefundInterviewFlow', "refund smoke must verify the structured mypage refund UX");
 assertIncludes(webhookDbSmokeScript, 'pending events should not clear stored billing-key fields', "webhook DB smoke must verify pending events keep billing keys");
 
 const webhookRoute = assertFile("app/api/payments/webhook/route.ts");

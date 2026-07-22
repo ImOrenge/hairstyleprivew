@@ -64,7 +64,7 @@ test("durable acceptance reserves credit before publishing Workflow intent", () 
   assert.match(migration, /p_credits_used <> 10/);
   assert.match(migration, /'creditReceipt', v_credit_receipt/);
   assert.match(migration, /'billingMode', 'reserved_v1'/);
-  assert.match(migration, /\n\s+0,\n\s+'gemini'/, "accepted generation starts with zero committed credits");
+  assert.match(migration, /\r?\n\s+0,\r?\n\s+'gemini'/, "accepted generation starts with zero committed credits");
 });
 
 test("authoritative generation state commits or fully restores the reservation", () => {
