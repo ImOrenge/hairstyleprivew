@@ -1,30 +1,18 @@
-import { recoverMobileAuthExpiry } from "../lib/mobile-auth-expiry";
+import {
+  MOBILE_AUTH_RETRY_LIMIT,
+  resolveMobileAuthRecovery,
+} from "../lib/mobile-auth-expiry";
 
 describe("mobile authentication expiry recovery", () => {
-  test("opens login and clears the stale session after a 401", async () => {
-    const navigateToLogin = jest.fn();
-    const signOut = jest.fn().mockResolvedValue(undefined);
+  test("retries the first authenticated 401 without deleting the active session", () => {
+    expect(resolveMobileAuthRecovery({ status: 401 }, 0)).toBe("retry");
+  });
 
-    expect(recoverMobileAuthExpiry({ status: 401 }, { navigateToLogin, signOut })).toBe(true);
-    expect(navigateToLogin).toHaveBeenCalledTimes(1);
-    expect(signOut).toHaveBeenCalledTimes(1);
+  test("requires an explicit reconnect after the bounded retry is exhausted", () => {
+    expect(resolveMobileAuthRecovery({ status: 401 }, MOBILE_AUTH_RETRY_LIMIT)).toBe("reconnect");
   });
 
   test("leaves non-authentication failures on the current screen", () => {
-    const navigateToLogin = jest.fn();
-    const signOut = jest.fn().mockResolvedValue(undefined);
-
-    expect(recoverMobileAuthExpiry({ status: 503 }, { navigateToLogin, signOut })).toBe(false);
-    expect(navigateToLogin).not.toHaveBeenCalled();
-    expect(signOut).not.toHaveBeenCalled();
-  });
-
-  test("still opens login when stale-session cleanup fails", async () => {
-    const navigateToLogin = jest.fn();
-    const signOut = jest.fn().mockRejectedValue(new Error("cleanup failed"));
-
-    expect(recoverMobileAuthExpiry({ status: 401 }, { navigateToLogin, signOut })).toBe(true);
-    expect(navigateToLogin).toHaveBeenCalledTimes(1);
-    await Promise.resolve();
+    expect(resolveMobileAuthRecovery({ status: 503 }, 0)).toBe("ignore");
   });
 });

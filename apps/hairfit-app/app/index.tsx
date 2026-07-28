@@ -30,7 +30,10 @@ import {
 } from "../hooks/useReducedMotionPreference";
 import { useHairfitApi } from "../lib/api";
 import { useNetworkRecovery } from "../components/app/NetworkRecoveryProvider";
-import { recoverMobileAuthExpiry } from "../lib/mobile-auth-expiry";
+import {
+  resolveMobileAuthRecovery,
+  waitForMobileAuthRetry,
+} from "../lib/mobile-auth-expiry";
 import { mapMobileUserError } from "../lib/mobile-user-message";
 
 type CustomerDashboard = Extract<MobileDashboard, { service: "customer" }>["customer"];
@@ -400,6 +403,8 @@ export default function HairfitHomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>("세션을 확인하는 중입니다.");
   const [setupModalOpen, setSetupModalOpen] = useState(false);
+  const [authRecoveryRequired, setAuthRecoveryRequired] = useState(false);
+  const [authReloadKey, setAuthReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -415,43 +420,56 @@ export default function HairfitHomeScreen() {
         return;
       }
 
-      try {
-        setIsLoading(true);
-        setMessage(null);
-        const next = await api.getMobileMe();
-        if (cancelled) return;
+      let authRetryCount = 0;
 
-        setBootstrap(next);
-        if (next.accountType !== "member") {
-          setDashboard(null);
-          if (!next.accountType || !next.accountSetupComplete) {
-            setMessage("계정 설정을 마치면 HairFit 앱을 더 정확하게 사용할 수 있습니다.");
-          }
-          return;
-        }
+      while (!cancelled) {
+        try {
+          setIsLoading(true);
+          setMessage(null);
+          const next = await api.getMobileMe();
+          if (cancelled) return;
 
-        if (!next.accountSetupComplete) {
-          setMessage("계정 설정을 마치면 HairFit 앱을 더 정확하게 사용할 수 있습니다.");
-        }
-
-        const customerDashboard = await api.getMobileDashboard("customer");
-        if (!cancelled && customerDashboard.service === "customer") {
-          setDashboard(customerDashboard);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setDashboard(null);
-          if (recoverMobileAuthExpiry(error, {
-            navigateToLogin: () => router.replace("/login"),
-            signOut: () => signOutRef.current(),
-          })) {
+          setBootstrap(next);
+          setAuthRecoveryRequired(false);
+          if (next.accountType !== "member") {
+            setDashboard(null);
+            if (!next.accountType || !next.accountSetupComplete) {
+              setMessage("계정 설정을 마치면 HairFit 앱을 더 정확하게 사용할 수 있습니다.");
+            }
             return;
           }
-          setMessage(mapMobileUserError(error, "홈 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
+
+          if (!next.accountSetupComplete) {
+            setMessage("계정 설정을 마치면 HairFit 앱을 더 정확하게 사용할 수 있습니다.");
+          }
+
+          const customerDashboard = await api.getMobileDashboard("customer");
+          if (!cancelled && customerDashboard.service === "customer") {
+            setDashboard(customerDashboard);
+          }
+          return;
+        } catch (error) {
+          if (!cancelled) {
+            setDashboard(null);
+            const authRecovery = resolveMobileAuthRecovery(error, authRetryCount);
+            if (authRecovery === "retry") {
+              authRetryCount += 1;
+              setMessage("로그인 세션을 연결하는 중입니다. 잠시만 기다려 주세요.");
+              await waitForMobileAuthRetry();
+              continue;
+            }
+            if (authRecovery === "reconnect") {
+              setAuthRecoveryRequired(true);
+              setMessage("로그인 세션을 서버와 연결하지 못했습니다. 다시 시도하거나 로그인을 다시 연결해 주세요.");
+              return;
+            }
+            setMessage(mapMobileUserError(error, "홈 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요."));
+          }
+          return;
+        } finally {
+          if (!cancelled) {
+            setIsLoading(false);
+          }
         }
       }
     }
@@ -460,7 +478,7 @@ export default function HairfitHomeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [api, isLoaded, isSignedIn, recoveryToken, router]);
+  }, [api, authReloadKey, isLoaded, isSignedIn, recoveryToken]);
 
   const shouldPromptAccountSetup = Boolean(
     bootstrap && !bootstrap.accountSetupComplete && (!bootstrap.accountType || bootstrap.accountType === "member"),
@@ -501,6 +519,37 @@ export default function HairfitHomeScreen() {
       <AppScreen>
         <Card>
           <BodyText>홈 정보를 불러오는 중...</BodyText>
+        </Card>
+      </AppScreen>
+    );
+  }
+
+  if (isSignedIn && authRecoveryRequired) {
+    return (
+      <AppScreen>
+        <Card>
+          <Stack>
+            <Heading>로그인 연결 확인</Heading>
+            <BodyText>{message}</BodyText>
+            <Button
+              onPress={() => {
+                setAuthRecoveryRequired(false);
+                setAuthReloadKey((current) => current + 1);
+              }}
+            >
+              다시 시도
+            </Button>
+            <Button
+              variant="secondary"
+              onPress={() => {
+                void signOutRef.current()
+                  .catch(() => undefined)
+                  .finally(() => router.replace("/login"));
+              }}
+            >
+              로그인 다시 연결
+            </Button>
+          </Stack>
         </Card>
       </AppScreen>
     );

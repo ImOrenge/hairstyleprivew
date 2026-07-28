@@ -17,7 +17,7 @@ describe("network recovery adoption", () => {
     const styler = read("components/styler/useMobileStylerNewController.ts");
 
     expect(layout).toContain("<NetworkRecoveryProvider>");
-    expect(home).toContain("[api, isLoaded, isSignedIn, recoveryToken]");
+    expect(home).toContain("[api, authReloadKey, isLoaded, isSignedIn, recoveryToken]");
     expect(generation).toContain('networkAvailability === "offline"');
     expect(generation).toContain("[isAuthLoaded, isSignedIn, load, recoveryToken, resumeTarget]");
     expect(result).toContain("[api, generationId, recoveryToken, showMessage, variantFromRoute]");
