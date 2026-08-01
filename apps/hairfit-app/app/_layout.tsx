@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { RoleNavigationScaffold } from "../components/app/RoleNavigationScaffold";
 import { PushNotificationProvider } from "../components/app/PushNotificationProvider";
 import { NetworkRecoveryProvider } from "../components/app/NetworkRecoveryProvider";
+import { AppVersionProvider } from "../components/app/AppVersionProvider";
 import { GenerationFlowProvider } from "../lib/generation-flow";
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? "";
@@ -22,11 +23,13 @@ function AppProviders() {
   return (
     <PushNotificationProvider>
       <NetworkRecoveryProvider>
-        <GenerationFlowProvider>
-          <RoleNavigationScaffold>
-            <Stack screenOptions={{ headerShown: false }} />
-          </RoleNavigationScaffold>
-        </GenerationFlowProvider>
+        <AppVersionProvider>
+          <GenerationFlowProvider>
+            <RoleNavigationScaffold>
+              <Stack screenOptions={{ headerShown: false }} />
+            </RoleNavigationScaffold>
+          </GenerationFlowProvider>
+        </AppVersionProvider>
       </NetworkRecoveryProvider>
     </PushNotificationProvider>
   );

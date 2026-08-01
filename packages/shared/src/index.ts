@@ -19,6 +19,7 @@ export * from "./generation/notification";
 export * from "./generation/notification-retention-policy";
 export * from "./generation/original-retention-policy";
 export * from "./generation/upload-validation";
+export * from "./mobile/app-version";
 export * from "./salon/connection-consent";
 export * from "./styling/contract";
 

@@ -29,6 +29,7 @@ describe("root router layout", () => {
     for (const provider of [
       "<PushNotificationProvider>",
       "<NetworkRecoveryProvider>",
+      "<AppVersionProvider>",
       "<GenerationFlowProvider>",
     ]) {
       expect(layout.indexOf(provider)).toBeGreaterThan(-1);

@@ -31,6 +31,7 @@ const routes = [
   "my-app/app/api/mobile/google-play/catalog/route.ts",
   "my-app/app/api/mobile/google-play/intents/route.ts",
   "my-app/app/api/mobile/google-play/purchases/verify/route.ts",
+  "my-app/app/api/mobile/app-version/route.ts",
   "my-app/app/api/payments/google-play/rtdn/route.ts",
 ];
 await Promise.all(routes.map(async (route) => assert.ok((await read(route)).length > 0, `${route} is empty`)));
@@ -53,6 +54,11 @@ const appConfig = JSON.parse(await read("apps/hairfit-app/app.json"));
 assert.equal(appConfig.expo.android.package, "com.hairfit.app");
 assert.equal(appConfig.expo.android.versionCode, 1);
 assert.ok(appConfig.expo.plugins.includes("expo-iap"));
+
+const appLayout = await read("apps/hairfit-app/app/_layout.tsx");
+assert.ok(appLayout.includes("AppVersionProvider"), "App-wide Play Store version detection is missing");
+const appPackage = JSON.parse(await read("apps/hairfit-app/package.json"));
+assert.ok(appPackage.dependencies["expo-application"], "Native build version detection is missing");
 
 const appMigration = await read("my-app/supabase/migrations/20260722120000_google_play_billing.sql");
 const rootMigration = await read("supabase/migrations/20260722120000_google_play_billing.sql");

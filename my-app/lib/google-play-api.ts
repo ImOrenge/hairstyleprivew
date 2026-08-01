@@ -3,7 +3,10 @@ import "server-only";
 import {
   GOOGLE_PLAY_PACKAGE_NAME,
   getGooglePlayProductById,
+  selectGooglePlayProductionRelease,
   type GooglePlayCatalogProduct,
+  type GooglePlayProductionRelease,
+  type GooglePlayTrack,
 } from "@hairfit/shared";
 import { normalizeGooglePlayPurchase } from "./google-play-contract";
 
@@ -11,6 +14,8 @@ const API_BASE = "https://androidpublisher.googleapis.com/androidpublisher/v3";
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const TOKEN_SCOPE = "https://www.googleapis.com/auth/androidpublisher";
 let cachedToken: { value: string; expiresAt: number } | null = null;
+let cachedProductionRelease: { value: GooglePlayProductionRelease; expiresAt: number } | null = null;
+const PRODUCTION_RELEASE_CACHE_MS = 5 * 60 * 1_000;
 
 function env(name: string) {
   const value = process.env[name]?.trim();
@@ -125,6 +130,40 @@ export async function getGooglePlayPurchase(product: GooglePlayCatalogProduct, p
     : `/applications/${app}/purchases/products/${encodeURIComponent(product.productId)}/tokens/${token}`;
   const raw = await googleRequest(path);
   return normalizeGooglePlayPurchase(product, raw);
+}
+
+export async function getGooglePlayProductionRelease() {
+  if (cachedProductionRelease && cachedProductionRelease.expiresAt > Date.now()) {
+    return cachedProductionRelease.value;
+  }
+
+  const app = encodeURIComponent(packageName());
+  const edit = await googleRequest(`/applications/${app}/edits`, {
+    method: "POST",
+    body: "{}",
+  }) as { id?: unknown };
+  if (typeof edit.id !== "string" || !edit.id) {
+    throw new Error("Google Play edit response did not include an id");
+  }
+
+  const editId = encodeURIComponent(edit.id);
+  try {
+    const response = await googleRequest(`/applications/${app}/edits/${editId}/tracks`) as {
+      tracks?: unknown;
+    };
+    const tracks = Array.isArray(response.tracks) ? response.tracks as GooglePlayTrack[] : [];
+    const release = selectGooglePlayProductionRelease(tracks);
+    if (!release) throw new Error("Google Play production track has no active release");
+
+    cachedProductionRelease = {
+      value: release,
+      expiresAt: Date.now() + PRODUCTION_RELEASE_CACHE_MS,
+    };
+    return release;
+  } finally {
+    await googleRequest(`/applications/${app}/edits/${editId}`, { method: "DELETE" })
+      .catch(() => undefined);
+  }
 }
 
 export async function getGooglePlaySubscriptionByToken(purchaseToken: string) {
