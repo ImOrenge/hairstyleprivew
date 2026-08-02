@@ -49,7 +49,7 @@ jest.mock("@clerk/clerk-expo", () => ({
 }));
 
 jest.mock("expo-auth-session", () => ({
-  makeRedirectUri: () => "hairfit://auth",
+  makeRedirectUri: jest.fn(() => "hairfit://sso-callback"),
 }));
 
 jest.mock("expo-router", () => ({
@@ -99,6 +99,26 @@ describe("auth form screen behavior", () => {
       expect(screen.getByText("비밀번호를 확인하고 다시 입력해 주세요.")).toBeOnTheScreen();
     });
     expect(screen.queryByText("sensitive provider detail")).not.toBeOnTheScreen();
+  });
+
+  test("mobile Google login uses the dedicated app callback and activates the session", async () => {
+    const oauthSetActive = jest.fn().mockResolvedValue(undefined);
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: "sess_google",
+      setActive: oauthSetActive,
+    });
+    await render(<LoginScreen />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Google로 계속하기" }));
+
+    await waitFor(() => {
+      expect(mockStartSSOFlow).toHaveBeenCalledWith({
+        strategy: "oauth_google",
+        redirectUrl: "hairfit://sso-callback",
+      });
+      expect(oauthSetActive).toHaveBeenCalledWith({ session: "sess_google" });
+      expect(mockReplace).toHaveBeenCalledWith("/");
+    });
   });
 
   test("login completes an available second-factor step inside the app", async () => {
@@ -161,6 +181,27 @@ describe("auth form screen behavior", () => {
 
     expect(screen.getByText("이메일로 받은 인증 코드를 입력해 주세요.")).toBeOnTheScreen();
     expect(mockAttemptVerification).not.toHaveBeenCalled();
+  });
+
+  test("mobile Google signup reuses the same dedicated callback", async () => {
+    const oauthSetActive = jest.fn().mockResolvedValue(undefined);
+    mockStartSSOFlow.mockResolvedValueOnce({
+      createdSessionId: "sess_google_signup",
+      setActive: oauthSetActive,
+    });
+    await render(<SignupScreen />);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Google로 계속하기" }));
+
+    await waitFor(() => {
+      expect(mockStartSSOFlow).toHaveBeenCalledWith({
+        strategy: "oauth_google",
+        redirectUrl: "hairfit://sso-callback",
+        unsafeMetadata: undefined,
+      });
+      expect(oauthSetActive).toHaveBeenCalledWith({ session: "sess_google_signup" });
+      expect(mockReplace).toHaveBeenCalledWith("/");
+    });
   });
 
   test("forgot-password verifies email code, validates confirmation, and keeps MFA in-app", async () => {

@@ -1,5 +1,4 @@
 import { useSSO, useSignIn } from "@clerk/clerk-expo";
-import * as AuthSession from "expo-auth-session";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, type TextInput, View } from "react-native";
@@ -34,8 +33,8 @@ import {
   normalizeAuthSecondFactorOptions,
   type AuthSecondFactorOption,
 } from "../../lib/auth-second-factor";
+import { createMobileSsoRedirectUrl } from "../../lib/mobile-sso";
 
-const oauthRedirectUrl = AuthSession.makeRedirectUri({ path: "login" });
 const webOauthCallbackPath = "/sso-callback";
 
 function webUrl(path: string) {
@@ -255,7 +254,7 @@ export default function LoginScreen() {
 
       const result = await startSSOFlow({
         strategy: "oauth_google",
-        redirectUrl: oauthRedirectUrl,
+        redirectUrl: createMobileSsoRedirectUrl(),
       });
 
       if (result.createdSessionId && result.setActive) {
