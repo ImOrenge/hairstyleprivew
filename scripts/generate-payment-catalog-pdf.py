@@ -10,7 +10,6 @@ from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
-    KeepTogether,
     PageBreak,
     Paragraph,
     SimpleDocTemplate,
@@ -195,7 +194,7 @@ def draw_page(canvas, doc):
     canvas.line(doc.leftMargin, 13 * mm, width - doc.rightMargin, 13 * mm)
     canvas.setFont("Malgun", 7)
     canvas.setFillColor(MUTED)
-    canvas.drawString(doc.leftMargin, 8 * mm, "HairFit / 제이코더랩 - 결제 상품 및 ID 카탈로그")
+    canvas.drawString(doc.leftMargin, 8 * mm, "HairFit / 제이코더랩 - 결제 상품 카탈로그")
     canvas.drawRightString(width - doc.rightMargin, 8 * mm, f"{doc.page} 페이지")
     canvas.restoreState()
 
@@ -212,13 +211,13 @@ def build_pdf():
         leftMargin=20 * mm,
         topMargin=22 * mm,
         bottomMargin=19 * mm,
-        title="HairFit 결제 상품 및 ID 카탈로그",
+        title="HairFit 결제 상품 카탈로그",
         author="제이코더랩",
         subject="HairFit PortOne payment catalog",
     )
 
     story = [
-        paragraph("HairFit 결제 상품 및 ID 카탈로그", style_set["title"]),
+        paragraph("HairFit 결제 상품 카탈로그", style_set["title"]),
         paragraph("PortOne 단건 결제 및 정기결제 상품 매핑", style_set["subtitle"]),
         make_table(
             [
@@ -231,119 +230,71 @@ def build_pdf():
         ),
         Spacer(1, 8),
         note_box(
-            "핵심 원칙: PortOne paymentId와 billing-key issueId는 상품별 결제 요청 시 서버에서 생성되는 동적 ID입니다. PDF에는 실결제 ID를 고정하지 않고 생성 규칙과 대조 기준을 기록합니다.",
+            "핵심 원칙: 상품의 서비스 기간을 결제 유형별로 분류합니다. 정기결제는 한 번의 결제로 결제일 기준 한 달 이용을 제공하고, 추가 이용권은 기간형이 아닌 크레딧 소진형입니다.",
             style_set,
         ),
-        paragraph("1. 결제 ID 규칙", style_set["section"]),
-        paragraph(
-            "PortOne ID는 결제 요청마다 생성하며, 결제 거래의 중복 방지와 웹훅 매칭을 위해 payment_transactions.provider_order_id에 기록합니다.",
-            style_set["body"],
-        ),
-        make_table(
-            [
-                ["용도", "생성 형식", "제한", "현재 경로"],
-                ["웹 정기결제 첫 결제", "sub-{b|s|p}-{base36 timestamp}-{random}", "32자 이하", "POST /api/payments/subscribe"],
-                ["모바일 PortOne", "mob-{b|s|p}-{base36 timestamp}-{random}", "32자 이하", "POST /api/mobile/payments/prepare"],
-                ["추가 이용권 단건결제", "use-{30|80|200}-{base36 timestamp}-{random}", "32자 이하", "POST /api/payments/usage-packs/prepare"],
-                ["빌링키 발급 요청", "bki-{b|s|p}-{base36 timestamp}-{random}", "40자 이하", "POST /api/payments/billing-key/prepare"],
-            ],
-            [32 * mm, 77 * mm, 20 * mm, 41 * mm],
-            style_set,
-            small=True,
-        ),
-        Spacer(1, 8),
-        paragraph(
-            "플랜 코드는 basic=b, standard=s, pro=p입니다. 실제 ID는 Date.now()의 base36 값과 crypto.randomUUID() 기반 난수로 만들어집니다.",
-            style_set["small"],
-        ),
-        paragraph("2. PortOne 정기결제 상품", style_set["section"]),
+        paragraph("1. PortOne 정기결제 상품", style_set["section"]),
         paragraph(
             "웹 카드 빌링키를 발급한 뒤 첫 결제를 처리하고 이후 월 단위로 갱신합니다. 금액은 billing-plan.ts 기본값이며 PRICING_&lt;PLAN&gt;_PRICE_KRW 환경변수로 조정될 수 있습니다.",
             style_set["body"],
         ),
         make_table(
             [
-                ["상품", "상품 키", "기본 금액", "크레딧", "결제 ID"],
-                ["Basic", "basic", money(9900) + "/월", "80", "sub-b-..."],
-                ["Standard", "standard", money(19900) + "/월", "200", "sub-s-..."],
-                ["Pro", "pro", money(49900) + "/월", "600", "sub-p-..."],
-                ["Salon", "salon", money(39900) + "/월", "500", "B2B 문의"],
+                ["상품", "상품 키", "기본 금액", "크레딧", "서비스 기간", "최대 1개월"],
+                ["Basic", "basic", money(9900) + "/월", "80", "결제일 기준 1개월", "예"],
+                ["Standard", "standard", money(19900) + "/월", "200", "결제일 기준 1개월", "예"],
+                ["Pro", "pro", money(49900) + "/월", "600", "결제일 기준 1개월", "예"],
+                ["Salon", "salon", money(39900) + "/월", "500", "결제일 기준 1개월", "예"],
             ],
-            [31 * mm, 30 * mm, 38 * mm, 28 * mm, 53 * mm],
+            [24 * mm, 25 * mm, 30 * mm, 22 * mm, 39 * mm, 30 * mm],
             style_set,
+            small=True,
         ),
         paragraph(
-            "Salon은 selfServe=false로 일반 사용자 직접 결제에서 제외됩니다. 정기결제 빌링키 발급 요청에는 bki-b-..., bki-s-..., bki-p-... 형식의 issueId가 사용됩니다.",
+            "Salon은 selfServe=false로 일반 사용자 직접 결제에서 제외되며 B2B 문의로 운영합니다. 정기결제의 한 번 결제분은 결제일 기준 최대 한 달 이용으로 분류합니다.",
             style_set["small"],
         ),
-        KeepTogether(
-            [
-                paragraph("3. 한달 이용 가능 확인사항", style_set["section"]),
-                paragraph(
-                    "정기결제 첫 결제가 승인되었다고 한달 이용 권한이 자동으로 완결되는 것은 아닙니다. 아래 조건이 모두 맞아야 현재 이용 기간 동안 기능과 크레딧이 정상 제공됩니다.",
-                    style_set["body"],
-                ),
-                make_table(
-                    [
-                        ["시점", "확인 항목", "통과 기준", "기준 경로"],
-                        ["결제 직후", "PortOne 결제 확정", "PAID + 예상 금액/통화/사용자 일치", "confirmPortonePayment"],
-                        ["구독 생성", "구독 권한", "status=active + billing_provider=portone", "subscribe route"],
-                        ["기간 계산", "한달 이용 기간", "시작일에서 다음 달 기준일까지 current_period_end 기록", "user_subscriptions"],
-                        ["크레딧 지급", "월 이용량", "Basic 80 / Standard 200 / Pro 600을 1회 지급", "grant_subscription_credits"],
-                        ["이용 중", "권한 유지", "기간 종료 전 + status active/trialing", "subscription read model"],
-                        ["만료 시점", "갱신 또는 종료", "갱신 성공만 다음 기간과 크레딧을 연장", "renewal + webhook"],
-                    ],
-                    [24 * mm, 37 * mm, 77 * mm, 42 * mm],
-                    style_set,
-                    small=True,
-                ),
-                paragraph(
-                    "운영 테스트에서는 paymentId, provider_order_id, current_period_end, 현재 크레딧을 한 묶음으로 확인하고 중복 웹훅에 의한 이중 지급이 없는지 확인합니다.",
-                    style_set["small"],
-                ),
-            ]
-        ),
-        paragraph("4. PortOne 단건 결제 상품", style_set["section"]),
+        PageBreak(),
+        paragraph("2. PortOne 단건 결제 상품", style_set["section"]),
         paragraph(
-            "추가 이용권은 활성 유료 구독자만 구매할 수 있습니다. 결제 준비 시 상품 키에 맞춘 use-30-..., use-80-..., use-200-... 형식의 paymentId를 생성합니다.",
+            "추가 이용권은 활성 유료 구독자만 구매할 수 있습니다. 기간형 구독이 아니라 크레딧 소진형 상품이므로 서비스 기간은 별도로 두지 않습니다.",
             style_set["body"],
         ),
         make_table(
             [
-                ["상품", "상품 키", "기본 금액", "크레딧", "결제 ID"],
-                ["추가 이용권 30", "usage30", money(5900), "30", "use-30-..."],
-                ["추가 이용권 80", "usage80", money(13900), "80", "use-80-..."],
-                ["추가 이용권 200", "usage200", money(29900), "200", "use-200-..."],
+                ["상품", "상품 키", "기본 금액", "크레딧", "서비스 기간", "최대 1개월"],
+                ["추가 이용권 30", "usage30", money(5900), "30", "기간 없음(크레딧 소진형)", "해당 없음"],
+                ["추가 이용권 80", "usage80", money(13900), "80", "기간 없음(크레딧 소진형)", "해당 없음"],
+                ["추가 이용권 200", "usage200", money(29900), "200", "기간 없음(크레딧 소진형)", "해당 없음"],
             ],
-            [38 * mm, 31 * mm, 38 * mm, 28 * mm, 45 * mm],
+            [32 * mm, 26 * mm, 30 * mm, 22 * mm, 37 * mm, 23 * mm],
             style_set,
+            small=True,
         ),
         Spacer(1, 8),
         note_box(
-            "Free는 결제 상품이 아니며 기본 10크레딧을 제공합니다. PortOne 금액은 PRICING_&lt;PLAN&gt;_PRICE_KRW 환경변수가 설정되면 기본값과 달라질 수 있습니다.",
+            "서비스 기간 요약: 정기결제 상품은 결제일 기준 1개월(최대 1개월: 예), 추가 이용권은 기간 없음(최대 1개월: 해당 없음), Free는 결제 및 서비스 기간 없음(최대 1개월: 해당 없음)입니다.",
             style_set,
         ),
-        PageBreak(),
-        paragraph("5. 운영 체크리스트", style_set["section"]),
-        paragraph("결제 상품을 추가하거나 ID를 변경할 때 다음 항목을 함께 확인합니다.", style_set["body"]),
+        paragraph("3. 서비스 기간 분류 요약", style_set["section"]),
         make_table(
             [
-                ["순서", "확인 항목", "기준 소스"],
-                ["1", "PortOne 상품 키, 금액, 주문명", "my-app/lib/billing-plan.ts, usage-pack.ts"],
-                ["2", "paymentId와 issueId 길이/소스 코드", "my-app/lib/portone-payment-id.ts"],
-                ["3", "결제 준비/검증/완료 API 연결", "my-app/app/api/payments"],
-                ["4", "한달 이용 기간과 갱신 결과", "user_subscriptions.current_period_end"],
-                ["5", "실결제 후 거래 ID 대조", "payment_transactions.provider_order_id"],
+                ["상품 분류", "서비스 기간", "최대 1개월", "분류 기준"],
+                ["정기결제 Basic/Standard/Pro/Salon", "결제일 기준 1개월", "예", "한 번의 결제로 한 달 이용 권한과 월 크레딧 제공"],
+                ["추가 이용권 30/80/200", "기간 없음(크레딧 소진형)", "해당 없음", "활성 유료 구독자에게 별도 크레딧 제공"],
+                ["Free", "결제 및 서비스 기간 없음", "해당 없음", "기본 10크레딧 제공"],
             ],
-            [15 * mm, 82 * mm, 83 * mm],
+            [45 * mm, 43 * mm, 28 * mm, 54 * mm],
             style_set,
+            small=True,
         ),
+        Spacer(1, 8),
         paragraph("기준 소스", style_set["section"]),
         paragraph(
             "my-app/lib/business-info.ts<br/>"
             "my-app/lib/billing-plan.ts<br/>"
             "my-app/lib/usage-pack.ts<br/>"
-            "my-app/lib/portone-payment-id.ts<br/>"
+            "my-app/lib/usage-pack-eligibility.ts<br/>"
             "my-app/app/api/payments/subscribe/route.ts<br/>"
             "my-app/app/api/payments/usage-packs/prepare/route.ts<br/>"
             "my-app/app/api/payments/usage-packs/complete/route.ts",
@@ -351,7 +302,7 @@ def build_pdf():
         ),
         Spacer(1, 10),
         note_box(
-            "발행 문서: HairFit 결제 상품 및 ID 카탈로그 / 상호: 제이코더랩 / 기준일: 2026-08-03",
+            "발행 문서: HairFit 결제 상품 카탈로그 / 상호: 제이코더랩 / 기준일: 2026-08-03",
             style_set,
         ),
     ]
