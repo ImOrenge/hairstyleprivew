@@ -8,7 +8,7 @@ export interface FooterBusinessInfoRow {
 export const footerBusinessInfo = {
   heading: "사업자정보",
   rows: [
-    { label: "상호", value: "Hair Fit(제이코더랩)" },
+    { label: "상호", value: "제이코더랩" },
     { label: "대표자", value: "장민기" },
     { label: "사업자등록번호", value: "736-42-01637" },
     { label: "사업자등록일", value: "2026년 06월 29일" },
