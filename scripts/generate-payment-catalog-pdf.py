@@ -235,7 +235,7 @@ def build_pdf():
         ),
         paragraph("1. PortOne 정기결제 상품", style_set["section"]),
         paragraph(
-            "웹 카드 빌링키를 발급한 뒤 첫 결제를 처리하고 이후 월 단위로 갱신합니다. 금액은 billing-plan.ts 기본값이며 PRICING_&lt;PLAN&gt;_PRICE_KRW 환경변수로 조정될 수 있습니다.",
+            "웹 카드 빌링키를 발급한 뒤 첫 결제를 처리하고 이후 월 단위로 갱신합니다. 금액은 billing-plan.ts 기본값 기준입니다.",
             style_set["body"],
         ),
         make_table(
