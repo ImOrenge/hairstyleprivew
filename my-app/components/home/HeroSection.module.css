@@ -1,615 +1,342 @@
-.demoShell {
+.hero {
+  --rail-gap: 6px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid var(--app-border);
+  border-radius: clamp(0.9rem, 2vw, 1.5rem);
+  background:
+    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--app-accent-soft) 58%, transparent), transparent 42%),
+    color-mix(in srgb, var(--app-surface) 84%, var(--app-bg));
+  padding: clamp(0.5rem, 1.5vw, 1rem) clamp(0.5rem, 1.5vw, 1.25rem) clamp(2.5rem, 6vw, 5rem);
+}
+
+.visualStage {
+  position: relative;
+  height: clamp(28rem, 68vw, 48rem);
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 13%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 13%, #000 84%, transparent 100%);
+}
+
+.columns {
   display: grid;
-  gap: 1rem;
-  border: 1px solid color-mix(in srgb, var(--app-inverse-text) 14%, transparent);
-  border-radius: var(--app-radius-panel);
-  background: color-mix(in srgb, var(--app-inverse-text) 5.5%, transparent);
-  padding: 1rem;
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
+  width: min(100%, 70rem);
+  height: 100%;
+  margin-inline: auto;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--rail-gap);
 }
 
-.demoHeader,
-.gridHeader {
+.column {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.track {
+  display: grid;
+  gap: var(--rail-gap);
+  will-change: transform;
+  animation: rollUp var(--roll-duration) linear infinite;
+  animation-delay: var(--roll-phase);
+}
+
+.trackDown {
+  animation-name: rollDown;
+}
+
+.isPaused .track {
+  animation-play-state: paused;
+}
+
+.isRunning .track {
+  animation-play-state: running;
+}
+
+.tileGroup {
+  display: grid;
+  gap: var(--rail-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tile {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--app-border-strong) 42%, transparent);
+  border-radius: clamp(0.65rem, 1.3vw, 1rem);
+  background: var(--app-surface-muted);
+  box-shadow: 0 8px 24px -22px rgba(25, 24, 22, 0.62);
+}
+
+.tileImage {
+  object-fit: cover;
+  object-position: center;
+  transition: transform 480ms cubic-bezier(0.22, 1, 0.36, 1), filter 480ms ease;
+}
+
+@media (hover: hover) {
+  .tile:hover .tileImage {
+    transform: scale(1.025);
+    filter: saturate(1.04) contrast(1.02);
+  }
+}
+
+.copyBlock {
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+  width: min(100%, 54rem);
+  margin: clamp(1.5rem, 4vw, 3rem) auto 0;
+  align-items: center;
+  flex-direction: column;
+  text-align: center;
 }
 
-.demoEyebrow,
-.gridHeader span {
-  color: var(--app-accent);
-  font-size: 0.68rem;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+.brand {
+  margin: 0;
+  color: var(--app-text);
+  font-size: clamp(0.8rem, 1.3vw, 1rem);
+  font-weight: 950;
+  letter-spacing: 0.38em;
+  text-indent: 0.38em;
 }
 
-.demoTitle {
-  margin-top: 0.25rem;
-  color: var(--app-inverse-text);
-  font-size: 1.05rem;
-  font-weight: 900;
-  line-height: 1.25;
-}
-
-.liveBadge {
+.eyebrow {
   display: inline-flex;
-  flex-shrink: 0;
+  margin: 1rem 0 0;
   align-items: center;
   gap: 0.45rem;
-  border: 1px solid color-mix(in srgb, var(--app-success) 35%, transparent);
-  border-radius: var(--app-radius-control);
-  background: color-mix(in srgb, var(--app-success-bg) 72%, transparent);
-  color: color-mix(in srgb, var(--app-success) 35%, var(--app-inverse-text));
-  padding: 0.45rem 0.65rem;
+  color: var(--app-accent-strong);
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 850;
+  letter-spacing: 0.16em;
 }
 
-.liveDot {
-  width: 0.42rem;
-  height: 0.42rem;
-  border-radius: var(--app-radius-control);
-  background: var(--app-success);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-success) 65%, transparent);
-  animation: livePulse 2.2s ease-out infinite;
+.eyebrowIcon {
+  width: 0.9rem;
+  height: 0.9rem;
 }
 
-.genderTabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.5rem;
-  border: 1px solid color-mix(in srgb, var(--app-inverse-text) 10%, transparent);
-  border-radius: var(--app-radius-panel);
-  background: color-mix(in srgb, var(--app-inverse-muted) 72%, transparent);
-  padding: 0.35rem;
+.title {
+  margin: clamp(0.75rem, 1.8vw, 1.25rem) 0 0;
+  color: var(--app-text);
+  font-size: clamp(2.35rem, 6.4vw, 5.75rem);
+  font-weight: 950;
+  letter-spacing: -0.065em;
+  line-height: 0.98;
+  text-wrap: balance;
 }
 
-.genderTab {
-  min-height: 2.35rem;
-  border: 0;
-  border-radius: var(--app-radius-control);
-  background: transparent;
-  color: color-mix(in srgb, var(--app-inverse-text) 70%, transparent);
-  cursor: pointer;
-  font-size: 0.78rem;
-  font-weight: 900;
-  transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+.title span {
+  display: block;
+  color: var(--app-accent-strong);
+  white-space: nowrap;
 }
 
-.genderTab:hover {
-  color: var(--app-inverse-text);
-  background: color-mix(in srgb, var(--app-inverse-text) 8%, transparent);
+.description {
+  margin: clamp(1.1rem, 2.4vw, 1.65rem) 0 0;
+  color: var(--app-muted);
+  font-size: clamp(0.95rem, 1.6vw, 1.12rem);
+  font-weight: 560;
+  line-height: 1.8;
 }
 
-.genderTabActive {
-  background: var(--app-inverse-text);
-  color: var(--app-inverse);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22);
-}
-
-.workflowLayout {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
-}
-
-.photoFrame {
-  position: relative;
-  min-height: 20rem;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--app-inverse-text) 16%, transparent);
-  border-radius: var(--app-radius-panel);
-  background: var(--app-inverse-muted);
-}
-
-.photoImage {
-  object-fit: cover;
-  object-position: center top;
-}
-
-.photoFrame::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.78) 100%);
-}
-
-.scanLine {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 12%;
-  z-index: 2;
-  width: 2px;
-  background: linear-gradient(180deg, transparent, var(--app-accent), transparent);
-  box-shadow: 0 0 18px color-mix(in srgb, var(--app-accent) 85%, transparent);
-  animation: scanFace 5.6s ease-in-out infinite;
-}
-
-.analysisCard {
-  position: absolute;
-  right: 0.75rem;
-  bottom: 0.75rem;
-  left: 0.75rem;
-  z-index: 3;
-  border: 1px solid color-mix(in srgb, var(--app-inverse-text) 20%, transparent);
-  border-radius: var(--app-radius-panel);
-  background: color-mix(in srgb, var(--app-inverse-muted) 82%, transparent);
-  padding: 0.85rem;
-  backdrop-filter: blur(12px);
-}
-
-.analysisStatus {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  color: color-mix(in srgb, var(--app-success) 45%, var(--app-inverse-text));
-  font-size: 0.72rem;
-  font-weight: 800;
-}
-
-.analysisList {
-  display: grid;
-  gap: 0.5rem;
-  margin: 0.75rem 0 0;
-}
-
-.analysisList div {
+.actions {
   display: flex;
+  margin-top: clamp(1.4rem, 3vw, 2rem);
   align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
-.analysisList dt {
-  color: color-mix(in srgb, var(--app-inverse-text) 68%, transparent);
-  font-size: 0.68rem;
+.primaryAction,
+.secondaryAction {
+  display: inline-flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.85rem 1.35rem;
+  font-size: 0.88rem;
+  font-weight: 850;
+  letter-spacing: -0.01em;
+  transition: transform 220ms ease, background-color 220ms ease, border-color 220ms ease;
+}
+
+.primaryAction {
+  gap: 0.55rem;
+  border: 1px solid var(--app-border-strong);
+  background: var(--app-text);
+  color: var(--app-bg);
+}
+
+.secondaryAction {
+  border: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-surface) 86%, transparent);
+  color: var(--app-text);
+}
+
+.primaryAction:hover,
+.secondaryAction:hover {
+  transform: translateY(-2px);
+}
+
+.secondaryAction:hover {
+  border-color: var(--app-border-strong);
+}
+
+.actionIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.proof {
+  display: flex;
+  margin-top: 1.15rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: var(--app-muted);
+  font-size: 0.76rem;
   font-weight: 700;
 }
 
-.analysisList dd {
-  margin: 0;
-  color: var(--app-inverse-text);
-  font-size: 0.76rem;
-  font-weight: 900;
-  text-align: right;
+.avatars {
+  display: flex;
+  padding-left: 0.55rem;
 }
 
-.stepList {
-  display: grid;
-  gap: 0.7rem;
-  align-content: start;
+.avatar {
+  width: 1.8rem;
+  height: 1.8rem;
+  margin-left: -0.55rem;
+  border: 2px solid var(--app-surface);
+  border-radius: 999px;
+  object-fit: cover;
 }
 
-.workflowStep {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.75rem;
-  align-items: center;
-  border: 1px solid color-mix(in srgb, var(--app-inverse-text) 12%, transparent);
-  border-radius: var(--app-radius-panel);
-  background: color-mix(in srgb, var(--app-inverse-text) 6.5%, transparent);
-  padding: 0.8rem;
-  animation: stepFocus 7.2s ease-in-out infinite;
-  animation-delay: var(--delay);
-}
-
-.stepIcon {
+.scrollCue {
   display: inline-flex;
-  width: 2.25rem;
-  height: 2.25rem;
+  margin-top: clamp(1.75rem, 4vw, 3rem);
   align-items: center;
-  justify-content: center;
-  border-radius: var(--app-radius-control);
-  background: var(--app-accent);
-  color: var(--app-inverse);
+  gap: 0.4rem;
+  color: var(--app-subtle);
+  font-size: 0.6rem;
+  font-weight: 850;
+  letter-spacing: 0.18em;
 }
 
-.workflowStep strong,
-.workflowStep small {
-  display: block;
+.scrollCue svg {
+  width: 0.85rem;
+  height: 0.85rem;
+  animation: cueBounce 1.8s ease-in-out infinite;
 }
 
-.workflowStep strong {
-  color: var(--app-inverse-text);
-  font-size: 0.82rem;
-  line-height: 1.25;
-}
-
-.workflowStep small {
-  margin-top: 0.18rem;
-  color: color-mix(in srgb, var(--app-inverse-text) 68%, transparent);
-  font-size: 0.7rem;
-  line-height: 1.35;
-}
-
-.gridHeader {
-  align-items: center;
-}
-
-.gridHeader strong {
-  color: color-mix(in srgb, var(--app-success) 35%, var(--app-inverse-text));
-  font-size: 0.74rem;
-  font-weight: 900;
-}
-
-.gridPanel {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.gridBoard {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.55rem;
-}
-
-.gridCard {
-  position: relative;
-  aspect-ratio: 4 / 5;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--app-inverse-text) 13%, transparent);
-  border-radius: var(--app-radius-panel);
-  background: var(--app-inverse-muted);
-  animation: cardFocus 8.4s ease-in-out infinite;
-  animation-delay: var(--delay);
-}
-
-.gridCardFeatured {
-  border-color: color-mix(in srgb, var(--app-accent) 85%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--app-accent) 26%, transparent), 0 16px 34px rgba(0, 0, 0, 0.28);
-}
-
-.gridCardImage {
-  object-fit: contain;
-  object-position: center top;
-  opacity: 0.96;
-  transform: none;
-}
-
-.gridCardOverlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.6));
-}
-
-.scoreBadge {
-  position: absolute;
-  top: 0.45rem;
-  right: 0.45rem;
-  border-radius: var(--app-radius-control);
-  background: var(--app-inverse-text);
-  color: var(--app-inverse);
-  padding: 0.18rem 0.42rem;
-  font-size: 0.66rem;
-  font-weight: 900;
-}
-
-.cardText {
-  position: absolute;
-  right: 0.52rem;
-  bottom: 0.5rem;
-  left: 0.52rem;
-}
-
-.cardText span,
-.cardText strong {
-  display: block;
-}
-
-.cardText span {
-  color: color-mix(in srgb, var(--app-inverse-text) 72%, transparent);
-  font-size: 0.62rem;
-  font-weight: 800;
-}
-
-.cardText strong {
-  margin-top: 0.12rem;
-  color: var(--app-inverse-text);
-  font-size: 0.74rem;
-  font-weight: 900;
-  line-height: 1.15;
-}
-
-@media (min-width: 1024px) {
-  .demoShell {
-    align-items: start;
-    gap: 0.9rem 1.1rem;
-    grid-template-areas:
-      "header tabs"
-      "workflow grid";
-    grid-template-columns: minmax(18rem, 0.62fr) minmax(0, 1.38fr);
-    padding: 1rem;
+@keyframes rollUp {
+  from {
+    transform: translate3d(0, 0, 0);
   }
-
-  .demoHeader {
-    grid-area: header;
-    align-items: center;
-  }
-
-  .genderTabs {
-    grid-area: tabs;
-    align-self: center;
-  }
-
-  .workflowLayout {
-    grid-area: workflow;
-  }
-
-  .gridPanel {
-    grid-area: grid;
-    justify-self: end;
-    width: min(100%, 48rem);
-  }
-
-  .demoEyebrow,
-  .gridHeader span {
-    font-size: 0.62rem;
-  }
-
-  .demoTitle {
-    font-size: 0.92rem;
-    line-height: 1.2;
-  }
-
-  .liveBadge {
-    padding: 0.36rem 0.56rem;
-    font-size: 0.62rem;
-  }
-
-  .genderTabs {
-    gap: 0.35rem;
-    padding: 0.28rem;
-  }
-
-  .genderTab {
-    min-height: 2rem;
-    font-size: 0.72rem;
-  }
-
-  .workflowLayout {
-    grid-template-columns: 1fr;
-    gap: 0.75rem;
-  }
-
-  .photoFrame {
-    min-height: auto;
-    aspect-ratio: 4 / 5;
-    border-radius: var(--app-radius-panel);
-    background: var(--app-inverse-muted);
-  }
-
-  .photoImage {
-    object-fit: contain;
-    object-position: center top;
-  }
-
-  .analysisCard {
-    right: 0.55rem;
-    bottom: 0.55rem;
-    left: 0.55rem;
-    border-radius: var(--app-radius-panel);
-    padding: 0.62rem;
-  }
-
-  .analysisStatus {
-    font-size: 0.64rem;
-  }
-
-  .analysisList {
-    gap: 0.34rem;
-    margin-top: 0.48rem;
-  }
-
-  .analysisList div {
-    gap: 0.5rem;
-  }
-
-  .analysisList dt {
-    font-size: 0.58rem;
-  }
-
-  .analysisList dd {
-    font-size: 0.64rem;
-  }
-
-  .stepList {
-    gap: 0.5rem;
-  }
-
-  .workflowStep {
-    gap: 0.58rem;
-    border-radius: var(--app-radius-panel);
-    padding: 0.58rem;
-  }
-
-  .stepIcon {
-    width: 1.9rem;
-    height: 1.9rem;
-    border-radius: var(--app-radius-control);
-  }
-
-  .workflowStep strong {
-    font-size: 0.72rem;
-  }
-
-  .workflowStep small {
-    font-size: 0.6rem;
-    line-height: 1.3;
-  }
-
-  .gridHeader strong {
-    font-size: 0.68rem;
-  }
-
-  .gridPanel {
-    gap: 0.55rem;
-  }
-
-  .gridBoard {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.55rem;
-  }
-
-  .gridCard {
-    aspect-ratio: 7 / 5;
-    border-radius: var(--app-radius-panel);
-  }
-
-  .scoreBadge {
-    top: 0.34rem;
-    right: 0.34rem;
-    padding: 0.14rem 0.34rem;
-    font-size: 0.58rem;
-  }
-
-  .cardText {
-    right: 0.38rem;
-    bottom: 0.36rem;
-    left: 0.38rem;
-  }
-
-  .cardText span {
-    font-size: 0.5rem;
-  }
-
-  .cardText strong {
-    font-size: 0.58rem;
+  to {
+    transform: translate3d(0, calc(-50% - var(--rail-gap) / 2), 0);
   }
 }
 
-@media (min-width: 1280px) {
-  .demoShell {
-    gap: 1rem 1.2rem;
-    padding: 1.1rem;
+@keyframes rollDown {
+  from {
+    transform: translate3d(0, calc(-50% - var(--rail-gap) / 2), 0);
   }
-
-  .photoFrame {
-    min-height: auto;
-  }
-
-  .gridBoard {
-    gap: 0.5rem;
-  }
-
-  .cardText span {
-    font-size: 0.56rem;
-  }
-
-  .cardText strong {
-    font-size: 0.66rem;
+  to {
+    transform: translate3d(0, 0, 0);
   }
 }
 
-@keyframes livePulse {
-  70% {
-    box-shadow: 0 0 0 8px transparent;
-  }
-  100% {
-    box-shadow: 0 0 0 0 transparent;
-  }
-}
-
-@keyframes scanFace {
-  0%,
-  18% {
-    left: 12%;
-    opacity: 0;
-  }
-  28%,
-  72% {
-    opacity: 1;
-  }
-  84%,
-  100% {
-    left: 88%;
-    opacity: 0;
-  }
-}
-
-@keyframes stepFocus {
-  0%,
-  100% {
-    border-color: color-mix(in srgb, var(--app-inverse-text) 12%, transparent);
-    background: color-mix(in srgb, var(--app-inverse-text) 6.5%, transparent);
-  }
-  18%,
-  34% {
-    border-color: color-mix(in srgb, var(--app-accent) 42%, transparent);
-    background: color-mix(in srgb, var(--app-accent) 16%, transparent);
-  }
-}
-
-@keyframes cardFocus {
+@keyframes cueBounce {
   0%,
   100% {
     transform: translateY(0);
   }
-  18%,
-  31% {
-    transform: translateY(-3px);
+  50% {
+    transform: translateY(3px);
   }
 }
 
-@media (max-width: 720px) {
-  .demoHeader,
-  .gridHeader {
-    align-items: flex-start;
+@media (max-width: 640px) {
+  .hero {
+    --rail-gap: 4px;
+    border-radius: 0.8rem;
+    padding-inline: 0.35rem;
+  }
+
+  .visualStage {
+    height: 28rem;
+  }
+
+  .tile {
+    border-radius: 0.55rem;
+  }
+
+  .copyBlock {
+    padding-inline: 0.8rem;
+  }
+
+  .brand {
+    font-size: 0.72rem;
+  }
+
+  .eyebrow {
+    font-size: 0.58rem;
+    letter-spacing: 0.11em;
+  }
+
+  .title {
+    font-size: clamp(2rem, 10.5vw, 2.75rem);
+  }
+
+  .desktopBreak {
+    display: none;
+  }
+
+  .description {
+    max-width: 33rem;
+    font-size: 0.9rem;
+    line-height: 1.7;
+  }
+
+  .actions {
+    width: 100%;
+    align-items: stretch;
     flex-direction: column;
   }
 
-  .workflowLayout {
-    grid-template-columns: 1fr;
+  .primaryAction,
+  .secondaryAction {
+    width: 100%;
   }
 
-  .photoFrame {
-    min-height: auto;
-    aspect-ratio: 4 / 5;
-    background: var(--app-inverse-muted);
-  }
-
-  .photoImage {
-    object-fit: contain;
-    object-position: center top;
-  }
-
-  .gridBoard {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.45rem;
-  }
-
-  .gridCard {
-    aspect-ratio: 3 / 4;
-  }
-
-  .gridCardImage {
-    object-position: center 12%;
-  }
-
-  .cardText {
-    right: 0.38rem;
-    bottom: 0.38rem;
-    left: 0.38rem;
-  }
-
-  .cardText span {
-    font-size: 0.56rem;
-  }
-
-  .cardText strong {
-    font-size: 0.66rem;
+  .proof {
+    align-items: center;
+    flex-direction: column;
+    line-height: 1.45;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liveDot,
-  .scanLine,
-  .workflowStep,
-  .gridCard {
+  .track,
+  .scrollCue svg {
     animation: none;
+  }
+
+  .track {
+    transform: none;
+  }
+
+  .tileImage,
+  .primaryAction,
+  .secondaryAction {
+    transition: none;
   }
 }

@@ -1,12 +1,10 @@
-﻿"use client";
+"use client";
 
-import { CSSProperties, type KeyboardEvent, useRef, useState } from "react";
+import type { CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Camera, CheckCircle2, Grid3X3, Shirt, Sparkles } from "lucide-react";
-import { InverseCard, InverseSection } from "../ui/Surface";
-import { useT } from "../../lib/i18n/useT";
-import type { TranslationKey } from "../../lib/i18n/locales/ko";
+import { ArrowDown, ArrowRight, Sparkles } from "lucide-react";
 import styles from "./HeroSection.module.css";
 
 interface HeroSectionProps {
@@ -14,463 +12,304 @@ interface HeroSectionProps {
   avatars?: string[];
 }
 
-type DemoGender = "male" | "female";
-
-type RecommendationDemoCard = {
-  titleKey: TranslationKey;
-  bucketKey: TranslationKey;
-  fitKey: TranslationKey;
-  score: string;
-  image: string;
-  featured?: boolean;
+type RollingTile = {
+  src: string;
+  alt: string;
+  model: string;
+  kind: "hair" | "fashion";
 };
 
-type DemoProfile = {
-  labelKey: TranslationKey;
-  originalImage: string;
-  faceShapeKey: TranslationKey;
-  headBalanceKey: TranslationKey;
-  cards: RecommendationDemoCard[];
+type RollingColumnConfig = {
+  duration: number;
+  phase: number;
+  direction: "up" | "down";
+  tiles: RollingTile[];
 };
 
-const DEMO_GENDERS: DemoGender[] = ["male", "female"];
+const MODEL_TILES: Record<string, [RollingTile, RollingTile]> = {
+  model01: [
+    {
+      src: "/hero/rolling/model-01-hair.webp",
+      alt: "허쉬컷 헤어를 보여주는 여성 모델 클로즈업",
+      model: "모델 1",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-01-fashion.webp",
+      alt: "같은 허쉬컷 여성 모델의 아이보리 트렌치 패션",
+      model: "모델 1",
+      kind: "fashion",
+    },
+  ],
+  model02: [
+    {
+      src: "/hero/rolling/model-02-hair.webp",
+      alt: "텍스처 콤마 헤어를 보여주는 남성 모델 클로즈업",
+      model: "모델 2",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-02-fashion.webp",
+      alt: "같은 콤마 헤어 남성 모델의 차콜 테일러링 패션",
+      model: "모델 2",
+      kind: "fashion",
+    },
+  ],
+  model03: [
+    {
+      src: "/hero/rolling/model-03-hair.webp",
+      alt: "사이드 파트 보브 헤어를 보여주는 여성 모델 클로즈업",
+      model: "모델 3",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-03-fashion.webp",
+      alt: "같은 보브 헤어 여성 모델의 코발트 재킷 패션",
+      model: "모델 3",
+      kind: "fashion",
+    },
+  ],
+  model04: [
+    {
+      src: "/hero/rolling/model-04-hair.webp",
+      alt: "미디엄 커튼 헤어를 보여주는 남성 모델 클로즈업",
+      model: "모델 4",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-04-fashion.webp",
+      alt: "같은 커튼 헤어 남성 모델의 올리브 오버셔츠 패션",
+      model: "모델 4",
+      kind: "fashion",
+    },
+  ],
+  model05: [
+    {
+      src: "/hero/rolling/model-05-hair.webp",
+      alt: "긴 레이어드 웨이브를 보여주는 여성 모델 클로즈업",
+      model: "모델 5",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-05-fashion.webp",
+      alt: "같은 레이어드 헤어 여성 모델의 버건디 레더 패션",
+      model: "모델 5",
+      kind: "fashion",
+    },
+  ],
+  model06: [
+    {
+      src: "/hero/rolling/model-06-hair.webp",
+      alt: "짧은 아이비리그 헤어를 보여주는 남성 모델 클로즈업",
+      model: "모델 6",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-06-fashion.webp",
+      alt: "같은 아이비리그 헤어 남성 모델의 카멜 봄버 패션",
+      model: "모델 6",
+      kind: "fashion",
+    },
+  ],
+  model07: [
+    {
+      src: "/hero/rolling/model-07-hair.webp",
+      alt: "볼륨 픽시 보브를 보여주는 여성 모델 클로즈업",
+      model: "모델 7",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-07-fashion.webp",
+      alt: "같은 픽시 보브 여성 모델의 블랙 블레이저 패션",
+      model: "모델 7",
+      kind: "fashion",
+    },
+  ],
+  model08: [
+    {
+      src: "/hero/rolling/model-08-hair.webp",
+      alt: "내추럴 쇼트 웨이브를 보여주는 남성 모델 클로즈업",
+      model: "모델 8",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-08-fashion.webp",
+      alt: "같은 쇼트 웨이브 남성 모델의 네이비 블레이저 패션",
+      model: "모델 8",
+      kind: "fashion",
+    },
+  ],
+};
 
-const SOCIAL_AVATAR_PLACEHOLDERS = [
-  "from-[#d0b06a] via-[#82745a] to-[#191816]",
-  "from-[#f4f1e8] via-[#8b8375] to-[#191816]",
-  "from-[#b9aa8b] via-[#5f5a50] to-[#050505]",
-  "from-[#a8863a] via-[#3b3934] to-[#050505]",
+const ROLLING_COLUMNS: RollingColumnConfig[] = [
+  {
+    duration: 20,
+    phase: -18,
+    direction: "up",
+    tiles: [...MODEL_TILES.model01, ...MODEL_TILES.model05],
+  },
+  {
+    duration: 26,
+    phase: -42,
+    direction: "down",
+    tiles: [...MODEL_TILES.model02, ...MODEL_TILES.model06],
+  },
+  {
+    duration: 23,
+    phase: -31,
+    direction: "up",
+    tiles: [...MODEL_TILES.model03, ...MODEL_TILES.model07],
+  },
+  {
+    duration: 29,
+    phase: -57,
+    direction: "down",
+    tiles: [...MODEL_TILES.model04, ...MODEL_TILES.model08],
+  },
 ];
 
-const DEMO_PROFILES: Record<DemoGender, DemoProfile> = {
-  male: {
-    labelKey: "hero.gender.male",
-    originalImage: "/hero/demo/male-original.webp",
-    faceShapeKey: "hero.demo.male.faceShapeValue",
-    headBalanceKey: "hero.demo.male.headBalanceValue",
-    cards: [
-      {
-        titleKey: "hero.demo.male.card.1.title",
-        bucketKey: "hero.demo.bucket.short",
-        fitKey: "hero.demo.fit.crown",
-        score: "94",
-        image: "/hero/demo/grid/male-01.webp",
-        featured: true,
-      },
-      {
-        titleKey: "hero.demo.male.card.2.title",
-        bucketKey: "hero.demo.bucket.short",
-        fitKey: "hero.demo.fit.temple",
-        score: "92",
-        image: "/hero/demo/grid/male-02.webp",
-      },
-      {
-        titleKey: "hero.demo.male.card.3.title",
-        bucketKey: "hero.demo.bucket.short",
-        fitKey: "hero.demo.fit.jawline",
-        score: "90",
-        image: "/hero/demo/grid/male-03.webp",
-      },
-      {
-        titleKey: "hero.demo.male.card.4.title",
-        bucketKey: "hero.demo.bucket.medium",
-        fitKey: "hero.demo.fit.temple",
-        score: "91",
-        image: "/hero/demo/grid/male-04.webp",
-      },
-      {
-        titleKey: "hero.demo.male.card.5.title",
-        bucketKey: "hero.demo.bucket.medium",
-        fitKey: "hero.demo.fit.crown",
-        score: "88",
-        image: "/hero/demo/grid/male-05.webp",
-      },
-      {
-        titleKey: "hero.demo.male.card.6.title",
-        bucketKey: "hero.demo.bucket.medium",
-        fitKey: "hero.demo.fit.crown",
-        score: "86",
-        image: "/hero/demo/grid/male-06.webp",
-      },
-      {
-        titleKey: "hero.demo.male.card.7.title",
-        bucketKey: "hero.demo.bucket.long",
-        fitKey: "hero.demo.fit.jawline",
-        score: "84",
-        image: "/hero/demo/grid/male-07.webp",
-      },
-      {
-        titleKey: "hero.demo.male.card.8.title",
-        bucketKey: "hero.demo.bucket.long",
-        fitKey: "hero.demo.fit.temple",
-        score: "82",
-        image: "/hero/demo/grid/male-08.webp",
-      },
-      {
-        titleKey: "hero.demo.male.card.9.title",
-        bucketKey: "hero.demo.bucket.medium",
-        fitKey: "hero.demo.fit.crown",
-        score: "80",
-        image: "/hero/demo/grid/male-09.webp",
-      },
-    ],
-  },
-  female: {
-    labelKey: "hero.gender.female",
-    originalImage: "/hero/demo/female-original.webp",
-    faceShapeKey: "hero.demo.female.faceShapeValue",
-    headBalanceKey: "hero.demo.female.headBalanceValue",
-    cards: [
-      {
-        titleKey: "hero.demo.female.card.1.title",
-        bucketKey: "hero.demo.bucket.short",
-        fitKey: "hero.demo.fit.jawline",
-        score: "95",
-        image: "/hero/demo/grid/female-01.webp",
-        featured: true,
-      },
-      {
-        titleKey: "hero.demo.female.card.2.title",
-        bucketKey: "hero.demo.bucket.short",
-        fitKey: "hero.demo.fit.temple",
-        score: "93",
-        image: "/hero/demo/grid/female-02.webp",
-      },
-      {
-        titleKey: "hero.demo.female.card.3.title",
-        bucketKey: "hero.demo.bucket.short",
-        fitKey: "hero.demo.fit.crown",
-        score: "89",
-        image: "/hero/demo/grid/female-03.webp",
-      },
-      {
-        titleKey: "hero.demo.female.card.4.title",
-        bucketKey: "hero.demo.bucket.medium",
-        fitKey: "hero.demo.fit.jawline",
-        score: "92",
-        image: "/hero/demo/grid/female-04.webp",
-      },
-      {
-        titleKey: "hero.demo.female.card.5.title",
-        bucketKey: "hero.demo.bucket.medium",
-        fitKey: "hero.demo.fit.temple",
-        score: "90",
-        image: "/hero/demo/grid/female-05.webp",
-      },
-      {
-        titleKey: "hero.demo.female.card.6.title",
-        bucketKey: "hero.demo.bucket.medium",
-        fitKey: "hero.demo.fit.crown",
-        score: "88",
-        image: "/hero/demo/grid/female-06.webp",
-      },
-      {
-        titleKey: "hero.demo.female.card.7.title",
-        bucketKey: "hero.demo.bucket.long",
-        fitKey: "hero.demo.fit.jawline",
-        score: "87",
-        image: "/hero/demo/grid/female-07.webp",
-      },
-      {
-        titleKey: "hero.demo.female.card.8.title",
-        bucketKey: "hero.demo.bucket.long",
-        fitKey: "hero.demo.fit.crown",
-        score: "85",
-        image: "/hero/demo/grid/female-08.webp",
-      },
-      {
-        titleKey: "hero.demo.female.card.9.title",
-        bucketKey: "hero.demo.bucket.long",
-        fitKey: "hero.demo.fit.temple",
-        score: "83",
-        image: "/hero/demo/grid/female-09.webp",
-      },
-    ],
-  },
-};
-
-export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
-  const t = useT();
-  const [activeDemoGender, setActiveDemoGender] = useState<DemoGender>("male");
-  const genderTabRefs = useRef<Partial<Record<DemoGender, HTMLButtonElement | null>>>({});
-  const titleLines = t("hero.title").split("\n");
-  const activeDemo = DEMO_PROFILES[activeDemoGender];
-  const visibleAvatars = avatars.slice(0, 4);
-  const visibleAvatarSlots = Math.min(4, Math.max(userCount, visibleAvatars.length));
-  const placeholderAvatarCount = Math.max(0, visibleAvatarSlots - visibleAvatars.length);
-  const hiddenUserCount = Math.max(0, userCount - visibleAvatars.length - placeholderAvatarCount);
-  const avatarStackCount = visibleAvatars.length + placeholderAvatarCount + (hiddenUserCount > 0 ? 1 : 0);
-
-  const workflowSteps = [
-    { icon: Camera, label: t("hero.workflow.upload"), detail: t("hero.workflow.uploadDetail") },
-    { icon: Sparkles, label: t("hero.workflow.analysis"), detail: t("hero.workflow.analysisDetail") },
-    { icon: Grid3X3, label: t("hero.workflow.grid"), detail: t("hero.workflow.gridDetail") },
-  ];
-
-  function handleGenderTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, currentGender: DemoGender) {
-    const currentIndex = DEMO_GENDERS.indexOf(currentGender);
-    let nextGender: DemoGender | null = null;
-
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-      nextGender = DEMO_GENDERS[(currentIndex + 1) % DEMO_GENDERS.length];
-    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-      nextGender = DEMO_GENDERS[(currentIndex - 1 + DEMO_GENDERS.length) % DEMO_GENDERS.length];
-    } else if (event.key === "Home") {
-      nextGender = DEMO_GENDERS[0];
-    } else if (event.key === "End") {
-      nextGender = DEMO_GENDERS[DEMO_GENDERS.length - 1];
-    }
-
-    if (!nextGender) return;
-    event.preventDefault();
-    setActiveDemoGender(nextGender);
-    genderTabRefs.current[nextGender]?.focus();
-  }
+function RollingColumn({ config, index }: { config: RollingColumnConfig; index: number }) {
+  const motionStyle = {
+    "--roll-duration": `${config.duration}s`,
+    "--roll-phase": `${config.phase}s`,
+  } as CSSProperties;
 
   return (
-    <InverseSection as="section" className="relative overflow-hidden p-0">
-      <div className="grid gap-0">
-        <div className="grid min-h-[calc(100vh-9rem)] content-center gap-8 border-b border-[color-mix(in_srgb,var(--app-inverse-text)_10%,transparent)] p-5 sm:p-7 lg:grid-cols-[minmax(0,1.12fr)_minmax(20rem,0.78fr)] lg:p-10 xl:gap-10">
-          <div className="min-w-0 self-center">
-            <p className="app-inverse-kicker">HairFit / Graphite Champagne</p>
-            <h1 className="mt-4 max-w-5xl break-keep text-[2.45rem] font-black leading-[1.02] tracking-tight sm:text-5xl xl:text-6xl">
-              <span className="mb-3 block text-[var(--app-accent)]">HairFit</span>
-              {titleLines.map((line, i) => (
-                <span key={i}>
-                  {i > 0 && <br />}
-                  {line}
-                </span>
-              ))}
-            </h1>
-            <p className="app-inverse-muted mt-5 max-w-3xl text-base font-semibold leading-7 sm:text-lg sm:leading-8">
-              {t("hero.subtitle")}
-            </p>
-
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                href="/consulting/new"
-                className="app-inverse-cta inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold uppercase tracking-[0.04em] transition hover:opacity-90"
-              >
-                {t("hero.cta.start")}
-                <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-              <Link
-                href="#home-demo"
-                className="app-inverse-ghost inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-semibold uppercase tracking-[0.04em] transition"
-              >
-                {t("hero.cta.demo")}
-                <Grid3X3 className="h-4 w-4" aria-hidden="true" />
-              </Link>
-            </div>
-          </div>
-
-          <InverseCard className="grid content-between gap-4 p-4 sm:p-5">
-            <div>
-              <p className="app-inverse-kicker">제품 신뢰 지표</p>
-              <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-inverse-text)]">
-                AI 헤어 분석에서 패션 룩북까지 이어지는 하나의 스타일 시스템
-              </h2>
-              <p className="app-inverse-muted mt-3 text-sm font-semibold leading-6">
-                얼굴형, 비율, 헤어 후보, 패션 방향을 같은 시각 언어로 연결합니다.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2">
-              <InverseCard className="p-3">
-                <p className="text-xl font-black xl:text-2xl">{t("hero.stat.photo.value")}</p>
-                <p className="app-inverse-muted mt-1 text-[11px] font-semibold">{t("hero.stat.photo")}</p>
-              </InverseCard>
-              <InverseCard className="p-3">
-                <p className="text-xl font-black xl:text-2xl">{t("hero.stat.grid.value")}</p>
-                <p className="app-inverse-muted mt-1 text-[11px] font-semibold">{t("hero.stat.grid")}</p>
-              </InverseCard>
-              <InverseCard className="p-3">
-                <p className="text-xl font-black xl:text-2xl">{t("hero.stat.analysis.value")}</p>
-                <p className="app-inverse-muted mt-1 text-[11px] font-semibold">{t("hero.stat.analysis")}</p>
-              </InverseCard>
-            </div>
-
-            {userCount > 0 && (
-              <div className="hidden flex-wrap items-center gap-4 sm:flex">
-                <div className="flex -space-x-3 overflow-visible pl-1">
-                  {visibleAvatars.map((url, i) => (
-                    <div
-                      key={`${url}-${i}`}
-                      className="relative inline-block h-10 w-10 overflow-hidden border-2 border-[var(--app-inverse)] bg-[var(--app-inverse-muted)] shadow-xl ring-1 ring-white/20 transition-transform hover:z-20 hover:scale-110"
-                      style={{ zIndex: avatarStackCount - i }}
-                    >
-                      <Image
-                        src={url}
-                        alt="User avatar"
-                        fill
-                        className="object-cover"
-                        sizes="40px"
-                      />
-                    </div>
-                  ))}
-                  {Array.from({ length: placeholderAvatarCount }).map((_, i) => {
-                    const gradient = SOCIAL_AVATAR_PLACEHOLDERS[i % SOCIAL_AVATAR_PLACEHOLDERS.length];
-                    const zIndex = avatarStackCount - visibleAvatars.length - i;
-
-                    return (
-                      <div
-                        key={`placeholder-${i}`}
-                        className={`relative inline-flex h-10 w-10 items-center justify-center border-2 border-[var(--app-inverse)] bg-gradient-to-br ${gradient} text-[11px] font-black text-[var(--app-inverse-text)] shadow-xl ring-1 ring-white/20 transition-transform hover:scale-110`}
-                        style={{ zIndex }}
-                      >
-                        HF
-                      </div>
-                    );
-                  })}
-                  {hiddenUserCount > 0 && (
-                    <div className="app-inverse-subtle relative flex h-10 w-10 items-center justify-center border-2 border-[var(--app-inverse)] bg-[var(--app-inverse-muted)] text-[10px] font-bold shadow-xl ring-1 ring-white/20">
-                      +{hiddenUserCount}
-                    </div>
-                  )}
-                </div>
-                <p className="text-sm font-bold tracking-tight text-[var(--app-inverse-text)]">
-                  {t("hero.socialProof").replace("{{count}}", userCount.toLocaleString())}
-                </p>
-              </div>
-            )}
-
-            <p className="app-inverse-subtle flex items-center gap-1.5 text-xs font-semibold">
-              <Shirt className="h-3.5 w-3.5 shrink-0 text-[var(--app-accent)]" aria-hidden="true" />
-              {t("hero.fashionTeaser")}
-            </p>
-          </InverseCard>
-        </div>
-
-        <div className="p-3 sm:p-5" id="home-demo">
-        <div className={styles.demoShell} aria-label={t("hero.demo.aria")}>
-          <div className={styles.demoHeader}>
-            <div>
-              <p className={styles.demoEyebrow}>{t("hero.demo.eyebrow")}</p>
-              <h2 className={styles.demoTitle}>{t("hero.demo.title")}</h2>
-            </div>
-            <span className={styles.liveBadge}>
-              <span className={styles.liveDot} aria-hidden="true" />
-              {t("hero.demo.status")}
-            </span>
-          </div>
-
-          <div className={styles.genderTabs} role="tablist" aria-label={t("hero.demo.genderTabs")}>
-            {DEMO_GENDERS.map((gender) => {
-              const profile = DEMO_PROFILES[gender];
-              const isActive = activeDemoGender === gender;
-
-              return (
-                <button
-                  key={gender}
-                  id={`hero-demo-tab-${gender}`}
-                  ref={(node) => {
-                    genderTabRefs.current[gender] = node;
-                  }}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  aria-controls="hero-demo-panel"
-                  tabIndex={isActive ? 0 : -1}
-                  className={`${styles.genderTab} ${isActive ? styles.genderTabActive : ""}`}
-                  onClick={() => setActiveDemoGender(gender)}
-                  onKeyDown={(event) => handleGenderTabKeyDown(event, gender)}
-                >
-                  {t(profile.labelKey)}
-                </button>
-              );
-            })}
-          </div>
-
-          <div
-            id="hero-demo-panel"
-            role="tabpanel"
-            aria-labelledby={`hero-demo-tab-${activeDemoGender}`}
-            tabIndex={0}
-            className={styles.workflowLayout}
+    <div className={styles.column} style={motionStyle} data-rolling-column={index + 1}>
+      <div className={`${styles.track} ${config.direction === "down" ? styles.trackDown : ""}`}>
+        {[0, 1].map((loopIndex) => (
+          <ul
+            key={loopIndex}
+            className={styles.tileGroup}
+            aria-hidden={loopIndex === 1 ? true : undefined}
           >
-            <div className={styles.photoFrame}>
-              <Image
-                key={activeDemo.originalImage}
-                src={activeDemo.originalImage}
-                alt={t("hero.demo.photoAlt")}
-                fill
-                priority
-                className={styles.photoImage}
-                sizes="(max-width: 1024px) 100vw, 360px"
-              />
-              <div className={styles.scanLine} aria-hidden="true" />
-              <div className={styles.analysisCard}>
-                <span className={styles.analysisStatus}>
-                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                  {t("hero.demo.analysisComplete")}
+            {config.tiles.map((tile, tileIndex) => (
+              <li
+                className={styles.tile}
+                key={`${loopIndex}-${tile.src}`}
+                data-model={tile.model}
+                data-kind={tile.kind}
+              >
+                <Image
+                  src={tile.src}
+                  alt={loopIndex === 0 ? tile.alt : ""}
+                  fill
+                  className={styles.tileImage}
+                  sizes="(max-width: 640px) 25vw, (max-width: 1280px) 24vw, 272px"
+                  priority={loopIndex === 0 && index < 2 && tileIndex === 0}
+                />
+                <span className="sr-only">
+                  {tile.model} {tile.kind === "hair" ? "헤어" : "패션"}
                 </span>
-                <dl className={styles.analysisList}>
-                  <div>
-                    <dt>{t("hero.demo.faceShapeLabel")}</dt>
-                    <dd>{t(activeDemo.faceShapeKey)}</dd>
-                  </div>
-                  <div>
-                    <dt>{t("hero.demo.headBalanceLabel")}</dt>
-                    <dd>{t(activeDemo.headBalanceKey)}</dd>
-                  </div>
-                </dl>
-              </div>
-            </div>
+              </li>
+            ))}
+          </ul>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-            <div className={styles.stepList}>
-              {workflowSteps.map((step, index) => {
-                const Icon = step.icon;
-                return (
-                  <div
-                    key={step.label}
-                    className={styles.workflowStep}
-                    style={{ "--delay": `${index * 1.2}s` } as CSSProperties}
-                  >
-                    <span className={styles.stepIcon}>
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                    <span>
-                      <strong>{step.label}</strong>
-                      <small>{step.detail}</small>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
+  const heroRef = useRef<HTMLElement>(null);
+  const [isActive, setIsActive] = useState(true);
 
-          <div className={styles.gridPanel}>
-            <div className={styles.gridHeader}>
-              <span>{t("hero.demo.gridLabel")}</span>
-              <strong>{t("hero.demo.gridReady")}</strong>
-            </div>
-            <div className={styles.gridBoard}>
-              {activeDemo.cards.map((card, index) => (
-                <article
-                  key={`${activeDemoGender}-${card.titleKey}`}
-                  className={`${styles.gridCard} ${card.featured ? styles.gridCardFeatured : ""}`}
-                  style={{ "--delay": `${index * 0.35}s` } as CSSProperties}
-                >
-                  <Image
-                    src={card.image}
-                    alt={`${t(card.titleKey)} ${t(card.bucketKey)} 헤어스타일 AI 미리보기`}
-                    fill
-                    className={styles.gridCardImage}
-                    sizes="(max-width: 720px) 30vw, (max-width: 1280px) 22vw, 260px"
-                  />
-                  <div className={styles.gridCardOverlay} />
-                  <div className={styles.scoreBadge}>{card.score}</div>
-                  <div className={styles.cardText}>
-                    <span>{t(card.bucketKey)} / {t(card.fitKey)}</span>
-                    <strong>{t(card.titleKey)}</strong>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
-        </div>
+  useEffect(() => {
+    const hero = heroRef.current;
+    if (!hero) return;
+
+    let isInViewport = true;
+    const syncPlayback = () => {
+      setIsActive(isInViewport && document.visibilityState === "visible");
+    };
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        isInViewport = entry.isIntersecting;
+        syncPlayback();
+      },
+      { threshold: 0.08 },
+    );
+
+    observer.observe(hero);
+    document.addEventListener("visibilitychange", syncPlayback);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", syncPlayback);
+    };
+  }, []);
+
+  const visibleAvatars = avatars.slice(0, 4);
+
+  return (
+    <section ref={heroRef} className={styles.hero} aria-labelledby="landing-hero-title">
+      <div
+        className={styles.visualStage}
+        aria-label="헤어와 패션이 이어지는 4열 4행 스타일 롤링 갤러리"
+        data-testid="hero-rolling-stage"
+      >
+        <div
+          className={`${styles.columns} ${isActive ? styles.isRunning : styles.isPaused}`}
+          data-testid="hero-rolling-columns"
+        >
+          {ROLLING_COLUMNS.map((column, index) => (
+            <RollingColumn config={column} index={index} key={index} />
+          ))}
         </div>
       </div>
-    </InverseSection>
+
+      <div className={styles.copyBlock}>
+        <p className={styles.brand}>HAIRFIT</p>
+        <p className={styles.eyebrow}>
+          <Sparkles className={styles.eyebrowIcon} aria-hidden="true" />
+          AI HAIR · FASHION CONTINUITY
+        </p>
+        <h1 id="landing-hero-title" className={styles.title}>
+          헤어를 고르면,
+          <span>패션이 이어집니다</span>
+        </h1>
+        <p className={styles.description}>
+          내 얼굴 사진 한 장으로 어울리는 헤어 9가지를 비교하고,
+          <br className={styles.desktopBreak} /> 선택한 헤어에 맞는 패션 코디까지 한 흐름으로 만나보세요.
+        </p>
+
+        <div className={styles.actions}>
+          <Link href="/consulting/new" className={styles.primaryAction}>
+            사진으로 시작하기
+            <ArrowRight className={styles.actionIcon} aria-hidden="true" />
+          </Link>
+          <Link href="#home-fashion" className={styles.secondaryAction}>
+            결과 예시 보기
+          </Link>
+        </div>
+
+        {(userCount > 0 || visibleAvatars.length > 0) && (
+          <div className={styles.proof} aria-label="HairFit 이용자 정보">
+            {visibleAvatars.length > 0 && (
+              <div className={styles.avatars} aria-hidden="true">
+                {visibleAvatars.map((avatar, index) => (
+                  <Image
+                    key={avatar}
+                    src={avatar}
+                    alt=""
+                    width={30}
+                    height={30}
+                    className={styles.avatar}
+                    unoptimized
+                    style={{ zIndex: visibleAvatars.length - index }}
+                  />
+                ))}
+              </div>
+            )}
+            {userCount > 0 && <span>{userCount.toLocaleString("ko-KR")}명이 HairFit으로 스타일을 비교했어요</span>}
+          </div>
+        )}
+
+        <a href="#home-fashion" className={styles.scrollCue} aria-label="다음 섹션으로 이동">
+          <span>SCROLL</span>
+          <ArrowDown aria-hidden="true" />
+        </a>
+      </div>
+    </section>
   );
 }

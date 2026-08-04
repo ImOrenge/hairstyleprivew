@@ -91,6 +91,7 @@
     "auth-recovery:contract:test": "node --no-warnings --test lib/authenticated-fetch.test.ts",
     "copy-terminology:contract:test": "node --no-warnings --test lib/user-facing-copy.test.ts",
     "web-image:contract:test": "node --no-warnings --test lib/web-image-contract.test.ts",
+    "landing-hero:contract:test": "node --no-warnings --test lib/landing-hero-contract.test.ts",
     "aftercare:model:smoke": "node --no-warnings scripts/smoke-aftercare-model.mjs",
     "cf:build": "opennextjs-cloudflare build",
     "cf:multi:build": "opennextjs-cloudflare build",

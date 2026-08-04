@@ -7,6 +7,8 @@ import { ArrowRight } from "lucide-react";
 import { FeatureShowcase } from "../components/home/FeatureShowcase";
 import { FashionDemoShowcase } from "../components/home/FashionDemoShowcase";
 import { HeroSection } from "../components/home/HeroSection";
+import { MobileStickyCtaBar } from "../components/home/MobileStickyCtaBar";
+import { RevealOnScroll } from "../components/home/RevealOnScroll";
 import { AppPage, InverseSection, Panel, SurfaceCard } from "../components/ui/Surface";
 import { resolveSignedInAccountHomeHref } from "../lib/account-home-server";
 import { getClerkConfigState, getProductionClerkSecretKey } from "../lib/clerk";
@@ -228,20 +230,6 @@ function FinalCtaBlock() {
   );
 }
 
-function MobileStickyCtaBar() {
-  return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-2 lg:hidden">
-      <Link
-        href="/consulting/new"
-        className="flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
-      >
-        AI 헤어 컨설턴트 시작
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-      </Link>
-    </div>
-  );
-}
-
 export default async function HomePage() {
   const signedInRedirectHref = await resolveLandingSignedInRedirectHref();
   if (signedInRedirectHref) {
@@ -271,46 +259,53 @@ export default async function HomePage() {
         </div>
 
         {/* 2. Fashion Demo */}
-        <div id="home-fashion" className="scroll-mt-24">
-          <FashionDemoShowcase />
-        </div>
+        <RevealOnScroll>
+          <div id="home-fashion" className="scroll-mt-24">
+            <FashionDemoShowcase />
+          </div>
+        </RevealOnScroll>
 
         {/* 3. 사용 흐름 */}
-        <Panel
-          as="section"
-          id="home-workflow"
-          className="scroll-mt-24 p-5 sm:p-6"
-        >
-          <div className="max-w-3xl">
-            <p className="app-kicker">
-              How HairFit Works
-            </p>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
-              사진 한 장으로 9가지 후보까지
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--app-muted)] sm:text-base">
-              업로드, 비교, 저장만 기억하면 됩니다. 패션 추천은 선택한 헤어 이후에 자연스럽게 이어집니다.
-            </p>
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {homeWorkflow.map((item) => (
-              <SurfaceCard as="article" key={item.step} className="p-4">
-                <p className="text-xs font-black tracking-[0.22em] text-[var(--app-accent-strong)]">{item.step}</p>
-                <h3 className="mt-3 text-lg font-black text-[var(--app-text)]">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{item.description}</p>
-              </SurfaceCard>
-            ))}
-          </div>
-        </Panel>
+        <RevealOnScroll>
+          <Panel
+            as="section"
+            id="home-workflow"
+            className="scroll-mt-24 p-5 sm:p-6"
+          >
+            <div className="max-w-3xl">
+              <p className="app-kicker">
+                How HairFit Works
+              </p>
+              <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
+                사진 한 장으로 9가지 후보까지
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--app-muted)] sm:text-base">
+                업로드, 비교, 저장만 기억하면 됩니다. 패션 추천은 선택한 헤어 이후에 자연스럽게 이어집니다.
+              </p>
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {homeWorkflow.map((item) => (
+                <SurfaceCard as="article" key={item.step} className="p-4">
+                  <p className="text-xs font-black tracking-[0.22em] text-[var(--app-accent-strong)]">{item.step}</p>
+                  <h3 className="mt-3 text-lg font-black text-[var(--app-text)]">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{item.description}</p>
+                </SurfaceCard>
+              ))}
+            </div>
+          </Panel>
+        </RevealOnScroll>
 
         {/* 4. 헤어+패션 차별점 */}
-        <div id="home-features" className="scroll-mt-24">
-          <FeatureShowcase />
-        </div>
+        <RevealOnScroll>
+          <div id="home-features" className="scroll-mt-24">
+            <FeatureShowcase />
+          </div>
+        </RevealOnScroll>
 
         {/* 5. 추천 기준 */}
-        <section id="home-criteria" className="grid scroll-mt-24 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-          <Panel className="p-5 sm:p-6">
+        <RevealOnScroll>
+          <section id="home-criteria" className="grid scroll-mt-24 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+            <Panel className="p-5 sm:p-6">
             <p className="app-kicker">
               Recommendation Criteria
             </p>
@@ -326,40 +321,46 @@ export default async function HomePage() {
             >
               AI 헤어 컨설턴트 시작
             </Link>
-          </Panel>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {recommendationCriteria.map((item) => (
-              <SurfaceCard
-                as="article"
-                key={item.title}
-                className="p-4 transition-colors"
-              >
-                <h3 className="text-base font-black text-[var(--app-text)]">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{item.description}</p>
-              </SurfaceCard>
-            ))}
-          </div>
-        </section>
+            </Panel>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {recommendationCriteria.map((item) => (
+                <SurfaceCard
+                  as="article"
+                  key={item.title}
+                  className="p-4 transition-colors"
+                >
+                  <h3 className="text-base font-black text-[var(--app-text)]">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{item.description}</p>
+                </SurfaceCard>
+              ))}
+            </div>
+          </section>
+        </RevealOnScroll>
 
         {/* 6. 가격 */}
-        <div id="home-pricing" className="scroll-mt-24">
-          <PricingPreview
-            initialDisplayBenefits={pricingDisplayBenefits}
-            subscriptionAccessMode={subscriptionAccessMode}
-          />
-        </div>
+        <RevealOnScroll>
+          <div id="home-pricing" className="scroll-mt-24">
+            <PricingPreview
+              initialDisplayBenefits={pricingDisplayBenefits}
+              subscriptionAccessMode={subscriptionAccessMode}
+            />
+          </div>
+        </RevealOnScroll>
 
         {/* 7. 후기/신뢰 */}
-        <div id="home-reviews" className="scroll-mt-24">
-          <ReviewCarousel />
-        </div>
+        <RevealOnScroll>
+          <div id="home-reviews" className="scroll-mt-24">
+            <ReviewCarousel />
+          </div>
+        </RevealOnScroll>
 
         {/* 8. FAQ */}
-        <Panel
-          as="section"
-          id="home-faq"
-          className="scroll-mt-24 p-5 sm:p-6"
-        >
+        <RevealOnScroll>
+          <Panel
+            as="section"
+            id="home-faq"
+            className="scroll-mt-24 p-5 sm:p-6"
+          >
           <div className="max-w-3xl">
             <p className="app-kicker">FAQ</p>
             <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
@@ -380,14 +381,16 @@ export default async function HomePage() {
               </SurfaceCard>
             ))}
           </div>
-        </Panel>
+          </Panel>
+        </RevealOnScroll>
 
         {/* 9. 살롱/B2B 보조 전환 */}
-        <Panel
-          as="section"
-          id="home-salon"
-          className="scroll-mt-24 border-[var(--app-accent)] p-5 text-[var(--app-text)] sm:p-6"
-        >
+        <RevealOnScroll>
+          <Panel
+            as="section"
+            id="home-salon"
+            className="scroll-mt-24 border-[var(--app-accent)] p-5 text-[var(--app-text)] sm:p-6"
+          >
           <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
             <div>
               <p className="app-kicker">
@@ -429,10 +432,13 @@ export default async function HomePage() {
               </div>
             </div>
           </div>
-        </Panel>
+          </Panel>
+        </RevealOnScroll>
 
         {/* 10. 마감 CTA */}
-        <FinalCtaBlock />
+        <RevealOnScroll>
+          <FinalCtaBlock />
+        </RevealOnScroll>
       </AppPage>
 
       {/* 모바일 고정 CTA 바 */}
