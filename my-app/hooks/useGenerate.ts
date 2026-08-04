@@ -65,7 +65,7 @@ interface GenerationApiResponse {
 
 const INSUFFICIENT_CREDITS_CODE = "INSUFFICIENT_CREDITS";
 const INSUFFICIENT_CREDITS_MESSAGE =
-  "이용할 수 있는 처리량이 부족합니다. 추가 이용량을 구매한 뒤 다시 시도해 주세요.";
+  "이용할 수 있는 처리량이 부족합니다. 이용권을 구매한 뒤 다시 시도해 주세요.";
 
 class GenerationApiError extends Error {
   readonly status: number;

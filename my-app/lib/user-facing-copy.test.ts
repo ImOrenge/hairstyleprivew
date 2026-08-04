@@ -95,8 +95,10 @@ test("selection, confirmation, retry, regeneration, and payment return keep dist
 });
 
 test("audited static UI copy keeps implementation and generic English labels off user screens", () => {
+  const pricingPreview = read("../components/home/PricingPreview.tsx");
   const auditedSources = [
     read("../app/billing/page.tsx"),
+    read("../app/api/generations/run/route.ts"),
     read("../app/home/page.tsx"),
     read("../app/support/page.tsx"),
     read("../components/home/AccountSetupPromptModal.tsx"),
@@ -114,15 +116,17 @@ test("audited static UI copy keeps implementation and generic English labels off
     read("../../apps/hairfit-app/components/PersonalColorDiagnosisProgress.tsx"),
     read("../../apps/hairfit-app/components/styler/MobileStylerNewView.tsx"),
     read("../components/styler/StylerNewView.tsx"),
+    read("../hooks/useGenerate.ts"),
   ].join("\n");
 
   assert.doesNotMatch(
     auditedSources,
-    /Account Setup|Admin Dashboard|App Home|Hair History|Style History|Personal Color Scan|Analysis Preview|Warm \/ Cool|Privacy &amp; consent|NEXT_PUBLIC_TURNSTILE_SITE_KEY 설정이 필요합니다|NEXT_PUBLIC_CLERK|Clerk publishable|멱등|임시 서명 링크|결제 콜백 정보/,
+    /Account Setup|Admin Dashboard|App Home|Hair History|Style History|Personal Color Scan|Analysis Preview|Warm \/ Cool|Privacy &amp; consent|NEXT_PUBLIC_TURNSTILE_SITE_KEY 설정이 필요합니다|NEXT_PUBLIC_CLERK|Clerk publishable|멱등|임시 서명 링크|결제 콜백 정보|추가\s+이용량/,
   );
   assert.match(auditedSources, /보안 확인을 준비하지 못했습니다/);
   assert.match(auditedSources, /개인정보 및 동의/);
   assert.match(auditedSources, /팔레트 비교 과정/);
+  assert.doesNotMatch(pricingPreview, /passSummary|pricing\.(?:paidCredits|freeCredits)/);
 });
 
 test("the written glossary records the same user-facing action boundaries", () => {

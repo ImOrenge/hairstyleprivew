@@ -131,7 +131,6 @@ export function PricingPreview({
       return {
         ...plan,
         price: plan.key === "salon" ? t("pricing.salonPrice") : "0원",
-        passSummary: plan.key === "salon" ? t("pricing.salonCredits") : t("pricing.noCredits"),
         features: benefit ? featureLines(plan, benefit, t) : [],
       };
     }
@@ -139,18 +138,6 @@ export function PricingPreview({
     return {
       ...plan,
       price: benefit.priceLabel,
-      passSummary:
-        plan.key === "free"
-          ? t("pricing.freeCredits", {
-              hair: benefit.usage.hairOnlyCount,
-              fashion: benefit.usage.hairFashionSetCount,
-              care: benefit.usage.aftercareProgramCount,
-            })
-          : t("pricing.paidCredits", {
-              hair: benefit.usage.hairOnlyCount,
-              fashion: benefit.usage.hairFashionSetCount,
-              care: benefit.usage.aftercareProgramCount,
-            }),
       features: featureLines(plan, benefit, t),
     };
   });
@@ -234,12 +221,6 @@ export function PricingPreview({
                 {plan.period}
               </p>
             </div>
-
-            <p
-              className="mt-2 w-fit border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--app-inverse-text)]"
-            >
-              {plan.passSummary}
-            </p>
 
             <ul className="mt-3 flex-1 space-y-1.5">
               {plan.features.map((feature) => (

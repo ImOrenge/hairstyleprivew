@@ -15,7 +15,7 @@ const dictionaries = { ko, en } as const;
  * @example
  * const t = useT();
  * t("hero.title")
- * t("pricing.credits", { credits: 10, styles: 5 })
+ * t("pricing.usage.hairOnly", { count: 8 })
  */
 export function useT() {
     const locale = useLocaleStore((s) => s.locale);

@@ -203,17 +203,12 @@ const en: Record<TranslationKey, string> = {
     "pricing.salon.f5": "Plan scope confirmed during onboarding",
     "pricing.packLabel": "monthly plan",
     "pricing.perMonth": "/mo",
-    "pricing.credits": "{{hair}} hair uses · {{fashion}} fashion sets · {{care}} care uses",
     "pricing.freePeriod": "free",
-    "pricing.freeCredits": "Free trial · {{hair}} hair uses · {{fashion}} fashion sets · {{care}} care uses",
-    "pricing.paidCredits": "{{hair}} hair uses · {{fashion}} fashion sets · {{care}} care uses",
     "pricing.salonPeriod": "consult",
     "pricing.salonPrice": "Contact",
-    "pricing.salonCredits": "B2B onboarding consultation",
     "pricing.recurringNote": "Use for 1 month after purchase · monthly billing · cancel anytime",
     "pricing.waitlist.cta": "Join waitlist",
     "pricing.waitlist.note": "Subscription checkout preparing · waitlist gets first notice",
-    "pricing.noCredits": "Pass details by consultation",
     "pricing.connecting": "Connecting...",
 
     // Reviews
