@@ -7,11 +7,11 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
-  CreditCard,
   Grid3X3,
   ImagePlus,
   Shirt,
   Sparkles,
+  type LucideIcon,
   UserRound,
 } from "lucide-react";
 import { AppPage, Panel, SurfaceCard } from "../../components/ui/Surface";
@@ -193,7 +193,7 @@ function MetricCard({
   actionLabel?: string;
   actionShortLabel?: string;
   helper: string;
-  icon: typeof CreditCard;
+  icon: LucideIcon;
   label: string;
   value: string;
 }) {
@@ -403,13 +403,7 @@ export default async function CustomerHomePage() {
       </Panel>
 
       <Panel as="section" className="overflow-hidden p-0">
-        <div className="grid grid-cols-3 divide-x divide-[var(--app-border)]">
-          <MetricCard
-            helper="헤어와 룩북 생성에 사용됩니다"
-            icon={CreditCard}
-            label="남은 이용량"
-            value={dashboard.credits.toLocaleString("ko-KR")}
-          />
+        <div className="grid grid-cols-2 divide-x divide-[var(--app-border)]">
           <MetricCard
             actionHref="/billing"
             actionLabel="플랜 업그레이드"

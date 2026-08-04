@@ -173,9 +173,8 @@ export default function AdminMemberDetailPage() {
 
       {!isLoading && data ? (
         <>
-          <section className="grid gap-3 md:grid-cols-4">
+          <section className="grid gap-3 md:grid-cols-3">
             <SummaryCard label="Role" value={asString(user.account_type)} helper={`Joined ${formatDate(user.created_at)}`} />
-            <SummaryCard label="남은 이용량" value={asNumber(user.credits).toLocaleString("ko-KR")} />
             <SummaryCard label="Hair" value={generations.length} helper="최근 생성" />
             <SummaryCard label="Salon CRM" value={salonCustomers.length} helper="최근 고객" />
           </section>

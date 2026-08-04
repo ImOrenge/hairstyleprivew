@@ -25,24 +25,25 @@ test("shared policy states renewal, credit grant, unused-credit, and cancellatio
   assert.match(sharedPolicy, /다음 자동결제부터 중단/);
 });
 
-test("web billing surfaces disclose the shared policy before payment and link legal/support routes", () => {
+test("web billing surfaces disclose the applicable policy before payment and link legal/support routes", () => {
   assert.match(webBilling, /SubscriptionPolicyDisclosure/);
   assert.match(webCheckout, /정기결제·해지 정책/);
   assert.match(webCheckoutForm, /결제 전 필수 안내/);
 
   const disclosure = read("../components/billing/SubscriptionPolicyDisclosure.tsx");
-  assert.match(disclosure, /SUBSCRIPTION_BILLING_POLICY_KO\.map/);
+  assert.match(disclosure, /WEB_SUBSCRIPTION_BILLING_POLICY_KO\.map/);
+  assert.match(disclosure, /item\.id !== "unusedCredits"/);
   assert.match(disclosure, /title: "월 이용권 등록"/);
-  assert.match(disclosure, /title: "미사용 이용권"/);
+  assert.doesNotMatch(disclosure, /title: "미사용 이용권"|잔여분/);
   assert.match(disclosure, /href="\/terms-of-service"/);
   assert.match(disclosure, /href="\/privacy-policy"/);
   assert.match(disclosure, /href="\/support"/);
 });
 
-test("subscription cancellation requires confirmation and explains period-end and remaining-credit effects", () => {
+test("subscription cancellation requires confirmation and explains the period-end effect", () => {
   assert.match(webCancellation, /ConfirmActionDialog/);
   assert.match(webCancellation, /기간 종료 후 해지 예약/);
-  assert.match(webCancellation, /getSubscriptionBillingPolicyKo\("unusedCredits"\)/);
+  assert.doesNotMatch(webCancellation, /getSubscriptionBillingPolicyKo\("unusedCredits"\)|unusedCreditPolicy/);
   assert.match(webCancellation, /role="alert"/);
 });
 

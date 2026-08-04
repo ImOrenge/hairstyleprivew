@@ -1,6 +1,18 @@
 import { AppPage, Panel, SurfaceCard } from "../../components/ui/Surface";
 import { SUBSCRIPTION_BILLING_POLICY_KO } from "@hairfit/shared";
 
+const webSubscriptionBillingPolicy = SUBSCRIPTION_BILLING_POLICY_KO
+  .filter((item) => item.id !== "unusedCredits")
+  .map((item) =>
+    item.id === "creditGrant"
+      ? {
+          ...item,
+          title: "월 이용권 등록",
+          description: "월 이용권은 카드 승인과 HairFit의 결제 확인이 모두 끝난 뒤 계정에 등록됩니다.",
+        }
+      : item,
+  );
+
 const sections = [
   {
     title: "1. 약관의 동의",
@@ -48,9 +60,9 @@ const sections = [
     ],
   },
   {
-    title: "7. 결제, 크레딧 및 환불",
+    title: "7. 결제, 이용권 및 환불",
     items: [
-      ...SUBSCRIPTION_BILLING_POLICY_KO.map((item) => `${item.title}: ${item.description}`),
+      ...webSubscriptionBillingPolicy.map((item) => `${item.title}: ${item.description}`),
       "환불 요청은 관련 법령 및 회사의 환불 정책에 의거하여 검토됩니다.",
     ],
   },

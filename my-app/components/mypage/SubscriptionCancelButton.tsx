@@ -8,7 +8,6 @@ import { Button } from "../ui/Button";
 import { ConfirmActionDialog } from "../ui/ConfirmActionDialog";
 
 const cancellationPolicy = getSubscriptionBillingPolicyKo("cancellation");
-const unusedCreditPolicy = getSubscriptionBillingPolicyKo("unusedCredits");
 
 export function SubscriptionCancelButton({
   disabled = false,
@@ -51,7 +50,7 @@ export function SubscriptionCancelButton({
   return (
     <div className="grid gap-2">
       <p className="text-xs leading-5 text-[var(--app-muted)]">
-        {cancellationPolicy.description} {unusedCreditPolicy.description}
+        {cancellationPolicy.description}
       </p>
       <Button
         type="button"
@@ -65,6 +64,7 @@ export function SubscriptionCancelButton({
       >
         이번 결제 기간 후 해지
       </Button>
+      {error ? <p role="alert" className="text-xs font-semibold text-rose-600">{error}</p> : null}
       <ConfirmActionDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -78,12 +78,6 @@ export function SubscriptionCancelButton({
         target="현재 활성 구독"
         beforeValue="현재 결제 기간 동안 이용 가능"
         afterValue="기간 종료 후 자동결제 중단"
-        confirmationSlot={
-          <div className="grid gap-2">
-            <p className="text-sm leading-6 text-[var(--app-muted)]">{unusedCreditPolicy.description}</p>
-            {error ? <p role="alert" className="text-xs font-semibold text-rose-600">{error}</p> : null}
-          </div>
-        }
       />
     </div>
   );

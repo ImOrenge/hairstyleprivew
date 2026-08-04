@@ -96,6 +96,13 @@ test("selection, confirmation, retry, regeneration, and payment return keep dist
 
 test("audited static UI copy keeps implementation and generic English labels off user screens", () => {
   const pricingPreview = read("../components/home/PricingPreview.tsx");
+  const webPassCopy = [
+    read("../app/home/page.tsx"),
+    read("../app/admin/members/[userId]/page.tsx"),
+    read("../components/billing/SubscriptionPolicyDisclosure.tsx"),
+    read("../components/mypage/SubscriptionCancelButton.tsx"),
+    read("../lib/resend.ts"),
+  ].join("\n");
   const auditedSources = [
     read("../app/billing/page.tsx"),
     read("../app/api/generations/run/route.ts"),
@@ -127,6 +134,10 @@ test("audited static UI copy keeps implementation and generic English labels off
   assert.match(auditedSources, /개인정보 및 동의/);
   assert.match(auditedSources, /팔레트 비교 과정/);
   assert.doesNotMatch(pricingPreview, /passSummary|pricing\.(?:paidCredits|freeCredits)/);
+  assert.doesNotMatch(
+    webPassCopy,
+    /(?:남는|남은|잔여)\s*(?:이용량|이용권|분)|미사용\s*이용권|서비스\s*이용량|지급\s*이용량/,
+  );
 });
 
 test("the written glossary records the same user-facing action boundaries", () => {

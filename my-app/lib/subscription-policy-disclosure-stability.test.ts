@@ -16,7 +16,7 @@ test("SubscriptionPolicyDisclosure publishes a labelled policy list and density 
   assert.match(component, /<section/);
   assert.match(component, /aria-label="정기결제·해지 정책"/);
   assert.match(component, /data-density=\{compact \? "compact" : "default"\}/);
-  assert.match(component, /data-policy-count=\{SUBSCRIPTION_BILLING_POLICY_KO\.length\}/);
+  assert.match(component, /data-policy-count=\{WEB_SUBSCRIPTION_BILLING_POLICY_KO\.length\}/);
   assert.match(component, /data-policy-id=\{item\.id\}/);
   assert.match(component, /<ul className="c-subscription-policy__list">/);
 });

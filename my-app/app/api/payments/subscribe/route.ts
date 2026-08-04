@@ -528,7 +528,7 @@ export async function POST(request: Request) {
       console.error("[subscribe] 크레딧 지급 실패:", grantResult.error.message);
       return NextResponse.json(
         {
-          error: "구독은 생성되었지만 서비스 이용량 지급에 실패했습니다. 웹훅 재처리 또는 운영 보정이 필요합니다.",
+          error: "구독은 생성되었지만 이용권 등록에 실패했습니다. 웹훅 재처리 또는 운영 보정이 필요합니다.",
           paymentId,
           subscriptionId: preparedSubscription.id,
         },
@@ -539,7 +539,7 @@ export async function POST(request: Request) {
     console.error("[subscribe] 크레딧 RPC 오류:", err);
     return NextResponse.json(
       {
-        error: "구독은 생성되었지만 서비스 이용량 지급에 실패했습니다. 웹훅 재처리 또는 운영 보정이 필요합니다.",
+        error: "구독은 생성되었지만 이용권 등록에 실패했습니다. 웹훅 재처리 또는 운영 보정이 필요합니다.",
         paymentId,
         subscriptionId: preparedSubscription.id,
       },
