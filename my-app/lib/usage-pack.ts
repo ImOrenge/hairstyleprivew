@@ -13,24 +13,24 @@ export interface UsagePack {
 const USAGE_PACKS: Record<UsagePackKey, UsagePack> = {
   usage30: {
     key: "usage30",
-    label: "추가 이용권 30",
+    label: "추가 30회 이용권",
     credits: 30,
     priceKrw: 5900,
-    orderName: "HairFit 추가 이용권 30",
+    orderName: "HairFit 추가 30회 이용권",
   },
   usage80: {
     key: "usage80",
-    label: "추가 이용권 80",
+    label: "추가 80회 이용권",
     credits: 80,
     priceKrw: 13900,
-    orderName: "HairFit 추가 이용권 80",
+    orderName: "HairFit 추가 80회 이용권",
   },
   usage200: {
     key: "usage200",
-    label: "추가 이용권 200",
+    label: "추가 200회 이용권",
     credits: 200,
     priceKrw: 29900,
-    orderName: "HairFit 추가 이용권 200",
+    orderName: "HairFit 추가 200회 이용권",
   },
 };
 

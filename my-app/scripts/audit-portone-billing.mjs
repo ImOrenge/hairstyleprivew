@@ -50,6 +50,7 @@ const planBenefitDisplay = assertFile("lib/plan-benefit-display.ts");
 const homePage = assertFile("app/page.tsx");
 const billingPage = assertFile("app/billing/page.tsx");
 const billingCheckoutPage = assertFile("app/billing/checkout/page.tsx");
+const usagePack = assertFile("lib/usage-pack.ts");
 assertIncludes(pricingPlan, 'DEFAULT_CREDITS_PER_STYLE = HAIRSTYLE_GENERATION_CREDITS', "Hair result image generation must use the shared 10-credit policy");
 assertIncludes(pricingPlan, 'DEFAULT_CREDITS_PER_OUTFIT = OUTFIT_LOOKBOOK_CREDITS', "Fashion lookbook generation must use the shared 20-credit policy");
 assertIncludes(pricingPlan, 'DEFAULT_CREDITS_PER_AFTERCARE_PROGRAM = ADDITIONAL_AFTERCARE_PROGRAM_CREDITS', "Aftercare must use the shared 30-credit policy");
@@ -63,17 +64,16 @@ assertIncludes(homePage, 'getPlanDisplayBenefits\\(\\)', "Home page must calcula
 assertIncludes(billingPage, 'getPlanDisplayBenefits\\(\\)', "Billing page must calculate plan display data on the server");
 assertAbsent(pricingKo, "컬러\\s*변형|컬러변형|HD 이미지|우선 생성|PDF|팀 계정|살롱 브랜딩|전용 지원", "Korean pricing copy must not claim unimplemented premium benefits");
 assertAbsent(pricingKo, "패션\\s*코디\\s*생성\\s*[0-9]+회\\s*포함|무제한|2회 생성|16회|40회|120회", "Korean pricing copy must not claim stale count-based fashion or old hair limits");
+assertAbsent(pricingKo, "이용량|차감", "Korean pricing copy must use pass terminology instead of usage-unit deductions");
 assertAbsent(pricingEn, "[Cc]olor variation|HD image|Priority|PDF|team accounts|branding|dedicated support", "English pricing copy must not claim unimplemented premium benefits");
 assertAbsent(pricingEn, "Unlimited fashion|[13] fashion outfit generation|16 watermark-free|40 watermark-free|120 watermark-free|2 watermarked", "English pricing copy must not claim stale count-based fashion or old hair limits");
 assertAbsent(pricingKo, 'pricing\\.standard\\.f5', "Standard pricing copy must not expose an unimplemented priority-generation benefit");
 assertAbsent(pricingEn, 'pricing\\.standard\\.f5', "Standard pricing copy must not expose an unimplemented priority-generation benefit");
 assertAbsent(pricingPreview, 'pricing\\.standard\\.f5', "Standard pricing UI must not reference an unimplemented priority-generation benefit");
-assertIncludes(pricingKo, '헤어 결과 이미지는 이용량 \\{\\{credits\\}\\}', "Korean usage note must state the hair image usage rule");
-assertIncludes(pricingKo, '패션 룩북 이미지는 확정 헤어 기준 이용량 \\{\\{outfitCredits\\}\\}', "Korean usage note must state fashion depends on confirmed hair");
+assertIncludes(pricingKo, '헤어 결과 이미지와 패션 룩북은 회차별 이용권으로 이용합니다', "Korean usage note must describe the pass-based service");
 assertIncludes(pricingKo, '첫 에프터케어 프로그램은 주기별 케어 메일 포함 무료', "Korean credit note must state aftercare includes scheduled care emails");
-assertIncludes(pricingKo, '추가 생성은 이용량 \\{\\{aftercareCredits\\}\\}', "Korean usage note must state aftercare program charging");
-assertIncludes(pricingEn, 'Hair result images use \\{\\{credits\\}\\} service units', "English usage note must state the hair image usage rule");
-assertIncludes(pricingEn, 'Fashion lookbook images use \\{\\{outfitCredits\\}\\} service units from a confirmed hair style', "English usage note must state fashion depends on confirmed hair");
+assertIncludes(pricingKo, '추가 프로그램은 별도 이용권으로 이용합니다', "Korean usage note must describe additional aftercare as a separate pass");
+assertIncludes(pricingEn, 'Hair result images and fashion lookbooks are available through use-based passes', "English usage note must describe the pass-based service");
 assertIncludes(pricingEn, 'scheduled care emails', "English pricing copy must state aftercare includes scheduled care emails");
 assertIncludes(pricingKo, '"pricing\\.usage\\.hairFashionSetsWithRemainder": "헤어\\+패션 약 \\{\\{sets\\}\\}세트', "Korean pricing copy must show hair+fashion set estimates");
 assertIncludes(pricingKo, '"pricing\\.usage\\.aftercarePolicy": "첫 에프터케어 프로그램 무료 · 주기별 케어 메일 포함', "Korean pricing copy must describe aftercare as a scheduled email program");
@@ -83,9 +83,14 @@ assertIncludes(pricingKo, '"pricing\\.standard\\.f3": "결과 365일 보관 \\+ 
 assertIncludes(pricingKo, '"pricing\\.pro\\.f5": "결과 영구 보관 \\+ 스타일 히스토리"', "Korean Pro copy must state permanent retention");
 assertIncludes(pricingEn, '"pricing\\.standard\\.f3": "Results kept for 365 days \\+ style history"', "English Standard copy must state 365-day retention");
 assertIncludes(pricingEn, '"pricing\\.pro\\.f5": "Permanent results \\+ style history"', "English Pro copy must state permanent retention");
-assertIncludes(billingCheckoutPage, '헤어 결과 이미지 생성: 이용량 \\{plan\\.creditsPerStyle\\.toLocaleString\\("ko-KR"\\)\\} 차감', "Checkout must show hair image usage cost");
-assertIncludes(billingCheckoutPage, '패션 룩북 이미지 생성: 확정 헤어 기준 이용량 \\{plan\\.creditsPerOutfit\\.toLocaleString\\("ko-KR"\\)\\} 차감', "Checkout must show confirmed-hair fashion cost");
-assertIncludes(billingCheckoutPage, '에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 이용량 \\{plan\\.creditsPerAftercareProgram\\.toLocaleString\\("ko-KR"\\)\\} 차감', "Checkout must show aftercare program policy");
+assertIncludes(billingCheckoutPage, '헤어 결과 이미지: 약 \\{plan\\.usage\\.hairOnlyCount\\.toLocaleString\\("ko-KR"\\)\\}회 이용', "Checkout must show hair pass service scope");
+assertIncludes(billingCheckoutPage, '헤어\\+패션: \\{formatHairFashionEstimate\\(plan\\)\\}', "Checkout must show hair+fashion service scope");
+assertIncludes(billingCheckoutPage, '에프터케어: 첫 1회 무료, 주기별 케어 메일 포함, 추가 프로그램은 별도 이용권', "Checkout must show aftercare pass policy");
+assertAbsent(billingCheckoutPage, '서비스 이용량|이용량|차감', "Checkout must not expose usage-unit or deduction wording");
+for (const count of [30, 80, 200]) {
+  assertIncludes(usagePack, `label: "추가 ${count}회 이용권"`, `Usage pack ${count} must be named as a pass`);
+  assertIncludes(usagePack, `orderName: "HairFit 추가 ${count}회 이용권"`, `Usage pack ${count} order name must be named as a pass`);
+}
 
 const generationAcceptRoute = assertFile("app/api/generations/accept/route.ts");
 const generationDetailRoute = assertFile("app/api/generations/[id]/route.ts");

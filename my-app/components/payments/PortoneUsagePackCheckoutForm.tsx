@@ -195,7 +195,7 @@ export function PortoneUsagePackCheckoutForm({
           <span className="grid gap-1">
             <span className="text-sm font-black text-[var(--app-text)]">카드 단건결제</span>
             <span className="text-xs leading-5 text-[var(--app-muted)]">
-              선택한 추가 이용권 금액만 한 번 결제되며 정기결제 금액은 변경되지 않습니다.
+              선택한 이용권 금액만 한 번 결제되며 정기결제 금액은 변경되지 않습니다.
             </span>
           </span>
         </label>

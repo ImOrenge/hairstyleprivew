@@ -35,7 +35,7 @@ function formatHairFashionEstimate(plan: PlanDisplayBenefit): string {
   }
 
   if (plan.usage.hairFashionRemainderCredits > 0) {
-    return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트, 남은 이용량 ${plan.usage.hairFashionRemainderCredits.toLocaleString("ko-KR")}`;
+    return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 포함`;
   }
 
   return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트`;
@@ -110,21 +110,20 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
               {plan.label}
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-              결제 오픈 후 매월 서비스 이용량 {plan.credits.toLocaleString("ko-KR")}이 제공되는 플랜입니다.
+              결제 오픈 후 월 {plan.credits.toLocaleString("ko-KR")}회 이용권으로 서비스를 이용하는 플랜입니다.
             </p>
             <div className="mt-5 border-t border-[var(--app-border)] pt-4">
-              <p className="text-xs font-bold uppercase text-[var(--app-muted)]">차감 기준</p>
+              <p className="text-xs font-bold uppercase text-[var(--app-muted)]">이용권 서비스 내용</p>
               <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
-                <li>헤어 결과 이미지 생성: 이용량 {plan.creditsPerStyle.toLocaleString("ko-KR")} 차감</li>
-                <li>패션 룩북 이미지 생성: 확정 헤어 기준 이용량 {plan.creditsPerOutfit.toLocaleString("ko-KR")} 차감</li>
-                <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 이용량 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")} 차감</li>
+                <li>헤어 결과 이미지: 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회 이용</li>
+                <li>헤어+패션: {formatHairFashionEstimate(plan)}</li>
+                <li>에프터케어: 첫 1회 무료, 주기별 케어 메일 포함, 추가 프로그램은 별도 이용권</li>
               </ul>
             </div>
             <div className="mt-5 border-t border-[var(--app-border)] pt-4">
-              <p className="text-xs font-bold uppercase text-[var(--app-muted)]">예상 사용량</p>
+              <p className="text-xs font-bold uppercase text-[var(--app-muted)]">사용기간</p>
               <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
-                <li>헤어만 사용 시 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회</li>
-                <li>헤어+패션 세트 기준 {formatHairFashionEstimate(plan)}</li>
+                <li>이용권 구매 후 결제일 기준 1개월</li>
                 <li>생성 이미지 {plan.retentionLabelKo}</li>
               </ul>
             </div>
@@ -172,21 +171,20 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
             {plan.label}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-            매월 서비스 이용량 {plan.credits.toLocaleString("ko-KR")}이 제공됩니다.
+            월 {plan.credits.toLocaleString("ko-KR")}회 이용권으로 서비스를 이용합니다.
           </p>
           <div className="mt-5 border-t border-[var(--app-border)] pt-4">
-            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">차감 기준</p>
+            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">이용권 서비스 내용</p>
             <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
-              <li>헤어 결과 이미지 생성: 이용량 {plan.creditsPerStyle.toLocaleString("ko-KR")} 차감</li>
-              <li>패션 룩북 이미지 생성: 확정 헤어 기준 이용량 {plan.creditsPerOutfit.toLocaleString("ko-KR")} 차감</li>
-              <li>에프터케어 프로그램: 첫 1회 무료, 주기별 케어 메일 포함, 이후 이용량 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")} 차감</li>
+              <li>헤어 결과 이미지: 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회 이용</li>
+              <li>헤어+패션: {formatHairFashionEstimate(plan)}</li>
+              <li>에프터케어: 첫 1회 무료, 주기별 케어 메일 포함, 추가 프로그램은 별도 이용권</li>
             </ul>
           </div>
           <div className="mt-5 border-t border-[var(--app-border)] pt-4">
-            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">예상 사용량</p>
+            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">사용기간</p>
             <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
-              <li>헤어만 사용 시 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회</li>
-              <li>헤어+패션 세트 기준 {formatHairFashionEstimate(plan)}</li>
+              <li>이용권 구매 후 결제일 기준 1개월</li>
               <li>생성 이미지 {plan.retentionLabelKo}</li>
             </ul>
           </div>
