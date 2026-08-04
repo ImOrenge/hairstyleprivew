@@ -21,6 +21,11 @@ test("web MyPage keeps tabs, formatters, routes, and panels in explicit boundari
 
   assert.match(dashboard, /<MyPageTabNavigation/);
   assert.match(dashboard, /<MyPageActivePanel/);
+  assert.equal(occurrenceCount(dashboard, /<MyPageMetricCard/g), 2);
+  assert.doesNotMatch(
+    dashboard,
+    /label="크레딧"|label="사용량"|getCreditsPerStyle|usedCredits|estimatedStyles/,
+  );
   assert.doesNotMatch(
     dashboard,
     /function (UsagePanel|PlanPanel|AftercarePanel|BodyProfilePanel|PersonalColorPanel|AccountPanel|formatDate|formatPlanLabel)/,

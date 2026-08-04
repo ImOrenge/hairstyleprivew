@@ -1,12 +1,9 @@
 import Link from "next/link";
 import {
-  Activity,
   ArrowRight,
-  CreditCard,
   Palette,
   Sparkles,
 } from "lucide-react";
-import { getCreditsPerStyle } from "../../lib/pricing-plan";
 import { AppPage, Panel } from "../ui/Surface";
 import { MyPageActivePanel } from "./MyPageActivePanel";
 import {
@@ -42,7 +39,6 @@ export function MyPageDashboardTabs({
   refundRequests,
   memberProfile,
   personalColor,
-  profile,
   queryState,
   subscription,
   subscriptionAccessMode,
@@ -50,14 +46,6 @@ export function MyPageDashboardTabs({
 }: MyPageDashboardTabsProps) {
   const subscriptionPlan = getCurrentSubscriptionPlanKey(subscription);
   const activePlan = formatMyPagePlanLabel(subscriptionPlan);
-  const credits = Number.isInteger(profile?.credits) ? Number(profile?.credits) : 0;
-  const creditsPerStyle = getCreditsPerStyle();
-  const estimatedStyles =
-    creditsPerStyle > 0 ? Math.floor(credits / creditsPerStyle) : 0;
-  const usedCredits = generations.reduce(
-    (sum, item) => sum + Math.max(0, item.credits_used ?? 0),
-    0,
-  );
   const personalColorStatus = formatPersonalColor(personalColor);
 
   return (
@@ -101,13 +89,7 @@ export function MyPageDashboardTabs({
         ) : null}
       </Panel>
 
-      <section className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
-        <MyPageMetricCard
-          icon={CreditCard}
-          label="크레딧"
-          value={credits.toLocaleString("ko-KR")}
-          helper={`헤어 생성 약 ${estimatedStyles.toLocaleString("ko-KR")}회 가능`}
-        />
+      <section className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
         <MyPageMetricCard
           icon={Sparkles}
           label="플랜"
@@ -117,12 +99,6 @@ export function MyPageDashboardTabs({
               ? `구독 상태 ${subscription.status}`
               : "활성 구독 정보 없음"
           }
-        />
-        <MyPageMetricCard
-          icon={Activity}
-          label="사용량"
-          value={usedCredits.toLocaleString("ko-KR")}
-          helper="최근 생성 기록에서 사용한 크레딧"
         />
         <MyPageMetricCard
           icon={Palette}
