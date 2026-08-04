@@ -58,7 +58,7 @@ export function UsagePackPaymentReturn({ paymentId }: UsagePackPaymentReturnProp
   return (
     <div className="grid gap-4">
       <p className="text-sm font-semibold text-emerald-700">
-        추가 {state.creditsGranted.toLocaleString("ko-KR")}회 이용권이 등록되었습니다.
+        추가 이용권이 등록되었습니다.
       </p>
       <Link
         className="inline-flex min-h-11 items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 py-2 text-sm font-bold text-[var(--app-inverse-text)]"

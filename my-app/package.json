@@ -65,7 +65,7 @@
     "styling-workflow:contract:test": "node --no-warnings --test lib/styling-durable-workflow.test.ts",
     "list-pagination:contract:test": "node --no-warnings --test lib/list-pagination.test.ts",
     "paid-action:contract:test": "node --no-warnings --test lib/paid-action-quote.test.ts lib/paid-action-atomic-execution.test.ts lib/paid-action-quote-card-stability.test.ts",
-    "billing-content:contract:test": "node --no-warnings --test lib/billing-content-contract.test.ts lib/subscription-policy-disclosure-stability.test.ts lib/subscription-waitlist-form-stability.test.ts",
+    "billing-content:contract:test": "node --no-warnings --test lib/billing-content-contract.test.ts lib/service-pass-counts.test.ts lib/subscription-policy-disclosure-stability.test.ts lib/subscription-waitlist-form-stability.test.ts",
     "aftercare:contract:test": "node --no-warnings --test lib/aftercare-model.test.ts lib/confirmed-style-list.test.ts",
     "personal-color:contract:test": "node --no-warnings --test lib/personal-color-progress.test.ts",
     "salon-consent:contract:test": "node --no-warnings --test lib/salon-connection-consent.test.ts",

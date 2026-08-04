@@ -29,16 +29,8 @@ function formatKrw(value: number): string {
   return `₩${value.toLocaleString("ko-KR")}`;
 }
 
-function formatHairFashionEstimate(plan: PlanDisplayBenefit): string {
-  if (plan.usage.hairFashionSetCount <= 0) {
-    return "불가";
-  }
-
-  if (plan.usage.hairFashionRemainderCredits > 0) {
-    return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 포함`;
-  }
-
-  return `약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트`;
+function formatPlanPassSummary(plan: PlanDisplayBenefit): string {
+  return `헤어 ${plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회 · 패션 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 · 케어 ${plan.usage.aftercareProgramCount.toLocaleString("ko-KR")}회`;
 }
 
 function buildCheckoutReturnPath(planKey: SelfServeBillingPlanKey, returnTo: string): string {
@@ -110,14 +102,15 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
               {plan.label}
             </h2>
             <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-              결제 오픈 후 월 {plan.credits.toLocaleString("ko-KR")}회 이용권으로 서비스를 이용하는 플랜입니다.
+              결제 오픈 후 월 이용권은 {formatPlanPassSummary(plan)} 기준입니다.
             </p>
             <div className="mt-5 border-t border-[var(--app-border)] pt-4">
               <p className="text-xs font-bold uppercase text-[var(--app-muted)]">이용권 서비스 내용</p>
               <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
-                <li>헤어 결과 이미지: 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회 이용</li>
-                <li>헤어+패션: {formatHairFashionEstimate(plan)}</li>
-                <li>에프터케어: 첫 1회 무료, 주기별 케어 메일 포함, 추가 프로그램은 별도 이용권</li>
+                <li>헤어 이용권: {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회</li>
+                <li>패션 이용권: {plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 · 헤어+패션 세트 기준</li>
+                <li>케어 이용권: {plan.usage.aftercareProgramCount.toLocaleString("ko-KR")}회 · 최초 1회 계정당 무료</li>
+                <li>서비스 구성에 따라 실제 이용 가능 횟수는 달라질 수 있습니다.</li>
               </ul>
             </div>
             <div className="mt-5 border-t border-[var(--app-border)] pt-4">
@@ -171,14 +164,15 @@ export default async function BillingCheckoutPage({ searchParams }: BillingCheck
             {plan.label}
           </h2>
           <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-            월 {plan.credits.toLocaleString("ko-KR")}회 이용권으로 서비스를 이용합니다.
+            월 이용권은 {formatPlanPassSummary(plan)} 기준입니다.
           </p>
           <div className="mt-5 border-t border-[var(--app-border)] pt-4">
             <p className="text-xs font-bold uppercase text-[var(--app-muted)]">이용권 서비스 내용</p>
             <ul className="mt-2 grid gap-1.5 text-xs leading-5 text-[var(--app-muted)]">
-              <li>헤어 결과 이미지: 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회 이용</li>
-              <li>헤어+패션: {formatHairFashionEstimate(plan)}</li>
-              <li>에프터케어: 첫 1회 무료, 주기별 케어 메일 포함, 추가 프로그램은 별도 이용권</li>
+              <li>헤어 이용권: {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회</li>
+              <li>패션 이용권: {plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 · 헤어+패션 세트 기준</li>
+              <li>케어 이용권: {plan.usage.aftercareProgramCount.toLocaleString("ko-KR")}회 · 최초 1회 계정당 무료</li>
+              <li>서비스 구성에 따라 실제 이용 가능 횟수는 달라질 수 있습니다.</li>
             </ul>
           </div>
           <div className="mt-5 border-t border-[var(--app-border)] pt-4">

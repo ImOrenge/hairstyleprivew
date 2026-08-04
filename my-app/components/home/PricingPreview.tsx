@@ -29,21 +29,6 @@ interface PricingPreviewProps {
   successRedirectPath?: string;
 }
 
-function usageLine(benefit: PlanDisplayBenefit, t: ReturnType<typeof useT>) {
-  if (benefit.key === "free" || benefit.usage.hairFashionSetCount <= 0) {
-    return t("pricing.usage.hairFashionUnavailable");
-  }
-
-  if (benefit.usage.hairFashionRemainderCredits > 0) {
-    return t("pricing.usage.hairFashionSetsWithRemainder", {
-      sets: benefit.usage.hairFashionSetCount,
-      remainder: benefit.usage.hairFashionRemainderCredits,
-    });
-  }
-
-  return t("pricing.usage.hairFashionSets", { sets: benefit.usage.hairFashionSetCount });
-}
-
 function featureLines(plan: PlanBlueprint, benefit: PlanDisplayBenefit, t: ReturnType<typeof useT>) {
   if (plan.key === "salon") {
     return [
@@ -57,8 +42,8 @@ function featureLines(plan: PlanBlueprint, benefit: PlanDisplayBenefit, t: Retur
 
   const base = [
     t("pricing.usage.hairOnly", { count: benefit.usage.hairOnlyCount }),
-    usageLine(benefit, t),
-    t("pricing.usage.aftercarePolicy", { credits: benefit.creditsPerAftercareProgram }),
+    t("pricing.usage.hairFashionSets", { sets: benefit.usage.hairFashionSetCount }),
+    t("pricing.usage.aftercarePolicy", { count: benefit.usage.aftercareProgramCount }),
   ];
 
   if (plan.key === "free") {
@@ -87,8 +72,6 @@ export function PricingPreview({
   const benefitByKey = new Map<string, PlanDisplayBenefit>(
     displayBenefits.map((benefit) => [benefit.key, benefit]),
   );
-  const sampleBenefit = benefitByKey.get("basic") ?? displayBenefits[0];
-
   const planBlueprint: PlanBlueprint[] = [
     {
       key: "free",
@@ -148,7 +131,7 @@ export function PricingPreview({
       return {
         ...plan,
         price: plan.key === "salon" ? t("pricing.salonPrice") : "0원",
-        credits: plan.key === "salon" ? t("pricing.salonCredits") : t("pricing.noCredits"),
+        passSummary: plan.key === "salon" ? t("pricing.salonCredits") : t("pricing.noCredits"),
         features: benefit ? featureLines(plan, benefit, t) : [],
       };
     }
@@ -156,10 +139,18 @@ export function PricingPreview({
     return {
       ...plan,
       price: benefit.priceLabel,
-      credits:
+      passSummary:
         plan.key === "free"
-          ? t("pricing.freeCredits", { credits: benefit.credits, styles: benefit.usage.hairOnlyCount })
-          : t("pricing.paidCredits", { credits: benefit.credits, styles: benefit.usage.hairOnlyCount }),
+          ? t("pricing.freeCredits", {
+              hair: benefit.usage.hairOnlyCount,
+              fashion: benefit.usage.hairFashionSetCount,
+              care: benefit.usage.aftercareProgramCount,
+            })
+          : t("pricing.paidCredits", {
+              hair: benefit.usage.hairOnlyCount,
+              fashion: benefit.usage.hairFashionSetCount,
+              care: benefit.usage.aftercareProgramCount,
+            }),
       features: featureLines(plan, benefit, t),
     };
   });
@@ -188,13 +179,7 @@ export function PricingPreview({
           </h2>
         </div>
         <p className="text-sm text-[var(--app-muted)]">
-          {sampleBenefit
-            ? t("pricing.creditNote", {
-                credits: sampleBenefit.creditsPerStyle,
-                outfitCredits: sampleBenefit.creditsPerOutfit,
-                aftercareCredits: sampleBenefit.creditsPerAftercareProgram,
-              })
-            : null}
+          {t("pricing.creditNote")}
         </p>
       </div>
 
@@ -253,7 +238,7 @@ export function PricingPreview({
             <p
               className="mt-2 w-fit border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--app-inverse-text)]"
             >
-              {plan.credits}
+              {plan.passSummary}
             </p>
 
             <ul className="mt-3 flex-1 space-y-1.5">

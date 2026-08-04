@@ -26,7 +26,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
           {waitlistMode
             ? "현재 정기 결제를 준비하고 있어 구독은 오픈 알림 신청으로 운영합니다. 희망 플랜을 남겨주시면 결제가 열릴 때 우선 안내드리겠습니다."
-            : "필요한 월 크레딧에 맞춰 플랜을 선택하고 안전한 카드 결제로 구독을 시작하세요. 크레딧은 헤어 결과 이미지, 선택한 헤어 기준 패션 룩북, 에프터케어 프로그램에 함께 사용됩니다."}
+            : "헤어·패션·케어 이용 횟수에 맞춰 플랜을 선택하고 안전한 카드 결제로 구독을 시작하세요. 패션 횟수는 헤어와 패션을 함께 이용하는 세트 기준입니다."}
         </p>
       </Panel>
       <PricingPreview
@@ -37,7 +37,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
       {!waitlistMode ? (
         <Panel as="section" className="p-5 sm:p-6">
           <p className="app-kicker">결제 전 확인</p>
-          <h2 className="mt-2 text-xl font-black text-[var(--app-text)]">정기결제·해지·크레딧 안내</h2>
+          <h2 className="mt-2 text-xl font-black text-[var(--app-text)]">정기결제·해지·이용권 안내</h2>
           <SubscriptionPolicyDisclosure className="mt-4" />
         </Panel>
       ) : null}

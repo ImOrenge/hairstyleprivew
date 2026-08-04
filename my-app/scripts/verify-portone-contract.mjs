@@ -31,11 +31,31 @@ for (const plan of ["basic", "standard", "pro"]) {
 
 const usagePacks = getUsagePacks();
 assert.deepEqual(
-  usagePacks.map(({ key, credits, priceKrw }) => ({ key, credits, priceKrw })),
+  usagePacks.map(({ key, credits, priceKrw, servicePasses }) => ({
+    key,
+    credits,
+    priceKrw,
+    servicePasses,
+  })),
   [
-    { key: "usage30", credits: 30, priceKrw: 5900 },
-    { key: "usage80", credits: 80, priceKrw: 13900 },
-    { key: "usage200", credits: 200, priceKrw: 29900 },
+    {
+      key: "usage30",
+      credits: 30,
+      priceKrw: 5900,
+      servicePasses: { hairCount: 3, fashionSetCount: 1, careCount: 1 },
+    },
+    {
+      key: "usage80",
+      credits: 80,
+      priceKrw: 13900,
+      servicePasses: { hairCount: 8, fashionSetCount: 2, careCount: 2 },
+    },
+    {
+      key: "usage200",
+      credits: 200,
+      priceKrw: 29900,
+      servicePasses: { hairCount: 20, fashionSetCount: 6, careCount: 6 },
+    },
   ],
 );
 for (const pack of usagePacks) {

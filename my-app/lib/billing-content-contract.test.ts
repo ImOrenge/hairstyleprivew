@@ -32,6 +32,8 @@ test("web billing surfaces disclose the shared policy before payment and link le
 
   const disclosure = read("../components/billing/SubscriptionPolicyDisclosure.tsx");
   assert.match(disclosure, /SUBSCRIPTION_BILLING_POLICY_KO\.map/);
+  assert.match(disclosure, /title: "월 이용권 등록"/);
+  assert.match(disclosure, /title: "미사용 이용권"/);
   assert.match(disclosure, /href="\/terms-of-service"/);
   assert.match(disclosure, /href="\/privacy-policy"/);
   assert.match(disclosure, /href="\/support"/);

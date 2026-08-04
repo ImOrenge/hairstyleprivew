@@ -7,6 +7,7 @@ import { buildSignInRedirectUrl } from "../../../lib/clerk";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../lib/supabase";
 import { getUsagePackEligibility } from "../../../lib/usage-pack-eligibility";
 import { getUsagePack, getUsagePacks, isUsagePackKey } from "../../../lib/usage-pack";
+import { formatServicePassCountsKo } from "../../../lib/service-pass-counts.ts";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -87,7 +88,10 @@ export default async function UsagePackCheckoutPage({
             <p className="text-sm font-black text-[var(--app-text)]">{item.label}</p>
             <p className="mt-2 text-2xl font-black text-[var(--app-text)]">{formatKrw(item.priceKrw)}</p>
             <p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">
-              서비스 내용: {item.credits.toLocaleString("ko-KR")}회 이용권 · 구매 후 사용기간: 이용권 소진 시까지
+              서비스별 최대: {formatServicePassCountsKo(item.servicePasses)}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
+              패션은 헤어+패션 1세트 기준 · 구매 후 사용기간: 이용권 소진 시까지
             </p>
             <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
               서비스 내부 기능에서만 사용되며 양도, 출금, 현금 교환은 지원하지 않습니다.
@@ -126,14 +130,18 @@ export default async function UsagePackCheckoutPage({
             <p className="app-kicker">선택 상품</p>
             <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">{pack.label}</h2>
             <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-              결제 확인 즉시 계정에 {pack.credits.toLocaleString("ko-KR")}회 이용권이 등록됩니다.
+              결제 확인 즉시 선택한 추가 이용권이 계정에 등록됩니다.
             </p>
             <div className="mt-5 border-t border-[var(--app-border)] pt-4">
               <p className="text-xs font-bold uppercase text-[var(--app-muted)]">단건 결제 금액</p>
               <p className="mt-1 text-3xl font-black text-[var(--app-text)]">{formatKrw(pack.priceKrw)}</p>
             </div>
             <ul className="mt-5 grid gap-1.5 border-t border-[var(--app-border)] pt-4 text-xs leading-5 text-[var(--app-muted)]">
-              <li>서비스 내용: {pack.credits.toLocaleString("ko-KR")}회 이용권</li>
+              <li>헤어 이용권: 최대 {pack.servicePasses.hairCount.toLocaleString("ko-KR")}회</li>
+              <li>패션 이용권: 최대 {pack.servicePasses.fashionSetCount.toLocaleString("ko-KR")}세트 · 헤어+패션 세트 기준</li>
+              <li>케어 이용권: 최대 {pack.servicePasses.careCount.toLocaleString("ko-KR")}회</li>
+              <li>최초 케어 무료를 사용하지 않은 계정은 1회 무료 혜택을 별도로 이용할 수 있습니다.</li>
+              <li>서비스 구성에 따라 실제 이용 가능 횟수는 달라질 수 있습니다.</li>
               <li>구매 후 사용기간: 이용권 소진 시까지</li>
               <li>정기구독 금액과 결제일은 변경되지 않습니다.</li>
               <li>다른 사용자에게 양도하거나 판매할 수 없습니다.</li>

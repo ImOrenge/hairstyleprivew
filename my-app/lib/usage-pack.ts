@@ -1,3 +1,5 @@
+import { getServicePassCounts, type ServicePassCounts } from "./service-pass-counts.ts";
+
 export const USAGE_PACK_KEYS = ["usage30", "usage80", "usage200"] as const;
 
 export type UsagePackKey = (typeof USAGE_PACK_KEYS)[number];
@@ -8,30 +10,47 @@ export interface UsagePack {
   credits: number;
   priceKrw: number;
   orderName: string;
+  servicePasses: ServicePassCounts;
+}
+
+function createUsagePack(input: {
+  key: UsagePackKey;
+  size: "S" | "M" | "L";
+  credits: number;
+  priceKrw: number;
+}): UsagePack {
+  const servicePasses = getServicePassCounts(input.credits);
+  const serviceLabel = `헤어 ${servicePasses.hairCount}회·패션 ${servicePasses.fashionSetCount}세트·케어 ${servicePasses.careCount}회`;
+
+  return {
+    key: input.key,
+    label: `추가 이용권 ${input.size}`,
+    credits: input.credits,
+    priceKrw: input.priceKrw,
+    orderName: `HairFit 추가 이용권 ${input.size} - ${serviceLabel}`,
+    servicePasses,
+  };
 }
 
 const USAGE_PACKS: Record<UsagePackKey, UsagePack> = {
-  usage30: {
+  usage30: createUsagePack({
     key: "usage30",
-    label: "추가 30회 이용권",
+    size: "S",
     credits: 30,
     priceKrw: 5900,
-    orderName: "HairFit 추가 30회 이용권",
-  },
-  usage80: {
+  }),
+  usage80: createUsagePack({
     key: "usage80",
-    label: "추가 80회 이용권",
+    size: "M",
     credits: 80,
     priceKrw: 13900,
-    orderName: "HairFit 추가 80회 이용권",
-  },
-  usage200: {
+  }),
+  usage200: createUsagePack({
     key: "usage200",
-    label: "추가 200회 이용권",
+    size: "L",
     credits: 200,
     priceKrw: 29900,
-    orderName: "HairFit 추가 200회 이용권",
-  },
+  }),
 };
 
 export function isUsagePackKey(value: unknown): value is UsagePackKey {
