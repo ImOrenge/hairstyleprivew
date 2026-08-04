@@ -1,4 +1,5 @@
 import { getSelfServePlanDisplayBenefits } from "../../../lib/plan-benefit-display";
+import { formatServicePassCountsKo, getServicePassCounts } from "../../../lib/service-pass-counts";
 import type { SubscriptionAccessMode } from "../../../lib/subscription-access";
 import {
   PortoneSubscriptionButton,
@@ -14,7 +15,6 @@ import {
   formatMyPageKrw as formatKrw,
   formatMyPagePlanLabel as formatPlanLabel,
   formatPaymentStatus,
-  formatPlanHairFashionUsage,
   formatRefundStatus,
   formatSubscriptionStatus,
   getPaymentFailureText,
@@ -129,7 +129,7 @@ export function MyPagePlanPanel({
           ) : null}
 
           <div className="mt-4 border-t border-[var(--app-border)] pt-4">
-            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">월 플랜 결제</p>
+            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">월 이용권 결제</p>
             {allowNewSubscription ? (
               <div className="mt-3 grid gap-2">
                 {selfServePlans.map((plan) => (
@@ -142,13 +142,12 @@ export function MyPagePlanPanel({
                         <p className="text-sm font-black text-[var(--app-text)]">
                           {formatPlanLabel(plan.key)}
                         </p>
-                        <p className="mt-1 text-xs text-[var(--app-muted)]">
-                          {plan.credits.toLocaleString("ko-KR")} 크레딧 / 월
-                        </p>
+                        <p className="mt-1 text-xs text-[var(--app-muted)]">이용권 구매 후 결제일 기준 1개월</p>
                         <div className="mt-2 grid gap-1 text-xs leading-5 text-[var(--app-muted)]">
-                          <p>헤어 약 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회</p>
-                          <p>{formatPlanHairFashionUsage(plan)}</p>
-                          <p>첫 에프터케어 프로그램 무료 · 주기별 케어 메일 포함 · 추가 {plan.creditsPerAftercareProgram.toLocaleString("ko-KR")}크레딧</p>
+                          <p>헤어 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회 이용권</p>
+                          <p>패션 {plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 이용권</p>
+                          <p>케어 {plan.usage.aftercareProgramCount.toLocaleString("ko-KR")}회 이용권 · 최초 1회 계정당 무료</p>
+                          <p>주기별 케어 메일 포함</p>
                           <p>생성 이미지 {plan.retentionLabelKo}</p>
                         </div>
                       </div>
@@ -201,9 +200,11 @@ export function MyPagePlanPanel({
                       <span className={`rounded-[var(--app-radius-control)] px-2 py-1 text-xs font-bold ${getPaymentStatusTone(item.status)}`}>
                         {formatPaymentStatus(item.status)}
                       </span>
-                      <span className="text-xs text-[var(--app-muted)]">
-                        {(item.credits_to_grant ?? 0).toLocaleString("ko-KR")} 크레딧
-                      </span>
+                      {(item.credits_to_grant ?? 0) > 0 ? (
+                        <span className="text-xs text-[var(--app-muted)]">
+                          결제 이용권 · {formatServicePassCountsKo(getServicePassCounts(item.credits_to_grant ?? 0))}
+                        </span>
+                      ) : null}
                     </div>
                     {getPaymentFailureText(item) ? (
                       <p className="mt-2 text-xs leading-5 text-rose-600">{getPaymentFailureText(item)}</p>

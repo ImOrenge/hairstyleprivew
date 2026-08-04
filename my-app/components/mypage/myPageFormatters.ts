@@ -1,4 +1,3 @@
-import type { PlanDisplayBenefit } from "../../lib/plan-benefit-display";
 import type { PersonalColorResult } from "../../lib/fashion-types";
 import { isPendingConfirmationSubscription } from "./myPagePlanSelectors";
 import {
@@ -235,12 +234,4 @@ export function nextVisitDate(record: HairRecordRow) {
   if (Number.isNaN(date.getTime())) return "-";
   date.setDate(date.getDate() + record.next_visit_target_days);
   return formatMyPageDay(date.toISOString());
-}
-
-export function formatPlanHairFashionUsage(plan: PlanDisplayBenefit) {
-  if (plan.usage.hairFashionSetCount <= 0) return "헤어+패션 세트 불가";
-  if (plan.usage.hairFashionRemainderCredits > 0) {
-    return `헤어+패션 약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 · ${plan.usage.hairFashionRemainderCredits.toLocaleString("ko-KR")}크레딧 잔여`;
-  }
-  return `헤어+패션 약 ${plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트`;
 }

@@ -16,8 +16,6 @@ export interface PlanUsageEstimate {
   hairOnlyCount: number;
   hairFashionSetCount: number;
   aftercareProgramCount: number;
-  hairFashionRemainderCredits: number;
-  hairFashionSetCost: number;
 }
 
 export interface PlanDisplayBenefit {
@@ -58,7 +56,6 @@ export function getPlanDisplayBenefit(key: BillingPlanKey): PlanDisplayBenefit {
   const creditsPerStyle = getCreditsPerStyle();
   const creditsPerOutfit = getCreditsPerOutfit();
   const creditsPerAftercareProgram = getCreditsPerAftercareProgram();
-  const hairFashionSetCost = creditsPerStyle + creditsPerOutfit;
   const retentionDays = RETENTION_DAYS[key];
   const servicePasses = getServicePassCounts(plan.credits);
 
@@ -75,8 +72,6 @@ export function getPlanDisplayBenefit(key: BillingPlanKey): PlanDisplayBenefit {
       hairOnlyCount: servicePasses.hairCount,
       hairFashionSetCount: servicePasses.fashionSetCount,
       aftercareProgramCount: servicePasses.careCount,
-      hairFashionRemainderCredits: plan.credits % hairFashionSetCost,
-      hairFashionSetCost,
     },
     creditsPerStyle,
     creditsPerOutfit,
