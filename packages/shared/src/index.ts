@@ -82,6 +82,32 @@ export interface MobileBillingPlanSummary {
   credits: number;
 }
 
+export type MobileBillingPlanBenefitKey = "free" | MobilePaymentPlan | "salon";
+
+export interface MobilePlanBenefitSummary {
+  key: MobileBillingPlanBenefitKey;
+  label: string;
+  credits: number;
+  priceKrw: number;
+  hairOnlyCount: number;
+  hairFashionSetCount: number;
+  aftercareProgramCount: number;
+  retentionDays: number | null;
+  firstAftercareProgramFree: boolean;
+}
+
+export type MobileUsagePackKey = "usage30" | "usage80" | "usage200";
+
+export interface MobileUsagePackSummary {
+  key: MobileUsagePackKey;
+  label: string;
+  credits: number;
+  priceKrw: number;
+  hairOnlyCount: number;
+  hairFashionSetCount: number;
+  aftercareProgramCount: number;
+}
+
 export interface MobileDashboardStylingSession {
   id: string;
   generationId: string;
@@ -116,6 +142,8 @@ export interface MobileCustomerDashboard {
   credits: number;
   creditPolicy?: ProductCreditPolicySnapshot;
   billingPlans?: MobileBillingPlanSummary[];
+  billingPlanBenefits?: MobilePlanBenefitSummary[];
+  usagePacks?: MobileUsagePackSummary[];
   planKey: string | null;
   styleProfileReady: boolean;
   recentConfirmedStyles: MobileConfirmedStyle[];

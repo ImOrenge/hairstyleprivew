@@ -8,11 +8,15 @@ function read(relativePath: string) {
 
 const sharedPolicy = read("../../packages/shared/src/billing/subscription-policy.ts");
 const webBilling = read("../app/billing/page.tsx");
+const webUsagePackCatalog = read("../components/billing/UsagePackCatalog.tsx");
+const webMyPagePlan = read("../components/mypage/panels/MyPagePlanPanel.tsx");
 const webCheckout = read("../app/billing/checkout/page.tsx");
 const webCheckoutForm = read("../components/payments/PortoneCheckoutForm.tsx");
 const webCancellation = read("../components/mypage/SubscriptionCancelButton.tsx");
 const webTerms = read("../app/terms-of-service/page.tsx");
 const nativeBilling = read("../../apps/hairfit-app/app/billing.tsx");
+const nativeMyPagePlan = read("../../apps/hairfit-app/components/mypage/panels/MobileMyPagePlanPanel.tsx");
+const mobileDashboardRoute = read("../app/api/mobile/dashboard/route.ts");
 const nativeTerms = read("../../apps/hairfit-app/app/legal/terms.tsx");
 
 test("shared policy states renewal, credit grant, unused-credit, and cancellation behavior", () => {
@@ -27,6 +31,9 @@ test("shared policy states renewal, credit grant, unused-credit, and cancellatio
 
 test("web billing surfaces disclose the applicable policy before payment and link legal/support routes", () => {
   assert.match(webBilling, /SubscriptionPolicyDisclosure/);
+  assert.match(webBilling, /UsagePackCatalog/);
+  assert.match(webUsagePackCatalog, /getUsagePacks/);
+  assert.match(webUsagePackCatalog, /billing\/usage\?pack=\$\{item\.key\}/);
   assert.match(webCheckout, /정기결제·해지 정책/);
   assert.match(webCheckoutForm, /결제 전 필수 안내/);
 
@@ -38,6 +45,20 @@ test("web billing surfaces disclose the applicable policy before payment and lin
   assert.match(disclosure, /href="\/terms-of-service"/);
   assert.match(disclosure, /href="\/privacy-policy"/);
   assert.match(disclosure, /href="\/support"/);
+});
+
+test("plan surfaces separate benefit details from product checkout", () => {
+  assert.match(webMyPagePlan, /getPlanDisplayBenefit/);
+  assert.match(webMyPagePlan, /href="\/billing"/);
+  assert.match(webMyPagePlan, /현재 플랜 혜택/);
+  assert.doesNotMatch(webMyPagePlan, /PortoneSubscriptionButton|selfServePlans/);
+  assert.match(mobileDashboardRoute, /billingPlanBenefits/);
+  assert.match(mobileDashboardRoute, /usagePacks/);
+  assert.match(nativeMyPagePlan, /billingPlanBenefits/);
+  assert.match(nativeMyPagePlan, /router\.push\("\/billing"\)/);
+  assert.match(nativeBilling, /usagePacks/);
+  assert.match(nativeBilling, /getHairfitApiBaseUrl/);
+  assert.match(nativeBilling, /billing\/usage\?pack=/);
 });
 
 test("subscription cancellation requires confirmation and explains the period-end effect", () => {

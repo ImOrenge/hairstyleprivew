@@ -11,11 +11,11 @@ import { formatCompletedPayment, normalizePortoneSdkResponse, toPortoneSdkPaymen
 import { BodyText, Button, Card, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Linking, Platform, StyleSheet, View } from "react-native";
 import { AppScreen } from "../components/app/AppScreen";
 import { GooglePlayBillingScreen } from "../components/billing/GooglePlayBillingScreen";
 import { useSafeBackNavigation } from "../hooks/useSafeBackNavigation";
-import { useHairfitApi } from "../lib/api";
+import { getHairfitApiBaseUrl, useHairfitApi } from "../lib/api";
 import {
   canStartNewMobilePayment,
   classifyPaymentCompletionError,
@@ -287,6 +287,7 @@ function PortoneBillingScreen() {
   }, [isLoaded, isSignedIn, resumeLookupRevision, showMessage, userId, verifyPendingPayment]);
 
   const plans = dashboard?.customer.billingPlans ?? [];
+  const usagePacks = dashboard?.customer.usagePacks ?? [];
   const hasAccountSnapshot = Boolean(account || dashboard);
   const canStartNewPayment =
     !resumeLookupFailed && canStartNewMobilePayment(pendingPayment);
@@ -373,6 +374,37 @@ function PortoneBillingScreen() {
           <Button variant="secondary" onPress={() => router.push("/legal/privacy")}>개인정보 처리방침 보기</Button>
         </Stack>
       </Card>
+
+      {usagePacks.length > 0 ? (
+        <Panel>
+          <Stack gap={10}>
+            <Kicker>단건 이용권</Kicker>
+            <Heading>필요한 만큼 단건으로 추가</Heading>
+            <BodyText>
+              iPhone에서는 단건 이용권을 웹 결제로 진행합니다. 상품을 선택하면 기존 로그인과 활성 구독 자격을 확인하는 웹 화면으로 이동합니다.
+            </BodyText>
+            {usagePacks.map((pack) => (
+              <Card key={pack.key}>
+                <Stack gap={8}>
+                  <Heading>{pack.label}</Heading>
+                  <BodyText>
+                    {pack.priceKrw.toLocaleString("ko-KR")}원 · {pack.credits.toLocaleString("ko-KR")}크레딧
+                  </BodyText>
+                  <BodyText>
+                    헤어 {pack.hairOnlyCount.toLocaleString("ko-KR")}회 · 패션 {pack.hairFashionSetCount.toLocaleString("ko-KR")}세트 · 케어 {pack.aftercareProgramCount.toLocaleString("ko-KR")}회
+                  </BodyText>
+                  <Button
+                    variant="secondary"
+                    onPress={() => void Linking.openURL(`${getHairfitApiBaseUrl()}/billing/usage?pack=${encodeURIComponent(pack.key)}`)}
+                  >
+                    웹에서 구매
+                  </Button>
+                </Stack>
+              </Card>
+            ))}
+          </Stack>
+        </Panel>
+      ) : null}
 
       <Panel>
         <Stack>

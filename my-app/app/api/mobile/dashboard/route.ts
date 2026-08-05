@@ -7,6 +7,8 @@ import {
   getCreditsPerStyle,
 } from "../../../../lib/pricing-plan";
 import { getSelfServeBillingPlans } from "../../../../lib/billing-plan";
+import { getPlanDisplayBenefits } from "../../../../lib/plan-benefit-display";
+import { getUsagePacks } from "../../../../lib/usage-pack";
 
 const SERVICE_KEYS = ["customer", "salon", "admin"] as const;
 const RANGES = [7, 30, 90] as const;
@@ -320,6 +322,26 @@ export async function GET(request: Request) {
             label,
             priceKrw,
             credits,
+          })),
+          billingPlanBenefits: getPlanDisplayBenefits().map((benefit) => ({
+            key: benefit.key,
+            label: benefit.label,
+            credits: benefit.credits,
+            priceKrw: benefit.priceKrw,
+            hairOnlyCount: benefit.usage.hairOnlyCount,
+            hairFashionSetCount: benefit.usage.hairFashionSetCount,
+            aftercareProgramCount: benefit.usage.aftercareProgramCount,
+            retentionDays: benefit.retentionDays,
+            firstAftercareProgramFree: benefit.firstAftercareProgramFree,
+          })),
+          usagePacks: getUsagePacks().map((pack) => ({
+            key: pack.key,
+            label: pack.label,
+            credits: pack.credits,
+            priceKrw: pack.priceKrw,
+            hairOnlyCount: pack.servicePasses.hairCount,
+            hairFashionSetCount: pack.servicePasses.fashionSetCount,
+            aftercareProgramCount: pack.servicePasses.careCount,
           })),
         },
       },

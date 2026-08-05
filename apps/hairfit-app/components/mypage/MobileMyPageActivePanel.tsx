@@ -34,6 +34,8 @@ export function MobileMyPageActivePanel({
       <MobileMyPagePlanPanel
         activePlan={activePlan}
         credits={credits}
+        planKey={customer?.planKey ?? null}
+        billingPlanBenefits={customer?.billingPlanBenefits ?? []}
         payments={customer?.recentPayments ?? []}
         refundRequests={customer?.recentRefundRequests ?? []}
       />

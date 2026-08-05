@@ -1,10 +1,8 @@
-import { getSelfServePlanDisplayBenefits } from "../../../lib/plan-benefit-display";
+import Link from "next/link";
+import { getPlanDisplayBenefit } from "../../../lib/plan-benefit-display";
+import { isBillingPlanKey } from "../../../lib/billing-plan";
 import { formatServicePassCountsKo, getServicePassCounts } from "../../../lib/service-pass-counts";
 import type { SubscriptionAccessMode } from "../../../lib/subscription-access";
-import {
-  PortoneSubscriptionButton,
-  type SelfServeSubscriptionPlanKey,
-} from "../../payments/PortoneSubscriptionButton";
 import { AsyncBoundary } from "../../ui/AsyncBoundary";
 import { Panel, SurfaceCard } from "../../ui/Surface";
 import { RefundInterviewFlow } from "../RefundInterviewFlow";
@@ -26,7 +24,6 @@ import {
 } from "../myPageFormatters";
 import {
   canRequestRefund,
-  canStartNewSubscription,
   isActiveSubscription,
   isCancellationScheduled,
   isPastDueSubscription,
@@ -41,11 +38,9 @@ import type {
 
 export function MyPagePlanPanel({
   activePlan,
-  email,
   payments,
   refundRequests,
   subscription,
-  subscriptionAccessMode,
 }: {
   activePlan: string;
   email: string;
@@ -58,12 +53,12 @@ export function MyPagePlanPanel({
   const cancellationScheduled = isCancellationScheduled(subscription);
   const pastDue = isPastDueSubscription(subscription);
   const pendingConfirmation = isPendingConfirmationSubscription(subscription);
-  const allowNewSubscription = canStartNewSubscription(subscription);
   const latestFailedPayment =
     payments.find((item) => item.status?.trim().toLowerCase() === "failed") ?? null;
   const latestFailureText =
     getPaymentFailureText(latestFailedPayment) ?? getSubscriptionFailureText(subscription);
-  const selfServePlans = getSelfServePlanDisplayBenefits();
+  const currentPlanKey = isBillingPlanKey(subscription?.plan_key) ? subscription.plan_key : "free";
+  const currentPlanBenefit = getPlanDisplayBenefit(currentPlanKey);
   const refundRequestByPaymentId = new Map(
     refundRequests.map((item) => [item.payment_transaction_id, item]),
   );
@@ -129,56 +124,22 @@ export function MyPagePlanPanel({
           ) : null}
 
           <div className="mt-4 border-t border-[var(--app-border)] pt-4">
-            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">월 이용권 결제</p>
-            {allowNewSubscription ? (
-              <div className="mt-3 grid gap-2">
-                {selfServePlans.map((plan) => (
-                  <div
-                    key={plan.key}
-                    className="grid gap-2 border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-3"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-black text-[var(--app-text)]">
-                          {formatPlanLabel(plan.key)}
-                        </p>
-                        <p className="mt-1 text-xs text-[var(--app-muted)]">이용권 구매 후 결제일 기준 1개월</p>
-                        <div className="mt-2 grid gap-1 text-xs leading-5 text-[var(--app-muted)]">
-                          <p>헤어 {plan.usage.hairOnlyCount.toLocaleString("ko-KR")}회 이용권</p>
-                          <p>패션 {plan.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 이용권</p>
-                          <p>케어 {plan.usage.aftercareProgramCount.toLocaleString("ko-KR")}회 이용권 · 최초 1회 계정당 무료</p>
-                          <p>주기별 케어 메일 포함</p>
-                          <p>생성 이미지 {plan.retentionLabelKo}</p>
-                        </div>
-                      </div>
-                      <p className="text-right text-sm font-black text-[var(--app-text)]">
-                        {formatKrw(plan.priceKrw)}
-                      </p>
-                    </div>
-                    <PortoneSubscriptionButton
-                      planKey={plan.key as SelfServeSubscriptionPlanKey}
-                      initialEmail={email}
-                      subscriptionAccessMode={subscriptionAccessMode}
-                      variant={plan.key === "basic" ? "secondary" : "primary"}
-                      className="w-full px-3 py-2 text-xs"
-                      successRedirectPath="/mypage"
-                    >
-                      {subscriptionAccessMode === "waitlist"
-                        ? "오픈 알림 신청"
-                        : `${formatPlanLabel(plan.key)} 시작`}
-                    </PortoneSubscriptionButton>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">
-                {pendingConfirmation
-                  ? "결제 확인 중에는 중복 구독을 새로 만들지 않습니다. 확인이 끝난 뒤 다시 시도할 수 있습니다."
-                  : pastDue
-                    ? "결제 실패 상태에서는 중복 구독을 새로 만들지 않습니다. 카드 상태를 확인한 뒤 결제 상태를 다시 확인해 주세요."
-                    : "현재 구독이 있어 새 결제는 중복으로 진행하지 않습니다. 플랜 변경은 해지 후 기간 종료 또는 별도 변경 정책 확정 후 지원됩니다."}
+            <p className="text-xs font-bold uppercase text-[var(--app-muted)]">현재 플랜 혜택</p>
+            <div className="mt-3 grid gap-1 text-xs leading-5 text-[var(--app-muted)]">
+              <p>헤어 {currentPlanBenefit.usage.hairOnlyCount.toLocaleString("ko-KR")}회 이용</p>
+              <p>패션 {currentPlanBenefit.usage.hairFashionSetCount.toLocaleString("ko-KR")}세트 이용</p>
+              <p>
+                케어 {currentPlanBenefit.usage.aftercareProgramCount.toLocaleString("ko-KR")}회 이용
+                {currentPlanBenefit.firstAftercareProgramFree ? " · 첫 1회 무료" : ""}
               </p>
-            )}
+              <p>이용 기간 {currentPlanBenefit.retentionLabelKo}</p>
+            </div>
+            <Link
+              href="/billing"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-[var(--app-radius-control)] bg-[var(--app-accent)] px-3 py-2 text-xs font-bold text-[var(--app-accent-contrast)] transition hover:opacity-90"
+            >
+              플랜 변경
+            </Link>
           </div>
         </SurfaceCard>
 

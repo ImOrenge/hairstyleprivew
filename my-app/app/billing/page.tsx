@@ -1,5 +1,6 @@
 import { PricingPreview } from "../../components/home/PricingPreview";
 import { SubscriptionPolicyDisclosure } from "../../components/billing/SubscriptionPolicyDisclosure";
+import { UsagePackCatalog } from "../../components/billing/UsagePackCatalog";
 import { AppPage, Panel } from "../../components/ui/Surface";
 import { normalizeBillingReturnTarget } from "../../lib/billing-return-target";
 import { getPlanDisplayBenefits } from "../../lib/plan-benefit-display";
@@ -34,6 +35,7 @@ export default async function BillingPage({ searchParams }: BillingPageProps) {
         subscriptionAccessMode={subscriptionAccessMode}
         successRedirectPath={successRedirectPath}
       />
+      <UsagePackCatalog />
       {!waitlistMode ? (
         <Panel as="section" className="p-5 sm:p-6">
           <p className="app-kicker">결제 전 확인</p>

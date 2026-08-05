@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { Linking, StyleSheet } from "react-native";
+import type { MobilePlanBenefitSummary } from "@hairfit/shared";
 import { BodyText, Button, Card, Heading, Panel, Stack } from "@hairfit/ui-native";
 import {
   formatMobileMyPageDate as formatDate,
@@ -11,16 +12,21 @@ import { MobileRefundInterviewFlow } from "../MobileRefundInterviewFlow";
 
 export function MobileMyPagePlanPanel({
   activePlan,
+  billingPlanBenefits,
   credits,
+  planKey,
   payments,
   refundRequests,
 }: {
   activePlan: string;
+  billingPlanBenefits: MobilePlanBenefitSummary[];
   credits: number;
+  planKey: string | null;
   payments: MobileCustomerDashboard["customer"]["recentPayments"];
   refundRequests: MobileCustomerDashboard["customer"]["recentRefundRequests"];
 }) {
   const router = useRouter();
+  const currentPlanBenefit = billingPlanBenefits.find((benefit) => benefit.key === planKey) ?? null;
 
   return (
     <MobileMyPageAsyncBoundary>
@@ -33,7 +39,22 @@ export function MobileMyPagePlanPanel({
           <Heading>{activePlan}</Heading>
           <BodyText>현재 잔액 {credits.toLocaleString("ko-KR")}크레딧</BodyText>
         </Card>
-        <Button onPress={() => router.push("/billing")}>플랜 및 크레딧 충전 보기</Button>
+        {currentPlanBenefit ? (
+          <Card>
+            <BodyText>현재 플랜 혜택</BodyText>
+            <BodyText>
+              헤어 {currentPlanBenefit.hairOnlyCount.toLocaleString("ko-KR")}회 · 패션 {currentPlanBenefit.hairFashionSetCount.toLocaleString("ko-KR")}세트
+            </BodyText>
+            <BodyText>
+              케어 {currentPlanBenefit.aftercareProgramCount.toLocaleString("ko-KR")}회
+              {currentPlanBenefit.firstAftercareProgramFree ? " · 첫 1회 무료" : ""}
+            </BodyText>
+            <BodyText>
+              이용 기간 {currentPlanBenefit.retentionDays === null ? "영구 보관" : `${currentPlanBenefit.retentionDays.toLocaleString("ko-KR")}일 보관`}
+            </BodyText>
+          </Card>
+        ) : null}
+        <Button onPress={() => router.push("/billing")}>플랜 변경</Button>
         {payments.length === 0 ? (
           <Card style={{ borderStyle: "dashed" }}>
             <BodyText>결제 기록이 없습니다.</BodyText>

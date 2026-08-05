@@ -141,10 +141,9 @@ test("audited static UI copy keeps implementation and generic English labels off
     /(?:남는|남은|잔여)\s*(?:이용량|이용권|분)|미사용\s*이용권|서비스\s*이용량|지급\s*이용량/,
   );
   assert.doesNotMatch(myPagePlanPanel, /크레딧|잔여|추가\s+\{plan\./);
-  assert.match(myPagePlanPanel, /이용권 구매 후 결제일 기준 1개월/);
-  assert.match(myPagePlanPanel, /헤어 \{plan\.usage\.hairOnlyCount[^\n]+회 이용권/);
-  assert.match(myPagePlanPanel, /패션 \{plan\.usage\.hairFashionSetCount[^\n]+세트 이용권/);
-  assert.match(myPagePlanPanel, /케어 \{plan\.usage\.aftercareProgramCount[^\n]+회 이용권/);
+  assert.match(myPagePlanPanel, /현재 플랜 혜택/);
+  assert.match(myPagePlanPanel, /href="\/billing"/);
+  assert.doesNotMatch(myPagePlanPanel, /PortoneSubscriptionButton|selfServePlans/);
 });
 
 test("the written glossary records the same user-facing action boundaries", () => {
