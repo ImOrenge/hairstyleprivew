@@ -27,9 +27,6 @@ export function UsagePackCatalog() {
                 ₩{item.priceKrw.toLocaleString("ko-KR")}
               </p>
             </div>
-            <p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">
-              총 {item.credits.toLocaleString("ko-KR")}크레딧
-            </p>
             <Link
               href={`/billing/usage?pack=${item.key}`}
               className="mt-auto inline-flex items-center justify-center rounded-[var(--app-radius-control)] bg-[var(--app-accent)] px-3 py-2 text-xs font-bold text-[var(--app-accent-contrast)] transition hover:opacity-90"

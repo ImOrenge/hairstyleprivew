@@ -153,7 +153,7 @@ export function MobileRefundInterviewFlow({
                       style={[styles.option, { borderColor: outcome === value ? theme.accent : theme.border, backgroundColor: theme.surface }]}
                     >
                       <Text style={[styles.optionTitle, { color: theme.text }]}>{value === "immediate_refund_and_cancel" ? "즉시 차등 환불" : "다음 갱신 중단"}</Text>
-                      <BodyText>{value === "immediate_refund_and_cancel" ? "남은 결제분 크레딧을 회수하고 비례 환불한 뒤 즉시 종료합니다." : "현재 이용권을 유지하고 다음 정기결제만 중단합니다."}</BodyText>
+                      <BodyText>{value === "immediate_refund_and_cancel" ? "남은 결제분 이용량을 회수하고 비례 환불한 뒤 즉시 종료합니다." : "현재 이용권을 유지하고 다음 정기결제만 중단합니다."}</BodyText>
                     </Pressable>
                   ))}
                 </Stack>
@@ -199,8 +199,8 @@ export function MobileRefundInterviewFlow({
                   <Stack>
                     <Heading style={styles.sectionHeading}>환불 명세</Heading>
                     <BodyText>원 결제액 {formatKrw(quote.originalAmountKrw)}</BodyText>
-                    <BodyText>지급 / 사용 / 잔여 {quote.creditsGranted} / {quote.creditsUsed} / {quote.creditsRemaining} 크레딧</BodyText>
-                    <BodyText>회수 {quote.creditsToClawBack} · 다른 출처 보존 {quote.preservedCredits} 크레딧</BodyText>
+                    <BodyText>지급 / 사용 / 잔여 이용량 {quote.creditsGranted} / {quote.creditsUsed} / {quote.creditsRemaining}</BodyText>
+                    <BodyText>회수 {quote.creditsToClawBack} · 다른 출처 보존 {quote.preservedCredits}</BodyText>
                     <Text style={[styles.total, { color: theme.text }]}>예상 환불액 {formatKrw(quote.refundAmountKrw)}</Text>
                     <BodyText>{quote.decision === "manual" ? "안전한 처리를 위해 담당자가 검토합니다." : quote.decision === "period_end" ? "환불 없이 현재 기간 종료일까지 이용합니다." : "현재 기록이 일치해 자동 처리 대상입니다."}</BodyText>
                   </Stack>
@@ -214,7 +214,7 @@ export function MobileRefundInterviewFlow({
                   onPress={() => setAccepted((value) => !value)}
                   style={[styles.option, { borderColor: accepted ? theme.accent : theme.border, backgroundColor: theme.surface }]}
                 >
-                  <Text style={[styles.optionTitle, { color: theme.text }]}>{accepted ? "☑" : "☐"} 환불액, 크레딧 회수량과 종료 시점을 확인했습니다.</Text>
+                  <Text style={[styles.optionTitle, { color: theme.text }]}>{accepted ? "☑" : "☐"} 환불액, 이용량 회수량과 종료 시점을 확인했습니다.</Text>
                 </Pressable>
               ) : null}
 

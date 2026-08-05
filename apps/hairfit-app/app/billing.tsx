@@ -329,9 +329,9 @@ function PortoneBillingScreen() {
     <AppScreen>
       <Stack>
         <Kicker>플랜 결제</Kicker>
-        <Heading>플랜과 크레딧 충전</Heading>
+        <Heading>플랜과 이용권</Heading>
         <BodyText>
-          주문 정보를 확인하고 안전한 결제창을 연 뒤, 결제 완료가 확인된 크레딧만 반영합니다.
+          주문 정보를 확인하고 안전한 결제창을 연 뒤, 결제 완료가 확인된 이용권만 반영합니다.
         </BodyText>
       </Stack>
 
@@ -343,11 +343,11 @@ function PortoneBillingScreen() {
             <>
               <Heading>{formatPlanLabel(dashboard?.customer.planKey ?? account?.planKey)}</Heading>
               <BodyText>
-                보유 크레딧 {(dashboard?.customer.credits ?? account?.credits)?.toLocaleString("ko-KR")}
+                보유 이용권 잔액 {(dashboard?.customer.credits ?? account?.credits)?.toLocaleString("ko-KR")}
               </BodyText>
               {dashboard?.customer.creditPolicy ? (
                 <BodyText>
-                  헤어 생성 {dashboard.customer.creditPolicy.hairstyleGeneration} · 패션 룩북 {dashboard.customer.creditPolicy.outfitLookbook} · 추가 에프터케어 {dashboard.customer.creditPolicy.additionalAftercareProgram}크레딧
+                  이용량 기준: 헤어 생성 {dashboard.customer.creditPolicy.hairstyleGeneration} · 패션 룩북 {dashboard.customer.creditPolicy.outfitLookbook} · 추가 에프터케어 {dashboard.customer.creditPolicy.additionalAftercareProgram}
                 </BodyText>
               ) : null}
             </>
@@ -366,7 +366,7 @@ function PortoneBillingScreen() {
       <Card>
         <Stack gap={10}>
           <Kicker>결제 전 확인</Kicker>
-          <Heading>정기결제·해지·크레딧 안내</Heading>
+          <Heading>정기결제·해지·이용권 안내</Heading>
           {SUBSCRIPTION_BILLING_POLICY_KO.map((item) => (
             <BodyText key={item.id}>• {item.title}: {item.description}</BodyText>
           ))}
@@ -388,7 +388,7 @@ function PortoneBillingScreen() {
                 <Stack gap={8}>
                   <Heading>{pack.label}</Heading>
                   <BodyText>
-                    {pack.priceKrw.toLocaleString("ko-KR")}원 · {pack.credits.toLocaleString("ko-KR")}크레딧
+                    {pack.priceKrw.toLocaleString("ko-KR")}원
                   </BodyText>
                   <BodyText>
                     헤어 {pack.hairOnlyCount.toLocaleString("ko-KR")}회 · 패션 {pack.hairFashionSetCount.toLocaleString("ko-KR")}세트 · 케어 {pack.aftercareProgramCount.toLocaleString("ko-KR")}회
@@ -463,10 +463,10 @@ function PortoneBillingScreen() {
               <Stack gap={10}>
                 <Heading>{plan.label}</Heading>
                 <BodyText>
-                  월 {plan.priceKrw.toLocaleString("ko-KR")}원 · 월 {plan.credits.toLocaleString("ko-KR")}크레딧
+                  월 {plan.priceKrw.toLocaleString("ko-KR")}원 · 월 이용권
                 </BodyText>
                 <Button
-                  accessibilityLabel={`${plan.label} 플랜, 월 ${plan.priceKrw.toLocaleString("ko-KR")}원, 월 ${plan.credits.toLocaleString("ko-KR")}크레딧`}
+                  accessibilityLabel={`${plan.label} 플랜, 월 ${plan.priceKrw.toLocaleString("ko-KR")}원, 월 이용권`}
                   accessibilityState={{ selected: selectedPlan === plan.key }}
                   disabled={pending || resumeLookupPending || !canStartNewPayment}
                   variant={selectedPlan === plan.key ? "primary" : "secondary"}
@@ -512,7 +512,7 @@ function PortoneBillingScreen() {
             <Kicker>안전한 결제</Kicker>
             <Heading>{prepared.orderName}</Heading>
             <BodyText>
-              {prepared.amountKrw.toLocaleString("ko-KR")}원 · {prepared.credits.toLocaleString("ko-KR")}크레딧
+              {prepared.amountKrw.toLocaleString("ko-KR")}원 · 이용권 결제
             </BodyText>
             <View style={styles.paymentFrame}>
               <Payment

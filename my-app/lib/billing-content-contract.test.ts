@@ -10,12 +10,15 @@ const sharedPolicy = read("../../packages/shared/src/billing/subscription-policy
 const webBilling = read("../app/billing/page.tsx");
 const webUsagePackCatalog = read("../components/billing/UsagePackCatalog.tsx");
 const webMyPagePlan = read("../components/mypage/panels/MyPagePlanPanel.tsx");
+const webRefund = read("../components/mypage/RefundInterviewFlow.tsx");
 const webCheckout = read("../app/billing/checkout/page.tsx");
 const webCheckoutForm = read("../components/payments/PortoneCheckoutForm.tsx");
 const webCancellation = read("../components/mypage/SubscriptionCancelButton.tsx");
 const webTerms = read("../app/terms-of-service/page.tsx");
 const nativeBilling = read("../../apps/hairfit-app/app/billing.tsx");
+const nativeGooglePlayBilling = read("../../apps/hairfit-app/components/billing/GooglePlayBillingScreen.tsx");
 const nativeMyPagePlan = read("../../apps/hairfit-app/components/mypage/panels/MobileMyPagePlanPanel.tsx");
+const nativeRefund = read("../../apps/hairfit-app/components/mypage/MobileRefundInterviewFlow.tsx");
 const mobileDashboardRoute = read("../app/api/mobile/dashboard/route.ts");
 const nativeTerms = read("../../apps/hairfit-app/app/legal/terms.tsx");
 
@@ -59,6 +62,21 @@ test("plan surfaces separate benefit details from product checkout", () => {
   assert.match(nativeBilling, /usagePacks/);
   assert.match(nativeBilling, /getHairfitApiBaseUrl/);
   assert.match(nativeBilling, /billing\/usage\?pack=/);
+});
+
+test("plan and billing surfaces use usage language instead of credit copy", () => {
+  for (const source of [
+    webBilling,
+    webUsagePackCatalog,
+    webMyPagePlan,
+    webRefund,
+    nativeBilling,
+    nativeGooglePlayBilling,
+    nativeMyPagePlan,
+    nativeRefund,
+  ]) {
+    assert.doesNotMatch(source, /크레딧/);
+  }
 });
 
 test("subscription cancellation requires confirmation and explains the period-end effect", () => {

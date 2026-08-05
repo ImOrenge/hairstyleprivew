@@ -37,7 +37,7 @@ export function MobileMyPagePlanPanel({
         <Card>
           <BodyText>활성 플랜</BodyText>
           <Heading>{activePlan}</Heading>
-          <BodyText>현재 잔액 {credits.toLocaleString("ko-KR")}크레딧</BodyText>
+          <BodyText>현재 이용권 잔액 {credits.toLocaleString("ko-KR")}</BodyText>
         </Card>
         {currentPlanBenefit ? (
           <Card>
@@ -65,7 +65,7 @@ export function MobileMyPagePlanPanel({
             return <Card key={payment.id}>
               <BodyText style={styles.strongText}>{formatKrw(payment.amountKrw)}</BodyText>
               <BodyText>
-                {payment.status} / {payment.creditsToGrant.toLocaleString("ko-KR")} 크레딧
+                {payment.status} / 결제 이용권
               </BodyText>
               <BodyText>{formatDate(payment.paidAt ?? payment.createdAt)}</BodyText>
               {payment.provider === "google_play" ? (

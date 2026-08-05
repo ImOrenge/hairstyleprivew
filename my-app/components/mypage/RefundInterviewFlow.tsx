@@ -33,8 +33,8 @@ function formatKrw(value: number) {
 
 function outcomeDescription(outcome: RefundOutcome) {
   return outcome === "immediate_refund_and_cancel"
-    ? "남은 결제분 크레딧을 회수하고 비례 환불한 뒤 구독을 즉시 종료합니다."
-    : "현재 기간의 이용권과 크레딧은 유지하고 다음 정기결제만 중단합니다.";
+    ? "남은 결제분 이용량을 회수하고 비례 환불한 뒤 구독을 즉시 종료합니다."
+    : "현재 기간의 이용권은 유지하고 다음 정기결제만 중단합니다.";
 }
 
 export function RefundInterviewFlow({
@@ -266,11 +266,11 @@ export function RefundInterviewFlow({
             {step === 3 && quote ? (
               <div className="f-refund-interview__quote">
                 <div><span>원 결제액</span><strong>{formatKrw(quote.originalAmountKrw)}</strong></div>
-                <div><span>지급 / 사용 / 잔여</span><strong>{quote.creditsGranted} / {quote.creditsUsed} / {quote.creditsRemaining} 크레딧</strong></div>
-                <div><span>회수 대상</span><strong>{quote.creditsToClawBack} 크레딧</strong></div>
-                <div><span>보존되는 다른 크레딧</span><strong>{quote.preservedCredits} 크레딧</strong></div>
+                <div><span>지급 / 사용 / 잔여 이용량</span><strong>{quote.creditsGranted} / {quote.creditsUsed} / {quote.creditsRemaining}</strong></div>
+                <div><span>회수 대상 이용량</span><strong>{quote.creditsToClawBack}</strong></div>
+                <div><span>보존되는 다른 이용량</span><strong>{quote.preservedCredits}</strong></div>
                 <div className="f-refund-interview__quote-total"><span>예상 환불액</span><strong>{formatKrw(quote.refundAmountKrw)}</strong></div>
-                <p>{manualReview ? "안전한 처리를 위해 담당자가 결제와 인터뷰 내용을 검토합니다." : quote.decision === "period_end" ? "환불과 크레딧 회수 없이 현재 기간 종료일까지 이용할 수 있습니다." : "현재 기록이 일치해 자동 처리 대상입니다."}</p>
+                <p>{manualReview ? "안전한 처리를 위해 담당자가 결제와 인터뷰 내용을 검토합니다." : quote.decision === "period_end" ? "이용량 회수 없이 현재 기간 종료일까지 이용할 수 있습니다." : "현재 기록이 일치해 자동 처리 대상입니다."}</p>
               </div>
             ) : null}
 
@@ -278,7 +278,7 @@ export function RefundInterviewFlow({
               <div className="f-refund-interview__confirmation">
                 <p className="font-black text-[var(--app-text)]">{outcomeDescription(outcome)}</p>
                 <p>환불 견적은 {new Date(quote.expiresAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}까지 유효합니다.</p>
-                <label><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>환불액, 크레딧 회수량과 구독 종료 시점을 확인했습니다.</span></label>
+                <label><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>환불액, 이용량 회수량과 구독 종료 시점을 확인했습니다.</span></label>
               </div>
             ) : null}
 

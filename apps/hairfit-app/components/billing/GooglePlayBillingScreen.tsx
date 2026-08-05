@@ -147,7 +147,7 @@ export function GooglePlayBillingScreen() {
         purchaseToken,
       });
       if (result.state === "pending") {
-        showMessage("결제가 보류 중입니다. 승인 전에는 크레딧이 지급되지 않습니다.");
+        showMessage("결제가 보류 중입니다. 승인 전에는 이용권이 지급되지 않습니다.");
         return;
       }
 
@@ -160,13 +160,13 @@ export function GooglePlayBillingScreen() {
       handledTokensRef.current.add(purchaseToken);
       showMessage(
         result.creditsGranted > 0
-          ? `${result.creditsGranted.toLocaleString("ko-KR")}크레딧이 지급되었습니다.`
+          ? `${result.creditsGranted.toLocaleString("ko-KR")} 이용량이 지급되었습니다.`
           : "이미 확인된 구매입니다. 현재 잔액에 한 번만 반영되었습니다.",
       );
       await refreshCatalog();
     } catch {
       showMessage(
-        "구매는 보존되어 있습니다. 서버 확인이 끝나지 않아 크레딧을 지급하지 않았으며, 다시 열면 자동 복원합니다.",
+        "구매는 보존되어 있습니다. 서버 확인이 끝나지 않아 이용권을 지급하지 않았으며, 다시 열면 자동 복원합니다.",
         true,
       );
     } finally {
@@ -257,7 +257,7 @@ export function GooglePlayBillingScreen() {
         <Stack gap={10}>
           <Heading>{product.label}</Heading>
           <BodyText>
-            {storePrice ?? "Google Play 가격 확인 중"} · {product.credits.toLocaleString("ko-KR")}크레딧
+            {storePrice ?? "Google Play 가격 확인 중"} · 이용권 상품
           </BodyText>
           {blockedReason ? <BodyText>{blockedReason}</BodyText> : null}
           <Button
@@ -287,7 +287,7 @@ export function GooglePlayBillingScreen() {
           {catalogPending ? <BodyText>Play 상품을 불러오는 중입니다.</BodyText> : null}
           {subscriptionProducts.map(renderProduct)}
           {catalog?.canTransitionLegacyMobile ? (
-            <BodyText>기존 모바일 1개월권의 남은 크레딧을 보존하고 Play 구독을 시작할 수 있습니다.</BodyText>
+            <BodyText>기존 모바일 1개월권의 잔여 이용권을 보존하고 Play 구독을 시작할 수 있습니다.</BodyText>
           ) : null}
         </Stack>
       </Panel>
