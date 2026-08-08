@@ -2,6 +2,11 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { buildUsagePackPaymentId } from "../../../../../lib/portone-payment-id";
 import { readPortoneChannelKey, readPortoneStoreId } from "../../../../../lib/portone";
+import {
+  isPortoneV1Configured,
+  readPortoneV1ChannelKey,
+  readPortoneV1ImpCode,
+} from "../../../../../lib/portone-v1";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../../lib/supabase";
 import { getUsagePackEligibility } from "../../../../../lib/usage-pack-eligibility";
 import { getUsagePack, isUsagePackKey } from "../../../../../lib/usage-pack";
@@ -77,15 +82,36 @@ export async function POST(request: Request) {
     );
   }
 
-  let storeId: string;
+  const providerVersion = (process.env.PORTONE_USAGE_PACK_VERSION?.trim().toLowerCase() || "v2") as
+    | "v1"
+    | "v2";
+  if (providerVersion !== "v1" && providerVersion !== "v2") {
+    return NextResponse.json({ error: "Unsupported PortOne usage-pack version" }, { status: 503 });
+  }
+
+  let storeId: string | undefined;
   let channelKey: string | undefined;
+  let impCode: string | undefined;
+  let noticeUrl: string | undefined;
   try {
-    storeId = readPortoneStoreId();
-    channelKey = readPortoneChannelKey();
+    if (providerVersion === "v1") {
+      if (!isPortoneV1Configured()) {
+        return NextResponse.json(
+          { error: "PortOne V1 usage-pack configuration is incomplete" },
+          { status: 503 },
+        );
+      }
+      impCode = readPortoneV1ImpCode();
+      channelKey = readPortoneV1ChannelKey();
+      noticeUrl = new URL("/api/payments/webhook/v1", request.url).toString();
+    } else {
+      storeId = readPortoneStoreId();
+      channelKey = readPortoneChannelKey();
+    }
   } catch {
     return NextResponse.json({ error: "PortOne 결제 설정이 필요합니다." }, { status: 503 });
   }
-  if (!channelKey) {
+  if (providerVersion === "v2" && !channelKey) {
     return NextResponse.json({ error: "PortOne 결제 채널 설정이 필요합니다." }, { status: 503 });
   }
 
@@ -142,6 +168,7 @@ export async function POST(request: Request) {
     metadata: {
       source: "web-usage-pack",
       purchase_type: "usage_pack",
+      portone_version: providerVersion,
       usage_pack_key: pack.key,
       order_name: pack.orderName,
       eligible_subscription_id: eligibility.subscriptionId,
@@ -164,8 +191,10 @@ export async function POST(request: Request) {
       currency: "KRW",
       payMethod: "CARD",
       productType: "DIGITAL",
-      storeId,
-      channelKey,
+      providerVersion,
+      ...(providerVersion === "v1"
+        ? { impCode, channelKey, noticeUrl }
+        : { storeId, channelKey }),
       redirectUrl,
       customer: {
         customerId: userId,

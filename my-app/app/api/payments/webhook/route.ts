@@ -18,11 +18,14 @@ import {
   sendRefundReviewEmail,
   sendSubscriptionRenewalEmail,
   sendUsagePackFailureEmail,
-  sendUsagePackSuccessEmail,
 } from "../../../../lib/resend";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
 import { callSupabaseRpc } from "../../../../lib/supabase-rpc";
-import { getUsagePack, isUsagePackKey, isUsagePackTransaction } from "../../../../lib/usage-pack";
+import { getUsagePack, isUsagePackKey } from "../../../../lib/usage-pack";
+import {
+  finalizeUsagePackPayment,
+  type UsagePackFinalizerSupabaseClient,
+} from "../../../../lib/usage-pack-payment-finalizer";
 
 // ─── 타입 ──────────────────────────────────────────────────────────────────
 
@@ -1017,57 +1020,47 @@ export async function POST(request: Request) {
 
   const txRow = confirmation.transaction;
 
-  if (isUsagePackTransaction(txRow.metadata)) {
+  if (getMetadataString(txRow.metadata, "purchase_type") === "usage_pack") {
     const usagePackKey = getMetadataString(txRow.metadata, "usage_pack_key");
     if (!isUsagePackKey(usagePackKey)) {
       console.error("[webhook] 추가 이용권 상품 키 누락:", txRow.id);
       return NextResponse.json({ error: "usage pack metadata missing" }, { status: 500 });
     }
 
+    if (getMetadataString(txRow.metadata, "portone_version") === "v1") {
+      return NextResponse.json(
+        { received: true, ignoredReason: "v1 usage pack belongs to v1 webhook" },
+        { status: 202 },
+      );
+    }
+
     const usagePack = getUsagePack(usagePackKey);
-    if (txRow.amount !== usagePack.priceKrw || txRow.credits_to_grant !== usagePack.credits) {
-      console.error("[webhook] 추가 이용권 금액 또는 이용량 불일치:", txRow.id);
-      return NextResponse.json({ error: "usage pack transaction mismatch" }, { status: 409 });
-    }
-
-    const { error: ledgerError } = await supabase.rpc("apply_payment_credits", {
-      p_payment_transaction_id: txRow.id,
-      p_reason: "usage_pack_purchase",
+    const settled = await finalizeUsagePackPayment({
+      supabase: supabase as unknown as UsagePackFinalizerSupabaseClient,
+      transaction: txRow,
+      pack: usagePack,
+      payment: confirmation.payment,
+      paymentId,
+      source: "portone-v2-usage-pack-webhook",
+      requestUrl: request.url,
+      alreadyPaid: confirmation.alreadyPaid,
+      providerVersion: "v2",
     });
-
-    if (ledgerError) {
-      console.error("[webhook] 추가 이용권 지급 실패:", ledgerError.message);
-      return NextResponse.json({ error: ledgerError.message }, { status: 500 });
-    }
-
-    if (!confirmation.alreadyPaid) {
-      try {
-        const user = await loadUserEmailRow(supabase, txRow.user_id);
-        if (user) {
-          await sendUsagePackSuccessEmail({
-            to: user.email,
-            displayName: user.displayName,
-            packLabel: usagePack.label,
-            amount: usagePack.priceKrw,
-            currency: txRow.currency,
-            creditsGranted: usagePack.credits,
-            currentCredits: user.credits,
-            paymentTransactionId: paymentId,
-            myPageUrl: buildAppUrl(request, "/mypage?tab=plan"),
-          });
-        }
-      } catch (error) {
-        console.error("[webhook] 추가 이용권 결제 완료 이메일 발송 실패:", error);
-      }
+    if (!settled.ok) {
+      console.error("[webhook] usage pack settlement failed:", settled.message);
+      return NextResponse.json(
+        { error: settled.message, reason: settled.reason },
+        { status: settled.httpStatus },
+      );
     }
 
     return NextResponse.json(
       {
         received: true,
         purchaseType: "usage_pack",
-        pack: usagePack.key,
-        credits: usagePack.credits,
-        alreadyProcessed: confirmation.alreadyPaid,
+        pack: settled.pack.key,
+        credits: settled.creditsGranted,
+        alreadyProcessed: settled.alreadyProcessed,
       },
       { status: 200 },
     );

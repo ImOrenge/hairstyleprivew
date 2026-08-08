@@ -33,3 +33,22 @@ export async function completeUsagePackPayment(paymentId: string) {
   }
   return result;
 }
+
+export async function completeUsagePackPaymentV1(impUid: string, merchantUid: string) {
+  const response = await fetch("/api/payments/usage-packs/v1/complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ impUid, merchantUid }),
+  });
+
+  if (response.status === 401) {
+    redirectToUsagePackLogin();
+    return null;
+  }
+
+  const result = (await response.json().catch(() => ({}))) as CompleteUsagePackResponse;
+  if (!response.ok) {
+    throw new Error(result.error ?? `결제 확인 실패 (${response.status})`);
+  }
+  return result;
+}

@@ -138,10 +138,14 @@ const usagePackCompleteSource = readFileSync(
   resolve("app/api/payments/usage-packs/complete/route.ts"),
   "utf8",
 );
+const usagePackFinalizerSource = readFileSync(
+  resolve("lib/usage-pack-payment-finalizer.ts"),
+  "utf8",
+);
 assert.match(usagePackCompleteSource, /confirmPortonePayment\(\{/);
 assert.match(usagePackCompleteSource, /expectedAmount:\s*pack\.priceKrw/);
-assert.match(usagePackCompleteSource, /apply_payment_credits/);
-assert.match(usagePackCompleteSource, /p_reason:\s*"usage_pack_purchase"/);
+assert.match(usagePackFinalizerSource, /apply_payment_credits/);
+assert.match(usagePackFinalizerSource, /p_reason:\s*"usage_pack_purchase"/);
 assert.doesNotMatch(usagePackCompleteSource, /user_subscriptions[\s\S]*\.update\(/);
 
 const usagePackCheckoutSource = readFileSync(
@@ -153,8 +157,8 @@ assert.match(usagePackCheckoutSource, /payMethod:\s*prepared\.payMethod/);
 assert.match(usagePackCheckoutSource, /productType:\s*prepared\.productType/);
 
 const webhookSource = readFileSync(resolve("app/api/payments/webhook/route.ts"), "utf8");
-assert.match(webhookSource, /isUsagePackTransaction\(txRow\.metadata\)/);
-assert.match(webhookSource, /p_reason:\s*"usage_pack_purchase"/);
+assert.match(webhookSource, /purchase_type.*usage_pack/);
+assert.match(usagePackFinalizerSource, /p_reason:\s*"usage_pack_purchase"/);
 
 const refundFinalizationSource = readFileSync(
   resolve("lib/portone-refund-finalization.ts"),

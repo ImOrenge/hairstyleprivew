@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import type { UsagePackKey } from "../../lib/usage-pack";
+import { requestPortoneV1Payment } from "../../lib/portone-v1-client";
 import {
   completeUsagePackPayment,
+  completeUsagePackPaymentV1,
   redirectToUsagePackLogin,
   type CompleteUsagePackResponse,
 } from "../../lib/usage-pack-payment-client";
@@ -11,6 +13,7 @@ import { Button } from "../ui/Button";
 
 interface PreparedUsagePackPayment {
   paymentId?: string;
+  providerVersion?: "v1" | "v2";
   pack?: UsagePackKey;
   orderName?: string;
   amountKrw?: number;
@@ -20,6 +23,8 @@ interface PreparedUsagePackPayment {
   productType?: "DIGITAL";
   storeId?: string;
   channelKey?: string;
+  impCode?: string;
+  noticeUrl?: string;
   redirectUrl?: string;
   customer?: {
     customerId?: string;
@@ -127,12 +132,44 @@ export function PortoneUsagePackCheckoutForm({
         !prepared.paymentId ||
         !prepared.orderName ||
         !prepared.amountKrw ||
-        !prepared.storeId ||
-        !prepared.channelKey ||
         !prepared.redirectUrl ||
         !prepared.customer?.customerId
       ) {
         throw new Error("결제 준비 정보가 올바르지 않습니다.");
+      }
+
+      if (prepared.providerVersion === "v1") {
+        if (!prepared.impCode || !prepared.channelKey || !prepared.noticeUrl) {
+          throw new Error("PortOne V1 결제 설정이 누락되었습니다.");
+        }
+
+        const callback = await requestPortoneV1Payment(prepared.impCode, {
+          channelKey: prepared.channelKey,
+          merchantUid: prepared.paymentId,
+          name: prepared.orderName,
+          amount: prepared.amountKrw,
+          buyerName: prepared.customer.fullName ?? normalizedBuyerName,
+          buyerEmail: prepared.customer.email ?? normalizedBuyerEmail,
+          buyerTel: prepared.customer.phoneNumber ?? normalizedBuyerPhone,
+          redirectUrl: prepared.redirectUrl,
+          noticeUrl: prepared.noticeUrl,
+        });
+
+        const impUid = callback.imp_uid?.trim();
+        const merchantUid = callback.merchant_uid?.trim() || prepared.paymentId;
+        if (!impUid) {
+          throw new Error(callback.error_msg ?? "PortOne V1 결제 식별자를 받지 못했습니다.");
+        }
+
+        const result = await completeUsagePackPaymentV1(impUid, merchantUid);
+        if (result) {
+          window.location.assign(buildSuccessPath(result));
+        }
+        return;
+      }
+
+      if (!prepared.storeId || !prepared.channelKey) {
+        throw new Error("PortOne V2 결제 설정이 누락되었습니다.");
       }
 
       const PortOne = (await import("@portone/browser-sdk/v2").catch(() => null))?.default;

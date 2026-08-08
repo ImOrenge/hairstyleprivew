@@ -37,6 +37,9 @@ Optional:
 - `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY` or `PORTONE_V2_CHANNEL_KEY` (optional PortOne channel key)
 - `PORTONE_V2_API_SECRET` (required for PortOne billing key charges)
 - `PORTONE_V2_WEBHOOK_SECRET` (required for PortOne payment webhooks)
+- `PORTONE_USAGE_PACK_VERSION` (`v2` by default; set `v1` to use the V1 web usage-pack checkout)
+- `NEXT_PUBLIC_PORTONE_V1_IMP_CODE` and `NEXT_PUBLIC_PORTONE_V1_CHANNEL_KEY` (required for V1 usage-pack checkout)
+- `PORTONE_V1_API_KEY` and `PORTONE_V1_API_SECRET` (required for server-side V1 payment verification)
 - `BILLING_KEY_ENCRYPTION_SECRET` (required for encrypted PortOne billing key storage and renewals)
 - `SUBSCRIPTION_ACCESS_MODE` (`waitlist` by default; set `checkout` only when PG checkout is ready)
 - `GENERATION_ACCEPTANCE_ENABLED` (`true` by default; set `false` to pause only new hair-generation acceptance while accepted work drains)
@@ -119,6 +122,11 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY` or `PORTONE_V2_CHANNEL_KEY`
 - `PORTONE_V2_API_SECRET`
 - `PORTONE_V2_WEBHOOK_SECRET`
+- `PORTONE_USAGE_PACK_VERSION`
+- `NEXT_PUBLIC_PORTONE_V1_IMP_CODE`
+- `NEXT_PUBLIC_PORTONE_V1_CHANNEL_KEY`
+- `PORTONE_V1_API_KEY`
+- `PORTONE_V1_API_SECRET`
 - `BILLING_KEY_ENCRYPTION_SECRET`
 - `INTERNAL_API_SECRET`
 - `RESEND_API_KEY` (optional)
@@ -201,6 +209,8 @@ npm run portone:e2e:inspect -- --paymentId=<payment-id> --plan=basic --source=we
   - `BillingKey.Deleted` matches encrypted-key subscriptions by `pg_billing_key_hash`; legacy plaintext rows are still handled as a fallback.
   - Full cancellation events claw back currently available credits once per payment transaction and record unrecovered credits in `payment_credit_clawbacks`.
   - Partial cancellation events update transaction metadata only; credit adjustment remains a manual operations decision.
+- `POST /api/payments/usage-packs/v1/complete` verifies the V1 `imp_uid` through the V1 REST API before settling the usage pack.
+- `POST /api/payments/webhook/v1` accepts the V1 webhook payload, re-queries the payment, and uses the same idempotent usage-pack finalizer as the callback route.
 
 ## PortOne webhook setup
 
@@ -273,3 +283,12 @@ Resend remains the outbound email provider. Inbound support email is handled by 
 5. In Cloudflare Email Routing, onboard `hairfit.beauty`, then create custom addresses `support` and `busyness` and route both to the `hairfit-email-router` Worker.
 
 The Worker posts parsed messages to `POST /api/email/inbound/cloudflare`. Emails to `busyness@hairfit.beauty` are tagged as the business mailbox. Admin users can review and filter messages at `/admin/inbox`.
+
+## PortOne V1 usage-pack setup
+
+V2 subscription and mobile payment flows remain unchanged. Set `PORTONE_USAGE_PACK_VERSION=v1` only after all four V1 credentials/configuration values are present. The browser uses the official V1 SDK at `https://cdn.iamport.kr/v1/iamport.js`; callback success is never treated as payment proof.
+
+1. Set the V1 environment variables and sync the Worker secret names with `npm run portone:cloudflare:secrets -- --write --verifyAfterWrite` after confirming `PORTONE_CLOUDFLARE_SECRET_SYNC_CONFIRM=hairstyleprivew`.
+2. Register `https://hairfit.beauty/api/payments/webhook/v1` as the PortOne V1 webhook endpoint.
+3. Run `npm run portone:v1:contract:test`, `npm run portone:env:check -- --mode=v1-usage-pack`, and the existing PortOne contract checks.
+4. After a test payment, compare the PortOne V1 `imp_uid`/`merchant_uid`, the `payment_transactions` row, and the `credit_ledger` row. V1 transactions keep `provider=portone` and record `metadata.portone_version=v1`.

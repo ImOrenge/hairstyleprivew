@@ -25,6 +25,7 @@
     "portone:webhook:test": "node scripts/send-portone-webhook-test.mjs",
     "portone:webhook:signature:test": "node --no-warnings scripts/verify-portone-webhook-signature.mjs",
     "portone:contract:test": "node --no-warnings scripts/verify-portone-contract.mjs",
+    "portone:v1:contract:test": "node --no-warnings scripts/verify-portone-v1-contract.mjs",
     "portone:confirmation:test": "node --no-warnings scripts/verify-portone-confirmation-rules.mjs",
     "portone:audit": "node --no-warnings scripts/audit-portone-billing.mjs",
     "portone:refund:smoke": "node --no-warnings scripts/smoke-portone-refund-requests.mjs",

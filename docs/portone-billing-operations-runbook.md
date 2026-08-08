@@ -14,8 +14,9 @@
 
 | 구분 | 변수 |
 | --- | --- |
-| PortOne 공개 설정 | `NEXT_PUBLIC_PORTONE_V2_STORE_ID`, `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY` |
+| PortOne 공개 설정 | `NEXT_PUBLIC_PORTONE_V2_STORE_ID`, `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY`, `NEXT_PUBLIC_PORTONE_V1_IMP_CODE`, `NEXT_PUBLIC_PORTONE_V1_CHANNEL_KEY` |
 | PortOne 서버 설정 | `PORTONE_V2_STORE_ID`, `PORTONE_V2_CHANNEL_KEY`, `PORTONE_V2_API_SECRET`, `PORTONE_V2_WEBHOOK_SECRET` |
+| PortOne V1 단건 설정 | `PORTONE_USAGE_PACK_VERSION=v1`, `PORTONE_V1_API_KEY`, `PORTONE_V1_API_SECRET` |
 | Supabase | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
 | 빌링키 암호화 | `BILLING_KEY_ENCRYPTION_SECRET` |
 | 내부 호출 | `INTERNAL_API_SECRET` |
@@ -43,6 +44,7 @@ npm run portone:launch:check -- --allowMissingExternal
 npm run portone:env:check -- --mode=test-payment
 npm --prefix my-app run portone:contract:test
 npm --prefix my-app run portone:confirmation:test
+npm --prefix my-app run portone:v1:contract:test
 npm --prefix my-app run portone:audit
 npm run portone:ui:smoke -- --baseUrl=http://localhost:3010
 npm run portone:mobile:smoke
@@ -60,10 +62,13 @@ npm --prefix my-app run cf:build
 
 `portone:env:check`는 secret 값을 출력하지 않고 테스트 결제, 배포 웹훅, 로컬 웹훅, 갱신 cron, 빌링키 백필에 필요한 환경 변수 이름만 확인한다. 현재 단계에 맞춰 `--mode=local-webhook`, `--mode=test-payment`, `--mode=deploy-webhook`, `--mode=renewal-cron`, `--mode=backfill` 중 하나를 사용한다.
 
+V1 단건결제 배포 전에는 `--mode=v1-usage-pack`도 실행한다. 이 모드는 `PORTONE_USAGE_PACK_VERSION`, V1 IMP/channel 설정, V1 API key/secret, Supabase 설정, 그리고 `/api/payments/webhook/v1` 공개 HTTPS 경로를 확인한다.
+
 배포된 웹훅 URL을 PortOne 콘솔에 등록하기 전에는 공개 앱 URL과 웹훅 endpoint도 확인한다. `NEXT_PUBLIC_SITE_URL` 또는 `NEXT_PUBLIC_APP_URL`이 공개 HTTPS URL이어야 하고, webhook URL은 `/api/payments/webhook`로 끝나야 한다.
 
 ```powershell
 npm run portone:env:check -- --mode=deploy-webhook
+npm run portone:env:check -- --mode=v1-usage-pack --webhookUrl=https://<your-domain>/api/payments/webhook/v1
 npm run portone:env:check -- --mode=renewal-cron
 npm run portone:env:check -- --mode=deploy-webhook --webhookUrl=https://<your-domain>/api/payments/webhook
 npm run portone:renewal:function:smoke -- --functionUrl=https://<project>.functions.supabase.co/cron-subscription-renewal
@@ -173,7 +178,7 @@ npm run portone:webhook:db:smoke -- --scenario=billing-key-deleted-legacy --url=
 10. `npm run portone:env:check -- --mode=renewal-cron`로 갱신 Edge Function의 Supabase/PortOne/Billing secret 구성을 확인한다.
 11. `npm run portone:preflight -- --profile=deploy --webhookUrl=https://<test-domain>/api/payments/webhook`로 배포 env, 갱신 cron env, signed webhook route probe를 함께 확인한다.
 12. `cron-subscription-renewal` Edge Function을 테스트 배포한 뒤 `npm run portone:renewal:function:smoke -- --functionUrl=https://<project>.functions.supabase.co/cron-subscription-renewal`로 no-due 호출을 확인한다.
-13. PortOne 테스트 콘솔에 웹훅 URL을 등록하고 `Transaction.Paid`, `Transaction.Failed`, `Transaction.Cancelled`, `Transaction.PartialCancelled`, `Transaction.PayPending`, `Transaction.Ready`, `Transaction.VirtualAccountIssued`, `Transaction.CancelPending`, `BillingKey.Deleted`를 활성화한다.
+13. PortOne 테스트 콘솔에 V2 웹훅 URL을 등록하고 `Transaction.Paid`, `Transaction.Failed`, `Transaction.Cancelled`, `Transaction.PartialCancelled`, `Transaction.PayPending`, `Transaction.Ready`, `Transaction.VirtualAccountIssued`, `Transaction.CancelPending`, `BillingKey.Deleted`를 활성화한다. V1 단건결제는 별도로 `https://hairfit.beauty/api/payments/webhook/v1`을 등록한다.
 14. 테스트 결제 smoke를 완료한 뒤 `npm run portone:launch:check -- --fullLocal --webhookUrl=https://<test-domain>/api/payments/webhook --renewalFunctionUrl=https://<project>.functions.supabase.co/cron-subscription-renewal --paymentId=<payment-id> --plan=basic --source=web`를 실행한다.
 15. 운영 환경 변수와 운영 웹훅 URL로 같은 순서를 반복한다.
 
