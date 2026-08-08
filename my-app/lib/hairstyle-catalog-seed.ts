@@ -1,11 +1,22 @@
 import type {
+  HairConditionTag,
+  HairStrandThickness,
+  HairTextureProfile,
   HairstyleCatalogRow,
+  HairstyleMaintenanceLevel,
+  HairstyleRequiredService,
   MemberStyleTarget,
   RecommendationCorrectionFocus,
   RecommendationLengthBucket,
 } from "./recommendation-types";
+import femaleLongBlueprints from "../data/hairstyle-blueprints/v4/female-long.json";
+import femaleMediumBlueprints from "../data/hairstyle-blueprints/v4/female-medium.json";
+import femaleShortBlueprints from "../data/hairstyle-blueprints/v4/female-short.json";
+import maleLongBlueprints from "../data/hairstyle-blueprints/v4/male-long.json";
+import maleMediumBlueprints from "../data/hairstyle-blueprints/v4/male-medium.json";
+import maleShortBlueprints from "../data/hairstyle-blueprints/v4/male-short.json";
 
-export const HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v3";
+export const HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v4";
 
 export interface HairstyleCatalogBlueprint {
   slug: string;
@@ -26,6 +37,21 @@ export interface HairstyleCatalogBlueprint {
   trendKeywords: string[];
   baselineTrendScore: number;
   baselineFreshnessScore: number;
+  styleFamily?: string;
+  variantKey?: string;
+  primaryTexture?: HairTextureProfile;
+  compatibleTextureTags?: HairTextureProfile[];
+  avoidTextureTags?: HairTextureProfile[];
+  primaryStrandThickness?: HairStrandThickness;
+  compatibleStrandThicknessTags?: HairStrandThickness[];
+  avoidStrandThicknessTags?: HairStrandThickness[];
+  primaryCondition?: Exclude<HairConditionTag, "permed" | "severely_damaged">;
+  compatibleConditionTags?: HairConditionTag[];
+  avoidConditionTags?: HairConditionTag[];
+  requiredServices?: HairstyleRequiredService[];
+  serviceConstraints?: string[];
+  maintenanceLevel?: HairstyleMaintenanceLevel;
+  introducedIn?: "legacy-32" | "expansion-a" | "expansion-b" | "expansion-c";
 }
 
 export interface BlueprintTrendSignal {
@@ -104,25 +130,122 @@ function resolveStyleTargets(slug: string): MemberStyleTarget[] {
   return ["male", "female"];
 }
 
-export function buildKoreanWeeklyStyleQueries(referenceDate = new Date()) {
-  const year = referenceDate.getFullYear();
-
-  return [
-    `${year} 헤어 트렌드`,
-    `${year} 헤어스타일 트렌드`,
-    `${year} 단발 트렌드`,
-    `${year} 레이어드컷 트렌드`,
-    `${year} 허쉬컷 트렌드`,
-    `${year} 태슬컷 트렌드`,
-    `${year} 리프컷 트렌드`,
-    `${year} 숏컷 트렌드`,
-    `${year} 시스루뱅 트렌드`,
-    `${year} 남자 헤어 트렌드`,
-    `${year} 여자 헤어 트렌드`,
-  ];
+export interface KoreanWeeklyStyleQuery {
+  id: string;
+  query: string;
+  styleTarget: MemberStyleTarget | null;
+  lengthBucket: RecommendationLengthBucket | null;
+  textureFacet: HairTextureProfile | null;
+  strandThicknessFacet: HairStrandThickness | null;
+  conditionFacet: Exclude<HairConditionTag, "untreated" | "permed" | "severely_damaged"> | null;
 }
 
-export const KOREAN_HAIRSTYLE_BLUEPRINTS: HairstyleCatalogBlueprint[] = [
+export function buildLegacyKoreanWeeklyStyleQueryRegistry(referenceDate = new Date()): KoreanWeeklyStyleQuery[] {
+  const year = referenceDate.getFullYear();
+  const queries = [
+    `${year} 헤어 트렌드`, `${year} 헤어스타일 트렌드`, `${year} 단발 트렌드`,
+    `${year} 레이어드컷 트렌드`, `${year} 허쉬컷 트렌드`, `${year} 태슬컷 트렌드`,
+    `${year} 리프컷 트렌드`, `${year} 숏컷 트렌드`, `${year} 시스루뱅 트렌드`,
+    `${year} 남자 헤어 트렌드`, `${year} 여자 헤어 트렌드`,
+  ];
+  return queries.map((query, index) => ({
+    id: `legacy-${index + 1}`,
+    query,
+    styleTarget: null,
+    lengthBucket: null,
+    textureFacet: null,
+    strandThicknessFacet: null,
+    conditionFacet: null,
+  }));
+}
+
+export function buildKoreanWeeklyStyleQueryRegistry(referenceDate = new Date()): KoreanWeeklyStyleQuery[] {
+  const year = referenceDate.getFullYear();
+  const targets = [
+    ["female", "여자"],
+    ["male", "남자"],
+  ] as const;
+  const lengths = [
+    ["short", "짧은 머리"],
+    ["medium", "중간 머리"],
+    ["long", "긴 머리"],
+  ] as const;
+  const textures = [
+    ["straight", "직모"],
+    ["wavy_curly", "곱슬 웨이브"],
+    ["tight_curly_frizzy", "강한 곱슬 악성곱슬"],
+  ] as const;
+  const thicknesses = [
+    ["fine", "가는 모발"],
+    ["medium", "보통 굵기 모발"],
+    ["coarse", "굵은 모발"],
+  ] as const;
+  const conditions = [
+    ["damaged", "손상모"],
+    ["bleached", "탈색모"],
+    ["colored", "염색모"],
+  ] as const;
+  const registry: KoreanWeeklyStyleQuery[] = [];
+
+  for (const [styleTarget, targetKo] of targets) {
+    for (const [lengthBucket, lengthKo] of lengths) {
+      registry.push({
+        id: `general-${styleTarget}-${lengthBucket}`,
+        query: `${year} ${targetKo} ${lengthKo} 헤어스타일 트렌드`,
+        styleTarget,
+        lengthBucket,
+        textureFacet: null,
+        strandThicknessFacet: null,
+        conditionFacet: null,
+      });
+      for (const [textureFacet, textureKo] of textures) {
+        registry.push({
+          id: `texture-${styleTarget}-${lengthBucket}-${textureFacet}`,
+          query: `${year} ${targetKo} ${lengthKo} ${textureKo} 헤어스타일`,
+          styleTarget,
+          lengthBucket,
+          textureFacet,
+          strandThicknessFacet: null,
+          conditionFacet: null,
+        });
+      }
+      for (const [strandThicknessFacet, thicknessKo] of thicknesses) {
+        registry.push({
+          id: `thickness-${styleTarget}-${lengthBucket}-${strandThicknessFacet}`,
+          query: `${year} ${targetKo} ${lengthKo} ${thicknessKo} 헤어스타일`,
+          styleTarget,
+          lengthBucket,
+          textureFacet: null,
+          strandThicknessFacet,
+          conditionFacet: null,
+        });
+      }
+      for (const [conditionFacet, conditionKo] of conditions) {
+        registry.push({
+          id: `condition-${styleTarget}-${lengthBucket}-${conditionFacet}`,
+          query: `${year} ${targetKo} ${lengthKo} ${conditionKo} 헤어스타일`,
+          styleTarget,
+          lengthBucket,
+          textureFacet: null,
+          strandThicknessFacet: null,
+          conditionFacet,
+        });
+      }
+    }
+  }
+
+  return registry;
+}
+
+export function buildKoreanWeeklyStyleQueries(referenceDate = new Date()) {
+  const structuredRssEnabled = process.env.HAIRSTYLE_RSS_FACETS_V2_ENABLED?.trim().toLowerCase() === "true";
+  const registry = structuredRssEnabled
+    ? buildKoreanWeeklyStyleQueryRegistry(referenceDate)
+    : buildLegacyKoreanWeeklyStyleQueryRegistry(referenceDate);
+  return registry.map((item) => item.query);
+}
+
+const LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS: HairstyleCatalogBlueprint[] = [
   {
     slug: "airy-short-crop-lift",
     nameKo: "에어리 숏 크롭 리프트",
@@ -765,6 +888,44 @@ export const KOREAN_HAIRSTYLE_BLUEPRINTS: HairstyleCatalogBlueprint[] = [
   },
 ];
 
+const EXPANSION_BLUEPRINTS_WITHOUT_NEGATIVE_PROMPT = [
+  ...femaleShortBlueprints,
+  ...femaleMediumBlueprints,
+  ...femaleLongBlueprints,
+  ...maleShortBlueprints,
+  ...maleMediumBlueprints,
+  ...maleLongBlueprints,
+] as unknown as Array<Omit<HairstyleCatalogBlueprint, "negativePrompt">>;
+
+const EXPANSION_KOREAN_HAIRSTYLE_BLUEPRINTS: HairstyleCatalogBlueprint[] =
+  EXPANSION_BLUEPRINTS_WITHOUT_NEGATIVE_PROMPT.map((blueprint) => ({
+    ...blueprint,
+    negativePrompt: DEFAULT_NEGATIVE_PROMPT,
+  }));
+
+export const KOREAN_HAIRSTYLE_BLUEPRINTS: HairstyleCatalogBlueprint[] = [
+  ...LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS,
+  ...EXPANSION_KOREAN_HAIRSTYLE_BLUEPRINTS,
+];
+
+export function isHairstyleBlueprintV4Enabled() {
+  return process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true";
+}
+
+export function getRuntimeHairstyleBlueprints() {
+  return isHairstyleBlueprintV4Enabled()
+    ? KOREAN_HAIRSTYLE_BLUEPRINTS
+    : LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS;
+}
+
+function inferLegacyTexture(texture: string): HairTextureProfile {
+  const normalized = texture.toLowerCase();
+  if (normalized.includes("curl") || normalized.includes("wave") || normalized.includes("perm")) {
+    return "wavy_curly";
+  }
+  return "straight";
+}
+
 function clampScore(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Math.round(value)));
 }
@@ -774,7 +935,7 @@ export function buildCatalogRowsForCycle(
   nowIso: string,
   trendSignals: Map<string, BlueprintTrendSignal>,
 ): Omit<HairstyleCatalogRow, "id">[] {
-  return KOREAN_HAIRSTYLE_BLUEPRINTS.map((item) => {
+  return getRuntimeHairstyleBlueprints().map((item) => {
     const signal = trendSignals.get(item.slug);
 
     return {
@@ -795,6 +956,21 @@ export function buildCatalogRowsForCycle(
       negativePrompt: item.negativePrompt,
       promptTemplateVersion: HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
       styleTargets: item.styleTargets ?? resolveStyleTargets(item.slug),
+      styleFamily: item.styleFamily ?? item.slug,
+      variantKey: item.variantKey ?? `legacy-${item.slug}`,
+      primaryTexture: item.primaryTexture ?? inferLegacyTexture(item.texture),
+      compatibleTextureTags: item.compatibleTextureTags ?? ["straight", "wavy_curly", "tight_curly_frizzy"],
+      avoidTextureTags: item.avoidTextureTags ?? [],
+      primaryStrandThickness: item.primaryStrandThickness ?? "medium",
+      compatibleStrandThicknessTags: item.compatibleStrandThicknessTags ?? ["fine", "medium", "coarse"],
+      avoidStrandThicknessTags: item.avoidStrandThicknessTags ?? [],
+      primaryCondition: item.primaryCondition ?? "untreated",
+      compatibleConditionTags: item.compatibleConditionTags ?? ["untreated", "damaged", "bleached", "colored", "permed"],
+      avoidConditionTags: item.avoidConditionTags ?? [],
+      requiredServices: item.requiredServices ?? ["cut"],
+      serviceConstraints: item.serviceConstraints ?? ["professional_assessment"],
+      maintenanceLevel: item.maintenanceLevel ?? "medium",
+      introducedIn: item.introducedIn ?? "legacy-32",
       status: "active",
       sourceCycleId: cycleId,
       createdAt: nowIso,

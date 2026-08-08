@@ -1,4 +1,5 @@
 import { useAuth } from "@clerk/clerk-expo";
+import type { CurrentHairProfileInput } from "@hairfit/api-client";
 import type { GeneratedVariant } from "@hairfit/shared";
 import {
   createContext,
@@ -30,13 +31,25 @@ interface GenerationFlowContextValue {
   draft: MobileRecommendationDraft | null;
   draftReceipt: MobileGenerationDraftReceipt | null;
   draftReceiptHydrated: boolean;
+  hairProfile: CurrentHairProfileInput;
   setImageDataUrl: (value: string | null) => void;
   setDraft: (value: MobileRecommendationDraft | null) => void;
   setDraftReceipt: (value: MobileGenerationDraftReceipt | null) => void;
+  setHairProfile: (value: CurrentHairProfileInput) => void;
   clear: () => void;
 }
 
 const GenerationFlowContext = createContext<GenerationFlowContextValue | null>(null);
+
+const EMPTY_HAIR_PROFILE: CurrentHairProfileInput = {
+  currentLength: "unknown",
+  textureType: "unknown",
+  strandThickness: "unknown",
+  conditionTags: [],
+  damageLevel: "unknown",
+  desiredLength: null,
+  source: "user",
+};
 
 export function GenerationFlowProvider({ children }: { children: ReactNode }) {
   const { isLoaded, userId } = useAuth();
@@ -44,6 +57,7 @@ export function GenerationFlowProvider({ children }: { children: ReactNode }) {
   const [draft, setDraftState] = useState<MobileRecommendationDraft | null>(null);
   const [draftReceipt, setDraftReceiptState] = useState<MobileGenerationDraftReceipt | null>(null);
   const [draftReceiptHydrated, setDraftReceiptHydrated] = useState(false);
+  const [hairProfile, setHairProfileState] = useState<CurrentHairProfileInput>(EMPTY_HAIR_PROFILE);
   const [boundOwnerId, setBoundOwnerId] = useState<string | null | undefined>(undefined);
   const activeOwnerId = !isLoaded ? undefined : userId ?? null;
   const ownerReady = activeOwnerId !== undefined && boundOwnerId === activeOwnerId;
@@ -59,6 +73,7 @@ export function GenerationFlowProvider({ children }: { children: ReactNode }) {
     setImageDataUrlState(empty.imageDataUrl);
     setDraftState(empty.draft);
     setDraftReceiptState(empty.draftReceipt);
+    setHairProfileState(EMPTY_HAIR_PROFILE);
     setDraftReceiptHydrated(false);
     setBoundOwnerId(undefined);
 
@@ -107,6 +122,12 @@ export function GenerationFlowProvider({ children }: { children: ReactNode }) {
     void persistence.catch(() => undefined);
   }, [writableOwnerId]);
 
+  const setHairProfile = useCallback((value: CurrentHairProfileInput) => {
+    if (canWriteGenerationFlowOwner(currentWritableOwnerRef.current, writableOwnerId)) {
+      setHairProfileState(value);
+    }
+  }, [writableOwnerId]);
+
   const clear = useCallback(() => {
     if (!canWriteGenerationFlowOwner(currentWritableOwnerRef.current, writableOwnerId) || !writableOwnerId) {
       return;
@@ -114,6 +135,7 @@ export function GenerationFlowProvider({ children }: { children: ReactNode }) {
     setImageDataUrlState(null);
     setDraftState(null);
     setDraftReceiptState(null);
+    setHairProfileState(EMPTY_HAIR_PROFILE);
     void generationRecoveryStore.clear(writableOwnerId).catch(() => undefined);
   }, [writableOwnerId]);
 
@@ -130,9 +152,11 @@ export function GenerationFlowProvider({ children }: { children: ReactNode }) {
       draft: exposedDraft,
       draftReceipt: exposedDraftReceipt,
       draftReceiptHydrated: ownerReady && draftReceiptHydrated,
+      hairProfile,
       setImageDataUrl,
       setDraft,
       setDraftReceipt,
+      setHairProfile,
       clear,
     }),
     [
@@ -141,9 +165,11 @@ export function GenerationFlowProvider({ children }: { children: ReactNode }) {
       exposedDraft,
       exposedDraftReceipt,
       exposedImageDataUrl,
+      hairProfile,
       ownerReady,
       setDraft,
       setDraftReceipt,
+      setHairProfile,
       setImageDataUrl,
     ],
   );

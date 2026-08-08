@@ -8,7 +8,7 @@ import {
   type GenerationCreditReceipt,
   type PaidActionQuote,
 } from "@hairfit/shared";
-import type { GeneratedVariant } from "../lib/recommendation-types";
+import type { CurrentHairProfile, GeneratedVariant } from "../lib/recommendation-types";
 import {
   doesGenerationOwnerSnapshotMatch,
   getGenerationOwnerSnapshot,
@@ -413,7 +413,10 @@ export function useGenerate() {
     [],
   );
 
-  const runGridPipeline = useCallback(async (input: { consultationId?: string | null } = {}) => {
+  const runGridPipeline = useCallback(async (input: {
+    consultationId?: string | null;
+    hairProfile?: CurrentHairProfile | null;
+  } = {}) => {
     const ownerSnapshot = captureGenerationOwnerSnapshot();
     clearLatestResult();
     setPipelineError(null);
@@ -468,6 +471,7 @@ export function useGenerate() {
           draftId: draft.draftId,
           quoteId: quote.quoteId,
           ...(input.consultationId ? { consultationId: input.consultationId } : {}),
+          ...(input.hairProfile ? { hairProfile: input.hairProfile } : {}),
         }),
       });
       const data = (await response.json().catch(() => ({}))) as GenerationAcceptanceApiResponse;

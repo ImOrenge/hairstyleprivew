@@ -1,0 +1,1775 @@
+[
+  {
+    "slug": "male-long-long-layer-straight-untreated",
+    "nameKo": "남성 롱 레이어 · 직모 일반 모발",
+    "description": "남성 장기장 롱 레이어를 직모, 보통 굵기 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "crown",
+    "silhouette": "long long layer",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, flowing long layers, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "롱 레이어",
+      "남성 장기장 롱 레이어",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 48,
+    "baselineFreshnessScore": 46,
+    "styleFamily": "long-layer",
+    "variantKey": "male-long-straight-untreated",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-long-curtain-long-wavy-curly-untreated",
+    "nameKo": "남성 커튼 롱 · 곱슬 웨이브 일반 모발",
+    "description": "남성 장기장 커튼 롱를 곱슬 웨이브, 가는 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "temple",
+    "silhouette": "long curtain long",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long curtain-framing layers, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "커튼 롱",
+      "남성 장기장 커튼 롱",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 49,
+    "baselineFreshnessScore": 47,
+    "styleFamily": "curtain-long",
+    "variantKey": "male-long-wavy_curly-untreated",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "damaged",
+      "bleached",
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "perm"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-long-s-wave-long-tight-curly-frizzy-untreated",
+    "nameKo": "남성 S웨이브 롱 · 강한 곱슬 일반 모발",
+    "description": "남성 장기장 S웨이브 롱를 강한 곱슬, 굵은 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "jawline",
+    "silhouette": "long s wave long",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long polished S-waves, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "S웨이브 롱",
+      "남성 장기장 S웨이브 롱",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 50,
+    "baselineFreshnessScore": 48,
+    "styleFamily": "s-wave-long",
+    "variantKey": "male-long-tight_curly_frizzy-untreated",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-long-jelly-long-straight-damaged",
+    "nameKo": "남성 젤리 롱 · 직모 손상 모발",
+    "description": "남성 장기장 젤리 롱를 직모, 보통 굵기 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "crown",
+    "silhouette": "long jelly long",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long bouncy jelly waves, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "젤리 롱",
+      "남성 장기장 젤리 롱",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 51,
+    "baselineFreshnessScore": 49,
+    "styleFamily": "jelly-long",
+    "variantKey": "male-long-straight-damaged",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-long-hippie-long-wavy-curly-damaged",
+    "nameKo": "남성 히피 롱 · 곱슬 웨이브 손상 모발",
+    "description": "남성 장기장 히피 롱를 곱슬 웨이브, 가는 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "temple",
+    "silhouette": "long hippie long",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long defined hippie curls, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "히피 롱",
+      "남성 장기장 히피 롱",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 52,
+    "baselineFreshnessScore": 50,
+    "styleFamily": "hippie-long",
+    "variantKey": "male-long-wavy_curly-damaged",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-long-loose-wave-tight-curly-frizzy-damaged",
+    "nameKo": "남성 루스 웨이브 · 강한 곱슬 손상 모발",
+    "description": "남성 장기장 루스 웨이브를 강한 곱슬, 굵은 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "jawline",
+    "silhouette": "long loose wave",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long loose waves, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "루스 웨이브",
+      "남성 장기장 루스 웨이브",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 53,
+    "baselineFreshnessScore": 51,
+    "styleFamily": "loose-wave",
+    "variantKey": "male-long-tight_curly_frizzy-damaged",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-long-sleek-straight-straight-bleached",
+    "nameKo": "남성 슬릭 스트레이트 롱 · 직모 탈색 모발",
+    "description": "남성 장기장 슬릭 스트레이트 롱를 직모, 보통 굵기 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "crown",
+    "silhouette": "long sleek straight",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, sleek long straight silhouette, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "슬릭 스트레이트 롱",
+      "남성 장기장 슬릭 스트레이트 롱",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 54,
+    "baselineFreshnessScore": 52,
+    "styleFamily": "sleek-straight",
+    "variantKey": "male-long-straight-bleached",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-long-butterfly-long-wavy-curly-bleached",
+    "nameKo": "남성 버터플라이 롱 · 곱슬 웨이브 탈색 모발",
+    "description": "남성 장기장 버터플라이 롱를 곱슬 웨이브, 가는 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "temple",
+    "silhouette": "long butterfly long",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long butterfly layers, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "버터플라이 롱",
+      "남성 장기장 버터플라이 롱",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 55,
+    "baselineFreshnessScore": 53,
+    "styleFamily": "butterfly-long",
+    "variantKey": "male-long-wavy_curly-bleached",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-long-hush-long-tight-curly-frizzy-bleached",
+    "nameKo": "남성 허쉬 롱 · 강한 곱슬 탈색 모발",
+    "description": "남성 장기장 허쉬 롱를 강한 곱슬, 굵은 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "jawline",
+    "silhouette": "long hush long",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long hush layers, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "허쉬 롱",
+      "남성 장기장 허쉬 롱",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 56,
+    "baselineFreshnessScore": 54,
+    "styleFamily": "hush-long",
+    "variantKey": "male-long-tight_curly_frizzy-bleached",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-long-wolf-long-straight-colored",
+    "nameKo": "남성 울프 롱 · 직모 염색 모발",
+    "description": "남성 장기장 울프 롱를 직모, 보통 굵기 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "crown",
+    "silhouette": "long wolf long",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long wolf layers, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "울프 롱",
+      "남성 장기장 울프 롱",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 57,
+    "baselineFreshnessScore": 46,
+    "styleFamily": "wolf-long",
+    "variantKey": "male-long-straight-colored",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-long-shag-long-wavy-curly-colored",
+    "nameKo": "남성 샤그 롱 · 곱슬 웨이브 염색 모발",
+    "description": "남성 장기장 샤그 롱를 곱슬 웨이브, 가는 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "temple",
+    "silhouette": "long shag long",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long airy shag, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "샤그 롱",
+      "남성 장기장 샤그 롱",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 58,
+    "baselineFreshnessScore": 47,
+    "styleFamily": "shag-long",
+    "variantKey": "male-long-wavy_curly-colored",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-long-face-frame-long-tight-curly-frizzy-colored",
+    "nameKo": "남성 페이스 프레임 롱 · 강한 곱슬 염색 모발",
+    "description": "남성 장기장 페이스 프레임 롱를 강한 곱슬, 굵은 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "jawline",
+    "silhouette": "long face frame long",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long face-framing layers, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "페이스 프레임 롱",
+      "남성 장기장 페이스 프레임 롱",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 48,
+    "baselineFreshnessScore": 48,
+    "styleFamily": "face-frame-long",
+    "variantKey": "male-long-tight_curly_frizzy-colored",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-long-cloud-wave-straight-untreated",
+    "nameKo": "남성 클라우드 웨이브 · 직모 일반 모발",
+    "description": "남성 장기장 클라우드 웨이브를 직모, 보통 굵기 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "crown",
+    "silhouette": "long cloud wave",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, soft long cloud waves, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "클라우드 웨이브",
+      "남성 장기장 클라우드 웨이브",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 49,
+    "baselineFreshnessScore": 49,
+    "styleFamily": "cloud-wave",
+    "variantKey": "male-long-straight-untreated",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-long-grace-wave-wavy-curly-untreated",
+    "nameKo": "남성 그레이스 웨이브 · 곱슬 웨이브 일반 모발",
+    "description": "남성 장기장 그레이스 웨이브를 곱슬 웨이브, 가는 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "temple",
+    "silhouette": "long grace wave",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, refined long grace waves, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "그레이스 웨이브",
+      "남성 장기장 그레이스 웨이브",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 50,
+    "baselineFreshnessScore": 50,
+    "styleFamily": "grace-wave",
+    "variantKey": "male-long-wavy_curly-untreated",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "damaged",
+      "bleached",
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "perm"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-long-spiral-long-tight-curly-frizzy-untreated",
+    "nameKo": "남성 스파이럴 롱 · 강한 곱슬 일반 모발",
+    "description": "남성 장기장 스파이럴 롱를 강한 곱슬, 굵은 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "jawline",
+    "silhouette": "long spiral long",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, controlled long spiral curls, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "스파이럴 롱",
+      "남성 장기장 스파이럴 롱",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 51,
+    "baselineFreshnessScore": 51,
+    "styleFamily": "spiral-long",
+    "variantKey": "male-long-tight_curly_frizzy-untreated",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-long-curl-cascade-straight-damaged",
+    "nameKo": "남성 컬 캐스케이드 · 직모 손상 모발",
+    "description": "남성 장기장 컬 캐스케이드를 직모, 보통 굵기 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "crown",
+    "silhouette": "long curl cascade",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long natural curl cascade, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "컬 캐스케이드",
+      "남성 장기장 컬 캐스케이드",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 52,
+    "baselineFreshnessScore": 52,
+    "styleFamily": "curl-cascade",
+    "variantKey": "male-long-straight-damaged",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-long-volume-layer-long-wavy-curly-damaged",
+    "nameKo": "남성 볼륨 레이어 롱 · 곱슬 웨이브 손상 모발",
+    "description": "남성 장기장 볼륨 레이어 롱를 곱슬 웨이브, 가는 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "temple",
+    "silhouette": "long volume layer long",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long crown-volume layers, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "볼륨 레이어 롱",
+      "남성 장기장 볼륨 레이어 롱",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 53,
+    "baselineFreshnessScore": 53,
+    "styleFamily": "volume-layer-long",
+    "variantKey": "male-long-wavy_curly-damaged",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-long-soft-mullet-long-tight-curly-frizzy-damaged",
+    "nameKo": "남성 소프트 멀릿 롱 · 강한 곱슬 손상 모발",
+    "description": "남성 장기장 소프트 멀릿 롱를 강한 곱슬, 굵은 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "jawline",
+    "silhouette": "long soft mullet long",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long soft mullet layers, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "소프트 멀릿 롱",
+      "남성 장기장 소프트 멀릿 롱",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 54,
+    "baselineFreshnessScore": 54,
+    "styleFamily": "soft-mullet-long",
+    "variantKey": "male-long-tight_curly_frizzy-damaged",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-long-center-flow-long-straight-bleached",
+    "nameKo": "남성 센터 플로우 롱 · 직모 탈색 모발",
+    "description": "남성 장기장 센터 플로우 롱를 직모, 보통 굵기 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "crown",
+    "silhouette": "long center flow long",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long center-part flow, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "센터 플로우 롱",
+      "남성 장기장 센터 플로우 롱",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 55,
+    "baselineFreshnessScore": 46,
+    "styleFamily": "center-flow-long",
+    "variantKey": "male-long-straight-bleached",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-long-side-flow-long-wavy-curly-bleached",
+    "nameKo": "남성 사이드 플로우 롱 · 곱슬 웨이브 탈색 모발",
+    "description": "남성 장기장 사이드 플로우 롱를 곱슬 웨이브, 가는 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "temple",
+    "silhouette": "long side flow long",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long side-part flow, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "사이드 플로우 롱",
+      "남성 장기장 사이드 플로우 롱",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 56,
+    "baselineFreshnessScore": 47,
+    "styleFamily": "side-flow-long",
+    "variantKey": "male-long-wavy_curly-bleached",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-long-bohemian-wave-tight-curly-frizzy-bleached",
+    "nameKo": "남성 보헤미안 웨이브 · 강한 곱슬 탈색 모발",
+    "description": "남성 장기장 보헤미안 웨이브를 강한 곱슬, 굵은 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "jawline",
+    "silhouette": "long bohemian wave",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long bohemian waves, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "보헤미안 웨이브",
+      "남성 장기장 보헤미안 웨이브",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 57,
+    "baselineFreshnessScore": 48,
+    "styleFamily": "bohemian-wave",
+    "variantKey": "male-long-tight_curly_frizzy-bleached",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-long-dimension-layer-straight-colored",
+    "nameKo": "남성 디멘션 레이어 · 직모 염색 모발",
+    "description": "남성 장기장 디멘션 레이어를 직모, 보통 굵기 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "crown",
+    "silhouette": "long dimension layer",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long dimensional layers, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "디멘션 레이어",
+      "남성 장기장 디멘션 레이어",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 58,
+    "baselineFreshnessScore": 49,
+    "styleFamily": "dimension-layer",
+    "variantKey": "male-long-straight-colored",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-long-low-tension-layer-wavy-curly-colored",
+    "nameKo": "남성 로우 텐션 레이어 · 곱슬 웨이브 염색 모발",
+    "description": "남성 장기장 로우 텐션 레이어를 곱슬 웨이브, 가는 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "temple",
+    "silhouette": "long low tension layer",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, low-tension long layers, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "로우 텐션 레이어",
+      "남성 장기장 로우 텐션 레이어",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 48,
+    "baselineFreshnessScore": 50,
+    "styleFamily": "low-tension-layer",
+    "variantKey": "male-long-wavy_curly-colored",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-long-blunt-long-tight-curly-frizzy-colored",
+    "nameKo": "남성 블런트 롱 · 강한 곱슬 염색 모발",
+    "description": "남성 장기장 블런트 롱를 강한 곱슬, 굵은 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "jawline",
+    "silhouette": "long blunt long",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, clean blunt long line, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "블런트 롱",
+      "남성 장기장 블런트 롱",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 49,
+    "baselineFreshnessScore": 51,
+    "styleFamily": "blunt-long",
+    "variantKey": "male-long-tight_curly_frizzy-colored",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-long-feather-long-wavy-curly-untreated",
+    "nameKo": "남성 페더 롱 · 곱슬 웨이브 일반 모발",
+    "description": "남성 장기장 페더 롱를 곱슬 웨이브, 보통 굵기 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "long",
+    "correctionFocus": "crown",
+    "silhouette": "long feather long",
+    "texture": "defined soft wave texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, clearly below-shoulder long length, long feathered layers, defined soft waves following the natural curl direction, balanced medium strand thickness with natural weight, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "페더 롱",
+      "남성 장기장 페더 롱",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "보통 굵기 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 50,
+    "baselineFreshnessScore": 52,
+    "styleFamily": "feather-long",
+    "variantKey": "male-long-wavy_curly-untreated",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "damaged",
+      "bleached",
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "perm"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-c"
+  }
+]

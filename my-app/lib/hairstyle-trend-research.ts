@@ -1,7 +1,9 @@
 import {
-  buildKoreanWeeklyStyleQueries,
-  KOREAN_HAIRSTYLE_BLUEPRINTS,
+  buildKoreanWeeklyStyleQueryRegistry,
+  buildLegacyKoreanWeeklyStyleQueryRegistry,
+  getRuntimeHairstyleBlueprints,
   type BlueprintTrendSignal,
+  type KoreanWeeklyStyleQuery,
 } from "./hairstyle-catalog-seed";
 import type { HairstyleCatalogSourceSummary } from "./recommendation-types";
 
@@ -12,9 +14,13 @@ const FALLBACK_RESEARCH_LOOKBACK_DAYS = 120;
 const FRESHNESS_WINDOW_DAYS = 30;
 const MAX_ITEMS_PER_QUERY = 10;
 const REQUEST_TIMEOUT_MS = 12000;
+const MAX_CONCURRENT_RSS_REQUESTS = 4;
+const MAX_RSS_RETRIES = 2;
 
 interface TrendResearchDocument {
   query: string;
+  queryId: string;
+  queryFacet: KoreanWeeklyStyleQuery;
   title: string;
   snippet: string;
   link: string;
@@ -80,7 +86,7 @@ function isRecentEnough(publishedAt: string | null, now = new Date(), lookbackDa
   return ageMs <= lookbackDays * 24 * 60 * 60 * 1000;
 }
 
-function extractItemsFromRss(xml: string, query: string) {
+function extractItemsFromRss(xml: string, queryFacet: KoreanWeeklyStyleQuery) {
   const itemBlocks = xml.match(/<item>([\s\S]*?)<\/item>/gi) || [];
 
   return itemBlocks
@@ -96,7 +102,9 @@ function extractItemsFromRss(xml: string, query: string) {
       }
 
       return {
-        query,
+        query: queryFacet.query,
+        queryId: queryFacet.id,
+        queryFacet,
         title,
         snippet,
         link,
@@ -108,28 +116,63 @@ function extractItemsFromRss(xml: string, query: string) {
     .filter((item): item is TrendResearchDocument => item !== null);
 }
 
-async function fetchGoogleNewsDocuments(query: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+async function fetchGoogleNewsDocuments(queryFacet: KoreanWeeklyStyleQuery) {
+  for (let attempt = 0; attempt <= MAX_RSS_RETRIES; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(buildGoogleNewsUrl(queryFacet.query), {
+        cache: "no-store",
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "HairStylePreviewCatalogBot/1.0",
+        },
+      });
 
-  try {
-    const response = await fetch(buildGoogleNewsUrl(query), {
-      cache: "no-store",
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "HairStylePreviewCatalogBot/1.0",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Google News RSS for "${query}" (${response.status})`);
+      if (!response.ok) {
+        const retryable = response.status === 429 || response.status >= 500;
+        if (!retryable || attempt === MAX_RSS_RETRIES) {
+          throw new Error(`Failed to fetch Google News RSS for "${queryFacet.query}" (${response.status})`);
+        }
+      } else {
+        const xml = await response.text();
+        return extractItemsFromRss(xml, queryFacet).slice(0, MAX_ITEMS_PER_QUERY);
+      }
+    } catch (error) {
+      const retryable = error instanceof TypeError || (error instanceof Error && error.name === "AbortError");
+      if (!retryable || attempt === MAX_RSS_RETRIES) throw error;
+    } finally {
+      clearTimeout(timeout);
     }
 
-    const xml = await response.text();
-    return extractItemsFromRss(xml, query).slice(0, MAX_ITEMS_PER_QUERY);
-  } finally {
-    clearTimeout(timeout);
+    const backoffMs = 250 * (2 ** attempt) + Math.floor(Math.random() * 150);
+    await new Promise((resolve) => setTimeout(resolve, backoffMs));
   }
+
+  return [];
+}
+
+async function mapSettledWithConcurrency<T, R>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      try {
+        results[index] = { status: "fulfilled", value: await mapper(items[index]) };
+      } catch (reason) {
+        results[index] = { status: "rejected", reason };
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  return results;
 }
 
 function tokenize(value: string) {
@@ -200,7 +243,7 @@ function scoreTrendSignals(documents: TrendResearchDocument[]) {
     normalizedText: cleanText(`${document.title} ${document.snippet}`).toLowerCase(),
   }));
 
-  for (const blueprint of KOREAN_HAIRSTYLE_BLUEPRINTS) {
+  for (const blueprint of getRuntimeHairstyleBlueprints()) {
     const matchingDocuments = normalizedDocuments.filter((document) =>
       blueprint.trendKeywords.some((keyword) => textContainsKeyword(document.normalizedText, keyword)),
     );
@@ -217,12 +260,21 @@ function scoreTrendSignals(documents: TrendResearchDocument[]) {
       ).length;
       return sum + exactHits;
     }, 0);
+    const facetMatches = matchingDocuments.filter((document) => {
+      const facet = document.queryFacet;
+      return (!facet.styleTarget || blueprint.styleTargets?.includes(facet.styleTarget))
+        && (!facet.lengthBucket || facet.lengthBucket === blueprint.lengthBucket)
+        && (!facet.textureFacet || facet.textureFacet === blueprint.primaryTexture)
+        && (!facet.strandThicknessFacet || facet.strandThicknessFacet === blueprint.primaryStrandThickness)
+        && (!facet.conditionFacet || facet.conditionFacet === blueprint.primaryCondition);
+    }).length;
 
     const trendScore =
       blueprint.baselineTrendScore -
       8 +
       matchingDocuments.length * 6 +
       explicitKeywordHits * 1.5 +
+      facetMatches * 2.5 +
       distinctQueries.size * 2 +
       distinctSources.size * 1.5;
     const freshnessScore =
@@ -246,7 +298,7 @@ function filterRelevantDocuments(documents: TrendResearchDocument[]) {
   return documents.filter((document) => {
     const combined = cleanText(`${document.title} ${document.snippet}`).toLowerCase();
 
-    return KOREAN_HAIRSTYLE_BLUEPRINTS.some((blueprint) =>
+    return getRuntimeHairstyleBlueprints().some((blueprint) =>
       blueprint.trendKeywords.some((keyword) => textContainsKeyword(combined, keyword)),
     );
   });
@@ -254,7 +306,7 @@ function filterRelevantDocuments(documents: TrendResearchDocument[]) {
 
 function buildSeededFallbackTrendSignals() {
   return new Map(
-    KOREAN_HAIRSTYLE_BLUEPRINTS.map((blueprint) => [
+    getRuntimeHairstyleBlueprints().map((blueprint) => [
       blueprint.slug,
       {
         slug: blueprint.slug,
@@ -271,7 +323,7 @@ function buildTopStyleSignals(trendSignals: Map<string, BlueprintTrendSignal>) {
     .sort((a, b) => b.signalCount - a.signalCount || b.trendScore - a.trendScore)
     .slice(0, 6)
     .map((signal) => {
-      const blueprint = KOREAN_HAIRSTYLE_BLUEPRINTS.find((item) => item.slug === signal.slug);
+      const blueprint = getRuntimeHairstyleBlueprints().find((item) => item.slug === signal.slug);
 
       return {
         slug: signal.slug,
@@ -282,8 +334,24 @@ function buildTopStyleSignals(trendSignals: Map<string, BlueprintTrendSignal>) {
 }
 
 export async function collectKoreanHairstyleTrendResearch(referenceDate = new Date()) {
-  const queries = buildKoreanWeeklyStyleQueries(referenceDate);
-  const queryResults = await Promise.allSettled(queries.map((query) => fetchGoogleNewsDocuments(query)));
+  const structuredRssEnabled = process.env.HAIRSTYLE_RSS_FACETS_V2_ENABLED?.trim().toLowerCase() === "true";
+  const queryRegistry = structuredRssEnabled
+    ? buildKoreanWeeklyStyleQueryRegistry(referenceDate)
+    : buildLegacyKoreanWeeklyStyleQueryRegistry(referenceDate);
+  const queries = queryRegistry.map((item) => item.query);
+  const queryResults = await mapSettledWithConcurrency(
+    queryRegistry,
+    MAX_CONCURRENT_RSS_REQUESTS,
+    fetchGoogleNewsDocuments,
+  );
+  const querySuccessCount = queryResults.filter((result) => result.status === "fulfilled").length;
+  const queryFailureCount = queryResults.length - querySuccessCount;
+  const fulfilledQueryIds = new Set(
+    queryResults.flatMap((result) => result.status === "fulfilled" ? result.value.map((document) => document.queryId) : []),
+  );
+  const coverageWarnings = queryRegistry
+    .filter((query) => !fulfilledQueryIds.has(query.id))
+    .map((query) => query.id);
 
   const fulfilledDocuments = queryResults.flatMap((result) =>
     result.status === "fulfilled" ? result.value : [],
@@ -333,6 +401,10 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
         freshnessStatus: "seeded",
         documentsCollected: dedupedDocuments.length,
         documentsUsed: 0,
+        queryCount: queryRegistry.length,
+        querySuccessCount,
+        queryFailureCount,
+        coverageWarnings,
         sourceNames: [],
         topStyleSignals: buildTopStyleSignals(trendSignals),
       } satisfies HairstyleCatalogSourceSummary,
@@ -358,6 +430,10 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
     freshnessStatus,
     documentsCollected: dedupedDocuments.length,
     documentsUsed: relevantDocuments.length,
+    queryCount: queryRegistry.length,
+    querySuccessCount,
+    queryFailureCount,
+    coverageWarnings,
     sourceNames: Array.from(new Set(relevantDocuments.map((document) => document.sourceName))).slice(0, 20),
     topStyleSignals: buildTopStyleSignals(trendSignals),
   };
@@ -375,6 +451,6 @@ export function summarizeTrendSignalCoverage(trendSignals: Map<string, Blueprint
 
 export function extractTrendKeywordsSnapshot() {
   return Array.from(
-    new Set(KOREAN_HAIRSTYLE_BLUEPRINTS.flatMap((blueprint) => blueprint.trendKeywords.flatMap(tokenize))),
+    new Set(getRuntimeHairstyleBlueprints().flatMap((blueprint) => blueprint.trendKeywords.flatMap(tokenize))),
   );
 }

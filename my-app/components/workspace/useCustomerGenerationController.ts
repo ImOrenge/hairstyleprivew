@@ -10,7 +10,7 @@ import { useUpload } from "../../hooks/useUpload";
 import { CANONICAL_GENERATION_ENTRY_PATH } from "../../lib/canonical-generation-entry";
 import type { PersonalColorResult } from "../../lib/fashion-types";
 import { getGenerationOwnerSnapshot } from "../../lib/generation-owner-state";
-import type { GeneratedVariant } from "../../lib/recommendation-types";
+import type { CurrentHairProfile, GeneratedVariant } from "../../lib/recommendation-types";
 import { convertImageFileToWebp } from "../../lib/webp-client";
 import { mapWebUserError } from "../../lib/web-user-message";
 import { useGenerationStore } from "../../store/useGenerationStore";
@@ -125,6 +125,15 @@ export function useCustomerGenerationController() {
   const [mobileStepsOpen, setMobileStepsOpen] = useState(false);
   const [personalColor, setPersonalColor] =
     useState<PersonalColorResult | null>(null);
+  const [hairProfile, setHairProfile] = useState<CurrentHairProfile>({
+    currentLength: "unknown",
+    textureType: "unknown",
+    strandThickness: "unknown",
+    conditionTags: [],
+    damageLevel: "unknown",
+    desiredLength: null,
+    source: "user",
+  });
   const [isLoadingPersonalColor, setIsLoadingPersonalColor] = useState(true);
   const [acceptedGeneration, setAcceptedGeneration] =
     useState<AcceptedGenerationGuideState | null>(null);
@@ -307,7 +316,7 @@ export function useCustomerGenerationController() {
     setSelectedVariantId(null);
 
     try {
-      const result = await runGridPipeline({ consultationId });
+      const result = await runGridPipeline({ consultationId, hairProfile });
       if (result.background) {
         setAcceptedGeneration({
           generationId: result.generationId,
@@ -394,6 +403,7 @@ export function useCustomerGenerationController() {
     draftUploading,
     failedCount,
     generationId,
+    hairProfile,
     generationQuote,
     generationQuoteError,
     generationQuoteLoading,
@@ -426,6 +436,7 @@ export function useCustomerGenerationController() {
     selectedVariant,
     selectedVariantId,
     setIsConfirmOpen,
+    setHairProfile,
     showGenerateStep: () => setCurrentStep("generate"),
     showGenerationEntryStep: () =>
       setCurrentStep(previewUrl ? "generate" : "upload"),

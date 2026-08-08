@@ -4,6 +4,20 @@ export type RecommendationLengthBucket = "short" | "medium" | "long";
 export type RecommendationCorrectionFocus = "crown" | "temple" | "jawline";
 export type RecommendationVariantStatus = "queued" | "generating" | "completed" | "failed";
 export type MemberStyleTarget = "male" | "female";
+export type HairTextureProfile = "straight" | "wavy_curly" | "tight_curly_frizzy";
+export type HairStrandThickness = "fine" | "medium" | "coarse";
+export type HairConditionTag = "untreated" | "damaged" | "bleached" | "colored" | "permed" | "severely_damaged";
+export type HairDamageLevel = "low" | "medium" | "high" | "unknown";
+export type HairstyleMaintenanceLevel = "low" | "medium" | "high";
+export type HairstyleRequiredService =
+  | "cut"
+  | "perm"
+  | "straightening"
+  | "color"
+  | "bleach"
+  | "low_heat_styling"
+  | "texture_styling"
+  | "curl_definition";
 export type HairstyleCatalogStatus = "active" | "archived";
 export type HairstyleCatalogCycleStatus = "running" | "succeeded" | "failed";
 
@@ -19,6 +33,10 @@ export interface HairstyleCatalogSourceSummary {
   freshnessStatus?: "fresh" | "lowFreshness" | "fallback" | "seeded";
   documentsCollected?: number;
   documentsUsed?: number;
+  queryCount?: number;
+  querySuccessCount?: number;
+  queryFailureCount?: number;
+  coverageWarnings?: string[];
   sourceNames?: string[];
   topStyleSignals?: Array<{
     slug: string;
@@ -110,10 +128,35 @@ export interface HairstyleCatalogRow {
   negativePrompt: string;
   promptTemplateVersion: string;
   styleTargets: MemberStyleTarget[];
+  styleFamily: string;
+  variantKey: string;
+  primaryTexture: HairTextureProfile;
+  compatibleTextureTags: HairTextureProfile[];
+  avoidTextureTags: HairTextureProfile[];
+  primaryStrandThickness: HairStrandThickness;
+  compatibleStrandThicknessTags: HairStrandThickness[];
+  avoidStrandThicknessTags: HairStrandThickness[];
+  primaryCondition: Exclude<HairConditionTag, "permed" | "severely_damaged">;
+  compatibleConditionTags: HairConditionTag[];
+  avoidConditionTags: HairConditionTag[];
+  requiredServices: HairstyleRequiredService[];
+  serviceConstraints: string[];
+  maintenanceLevel: HairstyleMaintenanceLevel;
+  introducedIn: "legacy-32" | "expansion-a" | "expansion-b" | "expansion-c";
   status: HairstyleCatalogStatus;
   sourceCycleId: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface CurrentHairProfile {
+  currentLength: RecommendationLengthBucket | "unknown";
+  textureType: HairTextureProfile | "unknown";
+  strandThickness: HairStrandThickness | "unknown";
+  conditionTags: HairConditionTag[];
+  damageLevel: HairDamageLevel;
+  desiredLength?: RecommendationLengthBucket | null;
+  source?: "user" | "salon" | "image_estimate" | "unknown";
 }
 
 export interface CatalogSelectionContext {
@@ -124,6 +167,7 @@ export interface CatalogSelectionContext {
   partingPreferenceTags: string[];
   avoidTags: string[];
   preferredLengthBuckets: RecommendationLengthBucket[];
+  hairProfile: CurrentHairProfile | null;
 }
 
 export interface RecommendationCandidate {
@@ -173,6 +217,8 @@ export interface RecommendationSet {
   variants: GeneratedVariant[];
   selectedVariantId: string | null;
   styleTarget?: MemberStyleTarget | null;
+  hairProfile?: CurrentHairProfile | null;
+  hairProfilePersonalizationEnabled?: boolean;
   catalogCycleId?: string | null;
   creditChargedAt?: string | null;
   creditChargeAmount?: number | null;

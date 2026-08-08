@@ -83,6 +83,16 @@ export type GenerationDraftResponse = GenerationDraftApiResponse;
 export type GenerationAcceptanceResponse = GenerationAcceptanceApiResponse;
 export type GenerationStatusResponse = GenerationStatusApiResponse;
 
+export interface CurrentHairProfileInput {
+  currentLength: "short" | "medium" | "long" | "unknown";
+  textureType: "straight" | "wavy_curly" | "tight_curly_frizzy" | "unknown";
+  strandThickness: "fine" | "medium" | "coarse" | "unknown";
+  conditionTags: Array<"untreated" | "damaged" | "bleached" | "colored" | "permed" | "severely_damaged">;
+  damageLevel: "low" | "medium" | "high" | "unknown";
+  desiredLength?: "short" | "medium" | "long" | null;
+  source?: "user" | "salon" | "image_estimate" | "unknown";
+}
+
 export interface AccountStatus {
   accountSetupComplete: boolean;
   accountType: MobileBootstrap["accountType"];
@@ -790,13 +800,19 @@ export class HairfitApiClient {
     });
   }
 
-  acceptGenerationDraft(draftId: string, quoteId?: string, consultationId?: string) {
+  acceptGenerationDraft(
+    draftId: string,
+    quoteId?: string,
+    consultationId?: string,
+    hairProfile?: CurrentHairProfileInput | null,
+  ) {
     return this.request<GenerationAcceptanceResponse>("/api/generations/accept", {
       method: "POST",
       body: JSON.stringify({
         draftId,
         ...(quoteId ? { quoteId } : {}),
         ...(consultationId ? { consultationId } : {}),
+        ...(hairProfile ? { hairProfile } : {}),
       }),
     });
   }

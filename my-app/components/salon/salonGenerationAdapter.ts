@@ -145,6 +145,7 @@ export async function acceptSalonGeneration(input: {
   draftId: string;
   quoteId?: string;
   styleTarget: MemberStyleTarget;
+  hairProfile?: import("../../lib/recommendation-types").CurrentHairProfile;
   photoConsentConfirmed: boolean;
 }) {
   const response = await fetch(
@@ -156,6 +157,7 @@ export async function acceptSalonGeneration(input: {
         draftId: input.draftId,
         quoteId: input.quoteId,
         styleTarget: input.styleTarget,
+        hairProfile: input.hairProfile,
         photoConsentConfirmed: input.photoConsentConfirmed,
       }),
     },
