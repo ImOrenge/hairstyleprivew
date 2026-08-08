@@ -190,7 +190,7 @@ export async function finalizeUsagePackPayment({
   requestUrl: string;
   expectedUserId?: string;
   alreadyPaid?: boolean;
-  providerVersion?: "v1" | "v2";
+  providerVersion?: "v2";
   email?: string | null;
   displayName?: string | null;
 }): Promise<UsagePackSettlementResult | UsagePackSettlementFailure> {

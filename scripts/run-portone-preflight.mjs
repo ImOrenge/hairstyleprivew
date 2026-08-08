@@ -117,7 +117,6 @@ function runLocalProfile() {
   ]);
   npmRun("portone:audit");
   npmRun("portone:contract:test");
-  npmRun("portone:v1:contract:test");
   npmRun("portone:confirmation:test");
   npmRun("portone:refund:smoke");
   npmRun("portone:webhook:signature:test");
@@ -150,7 +149,7 @@ function runDeployProfile() {
   }
 
   npmPrefixMyApp("portone:env:check", deployArgs);
-  npmPrefixMyApp("portone:env:check", ["--", "--mode=v1-usage-pack", ...(webhookUrl ? [`--webhookUrl=${webhookUrl.replace(/\/api\/payments\/webhook$/, "/api/payments/webhook/v1")}`] : [])]);
+  npmPrefixMyApp("portone:env:check", ["--", "--mode=v2-usage-pack", ...(webhookUrl ? [`--webhookUrl=${webhookUrl}`] : [])]);
   npmPrefixMyApp("portone:env:check", renewalCronArgs);
   npmRun("portone:webhook:test", probeArgs);
 }

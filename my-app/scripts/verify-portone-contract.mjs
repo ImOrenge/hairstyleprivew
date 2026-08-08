@@ -104,6 +104,10 @@ const portoneSource = readFileSync(resolve("lib/portone.ts"), "utf8");
 assert.match(portoneSource, /storeId:\s*input\.storeId\?\.trim\(\)\s*\|\|\s*readPortoneStoreId\(\)/);
 assert.match(portoneSource, /process\.env\.NEXT_PUBLIC_PORTONE_V2_STORE_ID\?\.trim\(\)\s*\|\|\s*process\.env\.PORTONE_V2_STORE_ID/);
 assert.match(portoneSource, /process\.env\.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY\?\.trim\(\)\s*\|\|\s*process\.env\.PORTONE_V2_CHANNEL_KEY/);
+assert.match(
+  portoneSource,
+  /process\.env\.NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY\?\.trim\(\)\s*\|\|\s*process\.env\.PORTONE_V2_USAGE_PACK_CHANNEL_KEY/,
+);
 assert.match(portoneSource, /customer:\s*\{\s*id:\s*input\.customerId\s*\}/);
 assert.match(portoneSource, /parsePortonePaymentResult\(input\.paymentId,\s*data\)/);
 assert.match(portoneSource, /formatPortoneHttpError\(response\.status,\s*data\)/);
@@ -130,6 +134,8 @@ const usagePackPrepareSource = readFileSync(
   "utf8",
 );
 assert.match(usagePackPrepareSource, /getUsagePackEligibility\(supabase, userId\)/);
+assert.match(usagePackPrepareSource, /readPortoneUsagePackChannelKey\(\)/);
+assert.match(usagePackPrepareSource, /portone_version:\s*"v2"/);
 assert.match(usagePackPrepareSource, /purchase_type:\s*"usage_pack"/);
 assert.match(usagePackPrepareSource, /eligible_subscription_id:\s*eligibility\.subscriptionId/);
 assert.doesNotMatch(usagePackPrepareSource, /^\s*subscription_id:/m);
@@ -153,6 +159,7 @@ const usagePackCheckoutSource = readFileSync(
   "utf8",
 );
 assert.match(usagePackCheckoutSource, /PortOne\.requestPayment\(\{/);
+assert.match(usagePackCheckoutSource, /prepared\.providerVersion !== "v2"/);
 assert.match(usagePackCheckoutSource, /payMethod:\s*prepared\.payMethod/);
 assert.match(usagePackCheckoutSource, /productType:\s*prepared\.productType/);
 

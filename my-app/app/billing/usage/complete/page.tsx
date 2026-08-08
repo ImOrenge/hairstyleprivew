@@ -18,16 +18,11 @@ export default async function UsagePackCompletePage({
 }) {
   const params = (await searchParams) ?? {};
   const paymentId = readSearchParam(params, "paymentId").trim();
-  const impUid = readSearchParam(params, "imp_uid").trim();
-  const merchantUid = readSearchParam(params, "merchant_uid").trim() || paymentId;
-  const providerVersion = impUid ? "v1" : "v2";
   const { userId } = await auth();
 
   if (!userId) {
     const returnParams = new URLSearchParams();
     if (paymentId) returnParams.set("paymentId", paymentId);
-    if (impUid) returnParams.set("imp_uid", impUid);
-    if (merchantUid) returnParams.set("merchant_uid", merchantUid);
     const returnTo = `/billing/usage/complete?${returnParams.toString()}`;
     redirect(buildSignInRedirectUrl(returnTo));
   }
@@ -40,12 +35,7 @@ export default async function UsagePackCompletePage({
       <Panel as="section" className="mx-auto grid max-w-xl gap-4 p-5 sm:p-6">
         <p className="app-kicker">Payment confirmation</p>
         <h1 className="text-2xl font-black text-[var(--app-text)]">추가 이용권 결제 확인</h1>
-        <UsagePackPaymentReturn
-          paymentId={paymentId || merchantUid}
-          providerVersion={providerVersion}
-          impUid={impUid}
-          merchantUid={merchantUid}
-        />
+        <UsagePackPaymentReturn paymentId={paymentId} />
       </Panel>
     </AppPage>
   );

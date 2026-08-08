@@ -99,6 +99,15 @@ export function readPortoneChannelKey(): string | undefined {
   );
 }
 
+/** One-time usage packs use their own V2 channel so recurring/mobile routing stays unchanged. */
+export function readPortoneUsagePackChannelKey(): string | undefined {
+  return (
+    process.env.NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY?.trim() ||
+    process.env.PORTONE_V2_USAGE_PACK_CHANNEL_KEY?.trim() ||
+    undefined
+  );
+}
+
 // ─── 내부 유틸 ─────────────────────────────────────────────────────────────
 
 function authHeader(): Record<string, string> {

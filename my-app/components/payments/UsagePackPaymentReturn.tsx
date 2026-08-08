@@ -2,16 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import {
-  completeUsagePackPayment,
-  completeUsagePackPaymentV1,
-} from "../../lib/usage-pack-payment-client";
+import { completeUsagePackPayment } from "../../lib/usage-pack-payment-client";
 
 interface UsagePackPaymentReturnProps {
   paymentId: string;
-  providerVersion?: "v1" | "v2";
-  impUid?: string;
-  merchantUid?: string;
 }
 
 type CompletionState =
@@ -21,21 +15,13 @@ type CompletionState =
 
 export function UsagePackPaymentReturn({
   paymentId,
-  providerVersion = "v2",
-  impUid = "",
-  merchantUid = "",
 }: UsagePackPaymentReturnProps) {
   const [state, setState] = useState<CompletionState>({ status: "checking" });
 
   useEffect(() => {
     let active = true;
 
-    const completion =
-      providerVersion === "v1" && impUid
-        ? completeUsagePackPaymentV1(impUid, merchantUid || paymentId)
-        : completeUsagePackPayment(paymentId);
-
-    void completion
+    void completeUsagePackPayment(paymentId)
       .then((result) => {
         if (!active || !result) return;
         setState({ status: "success", creditsGranted: result.creditsGranted ?? 0 });
@@ -51,7 +37,7 @@ export function UsagePackPaymentReturn({
     return () => {
       active = false;
     };
-  }, [impUid, merchantUid, paymentId, providerVersion]);
+  }, [paymentId]);
 
   if (state.status === "checking") {
     return <p className="text-sm text-[var(--app-muted)]">PortOne 결제 상태를 확인하고 있습니다.</p>;

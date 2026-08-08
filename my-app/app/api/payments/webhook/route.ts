@@ -1027,13 +1027,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "usage pack metadata missing" }, { status: 500 });
     }
 
-    if (getMetadataString(txRow.metadata, "portone_version") === "v1") {
-      return NextResponse.json(
-        { received: true, ignoredReason: "v1 usage pack belongs to v1 webhook" },
-        { status: 202 },
-      );
-    }
-
     const usagePack = getUsagePack(usagePackKey);
     const settled = await finalizeUsagePackPayment({
       supabase: supabase as unknown as UsagePackFinalizerSupabaseClient,

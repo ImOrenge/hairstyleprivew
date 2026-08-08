@@ -63,7 +63,6 @@
     "web:protected-e2e:preflight": "node scripts/check-clerk-protected-e2e-fixture.mjs",
     "portone:audit": "npm --prefix my-app run portone:audit",
     "portone:contract:test": "npm --prefix my-app run portone:contract:test",
-    "portone:v1:contract:test": "npm --prefix my-app run portone:v1:contract:test",
     "portone:confirmation:test": "npm --prefix my-app run portone:confirmation:test",
     "portone:ui:smoke": "npm --prefix my-app run portone:ui:smoke --",
     "portone:refund:smoke": "npm --prefix my-app run portone:refund:smoke",

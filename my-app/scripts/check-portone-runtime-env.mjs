@@ -61,7 +61,7 @@ Usage:
   npm run portone:env:check -- --mode=local-webhook
   npm run portone:env:check -- --mode=test-payment
   npm run portone:env:check -- --mode=deploy-webhook
-  npm run portone:env:check -- --mode=v1-usage-pack
+  npm run portone:env:check -- --mode=v2-usage-pack
   npm run portone:env:check -- --mode=renewal-cron
   npm run portone:env:check -- --mode=backfill
 
@@ -70,7 +70,7 @@ Modes:
   local-webhook  Local signed webhook route smoke.
   test-payment   Browser billing-key issuance and first payment smoke.
   deploy-webhook Deployed app URL and PortOne webhook endpoint readiness.
-  v1-usage-pack PortOne V1 one-time usage-pack checkout and webhook readiness.
+  v2-usage-pack PortOne V2 one-time usage-pack checkout and webhook readiness.
   renewal-cron   Supabase renewal Edge Function smoke.
   backfill       Plaintext billing-key encryption backfill.
 `);
@@ -107,17 +107,6 @@ function checkAlternative(group, names, label, options = {}) {
 
 function checkExact(group, name, label) {
   return checkAlternative(group, [name], label);
-}
-
-function checkExactValue(group, name, expected, label) {
-  const value = readEnv(name);
-  if (value === expected) {
-    console.log(`[ok] ${group}: ${label} (${name})`);
-    return [];
-  }
-  const message = `${group}: ${name} must be ${expected}`;
-  console.log(`[missing] ${message}`);
-  return [message];
 }
 
 function readPublicAppUrl() {
@@ -198,17 +187,6 @@ function checkDeployWebhookUrl(group) {
   return checkPublicHttpsUrl(group, "PortOne webhook URL", webhookUrl, {
     names: ["--webhookUrl", "NEXT_PUBLIC_SITE_URL", "NEXT_PUBLIC_APP_URL", "APP_URL", "SITE_URL"],
     requiredPathname: "/api/payments/webhook",
-  });
-}
-
-function checkDeployV1WebhookUrl(group) {
-  const explicitWebhookUrl = getArg("webhookUrl", "");
-  const appUrl = readPublicAppUrl();
-  const webhookUrl = explicitWebhookUrl || (appUrl ? new URL("/api/payments/webhook/v1", appUrl).toString() : "");
-
-  return checkPublicHttpsUrl(group, "PortOne V1 webhook URL", webhookUrl, {
-    names: ["--webhookUrl", "NEXT_PUBLIC_SITE_URL", "NEXT_PUBLIC_APP_URL", "APP_URL", "SITE_URL"],
-    requiredPathname: "/api/payments/webhook/v1",
   });
 }
 
@@ -310,14 +288,23 @@ const groups = {
       checkAlternative(group, ["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"], "Supabase URL"),
     (group) => checkExact(group, "SUPABASE_SERVICE_ROLE_KEY", "Supabase service role key"),
   ],
-  "v1-usage-pack": [
+  "v2-usage-pack": [
     (group) => checkDeployAppUrl(group),
-    (group) => checkDeployV1WebhookUrl(group),
-    (group) => checkExactValue(group, "PORTONE_USAGE_PACK_VERSION", "v1", "V1 usage-pack version"),
-    (group) => checkExact(group, "NEXT_PUBLIC_PORTONE_V1_IMP_CODE", "PortOne V1 IMP code"),
-    (group) => checkExact(group, "NEXT_PUBLIC_PORTONE_V1_CHANNEL_KEY", "PortOne V1 channel key"),
-    (group) => checkExact(group, "PORTONE_V1_API_KEY", "PortOne V1 API key"),
-    (group) => checkExact(group, "PORTONE_V1_API_SECRET", "PortOne V1 API secret"),
+    (group) => checkDeployWebhookUrl(group),
+    (group) =>
+      checkAlternative(
+        group,
+        ["NEXT_PUBLIC_PORTONE_V2_STORE_ID", "PORTONE_V2_STORE_ID"],
+        "PortOne store ID",
+      ),
+    (group) =>
+      checkAlternative(
+        group,
+        ["NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY", "PORTONE_V2_USAGE_PACK_CHANNEL_KEY"],
+        "PortOne V2 usage-pack channel key",
+      ),
+    (group) => checkExact(group, "PORTONE_V2_API_SECRET", "PortOne V2 API secret"),
+    (group) => checkWebhookSecret(group),
     (group) =>
       checkAlternative(group, ["SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"], "Supabase URL"),
     (group) => checkExact(group, "SUPABASE_SERVICE_ROLE_KEY", "Supabase service role key"),
