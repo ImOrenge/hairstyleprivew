@@ -1,0 +1,74 @@
+id: web.consulting.scene
+name: ConsultationScene
+platform: web
+kind: layout
+status: experimental
+source: my-app/components/consulting/scene/ConsultationScene.tsx
+related_source:
+  - my-app/components/consulting/ConsultationStagePage.tsx
+  - my-app/components/consulting/scene/SceneIdentity.tsx
+  - my-app/components/consulting/scene/FloatingStageControls.tsx
+  - my-app/components/consulting/scene/StageMapOverlay.tsx
+owner: consulting-feature
+
+public_api:
+  exports:
+    - ConsultationScene
+  props:
+    - snapshot
+    - stage
+    - notice
+    - onRefresh
+    - nextDisabled
+  events:
+    - open-stage-map
+    - previous-next-navigation
+    - server-snapshot-refresh
+
+boundaries:
+  feature:
+    owns:
+      - headerless-scene-layout
+      - scene-identity
+      - floating-navigation
+      - stage-map-overlay
+  forbidden:
+    - generation-domain-workflow
+    - backend-refactor-package-contracts
+    - global-css-token-mutation
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+
+state:
+  server_owned:
+    - consultation-snapshot
+    - version
+    - current-stage
+  client_owned:
+    - stage-map-open
+    - form-drafts
+
+a11y_contract:
+  stage_map: dialog-with-escape-and-focus-return
+  navigation: labelled-native-links-and-buttons
+  reduced_motion: no-required-motion
+
+test_surface:
+  structure: my-app/lib/consulting/consultation-contract.test.ts
+  interaction: required
+  visual: required
+
+change_policy:
+  current_gate: feature
+  compatible_change_requires:
+    - passport-update
+    - consulting-contract-test
+    - web-typecheck
+  behavioral_change_requires:
+    - 11-stage-browser-regression
+
+promotion_blockers:
+  - no-authenticated-browser-interaction-evidence
+  - feature-flag-defaults-off

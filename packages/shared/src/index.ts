@@ -726,3 +726,4 @@ export const initialMobileRoutePorts: MobileRoutePort[] = [
   { webRoute: "/admin/stats", mobileRoute: "/admin/stats", service: "admin", status: "scaffolded", notes: "KPI view" },
 ];
 export * from "./account-deletion";
+export * from "./consulting/contract";

@@ -7,6 +7,7 @@ import { WorkspaceWizard } from "../../components/workspace/WorkspaceWizard";
 import { AppPage } from "../../components/ui/Surface";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
 import { loadGenerationEntryAccountState } from "../../lib/generation-entry-server";
+import { isConsultationFrontendEnabled } from "../../lib/consulting/feature-flag";
 
 export const metadata: Metadata = {
   title: "워크스페이스",
@@ -21,6 +22,11 @@ type WorkspacePageProps = {
 
 export default async function WorkspacePage({ searchParams }: WorkspacePageProps) {
   const params = (await searchParams) ?? {};
+  const legacy = Array.isArray(params.legacy) ? params.legacy[0] : params.legacy;
+  if (isConsultationFrontendEnabled() && legacy !== "1") {
+    redirect("/consulting/new");
+  }
+
   const nextStep = Array.isArray(params.nextStep) ? params.nextStep[0] : params.nextStep;
   const { userId } = await auth();
   if (!userId) {

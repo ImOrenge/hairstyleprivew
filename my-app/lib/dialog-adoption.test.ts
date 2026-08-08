@@ -67,10 +67,13 @@ test("FeedbackModal uses semantic form controls, safe errors, and live feedback"
 });
 
 test("subscription waitlist controls can shrink inside mobile dialogs and announce safe errors", () => {
-  assert.match(subscriptionWaitlistForm, /className="grid min-w-0 gap-4"/);
-  assert.equal(subscriptionWaitlistForm.match(/w-full min-w-0/g)?.length, 4);
-  assert.match(subscriptionWaitlistForm, /max-w-full truncate/);
-  assert.match(subscriptionWaitlistForm, /<InlineAlert tone=\{submitState === "success" \? "success" : "danger"\}>/);
+  assert.match(subscriptionWaitlistForm, /className="c-subscription-waitlist"/);
+  assert.match(subscriptionWaitlistForm, /className="c-subscription-waitlist__fields"/);
+  assert.equal(subscriptionWaitlistForm.match(/c-subscription-waitlist__control/g)?.length, 3);
+  assert.match(css, /\.c-subscription-waitlist \{[\s\S]*min-width: 0;/);
+  assert.match(css, /\.c-subscription-waitlist__control \{[\s\S]*width: 100%;[\s\S]*min-width: 0;/);
+  assert.match(css, /select\.c-subscription-waitlist__control \{[\s\S]*max-width: 100%;[\s\S]*text-overflow: ellipsis;/);
+  assert.match(subscriptionWaitlistForm, /<InlineAlert[\s\S]*tone=\{submitState === "success" \? "success" : "danger"\}/);
   assert.match(subscriptionWaitlistForm, /waitlistRequestError\(response\.status\)/);
   assert.doesNotMatch(subscriptionWaitlistForm, /data\.error/);
 });

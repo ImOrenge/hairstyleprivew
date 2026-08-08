@@ -51,3 +51,6 @@ B2B_LEAD_WEBHOOK_SECRET=
 INBOUND_EMAIL_SECRET=YOUR_INBOUND_EMAIL_SECRET
 BUSINESS_INBOUND_EMAIL=busyness@hairfit.beauty
 SUPPORT_INBOUND_EMAIL=support@hairfit.beauty
+
+# AI consultant Scene frontend. Keep false to preserve the legacy workspace.
+NEXT_PUBLIC_CONSULTATION_FRONTEND_V2=false

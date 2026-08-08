@@ -106,6 +106,10 @@ export function useCustomerGenerationController() {
   );
 
   const requestedGenerateStep = searchParams.get("nextStep") === "generate";
+  const requestedReturnTo = searchParams.get("returnTo");
+  const consultationReturnTo = requestedReturnTo && /^\/consulting\/[0-9a-f-]{36}\/photo$/i.test(requestedReturnTo)
+    ? requestedReturnTo
+    : null;
   const [currentStep, setCurrentStep] = useState<WorkspaceWizardStep>(
     requestedGenerateStep ? "generate" : "upload",
   );
@@ -369,6 +373,9 @@ export function useCustomerGenerationController() {
     generationId && selectedVariantId
       ? `/styler/new?generationId=${encodeURIComponent(generationId)}&variant=${encodeURIComponent(selectedVariantId)}`
       : null;
+  const consultationReturnHref = generationId && consultationReturnTo
+    ? `${consultationReturnTo}?generationId=${encodeURIComponent(generationId)}`
+    : null;
 
   return {
     acceptedGeneration,
@@ -380,6 +387,7 @@ export function useCustomerGenerationController() {
     canOpenProgress,
     canOpenSelect,
     completedCount,
+    consultationReturnHref,
     draftReady,
     draftUploadError,
     draftUploading,

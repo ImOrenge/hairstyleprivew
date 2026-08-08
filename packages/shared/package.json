@@ -12,6 +12,7 @@
     "./billing/paid-action": "./src/billing/paid-action.ts",
     "./billing/policy-selectors": "./src/billing/policy-selectors.ts",
     "./billing/subscription-policy": "./src/billing/subscription-policy.ts",
+    "./consulting/contract": "./src/consulting/contract.ts",
     "./fixtures/generation-notification": "./src/fixtures/generation-notification.ts",
     "./fixtures/generation-selection": "./src/fixtures/generation-selection.ts",
     "./fixtures/generation-selection-lock": "./src/fixtures/generation-selection-lock.ts",

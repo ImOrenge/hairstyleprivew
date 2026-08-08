@@ -621,6 +621,20 @@
       }
     },
     {
+      "id": "web.consulting.scene",
+      "name": "ConsultationScene",
+      "platform": "web",
+      "kind": "layout",
+      "status": "experimental",
+      "source": "my-app/components/consulting/scene/ConsultationScene.tsx",
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/web-consulting-scene.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "11-stage HairFit AI consulting routes"
+      }
+    },
+    {
       "id": "web.styler.new-feature",
       "name": "StylerNewFeature",
       "platform": "web",

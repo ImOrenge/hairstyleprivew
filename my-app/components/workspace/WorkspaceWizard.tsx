@@ -74,6 +74,7 @@ export function WorkspaceWizard() {
     canOpenProgress,
     canOpenSelect,
     completedCount,
+    consultationReturnHref,
     draftReady,
     draftUploadError,
     draftUploading,
@@ -290,6 +291,7 @@ export function WorkspaceWizard() {
       {activeStep === "select" ? (
         <WorkspaceVariantSelection
           actionError={actionError}
+          consultationReturnHref={consultationReturnHref}
           generationId={generationId}
           isSavingSelection={isSavingSelection}
           onOpenAftercareConfirm={handleOpenAftercareConfirm}

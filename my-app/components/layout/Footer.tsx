@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { footerBusinessInfo } from "../../lib/business-info";
 import { useT } from "../../lib/i18n/useT";
 
@@ -8,9 +9,14 @@ const footerCompanyName = footerBusinessInfo.rows.find((item) => item.label === 
 
 export function Footer() {
   const t = useT();
+  const pathname = usePathname();
+
+  if (pathname.startsWith("/consulting")) {
+    return null;
+  }
 
   return (
-    <footer className="border-t border-[var(--app-border)] bg-[var(--app-surface)] transition-colors">
+    <footer data-app-shell="footer" className="border-t border-[var(--app-border)] bg-[var(--app-surface)] transition-colors">
       <div className="mx-auto grid w-full max-w-[82rem] gap-4 px-3 py-5 text-sm text-[var(--app-muted)]">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p>&copy; {new Date().getFullYear()} {footerCompanyName}</p>

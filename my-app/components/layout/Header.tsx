@@ -37,9 +37,13 @@ export function Header() {
   const mobileMenuLinkClassName =
     "rounded-[var(--app-radius-control)] px-3 py-2.5 text-[var(--app-muted)] transition hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)]";
 
+  if (pathname.startsWith("/consulting")) {
+    return null;
+  }
+
   return (
     <HeaderAccountProvider>
-      <header className="sticky top-0 z-50 border-b border-[var(--app-border)] bg-[var(--app-surface)] transition-colors">
+      <header data-app-shell="header" className="sticky top-0 z-50 border-b border-[var(--app-border)] bg-[var(--app-surface)] transition-colors">
         <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center justify-between gap-2 px-2 sm:px-3">
           <HeaderBrandLink />
 

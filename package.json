@@ -35,6 +35,7 @@
     "account-deletion:contract:test": "npm --prefix my-app run account-deletion:contract:test",
     "admin-high-risk:contract:test": "npm --prefix my-app run admin-high-risk:contract:test",
     "result-ux:contract:test": "npm --prefix my-app run result-ux:contract:test",
+    "consulting:contract:test": "npm --prefix my-app run consulting:contract:test",
     "list-pagination:contract:test": "npm --prefix my-app run list-pagination:contract:test",
     "salon-consent:contract:test": "npm --prefix my-app run salon-consent:contract:test",
     "global-css:contract:test": "npm --prefix my-app run global-css:contract:test",

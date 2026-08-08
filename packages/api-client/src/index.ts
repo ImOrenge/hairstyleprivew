@@ -48,6 +48,8 @@ import type {
   MemberStyleTarget,
   MemberStyleTone,
   SalonConnectionConsentAcceptance,
+  ConsultationPatch,
+  ConsultationSnapshot,
 } from "@hairfit/shared";
 
 export { LatestRequestGuard } from "./latest-request-guard";
@@ -418,6 +420,41 @@ export class HairfitApiClient {
     }
 
     return payload as T;
+  }
+
+  createConsultation() {
+    return this.request<{ snapshot: ConsultationSnapshot }>("/api/consultations", { method: "POST" });
+  }
+
+  getLatestConsultation() {
+    return this.request<{ snapshot: ConsultationSnapshot | null }>("/api/consultations");
+  }
+
+  getConsultation(sessionId: string) {
+    return this.request<{ snapshot: ConsultationSnapshot }>(`/api/consultations/${encodeURIComponent(sessionId)}`);
+  }
+
+  updateConsultation(sessionId: string, patch: ConsultationPatch) {
+    return this.request<{ snapshot: ConsultationSnapshot }>(`/api/consultations/${encodeURIComponent(sessionId)}`, {
+      method: "PATCH",
+      headers: { "If-Match": String(patch.expectedVersion) },
+      body: JSON.stringify(patch),
+    });
+  }
+
+  refreshConsultationAssets(sessionId: string, expectedVersion: number) {
+    return this.request<{ snapshot: ConsultationSnapshot }>(`/api/consultations/${encodeURIComponent(sessionId)}/refresh-assets`, {
+      method: "POST",
+      body: JSON.stringify({ expectedVersion }),
+    });
+  }
+
+  createConsultationShare(sessionId: string, hours: 24 | 168 | 720) {
+    return this.request<{ token: string; expiresAt: string }>(`/api/consultations/${encodeURIComponent(sessionId)}/share`, { method: "POST", body: JSON.stringify({ hours }) });
+  }
+
+  revokeConsultationShare(sessionId: string) {
+    return this.request<{ revokedAt: string }>(`/api/consultations/${encodeURIComponent(sessionId)}/share`, { method: "DELETE" });
   }
 
   getMobileMe() {

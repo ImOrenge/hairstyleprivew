@@ -129,6 +129,7 @@ function VariantCard({
 
 export interface WorkspaceVariantSelectionProps {
   actionError: string | null;
+  consultationReturnHref: string | null;
   generationId: string | null;
   isSavingSelection: boolean;
   onOpenAftercareConfirm: () => void;
@@ -144,6 +145,7 @@ export interface WorkspaceVariantSelectionProps {
 
 export function WorkspaceVariantSelection({
   actionError,
+  consultationReturnHref,
   generationId,
   isSavingSelection,
   onOpenAftercareConfirm,
@@ -236,6 +238,12 @@ export function WorkspaceVariantSelection({
           </div>
 
           <div className="mt-4 grid gap-2">
+            {consultationReturnHref ? (
+              <Link href={consultationReturnHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-accent)] bg-[var(--app-accent-soft)] px-4 py-2 text-sm font-bold text-[var(--app-text)]">
+                AI 상담으로 결과 연결
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            ) : null}
             {generationId && selectedVariantId && resultHref && stylerHref ? (
               <>
                 <Link
