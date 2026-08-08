@@ -3,6 +3,8 @@
 작성일: 2026-07-03
 상태: 구현 완료, Supabase runtime smoke 대기
 
+연계 계획: [Google News RSS 기반 헤어스타일 블루프린트 150개 확장 계획](../hairstyle-blueprint-expansion-plan.md) — 기존 32개를 유지하면서 여성·남성, 단·중·장, texture·condition 호환성을 포함한 신규 150개와 개인화 추천 경로를 설계한다. 현재는 구현 전 계획이다.
+
 ## 목적
 
 `docs/hairstyle-catalog-rotation-architecture.md`의 아키텍처를 구현 가능한 Phase 단위로 쪼개고, 각 Phase의 산출물과 검증 상태를 독립 파일로 관리한다. 2026-07-03 기준 P1-P7 구현과 로컬/정적/임시 Postgres/Supabase linked dry-run 검증은 완료했고, Supabase runtime/API smoke만 남아 있다.
