@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { authenticatedFetchWithRetry } from "./authenticated-fetch.ts";
 
@@ -42,4 +43,21 @@ test("returns the first 401 when token refresh is unavailable", async () => {
 
   assert.equal(response.status, 401);
   assert.equal(requestCount, 1);
+});
+
+test("account role readers recover one stale Clerk session request", () => {
+  const headerAccountContext = readFileSync(
+    new URL("../components/layout/HeaderAccountContext.tsx", import.meta.url),
+    "utf8",
+  );
+  const adminReadOnly = readFileSync(
+    new URL("../hooks/useAdminReadOnly.ts", import.meta.url),
+    "utf8",
+  );
+
+  for (const source of [headerAccountContext, adminReadOnly]) {
+    assert.match(source, /useAuthenticatedFetch\(\)/);
+    assert.match(source, /authenticatedFetch\("\/api\/account"/);
+    assert.doesNotMatch(source, /fetch\("\/api\/account"/);
+  }
 });

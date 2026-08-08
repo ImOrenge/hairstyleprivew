@@ -2,6 +2,7 @@
 
 import { useAuth, useUser } from "@clerk/nextjs";
 import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from "react";
+import { useAuthenticatedFetch } from "../../hooks/useAuthenticatedFetch";
 import type { AccountType } from "../../lib/onboarding";
 import { useClerkAvailable } from "../providers/ClerkAvailabilityProvider";
 
@@ -61,6 +62,7 @@ function getAccountHomeHref(accountType: AccountType | null) {
 function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
   const { user } = useUser();
+  const authenticatedFetch = useAuthenticatedFetch();
   const [verifiedAccount, setVerifiedAccount] = useState<VerifiedAccount | null>(null);
   const userId = user?.id ?? null;
 
@@ -85,7 +87,7 @@ function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {
       };
 
       try {
-        const response = await fetch("/api/account", { cache: "no-store" });
+        const response = await authenticatedFetch("/api/account", { cache: "no-store" });
         const data = (await response.json().catch(() => null)) as AccountResponse | null;
 
         if (!mounted) {
@@ -114,7 +116,7 @@ function HeaderAccountProviderWithClerk({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, [isLoaded, isSignedIn, metadataAccountSetupComplete, metadataAccountType, userId]);
+  }, [authenticatedFetch, isLoaded, isSignedIn, metadataAccountSetupComplete, metadataAccountType, userId]);
 
   const value = useMemo<HeaderAccountContextValue>(() => {
     if (!isLoaded) {
