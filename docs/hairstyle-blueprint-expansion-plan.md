@@ -1,7 +1,7 @@
 # Google News RSS 기반 헤어스타일 블루프린트 150개 확장 계획
 
 작성일: 2026-08-08
-상태: 로컬 구현·정적 검증 완료, DB 적용·shadow rollout·운영 smoke 대기
+상태: 로컬 구현·fresh-chain·rollout/RSS 결정적 검증 완료, 원격 DB 적용·실제 단계적 rollout·운영 smoke 대기
 대상 시장: `kr`
 기준 브랜치: `main@9138ece`
 연계 문서: [헤어스타일 카탈로그 순환 아키텍처](hairstyle-catalog-rotation-architecture.md)
@@ -418,9 +418,10 @@ active cycle rows 182개
 
 ```text
 npm run hairstyle:blueprints:audit
-npm run hairstyle:blueprints:coverage
+npm run hairstyle:blueprints:db:smoke -- --databaseUrl <local-postgres-url>
 npm run hairstyle:catalog:recommendation:test
 npm run hairstyle:catalog:rss:fixture:test
+npm run hairstyle:catalog:env:check -- --mode=blueprint-v4-rollout
 npm run hairstyle:catalog:audit
 npm run hairstyle:catalog:lineup:audit
 npm run supabase:migrations:mirror:check
@@ -439,6 +440,8 @@ remote DB write, function deploy, active cycle 강제 rebuild는 로컬 구현 �
 | `HAIRSTYLE_BLUEPRINT_V4_ENABLED` | 기존 32 loader | 182 manifest loader |
 | `HAIR_PROFILE_MATCHING_V2_ENABLED` | 기존 lineup-first 추천 | 모발 호환 6 + lineup 3 |
 | `HAIRSTYLE_RSS_FACETS_V2_ENABLED` | 기존 11 query | 구조화 60 query |
+
+개인화 master flag가 켜진 뒤에는 `HAIR_PROFILE_MATCHING_V2_MODE=shadow|live`, `HAIR_PROFILE_MATCHING_V2_INTERNAL_USER_IDS`, `HAIR_PROFILE_MATCHING_V2_ROLLOUT_PERCENT=0|10|50|100`을 함께 사용한다. `shadow`는 얼굴 분석을 중복 실행하지 않고 baseline과 개인화 후보를 같은 catalog snapshot에서 계산해 overlap, hard conflict, 호환 결과 수, fallback 여부를 저장하되 baseline 결과를 제공한다. `live`의 비허용 사용자는 안정적 user-ID bucket에 따라 shadow control에 남는다.
 
 flag는 web UI만 숨기는 용도가 아니다. 서버 loader, scoring, rebuild가 각각 안전하게 구버전 경로로 돌아갈 수 있어야 한다.
 
@@ -502,8 +505,9 @@ rollback drill은 `이전 active cycle 유지`, `9개 추천 반환`, `기존 32
 - [x] 기본 비교 모드는 단/중/장 각 3개, 동일 family 최대 2개를 보장한다.
 - [x] 기존 active lineup, seeded fallback, previous cycle rollback과 `32개/11 query/lineup-first` flag fallback이 유지된다.
 - [x] migration mirror, catalog audit, recommendation fixture, profile unit test, lint, web/mobile typecheck와 production build가 통과한다.
-- [ ] 임시 Postgres fresh-chain과 원격 Supabase runtime smoke를 통과한다. 현재 로컬 DB URL과 원격 적용 승인이 없어 미실행이다.
-- [ ] shadow → 내부 → 10% → 50% → 100% rollout과 rollback drill 증거가 남는다.
+- [x] 임시 Supabase Postgres에서 76개 migration fresh-chain과 v4 컬럼·제약·권한·RLS-backed RPC 반환 smoke를 통과한다.
+- [x] shadow → 내부 → 10% → 50% → 100%의 안정적 user bucket 판정과 master flag 즉시 rollback이 결정적 단위 테스트로 증명된다.
+- [ ] 원격 Supabase migration/runtime smoke와 실제 active cycle별 shadow → 내부 → 10% → 50% → 100% 운영 증거가 남는다.
 - [ ] 실제 구현·배포·운영 smoke가 끝나기 전에는 이 문서를 완료 구현으로 표시하지 않는다.
 
 로컬 UI 검증은 `/e2e-harness/hair-profile`의 HTTP 200과 길이·형태·굵기·상태 필드 SSR 출력을 확인했다. 자동 브라우저 런타임은 로컬 경로 오류로 연결되지 않아 스크린샷·클릭 상호작용 검증은 배포 전 잔여 항목으로 둔다.

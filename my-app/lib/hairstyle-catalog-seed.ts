@@ -9,12 +9,12 @@ import type {
   RecommendationCorrectionFocus,
   RecommendationLengthBucket,
 } from "./recommendation-types";
-import femaleLongBlueprints from "../data/hairstyle-blueprints/v4/female-long.json";
-import femaleMediumBlueprints from "../data/hairstyle-blueprints/v4/female-medium.json";
-import femaleShortBlueprints from "../data/hairstyle-blueprints/v4/female-short.json";
-import maleLongBlueprints from "../data/hairstyle-blueprints/v4/male-long.json";
-import maleMediumBlueprints from "../data/hairstyle-blueprints/v4/male-medium.json";
-import maleShortBlueprints from "../data/hairstyle-blueprints/v4/male-short.json";
+import femaleLongBlueprints from "../data/hairstyle-blueprints/v4/female-long.json" with { type: "json" };
+import femaleMediumBlueprints from "../data/hairstyle-blueprints/v4/female-medium.json" with { type: "json" };
+import femaleShortBlueprints from "../data/hairstyle-blueprints/v4/female-short.json" with { type: "json" };
+import maleLongBlueprints from "../data/hairstyle-blueprints/v4/male-long.json" with { type: "json" };
+import maleMediumBlueprints from "../data/hairstyle-blueprints/v4/male-medium.json" with { type: "json" };
+import maleShortBlueprints from "../data/hairstyle-blueprints/v4/male-short.json" with { type: "json" };
 
 export const HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v4";
 
@@ -59,6 +59,11 @@ export interface BlueprintTrendSignal {
   signalCount: number;
   trendScore: number;
   freshnessScore: number;
+  evidenceStatus?: "strong" | "weak" | "seeded";
+  distinctSourceCount?: number;
+  sourceConcentration?: number;
+  sourceConcentrationCapped?: boolean;
+  facetMatchCount?: number;
 }
 
 const DEFAULT_NEGATIVE_PROMPT = [

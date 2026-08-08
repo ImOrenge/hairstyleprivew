@@ -18,6 +18,8 @@ import type {
   CatalogBackedRecommendationCandidate,
   CatalogSelectionContext,
   CurrentHairProfile,
+  HairProfilePersonalizationEvaluation,
+  HairProfilePersonalizationMode,
   FaceAnalysisSummary,
   HairConditionTag,
   HairStrandThickness,
@@ -603,6 +605,23 @@ function normalizeSourceSummary(raw: unknown): HairstyleCatalogSourceSummary | n
         : undefined,
     documentsCollected: typeof raw.documentsCollected === "number" ? raw.documentsCollected : undefined,
     documentsUsed: typeof raw.documentsUsed === "number" ? raw.documentsUsed : undefined,
+    queryCount: typeof raw.queryCount === "number" ? raw.queryCount : undefined,
+    querySuccessCount: typeof raw.querySuccessCount === "number" ? raw.querySuccessCount : undefined,
+    queryFailureCount: typeof raw.queryFailureCount === "number" ? raw.queryFailureCount : undefined,
+    querySuccessRatio: typeof raw.querySuccessRatio === "number" ? raw.querySuccessRatio : undefined,
+    rssFacetEmptyCount: typeof raw.rssFacetEmptyCount === "number" ? raw.rssFacetEmptyCount : undefined,
+    distinctSourceCount: typeof raw.distinctSourceCount === "number" ? raw.distinctSourceCount : undefined,
+    maxSourceConcentration: typeof raw.maxSourceConcentration === "number" ? raw.maxSourceConcentration : undefined,
+    sourceConcentrationCappedSignalCount: typeof raw.sourceConcentrationCappedSignalCount === "number"
+      ? raw.sourceConcentrationCappedSignalCount
+      : undefined,
+    qualityGateStatus:
+      raw.qualityGateStatus === "pass" || raw.qualityGateStatus === "warn" || raw.qualityGateStatus === "blocked"
+        ? raw.qualityGateStatus
+        : undefined,
+    coverageWarnings: Array.isArray(raw.coverageWarnings)
+      ? raw.coverageWarnings.filter((item): item is string => typeof item === "string").map(cleanText).filter(Boolean)
+      : undefined,
     sourceNames: Array.isArray(raw.sourceNames)
       ? raw.sourceNames.filter((item): item is string => typeof item === "string").map(cleanText).filter(Boolean)
       : undefined,
@@ -1750,6 +1769,12 @@ async function rebuildCatalogWithMode(
     if (research.sourceSummary.freshnessStatus && research.sourceSummary.freshnessStatus !== "fresh") {
       validation.warnings.push(`freshness_status:${research.sourceSummary.freshnessStatus}`);
     }
+    if (research.sourceSummary.qualityGateStatus === "warn") {
+      validation.warnings.push(
+        `rss_query_success_ratio:${research.sourceSummary.querySuccessRatio ?? 0}`,
+        `rss_facet_empty_count:${research.sourceSummary.rssFacetEmptyCount ?? 0}`,
+      );
+    }
 
     if (!validation.passed) {
       throw new Error(`Hairstyle catalog validation failed: ${validation.warnings.join(", ") || "insufficient rows"}`);
@@ -2177,6 +2202,7 @@ export async function generateCatalogBackedRecommendationSet(
   referenceImageDataUrl: string,
   styleTarget: MemberStyleTarget,
   hairProfile: CurrentHairProfile | null = null,
+  personalizationMode: HairProfilePersonalizationMode = hairProfile ? "live" : "off",
 ) {
   const { activeCycle, cycle, rows, lineups } = await ensureCatalogAvailable();
   const targetRows = filterRowsForStyleTarget(rows, styleTarget);
@@ -2188,8 +2214,43 @@ export async function generateCatalogBackedRecommendationSet(
   }
 
   const analysisRun = await analyzeFaceForCatalog(referenceImageDataUrl);
-  const selectionContext = buildCatalogSelectionContext(analysisRun.analysis, styleTarget, hairProfile);
-  const recommendations = buildLineupBackedRecommendations(targetRows, lineups, selectionContext, cycle.cycleId);
+  const baselineContext = buildCatalogSelectionContext(analysisRun.analysis, styleTarget, null);
+  const baselineRecommendations = buildLineupBackedRecommendations(targetRows, lineups, baselineContext, cycle.cycleId);
+  const shouldEvaluateProfile = Boolean(hairProfile && personalizationMode !== "off");
+  const personalizedContext = shouldEvaluateProfile
+    ? buildCatalogSelectionContext(analysisRun.analysis, styleTarget, hairProfile)
+    : baselineContext;
+  const personalizedRecommendations = shouldEvaluateProfile
+    ? buildLineupBackedRecommendations(targetRows, lineups, personalizedContext, cycle.cycleId)
+    : baselineRecommendations;
+  const recommendations = personalizationMode === "live"
+    ? personalizedRecommendations
+    : baselineRecommendations;
+  const selectionContext = personalizationMode === "live" ? personalizedContext : baselineContext;
+  const rowsById = new Map(targetRows.map((row) => [row.id, row]));
+  const baselineIds = new Set(baselineRecommendations.map((item) => item.catalogItemId));
+  const overlapCount = personalizedRecommendations.filter((item) => baselineIds.has(item.catalogItemId)).length;
+  const profileCompatibleResultCount = hairProfile
+    ? personalizedRecommendations.filter((item) => {
+        const row = rowsById.get(item.catalogItemId);
+        return row ? isTextureAndThicknessCompatible(row, hairProfile) : false;
+      }).length
+    : 0;
+  const personalizationEvaluation: HairProfilePersonalizationEvaluation | null = shouldEvaluateProfile && hairProfile
+    ? {
+        mode: personalizationMode,
+        baselineResultCount: baselineRecommendations.length,
+        personalizedResultCount: personalizedRecommendations.length,
+        overlapCount,
+        changedCount: personalizedRecommendations.length - overlapCount,
+        hardConflictCandidateCount: personalizedRecommendations.filter((item) => {
+          const row = rowsById.get(item.catalogItemId);
+          return row ? hasHardHairConflict(row, hairProfile) : true;
+        }).length,
+        profileCompatibleResultCount,
+        profileFallbackUsed: personalizedRecommendations.length < 9 || profileCompatibleResultCount < 6,
+      }
+    : null;
 
   if (recommendations.length === 0) {
     throw new Error("No catalog-backed recommendations could be selected.");
@@ -2202,5 +2263,6 @@ export async function generateCatalogBackedRecommendationSet(
     promptVersion: RECOMMENDATION_PROMPT_VERSION,
     catalogCycleId: cycle.cycleId,
     selectionContext,
+    personalizationEvaluation,
   };
 }

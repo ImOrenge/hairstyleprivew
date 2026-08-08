@@ -36,6 +36,12 @@ export interface HairstyleCatalogSourceSummary {
   queryCount?: number;
   querySuccessCount?: number;
   queryFailureCount?: number;
+  querySuccessRatio?: number;
+  rssFacetEmptyCount?: number;
+  distinctSourceCount?: number;
+  maxSourceConcentration?: number;
+  sourceConcentrationCappedSignalCount?: number;
+  qualityGateStatus?: "pass" | "warn" | "blocked";
   coverageWarnings?: string[];
   sourceNames?: string[];
   topStyleSignals?: Array<{
@@ -159,6 +165,34 @@ export interface CurrentHairProfile {
   source?: "user" | "salon" | "image_estimate" | "unknown";
 }
 
+export type HairProfilePersonalizationMode = "off" | "shadow" | "live";
+
+export interface HairProfilePersonalizationRolloutDecision {
+  mode: HairProfilePersonalizationMode;
+  reason:
+    | "master_flag_off"
+    | "profile_unknown"
+    | "mode_off"
+    | "invalid_mode"
+    | "shadow"
+    | "internal_allowlist"
+    | "percentage_canary"
+    | "percentage_control";
+  bucket: number;
+  rolloutPercentage: number;
+}
+
+export interface HairProfilePersonalizationEvaluation {
+  mode: HairProfilePersonalizationMode;
+  baselineResultCount: number;
+  personalizedResultCount: number;
+  overlapCount: number;
+  changedCount: number;
+  hardConflictCandidateCount: number;
+  profileCompatibleResultCount: number;
+  profileFallbackUsed: boolean;
+}
+
 export interface CatalogSelectionContext {
   analysis: FaceAnalysisSummary;
   styleTarget: MemberStyleTarget;
@@ -213,6 +247,8 @@ export interface RecommendationSet {
   styleTarget?: MemberStyleTarget | null;
   hairProfile?: CurrentHairProfile | null;
   hairProfilePersonalizationEnabled?: boolean;
+  hairProfileRollout?: HairProfilePersonalizationRolloutDecision;
+  hairProfileEvaluation?: HairProfilePersonalizationEvaluation | null;
   catalogCycleId?: string | null;
   creditChargedAt?: string | null;
   creditChargeAmount?: number | null;

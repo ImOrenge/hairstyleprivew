@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { generateDesignerBriefs } from "../../../../lib/designer-brief-generator";
 import {
-  isHairProfilePersonalizationEnabled,
   normalizeCurrentHairProfile,
 } from "../../../../lib/current-hair-profile";
+import { buildHairProfileRolloutDecision } from "../../../../lib/hair-profile-rollout";
 import { downloadGenerationOriginalImageDataUrl } from "../../../../lib/generation-image-storage";
 import { isAuthorizedGenerationWorkflowCallback } from "../../../../lib/generation-workflow-callback-auth";
 import { isMemberStyleTarget } from "../../../../lib/onboarding";
@@ -179,10 +179,14 @@ export async function POST(request: Request) {
       supabase,
       claim.originalImagePath,
     );
-    const hairProfile = isHairProfilePersonalizationEnabled()
-      ? normalizeCurrentHairProfile(claim.options.hairProfile)
-      : null;
-    const generated = await generateRecommendationSet(referenceImageDataUrl, styleTargetValue, hairProfile);
+    const hairProfile = normalizeCurrentHairProfile(claim.options.hairProfile);
+    const hairProfileRollout = buildHairProfileRolloutDecision(claim.userId, hairProfile);
+    const generated = await generateRecommendationSet(
+      referenceImageDataUrl,
+      styleTargetValue,
+      hairProfile,
+      hairProfileRollout.mode,
+    );
     const designerBriefs = await generateDesignerBriefs({
       analysis: generated.analysis,
       candidates: generated.recommendations,
@@ -220,7 +224,9 @@ export async function POST(request: Request) {
       selectedVariantId: null,
       styleTarget: styleTargetValue,
       hairProfile,
-      hairProfilePersonalizationEnabled: isHairProfilePersonalizationEnabled(),
+      hairProfilePersonalizationEnabled: hairProfileRollout.mode === "live",
+      hairProfileRollout,
+      hairProfileEvaluation: generated.personalizationEvaluation,
       catalogCycleId: generated.catalogCycleId,
       creditChargedAt: null,
       creditChargeAmount: creditsRequired,
@@ -233,6 +239,8 @@ export async function POST(request: Request) {
       promptModel: generated.model,
       promptSource: "durable-workflow-preparation",
       styleTarget: styleTargetValue,
+      hairProfileRollout,
+      hairProfileEvaluation: generated.personalizationEvaluation,
     };
     const { data: finishData, error: finishError } = await supabase.rpc(
       "finish_generation_preparation",

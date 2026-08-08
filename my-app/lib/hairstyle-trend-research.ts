@@ -4,7 +4,7 @@ import {
   getRuntimeHairstyleBlueprints,
   type BlueprintTrendSignal,
   type KoreanWeeklyStyleQuery,
-} from "./hairstyle-catalog-seed";
+} from "./hairstyle-catalog-seed.ts";
 import type { HairstyleCatalogSourceSummary } from "./recommendation-types";
 
 const GOOGLE_NEWS_RSS_BASE_URL = "https://news.google.com/rss/search";
@@ -16,6 +16,16 @@ const MAX_ITEMS_PER_QUERY = 10;
 const REQUEST_TIMEOUT_MS = 12000;
 const MAX_CONCURRENT_RSS_REQUESTS = 4;
 const MAX_RSS_RETRIES = 2;
+const SOURCE_CONCENTRATION_THRESHOLD = 0.5;
+const SOURCE_CONCENTRATION_TREND_BOOST_CAP = 12;
+
+type RssFetcher = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
+
+interface TrendResearchOptions {
+  structuredRssEnabled?: boolean;
+  fetcher?: RssFetcher;
+  retryDelay?: (milliseconds: number) => Promise<void>;
+}
 
 interface TrendResearchDocument {
   query: string;
@@ -116,12 +126,16 @@ function extractItemsFromRss(xml: string, queryFacet: KoreanWeeklyStyleQuery) {
     .filter((item): item is TrendResearchDocument => item !== null);
 }
 
-async function fetchGoogleNewsDocuments(queryFacet: KoreanWeeklyStyleQuery) {
+async function fetchGoogleNewsDocuments(
+  queryFacet: KoreanWeeklyStyleQuery,
+  fetcher: RssFetcher,
+  retryDelay: (milliseconds: number) => Promise<void>,
+) {
   for (let attempt = 0; attempt <= MAX_RSS_RETRIES; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const response = await fetch(buildGoogleNewsUrl(queryFacet.query), {
+      const response = await fetcher(buildGoogleNewsUrl(queryFacet.query), {
         cache: "no-store",
         signal: controller.signal,
         headers: {
@@ -146,7 +160,7 @@ async function fetchGoogleNewsDocuments(queryFacet: KoreanWeeklyStyleQuery) {
     }
 
     const backoffMs = 250 * (2 ** attempt) + Math.floor(Math.random() * 150);
-    await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    await retryDelay(backoffMs);
   }
 
   return [];
@@ -233,10 +247,10 @@ function hasFreshDocument(documents: TrendResearchDocument[], now = new Date()) 
 }
 
 function buildDocumentKey(document: TrendResearchDocument) {
-  return [document.title, document.sourceName, document.publishedAt || ""].join("::");
+  return [document.link, document.title, document.sourceName, document.publishedAt || ""].join("::");
 }
 
-function scoreTrendSignals(documents: TrendResearchDocument[]) {
+export function scoreTrendSignals(documents: TrendResearchDocument[]) {
   const trendSignals = new Map<string, BlueprintTrendSignal>();
   const normalizedDocuments = documents.map((document) => ({
     ...document,
@@ -268,8 +282,18 @@ function scoreTrendSignals(documents: TrendResearchDocument[]) {
         && (!facet.strandThicknessFacet || facet.strandThicknessFacet === blueprint.primaryStrandThickness)
         && (!facet.conditionFacet || facet.conditionFacet === blueprint.primaryCondition);
     }).length;
+    const sourceCounts = matchingDocuments.reduce((counts, document) => {
+      counts.set(document.sourceName, (counts.get(document.sourceName) || 0) + 1);
+      return counts;
+    }, new Map<string, number>());
+    const maxSourceCount = Math.max(0, ...sourceCounts.values());
+    const sourceConcentration = matchingDocuments.length > 0
+      ? maxSourceCount / matchingDocuments.length
+      : 0;
+    const sourceConcentrationCapped = matchingDocuments.length > 0
+      && sourceConcentration > SOURCE_CONCENTRATION_THRESHOLD;
 
-    const trendScore =
+    const uncappedTrendScore =
       blueprint.baselineTrendScore -
       8 +
       matchingDocuments.length * 6 +
@@ -277,6 +301,9 @@ function scoreTrendSignals(documents: TrendResearchDocument[]) {
       facetMatches * 2.5 +
       distinctQueries.size * 2 +
       distinctSources.size * 1.5;
+    const trendScore = sourceConcentrationCapped
+      ? Math.min(uncappedTrendScore, blueprint.baselineTrendScore + SOURCE_CONCENTRATION_TREND_BOOST_CAP)
+      : uncappedTrendScore;
     const freshnessScore =
       blueprint.baselineFreshnessScore -
       10 +
@@ -288,6 +315,11 @@ function scoreTrendSignals(documents: TrendResearchDocument[]) {
       signalCount: matchingDocuments.length,
       trendScore,
       freshnessScore,
+      evidenceStatus: matchingDocuments.length >= 2 && distinctSources.size >= 2 ? "strong" : "weak",
+      distinctSourceCount: distinctSources.size,
+      sourceConcentration: Math.round(sourceConcentration * 1000) / 1000,
+      sourceConcentrationCapped,
+      facetMatchCount: facetMatches,
     });
   }
 
@@ -313,6 +345,11 @@ function buildSeededFallbackTrendSignals() {
         signalCount: 0,
         trendScore: blueprint.baselineTrendScore,
         freshnessScore: blueprint.baselineFreshnessScore,
+        evidenceStatus: "seeded",
+        distinctSourceCount: 0,
+        sourceConcentration: 0,
+        sourceConcentrationCapped: false,
+        facetMatchCount: 0,
       } satisfies BlueprintTrendSignal,
     ]),
   );
@@ -333,8 +370,14 @@ function buildTopStyleSignals(trendSignals: Map<string, BlueprintTrendSignal>) {
     });
 }
 
-export async function collectKoreanHairstyleTrendResearch(referenceDate = new Date()) {
-  const structuredRssEnabled = process.env.HAIRSTYLE_RSS_FACETS_V2_ENABLED?.trim().toLowerCase() === "true";
+export async function collectKoreanHairstyleTrendResearch(
+  referenceDate = new Date(),
+  options: TrendResearchOptions = {},
+) {
+  const structuredRssEnabled = options.structuredRssEnabled
+    ?? process.env.HAIRSTYLE_RSS_FACETS_V2_ENABLED?.trim().toLowerCase() === "true";
+  const fetcher = options.fetcher ?? fetch;
+  const retryDelay = options.retryDelay ?? ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
   const queryRegistry = structuredRssEnabled
     ? buildKoreanWeeklyStyleQueryRegistry(referenceDate)
     : buildLegacyKoreanWeeklyStyleQueryRegistry(referenceDate);
@@ -342,16 +385,18 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
   const queryResults = await mapSettledWithConcurrency(
     queryRegistry,
     MAX_CONCURRENT_RSS_REQUESTS,
-    fetchGoogleNewsDocuments,
+    (query) => fetchGoogleNewsDocuments(query, fetcher, retryDelay),
   );
   const querySuccessCount = queryResults.filter((result) => result.status === "fulfilled").length;
   const queryFailureCount = queryResults.length - querySuccessCount;
+  const querySuccessRatio = queryRegistry.length > 0 ? querySuccessCount / queryRegistry.length : 0;
   const fulfilledQueryIds = new Set(
     queryResults.flatMap((result) => result.status === "fulfilled" ? result.value.map((document) => document.queryId) : []),
   );
   const coverageWarnings = queryRegistry
     .filter((query) => !fulfilledQueryIds.has(query.id))
     .map((query) => query.id);
+  const rssFacetEmptyCount = coverageWarnings.length;
 
   const fulfilledDocuments = queryResults.flatMap((result) =>
     result.status === "fulfilled" ? result.value : [],
@@ -404,6 +449,12 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
         queryCount: queryRegistry.length,
         querySuccessCount,
         queryFailureCount,
+        querySuccessRatio,
+        rssFacetEmptyCount,
+        distinctSourceCount: 0,
+        maxSourceConcentration: 0,
+        sourceConcentrationCappedSignalCount: 0,
+        qualityGateStatus: "blocked",
         coverageWarnings,
         sourceNames: [],
         topStyleSignals: buildTopStyleSignals(trendSignals),
@@ -412,6 +463,13 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
   }
 
   const trendSignals = scoreTrendSignals(relevantDocuments);
+  const maxSourceConcentration = Math.max(
+    0,
+    ...Array.from(trendSignals.values()).map((signal) => signal.sourceConcentration || 0),
+  );
+  const sourceConcentrationCappedSignalCount = Array.from(trendSignals.values())
+    .filter((signal) => signal.sourceConcentrationCapped)
+    .length;
   const freshnessStatus = usedFallback
     ? "fallback"
     : hasFreshDocument(relevantDocuments, referenceDate)
@@ -433,6 +491,12 @@ export async function collectKoreanHairstyleTrendResearch(referenceDate = new Da
     queryCount: queryRegistry.length,
     querySuccessCount,
     queryFailureCount,
+    querySuccessRatio,
+    rssFacetEmptyCount,
+    distinctSourceCount: new Set(relevantDocuments.map((document) => document.sourceName)).size,
+    maxSourceConcentration,
+    sourceConcentrationCappedSignalCount,
+    qualityGateStatus: querySuccessRatio >= 0.8 && rssFacetEmptyCount === 0 ? "pass" : "warn",
     coverageWarnings,
     sourceNames: Array.from(new Set(relevantDocuments.map((document) => document.sourceName))).slice(0, 20),
     topStyleSignals: buildTopStyleSignals(trendSignals),
