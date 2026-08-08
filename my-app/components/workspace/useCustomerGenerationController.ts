@@ -110,6 +110,7 @@ export function useCustomerGenerationController() {
   const consultationReturnTo = requestedReturnTo && /^\/consulting\/[0-9a-f-]{36}\/photo$/i.test(requestedReturnTo)
     ? requestedReturnTo
     : null;
+  const consultationId = consultationReturnTo?.split("/")[2] ?? null;
   const [currentStep, setCurrentStep] = useState<WorkspaceWizardStep>(
     requestedGenerateStep ? "generate" : "upload",
   );
@@ -306,7 +307,7 @@ export function useCustomerGenerationController() {
     setSelectedVariantId(null);
 
     try {
-      const result = await runGridPipeline();
+      const result = await runGridPipeline({ consultationId });
       if (result.background) {
         setAcceptedGeneration({
           generationId: result.generationId,

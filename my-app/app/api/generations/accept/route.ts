@@ -19,6 +19,9 @@ import {
   validatePaidActionQuoteForExecution,
 } from "../../../../lib/paid-action-quote";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
+import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
+import { quoteEntitlementV2 } from "../../../../lib/v2/entitlement-server";
+import { recordV2Event } from "../../../../lib/v2/observability";
 import {
   buildAccountSetupRedirectUrl,
   isMemberStyleTarget,
@@ -33,6 +36,7 @@ import {
 interface AcceptGenerationRequest {
   draftId?: string;
   quoteId?: string;
+  consultationId?: string;
 }
 
 interface AcceptGenerationClient {
@@ -59,11 +63,15 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as AcceptGenerationRequest;
   const draftId = body.draftId?.trim() || "";
   const quoteId = body.quoteId?.trim() || "";
+  const requestedConsultationId = body.consultationId?.trim() || "";
   if (!UUID_PATTERN.test(draftId)) {
     return NextResponse.json({ error: "draftId must be a valid UUID" }, { status: 400 });
   }
   if (quoteId.length > 4096) {
     return NextResponse.json({ error: "quoteId is too large" }, { status: 400 });
+  }
+  if (requestedConsultationId && !UUID_PATTERN.test(requestedConsultationId)) {
+    return NextResponse.json({ error: "consultationId must be a valid UUID" }, { status: 400 });
   }
 
   const supabase = getSupabaseAdminClient();
@@ -92,6 +100,22 @@ export async function POST(request: Request) {
 
   try {
     let executionQuote: PaidActionQuote | null = null;
+    const consultationId =
+      requestedConsultationId && isHairfitV2Enabled("CONSULTATION_SESSION_V2_ENABLED")
+        ? requestedConsultationId
+        : null;
+    if (consultationId) {
+      const consultation = await supabase
+        .from("consultation_sessions")
+        .select("id")
+        .eq("id", consultationId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (consultation.error) throw new Error(consultation.error.message);
+      if (!consultation.data) {
+        return NextResponse.json({ error: "상담을 찾을 수 없습니다." }, { status: 404 });
+      }
+    }
     const { data: draftContext, error: draftContextError } = await supabase
       .from("generation_upload_drafts")
       .select("state,user_id")
@@ -156,6 +180,7 @@ export async function POST(request: Request) {
           styleTarget,
           promptSource: "durable-generation-acceptance",
           acceptanceVersion: "generation-acceptance-v2-credit-reservation",
+          ...(consultationId ? { consultationId } : {}),
           payerScope: "customer",
           ...(executionQuote
             ? {
@@ -247,6 +272,42 @@ export async function POST(request: Request) {
     if (generationError) throw new Error(generationError.message);
     if (!generation || generation.user_id !== userId || !generation.accepted_at) {
       throw new Error("Generation acceptance receipt could not be reconciled");
+    }
+    if (consultationId) {
+      const consultationLink = await supabase.rpc("attach_generation_to_consultation_v2", {
+        p_user_id: userId,
+        p_consultation_id: consultationId,
+        p_generation_id: draftId,
+        p_expected_version: null,
+        p_transition_photo: false,
+      });
+      if (consultationId && isHairfitV2Enabled("ENTITLEMENT_V2_SHADOW_READ_ENABLED")) {
+        await Promise.all([
+          createPaidActionQuoteForUser({
+            supabase,
+            userId,
+            action: "hair_generation",
+            subjectId: draftId,
+            billingScope: "customer",
+          }),
+          quoteEntitlementV2(userId, "hair_decision_once"),
+        ])
+          .then(([legacyQuote, v2Quote]) => recordV2Event({
+            userId,
+            consultationId,
+            eventType: "entitlement.shadow_read",
+            payload: {
+              legacyAllowed: legacyQuote.isAllowed,
+              v2Allowed: v2Quote.allowed,
+              matched: legacyQuote.isAllowed === v2Quote.allowed,
+              v2Reason: v2Quote.reason,
+            },
+          }))
+          .catch((error) => console.warn("[generation-accept] V2 entitlement shadow read failed", {
+            errorCode: error instanceof Error ? error.name : "unknown",
+          }));
+      }
+      if (consultationLink.error) throw new Error(consultationLink.error.message);
     }
 
     const dispatch = await dispatchGenerationWorkflowOutbox({

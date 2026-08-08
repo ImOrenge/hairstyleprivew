@@ -10,11 +10,16 @@ type SupabaseLooseTable = {
   Relationships: [];
 };
 
+type SupabaseLooseFunction = {
+  Args: Record<string, unknown>;
+  Returns: unknown;
+};
+
 type SupabaseDatabase = {
   public: {
     Tables: Record<string, SupabaseLooseTable>;
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: Record<string, SupabaseLooseFunction>;
     Enums: Record<string, string>;
     CompositeTypes: Record<string, never>;
   };

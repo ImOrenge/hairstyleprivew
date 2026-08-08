@@ -11,6 +11,12 @@ import type {
   RecommendationSet,
 } from "../../../../lib/recommendation-types";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
+import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
+import { preparePreviewBoardV2 } from "../../../../lib/v2/preview-board-server";
+import {
+  buildGenerationPromptPlansV2,
+  fingerprintPromptSourceImage,
+} from "../../../../lib/v2/prompt-server";
 
 interface PrepareGenerationRequest {
   generationId?: string;
@@ -23,6 +29,7 @@ interface PreparationClient {
     params: Record<string, unknown>,
   ) => Promise<{ data: unknown; error: { message: string } | null }>;
   storage: ReturnType<typeof getSupabaseAdminClient>["storage"];
+  from: ReturnType<typeof getSupabaseAdminClient>["from"];
 }
 
 interface PreparationClaim {
@@ -176,6 +183,45 @@ export async function POST(request: Request) {
       claim.originalImagePath,
     );
     const generated = await generateRecommendationSet(referenceImageDataUrl, styleTargetValue);
+    const generationLink = isHairfitV2Enabled("PROMPT_POLICY_V2_ENABLED")
+      ? await supabase
+          .from("generations")
+          .select("consultation_id")
+          .eq("id", generationId)
+          .eq("user_id", claim.userId)
+          .maybeSingle()
+      : { data: null, error: null };
+    if (generationLink.error) throw new Error(generationLink.error.message);
+    const consultationId =
+      generationLink.data &&
+      typeof (generationLink.data as Record<string, unknown>).consultation_id === "string"
+        ? String((generationLink.data as Record<string, unknown>).consultation_id)
+        : null;
+    const promptPlans = consultationId
+      ? await buildGenerationPromptPlansV2({
+          userId: claim.userId,
+          consultationId,
+          analysis: generated.analysis,
+          model: generated.model,
+          sourceImageFingerprint: fingerprintPromptSourceImage(referenceImageDataUrl),
+          recommendations: generated.recommendations,
+        })
+      : null;
+    const boardAssociations =
+      promptPlans &&
+      consultationId &&
+      isHairfitV2Enabled("ENTITLEMENT_V2_READ_ENABLED") &&
+      isHairfitV2Enabled("PREVIEW_BOARD_STRATEGY_V2_ENABLED") &&
+      isHairfitV2Enabled("PREVIEW_QUALITY_GATE_V2_ENABLED")
+      ? await preparePreviewBoardV2({
+          userId: claim.userId,
+          consultationId,
+          generationId,
+          modelProvider: "gemini",
+          modelName: generated.model,
+          plans: promptPlans,
+        })
+      : null;
     const designerBriefs = await generateDesignerBriefs({
       analysis: generated.analysis,
       candidates: generated.recommendations,
@@ -184,24 +230,38 @@ export async function POST(request: Request) {
     // The environment value remains only for pre-migration generations.
     const creditsRequired = readReservedGenerationCredits(claim.options) ?? getCreditsPerStyle();
     const preparedAt = new Date().toISOString();
-    const variants: GeneratedVariant[] = generated.recommendations.map((candidate) => ({
-      ...candidate,
-      designerBrief: designerBriefs[candidate.id] ?? null,
-      promptArtifactToken: createPromptArtifactToken({
-        userId: claim.userId,
-        prompt: candidate.prompt,
-        productRequirements: null,
-        researchReport: null,
-        model: generated.model,
-        promptVersion: generated.promptVersion,
-      }),
-      status: "queued",
-      outputUrl: null,
-      generatedImagePath: null,
-      evaluation: null,
-      error: null,
-      generatedAt: null,
-    }));
+    const variants: GeneratedVariant[] = generated.recommendations.map((candidate, index) => {
+      const plan = promptPlans?.[index] ?? null;
+      const association = boardAssociations?.[index] ?? null;
+      const protectedPrompt = plan?.providerPrompt ?? candidate.prompt;
+      const promptVersion = plan?.spec.promptPolicyVersion ?? generated.promptVersion;
+      return {
+        ...candidate,
+        prompt: protectedPrompt,
+        negativePrompt: plan?.spec.negativePrompt ?? candidate.negativePrompt,
+        strategyBucket: plan?.spec.bucket,
+        slotIntent: plan?.spec.intent,
+        promptPolicyVersion: plan?.spec.promptPolicyVersion,
+        promptHash: plan?.promptHash,
+        v2PreviewVariantId: association?.previewVariantId,
+        v2AttemptId: association?.attemptId,
+        designerBrief: designerBriefs[candidate.id] ?? null,
+        promptArtifactToken: createPromptArtifactToken({
+          userId: claim.userId,
+          prompt: protectedPrompt,
+          productRequirements: null,
+          researchReport: null,
+          model: generated.model,
+          promptVersion,
+        }),
+        status: "queued",
+        outputUrl: null,
+        generatedImagePath: null,
+        evaluation: null,
+        error: null,
+        generatedAt: null,
+      };
+    });
     if (variants.length < 1 || variants.length > MAX_VARIANT_COUNT) {
       throw new Error("Recommendation preparation returned an invalid variant count");
     }
@@ -220,9 +280,11 @@ export async function POST(request: Request) {
       analysis: generated.analysis,
       recommendationSet,
       catalogCycleId: generated.catalogCycleId,
-      promptVersion: generated.promptVersion,
+      promptVersion: promptPlans?.[0]?.spec.promptPolicyVersion ?? generated.promptVersion,
+      legacyRecommendationPromptVersion: generated.promptVersion,
       promptModel: generated.model,
-      promptSource: "durable-workflow-preparation",
+      promptSource: promptPlans ? "hairfit-v2-consultation-compiler" : "durable-workflow-preparation",
+      consultationId,
       styleTarget: styleTargetValue,
     };
     const { data: finishData, error: finishError } = await supabase.rpc(

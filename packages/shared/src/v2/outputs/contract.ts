@@ -1,0 +1,4 @@
+export interface SnapshotLinkedOutputV2 { consultationId: string; selectionSnapshotId: string; version: number; createdAt: string }
+export interface SalonBriefV2 extends SnapshotLinkedOutputV2 { schemaVersion: "salon-brief-v2"; summary: string; cut: Record<string, unknown>; volumeTexture: Record<string, unknown>; color: Record<string, unknown> | null; styling: string[]; cautions: string[] }
+export interface AftercareProgramV2 extends SnapshotLinkedOutputV2 { schemaVersion: "aftercare-program-v2"; actualServiceId: string; today: string[]; checkpoints: Array<{ offset: "D+3" | "W+2" | "W+6" | "W+10"; action: string }> }
+export interface FashionPreviewSetV2 extends SnapshotLinkedOutputV2 { schemaVersion: "fashion-preview-set-v2"; personalColorEvidenceId: string | null; selectedHairSnapshotId: string; previewIds: string[] }

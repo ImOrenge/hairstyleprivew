@@ -61,6 +61,8 @@
     "result-ux:contract:test": "node --no-warnings --test lib/result-decision-ux.test.ts lib/generation-adapter-parity.test.ts lib/generation-selected-variant-dual-field.test.ts",
     "workspace-decomposition:contract:test": "node --no-warnings --test lib/workspace-decomposition.test.ts",
     "consulting:contract:test": "node --no-warnings --test lib/consulting/consultation-contract.test.ts",
+    "hairfit-v2:contract:test": "node --no-warnings --test lib/hairfit-v2-backend-contract.test.ts",
+    "hairfit-v2:db:smoke": "node --no-warnings scripts/verify-hairfit-v2-database.mjs",
     "mypage-decomposition:contract:test": "node --no-warnings --test lib/mypage-decomposition.test.ts",
     "styler-decomposition:contract:test": "node --no-warnings --test lib/styler-decomposition.test.ts",
     "styling-workflow:contract:test": "node --no-warnings --test lib/styling-durable-workflow.test.ts",

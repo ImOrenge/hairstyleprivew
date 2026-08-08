@@ -22,6 +22,13 @@ import type {
   RecommendationSet,
 } from "../../../../lib/recommendation-types";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
+import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
+import { createOutputFingerprintV2 } from "../../../../lib/v2/image-fingerprint";
+import {
+  markPreviewAttemptGeneratingV2,
+  recordPreviewAttemptFailureV2,
+  recordPreviewAttemptOutcomeV2,
+} from "../../../../lib/v2/preview-board-server";
 import { applyWatermark } from "../../../../lib/watermark";
 
 interface RunGenerationRequest {
@@ -39,6 +46,13 @@ interface RunGenerationRequest {
   attemptId?: string;
   failureToken?: string;
   reuseStoredOriginal?: boolean;
+}
+
+function configuredV2ProviderCostMinor() {
+  const raw = process.env.GEMINI_IMAGE_ESTIMATED_COST_MINOR?.trim();
+  if (!raw) return null;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
 }
 
 interface SupabaseRunClient {
@@ -151,6 +165,19 @@ function normalizeVariant(raw: unknown): GeneratedVariant | null {
     selectionScore: typeof raw.selectionScore === "number" ? raw.selectionScore : undefined,
     promptTemplateVersion: typeof raw.promptTemplateVersion === "string" ? raw.promptTemplateVersion : undefined,
     styleTarget: styleTarget === "male" || styleTarget === "female" ? styleTarget : undefined,
+    strategyBucket:
+      raw.strategyBucket === "face_balance" ||
+      raw.strategyBucket === "image_change" ||
+      raw.strategyBucket === "manageability"
+        ? raw.strategyBucket
+        : undefined,
+    slotIntent: typeof raw.slotIntent === "string" ? raw.slotIntent : undefined,
+    promptPolicyVersion:
+      typeof raw.promptPolicyVersion === "string" ? raw.promptPolicyVersion : undefined,
+    promptHash: typeof raw.promptHash === "string" ? raw.promptHash : undefined,
+    v2PreviewVariantId:
+      typeof raw.v2PreviewVariantId === "string" ? raw.v2PreviewVariantId : undefined,
+    v2AttemptId: typeof raw.v2AttemptId === "string" ? raw.v2AttemptId : undefined,
     status,
     outputUrl: typeof raw.outputUrl === "string" ? raw.outputUrl : null,
     generatedImagePath: typeof raw.generatedImagePath === "string" ? raw.generatedImagePath : null,
@@ -584,6 +611,8 @@ async function handlePost(request: Request) {
   let attemptToken: string | null = null;
   let uploadedImagePath: string | null = null;
   let completionOutcomeUncertain = false;
+  let v2OutcomeRecorded = false;
+  let providerStartedAt: number | null = null;
 
   if (forceFailureMessage && internalWorkflowRequest) {
     const failureResult = await failRecommendationVariantAfterLease(supabase, {
@@ -724,6 +753,13 @@ async function handlePost(request: Request) {
       chargedCredits = consumeError ? 0 : creditCost;
     }
 
+    providerStartedAt = Date.now();
+    if (
+      targetVariant.v2AttemptId &&
+      isHairfitV2Enabled("PREVIEW_QUALITY_GATE_V2_ENABLED")
+    ) {
+      await markPreviewAttemptGeneratingV2(ownerUserId, targetVariant.v2AttemptId);
+    }
     const result = await runGeminiImageGeneration({
       prompt,
       productRequirements: productRequirements || undefined,
@@ -762,6 +798,36 @@ async function handlePost(request: Request) {
     });
     const generatedImagePath = storedImage.path;
     uploadedImagePath = generatedImagePath;
+
+    if (
+      targetVariant.v2AttemptId &&
+      isHairfitV2Enabled("PREVIEW_QUALITY_GATE_V2_ENABLED")
+    ) {
+      const qualityGate = evaluation?.qualityGate;
+      const outputFingerprint = await createOutputFingerprintV2(outputUrl);
+      const outcome = await recordPreviewAttemptOutcomeV2({
+        userId: ownerUserId,
+        attemptId: targetVariant.v2AttemptId,
+        outputPath: generatedImagePath,
+        outputFingerprint,
+        providerCostMinor: configuredV2ProviderCostMinor(),
+        latencyMs: Date.now() - (providerStartedAt ?? Date.now()),
+        quality: qualityGate ?? {
+          identitySimilarity: 0,
+          styleMatch: 0,
+          geometryIntegrity: 0,
+          artifactFreedom: 0,
+          backgroundPreservation: 0,
+          hairBoundary: 0,
+          safety: false,
+        },
+      });
+      if (!outcome.accepted) {
+        v2OutcomeRecorded = true;
+        targetVariant.v2AttemptId = outcome.retryAttemptId ?? undefined;
+        throw new Error(`V2_QUALITY_REJECTED:${outcome.rejectionCodes.join(",")}`);
+      }
+    }
 
     const activeAttemptToken = attemptToken;
     if (!activeAttemptToken) {
@@ -890,6 +956,20 @@ async function handlePost(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unexpected error";
 
+    if (
+      targetVariant.v2AttemptId &&
+      !v2OutcomeRecorded &&
+      isHairfitV2Enabled("PREVIEW_QUALITY_GATE_V2_ENABLED")
+    ) {
+      const v2Failure = await recordPreviewAttemptFailureV2({
+        userId: ownerUserId,
+        attemptId: targetVariant.v2AttemptId,
+        code: /timeout|timed out/i.test(message) ? "provider_timeout" : "unknown",
+        latencyMs: providerStartedAt === null ? null : Date.now() - providerStartedAt,
+      }).catch(() => null);
+      if (v2Failure) targetVariant.v2AttemptId = v2Failure.retryAttemptId ?? undefined;
+    }
+
     let removeUploadedImage = false;
     if (attemptClaimed && attemptToken && !completionOutcomeUncertain) {
       let failureResult: (Record<string, unknown> & { state: VariantAttemptState }) | null = null;
@@ -904,6 +984,7 @@ async function handlePost(request: Request) {
             outputUrl: null,
             generatedImagePath: null,
             evaluation: null,
+            v2AttemptId: targetVariant.v2AttemptId ?? null,
             generatedAt: null,
           },
           errorMessage: message,

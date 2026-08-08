@@ -4,6 +4,15 @@ export interface AIEvaluationResult {
     score: number;
     comment: string;
     tips: string[];
+    qualityGate?: {
+        identitySimilarity: number;
+        styleMatch: number;
+        geometryIntegrity: number;
+        artifactFreedom: number;
+        backgroundPreservation: number;
+        hairBoundary: number;
+        safety: boolean;
+    };
 }
 
 const EVALUATION_SYSTEM_PROMPT = `
@@ -14,12 +23,24 @@ Criteria:
 1. Accuracy: How well did it follow the prompt?
 2. Naturalness: Does the hair integrate well with the person's face and identity?
 3. Aesthetics: Is the style flattering?
+4. Identity preservation: Is this unmistakably the same person?
+5. Geometry integrity: Are the face, ears, neck, hairline, and skull anatomically consistent?
+6. Edit integrity: Are hair boundaries natural and the background unchanged?
 
 Output MUST be strict JSON:
 {
   "score": number (1-100),
   "comment": "1-2 sentences summarizing the result",
-  "tips": ["tip 1", "tip 2", "tip 3"]
+  "tips": ["tip 1", "tip 2", "tip 3"],
+  "qualityGate": {
+    "identitySimilarity": number (0-1),
+    "styleMatch": number (0-1),
+    "geometryIntegrity": number (0-1),
+    "artifactFreedom": number (0-1),
+    "backgroundPreservation": number (0-1),
+    "hairBoundary": number (0-1),
+    "safety": boolean
+  }
 }
 
 Rules:
@@ -73,10 +94,7 @@ export async function runAIEvaluation(
     const original = parseDataUrl(originalImageDataUrl);
     const generated = parseDataUrl(generatedImageDataUrl);
 
-    console.log("[ai-evaluation] Running evaluation", {
-        model: modelName,
-        prompt,
-    });
+    console.log("[ai-evaluation] Running protected evaluation", { model: modelName });
 
     try {
         const result = await model.generateContent([
@@ -97,7 +115,7 @@ export async function runAIEvaluation(
         ]);
 
         const responseText = result.response.text().trim();
-        console.log("[ai-evaluation] Gemini Response:", responseText);
+        console.log("[ai-evaluation] Evaluation response received", { model: modelName, responseLength: responseText.length });
 
         let jsonStr = responseText;
         if (responseText.includes("```")) {
@@ -114,10 +132,26 @@ export async function runAIEvaluation(
         }
 
         const json = JSON.parse(jsonStr);
+        const quality = json && typeof json.qualityGate === "object" ? json.qualityGate : null;
+        const normalizedScore = (value: unknown) =>
+            typeof value === "number" && Number.isFinite(value)
+                ? Math.max(0, Math.min(1, value))
+                : 0;
         return {
             score: typeof json.score === "number" ? json.score : 0,
             comment: typeof json.comment === "string" ? json.comment : "",
             tips: Array.isArray(json.tips) ? json.tips : [],
+            qualityGate: quality
+                ? {
+                    identitySimilarity: normalizedScore(quality.identitySimilarity),
+                    styleMatch: normalizedScore(quality.styleMatch),
+                    geometryIntegrity: normalizedScore(quality.geometryIntegrity),
+                    artifactFreedom: normalizedScore(quality.artifactFreedom),
+                    backgroundPreservation: normalizedScore(quality.backgroundPreservation),
+                    hairBoundary: normalizedScore(quality.hairBoundary),
+                    safety: quality.safety === true,
+                }
+                : undefined,
         };
     } catch (error) {
         console.error("[ai-evaluation] Evaluation failed", error);

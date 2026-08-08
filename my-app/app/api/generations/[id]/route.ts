@@ -11,6 +11,13 @@ import {
 } from "../../../../lib/generation-retention";
 import type { RecommendationSet } from "../../../../lib/recommendation-types";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
+import {
+  redactV2GenerationOptions,
+  redactV2RecommendationSet,
+} from "../../../../lib/v2/redaction";
+import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
+import { recordV2Event } from "../../../../lib/v2/observability";
+import { selectStyleV2 } from "../../../../lib/v2/selection-server";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -237,7 +244,12 @@ export async function GET(_request: Request, { params }: Params) {
     isObject(loaded.data.options) ? loaded.data.options.recommendationSet : null,
     loaded.data.selected_variant_id,
   );
-  const recommendationSet = await withSignedVariantUrls(loaded.supabase, rawRecommendationSet);
+  const signedRecommendationSet = await withSignedVariantUrls(loaded.supabase, rawRecommendationSet);
+  const recommendationSet = redactV2RecommendationSet(signedRecommendationSet);
+  const publicOptions = redactV2GenerationOptions(loaded.data.options);
+  const protectedV2Prompt = isObject(loaded.data.options) &&
+    typeof loaded.data.options.promptVersion === "string" &&
+    loaded.data.options.promptVersion.startsWith("hairfit-consultation-prompt-v2");
   const confirmedHairRecordResult = await loadConfirmedHairRecord(loaded.supabase, userId, id.trim());
   if ("error" in confirmedHairRecordResult) {
     return NextResponse.json({ error: confirmedHairRecordResult.error }, { status: 500 });
@@ -295,11 +307,13 @@ export async function GET(_request: Request, { params }: Params) {
           : null,
       updatedAt: typeof loaded.data.updated_at === "string" ? loaded.data.updated_at : null,
       error: typeof loaded.data.error_message === "string" ? loaded.data.error_message : null,
-      promptUsed: typeof loaded.data.prompt_used === "string" ? loaded.data.prompt_used : null,
+      promptUsed: protectedV2Prompt
+        ? "Protected server-side HairFit V2 prompt"
+        : typeof loaded.data.prompt_used === "string" ? loaded.data.prompt_used : null,
       generatedImagePath:
         typeof loaded.data.generated_image_path === "string" ? loaded.data.generated_image_path : null,
       options:
-        typeof loaded.data.options === "object" && loaded.data.options !== null ? loaded.data.options : null,
+        typeof publicOptions === "object" && publicOptions !== null ? publicOptions : null,
       recommendationSet,
       creditReceipt,
       creditReceiptUnavailable,
@@ -422,6 +436,38 @@ export async function PATCH(request: Request, { params }: Params) {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const consultationId = typeof options.consultationId === "string" ? options.consultationId : null;
+  if (
+    consultationId &&
+    selectedVariant.v2PreviewVariantId &&
+    isHairfitV2Enabled("CONSULTATION_SESSION_V2_ENABLED")
+  ) {
+    const session = await loaded.supabase
+      .from("consultation_sessions")
+      .select("version")
+      .eq("id", consultationId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!session.error && session.data) {
+      await selectStyleV2({
+        userId,
+        consultationId,
+        previewVariantId: selectedVariant.v2PreviewVariantId,
+        expectedVersion: Number((session.data as { version: number }).version),
+      }).catch(async (selectionError) => {
+        await recordV2Event({
+          userId,
+          consultationId,
+          eventType: "selection.dual_write_failed",
+          payload: {
+            generationId: id.trim(),
+            errorCode: selectionError instanceof Error ? selectionError.name : "unknown",
+          },
+        });
+      });
+    }
   }
 
   return NextResponse.json({ ok: true, selectedVariantId }, { status: 200 });

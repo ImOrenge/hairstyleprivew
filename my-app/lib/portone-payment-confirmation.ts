@@ -6,6 +6,10 @@ import {
   type PortOnePaymentStatus,
 } from "./portone";
 import { validatePaidPortonePaymentAgainstTransaction } from "./portone-payment-validation";
+import {
+  dualWritePaidEntitlementV2,
+  revokePaidEntitlementV2,
+} from "./v2/payment-entitlement-adapter";
 
 export interface PortonePaymentTransactionRow {
   id: string;
@@ -225,6 +229,13 @@ export async function markPortonePaymentFailed({
       .from("user_subscriptions")
       .update({ status: "past_due", updated_at: new Date().toISOString() })
       .eq("id", transaction.subscription_id);
+  }
+  if (status === "refunded") {
+    await revokePaidEntitlementV2({
+      userId: transaction.user_id,
+      source: "portone",
+      sourceTransactionId: transaction.id,
+    }).catch(() => undefined);
   }
 
   return { ok: true as const, transaction };
@@ -479,6 +490,18 @@ export async function confirmPortonePayment({
       payment,
     };
   }
+
+  const entitlementMetadata = metadataOf(updatedTransaction);
+  await dualWritePaidEntitlementV2({
+    userId: transaction.user_id,
+    source: "portone",
+    sourceTransactionId: transaction.id,
+    providerProductId:
+      typeof entitlementMetadata.hairfit_v2_provider_product_id === "string"
+        ? entitlementMetadata.hairfit_v2_provider_product_id
+        : null,
+    metadata: entitlementMetadata,
+  });
 
   return {
     ok: true,

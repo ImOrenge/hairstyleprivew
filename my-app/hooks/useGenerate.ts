@@ -413,7 +413,7 @@ export function useGenerate() {
     [],
   );
 
-  const runGridPipeline = useCallback(async () => {
+  const runGridPipeline = useCallback(async (input: { consultationId?: string | null } = {}) => {
     const ownerSnapshot = captureGenerationOwnerSnapshot();
     clearLatestResult();
     setPipelineError(null);
@@ -464,7 +464,11 @@ export function useGenerate() {
       const response = await fetch("/api/generations/accept", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draftId: draft.draftId, quoteId: quote.quoteId }),
+        body: JSON.stringify({
+          draftId: draft.draftId,
+          quoteId: quote.quoteId,
+          ...(input.consultationId ? { consultationId: input.consultationId } : {}),
+        }),
       });
       const data = (await response.json().catch(() => ({}))) as GenerationAcceptanceApiResponse;
       assertGenerationOwnerCurrent(ownerSnapshot);

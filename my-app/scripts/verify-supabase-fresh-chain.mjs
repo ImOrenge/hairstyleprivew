@@ -73,6 +73,7 @@ function assertMigrationOrder(migrations, requiredOrder) {
 }
 
 const databaseUrl = localDatabaseUrl(argValue("databaseUrl", process.env.LOCAL_DATABASE_URL ?? ""));
+const upgradeProbeMigration = argValue("upgradeProbeMigration");
 const migrations = readdirSync(migrationsDir, { withFileTypes: true })
   .filter((entry) => entry.isFile() && entry.name.endsWith(".sql"))
   .map((entry) => entry.name)
@@ -126,6 +127,34 @@ create table storage.buckets (
 `, "Supabase compatibility bootstrap");
 
 for (const migration of migrations) {
+  if (migration === upgradeProbeMigration) {
+    runSql(databaseUrl, String.raw`
+insert into public.users(id,email,display_name,credits)
+values ('hairfit_v2_upgrade_probe','hairfit-v2-upgrade-probe@example.test','HairFit V2 upgrade probe',17);
+
+insert into public.consultation_sessions(
+  id,user_id,version,current_stage,snapshot
+) values (
+  '00000000-0000-4000-8000-000000009901',
+  'hairfit_v2_upgrade_probe',
+  3,
+  'photo',
+  '{"probe":"frontend-before-v2"}'::jsonb
+);
+
+insert into public.generations(
+  id,user_id,original_image_path,prompt_used,status,credits_used
+) values (
+  '00000000-0000-4000-8000-000000009902',
+  'hairfit_v2_upgrade_probe',
+  'upgrade-probe/original.webp',
+  'legacy prompt remains private',
+  'queued',
+  5
+);
+`, `upgrade fixture before ${migration}`);
+    console.log(`inserted upgrade fixture before ${migration}`);
+  }
   const source = withoutHostedOnlyExtensions(readFileSync(resolve(migrationsDir, migration), "utf8"));
   runSql(databaseUrl, source, migration);
   console.log(`applied ${migration}`);
@@ -142,7 +171,15 @@ begin
     'generation_upload_drafts',
     'styling_sessions',
     'user_hair_records',
-    'account_deletion_tombstones'
+    'account_deletion_tombstones',
+    'product_offerings_v2',
+    'customer_entitlement_grants_v2',
+    'entitlement_consumptions_v2',
+    'preview_boards_v2',
+    'preview_variants_v2',
+    'generation_attempts_v2',
+    'style_selection_snapshots_v2',
+    'aftercare_programs_v2'
   ]
   loop
     if to_regclass('public.' || required_table) is null then
@@ -152,5 +189,45 @@ begin
 end
 $$;
 `, "fresh-chain schema assertions");
+
+if (upgradeProbeMigration) {
+  runSql(databaseUrl, String.raw`
+do $$
+declare
+  probe_session public.consultation_sessions%rowtype;
+  probe_generation public.generations%rowtype;
+  probe_credits integer;
+begin
+  select * into strict probe_session
+    from public.consultation_sessions
+   where id = '00000000-0000-4000-8000-000000009901';
+  if probe_session.version <> 3
+     or probe_session.current_stage <> 'photo'
+     or probe_session.lifecycle_state <> 'draft'
+     or probe_session.session_kind <> 'hair_decision'
+     or probe_session.snapshot ->> 'probe' <> 'frontend-before-v2' then
+    raise exception 'pre-V2 consultation fixture changed during upgrade';
+  end if;
+
+  select * into strict probe_generation
+    from public.generations
+   where id = '00000000-0000-4000-8000-000000009902';
+  if probe_generation.consultation_id is not null
+     or probe_generation.credits_used <> 5
+     or probe_generation.prompt_used <> 'legacy prompt remains private' then
+    raise exception 'legacy generation fixture changed during V2 upgrade';
+  end if;
+
+  select credits into strict probe_credits
+    from public.users
+   where id = 'hairfit_v2_upgrade_probe';
+  if probe_credits <> 17 then
+    raise exception 'legacy credit balance changed during V2 upgrade';
+  end if;
+end
+$$;
+`, "existing-schema upgrade assertions");
+  console.log(`existing-schema upgrade probe passed at ${upgradeProbeMigration}`);
+}
 
 console.log(`Supabase fresh-chain verification passed (${migrations.length} migrations).`);

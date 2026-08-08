@@ -142,6 +142,12 @@ export interface RecommendationCandidate {
   selectionScore?: number;
   promptTemplateVersion?: string;
   styleTarget?: MemberStyleTarget;
+  strategyBucket?: "face_balance" | "image_change" | "manageability";
+  slotIntent?: string;
+  promptPolicyVersion?: string;
+  promptHash?: string;
+  v2PreviewVariantId?: string;
+  v2AttemptId?: string;
 }
 
 export interface CatalogBackedRecommendationCandidate extends RecommendationCandidate {

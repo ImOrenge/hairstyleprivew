@@ -50,6 +50,15 @@ import type {
   SalonConnectionConsentAcceptance,
   ConsultationPatch,
   ConsultationSnapshot,
+  ConsultationKindV2,
+  ConsultationSessionV2,
+  EntitlementDecisionV2,
+  OfferCatalogV2,
+  PreviewBoardV2,
+  SalonBriefV2,
+  AftercareProgramV2,
+  FashionPreviewSetV2,
+  StyleSelectionSnapshotV2,
 } from "@hairfit/shared";
 
 export { LatestRequestGuard } from "./latest-request-guard";
@@ -777,11 +786,119 @@ export class HairfitApiClient {
     });
   }
 
-  acceptGenerationDraft(draftId: string, quoteId?: string) {
+  acceptGenerationDraft(draftId: string, quoteId?: string, consultationId?: string) {
     return this.request<GenerationAcceptanceResponse>("/api/generations/accept", {
       method: "POST",
-      body: JSON.stringify({ draftId, ...(quoteId ? { quoteId } : {}) }),
+      body: JSON.stringify({
+        draftId,
+        ...(quoteId ? { quoteId } : {}),
+        ...(consultationId ? { consultationId } : {}),
+      }),
     });
+  }
+
+  getV2Catalog() {
+    return this.request<OfferCatalogV2>("/api/v2/catalog");
+  }
+
+  quoteV2Entitlement(offeringKey: string) {
+    return this.request<EntitlementDecisionV2>("/api/v2/entitlements/quote", {
+      method: "POST",
+      body: JSON.stringify({ offeringKey }),
+    });
+  }
+
+  createV2Consultation(input: {
+    sessionKind?: ConsultationKindV2;
+    idempotencyKey: string;
+    preferences?: Record<string, unknown>;
+    planSnapshot?: Record<string, unknown>;
+  }) {
+    return this.request<{ consultation: ConsultationSessionV2 }>("/api/v2/consultations", {
+      method: "POST",
+      headers: { "Idempotency-Key": input.idempotencyKey },
+      body: JSON.stringify(input),
+    });
+  }
+
+  getV2Consultation(consultationId: string) {
+    return this.request<{ consultation: ConsultationSessionV2 }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}`,
+    );
+  }
+
+  attachV2ConsultationPhoto(consultationId: string, generationId: string, expectedVersion: number) {
+    return this.request<{ consultation: ConsultationSessionV2 }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/photo`,
+      { method: "POST", body: JSON.stringify({ generationId, expectedVersion }) },
+    );
+  }
+
+  getV2PreviewBoard(consultationId: string) {
+    return this.request<{ board: PreviewBoardV2 | null; state?: string; generationId?: string }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/preview-board`,
+    );
+  }
+
+  saveV2Shortlist(consultationId: string, previewVariantIds: string[], expectedVersion: number) {
+    return this.request<{ shortlist: { consultationId: string; boardId: string; previewVariantIds: string[] } }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/shortlist`,
+      { method: "POST", body: JSON.stringify({ previewVariantIds, expectedVersion }) },
+    );
+  }
+
+  selectV2Style(consultationId: string, previewVariantId: string, expectedVersion: number) {
+    return this.request<{ selection: StyleSelectionSnapshotV2 }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/selection`,
+      { method: "POST", body: JSON.stringify({ previewVariantId, expectedVersion }) },
+    );
+  }
+
+  confirmV2Style(consultationId: string, snapshotId: string, expectedVersion: number) {
+    return this.request<Record<string, unknown>>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/confirm`,
+      { method: "POST", body: JSON.stringify({ snapshotId, expectedVersion }) },
+    );
+  }
+
+  createV2SalonBrief(consultationId: string, idempotencyKey: string) {
+    return this.request<{ brief: SalonBriefV2 }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/salon-brief`,
+      { method: "POST", headers: { "Idempotency-Key": idempotencyKey } },
+    );
+  }
+
+  createV2Aftercare(input: {
+    consultationId: string;
+    idempotencyKey: string;
+    services: string[];
+    serviceDate: string;
+    designerNotes?: string;
+  }) {
+    return this.request<{ program: AftercareProgramV2 }>(
+      `/api/v2/consultations/${encodeURIComponent(input.consultationId)}/aftercare`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": input.idempotencyKey },
+        body: JSON.stringify(input),
+      },
+    );
+  }
+
+  createV2FashionPreviews(input: {
+    consultationId: string;
+    idempotencyKey: string;
+    previewIds: string[];
+    personalColorEvidenceId?: string | null;
+  }) {
+    return this.request<{ previewSet: FashionPreviewSetV2 }>(
+      `/api/v2/consultations/${encodeURIComponent(input.consultationId)}/fashion-previews`,
+      {
+        method: "POST",
+        headers: { "Idempotency-Key": input.idempotencyKey },
+        body: JSON.stringify(input),
+      },
+    );
   }
 
   startGeneration(generationId: string) {

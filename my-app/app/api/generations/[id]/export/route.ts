@@ -8,6 +8,7 @@ import {
 } from "../../../../../lib/generation-retention";
 import type { GeneratedVariant, RecommendationSet } from "../../../../../lib/recommendation-types";
 import { getSupabaseAdminClient } from "../../../../../lib/supabase";
+import { redactV2RecommendationSet } from "../../../../../lib/v2/redaction";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -243,9 +244,9 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: GENERATION_ASSETS_EXPIRED_MESSAGE }, { status: 410 });
   }
 
-  const recommendationSet = normalizeRecommendationSet(
+  const recommendationSet = redactV2RecommendationSet(normalizeRecommendationSet(
     isObject(generation.options) ? generation.options.recommendationSet : null,
-  );
+  ));
   if (!recommendationSet) {
     return NextResponse.json({ error: "Recommendation set not found" }, { status: 400 });
   }

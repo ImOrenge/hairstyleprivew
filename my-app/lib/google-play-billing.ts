@@ -30,6 +30,10 @@ import {
 } from "./google-play-secret";
 import { evaluateGooglePlayEligibility } from "./google-play-eligibility";
 import {
+  dualWritePaidEntitlementV2,
+  revokePaidEntitlementV2,
+} from "./v2/payment-entitlement-adapter";
+import {
   validateGooglePlayPurchaseIdentity,
   validateGooglePlayPurchaseToken,
 } from "./google-play-validation";
@@ -616,6 +620,16 @@ export async function processGooglePlayPurchase(
     p_reason: product.productType === "subscription" ? "google_play_subscription" : "google_play_usage_pack",
   });
   if (ledgerError) throw new GooglePlayBillingError("credit_grant_failed", ledgerError.message, 500);
+  await dualWritePaidEntitlementV2({
+    userId,
+    source: "google_play",
+    sourceTransactionId: payment.row.id,
+    providerProductId: product.productId,
+    metadata: {
+      productKey: product.key,
+      productType: product.productType,
+    },
+  });
 
   if (boundIntentId) {
     await db.from("google_play_purchase_intents").update({
@@ -672,5 +686,10 @@ export async function processGooglePlayVoidedPurchase(
     p_metadata: { provider: "google_play" },
   });
   if (error) throw new GooglePlayBillingError("void_finalize_failed", error.message, 500);
+  await revokePaidEntitlementV2({
+    userId: payment.user_id,
+    source: "google_play",
+    sourceTransactionId: payment.id,
+  });
   return { ignored: false as const, paymentTransactionId: payment.id };
 }

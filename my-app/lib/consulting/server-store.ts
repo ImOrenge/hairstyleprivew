@@ -6,6 +6,7 @@ import type { ConsultationPatch, ConsultationSnapshot, SelectedStyleSnapshot } f
 import { isConsultationStage } from "./contracts";
 import { createConsultationSnapshot, createPreviewSlots } from "./defaults";
 import { validateConsultationPatch } from "./stage-guards";
+import { isHairfitV2Enabled } from "../v2/feature-flags";
 
 type Row = { id: string; user_id: string; version: number; current_stage: string; snapshot: unknown; created_at: string; updated_at: string };
 
@@ -104,8 +105,37 @@ export async function updateServerConsultation(userId: string, sessionId: string
   const now = new Date().toISOString();
   const next = applyPatch(current, patch, now);
   const nextVersion = current.version + 1;
+  if (
+    isHairfitV2Enabled("CONSULTATION_SESSION_V2_ENABLED") &&
+    patch.photo?.generationId
+  ) {
+    const generationLink = await getSupabaseAdminClient()
+      .from("generations")
+      .update({ consultation_id: sessionId })
+      .eq("id", patch.photo.generationId)
+      .eq("user_id", userId)
+      .select("id")
+      .maybeSingle();
+    if (generationLink.error) throw new Error(generationLink.error.message);
+    if (!generationLink.data) throw new Error("GENERATION_NOT_FOUND");
+  }
+  const v2Patch = isHairfitV2Enabled("CONSULTATION_SESSION_V2_ENABLED")
+    ? {
+        source_generation_id: next.photo.generationId,
+        preferences: {
+          currentHair: { description: next.discovery.currentHair },
+          styleGoal: {
+            imageKeywords: next.discovery.goals,
+            desiredServices: next.discovery.desiredServices,
+            notes: next.discovery.notes,
+          },
+          maintenance: { maintenanceLevel: next.discovery.maintenanceLevel },
+          avoidConditions: next.discovery.avoid,
+        },
+      }
+    : {};
   const { data, error } = await getSupabaseAdminClient().from("consultation_sessions").update({
-    version: nextVersion, current_stage: next.currentStage, snapshot: { ...next, version: nextVersion }, updated_at: now,
+    version: nextVersion, current_stage: next.currentStage, snapshot: { ...next, version: nextVersion }, updated_at: now, ...v2Patch,
   }).eq("id", sessionId).eq("user_id", userId).eq("version", current.version)
     .select("id,user_id,version,current_stage,snapshot,created_at,updated_at").maybeSingle();
   if (error) throw new Error(error.message);

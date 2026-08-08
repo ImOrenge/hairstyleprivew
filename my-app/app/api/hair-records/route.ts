@@ -18,6 +18,7 @@ import {
 import type { GeneratedVariant, RecommendationSet } from "../../../lib/recommendation-types";
 import { getSiteUrl } from "../../../lib/site-url";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../lib/supabase";
+import { syncLegacyAftercareV2 } from "../../../lib/v2/legacy-adapters";
 
 interface CreateHairRecordBody {
   generationId?: string;
@@ -369,6 +370,14 @@ export async function POST(request: Request) {
       throw new Error("에프터케어 저장 영수증이 올바르지 않습니다.");
     }
     const result = executionData as unknown as ExecuteAftercareResult;
+    await syncLegacyAftercareV2({
+      userId,
+      consultationId: typeof options.consultationId === "string" ? options.consultationId : null,
+      previewVariantId: selectedVariant.v2PreviewVariantId ?? null,
+      hairRecordId: result.hairRecordId,
+      serviceType,
+      serviceDate,
+    });
     return NextResponse.json(
       { ...result, redirectTo: `/aftercare/${result.hairRecordId}` },
       { status: result.alreadyConfirmed ? 200 : 201 },
