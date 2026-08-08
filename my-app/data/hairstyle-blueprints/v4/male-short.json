@@ -1,0 +1,1775 @@
+[
+  {
+    "slug": "male-short-airy-crop-straight-untreated",
+    "nameKo": "남성 에어리 크롭 · 직모 일반 모발",
+    "description": "남성 단기장 에어리 크롭를 직모, 보통 굵기 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "crown",
+    "silhouette": "short airy crop",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, airy cropped layers, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "에어리 크롭",
+      "남성 단기장 에어리 크롭",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 48,
+    "baselineFreshnessScore": 46,
+    "styleFamily": "airy-crop",
+    "variantKey": "male-short-straight-untreated",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-short-soft-pixie-wavy-curly-untreated",
+    "nameKo": "남성 소프트 픽시 · 곱슬 웨이브 일반 모발",
+    "description": "남성 단기장 소프트 픽시를 곱슬 웨이브, 가는 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "temple",
+    "silhouette": "short soft pixie",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, soft pixie layers, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "소프트 픽시",
+      "남성 단기장 소프트 픽시",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 49,
+    "baselineFreshnessScore": 47,
+    "styleFamily": "soft-pixie",
+    "variantKey": "male-short-wavy_curly-untreated",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "damaged",
+      "bleached",
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "perm"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-short-rounded-bob-tight-curly-frizzy-untreated",
+    "nameKo": "남성 라운드 보브 · 강한 곱슬 일반 모발",
+    "description": "남성 단기장 라운드 보브를 강한 곱슬, 굵은 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "jawline",
+    "silhouette": "short rounded bob",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, rounded jawline bob, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "라운드 보브",
+      "남성 단기장 라운드 보브",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 50,
+    "baselineFreshnessScore": 48,
+    "styleFamily": "rounded-bob",
+    "variantKey": "male-short-tight_curly_frizzy-untreated",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-short-french-bob-straight-damaged",
+    "nameKo": "남성 프렌치 보브 · 직모 손상 모발",
+    "description": "남성 단기장 프렌치 보브를 직모, 보통 굵기 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "crown",
+    "silhouette": "short french bob",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, compact French bob, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "프렌치 보브",
+      "남성 단기장 프렌치 보브",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 51,
+    "baselineFreshnessScore": 49,
+    "styleFamily": "french-bob",
+    "variantKey": "male-short-straight-damaged",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-short-bixie-layer-wavy-curly-damaged",
+    "nameKo": "남성 빅시 레이어 · 곱슬 웨이브 손상 모발",
+    "description": "남성 단기장 빅시 레이어를 곱슬 웨이브, 가는 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "temple",
+    "silhouette": "short bixie layer",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, bixie layered silhouette, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "빅시 레이어",
+      "남성 단기장 빅시 레이어",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 52,
+    "baselineFreshnessScore": 50,
+    "styleFamily": "bixie-layer",
+    "variantKey": "male-short-wavy_curly-damaged",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-short-short-hush-tight-curly-frizzy-damaged",
+    "nameKo": "남성 숏 허쉬 · 강한 곱슬 손상 모발",
+    "description": "남성 단기장 숏 허쉬를 강한 곱슬, 굵은 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "jawline",
+    "silhouette": "short short hush",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, short hush layers, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "숏 허쉬",
+      "남성 단기장 숏 허쉬",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 53,
+    "baselineFreshnessScore": 51,
+    "styleFamily": "short-hush",
+    "variantKey": "male-short-tight_curly_frizzy-damaged",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-short-short-wolf-straight-bleached",
+    "nameKo": "남성 숏 울프 · 직모 탈색 모발",
+    "description": "남성 단기장 숏 울프를 직모, 보통 굵기 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "crown",
+    "silhouette": "short short wolf",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, short wolf layers, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "숏 울프",
+      "남성 단기장 숏 울프",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 54,
+    "baselineFreshnessScore": 52,
+    "styleFamily": "short-wolf",
+    "variantKey": "male-short-straight-bleached",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-short-tassel-bob-wavy-curly-bleached",
+    "nameKo": "남성 태슬 보브 · 곱슬 웨이브 탈색 모발",
+    "description": "남성 단기장 태슬 보브를 곱슬 웨이브, 가는 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "temple",
+    "silhouette": "short tassel bob",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, clean tassel bob line, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "태슬 보브",
+      "남성 단기장 태슬 보브",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 55,
+    "baselineFreshnessScore": 53,
+    "styleFamily": "tassel-bob",
+    "variantKey": "male-short-wavy_curly-bleached",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-a"
+  },
+  {
+    "slug": "male-short-micro-bob-tight-curly-frizzy-bleached",
+    "nameKo": "남성 마이크로 보브 · 강한 곱슬 탈색 모발",
+    "description": "남성 단기장 마이크로 보브를 강한 곱슬, 굵은 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "jawline",
+    "silhouette": "short micro bob",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, compact micro bob, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "마이크로 보브",
+      "남성 단기장 마이크로 보브",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 56,
+    "baselineFreshnessScore": 54,
+    "styleFamily": "micro-bob",
+    "variantKey": "male-short-tight_curly_frizzy-bleached",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-short-side-part-crop-straight-colored",
+    "nameKo": "남성 사이드 파트 크롭 · 직모 염색 모발",
+    "description": "남성 단기장 사이드 파트 크롭를 직모, 보통 굵기 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "crown",
+    "silhouette": "short side part crop",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, side-parted crop, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "사이드 파트 크롭",
+      "남성 단기장 사이드 파트 크롭",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 57,
+    "baselineFreshnessScore": 46,
+    "styleFamily": "side-part-crop",
+    "variantKey": "male-short-straight-colored",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-short-center-part-crop-wavy-curly-colored",
+    "nameKo": "남성 센터 파트 크롭 · 곱슬 웨이브 염색 모발",
+    "description": "남성 단기장 센터 파트 크롭를 곱슬 웨이브, 가는 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "temple",
+    "silhouette": "short center part crop",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, center-parted crop, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "센터 파트 크롭",
+      "남성 단기장 센터 파트 크롭",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 58,
+    "baselineFreshnessScore": 47,
+    "styleFamily": "center-part-crop",
+    "variantKey": "male-short-wavy_curly-colored",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-short-soft-mohican-tight-curly-frizzy-colored",
+    "nameKo": "남성 소프트 모히칸 · 강한 곱슬 염색 모발",
+    "description": "남성 단기장 소프트 모히칸를 강한 곱슬, 굵은 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "jawline",
+    "silhouette": "short soft mohican",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, subtle soft-mohican crown, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "소프트 모히칸",
+      "남성 단기장 소프트 모히칸",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 48,
+    "baselineFreshnessScore": 48,
+    "styleFamily": "soft-mohican",
+    "variantKey": "male-short-tight_curly_frizzy-colored",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-short-ivy-lift-straight-untreated",
+    "nameKo": "남성 아이비 리프트 · 직모 일반 모발",
+    "description": "남성 단기장 아이비 리프트를 직모, 보통 굵기 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "crown",
+    "silhouette": "short ivy lift",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, refined ivy-league lift, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "아이비 리프트",
+      "남성 단기장 아이비 리프트",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 49,
+    "baselineFreshnessScore": 49,
+    "styleFamily": "ivy-lift",
+    "variantKey": "male-short-straight-untreated",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-short-textured-crop-wavy-curly-untreated",
+    "nameKo": "남성 텍스처드 크롭 · 곱슬 웨이브 일반 모발",
+    "description": "남성 단기장 텍스처드 크롭를 곱슬 웨이브, 가는 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "temple",
+    "silhouette": "short textured crop",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, piecey textured crop, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "텍스처드 크롭",
+      "남성 단기장 텍스처드 크롭",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 50,
+    "baselineFreshnessScore": 50,
+    "styleFamily": "textured-crop",
+    "variantKey": "male-short-wavy_curly-untreated",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "damaged",
+      "bleached",
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "perm"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-short-comma-crop-tight-curly-frizzy-untreated",
+    "nameKo": "남성 콤마 크롭 · 강한 곱슬 일반 모발",
+    "description": "남성 단기장 콤마 크롭를 강한 곱슬, 굵은 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "jawline",
+    "silhouette": "short comma crop",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, short comma fringe crop, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "콤마 크롭",
+      "남성 단기장 콤마 크롭",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 51,
+    "baselineFreshnessScore": 51,
+    "styleFamily": "comma-crop",
+    "variantKey": "male-short-tight_curly_frizzy-untreated",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-short-curtain-short-straight-damaged",
+    "nameKo": "남성 커튼 숏 · 직모 손상 모발",
+    "description": "남성 단기장 커튼 숏를 직모, 보통 굵기 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "crown",
+    "silhouette": "short curtain short",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, short curtain-part layers, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "커튼 숏",
+      "남성 단기장 커튼 숏",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 52,
+    "baselineFreshnessScore": 52,
+    "styleFamily": "curtain-short",
+    "variantKey": "male-short-straight-damaged",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-b"
+  },
+  {
+    "slug": "male-short-bowl-layer-wavy-curly-damaged",
+    "nameKo": "남성 볼 레이어 · 곱슬 웨이브 손상 모발",
+    "description": "남성 단기장 볼 레이어를 곱슬 웨이브, 가는 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "temple",
+    "silhouette": "short bowl layer",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, soft layered bowl silhouette, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "볼 레이어",
+      "남성 단기장 볼 레이어",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 53,
+    "baselineFreshnessScore": 53,
+    "styleFamily": "bowl-layer",
+    "variantKey": "male-short-wavy_curly-damaged",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-short-tapered-shag-tight-curly-frizzy-damaged",
+    "nameKo": "남성 테이퍼드 샤그 · 강한 곱슬 손상 모발",
+    "description": "남성 단기장 테이퍼드 샤그를 강한 곱슬, 굵은 모발, 손상 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "jawline",
+    "silhouette": "short tapered shag",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, tapered short shag, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, polished low-heat finish that does not exaggerate visible damage, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "테이퍼드 샤그",
+      "남성 단기장 테이퍼드 샤그",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "손상모",
+      "상한 머리"
+    ],
+    "baselineTrendScore": 54,
+    "baselineFreshnessScore": 54,
+    "styleFamily": "tapered-shag",
+    "variantKey": "male-short-tight_curly_frizzy-damaged",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "damaged",
+    "compatibleConditionTags": [
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "cut_first",
+      "low_heat",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-short-sleek-ear-bob-straight-bleached",
+    "nameKo": "남성 슬릭 이어 보브 · 직모 탈색 모발",
+    "description": "남성 단기장 슬릭 이어 보브를 직모, 보통 굵기 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "crown",
+    "silhouette": "short sleek ear bob",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, sleek ear-length bob, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "슬릭 이어 보브",
+      "남성 단기장 슬릭 이어 보브",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 55,
+    "baselineFreshnessScore": 46,
+    "styleFamily": "sleek-ear-bob",
+    "variantKey": "male-short-straight-bleached",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-short-choppy-bob-wavy-curly-bleached",
+    "nameKo": "남성 처피 보브 · 곱슬 웨이브 탈색 모발",
+    "description": "남성 단기장 처피 보브를 곱슬 웨이브, 가는 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "temple",
+    "silhouette": "short choppy bob",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, light choppy bob, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "처피 보브",
+      "남성 단기장 처피 보브",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 56,
+    "baselineFreshnessScore": 47,
+    "styleFamily": "choppy-bob",
+    "variantKey": "male-short-wavy_curly-bleached",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-short-short-mullet-tight-curly-frizzy-bleached",
+    "nameKo": "남성 숏 멀릿 · 강한 곱슬 탈색 모발",
+    "description": "남성 단기장 숏 멀릿를 강한 곱슬, 굵은 모발, 탈색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "jawline",
+    "silhouette": "short short mullet",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, controlled short mullet, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, color-preserving low-heat finish suitable for pre-lightened hair, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "숏 멀릿",
+      "남성 단기장 숏 멀릿",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "탈색모",
+      "브리치 헤어"
+    ],
+    "baselineTrendScore": 57,
+    "baselineFreshnessScore": 48,
+    "styleFamily": "short-mullet",
+    "variantKey": "male-short-tight_curly_frizzy-bleached",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "bleached",
+    "compatibleConditionTags": [
+      "bleached",
+      "damaged",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "no_additional_bleach",
+      "low_heat",
+      "strand_test",
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-short-down-fringe-straight-colored",
+    "nameKo": "남성 다운 프린지 · 직모 염색 모발",
+    "description": "남성 단기장 다운 프린지를 직모, 보통 굵기 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "crown",
+    "silhouette": "short down fringe",
+    "texture": "controlled straight texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, clean down-fringe crop, controlled straight texture with natural movement, balanced medium strand thickness with natural weight, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "다운 프린지",
+      "남성 단기장 다운 프린지",
+      "직모",
+      "생머리",
+      "보통 굵기 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 58,
+    "baselineFreshnessScore": 49,
+    "styleFamily": "down-fringe",
+    "variantKey": "male-short-straight-colored",
+    "primaryTexture": "straight",
+    "compatibleTextureTags": [
+      "straight"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "low_heat_styling"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "low",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-short-regent-lift-wavy-curly-colored",
+    "nameKo": "남성 리젠트 리프트 · 곱슬 웨이브 염색 모발",
+    "description": "남성 단기장 리젠트 리프트를 곱슬 웨이브, 가는 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "temple",
+    "silhouette": "short regent lift",
+    "texture": "defined soft wave texture",
+    "bangType": "soft fringe",
+    "volumeFocusTags": [
+      "temple",
+      "temple-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-side-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, short regent crown lift, defined soft waves following the natural curl direction, fine strands with lightweight volume and no heavy product buildup, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "리젠트 리프트",
+      "남성 단기장 리젠트 리프트",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "가는 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 48,
+    "baselineFreshnessScore": 50,
+    "styleFamily": "regent-lift",
+    "variantKey": "male-short-wavy_curly-colored",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "fine",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium"
+    ],
+    "avoidStrandThicknessTags": [
+      "coarse"
+    ],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "texture_styling"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "medium",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-short-cocoon-bob-tight-curly-frizzy-colored",
+    "nameKo": "남성 코쿤 보브 · 강한 곱슬 염색 모발",
+    "description": "남성 단기장 코쿤 보브를 강한 곱슬, 굵은 모발, 염색 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "jawline",
+    "silhouette": "short cocoon bob",
+    "texture": "controlled tight curl texture",
+    "bangType": "curtain fringe",
+    "volumeFocusTags": [
+      "jawline",
+      "lower-frame"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "long-face"
+    ],
+    "avoidTags": [
+      "heavy-lower-volume"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, soft cocoon bob, defined tight curls with controlled frizz and preserved curl identity, coarse strands with controlled weight and clearly separated movement, color-safe polished finish without changing the existing hair color, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "코쿤 보브",
+      "남성 단기장 코쿤 보브",
+      "강한 곱슬",
+      "부스스한 머리",
+      "악성곱슬",
+      "굵은 모발",
+      "염색모",
+      "컬러 헤어"
+    ],
+    "baselineTrendScore": 49,
+    "baselineFreshnessScore": 51,
+    "styleFamily": "cocoon-bob",
+    "variantKey": "male-short-tight_curly_frizzy-colored",
+    "primaryTexture": "tight_curly_frizzy",
+    "compatibleTextureTags": [
+      "tight_curly_frizzy"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "coarse",
+    "compatibleStrandThicknessTags": [
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [
+      "fine"
+    ],
+    "primaryCondition": "colored",
+    "compatibleConditionTags": [
+      "colored",
+      "untreated"
+    ],
+    "avoidConditionTags": [
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "curl_definition"
+    ],
+    "serviceConstraints": [
+      "color_safe",
+      "low_heat"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-c"
+  },
+  {
+    "slug": "male-short-asymmetric-crop-wavy-curly-untreated",
+    "nameKo": "남성 비대칭 크롭 · 곱슬 웨이브 일반 모발",
+    "description": "남성 단기장 비대칭 크롭를 곱슬 웨이브, 보통 굵기 모발, 일반 모발 조건에 맞춰 제안하는 블루프린트.",
+    "lengthBucket": "short",
+    "correctionFocus": "crown",
+    "silhouette": "short asymmetric crop",
+    "texture": "defined soft wave texture",
+    "bangType": "no fixed bangs",
+    "volumeFocusTags": [
+      "crown",
+      "crown-balance"
+    ],
+    "faceShapeFitTags": [
+      "oval",
+      "round"
+    ],
+    "avoidTags": [
+      "excessive-top-height"
+    ],
+    "promptTemplate": "Korean men's hairstyle direction, short ear-to-jaw length, balanced asymmetric crop, defined soft waves following the natural curl direction, balanced medium strand thickness with natural weight, healthy natural-looking finish, keep the existing natural hair color, realistic salon-achievable finish",
+    "promptTemplateVersion": "catalog-v4",
+    "styleTargets": [
+      "male"
+    ],
+    "trendKeywords": [
+      "비대칭 크롭",
+      "남성 단기장 비대칭 크롭",
+      "곱슬",
+      "반곱슬",
+      "웨이브",
+      "보통 굵기 모발",
+      "일반 모발",
+      "건강모"
+    ],
+    "baselineTrendScore": 50,
+    "baselineFreshnessScore": 52,
+    "styleFamily": "asymmetric-crop",
+    "variantKey": "male-short-wavy_curly-untreated",
+    "primaryTexture": "wavy_curly",
+    "compatibleTextureTags": [
+      "wavy_curly"
+    ],
+    "avoidTextureTags": [],
+    "primaryStrandThickness": "medium",
+    "compatibleStrandThicknessTags": [
+      "fine",
+      "medium",
+      "coarse"
+    ],
+    "avoidStrandThicknessTags": [],
+    "primaryCondition": "untreated",
+    "compatibleConditionTags": [
+      "untreated",
+      "colored"
+    ],
+    "avoidConditionTags": [
+      "damaged",
+      "bleached",
+      "severely_damaged"
+    ],
+    "requiredServices": [
+      "cut",
+      "perm"
+    ],
+    "serviceConstraints": [
+      "professional_assessment"
+    ],
+    "maintenanceLevel": "high",
+    "introducedIn": "expansion-c"
+  }
+]

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { AftercareConfirmDialog } from "../aftercare/AftercareConfirmDialog";
+import { CurrentHairProfileFields } from "../hairstyle/CurrentHairProfileFields";
 import { UploadArea } from "../upload/UploadArea";
 import { ValidationCheck } from "../upload/ValidationCheck";
 import { Button } from "../ui/Button";
@@ -79,6 +80,7 @@ export function WorkspaceWizard() {
     draftUploading,
     failedCount,
     generationId,
+    hairProfile,
     generationQuote,
     generationQuoteError,
     generationQuoteLoading,
@@ -111,6 +113,7 @@ export function WorkspaceWizard() {
     selectedVariant,
     selectedVariantId,
     setIsConfirmOpen,
+    setHairProfile,
     showAcceptedGeneration,
     showGenerateStep,
     showGenerationEntryStep,
@@ -170,6 +173,7 @@ export function WorkspaceWizard() {
                 관리자 읽기 전용 모드입니다. 생성은 고객 계정에서 진행하세요.
               </div>
             ) : null}
+            <CurrentHairProfileFields value={hairProfile} source="user" disabled={isAdminReadOnly} onChange={setHairProfile} />
             {previewUrl ? (
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="ghost" onClick={handleResetPhoto}>

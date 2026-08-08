@@ -10,6 +10,7 @@ import {
   validateGenerationUploadMetadata,
   type PersonalColorResult,
 } from "@hairfit/shared";
+import type { CurrentHairProfileInput } from "@hairfit/api-client";
 import { type Href, useRouter } from "expo-router";
 import { BodyText, Button, Card, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
 import { AppScreen } from "../components/app/AppScreen";
@@ -21,11 +22,33 @@ import { mapMobileUserError } from "../lib/mobile-user-message";
 import { getPhotoLibraryPermissionMessage } from "../lib/photo-library-permission";
 import { usePhotoLibraryPermissionRecovery } from "../hooks/usePhotoLibraryPermissionRecovery";
 
+const HAIR_LENGTH_OPTIONS = [
+  ["unknown", "모름"], ["short", "단기장"], ["medium", "중기장"], ["long", "장기장"],
+] as const;
+const HAIR_TEXTURE_OPTIONS = [
+  ["unknown", "모름"], ["straight", "직모"], ["wavy_curly", "곱슬"], ["tight_curly_frizzy", "강한 곱슬"],
+] as const;
+const STRAND_THICKNESS_OPTIONS = [
+  ["unknown", "모름"], ["fine", "가는 모발"], ["medium", "보통"], ["coarse", "굵은 모발"],
+] as const;
+const HAIR_CONDITION_OPTIONS = [
+  ["damaged", "손상"], ["bleached", "탈색"], ["colored", "염색"], ["permed", "펌"],
+] as const;
+
 export default function UploadScreen() {
   const router = useRouter();
   const api = useHairfitApi();
   const { isLoaded, isSignedIn } = useAuth();
   const flow = useGenerationFlow();
+  const updateHairProfile = (patch: Partial<CurrentHairProfileInput>) => {
+    flow.setHairProfile({ ...flow.hairProfile, ...patch, source: "user" });
+  };
+  const toggleHairCondition = (condition: CurrentHairProfileInput["conditionTags"][number]) => {
+    const conditionTags = flow.hairProfile.conditionTags.includes(condition)
+      ? flow.hairProfile.conditionTags.filter((item) => item !== condition)
+      : [...flow.hairProfile.conditionTags, condition];
+    updateHairProfile({ conditionTags });
+  };
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [message, setMessage] = useState("얼굴이 선명하게 보이는 정면 사진을 선택해 주세요.");
   const [messageLiveRegion, setMessageLiveRegion] = useState<"polite" | "assertive">("polite");
@@ -351,6 +374,37 @@ export default function UploadScreen() {
             onOpenSettings={() => void handleOpenPermissionSettings()}
             visible={photoPermissionRequiresSettings}
           />
+          <Card>
+            <Stack>
+              <Kicker>현재 모발 정보</Kicker>
+              <Heading style={{ fontSize: 20, lineHeight: 26 }}>추천 정확도 높이기</Heading>
+              <BodyText>모르는 항목은 그대로 두어도 기존 추천 방식으로 안전하게 진행됩니다.</BodyText>
+              <BodyText>현재 길이</BodyText>
+              <View style={styles.choiceGrid}>
+                {HAIR_LENGTH_OPTIONS.map(([value, label]) => (
+                  <Button key={value} variant={flow.hairProfile.currentLength === value ? "primary" : "secondary"} onPress={() => updateHairProfile({ currentLength: value })}>{label}</Button>
+                ))}
+              </View>
+              <BodyText>모발 형태</BodyText>
+              <View style={styles.choiceGrid}>
+                {HAIR_TEXTURE_OPTIONS.map(([value, label]) => (
+                  <Button key={value} variant={flow.hairProfile.textureType === value ? "primary" : "secondary"} onPress={() => updateHairProfile({ textureType: value })}>{label}</Button>
+                ))}
+              </View>
+              <BodyText>모발 굵기</BodyText>
+              <View style={styles.choiceGrid}>
+                {STRAND_THICKNESS_OPTIONS.map(([value, label]) => (
+                  <Button key={value} variant={flow.hairProfile.strandThickness === value ? "primary" : "secondary"} onPress={() => updateHairProfile({ strandThickness: value })}>{label}</Button>
+                ))}
+              </View>
+              <BodyText>현재 시술·손상 상태(복수 선택)</BodyText>
+              <View style={styles.choiceGrid}>
+                {HAIR_CONDITION_OPTIONS.map(([value, label]) => (
+                  <Button key={value} variant={flow.hairProfile.conditionTags.includes(value) ? "primary" : "secondary"} onPress={() => toggleHairCondition(value)}>{label}</Button>
+                ))}
+              </View>
+            </Stack>
+          </Card>
           {!isLoadingPersonalColor && !personalColor ? (
             <Card>
               <Stack>
@@ -415,5 +469,8 @@ const styles = StyleSheet.create({
   image: {
     height: "100%",
     width: "100%",
+  },
+  choiceGrid: {
+    gap: 8,
   },
 });

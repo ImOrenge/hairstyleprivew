@@ -7,6 +7,7 @@ import {
 } from "@hairfit/shared";
 import { NextResponse } from "next/server";
 import { dispatchGenerationWorkflowOutbox } from "../../../../lib/generation-workflow-outbox";
+import { normalizeCurrentHairProfile } from "../../../../lib/current-hair-profile";
 import {
   getGeneratedAssetsExpiresAt,
   getPlanEntitlement,
@@ -33,6 +34,7 @@ import {
 interface AcceptGenerationRequest {
   draftId?: string;
   quoteId?: string;
+  hairProfile?: unknown;
 }
 
 interface AcceptGenerationClient {
@@ -59,6 +61,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as AcceptGenerationRequest;
   const draftId = body.draftId?.trim() || "";
   const quoteId = body.quoteId?.trim() || "";
+  const hairProfile = normalizeCurrentHairProfile(body.hairProfile);
   if (!UUID_PATTERN.test(draftId)) {
     return NextResponse.json({ error: "draftId must be a valid UUID" }, { status: 400 });
   }
@@ -154,6 +157,7 @@ export async function POST(request: Request) {
         p_style_target: styleTarget,
         p_options: {
           styleTarget,
+          ...(hairProfile ? { hairProfile } : {}),
           promptSource: "durable-generation-acceptance",
           acceptanceVersion: "generation-acceptance-v2-credit-reservation",
           payerScope: "customer",

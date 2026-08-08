@@ -663,7 +663,10 @@ async function runActiveDbSmoke() {
   assert(Number.isFinite(expiresAt), "active catalog missing valid expiresAt");
   assert(expiresAt > activatedAt, "active catalog expiresAt must be after activatedAt");
 
-  assert(items.length >= 32, `active catalog item count must be at least 32, got ${items.length}`);
+  const blueprintV4Enabled = process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true";
+  const minimumItemCount = blueprintV4Enabled ? 182 : 32;
+  const minimumTargetCount = blueprintV4Enabled ? 93 : 18;
+  assert(items.length >= minimumItemCount, `active catalog item count must be at least ${minimumItemCount}, got ${items.length}`);
 
   const slugs = items.map((item) => (typeof item.slug === "string" ? item.slug : ""));
   const slugSet = new Set(slugs);
@@ -687,8 +690,8 @@ async function runActiveDbSmoke() {
     if (item.prompt_template_version !== expectedPromptTemplateVersion) promptMismatchCount += 1;
   }
 
-  assert(maleCandidateCount >= 18, `male active catalog candidate count must be at least 18, got ${maleCandidateCount}`);
-  assert(femaleCandidateCount >= 18, `female active catalog candidate count must be at least 18, got ${femaleCandidateCount}`);
+  assert(maleCandidateCount >= minimumTargetCount, `male active catalog candidate count must be at least ${minimumTargetCount}, got ${maleCandidateCount}`);
+  assert(femaleCandidateCount >= minimumTargetCount, `female active catalog candidate count must be at least ${minimumTargetCount}, got ${femaleCandidateCount}`);
   assert(promptMismatchCount === 0, `active catalog has ${promptMismatchCount} prompt template version mismatches`);
 
   validateLineupShape(lineups, itemsById, "male");

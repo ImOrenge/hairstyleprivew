@@ -10,6 +10,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { PaidActionQuoteCard } from "../billing/PaidActionQuoteCard";
+import { CurrentHairProfileFields } from "../hairstyle/CurrentHairProfileFields";
 import { PipelineStatusIndicator } from "../generate/PipelineStatusIndicator";
 import { Button } from "../ui/Button";
 import { Panel, SurfaceCard } from "../ui/Surface";
@@ -52,6 +53,7 @@ export function SalonWorkspaceWizard({ customerId }: { customerId: string }) {
     error,
     failedCount,
     generationId,
+    hairProfile,
     generationQuote,
     generationQuoteError,
     generationQuoteLoading,
@@ -85,6 +87,7 @@ export function SalonWorkspaceWizard({ customerId }: { customerId: string }) {
     setCreateAftercare,
     setCurrentStep,
     setMemo,
+    setHairProfile,
     setNextRecommendedVisitAt,
     setPhotoConsentConfirmed,
     setSelectedVariantId,
@@ -173,6 +176,8 @@ export function SalonWorkspaceWizard({ customerId }: { customerId: string }) {
                   ))}
                 </div>
               </div>
+
+              <CurrentHairProfileFields value={hairProfile} source="salon" disabled={isAdminReadOnly} onChange={setHairProfile} />
 
               <label className="flex items-start gap-3 border border-[var(--app-border)] bg-[var(--app-surface)] px-4 py-3 text-sm leading-6 text-[var(--app-text)]">
                 <input

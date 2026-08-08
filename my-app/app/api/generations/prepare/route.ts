@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { generateDesignerBriefs } from "../../../../lib/designer-brief-generator";
+import {
+  isHairProfilePersonalizationEnabled,
+  normalizeCurrentHairProfile,
+} from "../../../../lib/current-hair-profile";
 import { downloadGenerationOriginalImageDataUrl } from "../../../../lib/generation-image-storage";
 import { isAuthorizedGenerationWorkflowCallback } from "../../../../lib/generation-workflow-callback-auth";
 import { isMemberStyleTarget } from "../../../../lib/onboarding";
@@ -175,7 +179,10 @@ export async function POST(request: Request) {
       supabase,
       claim.originalImagePath,
     );
-    const generated = await generateRecommendationSet(referenceImageDataUrl, styleTargetValue);
+    const hairProfile = isHairProfilePersonalizationEnabled()
+      ? normalizeCurrentHairProfile(claim.options.hairProfile)
+      : null;
+    const generated = await generateRecommendationSet(referenceImageDataUrl, styleTargetValue, hairProfile);
     const designerBriefs = await generateDesignerBriefs({
       analysis: generated.analysis,
       candidates: generated.recommendations,
@@ -212,6 +219,8 @@ export async function POST(request: Request) {
       variants,
       selectedVariantId: null,
       styleTarget: styleTargetValue,
+      hairProfile,
+      hairProfilePersonalizationEnabled: isHairProfilePersonalizationEnabled(),
       catalogCycleId: generated.catalogCycleId,
       creditChargedAt: null,
       creditChargeAmount: creditsRequired,

@@ -272,9 +272,10 @@ assert(runtimeSmokeScript.includes("validateTrendMailProcessedAlerts"), "runtime
 assert(runtimeSmokeScript.includes("catalogRotationProcessed"), "runtime trend mail smoke must verify catalog rotation processing count");
 assert(runtimeSmokeScript.includes("alertType === \"catalog_rotation\""), "runtime trend mail smoke must verify catalog_rotation alerts were processed");
 assert(runtimeSmokeScript.includes("get_active_hairstyle_catalog"), "runtime active DB smoke must call the active catalog RPC");
-assert(runtimeSmokeScript.includes("items.length >= 32"), "runtime active DB smoke must enforce 32 active catalog rows");
-assert(runtimeSmokeScript.includes("maleCandidateCount >= 18"), "runtime active DB smoke must enforce male candidate pool size");
-assert(runtimeSmokeScript.includes("femaleCandidateCount >= 18"), "runtime active DB smoke must enforce female candidate pool size");
+assert(runtimeSmokeScript.includes("blueprintV4Enabled ? 182 : 32"), "runtime active DB smoke must enforce v4 and rollback pool sizes");
+assert(runtimeSmokeScript.includes("blueprintV4Enabled ? 93 : 18"), "runtime active DB smoke must enforce v4 and rollback target sizes");
+assert(runtimeSmokeScript.includes("maleCandidateCount >= minimumTargetCount"), "runtime active DB smoke must enforce male candidate pool size");
+assert(runtimeSmokeScript.includes("femaleCandidateCount >= minimumTargetCount"), "runtime active DB smoke must enforce female candidate pool size");
 assert(runtimeSmokeScript.includes("validateLineupShape"), "runtime active DB smoke must validate active lineup shape");
 assert(runtimeSmokeScript.includes("targetLineups.length === 9"), "runtime active DB smoke must reject over/under-sized lineups");
 assert(runtimeSmokeScript.includes("slotCounts.trend === 3"), "runtime active DB smoke must validate trend slot count");

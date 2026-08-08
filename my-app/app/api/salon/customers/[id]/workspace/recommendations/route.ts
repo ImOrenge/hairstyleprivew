@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { POST as uploadGenerationDraft } from "../../../../../generations/drafts/route";
 import { dispatchGenerationWorkflowOutbox } from "../../../../../../../lib/generation-workflow-outbox";
+import { normalizeCurrentHairProfile } from "../../../../../../../lib/current-hair-profile";
 import {
   arePaidActionQuotesRequired,
   createPaidActionQuoteForUser,
@@ -37,6 +38,7 @@ interface GenerateSalonRecommendationsRequest {
   referenceImageDataUrl?: unknown;
   styleTarget?: unknown;
   photoConsentConfirmed?: unknown;
+  hairProfile?: unknown;
 }
 
 interface DurableSalonClient {
@@ -74,6 +76,7 @@ export async function POST(request: Request, { params }: Params) {
 
   const body = (await request.json().catch(() => ({}))) as GenerateSalonRecommendationsRequest;
   const quoteId = typeof body.quoteId === "string" ? body.quoteId.trim() : "";
+  const hairProfile = normalizeCurrentHairProfile(body.hairProfile);
   if (quoteId.length > 4096) {
     return NextResponse.json({ error: "quoteId is too large" }, { status: 400 });
   }
@@ -198,6 +201,7 @@ export async function POST(request: Request, { params }: Params) {
         p_style_target: styleTarget,
         p_options: {
           styleTarget,
+          ...(hairProfile ? { hairProfile: { ...hairProfile, source: "salon" } } : {}),
           promptSource: "salon-durable-generation-acceptance",
           acceptanceVersion: "generation-acceptance-v2-credit-reservation",
           payerScope: "salon",

@@ -14,6 +14,7 @@ import { useUpload } from "../../hooks/useUpload";
 import { mapWebResponseError, mapWebUserError } from "../../lib/web-user-message";
 import type {
   GeneratedVariant,
+  CurrentHairProfile,
   MemberStyleTarget,
 } from "../../lib/recommendation-types";
 import type {
@@ -77,6 +78,15 @@ export function useSalonGenerationController({
   const [currentStep, setCurrentStep] =
     useState<SalonWorkspaceWizardStep>("upload");
   const [styleTarget, setStyleTarget] = useState<MemberStyleTarget | "">("");
+  const [hairProfile, setHairProfile] = useState<CurrentHairProfile>({
+    currentLength: "unknown",
+    textureType: "unknown",
+    strandThickness: "unknown",
+    conditionTags: [],
+    damageLevel: "unknown",
+    desiredLength: null,
+    source: "salon",
+  });
   const [photoConsentConfirmed, setPhotoConsentConfirmed] = useState(false);
   const [originalImage, setOriginalImage] = useState<File | null>(null);
   const [generationDraftId, setGenerationDraftId] = useState<string | null>(null);
@@ -430,6 +440,7 @@ export function useSalonGenerationController({
         draftId: generationDraftId,
         quoteId: generationQuote?.quoteId,
         styleTarget,
+        hairProfile,
         photoConsentConfirmed,
       });
       if (!ok) {
@@ -566,6 +577,7 @@ export function useSalonGenerationController({
     error,
     failedCount,
     generationId,
+    hairProfile,
     generationQuote,
     generationQuoteError,
     generationQuoteLoading,
@@ -599,6 +611,7 @@ export function useSalonGenerationController({
     setCreateAftercare,
     setCurrentStep,
     setMemo,
+    setHairProfile,
     setNextRecommendedVisitAt,
     setPhotoConsentConfirmed,
     setSelectedVariantId,

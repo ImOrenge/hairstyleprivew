@@ -194,7 +194,7 @@ export default function GenerateScreen() {
     setIsAccepting(true);
     showMessage("생성 작업을 안전하게 접수하고 있습니다. 접수 영수증이 표시될 때까지 앱을 유지해 주세요.");
     try {
-      const accepted = await api.acceptGenerationDraft(receipt.draftId, quote.quoteId);
+      const accepted = await api.acceptGenerationDraft(receipt.draftId, quote.quoteId, flow.hairProfile);
       if (!accepted.generationId || !accepted.acceptedAt) {
         throw new Error("생성 접수 영수증이 완전하지 않습니다.");
       }

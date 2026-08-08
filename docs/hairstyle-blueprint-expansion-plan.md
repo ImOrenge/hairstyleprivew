@@ -1,7 +1,7 @@
 # Google News RSS 기반 헤어스타일 블루프린트 150개 확장 계획
 
 작성일: 2026-08-08
-상태: 구현 전 계획
+상태: 로컬 구현·정적 검증 완료, DB 적용·shadow rollout·운영 smoke 대기
 대상 시장: `kr`
 기준 브랜치: `main@9138ece`
 연계 문서: [헤어스타일 카탈로그 순환 아키텍처](hairstyle-catalog-rotation-architecture.md)
@@ -13,12 +13,12 @@
 | 수량 | 기존 32개를 보존하고 신규 150개를 추가해 목표 풀을 총 182개로 만든다. |
 | 성별 배분 | 신규 150개는 여성 전용 75개, 남성 전용 75개로 배분한다. 기존 공용 4개는 유지하되 신규 150개 수량에는 포함하지 않는다. |
 | 길이 배분 | 여성·남성 각각 단기장 25개, 중기장 25개, 장기장 25개를 추가한다. |
-| 모발 분류 | `직모·곱슬·강한 곱슬`은 texture 축, `손상·탈색·염색`은 condition 축으로 분리한다. 서로 다른 의미의 속성을 하나의 열거형에 섞지 않는다. |
+| 모발 분류 | `직모·곱슬·강한 곱슬`은 texture 축, `가는·보통·굵은 모발`은 strand thickness 축, `손상·탈색·염색`은 condition 축으로 분리한다. 서로 다른 의미의 속성을 하나의 열거형에 섞지 않는다. |
 | 사용자 용어 | 사용자 화면에서는 낙인감이 있는 `악성곱슬` 대신 `강한 곱슬·부스스함`을 사용하고, 검색 별칭으로만 원문 용어를 인식한다. |
 | RSS 역할 | Google News RSS는 스타일 발견과 트렌드 점수 근거로 사용한다. 기사 제목만으로 블루프린트를 자동 게시하거나 화학 시술 안전성을 판단하지 않는다. |
 | 추천 방식 | 활성 cycle과 기존 lineup을 유지하되, 전체 활성 풀에서 현재 모발 호환 후보를 먼저 뽑고 lineup의 트렌드·회전 후보를 혼합해 9개를 만든다. |
 | 출시 방식 | 50개씩 3개 배치로 추가하고, 각 배치마다 정적 감사·프롬프트 샘플·shadow 추천을 통과한 뒤 다음 배치로 진행한다. |
-| 운영 경계 | 이 문서는 목표 설계와 실행 순서다. 150개 데이터, DB migration, UI, 추천 로직은 아직 구현되지 않았다. |
+| 운영 경계 | 150개 데이터, DB migration, web/mobile/salon UI, 추천 로직과 rollback flag는 로컬 구현됐다. 원격 DB 적용, 배포, active cycle 교체와 단계적 rollout은 별도 승인 전까지 수행하지 않는다. |
 
 ## 2. 현재 기준선과 해결할 문제
 
@@ -103,8 +103,13 @@
 | 손상 모발 대응을 primary로 둔 항목 | 6 |
 | 탈색 모발 대응을 primary로 둔 항목 | 6 |
 | 염색 모발 대응을 primary로 둔 항목 | 6 |
+| 가는 모발 중심 | 8 |
+| 보통 굵기 모발 중심 | 9 |
+| 굵은 모발 중심 | 8 |
 
 `primary`는 수량 감사를 위한 대표 분류다. 실제 사용 가능성은 `compatible*`과 `avoid*` 다중 태그로 판정한다. 예를 들어 탈색과 손상이 동시에 있는 사용자는 `conditionTags = ["bleached", "damaged"]`이며 두 조건을 모두 만족해야 한다.
+
+모발 굵기는 texture·condition 12개 교차 셀을 깨지 않도록 각 25개 묶음에 독립적으로 순환 배치한다. 따라서 72개 기존 교차 셀 보장과 함께 여섯 성별·길이 묶음 모두 `fine 8 / medium 9 / coarse 8`을 만족한다.
 
 ### 4.3 50개 단위 작성 배치
 
@@ -124,10 +129,13 @@
 | 필드 | 형식 | 용도 |
 | --- | --- | --- |
 | `styleFamily` | string | 같은 계열의 과도한 중복을 검사하는 기준 |
-| `variantKey` | string | family 안의 길이·texture·condition 변형 식별 |
+| `variantKey` | string | family 안의 길이·texture·굵기·condition 변형 식별 |
 | `primaryTexture` | enum-like text | 신규 150개 수량 감사의 대표 texture |
 | `compatibleTextureTags` | text[] | 추천 허용 texture |
 | `avoidTextureTags` | text[] | 부적합 texture 또는 매우 낮은 적합도 |
+| `primaryStrandThickness` | enum-like text | 신규 150개 수량 감사의 대표 모발 굵기 |
+| `compatibleStrandThicknessTags` | text[] | 가는·보통·굵은 모발 호환 범위 |
+| `avoidStrandThicknessTags` | text[] | 무게·볼륨 설계상 피해야 할 모발 굵기 |
 | `primaryCondition` | enum-like text | 수량 감사용 대표 condition |
 | `compatibleConditionTags` | text[] | 현 상태 그대로 적용 가능한 condition |
 | `avoidConditionTags` | text[] | 추가 시술 위험이나 유지 난도가 큰 condition |
@@ -200,24 +208,25 @@ my-app/scripts/audit-hairstyle-catalog-blueprints.mjs
 
 기사에서 보이는 트렌드와 손상·탈색 모발의 시술 가능성은 분리한다. 트렌드는 RSS가 점수화하고, 시술 제약은 명시적 editorial rule과 QA fixture가 결정한다.
 
-### 6.2 Query registry 42개
+### 6.2 Query registry 60개
 
-현재 11개 일반 query를 구조화된 42개 registry로 교체한다.
+현재 11개 일반 query를 구조화된 60개 registry로 교체한다.
 
 | query 군 | 산식 | 개수 | 예시 |
 | --- | ---: | ---: | --- |
 | 성별×길이×texture | `2×3×3` | 18 | `2026 여자 중단발 곱슬 헤어스타일`, `2026 남자 장발 직모 스타일` |
+| 성별×길이×strand thickness | `2×3×3` | 18 | `2026 여자 단발 가는 모발 헤어스타일`, `2026 남자 장발 굵은 모발 스타일` |
 | 성별×길이×condition | `2×3×3` | 18 | `2026 여자 단발 탈색모 스타일`, `2026 남자 중간머리 손상모 헤어` |
 | 성별×길이 일반 trend | `2×3` | 6 | `2026 여자 긴머리 트렌드` |
-| 합계 |  | 42 | query당 최대 10개, 1회 최대 원시 item 420개 |
+| 합계 |  | 60 | query당 최대 10개, 1회 최대 원시 item 600개 |
 
-condition query는 `damaged`, `bleached`, `colored` 3개를 사용하고 `untreated`는 일반 trend query에서 근거를 얻는다. query 객체에는 문자열만 두지 않고 `id`, `styleTarget`, `lengthBucket`, `textureFacet`, `conditionFacet`를 함께 보존해 어떤 셀의 근거인지 추적한다.
+condition query는 `damaged`, `bleached`, `colored` 3개를 사용하고 `untreated`는 일반 trend query에서 근거를 얻는다. query 객체에는 문자열만 두지 않고 `id`, `styleTarget`, `lengthBucket`, `textureFacet`, `strandThicknessFacet`, `conditionFacet`를 함께 보존해 어떤 셀의 근거인지 추적한다.
 
 ### 6.3 수집 실행 규칙
 
 1. 기존 7일 active cycle TTL과 매일 09:20 KST due checker를 유지한다.
-2. cycle이 due가 아닐 때는 42개 RSS를 다시 요청하지 않는다.
-3. 42개 요청을 한꺼번에 `Promise.allSettled`하지 않고 동시성 4로 제한한다.
+2. cycle이 due가 아닐 때는 60개 RSS를 다시 요청하지 않는다.
+3. 60개 요청을 한꺼번에 `Promise.allSettled`하지 않고 동시성 4로 제한한다.
 4. 개별 요청은 현재 12초 timeout을 유지하고, 재시도는 네트워크 오류·429·5xx에만 최대 2회 지수 backoff와 jitter를 적용한다.
 5. URL과 제목·출처·발행시각 기준으로 중복 제거한다.
 6. 60일 primary, 120일 fallback, `seeded` fallback 계약은 유지한다.
@@ -249,6 +258,7 @@ web과 mobile이 같은 `CurrentHairProfile`을 사용한다.
 type CurrentHairProfile = {
   currentLength: "short" | "medium" | "long" | "unknown";
   textureType: "straight" | "wavy_curly" | "tight_curly_frizzy" | "unknown";
+  strandThickness: "fine" | "medium" | "coarse" | "unknown";
   conditionTags: Array<"damaged" | "bleached" | "colored" | "permed">;
   damageLevel: "low" | "medium" | "high" | "unknown";
   desiredLength?: "short" | "medium" | "long" | null;
@@ -266,7 +276,7 @@ type CurrentHairProfile = {
 active cycle rows 182개
   -> styleTarget 필터
   -> hard incompatibility 제외
-  -> 얼굴·길이·texture·condition·trend 점수화
+  -> 얼굴·길이·texture·굵기·condition·trend 점수화
   -> 개인화 후보 6개
   -> 기존 active lineup에서 호환 가능한 trend/evergreen 3개 혼합
   -> family·길이·서비스 다양성 검사
@@ -285,6 +295,9 @@ active cycle rows 182개
 | trend/freshness | 기존 합산 비중을 유지하되 개인화 적합도보다 우선하지 않음 |
 | texture 완전 일치 | `+18` |
 | texture 호환 | `+8` |
+| 모발 굵기 완전 일치 | `+10` |
+| 모발 굵기 호환 | `+5` |
+| `avoidStrandThicknessTags` 충돌 | hard exclude |
 | condition 모두 호환 | `+12` |
 | condition 일부 미정 | `0`, 이유에 낮은 신뢰 표시 |
 | `avoidConditionTags`와 사용자 상태 충돌 | 기본 `-40`; `severely_damaged`와 추가 탈색·강한 펌 충돌은 hard exclude |
@@ -298,7 +311,7 @@ active cycle rows 182개
 | 목표 길이 고정 | 목표 6, 인접 길이 2, 탐색 1 | 목표 길이가 실현 불가하면 이유와 대안 표시 |
 | 모발 프로필 unknown | 기존 최소 길이 분산 계약 유지 | 기존 lineup-first fallback |
 
-모발 프로필이 알려진 경우 최종 9개 중 최소 6개는 texture 완전 일치 또는 명시적 호환이어야 하고, 9개 모두 hard condition conflict가 없어야 한다.
+모발 프로필이 알려진 경우 최종 9개 중 최소 6개는 texture와 모발 굵기가 완전 일치 또는 명시적 호환이어야 하고, 9개 모두 hard condition 또는 굵기 conflict가 없어야 한다.
 
 ### 7.5 Prompt와 살롱 브리프
 
@@ -321,6 +334,9 @@ active cycle rows 182개
 | `primary_texture` | text | 허용값 check constraint |
 | `compatible_texture_tags` | text[] | `'{}'` |
 | `avoid_texture_tags` | text[] | `'{}'` |
+| `primary_strand_thickness` | text | `fine/medium/coarse`, check constraint |
+| `compatible_strand_thickness_tags` | text[] | `'{}'` |
+| `avoid_strand_thickness_tags` | text[] | `'{}'` |
 | `primary_condition` | text | 허용값 check constraint |
 | `compatible_condition_tags` | text[] | `'{}'` |
 | `avoid_condition_tags` | text[] | `'{}'` |
@@ -350,7 +366,7 @@ active cycle rows 182개
 | P0. 기준선 | 기존 32 slug snapshot, 현재 추천·lineup 결과 fixture 저장 | `my-app/scripts/audit-hairstyle-catalog-blueprints.mjs`, 신규 fixture | 현행 결과와 수량 기준 재현 |
 | P1. v4 계약 | JSON schema, 6개 manifest, loader, legacy 32 backfill | `my-app/data/hairstyle-blueprints/v4/*`, `hairstyle-catalog-seed.ts` | 기존 32개 동작·slug 동일 |
 | P2. DB/타입 | catalog 확장 migration, RPC, TS type/normalizer/upsert | 양쪽 migration mirror, `recommendation-types.ts`, `hairstyle-catalog.ts` | 임시 Postgres migration smoke 통과 |
-| P3. RSS facet | 42개 query registry, 동시성 제한, facet evidence, source summary | `hairstyle-trend-research.ts`, query registry | seeded/fallback/fresh fixture 통과 |
+| P3. RSS facet | 60개 query registry, 동시성 제한, facet evidence, source summary | `hairstyle-trend-research.ts`, query registry | seeded/fallback/fresh fixture 통과 |
 | P4-A. 50개 | 배치 A 작성·검수 | 6개 manifest | 신규 50개 정확 수량과 prompt QA |
 | P4-B. 50개 | 배치 B 작성·shadow 추천 | 6개 manifest | 누적 100개, known profile fixture 통과 |
 | P4-C. 50개 | 배치 C 작성·전체 교차 감사 | 6개 manifest | 신규 150, 총 182, 72셀 최소 2개 |
@@ -368,6 +384,7 @@ active cycle rows 182개
 | 신규 성별 | 여성 전용 75, 남성 전용 75 |
 | 신규 길이 | 성별별 short/medium/long 각각 25 |
 | 교차 커버리지 | 72개 `gender×length×texture×condition` 셀 각각 최소 2 |
+| 모발 굵기 커버리지 | 각 gender×length 25개마다 `fine/medium/coarse = 8/9/8` |
 | slug | 전체 유일, 기존 32 slug 불변 |
 | variant | 같은 cycle의 `styleFamily+variantKey` 유일 |
 | keyword | 각 항목 한글 핵심어 2개 이상, 전체 공백 keyword 없음 |
@@ -392,7 +409,7 @@ active cycle rows 182개
 ### 10.3 RSS fixture
 
 - XML 정상, 일부 query 실패, 전체 실패, 잘못된 날짜, 중복 기사, HTML entity, 한 출처 집중 fixture
-- 42개 query를 실제 네트워크 없이 재현하는 recorded fixture
+- 60개 query를 실제 네트워크 없이 재현하는 recorded fixture
 - live RSS smoke는 read-only로 분리하고 결과 변동 때문에 CI의 결정적 pass/fail 근거로 쓰지 않는다.
 
 ### 10.4 명령 계약
@@ -421,7 +438,7 @@ remote DB write, function deploy, active cycle 강제 rebuild는 로컬 구현 �
 | --- | --- | --- |
 | `HAIRSTYLE_BLUEPRINT_V4_ENABLED` | 기존 32 loader | 182 manifest loader |
 | `HAIR_PROFILE_MATCHING_V2_ENABLED` | 기존 lineup-first 추천 | 모발 호환 6 + lineup 3 |
-| `HAIRSTYLE_RSS_FACETS_V2_ENABLED` | 기존 11 query | 구조화 42 query |
+| `HAIRSTYLE_RSS_FACETS_V2_ENABLED` | 기존 11 query | 구조화 60 query |
 
 flag는 web UI만 숨기는 용도가 아니다. 서버 loader, scoring, rebuild가 각각 안전하게 구버전 경로로 돌아갈 수 있어야 한다.
 
@@ -475,14 +492,18 @@ rollback drill은 `이전 active cycle 유지`, `9개 추천 반환`, `기존 32
 
 ## 14. 최종 완료 기준
 
-- [ ] 기존 32개 slug를 보존하면서 신규 150개가 manifest에 존재한다.
-- [ ] 여성 75·남성 75, 성별별 단/중/장 25개가 자동 감사로 증명된다.
-- [ ] 72개 texture×condition 교차 셀 각각 신규 blueprint가 최소 2개다.
-- [ ] RSS 42개 query가 metadata와 함께 수집되고 실패 시 기존 active cycle이 유지된다.
-- [ ] 현재 모발 프로필이 web/mobile/salon generation 경로에서 동일하게 전달된다.
-- [ ] known profile의 9개 결과에는 hard condition conflict가 없고 최소 6개가 texture 호환이다.
-- [ ] 기본 비교 모드는 단/중/장 각 3개, 동일 family 최대 2개를 보장한다.
-- [ ] 기존 active lineup, seeded fallback, previous cycle rollback이 유지된다.
-- [ ] migration mirror, 임시 Postgres, catalog audit, recommendation fixture, lint, build가 통과한다.
+- [x] 기존 32개 slug를 보존하면서 신규 150개가 manifest에 존재한다.
+- [x] 여성 75·남성 75, 성별별 단/중/장 25개가 자동 감사로 증명된다.
+- [x] 72개 texture×condition 교차 셀 각각 신규 blueprint가 최소 2개다.
+- [x] 여성·남성의 단·중·장 각 25개 묶음이 가는/보통/굵은 모발 `8/9/8`을 만족한다.
+- [x] RSS 60개 query가 metadata와 함께 수집되고 실패 시 기존 active cycle이 유지된다.
+- [x] 현재 모발 프로필이 web/mobile/salon generation 경로에서 동일하게 전달된다.
+- [x] known profile의 9개 결과에는 hard condition·굵기 conflict가 없고 최소 6개가 texture·굵기 호환이다.
+- [x] 기본 비교 모드는 단/중/장 각 3개, 동일 family 최대 2개를 보장한다.
+- [x] 기존 active lineup, seeded fallback, previous cycle rollback과 `32개/11 query/lineup-first` flag fallback이 유지된다.
+- [x] migration mirror, catalog audit, recommendation fixture, profile unit test, lint, web/mobile typecheck와 production build가 통과한다.
+- [ ] 임시 Postgres fresh-chain과 원격 Supabase runtime smoke를 통과한다. 현재 로컬 DB URL과 원격 적용 승인이 없어 미실행이다.
 - [ ] shadow → 내부 → 10% → 50% → 100% rollout과 rollback drill 증거가 남는다.
 - [ ] 실제 구현·배포·운영 smoke가 끝나기 전에는 이 문서를 완료 구현으로 표시하지 않는다.
+
+로컬 UI 검증은 `/e2e-harness/hair-profile`의 HTTP 200과 길이·형태·굵기·상태 필드 SSR 출력을 확인했다. 자동 브라우저 런타임은 로컬 경로 오류로 연결되지 않아 스크린샷·클릭 상호작용 검증은 배포 전 잔여 항목으로 둔다.
