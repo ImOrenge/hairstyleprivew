@@ -265,7 +265,10 @@ alter table public.account_deletion_storage_outbox
   add constraint account_deletion_storage_outbox_bucket_check
   check (bucket in ('generation-results', 'profile-body-photos', 'styling-results', 'aftercare-photos'));
 
-create or replace function public.request_account_deletion(p_user_id text)
+create schema if not exists private;
+grant usage on schema private to service_role;
+
+create or replace function private.request_account_deletion_v2(p_user_id text)
 returns table (
   user_deleted boolean,
   queued_objects integer,
@@ -384,6 +387,25 @@ begin
 
   return query select v_user_deleted, v_queued_objects, v_pending_objects;
 end;
+$$;
+
+revoke all on function private.request_account_deletion_v2(text)
+  from public, anon, authenticated;
+grant execute on function private.request_account_deletion_v2(text)
+  to service_role;
+
+create or replace function public.request_account_deletion(p_user_id text)
+returns table (
+  user_deleted boolean,
+  queued_objects integer,
+  pending_objects integer
+)
+language sql
+security invoker
+set search_path = ''
+as $$
+  select *
+    from private.request_account_deletion_v2(p_user_id);
 $$;
 
 revoke all on function public.request_account_deletion(text)

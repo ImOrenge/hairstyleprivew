@@ -3,6 +3,7 @@ import React from "react";
 import * as ImagePicker from "expo-image-picker";
 import UploadScreen from "../app/upload";
 import { MobileMyPageAccountPanel } from "../components/mypage/panels/MobileMyPageAccountPanel";
+import type { CurrentHairProfileInput } from "@hairfit/api-client";
 import type { MobileBootstrap } from "@hairfit/shared";
 
 const mockReplace = jest.fn();
@@ -26,12 +27,24 @@ const mockApi = {
   saveAccountSetup: mockSaveAccountSetup,
 };
 
+const hairProfile: CurrentHairProfileInput = {
+  currentLength: "unknown",
+  textureType: "unknown",
+  strandThickness: "unknown",
+  conditionTags: [],
+  damageLevel: "unknown",
+  desiredLength: null,
+  source: "user",
+};
+
 const mockFlow = {
   draftReceipt: null,
   draftReceiptHydrated: true,
+  hairProfile,
   imageDataUrl: null,
   setDraft: jest.fn(),
   setDraftReceipt: jest.fn(),
+  setHairProfile: jest.fn(),
   setImageDataUrl: jest.fn(),
 };
 

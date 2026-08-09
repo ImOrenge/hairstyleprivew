@@ -104,10 +104,16 @@ test("aftercare photos are private, snapshot-linked, and included in account del
   assert.match(root, /actual_services_v2_after_photo_bundle_check/);
   assert.match(root, /after_photo_path is not null[\s\S]*after_photo_fingerprint is not null[\s\S]*after_photo_consent_at is not null/);
   assert.match(root, /select 'aftercare-photos'::text, btrim\(service\.after_photo_path\)/);
-  const deletionFunction = root.slice(root.indexOf("create or replace function public.request_account_deletion"));
-  assert.match(deletionFunction, /security definer[\s\S]*set search_path = ''/);
-  assert.match(deletionFunction, /revoke all on function public\.request_account_deletion\(text\)[\s\S]*from public, anon, authenticated/);
-  assert.match(deletionFunction, /grant execute on function public\.request_account_deletion\(text\)[\s\S]*to service_role/);
+  const privateDeletionFunction = root.slice(root.indexOf("create or replace function private.request_account_deletion_v2"));
+  const publicDeletionFunction = root.slice(root.indexOf("create or replace function public.request_account_deletion"));
+  assert.match(privateDeletionFunction, /security definer[\s\S]*set search_path = ''/);
+  assert.match(privateDeletionFunction, /revoke all on function private\.request_account_deletion_v2\(text\)[\s\S]*from public, anon, authenticated/);
+  assert.match(privateDeletionFunction, /grant execute on function private\.request_account_deletion_v2\(text\)[\s\S]*to service_role/);
+  assert.match(publicDeletionFunction, /security invoker[\s\S]*set search_path = ''/);
+  assert.doesNotMatch(publicDeletionFunction, /security definer/);
+  assert.match(publicDeletionFunction, /from private\.request_account_deletion_v2\(p_user_id\)/);
+  assert.match(publicDeletionFunction, /revoke all on function public\.request_account_deletion\(text\)[\s\S]*from public, anon, authenticated/);
+  assert.match(publicDeletionFunction, /grant execute on function public\.request_account_deletion\(text\)[\s\S]*to service_role/);
   assert.match(route, /\.eq\("consultation_id", consultationId\)/);
   assert.match(route, /\.eq\("user_id", userId\)/);
   assert.match(route, /\.webp\(\{ quality: 86 \}\)/);
@@ -250,9 +256,9 @@ test("paid, refund, exact product mapping, and reconciliation paths share one V2
   assert.match(reconciliation, /grant_missing_or_version_mismatch/);
 });
 
-test("legacy catalog prompt template remains catalog-v3 while V2 policy is separately versioned", () => {
+test("expanded catalog uses catalog-v4 while V2 consultation policy stays separately versioned", () => {
   const catalog = readApp("lib/hairstyle-catalog-seed.ts");
   const prompt = readRepo("packages/shared/src/v2/prompt/contract.ts");
-  assert.match(catalog, /HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v3"/);
+  assert.match(catalog, /HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v4"/);
   assert.match(prompt, /hairfit-consultation-prompt-v2/);
 });

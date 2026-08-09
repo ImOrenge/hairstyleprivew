@@ -28,7 +28,9 @@ test("Expo photo analysis and generation stay linked to the same consultation", 
   expect(upload.indexOf("await analyzeForConsultation(receipt.draftId)")).toBeLessThan(
     upload.indexOf("flow.setDraftReceipt({"),
   );
-  expect(generate).toMatch(/acceptGenerationDraft\(receipt\.draftId, quote\.quoteId, consultationId\)/);
+  expect(generate).toMatch(
+    /acceptGenerationDraft\(\s*receipt\.draftId,\s*quote\.quoteId,\s*consultationId \|\| undefined,\s*flow\.hairProfile,\s*\)/,
+  );
 });
 
 test("Expo renders server normalized evidence and real V2 board decisions", () => {

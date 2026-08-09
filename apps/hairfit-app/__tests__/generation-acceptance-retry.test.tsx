@@ -1,4 +1,5 @@
 import type { PaidActionQuote } from "@hairfit/shared";
+import type { CurrentHairProfileInput } from "@hairfit/api-client";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
 import GenerateScreen from "../app/generate";
@@ -37,6 +38,16 @@ const mockApi = {
   createPaidActionQuote: mockCreatePaidActionQuote,
 };
 
+const hairProfile: CurrentHairProfileInput = {
+  currentLength: "medium",
+  textureType: "wavy_curly",
+  strandThickness: "fine",
+  conditionTags: ["colored"],
+  damageLevel: "medium",
+  desiredLength: "short",
+  source: "user",
+};
+
 const mockFlow = {
   clear: mockClear,
   draft: {
@@ -51,6 +62,7 @@ const mockFlow = {
     expiresAt: "2099-07-19T23:59:00.000Z",
   },
   draftReceiptHydrated: true,
+  hairProfile,
   imageDataUrl: PRIVATE_IMAGE_DATA_URL,
 };
 
@@ -149,6 +161,8 @@ describe("durable generation acceptance recovery", () => {
         1,
         DRAFT_ID,
         quote.quoteId,
+        undefined,
+        hairProfile,
       );
       expect(mockClear).not.toHaveBeenCalled();
 
@@ -164,6 +178,8 @@ describe("durable generation acceptance recovery", () => {
         2,
         DRAFT_ID,
         quote.quoteId,
+        undefined,
+        hairProfile,
       );
       expect(mockClear).toHaveBeenCalledTimes(1);
 
