@@ -36,6 +36,7 @@ const ANALYSIS: FaceAnalysisSummary = {
 
 function buildFixture(blueprintV4Enabled = true) {
   process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED = blueprintV4Enabled ? "true" : "false";
+  process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH = "expansion-c";
   const rows: HairstyleCatalogRow[] = buildCatalogRowsForCycle(CYCLE_ID, NOW_ISO, new Map())
     .map((row, index) => ({ ...row, id: `catalog-${index + 1}` }));
   const lineups: HairstyleCatalogLineupRow[] = buildCatalogLineupsForCycle(rows, CYCLE_ID, "recommendation-contract")
@@ -53,6 +54,29 @@ function buildFixture(blueprintV4Enabled = true) {
     }));
   return { rows, lineups };
 }
+
+test("v4 runtime loader exposes expansion batches cumulatively and fails closed", () => {
+  process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED = "true";
+
+  for (const [batch, expectedCount] of [
+    ["expansion-a", 82],
+    ["expansion-b", 132],
+    ["expansion-c", 182],
+  ] as const) {
+    process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH = batch;
+    const rows = buildCatalogRowsForCycle(CYCLE_ID, NOW_ISO, new Map());
+    assert.equal(rows.length, expectedCount, `${batch} must expose the cumulative rollout pool`);
+    assert.ok(rows.every((row) => row.promptTemplateVersion === "catalog-v4"));
+  }
+
+  process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH = "unexpected";
+  const invalidBatchRows = buildCatalogRowsForCycle(CYCLE_ID, NOW_ISO, new Map());
+  assert.equal(invalidBatchRows.length, 32, "an invalid batch must fail closed to the legacy pool");
+  assert.ok(invalidBatchRows.every((row) => row.promptTemplateVersion === "catalog-v3"));
+
+  process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED = "false";
+  process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH = "expansion-c";
+});
 
 function hasHardConflict(row: HairstyleCatalogRow, profile: CurrentHairProfile) {
   return row.avoidTextureTags.includes(profile.textureType as HairTextureProfile) ||

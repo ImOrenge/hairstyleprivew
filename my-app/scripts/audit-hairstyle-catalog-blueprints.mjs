@@ -32,6 +32,7 @@ const STRAND_THICKNESSES = ["fine", "medium", "coarse"];
 const BATCHES = ["expansion-a", "expansion-b", "expansion-c"];
 
 process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED = "true";
+process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH = "expansion-c";
 process.env.HAIRSTYLE_RSS_FACETS_V2_ENABLED = "true";
 
 function assert(condition, message) {
@@ -139,6 +140,23 @@ const {
   KOREAN_HAIRSTYLE_BLUEPRINTS,
 } = require("../lib/hairstyle-catalog-seed.ts");
 assert(KOREAN_HAIRSTYLE_BLUEPRINTS.length === 182, `expected total pool 182, got ${KOREAN_HAIRSTYLE_BLUEPRINTS.length}`);
+
+for (const [batch, expectedCount] of [["expansion-a", 82], ["expansion-b", 132], ["expansion-c", 182]]) {
+  process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH = batch;
+  const stagedRows = buildCatalogRowsForCycle(
+    "00000000-0000-0000-0000-000000000000",
+    new Date(0).toISOString(),
+    new Map(),
+  );
+  assert(stagedRows.length === expectedCount, `${batch}: expected cumulative runtime pool ${expectedCount}, got ${stagedRows.length}`);
+  assert(stagedRows.every((row) => row.promptTemplateVersion === "catalog-v4"), `${batch}: staged rows must use catalog-v4 prompts`);
+}
+
+process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH = "unexpected";
+const invalidBatchRows = buildCatalogRowsForCycle("00000000-0000-0000-0000-000000000000", new Date(0).toISOString(), new Map());
+assert(invalidBatchRows.length === 32, `invalid batch must fail closed to 32 rows, got ${invalidBatchRows.length}`);
+assert(invalidBatchRows.every((row) => row.promptTemplateVersion === "catalog-v3"), "invalid batch must restore catalog-v3 prompts");
+process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH = "expansion-c";
 
 const rows = buildCatalogRowsForCycle("00000000-0000-0000-0000-000000000000", new Date(0).toISOString(), new Map());
 assert(rows.length === 182, `expected 182 built rows, got ${rows.length}`);

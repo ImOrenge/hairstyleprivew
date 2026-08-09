@@ -19,6 +19,14 @@ import maleShortBlueprints from "../data/hairstyle-blueprints/v4/male-short.json
 export const HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v4";
 export const LEGACY_HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v3";
 
+export type HairstyleBlueprintExpansionBatch = "expansion-a" | "expansion-b" | "expansion-c";
+
+const HAIRSTYLE_BLUEPRINT_EXPANSION_BATCH_ORDER: HairstyleBlueprintExpansionBatch[] = [
+  "expansion-a",
+  "expansion-b",
+  "expansion-c",
+];
+
 export interface HairstyleCatalogBlueprint {
   slug: string;
   nameKo: string;
@@ -52,7 +60,7 @@ export interface HairstyleCatalogBlueprint {
   requiredServices?: HairstyleRequiredService[];
   serviceConstraints?: string[];
   maintenanceLevel?: HairstyleMaintenanceLevel;
-  introducedIn?: "legacy-32" | "expansion-a" | "expansion-b" | "expansion-c";
+  introducedIn?: "legacy-32" | HairstyleBlueprintExpansionBatch;
 }
 
 export interface BlueprintTrendSignal {
@@ -915,13 +923,32 @@ export const KOREAN_HAIRSTYLE_BLUEPRINTS: HairstyleCatalogBlueprint[] = [
 ];
 
 export function isHairstyleBlueprintV4Enabled() {
-  return process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true";
+  return process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true" &&
+    getRuntimeHairstyleBlueprintExpansionBatch() !== null;
+}
+
+export function getRuntimeHairstyleBlueprintExpansionBatch(): HairstyleBlueprintExpansionBatch | null {
+  const configured = process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH?.trim().toLowerCase();
+  if (!configured) return "expansion-c";
+  return HAIRSTYLE_BLUEPRINT_EXPANSION_BATCH_ORDER.includes(configured as HairstyleBlueprintExpansionBatch)
+    ? configured as HairstyleBlueprintExpansionBatch
+    : null;
 }
 
 export function getRuntimeHairstyleBlueprints() {
-  return isHairstyleBlueprintV4Enabled()
-    ? KOREAN_HAIRSTYLE_BLUEPRINTS
-    : LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS;
+  if (!isHairstyleBlueprintV4Enabled()) return LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS;
+
+  const activeBatch = getRuntimeHairstyleBlueprintExpansionBatch();
+  if (!activeBatch) return LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS;
+
+  const maximumBatchIndex = HAIRSTYLE_BLUEPRINT_EXPANSION_BATCH_ORDER.indexOf(activeBatch);
+  return [
+    ...LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS,
+    ...EXPANSION_KOREAN_HAIRSTYLE_BLUEPRINTS.filter((blueprint) => {
+      if (!blueprint.introducedIn || blueprint.introducedIn === "legacy-32") return false;
+      return HAIRSTYLE_BLUEPRINT_EXPANSION_BATCH_ORDER.indexOf(blueprint.introducedIn) <= maximumBatchIndex;
+    }),
+  ];
 }
 
 export function getRuntimeHairstyleCatalogPromptTemplateVersion() {

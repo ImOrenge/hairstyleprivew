@@ -424,6 +424,7 @@ npm run hairstyle:blueprints:db:smoke -- --databaseUrl <local-postgres-url>
 npm run hairstyle:catalog:recommendation:test
 npm run hairstyle:catalog:rss:fixture:test
 npm run hairstyle:catalog:env:check -- --mode=blueprint-v4-rollout
+npm run hairstyle:catalog:runtime:smoke -- --mode=personalization-metrics --cycleId <active-cycle-id> --requireSamples <count>
 npm run hairstyle:catalog:audit
 npm run hairstyle:catalog:lineup:audit
 npm run supabase:migrations:mirror:check
@@ -440,6 +441,7 @@ remote DB write, function deploy, active cycle 강제 rebuild는 로컬 구현 �
 | flag | off | on |
 | --- | --- | --- |
 | `HAIRSTYLE_BLUEPRINT_V4_ENABLED` | 기존 32 loader | 182 manifest loader |
+| `HAIRSTYLE_BLUEPRINT_V4_BATCH` | v4 off 시 무시 | `expansion-a` 신규 50개, `expansion-b` 누적 100개, `expansion-c` 누적 150개 |
 | `HAIR_PROFILE_MATCHING_V2_ENABLED` | 기존 lineup-first 추천 | 모발 호환 6 + lineup 3 |
 | `HAIRSTYLE_RSS_FACETS_V2_ENABLED` | 기존 11 query | 구조화 60 query |
 
@@ -450,12 +452,14 @@ flag는 web UI만 숨기는 용도가 아니다. 서버 loader, scoring, rebuild
 ### 11.2 Rollout 순서
 
 1. schema와 code를 배포하되 세 flag는 off로 둔다.
-2. 신규 50개로 dry-run cycle을 만들고 DB에는 활성화하지 않는다.
-3. 배치 A/B/C 누적 cycle을 shadow 생성해 coverage와 prompt 표본을 검토한다.
+2. `HAIRSTYLE_BLUEPRINT_V4_BATCH=expansion-a`로 기존 32+신규 50개의 dry-run cycle을 만들고 DB에는 활성화하지 않는다.
+3. `expansion-a` → `expansion-b` → `expansion-c` 순서로 82→132→182개 누적 shadow cycle을 생성해 coverage와 prompt 표본을 검토한다. 잘못된 batch 값은 기존 32개·`catalog-v3`로 fail-closed 한다.
 4. RSS facet만 켜 source summary와 실패율을 한 cycle 관찰한다.
 5. blueprint v4를 내부 계정에만 활성화한다.
 6. 개인화 scoring을 10% canary로 켜 fallback·hard conflict·선택률을 비교한다.
 7. 50% 후 100%로 확대한다. 각 단계는 최소 한 active cycle을 관찰한다.
+
+각 단계의 운영 증거는 `personalization-metrics` read-only smoke로 집계한다. 이 명령은 사용자 ID나 모발 프로필을 출력하지 않고 cycle별 표본 수, shadow/live·사유·bucket 비율, hard conflict, 6개 이상 호환 결과, fallback 및 선택률만 출력한다. `--requireSamples`, `--expectedMode`, `--expectedRolloutPercentage`, `--expectReason`으로 단계별 최소 증거를 fail-closed 검증한다.
 
 ### 11.3 운영 지표
 

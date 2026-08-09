@@ -281,6 +281,20 @@ function checkBlueprintV4Rollout(group) {
   const profile = checkBooleanFlag(group, "HAIR_PROFILE_MATCHING_V2_ENABLED");
   failures.push(...blueprint.failures, ...rss.failures, ...profile.failures);
 
+  const blueprintBatch = readEnv("HAIRSTYLE_BLUEPRINT_V4_BATCH").toLowerCase();
+  const validBlueprintBatches = new Set(["expansion-a", "expansion-b", "expansion-c"]);
+  if (blueprint.value && !validBlueprintBatches.has(blueprintBatch)) {
+    const message = `${group}: enabled blueprint v4 requires HAIRSTYLE_BLUEPRINT_V4_BATCH=expansion-a, expansion-b, or expansion-c`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  } else if (blueprintBatch && !validBlueprintBatches.has(blueprintBatch)) {
+    const message = `${group}: HAIRSTYLE_BLUEPRINT_V4_BATCH has an invalid value`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  } else {
+    console.log(`[ok] ${group}: HAIRSTYLE_BLUEPRINT_V4_BATCH=${blueprintBatch || "unset (inactive)"}`);
+  }
+
   const mode = readEnv("HAIR_PROFILE_MATCHING_V2_MODE").toLowerCase();
   if (!new Set(["off", "shadow", "live"]).has(mode)) {
     const message = `${group}: HAIR_PROFILE_MATCHING_V2_MODE must be off, shadow, or live`;
