@@ -10,6 +10,9 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
+  "vars": {
+    "HAIRSTYLE_RSS_PROXY_URL": "https://dpzdhxlqnogfpubpslbf.supabase.co/functions/v1/hairstyle-rss-proxy"
+  },
   "rules": [
     {
       "type": "Text",

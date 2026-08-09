@@ -68,6 +68,7 @@ Usage:
   npm run hairstyle:catalog:runtime:smoke -- --mode=personalization-metrics --cycleId=<catalog-cycle-id> --requireSamples=10
   npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert
   npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function
+  npm run hairstyle:catalog:runtime:smoke -- --mode=rss-proxy
   npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function --allowPendingAlerts --expectPendingCatalogAlert
 
 Modes:
@@ -81,6 +82,7 @@ Modes:
   personalization-metrics Aggregate secret-free rollout evidence from generation option snapshots.
   alert-idempotency  Query trend_alerts and verify catalog_rotation alert count is <= 1.
   trend-mail-function Invoke cron-trend-emails only when no due alerts exist, unless explicitly allowed.
+  rss-proxy          Fetch one allowlisted Google News feed through the internal Edge Function.
 
 Env or args:
   NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_SITE_URL / APP_URL / SITE_URL
@@ -98,6 +100,7 @@ Env or args:
   --expectReason=shadow|internal_allowlist|percentage_canary|percentage_control
   --market=kr
   --functionUrl=https://<project-ref>.functions.supabase.co/cron-trend-emails
+  --rssProxyUrl=https://<project-ref>.supabase.co/functions/v1/hairstyle-rss-proxy
   --allowPendingAlerts
   --expectPendingCatalogAlert
   --allowNoActive
@@ -163,6 +166,13 @@ function readTrendMailFunctionUrl() {
   const explicit = getArg("functionUrl") || readEnv("SUPABASE_TREND_MAIL_FUNCTION_URL") || readEnv("TREND_MAIL_FUNCTION_URL");
   if (explicit) return parseUrl(explicit, "trend mail function URL").toString();
   return `${deriveEdgeFunctionBaseUrl().replace(/\/$/, "")}/cron-trend-emails`;
+}
+
+function readRssProxyFunctionUrl() {
+  const explicit = getArg("rssProxyUrl") || readEnv("HAIRSTYLE_RSS_PROXY_URL");
+  if (explicit) return parseUrl(explicit, "hairstyle RSS proxy URL").toString();
+  const supabaseUrl = parseUrl(readSupabaseUrl(), "Supabase URL");
+  return `${supabaseUrl.origin}/functions/v1/hairstyle-rss-proxy`;
 }
 
 function readTimeoutMs() {
@@ -1007,6 +1017,48 @@ async function runTrendMailFunctionSmoke() {
   }, null, 2));
 }
 
+async function runRssProxySmoke() {
+  const functionUrl = readRssProxyFunctionUrl();
+  const serviceRoleKey = requireSecret("SUPABASE_SERVICE_ROLE_KEY");
+  const googleUrl = new URL("https://news.google.com/rss/search");
+  googleUrl.search = new URLSearchParams({
+    q: "2026 한국 헤어스타일 트렌드",
+    hl: "ko",
+    gl: "KR",
+    ceid: "KR:ko",
+  }).toString();
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), readTimeoutMs());
+  try {
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        apikey: serviceRoleKey,
+        authorization: `Bearer ${serviceRoleKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ url: googleUrl.toString() }),
+    });
+    const xml = await response.text();
+    assert(response.ok, `RSS proxy returned status ${response.status}`);
+    const itemCount = (xml.match(/<item>/gi) || []).length;
+    const sourceCount = (xml.match(/<source(?:\s|>)/gi) || []).length;
+    assert(itemCount > 0, "RSS proxy response contained no item elements");
+    assert(sourceCount > 0, "RSS proxy response contained no source elements");
+    console.log(JSON.stringify({
+      ok: true,
+      mode: "rss-proxy",
+      functionUrl,
+      itemCount,
+      sourceCount,
+    }, null, 2));
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function main() {
   if (hasFlag("--help") || hasFlag("-h")) {
     showHelp();
@@ -1057,9 +1109,13 @@ async function main() {
     await runTrendMailFunctionSmoke();
     return;
   }
+  if (mode === "rss-proxy") {
+    await runRssProxySmoke();
+    return;
+  }
 
   throw new Error(
-    "Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, cron-db, active-db, personalization-metrics, alert-idempotency, or trend-mail-function.",
+    "Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, cron-db, active-db, personalization-metrics, alert-idempotency, trend-mail-function, or rss-proxy.",
   );
 }
 

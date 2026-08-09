@@ -23,6 +23,7 @@ export type HairstyleCatalogCycleStatus = "running" | "succeeded" | "failed";
 
 export interface HairstyleCatalogSourceSummary {
   mode: "seeded-weekly" | "researched-weekly";
+  rssTransport?: "direct" | "supabase-edge";
   queries: string[];
   notes: string;
   providers?: string[];

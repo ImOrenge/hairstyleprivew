@@ -593,6 +593,10 @@ function normalizeSourceSummary(raw: unknown): HairstyleCatalogSourceSummary | n
 
   return {
     mode,
+    rssTransport:
+      raw.rssTransport === "direct" || raw.rssTransport === "supabase-edge"
+        ? raw.rssTransport
+        : undefined,
     queries,
     notes,
     providers: Array.isArray(raw.providers)

@@ -96,3 +96,36 @@ test("all-query failure returns seeded evidence and a blocked activation quality
   assert.equal(result.sourceSummary.coverageWarnings?.length, 60);
   assert.ok(Array.from(result.trendSignals.values()).every((signal) => signal.evidenceStatus === "seeded"));
 });
+
+test("configured Supabase Edge transport keeps Google RSS URL and credentials server-side", async () => {
+  const proxyUrl = "https://dpzdhxlqnogfpubpslbf.supabase.co/functions/v1/hairstyle-rss-proxy";
+  const authToken = "recorded-service-role-token";
+  let requestCount = 0;
+  const result = await collectKoreanHairstyleTrendResearch(referenceDate, {
+    structuredRssEnabled: true,
+    rssProxyUrl: proxyUrl,
+    rssProxyAuthToken: authToken,
+    retryDelay: async () => undefined,
+    fetcher: async (input, init) => {
+      requestCount += 1;
+      assert.equal(String(input), proxyUrl);
+      assert.equal(init?.method, "POST");
+      const headers = new Headers(init?.headers);
+      assert.equal(headers.get("apikey"), authToken);
+      assert.equal(headers.get("authorization"), `Bearer ${authToken}`);
+      const payload = JSON.parse(String(init?.body)) as { url: string };
+      const googleUrl = new URL(payload.url);
+      assert.equal(googleUrl.origin, "https://news.google.com");
+      assert.equal(googleUrl.pathname, "/rss/search");
+      assert.equal(googleUrl.searchParams.get("hl"), "ko");
+      assert.equal(googleUrl.searchParams.get("gl"), "KR");
+      assert.equal(googleUrl.searchParams.get("ceid"), "KR:ko");
+      return new Response(rssXml({ title: `헤어스타일 proxy-${queryIndex(googleUrl)}` }), { status: 200 });
+    },
+  });
+
+  assert.equal(requestCount, 60);
+  assert.equal(result.sourceSummary.rssTransport, "supabase-edge");
+  assert.equal(result.sourceSummary.querySuccessCount, 60);
+  assert.ok(result.documents.length > 0);
+});

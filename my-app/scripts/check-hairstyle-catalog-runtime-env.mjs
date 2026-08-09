@@ -62,6 +62,7 @@ Usage:
   npm run hairstyle:catalog:env:check -- --mode=admin-api
   npm run hairstyle:catalog:env:check -- --mode=cron-registration
   npm run hairstyle:catalog:env:check -- --mode=trend-mail-function
+  npm run hairstyle:catalog:env:check -- --mode=rss-proxy
   npm run hairstyle:catalog:env:check -- --mode=blueprint-v4-rollout
 
 Modes:
@@ -69,6 +70,7 @@ Modes:
   admin-api           Deployed admin rebuild/status API smoke prerequisites.
   cron-registration   pg_cron helper registration prerequisites.
   trend-mail-function Supabase cron-trend-emails function prerequisites.
+  rss-proxy          Internal Supabase Google News RSS proxy prerequisites.
   blueprint-v4-rollout Blueprint/RSS/profile rollout flag consistency.
 
 Optional args:
@@ -227,6 +229,30 @@ function deriveEdgeFunctionBaseUrl() {
   return `https://${projectRef}.functions.supabase.co`;
 }
 
+function readRssProxyUrl() {
+  const explicit = getArg("rssProxyUrl") || readEnv("HAIRSTYLE_RSS_PROXY_URL");
+  if (explicit) return explicit;
+  const supabaseUrl = parseUrl(readSupabaseUrl());
+  return supabaseUrl ? `${supabaseUrl.origin}/functions/v1/hairstyle-rss-proxy` : "";
+}
+
+function checkRssProxyCredential(group) {
+  const scopedSecret = readEnv("HAIRSTYLE_RSS_PROXY_SECRET");
+  if (scopedSecret && !isPlaceholder(scopedSecret) && scopedSecret.length >= MIN_SECRET_LENGTH) {
+    console.log(`[ok] ${group}: function-scoped RSS proxy secret (HAIRSTYLE_RSS_PROXY_SECRET)`);
+    return [];
+  }
+  return checkSecret(group, "SUPABASE_SERVICE_ROLE_KEY", "RSS proxy service role key");
+}
+
+function checkRssProxy(group) {
+  const allowLocal = hasFlag("--allowLocal");
+  return [
+    ...checkHttpsUrl(group, "hairstyle RSS proxy URL", readRssProxyUrl(), { allowLocal }),
+    ...checkRssProxyCredential(group),
+  ];
+}
+
 function checkAdminApi(group) {
   const allowLocal = hasFlag("--allowLocal");
   return [
@@ -280,6 +306,7 @@ function checkBlueprintV4Rollout(group) {
   const rss = checkBooleanFlag(group, "HAIRSTYLE_RSS_FACETS_V2_ENABLED");
   const profile = checkBooleanFlag(group, "HAIR_PROFILE_MATCHING_V2_ENABLED");
   failures.push(...blueprint.failures, ...rss.failures, ...profile.failures);
+  if (rss.value) failures.push(...checkRssProxy(group));
 
   const blueprintBatch = readEnv("HAIRSTYLE_BLUEPRINT_V4_BATCH").toLowerCase();
   const validBlueprintBatches = new Set(["expansion-a", "expansion-b", "expansion-c"]);
@@ -342,6 +369,7 @@ const groups = {
   "admin-api": [checkAdminApi, checkSupabaseAdmin],
   "cron-registration": [checkCronRegistration],
   "trend-mail-function": [checkTrendMailFunction],
+  "rss-proxy": [checkRssProxy],
   "blueprint-v4-rollout": [checkBlueprintV4Rollout],
 };
 

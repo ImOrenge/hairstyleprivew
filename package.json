@@ -21,6 +21,7 @@
     "hairstyle:catalog:remote:check": "npm --prefix my-app run hairstyle:catalog:remote:check --",
     "hairstyle:catalog:cloudflare:secrets": "npm --prefix my-app run hairstyle:catalog:cloudflare:secrets --",
     "hairstyle:catalog:trend-mail:deploy": "npm --prefix my-app run hairstyle:catalog:trend-mail:deploy --",
+    "hairstyle:catalog:rss-proxy:deploy": "npm --prefix my-app run hairstyle:catalog:rss-proxy:deploy --",
     "hairstyle:catalog:launch:check": "npm --prefix my-app run hairstyle:catalog:launch:check --",
     "hairstyle:catalog:launch:summary:check": "npm --prefix my-app run hairstyle:catalog:launch:summary:check --",
     "generation-workflow:contract:test": "npm --prefix my-app run generation-workflow:contract:test",

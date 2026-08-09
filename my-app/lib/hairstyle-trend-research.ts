@@ -25,6 +25,14 @@ interface TrendResearchOptions {
   structuredRssEnabled?: boolean;
   fetcher?: RssFetcher;
   retryDelay?: (milliseconds: number) => Promise<void>;
+  rssProxyUrl?: string | null;
+  rssProxyAuthToken?: string | null;
+}
+
+interface RssTransport {
+  kind: "direct" | "supabase-edge";
+  proxyUrl: string | null;
+  authToken: string | null;
 }
 
 interface TrendResearchDocument {
@@ -82,6 +90,34 @@ function buildGoogleNewsUrl(query: string) {
   return `${GOOGLE_NEWS_RSS_BASE_URL}?${params.toString()}`;
 }
 
+function resolveRssTransport(options: TrendResearchOptions): RssTransport {
+  const configuredProxyUrl = options.rssProxyUrl === undefined
+    ? process.env.HAIRSTYLE_RSS_PROXY_URL?.trim() || null
+    : options.rssProxyUrl?.trim() || null;
+  if (!configuredProxyUrl) {
+    return { kind: "direct", proxyUrl: null, authToken: null };
+  }
+
+  let proxyUrl: URL;
+  try {
+    proxyUrl = new URL(configuredProxyUrl);
+  } catch {
+    throw new Error("HAIRSTYLE_RSS_PROXY_URL must be a valid HTTPS URL");
+  }
+  if (proxyUrl.protocol !== "https:" || proxyUrl.username || proxyUrl.password) {
+    throw new Error("HAIRSTYLE_RSS_PROXY_URL must be a credential-free HTTPS URL");
+  }
+
+  const authToken = options.rssProxyAuthToken === undefined
+    ? process.env.HAIRSTYLE_RSS_PROXY_SECRET?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || null
+    : options.rssProxyAuthToken?.trim() || null;
+  if (!authToken) {
+    throw new Error("HAIRSTYLE_RSS_PROXY_URL requires HAIRSTYLE_RSS_PROXY_SECRET or SUPABASE_SERVICE_ROLE_KEY");
+  }
+
+  return { kind: "supabase-edge", proxyUrl: proxyUrl.toString(), authToken };
+}
+
 function isRecentEnough(publishedAt: string | null, now = new Date(), lookbackDays = PRIMARY_RESEARCH_LOOKBACK_DAYS) {
   if (!publishedAt) {
     return true;
@@ -130,18 +166,32 @@ async function fetchGoogleNewsDocuments(
   queryFacet: KoreanWeeklyStyleQuery,
   fetcher: RssFetcher,
   retryDelay: (milliseconds: number) => Promise<void>,
+  transport: RssTransport,
 ) {
+  const googleNewsUrl = buildGoogleNewsUrl(queryFacet.query);
   for (let attempt = 0; attempt <= MAX_RSS_RETRIES; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const response = await fetcher(buildGoogleNewsUrl(queryFacet.query), {
-        cache: "no-store",
-        signal: controller.signal,
-        headers: {
-          "User-Agent": "HairStylePreviewCatalogBot/1.0",
-        },
-      });
+      const response = await fetcher(transport.proxyUrl ?? googleNewsUrl, transport.kind === "supabase-edge"
+        ? {
+            method: "POST",
+            cache: "no-store",
+            signal: controller.signal,
+            headers: {
+              apikey: transport.authToken!,
+              authorization: `Bearer ${transport.authToken}`,
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({ url: googleNewsUrl }),
+          }
+        : {
+            cache: "no-store",
+            signal: controller.signal,
+            headers: {
+              "User-Agent": "HairStylePreviewCatalogBot/1.0",
+            },
+          });
 
       if (!response.ok) {
         const retryable = response.status === 429 || response.status >= 500;
@@ -378,6 +428,7 @@ export async function collectKoreanHairstyleTrendResearch(
     ?? process.env.HAIRSTYLE_RSS_FACETS_V2_ENABLED?.trim().toLowerCase() === "true";
   const fetcher = options.fetcher ?? fetch;
   const retryDelay = options.retryDelay ?? ((milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+  const rssTransport = resolveRssTransport(options);
   const queryRegistry = structuredRssEnabled
     ? buildKoreanWeeklyStyleQueryRegistry(referenceDate)
     : buildLegacyKoreanWeeklyStyleQueryRegistry(referenceDate);
@@ -385,7 +436,7 @@ export async function collectKoreanHairstyleTrendResearch(
   const queryResults = await mapSettledWithConcurrency(
     queryRegistry,
     MAX_CONCURRENT_RSS_REQUESTS,
-    (query) => fetchGoogleNewsDocuments(query, fetcher, retryDelay),
+    (query) => fetchGoogleNewsDocuments(query, fetcher, retryDelay, rssTransport),
   );
   const querySuccessCount = queryResults.filter((result) => result.status === "fulfilled").length;
   const queryFailureCount = queryResults.length - querySuccessCount;
@@ -436,6 +487,7 @@ export async function collectKoreanHairstyleTrendResearch(
       trendSignals,
       sourceSummary: {
         mode: "researched-weekly",
+        rssTransport: rssTransport.kind,
         queries,
         notes: `Google News RSS research was unavailable; rebuilt from curated hairstyle blueprint baselines.${detail}`,
         providers: [GOOGLE_NEWS_PROVIDER, "curated-blueprints"],
@@ -478,6 +530,7 @@ export async function collectKoreanHairstyleTrendResearch(
 
   const sourceSummary: HairstyleCatalogSourceSummary = {
     mode: "researched-weekly",
+    rssTransport: rssTransport.kind,
     queries,
     notes: "Weekly Korean hairstyle catalog rebuilt from live Google News RSS search results and curated style blueprints.",
     providers: [GOOGLE_NEWS_PROVIDER],

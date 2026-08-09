@@ -61,7 +61,7 @@ function showHelp() {
 Usage:
   npm run hairstyle:catalog:launch:check
   npm run hairstyle:catalog:launch:check -- --allowMissingExternal
-  npm run hairstyle:catalog:launch:check -- --verifyCloudflareSecrets --runReadOnlyRuntimeSmoke --runAdminDryRunSmoke --runTrendMailSmoke --appUrl=https://hairfit.beauty
+  npm run hairstyle:catalog:launch:check -- --verifyCloudflareSecrets --runReadOnlyRuntimeSmoke --runAdminDryRunSmoke --runTrendMailSmoke --runRssProxySmoke --appUrl=https://hairfit.beauty
 
 Default checks:
   - static catalog audit
@@ -69,6 +69,7 @@ Default checks:
   - runtime env preflight
   - Cloudflare local secret-name preflight
   - cron-trend-emails deploy dry-run and Deno check
+  - hairstyle-rss-proxy deploy dry-run and Deno check
 
 Optional external evidence:
   --verifyCloudflareSecrets  Verify deployed Cloudflare Worker secret names.
@@ -77,12 +78,14 @@ Optional external evidence:
   --runRuntimeSmoke          Compatibility flag for both runtime smoke groups above.
   --forceRuntimeSmoke        Run requested runtime smoke even when preflight blockers are known.
   --runTrendMailSmoke        Run guarded cron-trend-emails smoke.
+  --runRssProxySmoke         Run the service-key authenticated RSS proxy smoke.
   --appUrl <url>             Deployed app URL passed to env/runtime smoke.
   --cycleId <id>             Catalog cycle id passed to alert idempotency smoke.
   --market <market>          Catalog market passed to active DB smoke. Defaults in runtime smoke.
   --expectAlert              Require a catalog_rotation alert for the selected cycle.
   --allowNoActive            Allow read-only smoke before an active cycle exists.
   --functionUrl <url>        Deployed cron-trend-emails function URL.
+  --rssProxyUrl <url>        Deployed hairstyle-rss-proxy function URL.
   --allowPendingAlerts       Allow intentional live trend-mail smoke when due alerts exist.
   --expectPendingCatalogAlert Require at least one due catalog_rotation alert for trend-mail smoke.
   --summaryJson <path>       Write a machine-readable readiness summary JSON file.
@@ -304,6 +307,24 @@ function collectTrendMailSmoke(missingEvidence, externalBlockers, prerequisites)
   );
 }
 
+function collectRssProxySmoke(missingEvidence, externalBlockers, prerequisites) {
+  if (!hasFlag("runRssProxySmoke")) {
+    missingEvidence.push(
+      "RSS proxy smoke not run; rerun with --runRssProxySmoke after hairstyle-rss-proxy is deployed",
+    );
+    return;
+  }
+  if (shouldSkipRuntimeSmoke("RSS proxy smoke", true, prerequisites, missingEvidence)) return;
+
+  const args = buildPassThroughArgs(["rssProxyUrl"]);
+  args.push("--mode=rss-proxy");
+  tryExternal(
+    "hairstyle RSS proxy smoke",
+    () => npmRun("hairstyle:catalog:runtime:smoke", args),
+    externalBlockers,
+  );
+}
+
 function requestedEvidence() {
   const runAllRuntimeSmoke = hasFlag("runRuntimeSmoke");
   return {
@@ -311,6 +332,7 @@ function requestedEvidence() {
     runReadOnlyRuntimeSmoke: runAllRuntimeSmoke || hasFlag("runReadOnlyRuntimeSmoke"),
     runAdminDryRunSmoke: runAllRuntimeSmoke || hasFlag("runAdminDryRunSmoke"),
     runTrendMailSmoke: hasFlag("runTrendMailSmoke"),
+    runRssProxySmoke: hasFlag("runRssProxySmoke"),
     forceRuntimeSmoke: hasFlag("forceRuntimeSmoke"),
   };
 }
@@ -341,6 +363,7 @@ function buildSummary({
   missingEvidence,
   remoteReadiness,
   trendMailDeployDryRunOk,
+  rssProxyDeployDryRunOk,
 }) {
   const hasBlockers = missingEvidence.length > 0 || externalBlockers.length > 0;
   return {
@@ -358,6 +381,7 @@ function buildSummary({
       cloudflareLocalSecretNames: cloudflareLocalSecretCheckOk,
       cloudflareDeployedSecretNames: cloudflareDeployedSecretCheckOk,
       trendMailDeployDryRun: trendMailDeployDryRunOk,
+      rssProxyDeployDryRun: rssProxyDeployDryRunOk,
     },
     remoteReadiness: remoteReadiness
       ? {
@@ -427,6 +451,7 @@ function main() {
   let cloudflareLocalSecretCheckOk = false;
   let cloudflareDeployedSecretCheckOk = null;
   let trendMailDeployDryRunOk = false;
+  let rssProxyDeployDryRunOk = false;
 
   npmRun("hairstyle:catalog:audit");
 
@@ -468,8 +493,11 @@ function main() {
 
   npmRun("hairstyle:catalog:trend-mail:deploy");
   trendMailDeployDryRunOk = true;
+  npmRun("hairstyle:catalog:rss-proxy:deploy", ["--", "--projectRef=dpzdhxlqnogfpubpslbf"]);
+  rssProxyDeployDryRunOk = true;
   collectRuntimeSmoke(missingEvidence, externalBlockers, { remoteReadiness, envPreflightOk });
   collectTrendMailSmoke(missingEvidence, externalBlockers, { remoteReadiness, envPreflightOk });
+  collectRssProxySmoke(missingEvidence, externalBlockers, { remoteReadiness, envPreflightOk });
 
   const summary = buildSummary({
     allowMissingExternal,
@@ -480,6 +508,7 @@ function main() {
     missingEvidence,
     remoteReadiness,
     trendMailDeployDryRunOk,
+    rssProxyDeployDryRunOk,
   });
   writeSummaryJson(summary);
 
