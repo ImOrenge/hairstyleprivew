@@ -1,7 +1,7 @@
 # Google News RSS 기반 헤어스타일 블루프린트 150개 확장 계획
 
 작성일: 2026-08-08
-상태: 로컬 구현·fresh-chain·rollout/RSS 결정적 검증 완료, 원격 DB 적용·실제 단계적 rollout·운영 smoke 대기
+상태: 로컬 구현·fresh-chain·rollout/RSS 결정적 검증·원격 rollback 기준선 smoke 완료, 원격 DB 적용·실제 단계적 rollout 대기
 대상 시장: `kr`
 기준 브랜치: `main@9138ece`
 연계 문서: [헤어스타일 카탈로그 순환 아키텍처](hairstyle-catalog-rotation-architecture.md)
@@ -507,7 +507,19 @@ rollback drill은 `이전 active cycle 유지`, `9개 추천 반환`, `기존 32
 - [x] migration mirror, catalog audit, recommendation fixture, profile unit test, lint, web/mobile typecheck와 production build가 통과한다.
 - [x] 임시 Supabase Postgres에서 76개 migration fresh-chain과 v4 컬럼·제약·권한·RLS-backed RPC 반환 smoke를 통과한다.
 - [x] shadow → 내부 → 10% → 50% → 100%의 안정적 user bucket 판정과 master flag 즉시 rollback이 결정적 단위 테스트로 증명된다.
-- [ ] 원격 Supabase migration/runtime smoke와 실제 active cycle별 shadow → 내부 → 10% → 50% → 100% 운영 증거가 남는다.
-- [ ] 실제 구현·배포·운영 smoke가 끝나기 전에는 이 문서를 완료 구현으로 표시하지 않는다.
+- [x] 원격 pre-deploy dry-run과 migration list가 v4 미적용 상태를 식별하고, 현재 32개 rollback active cycle의 `32 rows / 남녀 18 candidates / 남녀 lineup 9` DB·앱 status smoke가 통과한다.
+- [ ] 선행 `20260722120000_google_play_billing.sql`과 `20260808090000_extend_hairstyle_blueprint_v4.sql`을 승인된 순서로 원격 적용한 뒤 v4 RPC runtime smoke를 통과한다.
+- [ ] 배포된 코드에서 실제 active cycle별 shadow → 내부 → 10% → 50% → 100% 운영 증거와 rollback drill이 남는다.
+- [ ] 실제 원격 적용·배포·운영 smoke가 끝나기 전에는 이 문서를 완료 구현으로 표시하지 않는다.
 
 로컬 UI 검증은 `/e2e-harness/hair-profile`의 HTTP 200과 길이·형태·굵기·상태 필드 SSR 출력을 확인했다. 자동 브라우저 런타임은 로컬 경로 오류로 연결되지 않아 스크린샷·클릭 상호작용 검증은 배포 전 잔여 항목으로 둔다.
+
+### 14.1 2026-08-09 원격 pre-deploy 기준선
+
+- 연결 프로젝트: `dpzdhxlqnogfpubpslbf`
+- `supabase db push --dry-run`: 원격 쓰기 없이 실행, `readyForWrite=false`
+- 미적용 migration: `20260722120000_google_play_billing.sql`, `20260808090000_extend_hairstyle_blueprint_v4.sql`
+- 현재 active cycle: `992846d6-32be-4ab0-9ff2-6f7c22d23aa1`, 만료 `2026-08-12T00:20:14.095Z`
+- rollback 기준선: catalog 32개, 남성 후보 18개, 여성 후보 18개, 남녀 lineup 각 9개, catalog rotation alert 0개, delivery 0개
+- 배포 앱 `GET /api/admin/hairstyles/cycles/latest`: 같은 active cycle과 lineup 각 9개, warning 0개
+- v4 flag off에서는 기존 active row의 `catalog-v3` prompt version을 검증하고, v4 flag on에서만 `catalog-v4`를 요구한다.

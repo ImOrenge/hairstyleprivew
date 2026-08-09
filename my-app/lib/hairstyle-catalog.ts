@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getSupabaseAdminClient } from "./supabase";
 import {
-  HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
   buildCatalogRowsForCycle,
   buildKoreanWeeklyStyleQueries,
+  getRuntimeHairstyleCatalogPromptTemplateVersion,
   isHairstyleBlueprintV4Enabled,
   type BlueprintTrendSignal,
 } from "./hairstyle-catalog-seed";
@@ -783,6 +783,7 @@ function isActiveCatalogDue(activeCycle: HairstyleCatalogActiveCycle | null, now
 }
 
 function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, "id"> | HairstyleCatalogRow>): CatalogValidationResult {
+  const expectedPromptTemplateVersion = getRuntimeHairstyleCatalogPromptTemplateVersion();
   const targetBlueprintPoolSize = isHairstyleBlueprintV4Enabled()
     ? TARGET_BLUEPRINT_POOL_SIZE
     : LEGACY_BLUEPRINT_POOL_SIZE;
@@ -792,7 +793,7 @@ function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, 
   const maleCandidateCount = rows.filter((row) => row.styleTargets.includes("male")).length;
   const femaleCandidateCount = rows.filter((row) => row.styleTargets.includes("female")).length;
   const promptVersionMismatchCount = rows.filter(
-    (row) => row.promptTemplateVersion !== HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
+    (row) => row.promptTemplateVersion !== expectedPromptTemplateVersion,
   ).length;
   const warnings: string[] = [];
 
@@ -824,7 +825,7 @@ function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, 
     maleCandidateCount,
     femaleCandidateCount,
     targetStyleTargetCount: targetStyleTargetPoolSize,
-    promptTemplateVersion: HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
+    promptTemplateVersion: expectedPromptTemplateVersion,
     promptVersionMismatchCount,
     lineupCounts: { male: 0, female: 0 },
     warnings,
@@ -2192,9 +2193,10 @@ function filterRowsForStyleTarget(rows: HairstyleCatalogRow[], styleTarget: Memb
 }
 
 function needsStyleTargetCatalogRefresh(rows: HairstyleCatalogRow[]) {
+  const expectedPromptTemplateVersion = getRuntimeHairstyleCatalogPromptTemplateVersion();
   return (
     rows.length < 9 ||
-    rows.some((row) => row.promptTemplateVersion !== HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION)
+    rows.some((row) => row.promptTemplateVersion !== expectedPromptTemplateVersion)
   );
 }
 

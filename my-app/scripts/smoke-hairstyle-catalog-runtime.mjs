@@ -301,11 +301,14 @@ function supabaseRestUrl(path) {
   return new URL(`${supabaseUrl}/rest/v1/${path}`);
 }
 
-function readExpectedPromptTemplateVersion() {
+function readExpectedPromptTemplateVersion(blueprintV4Enabled) {
   const source = readFileSync(resolve(appDir, "lib", "hairstyle-catalog-seed.ts"), "utf8");
-  const match = source.match(/HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION\s*=\s*"([^"]+)"/);
+  const constantName = blueprintV4Enabled
+    ? "HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION"
+    : "LEGACY_HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION";
+  const match = source.match(new RegExp(`${constantName}\\s*=\\s*"([^"]+)"`));
   if (!match) {
-    throw new Error("Cannot read HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION");
+    throw new Error(`Cannot read ${constantName}`);
   }
   return match[1];
 }
@@ -620,7 +623,8 @@ function validateLineupShape(lineups, itemsById, styleTarget) {
 
 async function runActiveDbSmoke() {
   const market = getArg("market", "kr");
-  const expectedPromptTemplateVersion = readExpectedPromptTemplateVersion();
+  const blueprintV4Enabled = process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true";
+  const expectedPromptTemplateVersion = readExpectedPromptTemplateVersion(blueprintV4Enabled);
   const url = supabaseRestUrl("rpc/get_active_hairstyle_catalog");
   const active = await fetchJson(url.toString(), {
     method: "POST",
@@ -663,7 +667,6 @@ async function runActiveDbSmoke() {
   assert(Number.isFinite(expiresAt), "active catalog missing valid expiresAt");
   assert(expiresAt > activatedAt, "active catalog expiresAt must be after activatedAt");
 
-  const blueprintV4Enabled = process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true";
   const minimumItemCount = blueprintV4Enabled ? 182 : 32;
   const minimumTargetCount = blueprintV4Enabled ? 93 : 18;
   assert(items.length >= minimumItemCount, `active catalog item count must be at least ${minimumItemCount}, got ${items.length}`);
@@ -677,6 +680,7 @@ async function runActiveDbSmoke() {
   let maleCandidateCount = 0;
   let femaleCandidateCount = 0;
   let promptMismatchCount = 0;
+  const promptVersionCounts = new Map();
 
   for (const item of items) {
     assert(typeof item.id === "string", "active catalog item missing id");
@@ -687,12 +691,17 @@ async function runActiveDbSmoke() {
     const targets = normalizeStyleTargets(item.style_targets);
     if (targets.includes("male")) maleCandidateCount += 1;
     if (targets.includes("female")) femaleCandidateCount += 1;
-    if (item.prompt_template_version !== expectedPromptTemplateVersion) promptMismatchCount += 1;
+    const promptVersion = typeof item.prompt_template_version === "string" ? item.prompt_template_version : "missing";
+    promptVersionCounts.set(promptVersion, (promptVersionCounts.get(promptVersion) || 0) + 1);
+    if (promptVersion !== expectedPromptTemplateVersion) promptMismatchCount += 1;
   }
 
   assert(maleCandidateCount >= minimumTargetCount, `male active catalog candidate count must be at least ${minimumTargetCount}, got ${maleCandidateCount}`);
   assert(femaleCandidateCount >= minimumTargetCount, `female active catalog candidate count must be at least ${minimumTargetCount}, got ${femaleCandidateCount}`);
-  assert(promptMismatchCount === 0, `active catalog has ${promptMismatchCount} prompt template version mismatches`);
+  assert(
+    promptMismatchCount === 0,
+    `active catalog has ${promptMismatchCount} prompt template version mismatches; expected=${expectedPromptTemplateVersion}, observed=${JSON.stringify(Object.fromEntries(promptVersionCounts))}`,
+  );
 
   validateLineupShape(lineups, itemsById, "male");
   validateLineupShape(lineups, itemsById, "female");

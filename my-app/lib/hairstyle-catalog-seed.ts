@@ -17,6 +17,7 @@ import maleMediumBlueprints from "../data/hairstyle-blueprints/v4/male-medium.js
 import maleShortBlueprints from "../data/hairstyle-blueprints/v4/male-short.json" with { type: "json" };
 
 export const HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v4";
+export const LEGACY_HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v3";
 
 export interface HairstyleCatalogBlueprint {
   slug: string;
@@ -923,6 +924,12 @@ export function getRuntimeHairstyleBlueprints() {
     : LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS;
 }
 
+export function getRuntimeHairstyleCatalogPromptTemplateVersion() {
+  return isHairstyleBlueprintV4Enabled()
+    ? HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION
+    : LEGACY_HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION;
+}
+
 function inferLegacyTexture(texture: string): HairTextureProfile {
   const normalized = texture.toLowerCase();
   if (normalized.includes("curl") || normalized.includes("wave") || normalized.includes("perm")) {
@@ -959,7 +966,7 @@ export function buildCatalogRowsForCycle(
       freshnessScore: clampScore(signal?.freshnessScore ?? item.baselineFreshnessScore, 20, 99),
       promptTemplate: item.promptTemplate,
       negativePrompt: item.negativePrompt,
-      promptTemplateVersion: HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
+      promptTemplateVersion: getRuntimeHairstyleCatalogPromptTemplateVersion(),
       styleTargets: item.styleTargets ?? resolveStyleTargets(item.slug),
       styleFamily: item.styleFamily ?? item.slug,
       variantKey: item.variantKey ?? `legacy-${item.slug}`,

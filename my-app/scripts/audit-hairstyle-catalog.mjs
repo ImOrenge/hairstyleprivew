@@ -273,6 +273,7 @@ assert(runtimeSmokeScript.includes("catalogRotationProcessed"), "runtime trend m
 assert(runtimeSmokeScript.includes("alertType === \"catalog_rotation\""), "runtime trend mail smoke must verify catalog_rotation alerts were processed");
 assert(runtimeSmokeScript.includes("get_active_hairstyle_catalog"), "runtime active DB smoke must call the active catalog RPC");
 assert(runtimeSmokeScript.includes("blueprintV4Enabled ? 182 : 32"), "runtime active DB smoke must enforce v4 and rollback pool sizes");
+assert(runtimeSmokeScript.includes("LEGACY_HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION"), "runtime active DB smoke must validate the legacy prompt version while v4 is off");
 assert(runtimeSmokeScript.includes("blueprintV4Enabled ? 93 : 18"), "runtime active DB smoke must enforce v4 and rollback target sizes");
 assert(runtimeSmokeScript.includes("maleCandidateCount >= minimumTargetCount"), "runtime active DB smoke must enforce male candidate pool size");
 assert(runtimeSmokeScript.includes("femaleCandidateCount >= minimumTargetCount"), "runtime active DB smoke must enforce female candidate pool size");

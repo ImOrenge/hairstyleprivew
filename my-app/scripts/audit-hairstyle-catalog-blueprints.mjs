@@ -143,6 +143,7 @@ assert(KOREAN_HAIRSTYLE_BLUEPRINTS.length === 182, `expected total pool 182, got
 const rows = buildCatalogRowsForCycle("00000000-0000-0000-0000-000000000000", new Date(0).toISOString(), new Map());
 assert(rows.length === 182, `expected 182 built rows, got ${rows.length}`);
 assert(new Set(rows.map((row) => row.slug)).size === 182, "built rows contain duplicate slugs");
+assert(rows.every((row) => row.promptTemplateVersion === "catalog-v4"), "v4 rows must use catalog-v4 prompts");
 
 const femaleCandidates = rows.filter((row) => row.styleTargets.includes("female")).length;
 const maleCandidates = rows.filter((row) => row.styleTargets.includes("male")).length;
@@ -160,6 +161,7 @@ process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED = "false";
 process.env.HAIRSTYLE_RSS_FACETS_V2_ENABLED = "false";
 const rollbackRows = buildCatalogRowsForCycle("00000000-0000-0000-0000-000000000000", new Date(0).toISOString(), new Map());
 assert(rollbackRows.length === 32, `blueprint rollback flag must restore 32 rows, got ${rollbackRows.length}`);
+assert(rollbackRows.every((row) => row.promptTemplateVersion === "catalog-v3"), "rollback rows must preserve catalog-v3 prompts");
 assert(buildKoreanWeeklyStyleQueries(new Date("2026-08-08T00:00:00Z")).length === 11, "RSS rollback flag must restore 11 queries");
 process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED = "true";
 process.env.HAIRSTYLE_RSS_FACETS_V2_ENABLED = "true";
