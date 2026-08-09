@@ -727,4 +727,5 @@ export const initialMobileRoutePorts: MobileRoutePort[] = [
 ];
 export * from "./account-deletion";
 export * from "./consulting/contract";
+export * from "./consulting/photo-preflight";
 export * from "./v2/index";

@@ -36,8 +36,9 @@ The product journey changes from a four-step image-generation wizard to a header
 
 ## Photo, analysis, and generation workflow
 
-- Scene 02 uploads the portrait directly to the existing private generation draft Storage path. It no longer asks the user to open the legacy wizard or paste a generation ID.
-- The authenticated `photo-analysis` route verifies consultation and draft ownership, reads the private source image on the server, executes face analysis, and persists versioned `analysis_evidence_v2` before the UI advances.
+- Scene 02 first runs a system photo preflight. File metadata, image decoding, resolution, browser face detection, and Canvas pixel signals populate the eight quality cards; the cards are not presented as AI output.
+- After upload to the existing private generation draft Storage path, the authenticated `photo-analysis` route verifies ownership and reruns the system preflight with Sharp. A blocking resolution, exposure, sharpness, or face-detection result returns `422` without calling the AI model.
+- Only a preflight-eligible portrait reaches the AI face and hair-strategy analysis. The route then persists versioned `analysis_evidence_v2` before the UI advances. It no longer asks the user to open the legacy wizard or paste a generation ID.
 - Scenes 03~05 review the evidence and confirm the strategy. Image generation is not accepted before the strategy snapshot is confirmed.
 - Scene 06 requests the existing paid-action quote, accepts the stored draft with the consultation ID, and polls the V2 preview board until exactly nine quality-accepted results are ready.
 - Source Storage paths, service credentials, provider prompts, and rejected attempt internals are not returned to the browser. Source-photo display continues to use short-lived signed URLs.

@@ -1,7 +1,8 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import type { AnalysisEvidenceV2, PhotoQualityV2 } from "@hairfit/shared/v2";
+import type { PhotoFaceDetectionEvidence } from "@hairfit/shared";
+import type { AnalysisEvidenceV2 } from "@hairfit/shared/v2";
 import { downloadGenerationOriginalImageDataUrl } from "../generation-image-storage";
 import { analyzeFaceForCatalog } from "../recommendation-generator";
 import type { FaceAnalysisSummary } from "../recommendation-types";
@@ -12,8 +13,8 @@ import type {
   AnalysisEvidenceDraft,
   EvidenceItem,
   FaceAnalysis,
-  PhotoQualityDiagnostic,
 } from "./contracts";
+import { inspectConsultationPhotoPreflight } from "./photo-preflight-server";
 
 type DraftRow = {
   id: string;
@@ -21,59 +22,8 @@ type DraftRow = {
   state: string;
   original_image_path: string;
   checksum_sha256: string;
-  byte_size: number;
   expires_at: string;
 };
-
-function qualityForAnalysis(model: string, byteSize: number): PhotoQualityV2 {
-  const fallback = model === "heuristic-fallback";
-  const warnings: PhotoQualityV2["warnings"] = [
-    {
-      code: "LIGHTING_REVIEW_RECOMMENDED",
-      message: "조명과 화이트밸런스는 화면에서 한 번 더 확인해 주세요.",
-      severity: "warning",
-    },
-  ];
-  if (fallback) {
-    warnings.unshift({
-      code: "AI_ANALYSIS_FALLBACK",
-      message: "AI 분석 응답을 확인하지 못해 기본 분석으로 표시합니다.",
-      severity: "warning",
-    });
-  }
-  const resolution = byteSize >= 300_000 ? 0.9 : 0.72;
-  return {
-    status: "pass_with_warning",
-    overall: fallback ? 0.58 : 0.82,
-    frontal: fallback ? 0.55 : 0.84,
-    lighting: 0.7,
-    resolution,
-    blur: 0.75,
-    occlusion: fallback ? 0.6 : 0.82,
-    hairlineVisibility: fallback ? 0.58 : 0.8,
-    skinColorReliability: 0.68,
-    warnings,
-  };
-}
-
-function photoDiagnostics(quality: PhotoQualityV2): PhotoQualityDiagnostic[] {
-  const values: Array<[PhotoQualityDiagnostic["id"], string, number]> = [
-    ["faceVisible", "얼굴 전체 노출", quality.occlusion],
-    ["frontal", "정면 각도", quality.frontal],
-    ["lighting", "균일한 조명", quality.lighting],
-    ["resolution", "충분한 해상도", quality.resolution],
-    ["hairline", "헤어라인 노출", quality.hairlineVisibility],
-    ["occlusion", "가림 없음", quality.occlusion],
-    ["color", "색상 왜곡 없음", quality.skinColorReliability ?? 0.5],
-    ["background", "배경 분리", 0.72],
-  ];
-  return values.map(([id, label, score]) => ({
-    id,
-    label,
-    status: score >= 0.78 ? "pass" : "warning",
-    message: score >= 0.78 ? "분석 가능" : "결과 확인 권장",
-  }));
-}
 
 function faceAnalysis(analysis: FaceAnalysisSummary, model: string): FaceAnalysis {
   return {
@@ -103,6 +53,7 @@ export async function analyzeConsultationPhoto(input: {
   consultationId: string;
   draftId: string;
   expectedVersion: number;
+  faceEvidence: PhotoFaceDetectionEvidence;
 }) {
   const db = getSupabaseAdminClient();
   const consultation = await db
@@ -119,7 +70,7 @@ export async function analyzeConsultationPhoto(input: {
 
   const draftResult = await db
     .from("generation_upload_drafts")
-    .select("id,user_id,state,original_image_path,checksum_sha256,byte_size,expires_at")
+    .select("id,user_id,state,original_image_path,checksum_sha256,expires_at")
     .eq("id", input.draftId)
     .eq("user_id", input.userId)
     .maybeSingle();
@@ -131,8 +82,15 @@ export async function analyzeConsultationPhoto(input: {
   }
 
   const imageDataUrl = await downloadGenerationOriginalImageDataUrl(db, draft.original_image_path);
+  const preflight = await inspectConsultationPhotoPreflight(imageDataUrl, input.faceEvidence);
+  if (!preflight.canAnalyze) {
+    return {
+      requiresRetry: true as const,
+      quality: preflight.diagnostics,
+      preflightMessage: "사진 사전검사를 통과하지 못했습니다. 경고 항목을 확인하고 다시 촬영해 주세요.",
+    };
+  }
   const analysisRun = await analyzeFaceForCatalog(imageDataUrl);
-  const quality = qualityForAnalysis(analysisRun.model, draft.byte_size);
   const now = new Date().toISOString();
   const evidence: AnalysisEvidenceV2 = {
     schemaVersion: "analysis-evidence-v1",
@@ -141,7 +99,7 @@ export async function analyzeConsultationPhoto(input: {
     sourceImageFingerprint: draft.checksum_sha256,
     sourceTransform: { rotationDegrees: 0, crop: { x: 0, y: 0, width: 1, height: 1 } },
     model: { provider: analysisRun.model === "heuristic-fallback" ? "local" : "gemini", name: analysisRun.model, version: analysisRun.model },
-    quality,
+    quality: preflight.quality,
     contours: [],
     hairline: null,
     measurements: [],
@@ -153,10 +111,11 @@ export async function analyzeConsultationPhoto(input: {
   };
   const evidenceId = await saveAnalysisEvidenceV2(input.userId, evidence, input.expectedVersion);
   return {
+    requiresRetry: false as const,
     evidenceId,
     evidence: evidenceDraft(analysisRun.analysis, analysisRun.model),
     faceAnalysis: faceAnalysis(analysisRun.analysis, analysisRun.model),
-    quality: photoDiagnostics(quality),
+    quality: preflight.diagnostics,
     analyzedAt: now,
   };
 }

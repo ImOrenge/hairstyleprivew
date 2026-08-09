@@ -40,12 +40,14 @@ Route handler는 provider prompt나 원본 민감 입력을 응답하지 않는�
 
 사진·분석·생성의 실제 실행 순서는 다음과 같다.
 
-1. 인증된 사용자가 상담 사진을 기존 private generation draft Storage에 업로드한다.
-2. `photo-analysis`가 draft와 consultation 소유권 및 optimistic version을 확인하고 서버에서 원본을 읽어 얼굴 분석을 실행한다.
-3. 분석 결과는 `analysis_evidence_v2`와 consultation snapshot의 Evidence → Meaning → Action 항목에 함께 저장된다.
-4. 사용자가 근거를 검토하고 8축 전략을 확정한다.
-5. 프리뷰 화면이 paid-action quote를 확인한 뒤 같은 draft를 consultation ID와 함께 accept한다.
-6. durable generation workflow가 V2 사용자 옵션 프롬프트, 3×3 slot, quality retry를 실행하고 프리뷰 화면은 V2 board를 폴링한다.
+1. 브라우저가 형식·용량·디코딩·해상도와 가능한 경우 얼굴 존재를 검사하고, Canvas 픽셀 통계로 노출·색상·선명도·배경 분리 신호를 산출한다.
+2. 사전검사를 통과한 인증 사용자가 상담 사진을 기존 private generation draft Storage에 업로드한다.
+3. `photo-analysis`가 draft와 consultation 소유권 및 optimistic version을 확인하고 Sharp 기반 시스템 사전검사를 재실행한다. blocking 결과는 AI 호출 전에 `422`로 종료한다.
+4. 통과한 사진만 얼굴형·헤어 전략 AI 분석을 실행한다. 8개 사진 품질 카드는 AI 성공 여부에 따른 고정 점수가 아니라 시스템 사전검사 결과다.
+5. 분석 결과는 `analysis_evidence_v2`와 consultation snapshot의 Evidence → Meaning → Action 항목에 함께 저장된다.
+6. 사용자가 근거를 검토하고 8축 전략을 확정한다.
+7. 프리뷰 화면이 paid-action quote를 확인한 뒤 같은 draft를 consultation ID와 함께 accept한다.
+8. durable generation workflow가 V2 사용자 옵션 프롬프트, 3×3 slot, quality retry를 실행하고 프리뷰 화면은 V2 board를 폴링한다.
 
 브라우저에는 원본 Storage path, service role, provider prompt, prompt input snapshot을 반환하지 않는다. 원본 확인은 10분 signed URL만 사용한다.
 

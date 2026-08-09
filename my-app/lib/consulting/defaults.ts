@@ -1,9 +1,5 @@
+import { createPendingPhotoDiagnostics } from "@hairfit/shared";
 import type { ConsultationPreview, ConsultationSnapshot } from "./contracts";
-
-const QUALITY = [
-  ["faceVisible", "얼굴 전체 노출"], ["frontal", "정면 각도"], ["lighting", "균일한 조명"], ["resolution", "충분한 해상도"],
-  ["hairline", "헤어라인 노출"], ["occlusion", "가림 없음"], ["color", "색상 왜곡 없음"], ["background", "배경 분리"],
-] as const;
 
 export function createPreviewSlots(): ConsultationPreview[] {
   const axes = ["BALANCE", "IMAGE", "LIFESTYLE"] as const;
@@ -32,7 +28,7 @@ export function createConsultationSnapshot(input: { sessionId: string; userId: s
     photo: {
       generationId: null, draftId: null, clientRequestId: null, uploadedAt: null, expiresAt: null,
       primaryUrl: null, colorAssistUrl: null,
-      quality: QUALITY.map(([id, label]) => ({ id, label, status: "pending", message: "확인 전" })),
+      quality: createPendingPhotoDiagnostics(),
       usageScopes: ["analysis", "preview"], retentionDays: 7, capturedAt: null,
     },
     evidence: { pipelineStatus: "idle", items: [], reviewedAt: null },

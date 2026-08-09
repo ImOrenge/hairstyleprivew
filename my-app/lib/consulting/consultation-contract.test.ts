@@ -59,7 +59,7 @@ test("customer entry CTAs point directly to the AI consultant while legacy remai
   assert.match(landing, /AI 헤어 컨설턴트 시작/);
   assert.match(customerHome, /AI 헤어 컨설턴트/);
   const photo = read("../../components/consulting/workbenches/PhotoWorkbench.tsx");
-  assert.match(photo, /사진 업로드 및 AI 분석/);
+  assert.match(photo, /사진 업로드 및 AI 상담 분석/);
   assert.doesNotMatch(photo, /workspace\?legacy=1/);
 });
 
@@ -68,7 +68,14 @@ test("photo analysis precedes strategy-confirmed V2 preview generation", () => {
   const analysisServer = read("./photo-analysis-server.ts");
   const previews = read("../../components/consulting/workbenches/PreviewsWorkbench.tsx");
   assert.match(photoRoute, /ANALYSIS_EVIDENCE_V2_ENABLED/);
+  assert.match(photoRoute, /normalizePhotoFaceDetectionEvidence/);
+  assert.match(analysisServer, /inspectConsultationPhotoPreflight/);
   assert.match(analysisServer, /analyzeFaceForCatalog/);
+  assert.ok(
+    analysisServer.indexOf("inspectConsultationPhotoPreflight") < analysisServer.indexOf("analyzeFaceForCatalog(imageDataUrl)"),
+    "system photo preflight must run before AI analysis",
+  );
+  assert.doesNotMatch(analysisServer, /qualityForAnalysis/);
   assert.match(analysisServer, /saveAnalysisEvidenceV2/);
   assert.match(previews, /snapshot\.strategy\.confirmedAt/);
   assert.match(previews, /\/api\/generations\/accept/);

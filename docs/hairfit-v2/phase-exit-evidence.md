@@ -80,6 +80,7 @@
 ## 2026-08-09 사진·분석·생성 직접 연결 후속
 
 - 상담 사진 화면에서 구 마법사 handoff와 generation ID 수동 입력을 제거하고 private upload draft → AI photo analysis로 직접 연결했다.
+- 사진 선택 시 시스템 사전검사 결과가 8개 품질 카드에 연결되며 `AI 분석 대기`라는 오해 소지가 있는 상태 문구를 제거했다. 서버는 Sharp로 품질 신호를 재검사하고 blocking 사진에는 AI를 호출하지 않는다.
 - 분석 근거를 저장하고 검토한 뒤 전략을 확정해야 프리뷰 생성 접수가 가능하도록 순서를 고정했다.
 - 프리뷰 화면은 paid-action quote → consultation-linked durable acceptance → V2 3×3 board polling을 수행하며 accepted 9 전에는 shortlist를 열지 않는다.
 - 원격 Supabase에 `20260722120000`, `202608080001`, `202608080002`가 적용됐고 원격 pending migration은 0이다. `consultation_sessions` Data API service read와 active `hair_decision_once` offering을 확인했다.
