@@ -51,7 +51,9 @@
     ".next-protected-e2e/types/**/*.ts",
     ".next-protected-e2e/dev/types/**/*.ts",
     ".next-billing-validation/types/**/*.ts",
-    ".next-billing-validation/dev/types/**/*.ts"
+    ".next-billing-validation/dev/types/**/*.ts",
+    ".next-live-e2e/types/**/*.ts",
+    ".next-live-e2e/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

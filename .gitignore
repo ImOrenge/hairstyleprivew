@@ -15,6 +15,7 @@ yarn-error.log*
 .artifacts/playwright/
 .artifacts/playwright-auth/
 .artifacts/playwright-protected/
+.artifacts/playwright-live/
 .artifacts/generation-notification-staging/
 .artifacts/live-auth-smoke/
 playwright/.clerk/

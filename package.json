@@ -64,6 +64,7 @@
     "web:auth-e2e:update": "playwright test --config=playwright.auth.config.ts --update-snapshots",
     "web:protected-e2e": "playwright test --config=playwright.protected.config.ts",
     "web:protected-e2e:preflight": "node scripts/check-clerk-protected-e2e-fixture.mjs",
+    "web:live-e2e": "playwright test --config=playwright.live.config.ts",
     "portone:audit": "npm --prefix my-app run portone:audit",
     "portone:contract:test": "npm --prefix my-app run portone:contract:test",
     "portone:confirmation:test": "npm --prefix my-app run portone:confirmation:test",
