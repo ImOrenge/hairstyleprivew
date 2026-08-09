@@ -10,7 +10,7 @@ test("forces one token refresh and replays a web request after 401", async () =>
     "/api/generations/id",
     { method: "GET" },
     {
-      getToken: (options) => options?.skipCache ? "fresh-web-token" : null,
+      getToken: (options) => options?.skipCache ? "fresh-web-token" : "cached-web-token",
       fetchImpl: async (_input, init) => {
         requestCount += 1;
         headers.push(new Headers(init?.headers).get("Authorization"));
@@ -22,7 +22,25 @@ test("forces one token refresh and replays a web request after 401", async () =>
   );
 
   assert.equal(response.status, 200);
-  assert.deepEqual(headers, [null, "Bearer fresh-web-token"]);
+  assert.deepEqual(headers, ["Bearer cached-web-token", "Bearer fresh-web-token"]);
+});
+
+test("sends the current Clerk session token on the first web request", async () => {
+  const headers: (string | null)[] = [];
+  const response = await authenticatedFetchWithRetry(
+    "/api/account",
+    { cache: "no-store" },
+    {
+      getToken: () => "email-session-token",
+      fetchImpl: async (_input, init) => {
+        headers.push(new Headers(init?.headers).get("Authorization"));
+        return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      },
+    },
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(headers, ["Bearer email-session-token"]);
 });
 
 test("returns the first 401 when token refresh is unavailable", async () => {
