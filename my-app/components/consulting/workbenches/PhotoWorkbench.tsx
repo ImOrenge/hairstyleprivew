@@ -138,6 +138,16 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
     setError(null);
     try {
       const receipt = await uploadDraft();
+      const uploadedPhoto: PhotoSnapshot = {
+        ...photo,
+        generationId: null,
+        draftId: receipt.draftId,
+        clientRequestId: receipt.clientRequestId,
+        uploadedAt: receipt.uploadedAt,
+        expiresAt: receipt.expiresAt,
+      };
+      setPhoto(uploadedPhoto);
+      setFile(null);
       const response = await fetch(`/api/consultations/${encodeURIComponent(snapshot.sessionId)}/photo-analysis`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -153,12 +163,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
         throw new Error(data.error || "사진 분석을 완료하지 못했습니다.");
       }
       const nextPhoto: PhotoSnapshot = {
-        ...photo,
-        generationId: null,
-        draftId: receipt.draftId,
-        clientRequestId: receipt.clientRequestId,
-        uploadedAt: receipt.uploadedAt,
-        expiresAt: receipt.expiresAt,
+        ...uploadedPhoto,
         capturedAt: data.analyzedAt,
         quality: data.quality,
       };

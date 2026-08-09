@@ -77,6 +77,14 @@ test("photo analysis precedes strategy-confirmed V2 preview generation", () => {
   );
   assert.doesNotMatch(analysisServer, /qualityForAnalysis/);
   assert.match(analysisServer, /saveAnalysisEvidenceV2/);
+  const evidenceServer = read("../v2/analysis-server.ts");
+  const saveAnalysisBlock = evidenceServer.slice(
+    evidenceServer.indexOf("export async function saveAnalysisEvidenceV2"),
+    evidenceServer.indexOf("export async function getAnalysisEvidenceV2"),
+  );
+  assert.match(evidenceServer, /const stableEvidenceId=/);
+  assert.match(evidenceServer, /id:stableEvidenceId/);
+  assert.doesNotMatch(saveAnalysisBlock, /upsert\(\{id:evidence\.id/);
   assert.match(previews, /snapshot\.strategy\.confirmedAt/);
   assert.match(previews, /\/api\/generations\/accept/);
   assert.match(previews, /\/preview-board/);
