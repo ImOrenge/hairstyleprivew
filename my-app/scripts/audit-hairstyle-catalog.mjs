@@ -71,6 +71,7 @@ if (lineupAudit.status !== 0) {
 }
 
 const catalog = read("lib/hairstyle-catalog.ts");
+const catalogRecommendation = read("lib/hairstyle-catalog-recommendation.ts");
 const trendResearch = read("lib/hairstyle-trend-research.ts");
 const rebuildRoute = read("app/api/admin/hairstyles/rebuild/route.ts");
 const middleware = read("middleware.ts");
@@ -153,8 +154,10 @@ assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup 
 assert(catalog.includes('from "./hairstyle-catalog-lineup"'), "lineup builder must live in the pure lineup module");
 assert(catalog.includes("attachDryRunCatalogRowIds"), "dry-run rebuild must attach stable temporary ids for lineup validation");
 assert(catalog.includes("buildLineupBackedRecommendations"), "missing lineup-backed recommendation builder");
-const topNineBody = catalog.match(/function buildTopNine\([\s\S]*?function buildLineupBackedRecommendations/);
-assert(topNineBody && topNineBody[0].includes("if (limit <= 0)") && topNineBody[0].includes("selected.length >= limit"), "lineup fallback builder must enforce recommendation limit");
+assert(catalog.includes("selectLineupBackedCatalogRows"), "runtime recommendation builder must use the pure catalog selector");
+assert(packageJson.includes("lib/hairstyle-catalog-recommendation.test.ts"), "recommendation contract test must be wired into the package script");
+const topRowsBody = catalogRecommendation.match(/function selectTopRows\([\s\S]*?export function selectLineupBackedCatalogRows/);
+assert(topRowsBody && topRowsBody[0].includes("if (limit <= 0)") && topRowsBody[0].includes("selected.length >= limit"), "lineup fallback builder must enforce recommendation limit");
 assert(catalog.includes("computeLineupOverlap"), "missing lineup overlap calculation");
 assert(catalog.includes("overlap_warning"), "missing lineup overlap warning event");
 const generateBody = catalog.match(/export async function generateCatalogBackedRecommendationSet\([\s\S]*?return \{[\s\S]*?selectionContext,[\s\S]*?\};\r?\n\}/);

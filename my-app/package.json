@@ -18,7 +18,7 @@
     "hairstyle:blueprints:audit": "node scripts/audit-hairstyle-catalog-blueprints.mjs",
     "hairstyle:blueprints:db:smoke": "node --no-warnings scripts/smoke-hairstyle-blueprint-v4-local-db.mjs",
     "hairstyle:profile:test": "node --no-warnings --test lib/current-hair-profile.test.ts",
-    "hairstyle:catalog:recommendation:test": "node --no-warnings --test lib/current-hair-profile.test.ts lib/hair-profile-rollout.test.ts",
+    "hairstyle:catalog:recommendation:test": "node --no-warnings --test lib/current-hair-profile.test.ts lib/hair-profile-rollout.test.ts lib/hairstyle-catalog-recommendation.test.ts",
     "hairstyle:catalog:rss:fixture:test": "node --no-warnings --test lib/hairstyle-trend-research.test.ts",
     "hairstyle:catalog:audit": "node scripts/audit-hairstyle-catalog.mjs",
     "hairstyle:catalog:lineup:audit": "node scripts/audit-hairstyle-catalog-lineups.mjs",

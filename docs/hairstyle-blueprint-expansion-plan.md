@@ -404,7 +404,9 @@ active cycle rows 182개
 | 곱슬 | 일반, 손상, 탈색, 염색 |
 | 강한 곱슬·부스스함 | 일반, 손상, 탈색, 염색 |
 
-총 24개 기본 fixture에 길이 고정/미고정, `unknown`, 고손상 hard exclusion을 추가한다. 각 결과는 9개 수량, 길이 규칙, family 중복, hard conflict 0, 호환 후보 최소 6개를 검사한다.
+실행형 계약 테스트는 여성·남성 × 희망 단·중·장 × texture 3종 × 가는·보통·굵은 모발 × 일반·손상·탈색·염색 4종에 고손상 `탈색+손상` 조합을 더한 총 270개 profile을 순회한다. 운영 추천과 같은 순수 selector를 실행해 각 결과의 9개 수량, 중복 없음, 길이 규칙, family 최대 2개, hard conflict 0, texture·굵기 호환 후보 최소 6개를 검사한다.
+
+같은 테스트에서 v4 flag를 끄고 기존 32개·`catalog-v3` rollback pool이 남녀 각각 9개, 단·중·장 각 3개, family 최대 2개인 lineup-first 결과를 유지하는지도 실행 검증한다.
 
 ### 10.3 RSS fixture
 
@@ -501,7 +503,7 @@ rollback drill은 `이전 active cycle 유지`, `9개 추천 반환`, `기존 32
 - [x] 여성·남성의 단·중·장 각 25개 묶음이 가는/보통/굵은 모발 `8/9/8`을 만족한다.
 - [x] RSS 60개 query가 metadata와 함께 수집되고 실패 시 기존 active cycle이 유지된다.
 - [x] 현재 모발 프로필이 web/mobile/salon generation 경로에서 동일하게 전달된다.
-- [x] known profile의 9개 결과에는 hard condition·굵기 conflict가 없고 최소 6개가 texture·굵기 호환이다.
+- [x] known profile의 9개 결과에는 hard condition·굵기 conflict가 없고 최소 6개가 texture·굵기 호환이다. 운영 selector를 공유하는 270개 profile 실행형 테스트로 증명한다.
 - [x] 기본 비교 모드는 단/중/장 각 3개, 동일 family 최대 2개를 보장한다.
 - [x] 기존 active lineup, seeded fallback, previous cycle rollback과 `32개/11 query/lineup-first` flag fallback이 유지된다.
 - [x] migration mirror, catalog audit, recommendation fixture, profile unit test, lint, web/mobile typecheck와 production build가 통과한다.
