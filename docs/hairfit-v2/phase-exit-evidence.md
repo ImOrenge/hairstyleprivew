@@ -76,3 +76,12 @@
 - 임시 호환 계층: entitlement dual write/shadow read, generation selection과 hair-record adapter
 - 배포 blocking decision: 운영 offering/price 승인, 유료 mismatch 0, 실제 refund/webhook replay, staging deletion/rollback 증거
 - legacy 제거 조건: 지원 client legacy read 0, 한 결제 주기 관찰, deletion ADR와 별도 destructive PR
+
+## 2026-08-09 사진·분석·생성 직접 연결 후속
+
+- 상담 사진 화면에서 구 마법사 handoff와 generation ID 수동 입력을 제거하고 private upload draft → AI photo analysis로 직접 연결했다.
+- 분석 근거를 저장하고 검토한 뒤 전략을 확정해야 프리뷰 생성 접수가 가능하도록 순서를 고정했다.
+- 프리뷰 화면은 paid-action quote → consultation-linked durable acceptance → V2 3×3 board polling을 수행하며 accepted 9 전에는 shortlist를 열지 않는다.
+- 원격 Supabase에 `20260722120000`, `202608080001`, `202608080002`가 적용됐고 원격 pending migration은 0이다. `consultation_sessions` Data API service read와 active `hair_decision_once` offering을 확인했다.
+- 검증: consultation 8/8, HairFit V2 8/8, upload 5/5, generation entry 14/14, generation workflow 69/69, global CSS 9/9, component registry, migration mirror, monorepo typecheck, 집중 lint, V2 flag ON production build 129 routes 통과.
+- 실제 사용자 사진·Clerk 로그인·외부 Gemini 9장 생성은 사용자 입력과 유료 처리량이 필요한 최종 smoke이므로 정적/빌드 결과로 완료 주장하지 않는다.

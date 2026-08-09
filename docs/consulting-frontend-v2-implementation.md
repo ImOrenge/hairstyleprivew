@@ -13,7 +13,7 @@ The product journey changes from a four-step image-generation wizard to a header
 | # | Scene URL | Server snapshot responsibility |
 |---|---|---|
 | 01 | `/consulting/[sessionId]/discovery` | goals, current hair, services, maintenance, avoid conditions |
-| 02 | `/consulting/[sessionId]/photo` | generation photo bridge, eight quality checks, use scope, retention |
+| 02 | `/consulting/[sessionId]/photo` | private draft upload, AI photo analysis, eight quality checks, use scope, retention |
 | 03 | `/consulting/[sessionId]/scan` | evidence layers, excluded regions, confidence, manual correction |
 | 04 | `/consulting/[sessionId]/analysis` | face analysis, personal color, Evidence -> Meaning -> Action ledger |
 | 05 | `/consulting/[sessionId]/direction` | versioned eight-axis `StrategySnapshot` before generation |
@@ -34,11 +34,19 @@ The product journey changes from a four-step image-generation wizard to a header
 - A new style selection appends a revision and never mutates the prior snapshot. Actual service confirmation locks further strategy/style changes.
 - Public salon shares use a 256-bit opaque token, a SHA-256 database lookup hash, frozen sanitized payload, expiry, and revocation. Raw face photos and the full consultation snapshot are excluded.
 
+## Photo, analysis, and generation workflow
+
+- Scene 02 uploads the portrait directly to the existing private generation draft Storage path. It no longer asks the user to open the legacy wizard or paste a generation ID.
+- The authenticated `photo-analysis` route verifies consultation and draft ownership, reads the private source image on the server, executes face analysis, and persists versioned `analysis_evidence_v2` before the UI advances.
+- Scenes 03~05 review the evidence and confirm the strategy. Image generation is not accepted before the strategy snapshot is confirmed.
+- Scene 06 requests the existing paid-action quote, accepts the stored draft with the consultation ID, and polls the V2 preview board until exactly nine quality-accepted results are ready.
+- Source Storage paths, service credentials, provider prompts, and rejected attempt internals are not returned to the browser. Source-photo display continues to use short-lived signed URLs.
+
 ## Compatibility and rollback
 
 - `NEXT_PUBLIC_CONSULTATION_FRONTEND_V2=false`: `/workspace` and all existing paths behave as before; consulting routes redirect to the legacy workspace.
 - Flag enabled: `/workspace` enters `/consulting/new`.
-- `/workspace?legacy=1&returnTo=...` is the explicit generation compatibility bridge and returns the generation ID to Scene 02.
+- `/workspace?legacy=1` remains available only as the feature-flag rollback entry. The V2 consulting photo scene does not navigate to it.
 - Result/Aftercare and Styler routes remain unchanged and are linked from Scenes 10 and 11.
 - Rollback is a feature-flag change only. It does not delete consultation snapshots or revoke existing privacy controls.
 

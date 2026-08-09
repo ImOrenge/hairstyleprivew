@@ -4,7 +4,19 @@ export type Confidence = "low" | "medium" | "high";
 
 export interface ConsultationInputProfile { goals: string[]; currentHair: string; desiredServices: string[]; maintenanceLevel: "low" | "medium" | "high"; avoid: string[]; notes: string }
 export interface PhotoQualityDiagnostic { id: "faceVisible" | "frontal" | "lighting" | "resolution" | "hairline" | "occlusion" | "color" | "background"; label: string; status: "pending" | "pass" | "warning"; message: string }
-export interface PhotoSnapshot { generationId: string | null; primaryUrl: string | null; colorAssistUrl: string | null; quality: PhotoQualityDiagnostic[]; usageScopes: string[]; retentionDays: 1 | 7 | 30; capturedAt: string | null }
+export interface PhotoSnapshot {
+  generationId: string | null;
+  draftId?: string | null;
+  clientRequestId?: string | null;
+  uploadedAt?: string | null;
+  expiresAt?: string | null;
+  primaryUrl: string | null;
+  colorAssistUrl: string | null;
+  quality: PhotoQualityDiagnostic[];
+  usageScopes: string[];
+  retentionDays: 1 | 7 | 30;
+  capturedAt: string | null;
+}
 export interface EvidenceItem { id: string; layer: "contour" | "hairline" | "measurement" | "skin" | "excluded" | "direction"; evidence: string; meaning: string; action: string; confidence: Confidence; manuallyCorrected: boolean }
 export interface AnalysisEvidenceDraft { pipelineStatus: "idle" | "linked" | "reviewed"; items: EvidenceItem[]; reviewedAt: string | null }
 export interface FaceAnalysis { faceShape: string; balance: string; hairline: string; density: string; confidence: Confidence }

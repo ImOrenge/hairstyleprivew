@@ -37,13 +37,15 @@ test("Scene composition is headerless and dynamically loads all workbenches", ()
   assert.match(scene, /FloatingStageControls/);
 });
 
-test("feature flag off preserves workspace and legacy bridge remains available", () => {
+test("feature flag off preserves workspace while consulting photo uses the direct V2 workflow", () => {
   const workspace = read("../../app/workspace/page.tsx");
   const flag = read("./feature-flag.ts");
   const photo = read("../../components/consulting/workbenches/PhotoWorkbench.tsx");
   assert.match(flag, /NEXT_PUBLIC_CONSULTATION_FRONTEND_V2/);
   assert.match(workspace, /legacy !== "1"/);
-  assert.match(photo, /workspace\?legacy=1/);
+  assert.match(photo, /\/api\/generations\/drafts/);
+  assert.match(photo, /photo-analysis/);
+  assert.doesNotMatch(photo, /workspace\?legacy=1/);
 });
 
 test("customer entry CTAs point directly to the AI consultant while legacy remains an explicit bridge", () => {
@@ -56,7 +58,21 @@ test("customer entry CTAs point directly to the AI consultant while legacy remai
   }
   assert.match(landing, /AI 헤어 컨설턴트 시작/);
   assert.match(customerHome, /AI 헤어 컨설턴트/);
-  assert.match(read("../../components/consulting/workbenches/PhotoWorkbench.tsx"), /workspace\?legacy=1/);
+  const photo = read("../../components/consulting/workbenches/PhotoWorkbench.tsx");
+  assert.match(photo, /사진 업로드 및 AI 분석/);
+  assert.doesNotMatch(photo, /workspace\?legacy=1/);
+});
+
+test("photo analysis precedes strategy-confirmed V2 preview generation", () => {
+  const photoRoute = read("../../app/api/consultations/[sessionId]/photo-analysis/route.ts");
+  const analysisServer = read("./photo-analysis-server.ts");
+  const previews = read("../../components/consulting/workbenches/PreviewsWorkbench.tsx");
+  assert.match(photoRoute, /ANALYSIS_EVIDENCE_V2_ENABLED/);
+  assert.match(analysisServer, /analyzeFaceForCatalog/);
+  assert.match(analysisServer, /saveAnalysisEvidenceV2/);
+  assert.match(previews, /snapshot\.strategy\.confirmedAt/);
+  assert.match(previews, /\/api\/generations\/accept/);
+  assert.match(previews, /\/preview-board/);
 });
 
 test("decision chain enforces accepted shortlist, finalist, immutable revision and actual-service lock", () => {

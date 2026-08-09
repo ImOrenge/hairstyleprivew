@@ -5,7 +5,7 @@
 
 ## 구현 경계
 
-이 변경은 완료된 프론트엔드 리팩터링 커밋 `d51ffcb9823d8f94dd60e90f11fe90bea8aad425`에서 이어진다. 프론트엔드가 확정한 페이지/워크벤치형 AI 컨설턴트 구조와 CSS는 변경하지 않는다. `/consulting/{id}/photo`에서 생성 워크스페이스로 이동할 때 consultation ID를 generation acceptance 이전에 연결하여, 사용자가 입력한 상담 옵션이 백엔드 분석·프롬프트·결과 계약으로 계속 이어진다.
+이 변경은 완료된 프론트엔드 리팩터링 커밋 `d51ffcb9823d8f94dd60e90f11fe90bea8aad425`에서 이어진다. 프론트엔드가 확정한 페이지/워크벤치형 AI 컨설턴트 구조와 CSS는 변경하지 않는다. `/consulting/{id}/photo`가 private generation draft 업로드와 AI 분석을 직접 수행하고, 근거 검토·전략 확정 뒤 `/consulting/{id}/previews`에서 consultation ID를 generation acceptance에 연결한다. 따라서 사용자가 입력한 상담 옵션과 확정 전략이 백엔드 분석·프롬프트·결과 계약으로 계속 이어진다.
 
 이 작업은 additive backend refactor다. 기존 generation, Result, PortOne, Google Play, legacy credit, hair record, aftercare 경로는 기능 플래그가 꺼진 기본 상태에서 그대로 동작한다. 가격 가설은 운영 가격으로 seed하지 않았고, 실제 상품/가격 승인은 별도 운영 결정이다.
 
@@ -37,6 +37,17 @@ Route handler는 provider prompt나 원본 민감 입력을 응답하지 않는�
 핵심 RPC는 `SECURITY INVOKER`와 빈 `search_path`를 사용하고 browser role 실행 권한을 제거했다. 서버는 service role을 사용하기 전에 Clerk user ID로 소유권을 제한한다. V2 테이블은 RLS를 강제하고 브라우저 role table grant를 두지 않는다.
 
 ## 상담과 생성 연결
+
+사진·분석·생성의 실제 실행 순서는 다음과 같다.
+
+1. 인증된 사용자가 상담 사진을 기존 private generation draft Storage에 업로드한다.
+2. `photo-analysis`가 draft와 consultation 소유권 및 optimistic version을 확인하고 서버에서 원본을 읽어 얼굴 분석을 실행한다.
+3. 분석 결과는 `analysis_evidence_v2`와 consultation snapshot의 Evidence → Meaning → Action 항목에 함께 저장된다.
+4. 사용자가 근거를 검토하고 8축 전략을 확정한다.
+5. 프리뷰 화면이 paid-action quote를 확인한 뒤 같은 draft를 consultation ID와 함께 accept한다.
+6. durable generation workflow가 V2 사용자 옵션 프롬프트, 3×3 slot, quality retry를 실행하고 프리뷰 화면은 V2 board를 폴링한다.
+
+브라우저에는 원본 Storage path, service role, provider prompt, prompt input snapshot을 반환하지 않는다. 원본 확인은 10분 signed URL만 사용한다.
 
 상태 전이는 다음 방향만 허용한다.
 

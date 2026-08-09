@@ -30,7 +30,8 @@ export function createConsultationSnapshot(input: { sessionId: string; userId: s
     completedStages: [],
     discovery: { goals: [], currentHair: "", desiredServices: [], maintenanceLevel: "medium", avoid: [], notes: "" },
     photo: {
-      generationId: null, primaryUrl: null, colorAssistUrl: null,
+      generationId: null, draftId: null, clientRequestId: null, uploadedAt: null, expiresAt: null,
+      primaryUrl: null, colorAssistUrl: null,
       quality: QUALITY.map(([id, label]) => ({ id, label, status: "pending", message: "확인 전" })),
       usageScopes: ["analysis", "preview"], retentionDays: 7, capturedAt: null,
     },
