@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import type { ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
-import { ChoiceGroup, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
+import { ChoiceGroup, ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
 
 export function DecisionWorkbench({ snapshot, mutate, saving }: { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">) => Promise<unknown>; saving: boolean }) {
   const candidate = snapshot.previews.find((item) => item.id === snapshot.finalist.finalistPreviewId) ?? null;
@@ -57,8 +57,19 @@ export function DecisionWorkbench({ snapshot, mutate, saving }: { snapshot: Cons
       setSyncing(false);
     }
   };
-  return <WorkbenchGrid>
-    <Panel className="overflow-hidden">{candidate?.imageUrl ? <div className="aspect-[4/5] bg-[var(--app-surface-muted)]"><img src={candidate.imageUrl} alt={candidate.label} className="h-full w-full object-cover" decoding="async" loading="eager" /></div> : <div className="flex aspect-[4/5] items-center justify-center bg-[var(--app-surface-muted)] text-sm text-[var(--app-muted)]">최종 후보 이미지 없음</div>}<div className="p-5"><p className="app-kicker">Selected style</p><h2 className="mt-2 text-2xl font-black">{candidate?.label || "후보를 먼저 선택하세요"}</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{candidate?.reason}</p></div></Panel>
+  return <WorkbenchGrid input={
     <Panel className="grid gap-5 p-5 sm:p-7"><TextField label="실현 가능성" value={feasibility} onChange={setFeasibility} /><TextField label="현재 모발과의 차이" value={gap} onChange={setGap} /><ChoiceGroup label="필요 서비스" values={["커트","펌","염색","클리닉"]} selected={services} onToggle={toggle} /><TextField label="관리 요구" value={maintenance} onChange={setMaintenance} /><TextField label="한계와 현장 확인 사항" value={limitations.join(", ")} onChange={(value) => setLimitations(value.split(",").map((item) => item.trim()).filter(Boolean))} />{locked ? <SurfaceCard className="p-4 text-sm font-bold">실제 시술이 확정되어 선택이 잠겼습니다.</SurfaceCard> : null}{error ? <p role="alert" className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}<SaveStageButton loading={saving || syncing} disabled={!candidate || locked} onClick={() => void saveDecision()}>불변 선택 스냅샷 만들기</SaveStageButton></Panel>
-  </WorkbenchGrid>;
+  } output={<>
+    <Panel className="overflow-hidden">{candidate?.imageUrl ? <div className="aspect-[4/5] bg-[var(--app-surface-muted)]"><img src={candidate.imageUrl} alt={candidate.label} className="h-full w-full object-cover" decoding="async" loading="eager" /></div> : <div className="flex aspect-[4/5] items-center justify-center bg-[var(--app-surface-muted)] text-sm text-[var(--app-muted)]">최종 후보 이미지 없음</div>}<div className="p-5"><p className="app-kicker">Selected AI candidate</p><h2 className="mt-2 text-2xl font-black">{candidate?.label || "후보를 먼저 선택하세요"}</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{candidate?.reason}</p>{candidate ? <div className="mt-5"><DefinitionRows items={[
+      { label: "Axis", value: candidate.axis },
+      { label: "Quality state", value: candidate.status },
+      { label: "Strategy revision", value: snapshot.strategy.revision },
+      { label: "Finalist decided", value: snapshot.finalist.decidedAt ? new Date(snapshot.finalist.decidedAt).toLocaleString("ko-KR") : "결정 시각 대기" },
+    ]} /></div> : null}</div></Panel>
+    <ConsultationSystemData snapshot={snapshot} items={[
+      { label: "Decision lock", value: locked ? "실제 시술 확정으로 잠김" : "편집 가능" },
+      { label: "Backup candidate", value: snapshot.finalist.backupPreviewId ? "지정됨" : "없음" },
+      { label: "Required services", value: services.join(" · ") || "입력 대기" },
+    ]} />
+  </>} />;
 }

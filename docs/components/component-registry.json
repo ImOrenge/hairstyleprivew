@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "registry_id": "hairfit.frontend.components",
-  "updated_at": "2026-07-19",
+  "updated_at": "2026-08-09",
   "baseline": {
     "git_branch": "develop/2026-07-14-generation-completion-notifications",
     "git_head": "eb77c7f5421b9b8ac44e540e66931573f4097a41",
@@ -627,11 +627,14 @@
       "kind": "layout",
       "status": "experimental",
       "source": "my-app/components/consulting/scene/ConsultationScene.tsx",
+      "related_source": [
+        "my-app/components/consulting/workbenches/shared.tsx"
+      ],
       "owner": "consulting-feature",
       "passport": "docs/components/passports/web-consulting-scene.yaml",
       "observed_usage": {
-        "consumer_files": 1,
-        "scope": "11-stage HairFit AI consulting routes"
+        "consumer_files": 11,
+        "scope": "11-stage HairFit AI consulting workbenches with semantic split canvas"
       }
     },
     {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { ConsultationInputProfile, ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
-import { ChoiceGroup, DefinitionRows, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
+import { ChoiceGroup, ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
 
 const PURPOSES = ["출근·업무 이미지", "일상 이미지 정리", "중요 일정", "큰 스타일 변화"];
 const GOALS = ["더 또렷한 인상", "부드러운 인상", "얼굴 균형 보완", "손질 시간 단축", "새로운 이미지"];
@@ -30,7 +30,7 @@ export function DiscoveryWorkbench({ snapshot, mutate, saving }: { snapshot: Con
     && value.allowedServices.length
     && !unavailableServices.length
   );
-  return <WorkbenchGrid>
+  return <WorkbenchGrid input={
     <Panel className="grid gap-7 p-5 sm:p-7">
       <ChoiceGroup label="이번 상담 목적" values={PURPOSES} selected={[value.purpose]} multiple={false} onToggle={(purpose) => setValue({ ...value, purpose })} />
       <ChoiceGroup label="원하는 변화" values={GOALS} selected={value.goals} onToggle={(item) => toggle("goals", item)} />
@@ -58,6 +58,7 @@ export function DiscoveryWorkbench({ snapshot, mutate, saving }: { snapshot: Con
       {hasMaintenanceTradeoff ? <p className="border border-[var(--app-warning)] bg-[var(--app-warning-bg)] p-3 text-sm">과감한 변화와 낮은 관리 강도를 함께 선택했습니다. AI는 관리 부담이 낮은 범위를 우선하고 해결되지 않은 차이를 상담 근거에 남깁니다.</p> : null}
       <SaveStageButton loading={saving} disabled={!complete} onClick={() => void mutate({ discovery: value, completeStage: "discovery", currentStage: "photo" })} />
     </Panel>
+  } output={<>
     <SurfaceCard className="p-5 sm:p-6"><p className="app-kicker">Input Snapshot</p><h2 className="mt-3 text-xl font-black">생성과 살롱 브리프에 이어질 기준</h2><div className="mt-5"><DefinitionRows items={[
       { label: "Purpose", value: value.purpose || "선택 전" },
       { label: "Current hair", value: `${value.hairLength} · ${value.hairTexture} · 양 ${value.hairDensity} · 굵기 ${value.strandThickness} · 손상 ${value.damageLevel}` },
@@ -66,5 +67,9 @@ export function DiscoveryWorkbench({ snapshot, mutate, saving }: { snapshot: Con
       { label: "Change", value: selectedLabel(value.changeLevel, { subtle: "은은하게", moderate: "적당히", bold: "과감하게" })[0] },
       { label: "Avoid", value: value.avoid.join(", ") || "없음" },
     ]} /></div><p className="mt-5 text-sm leading-6 text-[var(--app-muted)]">이 snapshot은 05 전략과 06 이미지 생성 프롬프트의 명시적 제약으로 저장됩니다. 충돌하면 회피·손상·관리 조건을 우선합니다.</p></SurfaceCard>
-  </WorkbenchGrid>;
+    <ConsultationSystemData snapshot={snapshot} items={[
+      { label: "Input readiness", value: complete ? "필수 입력 완료" : "필수 입력 대기" },
+      { label: "Constraint conflict", value: unavailableServices.length ? `${unavailableServices.length}건 확인 필요` : "없음" },
+    ]} />
+  </>} />;
 }

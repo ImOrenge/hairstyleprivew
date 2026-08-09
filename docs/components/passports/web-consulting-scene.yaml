@@ -9,6 +9,7 @@ related_source:
   - my-app/components/consulting/scene/SceneIdentity.tsx
   - my-app/components/consulting/scene/FloatingStageControls.tsx
   - my-app/components/consulting/scene/StageMapOverlay.tsx
+  - my-app/components/consulting/workbenches/shared.tsx
   - my-app/components/consulting/photo/ConsultationPhotoEvidence.tsx
   - my-app/components/consulting/photo/FaceEvidenceOverlay.tsx
 owner: consulting-feature
@@ -35,6 +36,10 @@ boundaries:
       - floating-navigation
       - stage-map-overlay
       - persisted-analysis-evidence-overlay
+      - semantic-user-input-and-ai-output-panes
+      - desktop-independent-pane-scrolling
+      - stage-specific-ai-and-system-data-rail
+      - compact-desktop-scene-identity
   forbidden:
     - generation-domain-workflow
     - backend-refactor-package-contracts
@@ -58,12 +63,14 @@ state:
     - active-evidence-id
     - visible-evidence-layers
     - selected-landmark-id
+    - independent-pane-scroll-position
 
 a11y_contract:
   stage_map: dialog-with-escape-and-focus-return
   navigation: labelled-native-links-and-buttons
   scene_entry: programmatic-focus-on-level-one-heading
   reduced_motion: no-required-motion
+  split_canvas: labelled-regions-input-first-in-dom-mobile-stacked
 
 test_surface:
   structure: my-app/lib/consulting/consultation-contract.test.ts
@@ -72,6 +79,7 @@ test_surface:
   evidence_overlay: persisted-normalized-coordinates-only
   evidence_correction: server-revision-locked-user-adjustment-with-model-original-preserved
   evidence_linkage: photo-overlay-ledger-direction-matrix-share-active-evidence-id
+  split_canvas: all-11-scenes-desktop-independent-scroll-and-mobile-stacking
 
 change_policy:
   current_gate: feature

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { Button } from "../../ui/Button";
 import { ConsultationPhotoEvidence } from "../photo/ConsultationPhotoEvidence";
-import { DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
+import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
 
 export function AnalysisWorkbench({ snapshot, mutate, saving }: {
   snapshot: ConsultationSnapshot;
@@ -38,7 +38,7 @@ export function AnalysisWorkbench({ snapshot, mutate, saving }: {
     }
   };
 
-  return <WorkbenchGrid>
+  return <WorkbenchGrid output={<>
     <div className="grid gap-4">
       <ConsultationPhotoEvidence
         sessionId={snapshot.sessionId}
@@ -63,7 +63,12 @@ export function AnalysisWorkbench({ snapshot, mutate, saving }: {
         </div>
       </SurfaceCard>
     </div>
-
+    <ConsultationSystemData snapshot={snapshot} items={[
+      { label: "Focused evidence", value: activeEvidence?.layer || "선택 전" },
+      { label: "Linked directions", value: `${linkedRecommendations.length}건` },
+      { label: "Color profile", value: `${color.season} · ${color.confidence}` },
+    ]} />
+  </>} input={
     <Panel className="grid gap-6 p-5 sm:p-7">
       <div>
         <p className="app-kicker">Evidence → Meaning → Action</p>
@@ -119,5 +124,5 @@ export function AnalysisWorkbench({ snapshot, mutate, saving }: {
         })}
       />
     </Panel>
-  </WorkbenchGrid>;
+  } />;
 }

@@ -17,6 +17,9 @@
 ### 로컬 구현에서 닫힌 항목
 
 - `/consulting/[sessionId]/[stage]`는 문서의 11개 고유 URL과 헤더리스 Scene을 유지한다. 상담 시작 CTA는 새 AI 컨설턴트로 직접 연결되고 구 마법사는 기본 경로가 아니다.
+- 11개 Scene의 본문 캔버스는 데스크톱에서 좌측 `User input`, 우측 `AI output + system data`의 두 독립 스크롤 영역으로 동작한다. 모바일에서는 사용자 입력 다음 AI·시스템 출력 순서의 단일 세로 흐름으로 합쳐진다.
+- 데스크톱 Scene identity는 단계·작업명·제목의 인지 구조를 유지하되 큰 영문 타이틀, 상하 여백과 본문 간격을 압축해 좌우 캔버스의 가시 높이를 우선한다. 모바일 제목 크기는 기존 가독성을 유지한다.
+- 우측은 공통 안내문을 반복하지 않는다. Discovery 입력 제약, 사진 사전검사, 분석 근거와 landmark, 8축 방향 매트릭스, 3×3 생성 telemetry, 후보 비교, 선택 잠금, Salon Brief 버전·공유 상태, 실제 시술·애프터케어 버전, Fashion 9-look 상태처럼 해당 Scene의 실제 서버·AI 데이터를 표시한다.
 - Scene 01의 목적, 현재 모발 구조, 허용 시술, 관리 시간, 열기구 빈도, 변화 강도, 회피 조건은 서버 snapshot과 V2 preferences, 전략 및 생성 prompt input으로 이어진다.
 - Scene 02는 브라우저 검사 후 private draft를 업로드하고 서버 Sharp 검사, 서버 FaceMesh 좌표 추출, 생성형 AI 설명 순으로 처리한다. 생성 ID 없이 분석을 끝내 Scene 03으로 이동하고 유료 생성은 Scene 06에서만 시작한다.
 - `analysis_evidence_v2`는 landmark, detected contour, inferred hairline, measurements, skin sample, excluded region을 원본 사진 좌표계의 정규화 좌표로 보존한다. Web/Expo는 이 서버 값을 사진 위에 렌더링하며 클라이언트가 얼굴 좌표를 추론하지 않는다.
@@ -54,6 +57,8 @@
 - [x] P0 사진 완료 guard의 생성 ID 순환 의존을 제거하고 계약 테스트를 추가한다.
 - [x] P0 부분 프리뷰 shortlist를 허용하고 interaction/contract 테스트를 추가한다.
 - [x] P1 Scene 제목 포커스를 복구하고 브라우저 E2E에 포함한다.
+- [x] 11개 Scene을 사용자 입력/AI·시스템 출력의 의미적 좌우 캔버스로 이관하고 데스크톱 독립 스크롤·모바일 입력 우선 흐름을 구현한다.
+- [x] 분석 이외 Scene의 우측에도 단계별 실제 결과, 근거 연결, 처리 완료도와 서버 snapshot을 표시해 데이터 밀도를 보강한다.
 - [x] P1 구조화 사용자 입력을 shared contract, snapshot 정규화, UI, 전략/생성 프롬프트까지 연결한다.
 - [x] P1 근거→추천→사용자 수정→전략 확정 연결을 강화한다.
 - [x] P0 서버 FaceMesh landmark→normalized geometry→V2 저장→SVG overlay를 연결하고 클라이언트 좌표 주입 경로를 제거한다.
@@ -77,6 +82,7 @@
 
 - [x] 기존 CSS 파일과 공개 CSS 클래스/토큰 계약에 의도하지 않은 변경이 없다.
 - [x] 11개 Scene URL과 헤더리스 구조가 유지되고, 레거시 마법사가 기본 상담 여정에 노출되지 않는다.
+- [x] 데스크톱 좌우 캔버스가 각각 독립 스크롤되고, 좌측은 사용자 입력, 우측은 AI 출력·분석 근거·시스템 처리 상태를 표시한다. 모바일은 입력→출력 순서로 자연스럽게 합쳐진다.
 - [x] 로그인된 실제 계정의 실제 사진 업로드가 시스템 검사→FaceMesh→생성형 AI 분석→근거 저장→Scan 전환으로 이어진다. 로컬 코드/fixture 증거만으로는 이 항목을 완료하지 않는다.
 - [x] renderer가 저장된 detected/inferred 좌표와 같은 Evidence ID를 사진 위에 표시하며, 키보드로 측정선을 선택하고 원본 보존형 좌표 보정을 적용할 수 있다.
 - [x] 사용자 입력과 확정 전략이 생성 요청/프롬프트에 반영된다.
@@ -101,7 +107,7 @@
 ```text
 새 개발 브랜치에서 HairFit V2를 문서 정의의 비마법사형 AI 헤어스타일 컨설턴트 서비스로 완성한다. 페이지 구조는 HairFit_Interactive_Consulting_Frontend_Design_Plan_v1.0.docx의 11개 Scene을 권위로 사용한다.
 
-먼저 프론트엔드·백엔드의 구현·검증 결과와 미완료 항목을 하나의 실행 문서에 통합한다. 기존 CSS 파일, 토큰, 타이포그래피, 간격, 표면 스타일은 변경하지 않고 11개 헤더리스 Scene과 `01 / 11 + 큰 작업명` 구조를 유지한다. 고정 헤더, 오른쪽 consultant panel, 단계별 Next 중심 마법사 UI를 만들지 않는다. 레거시 생성 마법사는 기본 여정에서 제거하고 기능 플래그 롤백 및 호환 브리지로만 유지한다.
+먼저 프론트엔드·백엔드의 구현·검증 결과와 미완료 항목을 하나의 실행 문서에 통합한다. 기존 CSS 파일, 토큰, 타이포그래피, 간격, 표면 스타일은 변경하지 않고 11개 헤더리스 Scene과 `01 / 11 + 큰 작업명` 구조를 유지한다. 각 Scene의 데스크톱 캔버스는 좌측 사용자 입력과 우측 AI 출력·분석 근거·서버 처리 데이터의 독립 스크롤로 나누고, 모바일에서는 입력 다음 출력 순서로 합친다. 우측을 설명문으로 채우지 말고 각 단계의 실제 결과, 근거, 완료도, 버전과 처리 상태를 표시한다. 고정 헤더, 오른쪽 consultant panel, 단계별 Next 중심 마법사 UI를 만들지 않는다. 레거시 생성 마법사는 기본 여정에서 제거하고 기능 플래그 롤백 및 호환 브리지로만 유지한다.
 
 사진 업로드→시스템 사전검사→서버 FaceMesh→생성형 AI 이미지 분석→버전 근거 저장→사진 위 landmark/contour/hairline/measurement/skin/excluded overlay→스캔/분석/방향 결정→사용자 옵션과 확정 전략이 반영된 3×3 이미지 생성→품질 통과 후보 2~3개 shortlist/비교/결정→구조화 Salon Brief→실제 시술 기반 Aftercare→구조화 방향이 반영된 DAILY 3 + WORK 3 + STATEMENT 3 Fashion 흐름을 실제 서버 상태로 연결한다. 사용자 좌표 보정은 AI 원본을 덮어쓰지 않고 revision audit로 저장한다. Web과 Expo는 같은 shared contract와 server truth를 사용한다.
 
@@ -133,5 +139,6 @@
 - Expo는 `/consulting`을 기본 상담 진입점으로 사용한다. 활성 V2 상담 ID를 SecureStore에 보존하고, 같은 `consultationId`로 업로드·서버 사전검사·FaceMesh/AI 분석·유료 생성 접수를 연결한다. 서버 normalized landmark/contour를 native overlay로 표시하고 3×3 board, persisted shortlist, 선택·확정, salon brief까지 재개한다.
 - Expo 55.0.28의 권장 조합에 맞춰 앱과 `ui-native`의 React Native를 0.83.10으로 정렬했다. 실제 연결 기기는 SM-S936N(Android 16/API 36)이었으나 설치된 `com.hairfit.app`은 2026-05-03의 0.0.0 stale build였고 Expo Go 55.0.5는 프로젝트 권장 55.0.7과 달랐다. 포트 8081은 다른 ActivityTime 세션이 사용 중이어서 8082로 현재 bundle을 기동했지만 ADB가 이후 무응답이 되었고 공유 세션을 보호하기 위해 당시 server restart를 하지 않았다. Expo Go는 SDK 53 이후 Android remote push를 지원하지 않으므로 push 검증에는 현재 development build가 필요하다. 따라서 실제 기기 UI smoke는 통과로 표시하지 않는다.
 - 추가 보완: 사용자가 편집한 Salon Brief 필드를 V2 버전에 저장하고, Aftercare today/checkpoints/concerns/satisfaction을 실제 시술 이후 versioned server patch로 유지한다. landmark 수동 보정은 Web/Expo 모두 같은 API를 사용한다.
+- 컨설팅 캔버스 보완: 11개 Web Scene 모두 의미적 `input`/`output` pane을 사용한다. 데스크톱은 Scene 높이 안에서 양쪽이 개별 스크롤되고 모바일은 입력 우선 단일 흐름이다. 우측에는 공통 snapshot과 함께 단계별 AI 근거·품질·생성·비교·버전·잠금·공유·애프터케어·Fashion 상태를 표시한다. CSS 파일은 변경하지 않고 기존 토큰과 Tailwind 유틸리티만 사용했다.
 - 최종 회귀: 모든 workspace typecheck 통과, lint 0 error(기존 Expo generic-array warning 1건), generation workflow 69/69, 상담 계약 16/16, HairFit V2 계약 15/15, CSS 계약 9/9, Expo Jest 41 suite·170 test, Next production build 130 route, Expo Web/iOS/Android bundle, Chromium Playwright 79/79가 통과했다. 실제 정면 얼굴 fixture가 시스템 사전검사를 통과하고 로고는 차단되는 브라우저 계약과 새 AI 컨설턴트 CTA의 320/375px visual baseline도 확인했다. CSS 파일 변경과 diff whitespace 오류는 없다. 실인증 재실행은 사용자 지시로 최종 회귀에서 제외했다.
 - 미완료: 승인된 10-credit 생성은 8/9 품질 결과까지 확인했지만 실제 계정 shortlist→최종 선택→Salon Brief→Aftercare/Fashion은 사용자 지시로 패스했다. `SALON_BRIEF_V2_ENABLED`·`STYLING_LINK_V2_ENABLED` 단계적 활성화와 Expo 현재 development build를 사용한 실제 기기/background/deep link/push/구매 복원 및 Fashion/Aftercare 전체 native smoke도 남아 있다. 따라서 골은 완료 처리하지 않는다.

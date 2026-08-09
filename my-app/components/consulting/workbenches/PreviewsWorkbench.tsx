@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConsultationPatch, ConsultationPreview, ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { Button } from "../../ui/Button";
-import { Panel, SaveStageButton, SurfaceCard } from "./shared";
+import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
 
 type Quote = {
   quoteId: string;
@@ -160,13 +160,28 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
     }
   };
 
-  return <div className="grid gap-5">
+  return <WorkbenchGrid input={<div className="grid gap-5">
     <SurfaceCard className="flex flex-wrap items-center justify-between gap-4 p-5">
       <div><p className="app-kicker">3×3 AI preview board</p><h2 className="mt-2 text-xl font-black">{generationId ? `생성 상태 · ${boardState}` : "전략 확정 후 생성 접수"}</h2><p className="mt-2 text-sm text-[var(--app-muted)]">{generationId ? `품질 검사를 통과한 결과 ${acceptedCount} / 9` : quote ? `필요 처리량 ${quote.costCredits} · 사용 후 ${quote.balanceAfter}` : "최신 이용 조건을 확인하고 있습니다."}</p></div>
       {generationId ? <Button type="button" variant="secondary" loading={loading} onClick={() => void refreshBoard()}>결과 갱신</Button> : <Button type="button" loading={loading} disabled={!snapshot.photo.draftId || !snapshot.strategy.confirmedAt} onClick={() => void startGeneration()}>{quote ? "3×3 생성 시작" : "이용 조건 확인"}</Button>}
     </SurfaceCard>
     {error ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}
+    <Panel className="grid gap-5 p-5"><div><p className="app-kicker">Preview controls</p><h2 className="mt-2 text-xl font-black">생성 결과를 2~3개 후보로 좁힙니다</h2><p className="mt-2 font-black">Shortlist {selected.length} / 3</p><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">오른쪽 AI 보드에서 품질 승인을 받은 이미지를 선택하면 이곳의 shortlist와 비교 가능 상태가 즉시 갱신됩니다.</p></div><DefinitionRows items={[
+      { label: "Selected", value: `${selected.length} / 3` },
+      { label: "Compare readiness", value: canCompare ? "비교 가능" : "승인 결과 2개 이상 필요" },
+      { label: "Board state", value: boardState },
+      { label: "Accepted outputs", value: `${acceptedCount} / 9` },
+    ]} /><SaveStageButton loading={saving || loading} disabled={!canCompare} onClick={() => void saveShortlist()}>선택한 후보 비교하기</SaveStageButton></Panel>
+  </div>} output={<>
     <div className="grid gap-5 lg:grid-cols-3">{(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => <Panel key={axis} className="p-4"><p className="app-kicker">{axis}</p><div className="mt-4 grid gap-3">{previews.filter((item) => item.axis === axis).map((preview) => <button key={preview.id} type="button" disabled={preview.status !== "accepted"} onClick={() => toggle(preview.id)} aria-pressed={selected.includes(preview.id)} className={`overflow-hidden border text-left ${selected.includes(preview.id) ? "border-[var(--app-border-strong)] ring-2 ring-[var(--app-ring)]" : "border-[var(--app-border)]"} disabled:opacity-55`}><div className="aspect-[4/5] bg-[var(--app-surface-muted)]">{preview.imageUrl ? <img src={preview.imageUrl} alt={preview.label} className="h-full w-full object-cover" decoding="async" loading="lazy" /> : <div className="flex h-full items-center justify-center p-4 text-center text-xs text-[var(--app-muted)]">{preview.status === "failed" ? "품질 검사 실패" : preview.status === "generating" ? "AI 생성 및 품질 검사 중" : "결과 대기 중"}</div>}</div><div className="p-3"><p className="font-black">{preview.label}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--app-muted)]">{preview.reason}</p></div></button>)}</div></Panel>)}</div>
-    <SurfaceCard className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-black">Shortlist {selected.length} / 3</p><p className="mt-1 text-sm text-[var(--app-muted)]">품질 검사를 통과한 결과 중 최소 2개, 최대 3개를 선택하세요. 나머지 결과가 생성 중이어도 비교를 시작할 수 있습니다.</p></div><SaveStageButton loading={saving || loading} disabled={!canCompare} onClick={() => void saveShortlist()}>선택한 후보 비교하기</SaveStageButton></SurfaceCard>
-  </div>;
+    <SurfaceCard className="p-5"><p className="app-kicker">Board telemetry</p><h2 className="mt-2 text-xl font-black">AI 생성·품질 승인 분포</h2><div className="mt-5"><DefinitionRows items={(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => {
+      const axisPreviews = previews.filter((item) => item.axis === axis);
+      return { label: axis, value: `${axisPreviews.filter((item) => item.status === "accepted").length} 승인 · ${axisPreviews.filter((item) => item.status === "generating").length} 생성 중 · ${axisPreviews.filter((item) => item.status === "failed").length} 실패` };
+    })} /></div><p className="mt-5 text-sm leading-6 text-[var(--app-muted)]">나머지 결과가 생성 중이어도 비교를 시작할 수 있습니다. 승인 결과는 2개 이상 필요합니다.</p></SurfaceCard>
+    <ConsultationSystemData snapshot={snapshot} items={[
+      { label: "Generation job", value: generationId ? "연결됨" : "접수 전" },
+      { label: "Board polling", value: generationId ? "4초 자동 갱신" : "비활성" },
+      { label: "Shortlist", value: `${selected.length}개 선택` },
+    ]} />
+  </>} />;
 }

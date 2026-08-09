@@ -56,10 +56,73 @@ test("all 11 document Scenes are headerless, addressable, and overflow-safe", as
     await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
     await expect(page.locator('[data-app-shell="header"]')).toHaveCount(0);
     await expect(page.locator('[data-app-shell="footer"]')).toHaveCount(0);
+    await expect(page.locator('[data-consulting-split-canvas="true"]')).toHaveCount(1);
+    await expect(page.locator('[data-consulting-pane="input"]')).toHaveCount(1);
+    await expect(page.locator('[data-consulting-pane="output"]')).toHaveCount(1);
+    await expect(page.locator('[data-consulting-system-data="true"]')).toBeVisible();
+    expect(await page.locator('[data-consulting-scene-identity="true"]').evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(240);
     const overflow = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
   }
   await page.screenshot({ path: testInfo.outputPath("consulting-fashion-desktop.png"), fullPage: true, animations: "disabled" });
+});
+
+test("desktop panes scroll independently while mobile keeps input before output", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/consulting/e2e-harness?stage=discovery");
+  await dismissGlobalNotices(page);
+  const desktop = await page.locator('[data-consulting-split-canvas="true"]').evaluate((canvas) => {
+    const input = canvas.querySelector<HTMLElement>('[data-consulting-pane="input"]');
+    const output = canvas.querySelector<HTMLElement>('[data-consulting-pane="output"]');
+    if (!input || !output) throw new Error("split panes missing");
+    return {
+      canvasOverflow: getComputedStyle(canvas).overflow,
+      inputOverflowY: getComputedStyle(input).overflowY,
+      outputOverflowY: getComputedStyle(output).overflowY,
+      inputHeight: input.getBoundingClientRect().height,
+      outputHeight: output.getBoundingClientRect().height,
+      inputScrollable: input.scrollHeight > input.clientHeight,
+      outputScrollable: output.scrollHeight > output.clientHeight,
+    };
+  });
+  expect(desktop.canvasOverflow).toBe("hidden");
+  expect(desktop.inputOverflowY).toBe("auto");
+  expect(desktop.outputOverflowY).toBe("auto");
+  expect(desktop.inputHeight).toBeGreaterThan(200);
+  expect(desktop.outputHeight).toBe(desktop.inputHeight);
+  expect(desktop.inputScrollable).toBe(true);
+  expect(desktop.outputScrollable).toBe(true);
+  const independentScroll = await page.locator('[data-consulting-split-canvas="true"]').evaluate((canvas) => {
+    const input = canvas.querySelector<HTMLElement>('[data-consulting-pane="input"]');
+    const output = canvas.querySelector<HTMLElement>('[data-consulting-pane="output"]');
+    if (!input || !output) throw new Error("split panes missing");
+    input.scrollTop = 120;
+    const afterInput = { input: input.scrollTop, output: output.scrollTop };
+    output.scrollTop = 120;
+    return { afterInput, afterOutput: { input: input.scrollTop, output: output.scrollTop } };
+  });
+  expect(independentScroll.afterInput.input).toBeGreaterThan(0);
+  expect(independentScroll.afterInput.output).toBe(0);
+  expect(independentScroll.afterOutput.input).toBe(independentScroll.afterInput.input);
+  expect(independentScroll.afterOutput.output).toBeGreaterThan(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.reload();
+  await dismissGlobalNotices(page);
+  const mobile = await page.locator('[data-consulting-split-canvas="true"]').evaluate((canvas) => {
+    const input = canvas.querySelector<HTMLElement>('[data-consulting-pane="input"]');
+    const output = canvas.querySelector<HTMLElement>('[data-consulting-pane="output"]');
+    if (!input || !output) throw new Error("split panes missing");
+    return {
+      inputOverflowY: getComputedStyle(input).overflowY,
+      outputOverflowY: getComputedStyle(output).overflowY,
+      inputTop: input.getBoundingClientRect().top,
+      outputTop: output.getBoundingClientRect().top,
+    };
+  });
+  expect(mobile.inputOverflowY).not.toBe("auto");
+  expect(mobile.outputOverflowY).not.toBe("auto");
+  expect(mobile.outputTop).toBeGreaterThan(mobile.inputTop);
 });
 
 test("ALL STAGES overlay traps focus, closes with Escape, and returns focus", async ({ page }) => {

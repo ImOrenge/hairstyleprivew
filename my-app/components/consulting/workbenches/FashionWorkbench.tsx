@@ -16,7 +16,7 @@ import type {
 import { selectedStyle } from "../../../lib/consulting/contracts";
 import { PaidActionQuoteCard, usePaidActionQuoteExpired } from "../../billing/PaidActionQuoteCard";
 import { Button } from "../../ui/Button";
-import { Panel, SaveStageButton, SurfaceCard } from "./shared";
+import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
 
 type FashionSlot = {
   id: string;
@@ -327,7 +327,7 @@ export function FashionWorkbench({ snapshot, mutate, saving }: {
   const completedPreviews = previews.filter((preview) => preview.status === "completed" && preview.imageUrl);
   const canSave = shortlist.length >= 2 && shortlist.length <= 3 && Boolean(selected.lookId && shortlist.includes(selected.lookId));
 
-  return <div className="grid gap-5">
+  return <WorkbenchGrid input={<div className="grid gap-5">
     <Panel className="grid gap-5 p-5 sm:p-7">
       <div>
         <p className="app-kicker">1 · Direction</p>
@@ -346,6 +346,15 @@ export function FashionWorkbench({ snapshot, mutate, saving }: {
       </div>
       {profileReady === false ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">AI 패션 생성에는 동의한 전신 사진과 바디 프로필이 필요합니다. <Link href="/mypage" className="font-black underline">마이페이지에서 프로필 완성</Link></p> : null}
     </Panel>
+
+    <Panel className="grid gap-4 p-5"><div><p className="app-kicker">Look slot input</p><h3 className="mt-2 text-xl font-black">생성할 패션 슬롯 선택</h3><p className="mt-2 text-sm text-[var(--app-muted)]">상황별 9개 슬롯 중 하나를 선택해 추천과 이미지를 생성합니다.</p></div><div className="grid gap-2 sm:grid-cols-2">{FASHION_SLOTS.map((slot) => <button key={slot.id} type="button" onClick={() => chooseSlot(slot)} aria-pressed={selectedSlotId === slot.id} className={`min-h-14 border p-3 text-left ${selectedSlotId === slot.id ? "border-[var(--app-border-strong)] bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "border-[var(--app-border)] bg-[var(--app-surface)]"}`}><span className="text-sm font-black">{slot.label}</span><span className="mt-1 block text-xs opacity-70">{slot.category} · {slot.description}</span></button>)}</div></Panel>
+
+    <SurfaceCard className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="app-kicker">Confirmed hair → selected slot</p><p className="mt-2 font-black">{selectedSlot.label} 추천을 만든 뒤 실제 AI 이미지를 생성합니다.</p><p className="mt-1 text-sm text-[var(--app-muted)]">확정 snapshot, 바디 프로필, 퍼스널 컬러와 구조화 방향을 서버에서 다시 검증합니다.</p></div><Button type="button" loading={working} disabled={!profileReady} onClick={() => void recommend()}>패션 추천 만들기</Button></SurfaceCard>
+
+    {recommendation ? <Panel className="grid gap-4 p-5"><div><p className="app-kicker">AI recommendation · {selectedSlot.id}</p><h3 className="mt-2 text-xl font-black">{recommendation.headline}</h3><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{recommendation.summary}</p></div><div className="flex flex-wrap gap-2">{recommendation.palette.map((color) => <span key={color} className="border border-[var(--app-border)] px-3 py-2 text-xs font-black">{color}</span>)}</div>{activePreview?.status === "completed" ? <p className="border border-[var(--app-border)] p-3 text-sm font-black">이 슬롯의 AI 이미지가 이미 완성되었습니다.</p> : <><PaidActionQuoteCard quote={quote} loading={quoteLoading} error={quoteError} payerLabel="내 계정" billingHref="/billing?returnTo=%2Fconsulting%2Fnew" onRefresh={() => { if (sessionId) void loadQuote(sessionId); }} /><div className="flex justify-end"><Button type="button" loading={working} disabled={!quote || quoteExpired || !quote.isAllowed} onClick={() => void generate()}>실제 패션 프리뷰 생성</Button></div></>}</Panel> : null}
+
+    {error ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}
+  </div>} output={<>
 
     <div className="grid gap-5 lg:grid-cols-3" data-fashion-board-size="9">
       {(["DAILY", "WORK", "STATEMENT"] as const).map((category) => <Panel key={category} className="p-4">
@@ -368,16 +377,22 @@ export function FashionWorkbench({ snapshot, mutate, saving }: {
       </Panel>)}
     </div>
 
-    <SurfaceCard className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="app-kicker">3 · Confirmed hair → selected slot</p><p className="mt-2 font-black">{selectedSlot.label} 추천을 만든 뒤 실제 AI 이미지를 생성합니다.</p><p className="mt-1 text-sm text-[var(--app-muted)]">확정 snapshot, 바디 프로필, 퍼스널 컬러와 구조화 방향을 서버에서 다시 검증합니다.</p></div><Button type="button" loading={working} disabled={!profileReady} onClick={() => void recommend()}>패션 추천 만들기</Button></SurfaceCard>
-
-    {recommendation ? <Panel className="grid gap-4 p-5"><div><p className="app-kicker">AI recommendation · {selectedSlot.id}</p><h3 className="mt-2 text-xl font-black">{recommendation.headline}</h3><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{recommendation.summary}</p></div><div className="flex flex-wrap gap-2">{recommendation.palette.map((color) => <span key={color} className="border border-[var(--app-border)] px-3 py-2 text-xs font-black">{color}</span>)}</div>{activePreview?.status === "completed" ? <p className="border border-[var(--app-border)] p-3 text-sm font-black">이 슬롯의 AI 이미지가 이미 완성되었습니다.</p> : <><PaidActionQuoteCard quote={quote} loading={quoteLoading} error={quoteError} payerLabel="내 계정" billingHref="/billing?returnTo=%2Fconsulting%2Fnew" onRefresh={() => { if (sessionId) void loadQuote(sessionId); }} /><div className="flex justify-end"><Button type="button" loading={working} disabled={!quote || quoteExpired || !quote.isAllowed} onClick={() => void generate()}>실제 패션 프리뷰 생성</Button></div></>}</Panel> : null}
-
-    {error ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}
-
     <Panel className="p-5"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="app-kicker">4 · 9-look board</p><h3 className="mt-2 text-xl font-black">실제 생성 결과 {completedPreviews.length}개 / 9개</h3><p className="mt-1 text-sm text-[var(--app-muted)]">각 그룹 3개 슬롯을 채우고 완료된 이미지 중 2~3개를 shortlist로 선택하세요.</p></div><Button type="button" variant="secondary" onClick={() => void refreshFashion().catch((cause) => setError(cause instanceof Error ? cause.message : "상태를 갱신하지 못했습니다."))}>상태 갱신</Button></div></Panel>
 
     <Panel className="p-5"><p className="app-kicker">5 · Shortlist & compare</p><p className="mt-2 text-sm text-[var(--app-muted)]">현재 {shortlist.length}개. 동일 크롭의 실제 생성 결과를 비교한 뒤 최종 룩을 선택하세요.</p><div className="mt-4 grid gap-3 sm:grid-cols-3">{previews.filter((preview) => shortlist.includes(preview.stylingSessionId)).map((preview) => <button key={preview.stylingSessionId} type="button" onClick={() => selectFinal(preview)} aria-pressed={selected.lookId === preview.stylingSessionId} className={`overflow-hidden border text-left ${selected.lookId === preview.stylingSessionId ? "border-[var(--app-border-strong)] bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "border-[var(--app-border)] bg-[var(--app-surface)]"}`}>{preview.imageUrl ? <div className="aspect-[4/5] bg-[var(--app-surface-muted)]"><img src={preview.imageUrl} alt="" className="h-full w-full object-cover" /></div> : null}<span className="block p-3 text-sm font-black">{preview.headline}<span className="mt-2 block text-xs opacity-70">{preview.category} · {preview.neckline || preview.silhouette}</span></span></button>)}</div></Panel>
 
-    <SurfaceCard className="grid gap-4 p-5 sm:grid-cols-[1fr_auto]"><div><p className="app-kicker">6 · Selected look</p><p className="mt-2 font-black">{selected.label || "실제 생성 결과를 2~3개 비교한 뒤 최종 룩을 선택해 주세요"}</p>{selected.lookId ? <div className="mt-3 grid gap-1 text-xs text-[var(--app-muted)]"><p>팔레트 · {selected.palette.join(", ") || "확인 전"}</p><p>넥라인 · {selected.neckline || "확인 전"}</p><p>실루엣 · {selected.silhouette || "확인 전"}</p><p>검색어 · {selected.shoppingKeywords.join(", ") || "확인 전"}</p></div> : null}</div><SaveStageButton loading={saving || working} disabled={!canSave} onClick={() => void save()}>AI 컨설팅 여정 완료</SaveStageButton></SurfaceCard>
-  </div>;
+    <SurfaceCard className="grid gap-4 p-5 sm:grid-cols-[1fr_auto]"><div><p className="app-kicker">6 · Selected look</p><p className="mt-2 font-black">{selected.label || "실제 생성 결과를 2~3개 비교한 뒤 최종 룩을 선택해 주세요"}</p>{selected.lookId ? <div className="mt-3"><DefinitionRows items={[
+      { label: "Palette", value: selected.palette.join(", ") || "확인 전" },
+      { label: "Neckline", value: selected.neckline || "확인 전" },
+      { label: "Silhouette", value: selected.silhouette || "확인 전" },
+      { label: "Shopping keywords", value: selected.shoppingKeywords.join(", ") || "확인 전" },
+    ]} /></div> : null}</div><SaveStageButton loading={saving || working} disabled={!canSave} onClick={() => void save()}>AI 컨설팅 여정 완료</SaveStageButton></SurfaceCard>
+    <ConsultationSystemData snapshot={snapshot} items={[
+      { label: "Body profile", value: profileReady ? "생성 준비됨" : "프로필 필요" },
+      { label: "Selected slot", value: selectedSlot.id },
+      { label: "Generated looks", value: `${completedPreviews.length} / 9` },
+      { label: "Fashion shortlist", value: `${shortlist.length}개` },
+      { label: "Final look", value: selected.label || "선택 전" },
+    ]} />
+  </>} />;
 }

@@ -18,7 +18,7 @@ import type {
 import { convertImageFileToWebp } from "../../../lib/webp-client";
 import { useUpload } from "../../../hooks/useUpload";
 import { Button } from "../../ui/Button";
-import { Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
+import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
 
 type DraftReceipt = {
   draftId: string;
@@ -210,7 +210,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  return <WorkbenchGrid>
+  return <WorkbenchGrid input={
     <Panel className="grid gap-6 p-5 sm:p-7">
       <div>
         <p className="text-sm font-black">상담용 정면 사진</p>
@@ -224,12 +224,19 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
       {previewUrl ? <div className="overflow-hidden border border-[var(--app-border)]"><img src={previewUrl} alt="선택한 상담 사진 미리보기" className="max-h-[32rem] w-full object-contain" /></div> : null}
       <p className={`text-sm ${status === "error" ? "text-[var(--app-danger)]" : "text-[var(--app-muted)]"}`}>{message}</p>
       {details.width && details.height ? <p className="text-xs text-[var(--app-muted)]">{details.width}×{details.height}px · {details.sizeMB}MB</p> : null}
-      <div className="grid gap-2 sm:grid-cols-2">{photo.quality.map((item) => <div key={item.id} className={`grid min-h-20 gap-1 border p-3 text-left ${item.status === "pass" ? "border-[var(--app-success)] bg-[var(--app-success-bg)]" : item.status === "warning" ? "border-[var(--app-warning)] bg-[var(--app-warning-bg)]" : "border-[var(--app-border)] bg-[var(--app-surface)]"}`}><span className="text-sm font-black">{item.label}</span><span className="text-xs text-[var(--app-muted)]">{item.message}</span></div>)}</div>
       <fieldset><legend className="text-sm font-black">사진 사용 범위</legend><div className="mt-2 flex flex-wrap gap-2">{[["analysis","얼굴 분석"],["preview","헤어 프리뷰"],["personalColor","컬러 진단"]].map(([scope,label]) => <button type="button" key={scope} onClick={() => setPhoto({ ...photo, usageScopes: photo.usageScopes.includes(scope) ? photo.usageScopes.filter((item) => item !== scope) : [...photo.usageScopes, scope] })} aria-pressed={photo.usageScopes.includes(scope)} className={`min-h-11 border px-4 text-sm font-black ${photo.usageScopes.includes(scope) ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{label}</button>)}</div></fieldset>
       <fieldset><legend className="text-sm font-black">사진 보존 기간</legend><div className="mt-2 flex gap-2">{([1,7,30] as const).map((days) => <button type="button" key={days} onClick={() => setPhoto({ ...photo, retentionDays: days })} aria-pressed={photo.retentionDays === days} className={`min-h-11 border px-4 text-sm font-black ${photo.retentionDays === days ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{days}일</button>)}</div></fieldset>
       {error ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}
       <div className="flex flex-wrap gap-2"><SaveStageButton loading={working || saving} disabled={!file && !photo.draftId} onClick={() => void analyze()}>사진 업로드 및 AI 상담 분석</SaveStageButton><Button type="button" variant="ghost" disabled={working || saving} onClick={reset}>다시 선택</Button></div>
     </Panel>
+  } output={<>
+    <SurfaceCard className="p-5"><p className="app-kicker">System photo preflight</p><h2 className="mt-3 text-xl font-black">AI 분석 전 사진 적합성 검사</h2><div className="mt-5 grid gap-2 sm:grid-cols-2">{photo.quality.map((item) => <div key={item.id} className={`grid min-h-20 gap-1 border p-3 text-left ${item.status === "pass" ? "border-[var(--app-success)] bg-[var(--app-success-bg)]" : item.status === "warning" ? "border-[var(--app-warning)] bg-[var(--app-warning-bg)]" : "border-[var(--app-border)] bg-[var(--app-surface)]"}`}><span className="text-sm font-black">{item.label}</span><span className="text-xs text-[var(--app-muted)]">{item.message}</span></div>)}</div><div className="mt-5"><DefinitionRows items={[
+      { label: "File", value: file?.name || (photo.draftId ? "서버 임시 사진 준비됨" : "선택 전") },
+      { label: "Resolution", value: details.width && details.height ? `${details.width}×${details.height}px` : "검사 대기" },
+      { label: "Face signal", value: faceEvidence ? "시스템 감지 완료" : "감지 대기" },
+      { label: "Analysis handoff", value: photo.draftId ? "서버 연결됨" : "업로드 대기" },
+    ]} /></div></SurfaceCard>
     <SurfaceCard className="p-5"><p className="app-kicker">Private photo workflow</p><h2 className="mt-3 text-xl font-black">업로드와 분석은 생성보다 먼저 끝납니다</h2><p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">사진은 private Storage에 임시 보관되고 원본 경로는 화면에 노출되지 않습니다. 분석 근거와 전략을 확인한 뒤에만 3×3 생성을 접수합니다.</p></SurfaceCard>
-  </WorkbenchGrid>;
+    <ConsultationSystemData snapshot={snapshot} items={[{ label: "Local validation", value: status }]} />
+  </>} />;
 }

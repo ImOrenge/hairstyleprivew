@@ -38,6 +38,25 @@ test("Scene composition is headerless and dynamically loads all workbenches", ()
   assert.match(scene, /FloatingStageControls/);
 });
 
+test("all consultant workbenches use a semantic input and AI-output split canvas", () => {
+  const shared = read("../../components/consulting/workbenches/shared.tsx");
+  const scene = read("../../components/consulting/scene/ConsultationScene.tsx");
+  assert.match(shared, /data-consulting-split-canvas="true"/);
+  assert.match(shared, /data-consulting-pane="input"/);
+  assert.match(shared, /data-consulting-pane="output"/);
+  assert.match(shared, /lg:overflow-y-auto/);
+  assert.match(shared, /ConsultationSystemData/);
+  assert.match(scene, /lg:h-dvh/);
+  assert.match(scene, /lg:overflow-hidden/);
+  for (const workbench of ["Discovery","Photo","Scan","Analysis","Direction","Previews","Compare","Decision","Brief","Aftercare","Fashion"]) {
+    const source = read(`../../components/consulting/workbenches/${workbench}Workbench.tsx`);
+    assert.match(source, /<WorkbenchGrid/);
+    assert.match(source, /input=\{/);
+    assert.match(source, /output=\{/);
+    assert.match(source, /ConsultationSystemData/);
+  }
+});
+
 test("feature flag off preserves workspace while consulting photo uses the direct V2 workflow", () => {
   const workspace = read("../../app/workspace/page.tsx");
   const flag = read("./feature-flag.ts");

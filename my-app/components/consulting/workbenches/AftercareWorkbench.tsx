@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { AftercareProgramV2 } from "@hairfit/shared/v2";
 import type { ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { selectedStyle } from "../../../lib/consulting/contracts";
-import { ChoiceGroup, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
+import { ChoiceGroup, ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
 
 export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">) => Promise<unknown>; saving: boolean }) {
   const [service, setService] = useState(snapshot.actualService);
@@ -125,7 +125,7 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
       setSyncing(false);
     }
   };
-  return <WorkbenchGrid>
+  return <WorkbenchGrid input={
     <Panel className="grid gap-5 p-5 sm:p-7">
       {care.actualServiceId ? <SurfaceCard className="grid gap-2 p-4 text-sm"><p className="font-black">확정된 실제 시술</p><p>{service.services.join(" · ")} · {service.serviceDate}</p><p className="text-[var(--app-muted)]">{service.designerNotes || "현장 조정 기록 없음"}</p><p className="text-xs text-[var(--app-muted)]">실제 시술 원본은 잠그고 아래 관리·걱정·만족도만 새 버전으로 갱신합니다.</p></SurfaceCard> : <>
         <ChoiceGroup label="실제로 받은 시술 (복수 선택)" values={["커트","펌","염색","클리닉"]} selected={service.services} onToggle={toggle} />
@@ -142,6 +142,16 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
       {error ? <p role="alert" className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}
       <SaveStageButton loading={saving || syncing} disabled={!service.services.length || !service.serviceDate || !care.today.length || Boolean(afterPhoto && !afterPhotoConsent)} onClick={() => void saveAftercare()}>실제 시술 기준으로 관리 프로그램 저장</SaveStageButton>
     </Panel>
-    <div className="grid gap-4"><SurfaceCard className="p-5"><p className="app-kicker">ActualServiceRecord + CareProgram</p><h2 className="mt-3 text-xl font-black">계획과 실제 시술을 섞지 않습니다</h2><p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">실제 시술 확정 시 선택 스타일이 잠깁니다. 이후 관리는 오늘, D+3, W+2, W+6, W+10 기준으로 이어집니다.</p></SurfaceCard>{snapshot.photo.generationId && selected ? <Link href={`/result/${encodeURIComponent(snapshot.photo.generationId)}?variant=${encodeURIComponent(selected.previewId)}`} className="inline-flex min-h-11 items-center justify-center border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm font-black">기존 시술 확정·Aftercare bridge 열기</Link> : null}</div>
-  </WorkbenchGrid>;
+  } output={<div className="grid gap-4"><SurfaceCard className="p-5"><p className="app-kicker">ActualServiceRecord + CareProgram</p><h2 className="mt-3 text-xl font-black">계획과 실제 시술을 섞지 않습니다</h2><p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">실제 시술 확정 시 선택 스타일이 잠깁니다. 이후 관리는 오늘, D+3, W+2, W+6, W+10 기준으로 이어집니다.</p><div className="mt-5"><DefinitionRows items={[
+      { label: "Selected style", value: selected?.label || "선택 기록 없음" },
+      { label: "Actual services", value: service.services.join(" · ") || "입력 대기" },
+      { label: "Service date", value: service.serviceDate || "입력 대기" },
+      { label: "Program version", value: care.programVersion ? `v${care.programVersion}` : "초안" },
+      { label: "Checkpoints", value: `${care.checkpoints.filter((item) => item.complete).length} / ${care.checkpoints.length} 완료` },
+      { label: "After photo", value: care.afterPhotoUpload ? "비공개 저장 완료" : "없음" },
+    ]} /></div></SurfaceCard>{snapshot.photo.generationId && selected ? <Link href={`/result/${encodeURIComponent(snapshot.photo.generationId)}?variant=${encodeURIComponent(selected.previewId)}`} className="inline-flex min-h-11 items-center justify-center border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm font-black">기존 시술 확정·Aftercare bridge 열기</Link> : null}<ConsultationSystemData snapshot={snapshot} items={[
+      { label: "Actual service lock", value: care.actualServiceId ? "원본 잠김" : "미확정" },
+      { label: "Concern log", value: `${care.concerns.length}건` },
+      { label: "Satisfaction", value: care.satisfaction ? `${care.satisfaction} / 5` : "미입력" },
+    ]} /></div>} />;
 }
