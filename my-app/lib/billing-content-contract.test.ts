@@ -9,6 +9,8 @@ function read(relativePath: string) {
 const sharedPolicy = read("../../packages/shared/src/billing/subscription-policy.ts");
 const webBilling = read("../app/billing/page.tsx");
 const webUsagePackCatalog = read("../components/billing/UsagePackCatalog.tsx");
+const webUsagePackCheckout = read("../app/billing/usage/page.tsx");
+const usagePackPolicy = read("./usage-pack.ts");
 const webMyPagePlan = read("../components/mypage/panels/MyPagePlanPanel.tsx");
 const webRefund = read("../components/mypage/RefundInterviewFlow.tsx");
 const webCheckout = read("../app/billing/checkout/page.tsx");
@@ -37,6 +39,9 @@ test("web billing surfaces disclose the applicable policy before payment and lin
   assert.match(webBilling, /UsagePackCatalog/);
   assert.match(webUsagePackCatalog, /getUsagePacks/);
   assert.match(webUsagePackCatalog, /billing\/usage\?pack=\$\{item\.key\}/);
+  assert.match(usagePackPolicy, /결제 완료일로부터 1개월/);
+  assert.match(webUsagePackCatalog, /서비스 제공기간: \{item\.servicePeriodLabelKo\}/);
+  assert.match(webUsagePackCheckout, /서비스 제공기간: \{pack\.servicePeriodLabelKo\}/);
   assert.match(webCheckout, /정기결제·해지 정책/);
   assert.match(webCheckoutForm, /결제 전 필수 안내/);
 
@@ -62,6 +67,8 @@ test("plan surfaces separate benefit details from product checkout", () => {
   assert.match(nativeBilling, /usagePacks/);
   assert.match(nativeBilling, /getHairfitApiBaseUrl/);
   assert.match(nativeBilling, /billing\/usage\?pack=/);
+  assert.match(mobileDashboardRoute, /servicePeriodLabelKo: pack\.servicePeriodLabelKo/);
+  assert.match(nativeBilling, /서비스 제공기간: \{pack\.servicePeriodLabelKo\}/);
 });
 
 test("plan and billing surfaces use usage language instead of credit copy", () => {

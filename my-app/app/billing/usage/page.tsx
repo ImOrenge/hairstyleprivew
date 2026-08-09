@@ -91,7 +91,7 @@ export default async function UsagePackCheckoutPage({
               서비스별 최대: {formatServicePassCountsKo(item.servicePasses)}
             </p>
             <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
-              패션은 헤어+패션 1세트 기준 · 구매 후 사용기간: 이용권 소진 시까지
+              서비스 제공기간: {item.servicePeriodLabelKo}
             </p>
             <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
               서비스 내부 기능에서만 사용되며 양도, 출금, 현금 교환은 지원하지 않습니다.
@@ -142,7 +142,7 @@ export default async function UsagePackCheckoutPage({
               <li>케어 이용권: 최대 {pack.servicePasses.careCount.toLocaleString("ko-KR")}회</li>
               <li>최초 케어 무료를 사용하지 않은 계정은 1회 무료 혜택을 별도로 이용할 수 있습니다.</li>
               <li>서비스 구성에 따라 실제 이용 가능 횟수는 달라질 수 있습니다.</li>
-              <li>구매 후 사용기간: 이용권 소진 시까지</li>
+              <li>서비스 제공기간: {pack.servicePeriodLabelKo}</li>
               <li>정기구독 금액과 결제일은 변경되지 않습니다.</li>
               <li>다른 사용자에게 양도하거나 판매할 수 없습니다.</li>
               <li>미사용분 환불은 서비스 환불 정책과 결제 내역을 기준으로 처리됩니다.</li>

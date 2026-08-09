@@ -103,6 +103,7 @@ export interface MobileUsagePackSummary {
   label: string;
   credits: number;
   priceKrw: number;
+  servicePeriodLabelKo: string;
   hairOnlyCount: number;
   hairFashionSetCount: number;
   aftercareProgramCount: number;
