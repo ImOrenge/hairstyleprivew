@@ -60,12 +60,12 @@ test("an image smaller than 512px is rejected with its measured dimensions", asy
 
 test("a valid production asset reaches success with no serious accessibility violations", async ({ page }) => {
   await page.locator('input[type="file"]:not([capture])').setInputFiles(
-    path.resolve("my-app/public/logo.png"),
+    path.resolve("my-app/public/hero/befor.png"),
   );
 
   const status = page.getByRole("status");
-  await expect(status).toContainText("업로드 가능한 사진입니다");
-  await expect(status).toContainText("해상도: 1024 x 1024");
+  await expect(status).toContainText("사진 사전검사를 통과했습니다");
+  await expect(status).toContainText("해상도: 896 x 1344");
 
   const accessibility = await new AxeBuilder({ page })
     .include("main")
@@ -105,14 +105,14 @@ for (const scenario of [
     }
 
     await page.locator('input[type="file"]:not([capture])').setInputFiles(
-      path.resolve("my-app/public/logo.png"),
+      path.resolve("my-app/public/hero/befor.png"),
     );
 
     const validation = page.locator(".c-upload-validation");
     await expect(validation).toHaveAttribute("data-status", "success");
     await expect(validation).toHaveAttribute("aria-atomic", "true");
-    await expect(validation).toContainText("해상도: 1024 x 1024");
-    await expect(uploadArea.getByText("선택한 파일: logo.png")).toBeVisible();
+    await expect(validation).toContainText("해상도: 896 x 1344");
+    await expect(uploadArea.getByText("선택한 파일: befor.png")).toBeVisible();
 
     const harness = page.locator("main").last();
     const layout = await harness.evaluate((element) => {

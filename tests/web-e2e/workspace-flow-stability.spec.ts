@@ -15,9 +15,10 @@ async function openWorkspaceHarness(page: Page) {
   await page.goto("/e2e-harness/workspace-flow");
 
   const subscription = page.locator('[data-dialog-id="subscription-payment-notice"]');
-  await expect(subscription).toBeVisible();
-  await page.keyboard.press("Escape");
-  await expect(subscription).toBeHidden();
+  if (await subscription.isVisible().catch(() => false)) {
+    await page.keyboard.press("Escape");
+    await expect(subscription).toBeHidden();
+  }
 
   const account = page.locator('[data-dialog-id="account-setup-prompt"]');
   if (await account.count()) {

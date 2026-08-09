@@ -32,11 +32,12 @@ test("subscription policy exposes all shared items and keyboard legal navigation
 
   const policy = page.getByRole("region", { name: "정기결제·해지 정책" });
   await expect(policy).toHaveAttribute("data-density", "default");
-  await expect(policy).toHaveAttribute("data-policy-count", "4");
-  await expect(policy.getByRole("listitem")).toHaveCount(4);
-  for (const title of ["월 자동결제", "크레딧 지급", "미사용 크레딧", "구독 해지"]) {
+  await expect(policy).toHaveAttribute("data-policy-count", "3");
+  await expect(policy.getByRole("listitem")).toHaveCount(3);
+  for (const title of ["월 자동결제", "월 이용권 등록", "구독 해지"]) {
     await expect(policy.getByText(title, { exact: true })).toBeVisible();
   }
+  await expect(policy.getByText("미사용 크레딧", { exact: true })).toHaveCount(0);
   await expect(policy.getByRole("navigation", { name: "결제 정책 관련 링크" })).toBeVisible();
   await expect(policy).toHaveScreenshot("subscription-policy-1024-default-light.png", {
     animations: "disabled",
