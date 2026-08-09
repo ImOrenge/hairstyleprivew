@@ -129,6 +129,12 @@ test("local development consumes the durable outbox without restoring browser-ow
   assert.match(localWorkflow, /\/api\/generations\/run/);
   assert.match(workflowOutbox, /scheduleLocalGenerationWorkflow/);
   assert.match(workflowOutbox, /runtime: "cloudflare" \| "local" \| "unavailable"/);
+  assert.ok(
+    workflowOutbox.indexOf("const localAvailable = await isLocalGenerationWorkflowAvailable") <
+      workflowOutbox.indexOf("const workflow = localAvailable ? null : await getGenerationWorkflowBinding"),
+    "explicit local development execution must win over inert OpenNext preview bindings",
+  );
+  assert.match(workflowOutbox, /const workflow = localAvailable \? null : await getGenerationWorkflowBinding\(\)/);
   assert.match(dispatchRoute, /localBaseUrl: new URL\(request\.url\)\.origin/);
   assert.doesNotMatch(localWorkflow, /useGenerationStore|imageDataUrl/);
 

@@ -14,6 +14,7 @@ import type {
 } from "../recommendation-types";
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "./errors";
+import { buildPromptInputV2 } from "./prompt-input";
 
 type ConsultationPromptRow = {
   id: string;
@@ -42,16 +43,6 @@ function object(value: unknown): Record<string, unknown> {
 
 function optionalText(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : "unknown";
-}
-
-function stringList(value: unknown) {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string" && Boolean(item.trim()))
-    : [];
-}
-
-function enumText<T extends string>(value: unknown, values: readonly T[], fallback: T): T {
-  return typeof value === "string" && values.includes(value as T) ? (value as T) : fallback;
 }
 
 function finiteNumber(value: unknown, minimum: number, maximum: number) {
@@ -166,79 +157,6 @@ async function loadPersonalColor(consultationId: string, snapshot: ConsultationS
   };
 }
 
-function buildPromptInput(
-  row: ConsultationPromptRow,
-  analysisEvidence: PromptInputV2["analysisEvidence"],
-  personalColor: PromptInputV2["personalColor"],
-  recommendations: RecommendationCandidate[],
-): PromptInputV2 {
-  const snapshot = row.snapshot;
-  const preferences = object(row.preferences);
-  const currentHair = object(preferences.currentHair);
-  const styleGoal = object(preferences.styleGoal);
-  const maintenance = object(preferences.maintenance);
-  const strategyConfirmed = Boolean(snapshot.strategy.confirmedAt);
-
-  return {
-    schemaVersion: "prompt-input-v2",
-    consultationId: row.id,
-    analysisEvidence,
-    personalColor,
-    currentHair: {
-      description: optionalText(currentHair.description ?? snapshot.discovery.currentHair),
-      length: optionalText(currentHair.length ?? snapshot.discovery.hairLength),
-      density: optionalText(currentHair.density ?? snapshot.discovery.hairDensity),
-      strandThickness: optionalText(currentHair.strandThickness ?? snapshot.discovery.strandThickness),
-      texture: optionalText(currentHair.texture ?? snapshot.discovery.hairTexture),
-      treatmentHistory: stringList(currentHair.treatmentHistory ?? snapshot.discovery.treatmentHistory),
-      damageLevel: optionalText(currentHair.damageLevel ?? snapshot.discovery.damageLevel),
-    },
-    styleGoal: {
-      imageKeywords: stringList(styleGoal.imageKeywords ?? [snapshot.discovery.purpose, ...snapshot.discovery.goals]),
-      desiredLength: optionalText(
-        styleGoal.desiredLength ?? (strategyConfirmed ? snapshot.strategy.length : undefined),
-      ),
-      changeLevel: enumText(
-        styleGoal.changeLevel ?? snapshot.discovery.changeLevel,
-        ["subtle", "moderate", "bold", "unknown"] as const,
-        "unknown",
-      ),
-      desiredServices: stringList(styleGoal.desiredServices ?? snapshot.discovery.allowedServices),
-      notes: optionalText(styleGoal.notes ?? snapshot.discovery.notes),
-    },
-    maintenance: {
-      morningMinutes: finiteNumber(maintenance.morningMinutes ?? snapshot.discovery.morningMinutes, 0, 240),
-      heatStyling: enumText(
-        maintenance.heatStyling ?? snapshot.discovery.heatStyling,
-        ["avoid", "sometimes", "comfortable", "unknown"] as const,
-        "unknown",
-      ),
-      salonCycleWeeks: finiteNumber(maintenance.salonCycleWeeks ?? snapshot.discovery.salonCycleWeeks, 1, 52),
-      maintenanceLevel: enumText(
-        maintenance.maintenanceLevel ?? snapshot.discovery.maintenanceLevel,
-        ["low", "medium", "high", "unknown"] as const,
-        "unknown",
-      ),
-    },
-    avoidConditions: stringList(preferences.avoidConditions ?? snapshot.discovery.avoid),
-    catalogCycleId: recommendations[0]?.catalogCycleId ?? "unknown",
-    catalog: recommendations.map((candidate) => ({
-      id: candidate.catalogItemId ?? candidate.id,
-      cycleId: candidate.catalogCycleId ?? "unknown",
-      name: candidate.label,
-      promptTemplateVersion: candidate.promptTemplateVersion ?? "unknown",
-      design: {
-        providerPrompt: candidate.prompt,
-        providerNegativePrompt: candidate.negativePrompt,
-        reason: candidate.reason,
-        tags: candidate.tags,
-        lengthBucket: candidate.lengthBucket,
-        correctionFocus: candidate.correctionFocus,
-      },
-    })),
-  };
-}
-
 export async function buildGenerationPromptPlansV2(input: {
   userId: string;
   consultationId: string;
@@ -274,7 +192,7 @@ export async function buildGenerationPromptPlansV2(input: {
     input.sourceImageFingerprint,
   );
   const personalColor = await loadPersonalColor(row.id, row.snapshot);
-  const promptInput = buildPromptInput(row, analysisEvidence, personalColor, input.recommendations);
+  const promptInput = buildPromptInputV2(row, analysisEvidence, personalColor, input.recommendations);
 
   return compilePromptSpecsV2(promptInput).map((spec) => ({
     spec,

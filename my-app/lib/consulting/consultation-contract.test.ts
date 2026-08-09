@@ -53,12 +53,14 @@ test("structured discovery options persist into the V2 generation prompt contrac
   const contracts = read("../../../packages/shared/src/consulting/contract.ts");
   const discovery = read("../../components/consulting/workbenches/DiscoveryWorkbench.tsx");
   const store = read("./server-store.ts");
-  const prompt = read("../v2/prompt-server.ts");
+  const promptServer = read("../v2/prompt-server.ts");
+  const promptInput = read("../v2/prompt-input.ts");
   for (const field of ["purpose", "hairLength", "hairDensity", "strandThickness", "hairTexture", "damageLevel", "treatmentHistory", "allowedServices", "morningMinutes", "heatStyling", "salonCycleWeeks", "changeLevel"]) {
     assert.match(contracts, new RegExp(field));
     assert.match(store, new RegExp(`next\\.discovery\\.${field}`));
-    assert.match(prompt, new RegExp(`snapshot\\.discovery\\.${field}`));
+    assert.match(promptInput, new RegExp(`snapshot\\.discovery\\.${field}`));
   }
+  assert.match(promptServer, /buildPromptInputV2/);
   assert.match(discovery, /Input Snapshot/);
   assert.match(discovery, /가능한 시술 범위/);
   assert.match(discovery, /충돌/);

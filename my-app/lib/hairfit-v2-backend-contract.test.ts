@@ -174,10 +174,16 @@ test("frontend consultation links before workflow dispatch and preparation compi
 test("the protected V2 prompt reaches Gemini and attempt outcomes stay attached to the same slot", () => {
   const prepare = readApp("app/api/generations/prepare/route.ts");
   const run = readApp("app/api/generations/run/route.ts");
+  const previewBoard = readApp("lib/v2/preview-board-server.ts");
   const promptServer = readApp("lib/v2/prompt-server.ts");
   assert.match(prepare, /const protectedPrompt = plan\?\.providerPrompt \?\? candidate\.prompt/);
   assert.match(run, /runGeminiImageGeneration\(\{\s*prompt,/);
   assert.match(run, /recordPreviewAttemptOutcomeV2/);
+  assert.match(previewBoard, /\["queued", "leased", "rejected", "generating"\]/);
+  assert.equal(
+    (previewBoard.match(/preview_variants_v2!generation_attempts_v2_preview_variant_id_fkey!inner/g) ?? []).length,
+    3,
+  );
   assert.match(run, /recordPreviewAttemptFailureV2/);
   assert.match(promptServer, /createHash\("sha256"\)/);
   assert.match(promptServer, /positivePrompt/);

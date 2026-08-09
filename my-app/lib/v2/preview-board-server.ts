@@ -269,7 +269,7 @@ export async function recordPreviewAttemptOutcomeV2(input: {
   const db = getSupabaseAdminClient();
   const attempt = await db
     .from("generation_attempts_v2")
-    .select("*,preview_variants_v2!inner(id,board_id,accepted_attempt_id)")
+    .select("*,preview_variants_v2!generation_attempts_v2_preview_variant_id_fkey!inner(id,board_id,accepted_attempt_id)")
     .eq("id", input.attemptId)
     .eq("user_id", input.userId)
     .maybeSingle();
@@ -280,7 +280,7 @@ export async function recordPreviewAttemptOutcomeV2(input: {
   const boardId = String(variant.board_id);
   const acceptedFingerprints = await db
     .from("generation_attempts_v2")
-    .select("output_fingerprint,preview_variants_v2!inner(board_id)")
+    .select("output_fingerprint,preview_variants_v2!generation_attempts_v2_preview_variant_id_fkey!inner(board_id)")
     .eq("status", "accepted")
     .eq("preview_variants_v2.board_id", boardId)
     .limit(9);
@@ -384,7 +384,10 @@ export async function markPreviewAttemptGeneratingV2(userId: string, attemptId: 
     .update({ status: "generating", started_at: new Date().toISOString() })
     .eq("id", attemptId)
     .eq("user_id", userId)
-    .in("status", ["queued", "leased", "rejected"])
+    // The legacy variant lease is the concurrency fence. A callback may be
+    // retried after this V2 shadow write committed but before its response was
+    // received, so `generating` must be idempotently re-enterable here.
+    .in("status", ["queued", "leased", "rejected", "generating"])
     .select("preview_variant_id")
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -498,7 +501,7 @@ export async function recordPreviewAttemptFailureV2(input: {
   const db = getSupabaseAdminClient();
   const attemptResult = await db
     .from("generation_attempts_v2")
-    .select("*,preview_variants_v2!inner(board_id)")
+    .select("*,preview_variants_v2!generation_attempts_v2_preview_variant_id_fkey!inner(board_id)")
     .eq("id", input.attemptId)
     .eq("user_id", input.userId)
     .maybeSingle();

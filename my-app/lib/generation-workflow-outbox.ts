@@ -127,8 +127,11 @@ export async function dispatchGenerationWorkflowOutbox(input?: {
     generationIds: [],
     errors: [],
   };
-  const workflow = await getGenerationWorkflowBinding();
-  const localAvailable = !workflow && await isLocalGenerationWorkflowAvailable(input?.localBaseUrl);
+  // Next development can expose an OpenNext preview binding without a running
+  // Workflow worker. Prefer the explicitly enabled loopback runner so an
+  // outbox row is never marked dispatched to that inert preview binding.
+  const localAvailable = await isLocalGenerationWorkflowAvailable(input?.localBaseUrl);
+  const workflow = localAvailable ? null : await getGenerationWorkflowBinding();
   if (!workflow && !localAvailable) return summary;
   summary.bindingAvailable = Boolean(workflow);
   summary.runtime = workflow ? "cloudflare" : "local";

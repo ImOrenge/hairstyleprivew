@@ -33,9 +33,9 @@
 | 영역 | 현재 증거 | 종료 전 필요한 증거 |
 |---|---|---|
 | 원격 DB | `hair-fit-seoul`에 migration `202608090001`~`004` 적용 및 이력·함수 권한·RLS·column·constraint·private bucket smoke 완료 | 충족 |
-| 실제 인증 브라우저 | 기존 Clerk 개발 고객으로 실제 사진 업로드→사전검사→FaceMesh→AI 분석→원격 근거 저장→Scan overlay→전략 확정→무차감 견적 경계까지 통과 | 실제 10-credit 생성 접수→결정→Aftercare/Fashion smoke |
-| 실제 모바일 | Expo 정적/계약/테스트는 가능 | 실제 기기 background/resume, deep link/push, 구매 복원, Aftercare/Fashion native smoke |
-| 라이브 AI/결제 | 실제 AI 분석 응답과 생성 견적 201, `isAllowed=true`, 견적 전후 잔액 불변을 확인 | 별도 이용량 차감 승인을 받은 10-credit 생성 접수와 결과 반환 확인 |
+| 실제 인증 브라우저 | 기존 Clerk 개발 고객으로 실제 사진 업로드→사전검사→FaceMesh→AI 분석→원격 근거 저장→Scan overlay→전략 확정→10-credit 생성 접수와 품질 통과 8/9까지 확인 | 사용자가 후속 실인증을 패스했으므로 실제 계정 decision→Aftercare/Fashion은 미검증으로 유지 |
+| 실제 모바일 | Expo 55 권장 `react-native@0.83.10` 정합화, Jest·Web/iOS/Android bundle 완료. SM-S936N Android 16/API 36 연결과 설치 앱/Expo Go 상태까지만 확인 | 현재 소스 development build 설치, background/resume, deep link/push, 구매 복원, Aftercare/Fashion native smoke |
+| 라이브 AI/결제 | 승인된 첫 접수는 백엔드 결함으로 전체 실패했으나 예약 10 전액 자동 환원. 수정 후 두 번째 접수는 10-credit 영수증 committed, 8개 생성·품질 통과와 한 슬롯 3회 `style_mismatch` 거절 확인 | 추가 차감이나 실인증 후속 여정은 사용자 지시에 따라 수행하지 않음 |
 
 ## 3. 목표 데이터 흐름
 
@@ -66,6 +66,8 @@
 - [x] 원격에 선행 적용된 `20260808090000` 계보(`ca8afd9`)를 수동 통합하고 사용자 모발 옵션과 동일 상담 ID가 Web·Expo 생성 요청에 함께 유지되도록 충돌을 해소한다.
 - [x] 기존 Clerk 개발 고객을 PII 없이 자동 발견하는 별도 live E2E로 실제 업로드·서버 사전검사·FaceMesh·AI 분석·원격 evidence·Scan overlay를 같은 상담에서 검증한다.
 - [x] 같은 상담을 Scan→Analysis→Direction→Previews까지 진행해 유료 생성 견적만 조회하고 `/api/generations/accept` 미호출, `source_generation_id` 미생성, 잔액 불변을 검증한다.
+- [x] 승인된 실생성에서 로컬 Workflow 우선순위, PostgREST FK 관계명, V2 attempt 재진입 결함을 발견·수정하고 새 접수의 committed 10-credit 영수증과 품질 통과 8/9를 확인한다.
+- [x] Expo 55 권장 React Native patch를 `0.83.10`으로 맞추고 dependency check, Jest, Web/iOS/Android bundle을 재검증한다.
 - [ ] Expo 실제 기기, 인증 계정, background/resume, deep link/push, Google Play 복원과 Fashion/Aftercare 전체 native smoke를 수행한다.
 - [x] 모든 코드·문서 수정이 끝난 뒤에만 최종 종합 검증을 다시 수행한다.
 
@@ -81,7 +83,7 @@
 - [x] 품질 통과 후보 2~3개로 shortlist, 비교, 최종 결정을 진행할 수 있다.
 - [x] 최신 전체 변경 기준 `typecheck`, `lint`, 상담/V2/Expo 계약 테스트, migration mirror/fresh, component/CSS 계약, production build가 통과한다.
 - [x] 최신 전체 변경 기준 브라우저 E2E에서 11개 Scene, 직접 URL, 포커스, 모바일 overflow/a11y, 부분 생성, 저장 landmark overlay/보정, Fashion 9-slot 실제 API 연결 UI를 검증한다.
-- [ ] 로그인된 실제 계정으로 사진 업로드·Aftercare 업로드·Fashion 생성까지 브라우저 smoke를 수행한다.
+- [ ] 로그인된 실제 계정으로 decision·Aftercare 업로드·Fashion 생성까지 브라우저 smoke를 수행한다. 2026-08-09 사용자 지시로 추가 실인증은 패스했다.
 - [x] 승인된 원격 Supabase migration을 적용하고 이력, RLS, 필수 객체와 함수 권한을 다시 확인해 기록한다.
 - [x] Docker 등 환경 제한이나 실제 인증 smoke 미실행 항목은 통과로 위장하지 않고 남은 위험으로 기록한다.
 
@@ -108,25 +110,28 @@
 
 ## 8. 구현 상태
 
-현재 상태는 **로컬 구현·`20260808090000` 계보 통합·원격 migration·종합 회귀·실제 Clerk 기반 통합 사진 분석과 무차감 생성 견적 smoke 완료, 실제 유료 생성·결정·Aftercare/Fashion·실기기 검증 대기**다.
+현재 상태는 **로컬 구현·`20260808090000` 계보 통합·원격 migration·종합 회귀·실제 Clerk 기반 사진 분석·무차감 견적·승인된 10-credit 생성과 부분 품질 결과 8/9까지 완료, 사용자 요청으로 후속 실인증을 패스하고 실제 decision·Aftercare/Fashion·실기기 검증은 대기**다.
 
 2026-08-09 구현·검증 결과:
 
 - 사진 단계는 private draft, 8개 시스템 검사, AI 근거, Evidence ID가 있으면 생성 ID 없이 Scan으로 이동한다. 근거 `reviewed` 조건은 Scan 완료 시점으로 옮겼다.
 - Scene 01의 목적·모발 구조·시술 범위·관리 시간·열기구·변화 강도가 V2 preferences와 `PromptInputV2`에 연결된다.
+- `PromptInputV2` 조립을 순수 모듈로 분리하고 실제 상담 목적·현재 모발·확정 길이·허용 시술·관리 시간·열기구·방문 주기·회피 조건이 9개 보호 provider prompt에 모두 포함되는 계약 테스트를 추가했다.
 - 사진 AI 분석에서 Evidence ID가 붙은 8축 추천을 만들고 Direction에서 추천·현재 선택·영향·trade-off를 함께 표시한다.
 - 시스템 사전검사 뒤 서버 TensorFlow.js MediaPipe FaceMesh가 478개 keypoint를 추출한다. 핵심 landmark 13개, 실제 face contour, inferred hairline, 정규화 측정선을 `analysis_evidence_v2`에 저장하며 브라우저는 저장값만 SVG로 렌더링한다.
 - 사진 단계 완료 guard는 같은 상담의 persisted landmark 5개 이상, contour 1개 이상, measurement 4개 이상을 서버에서 다시 확인한다. 고객용 V2 분석 API가 임의 `AnalysisEvidenceV2`를 직접 저장하던 경로는 draft 기반 서버 분석으로 교체했다.
 - 품질 통과 결과 2~3개로 shortlist할 수 있으며, V2 shortlist/selection/confirm, salon brief, aftercare dual-write를 연결했다.
 - 원격에 선행 적용된 `20260808090000_extend_hairstyle_blueprint_v4.sql`의 `ca8afd9` 계보는 승인 후 8개 충돌을 수동 해소해 로컬 커밋 `1fba021`로 통합했다. 25개씩 6개 manifest의 확장 150개와 legacy 32개, 총 182개 blueprint를 검증했고 catalog prompt는 `catalog-v4`를 사용한다. 충돌 해소 과정에서 Web·Expo 모두 같은 `consultationId`와 구조화 `hairProfile`을 생성 접수까지 함께 전달하도록 보존했다. additive mirror migration `202608090001`~`004`는 로컬 fresh-chain과 권한 smoke를 통과한 뒤 승인된 `hair-fit-seoul` 원격에 순서대로 적용했다. 원격 도구가 처음 기록한 실행시각 버전은 대상 이름·원본 SQL 4건을 확인한 뒤 한 트랜잭션에서 파일 버전으로 정규화했고, 최종 이력은 `20260808090000` 다음 `202608090001`~`004`와 정확히 일치한다.
-- 실제 인증 live E2E 과정에서 최근 상담 3건을 만들었다. selector 재시도 전에 멈춘 1건은 `photo/draft`, 첫 분석 완료 건은 `scan/analysis_ready`, 최종 검증 건은 `previews/analysis_ready`이며 source generation은 모두 없다. 테스트 산출물임을 명시하고 임의 삭제하지 않았다.
+- 실제 인증 live E2E 과정에서 최근 상담 3건을 만들었다. selector 재시도 전에 멈춘 1건은 `photo/draft`로 남아 있다. 분석 완료 2건은 승인된 유료 검증에 이어 사용되어 현재 모두 `previews/preview_board_queued`이며, 하나는 전체 실패·10-credit 자동 환원 generation, 다른 하나는 8/9 품질 통과·10-credit committed generation에 연결됐다. 테스트 산출물임을 명시하고 임의 삭제하지 않았다.
 - 원격 V2 필수 테이블 17/17은 RLS enabled+forced이며 anon/authenticated SELECT가 모두 회수되어 있다. transition/selection RPC는 service role만 실행 가능하다.
 - 원격 적용 후 12개 신규/변경 column과 10개 constraint, 7개 함수의 고정 `search_path`, service-role 전용 execute, 비공개 `aftercare-photos` 버킷을 catalog에서 직접 확인했다. 보안 advisor는 적용 전후 동일한 52건으로 새 경고가 없고, 성능 advisor에는 막 생성돼 아직 사용 이력이 없는 `styling_sessions` FK 조회 인덱스 2건만 INFO로 추가됐다.
 - landmark 구현 체크포인트: 저장소 portrait fixture에서 얼굴 1명·478 keypoint, 핵심 landmark 13개·실제 contour·측정선 13개를 실제 서버 FaceMesh 경로로 추출했다. hermetic 브라우저 집중 검증에서는 저장된 얼굴 사진 위 SVG가 detected landmark/contour, inferred hairline, measurement, skin sample, excluded region을 렌더링하고 nose-tip 보정 뒤 `user_adjusted`, `data-original-x`, correction revision을 유지했다. 추가 live E2E에서 동일 상담의 원격 `analysis_evidence_v2`가 `tensorflow-js / MediaPipeFaceMesh`, landmark 13개, contour 1개, measurement 13개, correction revision 0을 보존하고 Scan 사진 위에 실제 렌더링하는 것을 확인했다.
 - 실제 인증 통합 smoke: 별도 `playwright.live.config.ts`는 Clerk 개발 인스턴스에서 기존 `+clerk_test` HairFit member를 이메일·사용자 ID 출력 없이 찾는다. stock portrait를 실제 UI에서 업로드한 뒤 private draft 201, 서버 사전검사, FaceMesh, 라이브 생성형 AI 분석 200, Evidence 6개, 8축 추천, `analysis_ready`, snapshot 저장, Scan 전환과 landmark overlay까지 한 상담 ID로 51.8초에 통과했다. 후속 무차감 smoke는 Scan 검토→Analysis→Direction→Previews, paid-action quote 201과 `isAllowed=true`까지 15.2초에 통과했고 `/api/generations/accept` 호출 0회, `source_generation_id=null`, 사용자 잔액 불변을 원격에서 확인했다.
+- 승인된 유료 실생성은 실패 복구와 정상 경로를 모두 확인했다. 첫 접수는 개발 서버가 inert OpenNext Workflow binding을 선택하고, V2 attempt↔variant embed가 두 FK 때문에 모호하며, `generating` attempt의 fenced 재호출이 비멱등적인 세 결함을 드러냈다. 이 generation은 9개 모두 실패한 뒤 `generation_credit_reservations.state=released`, 10-credit 전액 환원, 현재 잔액=예약 전 잔액으로 자동 복구됐다. 개발 loopback runner 우선, `generation_attempts_v2_preview_variant_id_fkey` 명시, `generating` 재진입 허용을 적용한 두 번째 접수는 outbox `local:*`, preparation ready, 실제 이미지 8개 completed/V2 accepted, 오류 없는 순차 처리, 한 슬롯의 3회 `style_mismatch` 품질 거절을 기록했다. 영수증은 `committed`, amount 10, 현재 잔액은 `balance_after_reservation`과 일치한다. 부분 결과 2개 이상 비교 계약은 충족하지만 사용자가 추가 실인증을 패스해 실제 shortlist 이후 row는 만들지 않았다.
 - Aftercare는 시술 record를 먼저 확정한 뒤 동의한 파일만 Sharp 정규화·SHA-256 fingerprint와 함께 비공개 `aftercare-photos` 버킷에 저장한다. 고객 snapshot에는 URL 대신 service ID·fingerprint·업로드 시각만 남기고 계정 삭제 outbox에도 포함한다. DB는 path·fingerprint·consent timestamp가 모두 비어 있거나 모두 채워지는 bundle constraint를 강제한다. 공개 스키마의 `request_account_deletion(text)`는 고정 `search_path=''`의 `SECURITY INVOKER` wrapper이고, 실제 권한 상승 삭제는 비노출 `private.request_account_deletion_v2(text)`의 `SECURITY DEFINER` helper로 격리했다. 두 함수 모두 `service_role`만 execute할 수 있다. PostgreSQL 16 직접 권한 smoke에서 service role 삭제·tombstone 기록은 성공했고 anon/authenticated execute는 모두 거부됨을 확인했다.
 - Fashion Scene 11은 정적 `LOOKS`와 구 Styler 마법사 링크를 제거했다. 확정 V2 snapshot과 구조화 방향을 정확히 9개 슬롯에 매핑하고 추천→최신 유료 견적→실제 AI 생성→완료 세션 2~3개 shortlist→최종 룩 확정을 한 Scene에서 처리한다. 다른 상담·다른 snapshot·미완료 세션 ID는 서버가 거부한다.
 - Expo는 `/consulting`을 기본 상담 진입점으로 사용한다. 활성 V2 상담 ID를 SecureStore에 보존하고, 같은 `consultationId`로 업로드·서버 사전검사·FaceMesh/AI 분석·유료 생성 접수를 연결한다. 서버 normalized landmark/contour를 native overlay로 표시하고 3×3 board, persisted shortlist, 선택·확정, salon brief까지 재개한다.
+- Expo 55.0.28의 권장 조합에 맞춰 앱과 `ui-native`의 React Native를 0.83.10으로 정렬했다. 실제 연결 기기는 SM-S936N(Android 16/API 36)이었으나 설치된 `com.hairfit.app`은 2026-05-03의 0.0.0 stale build였고 Expo Go 55.0.5는 프로젝트 권장 55.0.7과 달랐다. 포트 8081은 다른 ActivityTime 세션이 사용 중이어서 8082로 현재 bundle을 기동했지만 ADB가 이후 무응답이 되었고 공유 세션을 보호하기 위해 당시 server restart를 하지 않았다. Expo Go는 SDK 53 이후 Android remote push를 지원하지 않으므로 push 검증에는 현재 development build가 필요하다. 따라서 실제 기기 UI smoke는 통과로 표시하지 않는다.
 - 추가 보완: 사용자가 편집한 Salon Brief 필드를 V2 버전에 저장하고, Aftercare today/checkpoints/concerns/satisfaction을 실제 시술 이후 versioned server patch로 유지한다. landmark 수동 보정은 Web/Expo 모두 같은 API를 사용한다.
-- 최종 회귀: 모든 workspace typecheck 통과, lint 0 error(기존 Expo generic-array warning 1건), 상담 계약 16/16, HairFit V2 계약 14/14, styling workflow 7/7, paid-action 20/20, CSS 계약 9/9, Expo Jest 41 suite·170 test, component registry/passport 51/51, migration mirror 82개 및 PostgreSQL 16 fresh-chain 82개, Next production/E2E build 130 route, Expo Web/iOS/Android bundle, Chromium Playwright 79/79가 통과했다. 실제 정면 얼굴 fixture가 시스템 사전검사를 통과하고 로고는 차단되는 브라우저 계약과 새 AI 컨설턴트 CTA의 320/375px visual baseline도 확인했다. blueprint 150개 manifest·182개 전체 catalog와 `catalog-v4` runtime dry-run도 통과했다. migration 003 보안 보완은 service-role 직접 RPC smoke까지 재검증했다. 추가 live Playwright는 실제 분석/landmark 1건과 무차감 생성 견적 경계 1건이 각각 통과했다. CSS 파일 변경과 diff whitespace 오류는 없다.
-- 미완료: 실제 10-credit 이미지 생성 접수→3×3 품질 결과→shortlist→최종 선택→Salon Brief→Aftercare/Fashion을 같은 상담으로 연결하는 통합 smoke, `SALON_BRIEF_V2_ENABLED`·`STYLING_LINK_V2_ENABLED` 단계적 활성화, Expo 실제 기기/background/deep link/push/구매 복원 및 Fashion/Aftercare 전체 native smoke다. 유료 접수는 견적과 잔액을 확인했지만 별도 차감 승인 없이 실행하지 않았다. 인앱 브라우저 제어 런타임의 로컬 자산 경로 오류는 남아 있으나 repo Playwright live suite가 실제 Clerk 세션과 원격 HairFit 상태를 검증했다. 따라서 골은 완료 처리하지 않는다.
+- 최종 회귀: 모든 workspace typecheck 통과, lint 0 error(기존 Expo generic-array warning 1건), generation workflow 69/69, 상담 계약 16/16, HairFit V2 계약 15/15, CSS 계약 9/9, Expo Jest 41 suite·170 test, Next production build 130 route, Expo Web/iOS/Android bundle, Chromium Playwright 79/79가 통과했다. 실제 정면 얼굴 fixture가 시스템 사전검사를 통과하고 로고는 차단되는 브라우저 계약과 새 AI 컨설턴트 CTA의 320/375px visual baseline도 확인했다. CSS 파일 변경과 diff whitespace 오류는 없다. 실인증 재실행은 사용자 지시로 최종 회귀에서 제외했다.
+- 미완료: 승인된 10-credit 생성은 8/9 품질 결과까지 확인했지만 실제 계정 shortlist→최종 선택→Salon Brief→Aftercare/Fashion은 사용자 지시로 패스했다. `SALON_BRIEF_V2_ENABLED`·`STYLING_LINK_V2_ENABLED` 단계적 활성화와 Expo 현재 development build를 사용한 실제 기기/background/deep link/push/구매 복원 및 Fashion/Aftercare 전체 native smoke도 남아 있다. 따라서 골은 완료 처리하지 않는다.
