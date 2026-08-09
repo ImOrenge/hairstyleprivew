@@ -29,6 +29,26 @@ export default async function ConsultingSceneHarnessPage({ searchParams }: Props
   snapshot.photo.expiresAt = "2026-08-09T00:00:00.000Z";
   snapshot.photo.capturedAt = "2026-08-08T00:00:00.000Z";
   snapshot.photo.quality = snapshot.photo.quality.map((item) => ({ ...item, status: "pass", message: "확인 완료" }));
+  snapshot.evidence = {
+    pipelineStatus: "reviewed",
+    reviewedAt: "2026-08-08T00:01:00.000Z",
+    items: [
+      ["contour", "contour", "얼굴 윤곽", "균형 관찰", "길이 방향"],
+      ["hairline", "hairline", "헤어라인", "이마 노출", "가르마 방향"],
+      ["measurement", "measurement", "얼굴 비율", "길이·폭 균형", "볼륨 방향"],
+      ["skin", "skin", "피부 샘플", "컬러 보조 근거", "컬러 교차 확인"],
+      ["excluded", "excluded", "눈·입술 제외", "색상 왜곡 방지", "제외 영역 유지"],
+      ["direction", "direction", "추천 초안", "선택 영향", "방향 조정"],
+    ].map(([id, layer, evidence, meaning, action]) => ({
+      id,
+      layer: layer as "contour" | "hairline" | "measurement" | "skin" | "excluded" | "direction",
+      evidence,
+      meaning,
+      action,
+      confidence: "high" as const,
+      manuallyCorrected: false,
+    })),
+  };
   snapshot.strategyRecommendations = (["length", "fringe", "parting", "layerStart", "crownVolume", "sideVolume", "texture", "color"] as const).map((axis) => ({
     axis,
     recommendedValue: String(snapshot.strategy[axis]),

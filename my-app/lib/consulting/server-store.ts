@@ -17,6 +17,15 @@ function normalizeRow(row: Row): ConsultationSnapshot {
     ...defaults,
     ...snapshot,
     discovery: { ...defaults.discovery, ...snapshot.discovery },
+    careProgram: { ...defaults.careProgram, ...snapshot.careProgram },
+    fashion: {
+      ...defaults.fashion,
+      ...snapshot.fashion,
+      directionSnapshot: {
+        ...defaults.fashion.directionSnapshot,
+        ...snapshot.fashion?.directionSnapshot,
+      },
+    },
     sessionId: row.id,
     userId: row.user_id,
     version: row.version,

@@ -54,7 +54,16 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
     try {
       const v2Response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/salon-brief`, {
         method: "POST",
-        headers: { "Idempotency-Key": `${snapshot.sessionId}:brief:${version}` },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": `${snapshot.sessionId}:brief:${version}` },
+        body: JSON.stringify({ brief: {
+          audience: brief.mode,
+          summary: brief.summary,
+          cut: { instruction: brief.cut },
+          volumeTexture: { instruction: brief.volumeTexture },
+          color: snapshot.strategy.color ? { instruction: snapshot.strategy.color } : null,
+          styling: [brief.styling],
+          cautions: brief.caution,
+        } }),
       });
       const v2Error = (await v2Response.json().catch(() => ({}))) as { error?: string };
       const v2Disabled = v2Response.status === 404 && v2Error.error === "HairFit V2 feature is disabled.";
@@ -76,6 +85,7 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
       <TextField label="커트 방향" value={brief.cut} onChange={(cut) => setBrief({ ...brief, cut })} />
       <TextField label="볼륨·질감" value={brief.volumeTexture} onChange={(volumeTexture) => setBrief({ ...brief, volumeTexture })} />
       <TextField label="스타일링" value={brief.styling} onChange={(styling) => setBrief({ ...brief, styling })} />
+      <TextField label="주의·현장 확인 사항" value={brief.caution.join(", ")} onChange={(value) => setBrief({ ...brief, caution: value.split(",").map((item) => item.trim()).filter(Boolean) })} />
       <fieldset><legend className="text-sm font-black">공유 만료</legend><div className="mt-2 flex gap-2">{([24,168,720] as const).map((hours) => <button key={hours} type="button" onClick={() => setBrief({ ...brief, shareExpiryHours: hours, shareRevokedAt: null })} className={`min-h-11 border px-3 text-sm font-black ${brief.shareExpiryHours === hours ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : ""}`}>{hours === 24 ? "24시간" : hours === 168 ? "7일" : "30일"}</button>)}</div></fieldset>
       <SaveStageButton loading={saving || savingBrief} disabled={!style || !brief.summary.trim()} onClick={() => void saveBrief()}>브리프 버전 저장</SaveStageButton>
     </Panel>

@@ -43,10 +43,10 @@ function ClerkGenerationAuthBoundary({ children }: { children: ReactNode }) {
   return children;
 }
 
-export function GenerationAuthBoundary({ children }: { children: ReactNode }) {
+export function GenerationAuthBoundary({ children, bypass = false }: { children: ReactNode; bypass?: boolean }) {
   const hasClerkProvider = useClerkAvailable();
 
-  if (!hasClerkProvider) {
+  if (bypass || !hasClerkProvider) {
     return children;
   }
 

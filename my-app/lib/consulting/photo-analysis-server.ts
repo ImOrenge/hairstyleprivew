@@ -30,6 +30,47 @@ type DraftRow = {
   expires_at: string;
 };
 
+async function linkPhotoDraftAndAdvanceAnalysis(input: {
+  userId: string;
+  consultationId: string;
+  draftId: string;
+}) {
+  const db = getSupabaseAdminClient();
+  const linked = await db
+    .from("consultation_sessions")
+    .update({ source_photo_id: input.draftId })
+    .eq("id", input.consultationId)
+    .eq("user_id", input.userId);
+  if (linked.error) throw new Error(linked.error.message);
+
+  for (let step = 0; step < 3; step += 1) {
+    const session = await db
+      .from("consultation_sessions")
+      .select("version,lifecycle_state")
+      .eq("id", input.consultationId)
+      .eq("user_id", input.userId)
+      .maybeSingle();
+    if (session.error) throw new Error(session.error.message);
+    if (!session.data) throw new HairfitV2Error("CONSULTATION_NOT_FOUND", 404, "상담을 찾을 수 없습니다.");
+    const row = session.data as unknown as { version: number; lifecycle_state: string };
+    if (row.lifecycle_state === "analysis_ready") return row.version;
+    const nextState = row.lifecycle_state === "draft"
+      ? "photo_validated"
+      : row.lifecycle_state === "photo_validated" ? "analysis_ready" : null;
+    if (!nextState) {
+      throw new HairfitV2Error("CONSULTATION_ANALYSIS_LOCKED", 409, "이미 다음 의사결정 단계로 진행한 상담은 사진을 다시 분석할 수 없습니다.");
+    }
+    const transition = await db.rpc("transition_consultation_v2", {
+      p_user_id: input.userId,
+      p_consultation_id: input.consultationId,
+      p_expected_version: row.version,
+      p_next_state: nextState,
+    });
+    if (transition.error) throw new HairfitV2Error("CONSULTATION_TRANSITION_REJECTED", 409, "사진 분석 상태를 저장하지 못했습니다.");
+  }
+  throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "상담이 다른 화면에서 변경되었습니다. 다시 시도해 주세요.");
+}
+
 function faceAnalysis(analysis: FaceAnalysisSummary, model: string): FaceAnalysis {
   return {
     faceShape: analysis.faceShape,
@@ -97,15 +138,18 @@ export async function analyzeConsultationPhoto(input: {
   const db = getSupabaseAdminClient();
   const consultation = await db
     .from("consultation_sessions")
-    .select("id,version,snapshot")
+    .select("id,version,lifecycle_state,snapshot")
     .eq("id", input.consultationId)
     .eq("user_id", input.userId)
     .maybeSingle();
   if (consultation.error) throw new Error(consultation.error.message);
   if (!consultation.data) throw new HairfitV2Error("CONSULTATION_NOT_FOUND", 404, "상담을 찾을 수 없습니다.");
-  const consultationRow = consultation.data as unknown as { version: number; snapshot: ConsultationSnapshot };
+  const consultationRow = consultation.data as unknown as { version: number; lifecycle_state: string; snapshot: ConsultationSnapshot };
   if (Number(consultationRow.version) !== input.expectedVersion) {
     throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "상담이 변경되었습니다. 새로고침 후 다시 시도해 주세요.");
+  }
+  if (!["draft", "photo_validated", "analysis_ready"].includes(consultationRow.lifecycle_state)) {
+    throw new HairfitV2Error("CONSULTATION_ANALYSIS_LOCKED", 409, "이미 다음 의사결정 단계로 진행한 상담은 사진을 다시 분석할 수 없습니다.");
   }
 
   const draftResult = await db
@@ -172,13 +216,20 @@ export async function analyzeConsultationPhoto(input: {
     hairline: landmarkRun.geometry.hairline,
     measurements: landmarkRun.geometry.measurements,
     faceShape: { primary: analysisRun.analysis.faceShape, secondary: null, blend: {}, summary: analysisRun.analysis.summary },
-    skinSampleRegions: [],
-    excludedRegions: [],
+    skinSampleRegions: landmarkRun.geometry.skinSampleRegions,
+    excludedRegions: landmarkRun.geometry.excludedRegions,
+    correctionRevision: 0,
+    manualCorrections: [],
     correctedAt: null,
     createdAt: now,
   };
   assertFaceGeometryEvidenceV2(evidence);
   const evidenceId = await saveAnalysisEvidenceV2(input.userId, evidence, input.expectedVersion);
+  const consultationVersion = await linkPhotoDraftAndAdvanceAnalysis({
+    userId: input.userId,
+    consultationId: input.consultationId,
+    draftId: input.draftId,
+  });
   const defaultDiscovery = createConsultationSnapshot({ sessionId: input.consultationId, userId: input.userId, now }).discovery;
   const discovery = { ...defaultDiscovery, ...consultationRow.snapshot?.discovery };
   const recommendations = strategyRecommendations(analysisRun.analysis, discovery);
@@ -190,5 +241,6 @@ export async function analyzeConsultationPhoto(input: {
     strategyRecommendations: recommendations,
     quality: preflight.diagnostics,
     analyzedAt: now,
+    consultationVersion,
   };
 }

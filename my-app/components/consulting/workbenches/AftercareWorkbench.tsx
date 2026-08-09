@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import type { AftercareProgramV2 } from "@hairfit/shared/v2";
 import type { ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { selectedStyle } from "../../../lib/consulting/contracts";
 import { ChoiceGroup, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
@@ -15,25 +16,73 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
   const [error, setError] = useState<string | null>(null);
   const selected = selectedStyle(snapshot);
   const toggle = (value: string) => setService((current) => ({ ...current, services: current.services.includes(value) ? current.services.filter((item) => item !== value) : [...current.services, value] }));
+  useEffect(() => {
+    let cancelled = false;
+    void fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/aftercare`, { cache: "no-store" })
+      .then(async (response) => ({ response, data: await response.json().catch(() => ({})) as {
+        program?: AftercareProgramV2 | null;
+        actualService?: { services: string[]; serviceDate: string; designerNotes: string; confirmedAt: string } | null;
+        error?: string;
+      } }))
+      .then(({ response, data }) => {
+        if (cancelled || !response.ok || !data.program || !data.actualService) return;
+        setService({
+          services: data.actualService.services,
+          serviceDate: data.actualService.serviceDate,
+          designerNotes: data.actualService.designerNotes,
+          confirmedAt: data.actualService.confirmedAt,
+        });
+        setCare((current) => ({
+          ...current,
+          actualServiceId: data.program?.actualServiceId ?? null,
+          programVersion: data.program?.version ?? 0,
+          today: data.program?.today ?? current.today,
+          checkpoints: data.program?.checkpoints ?? current.checkpoints,
+          concerns: data.program?.concerns ?? current.concerns,
+          satisfaction: data.program?.satisfaction ?? current.satisfaction,
+        }));
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [snapshot.sessionId]);
+
   const saveAftercare = async () => {
     if (!service.services.length || !service.serviceDate || !care.today.length) return;
     setSyncing(true);
     setError(null);
     try {
-      const idempotencyKey = `${snapshot.sessionId}:aftercare:${service.serviceDate}:${[...service.services].sort().join("-")}`;
+      const updating = Boolean(care.actualServiceId && care.programVersion > 0);
+      const idempotencyKey = updating
+        ? `${snapshot.sessionId}:aftercare:${care.actualServiceId}:v${care.programVersion + 1}`
+        : `${snapshot.sessionId}:aftercare:${service.serviceDate}:${[...service.services].sort().join("-")}`;
       const v2Response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/aftercare`, {
-        method: "POST",
+        method: updating ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({ services: service.services, serviceDate: service.serviceDate, designerNotes: service.designerNotes }),
+        body: JSON.stringify(updating ? {
+          actualServiceId: care.actualServiceId,
+          expectedVersion: care.programVersion,
+          today: care.today,
+          checkpoints: care.checkpoints,
+          concerns: care.concerns,
+          satisfaction: care.satisfaction,
+        } : {
+          services: service.services,
+          serviceDate: service.serviceDate,
+          designerNotes: service.designerNotes,
+          today: care.today,
+          checkpoints: care.checkpoints,
+          concerns: care.concerns,
+          satisfaction: care.satisfaction,
+        }),
       });
-      const v2Data = (await v2Response.json().catch(() => ({}))) as { program?: { actualServiceId?: string }; error?: string };
+      const v2Data = (await v2Response.json().catch(() => ({}))) as { program?: AftercareProgramV2; error?: string };
       const v2Disabled = v2Response.status === 404 && v2Data.error === "HairFit V2 feature is disabled.";
       if (!v2Disabled && !v2Response.ok) {
         throw new Error(v2Data.error || "V2 애프터케어를 저장하지 못했습니다.");
       }
+      const actualServiceId = v2Data.program?.actualServiceId ?? care.actualServiceId;
       let afterPhotoUpload = care.afterPhotoUpload ?? null;
       if (afterPhoto) {
-        const actualServiceId = v2Data.program?.actualServiceId;
         if (v2Disabled || !actualServiceId) {
           throw new Error("실제 시술 기록을 만든 뒤에만 시술 후 사진을 비공개로 저장할 수 있습니다.");
         }
@@ -56,7 +105,17 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
       }
       await mutate({
         actualService: { ...service, confirmedAt: service.confirmedAt || new Date().toISOString() },
-        careProgram: { ...care, afterPhotoUrl: null, afterPhotoUpload },
+        careProgram: {
+          ...care,
+          actualServiceId: actualServiceId ?? null,
+          programVersion: v2Data.program?.version ?? care.programVersion,
+          today: v2Data.program?.today ?? care.today,
+          checkpoints: v2Data.program?.checkpoints ?? care.checkpoints,
+          concerns: v2Data.program?.concerns ?? care.concerns,
+          satisfaction: v2Data.program?.satisfaction ?? care.satisfaction,
+          afterPhotoUrl: null,
+          afterPhotoUpload,
+        },
         completeStage: "aftercare",
         currentStage: "fashion",
       });
@@ -68,9 +127,11 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
   };
   return <WorkbenchGrid>
     <Panel className="grid gap-5 p-5 sm:p-7">
-      <ChoiceGroup label="실제로 받은 시술 (복수 선택)" values={["커트","펌","염색","클리닉"]} selected={service.services} onToggle={toggle} />
-      <label className="grid gap-2 text-sm font-black">시술일<input type="date" value={service.serviceDate || ""} onChange={(event) => setService({ ...service, serviceDate: event.target.value || null })} className="app-input min-h-11 px-3" /></label>
-      <TextField label="디자이너가 실제로 조정한 내용" value={service.designerNotes} onChange={(designerNotes) => setService({ ...service, designerNotes })} />
+      {care.actualServiceId ? <SurfaceCard className="grid gap-2 p-4 text-sm"><p className="font-black">확정된 실제 시술</p><p>{service.services.join(" · ")} · {service.serviceDate}</p><p className="text-[var(--app-muted)]">{service.designerNotes || "현장 조정 기록 없음"}</p><p className="text-xs text-[var(--app-muted)]">실제 시술 원본은 잠그고 아래 관리·걱정·만족도만 새 버전으로 갱신합니다.</p></SurfaceCard> : <>
+        <ChoiceGroup label="실제로 받은 시술 (복수 선택)" values={["커트","펌","염색","클리닉"]} selected={service.services} onToggle={toggle} />
+        <label className="grid gap-2 text-sm font-black">시술일<input type="date" value={service.serviceDate || ""} onChange={(event) => setService({ ...service, serviceDate: event.target.value || null })} className="app-input min-h-11 px-3" /></label>
+        <TextField label="디자이너가 실제로 조정한 내용" value={service.designerNotes} onChange={(designerNotes) => setService({ ...service, designerNotes })} />
+      </>}
       <TextField label="오늘 할 관리" value={care.today.join(", ")} onChange={(value) => setCare({ ...care, today: value.split(",").map((item) => item.trim()).filter(Boolean) })} />
       <div className="grid gap-2">{care.checkpoints.map((checkpoint, index) => <button key={checkpoint.offset} type="button" onClick={() => setCare({ ...care, checkpoints: care.checkpoints.map((item, itemIndex) => itemIndex === index ? { ...item, complete: !item.complete } : item) })} aria-pressed={checkpoint.complete} className={`flex min-h-14 items-center justify-between border px-4 text-left ${checkpoint.complete ? "border-[var(--app-success)] bg-[var(--app-success-bg)]" : "border-[var(--app-border)]"}`}><span className="font-black">{checkpoint.offset}</span><span className="text-xs text-[var(--app-muted)]">{checkpoint.action}</span></button>)}</div>
       <label className="grid gap-2 text-sm font-black">만족도 · {care.satisfaction ?? "미입력"}<input type="range" min="1" max="5" value={care.satisfaction ?? 3} onChange={(event) => setCare({ ...care, satisfaction: Number(event.target.value) })} /></label>

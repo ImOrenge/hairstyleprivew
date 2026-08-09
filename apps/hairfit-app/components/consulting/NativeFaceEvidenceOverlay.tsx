@@ -1,4 +1,10 @@
-import type { AnalysisEvidenceV2, EvidenceSourceV2, NormalizedPointV2 } from "@hairfit/shared";
+import {
+  effectiveEvidencePointV2,
+  hasEvidencePointCorrectionV2,
+  type AnalysisEvidenceV2,
+  type EvidenceSourceV2,
+  type NormalizedPointV2,
+} from "@hairfit/shared";
 import { Image, StyleSheet, Text, View } from "react-native";
 
 const COLORS: Record<EvidenceSourceV2, string> = {
@@ -38,17 +44,17 @@ export function NativeFaceEvidenceOverlay({ evidence, sourceImageUrl }: {
       {sourceImageUrl ? <Image source={{ uri: sourceImageUrl }} style={StyleSheet.absoluteFillObject} /> : null}
       <View pointerEvents="none" style={StyleSheet.absoluteFillObject}>
         {evidence.contours.flatMap((line) => line.points.map((point, index) => (
-          <View key={`contour-${line.id}-${index}`} style={pointStyle(point, COLORS[line.source], 4)} />
+          <View key={`contour-${line.id}-${index}`} style={pointStyle(effectiveEvidencePointV2(evidence, "contour", line.id, index, point), COLORS[hasEvidencePointCorrectionV2(evidence, "contour", line.id, index) ? "user_adjusted" : line.source], 4)} />
         )))}
         {(evidence.hairline?.lines ?? []).flatMap((line) => line.points.map((point, index) => (
-          <View key={`hairline-${line.id}-${index}`} style={pointStyle(point, COLORS[line.source], 5)} />
+          <View key={`hairline-${line.id}-${index}`} style={pointStyle(effectiveEvidencePointV2(evidence, "hairline", line.id, index, point), COLORS[hasEvidencePointCorrectionV2(evidence, "hairline", line.id, index) ? "user_adjusted" : line.source], 5)} />
         )))}
         {evidence.landmarks.map((landmark) => (
-          <View key={landmark.id} style={pointStyle(landmark.point, COLORS[landmark.source], 7)} />
+          <View key={landmark.id} style={pointStyle(effectiveEvidencePointV2(evidence, "landmark", landmark.id, 0, landmark.point), COLORS[hasEvidencePointCorrectionV2(evidence, "landmark", landmark.id, 0) ? "user_adjusted" : landmark.source], 7)} />
         ))}
       </View>
       <View style={styles.legend}>
-        <Text style={styles.legendText}>detected · inferred · Evidence {evidence.id.slice(0, 8)}</Text>
+        <Text style={styles.legendText}>detected · inferred · user_adjusted · Evidence {evidence.id.slice(0, 8)}</Text>
       </View>
     </View>
   );

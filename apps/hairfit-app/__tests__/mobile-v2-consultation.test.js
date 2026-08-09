@@ -35,6 +35,8 @@ test("Expo renders server normalized evidence and real V2 board decisions", () =
   const consulting = read("app/consulting.tsx");
   const overlay = read("components/consulting/NativeFaceEvidenceOverlay.tsx");
   expect(consulting).toMatch(/getV2AnalysisEvidence/);
+  expect(consulting).toMatch(/correctV2AnalysisEvidence/);
+  expect(consulting).toMatch(/AI 원본 좌표를 보존/);
   expect(consulting).toMatch(/getV2PreviewBoard/);
   expect(consulting).toMatch(/saveV2Shortlist/);
   expect(consulting).toMatch(/getV2Shortlist/);
@@ -44,4 +46,6 @@ test("Expo renders server normalized evidence and real V2 board decisions", () =
   expect(overlay).toMatch(/point\.y \* 100/);
   expect(overlay).toMatch(/evidence\.landmarks/);
   expect(overlay).toMatch(/evidence\.contours/);
+  expect(overlay).toMatch(/effectiveEvidencePointV2/);
+  expect(overlay).toMatch(/user_adjusted/);
 });

@@ -37,20 +37,59 @@ test("partial preview decision migration is mirrored, service-only, and keeps ac
   assert.doesNotMatch(root, /security definer/i);
 });
 
+test("analysis corrections preserve model coordinates and use revision-locked service writes", () => {
+  const root = readRepo("supabase/migrations/202608090004_hairfit_v2_analysis_corrections.sql");
+  const mirror = readApp("supabase/migrations/202608090004_hairfit_v2_analysis_corrections.sql");
+  const server = readApp("lib/v2/analysis-server.ts");
+  const route = readApp("app/api/v2/consultations/[consultationId]/evidence/route.ts");
+  assert.equal(root, mirror);
+  assert.match(root, /manual_corrections jsonb not null default '\[\]'::jsonb/);
+  assert.match(root, /originalPoint/);
+  assert.match(root, /for update/);
+  assert.match(root, /p_expected_revision is null/);
+  assert.match(root, /p_point_index is null/);
+  assert.match(root, /p_adjusted_point is null/);
+  assert.match(root, /coalesce\(jsonb_typeof\(p_adjusted_point -> 'x'\), 'null'\) <> 'number'/);
+  assert.match(root, /v_evidence\.correction_revision <> p_expected_revision/);
+  assert.match(root, /from public, anon, authenticated/);
+  assert.match(root, /to service_role/);
+  assert.doesNotMatch(root, /security definer/i);
+  assert.match(server, /apply_analysis_evidence_correction_v2/);
+  assert.match(server, /select\("id,correction_revision,manual_corrections,corrected_at"\)/);
+  assert.match(server, /correction_revision:correctionRevision,manual_corrections:manualCorrections/);
+  assert.match(route, /export async function PATCH/);
+  assert.match(route, /applyAnalysisEvidenceCorrectionV2/);
+});
+
 test("web decision flow dual-writes V2 shortlist, selection, brief, and aftercare", () => {
   const shortlist = readApp("components/consulting/workbenches/PreviewsWorkbench.tsx");
   const decision = readApp("components/consulting/workbenches/DecisionWorkbench.tsx");
   const brief = readApp("components/consulting/workbenches/BriefWorkbench.tsx");
   const aftercare = readApp("components/consulting/workbenches/AftercareWorkbench.tsx");
   const selectionServer = readApp("lib/v2/selection-server.ts");
+  const outputsServer = readApp("lib/v2/outputs-server.ts");
+  const aftercareRoute = readApp("app/api/v2/consultations/[consultationId]/aftercare/route.ts");
   assert.match(shortlist, /\/api\/v2\/consultations\/.*\/shortlist/);
   assert.match(decision, /\/selection/);
   assert.match(decision, /\/confirm/);
   assert.match(brief, /\/salon-brief/);
+  assert.match(brief, /audience: brief\.mode/);
+  assert.match(brief, /cautions: brief\.caution/);
+  assert.match(outputsServer, /SALON_BRIEF_INVALID/);
+  assert.match(outputsServer, /audience/);
   assert.match(aftercare, /\/aftercare/);
   assert.match(aftercare, /\/aftercare-photo/);
   assert.match(aftercare, /type="file"/);
   assert.doesNotMatch(aftercare, /type="url"/);
+  assert.match(aftercare, /method: updating \? "PATCH" : "POST"/);
+  assert.match(aftercare, /today: care\.today/);
+  assert.match(aftercare, /concerns: care\.concerns/);
+  assert.match(aftercare, /satisfaction: care\.satisfaction/);
+  assert.match(aftercareRoute, /export async function GET/);
+  assert.match(aftercareRoute, /export async function PATCH/);
+  assert.match(outputsServer, /updateAftercareProgramV2/);
+  assert.match(outputsServer, /AFTERCARE_VERSION_CONFLICT/);
+  assert.match(outputsServer, /concerns/);
   assert.match(selectionServer, /boardIds\.size !== 1/);
   assert.match(selectionServer, /state: "consumed"/);
 });
@@ -62,7 +101,13 @@ test("aftercare photos are private, snapshot-linked, and included in account del
   assert.equal(root, mirror);
   assert.match(root, /'aftercare-photos', 'aftercare-photos', false/);
   assert.match(root, /actual_services_v2[\s\S]*after_photo_path/);
+  assert.match(root, /actual_services_v2_after_photo_bundle_check/);
+  assert.match(root, /after_photo_path is not null[\s\S]*after_photo_fingerprint is not null[\s\S]*after_photo_consent_at is not null/);
   assert.match(root, /select 'aftercare-photos'::text, btrim\(service\.after_photo_path\)/);
+  const deletionFunction = root.slice(root.indexOf("create or replace function public.request_account_deletion"));
+  assert.match(deletionFunction, /security definer[\s\S]*set search_path = ''/);
+  assert.match(deletionFunction, /revoke all on function public\.request_account_deletion\(text\)[\s\S]*from public, anon, authenticated/);
+  assert.match(deletionFunction, /grant execute on function public\.request_account_deletion\(text\)[\s\S]*to service_role/);
   assert.match(route, /\.eq\("consultation_id", consultationId\)/);
   assert.match(route, /\.eq\("user_id", userId\)/);
   assert.match(route, /\.webp\(\{ quality: 86 \}\)/);
@@ -82,9 +127,16 @@ test("fashion previews use confirmed V2 hair and completed real Styler sessions"
   assert.match(root, /source_mode in \('legacy', 'v2_selection'\)/);
   assert.match(root, /sync_style_selection_v2_source/);
   assert.match(root, /v2PreviewVariantId/);
+  assert.match(root, /fashion_slot_id text/);
+  assert.match(root, /fashion_direction jsonb/);
+  assert.match(root, /uq_styling_sessions_v2_fashion_slot/);
   assert.match(source, /status", "confirmed"/);
   assert.match(source, /v2PreviewVariantId === snapshot\.previewVariantId/);
   assert.match(recommend, /consultationId/);
+  assert.match(recommend, /FASHION_SLOTS/);
+  assert.match(recommend, /normalizeFashionDirection/);
+  assert.match(recommend, /fashion_slot_id: v2Source \? fashionSlotId : null/);
+  assert.match(recommend, /fashion_direction: v2Source \? fashionDirection : \{\}/);
   assert.match(recommend, /source_mode: v2Source \? "v2_selection" : "legacy"/);
   assert.match(generate, /resolveV2StylingSessionVariant/);
   assert.match(workflow, /resolveV2StylingSessionVariant/);
@@ -92,10 +144,15 @@ test("fashion previews use confirmed V2 hair and completed real Styler sessions"
   assert.match(route, /stylingSessionIds/);
   assert.match(outputs, /\.eq\("status", "completed"\)/);
   assert.match(outputs, /STYLING_RESULTS_BUCKET/);
+  assert.match(outputs, /directionSnapshot: selectedDirection/);
+  assert.match(outputs, /selectedLook:/);
   assert.match(fashion, /\/api\/styling\/recommend/);
   assert.match(fashion, /\/api\/styling\/generate/);
   assert.match(fashion, /PaidActionQuoteCard/);
-  assert.doesNotMatch(fashion, /const LOOKS/);
+  assert.match(fashion, /data-fashion-board-size="9"/);
+  assert.match(fashion, /fashionSlotId: selectedSlot\.id/);
+  assert.match(fashion, /direction,/);
+  assert.doesNotMatch(fashion, /const LOOKS|GENRE_GROUPS/);
 });
 
 test("frontend consultation links before workflow dispatch and preparation compiles V2 prompts before tokens", () => {
@@ -134,7 +191,7 @@ test("V2 prompts and provider response bodies are absent from customer and log s
 
 test("V2 API client exposes Web and Expo compatible consultation methods", () => {
   const client = readRepo("packages/api-client/src/index.ts");
-  for (const method of ["createV2Consultation","getV2Consultation","analyzeV2ConsultationPhoto","getV2AnalysisEvidence","attachV2ConsultationPhoto","getV2PreviewBoard","saveV2Shortlist","getV2Shortlist","selectV2Style","getV2Selection","confirmV2Style","createV2SalonBrief","createV2Aftercare","createV2FashionPreviews","getV2FashionPreviews"]) {
+  for (const method of ["createV2Consultation","getV2Consultation","analyzeV2ConsultationPhoto","getV2AnalysisEvidence","correctV2AnalysisEvidence","attachV2ConsultationPhoto","getV2PreviewBoard","saveV2Shortlist","getV2Shortlist","selectV2Style","getV2Selection","confirmV2Style","createV2SalonBrief","createV2Aftercare","getV2Aftercare","updateV2Aftercare","createV2FashionPreviews","getV2FashionPreviews"]) {
     assert.match(client, new RegExp(`${method}\\(`));
   }
 });
@@ -142,10 +199,14 @@ test("V2 API client exposes Web and Expo compatible consultation methods", () =>
 test("evidence API returns a short-lived owned source photo for Web and native overlays", () => {
   const route = readApp("app/api/v2/consultations/[consultationId]/evidence/route.ts");
   assert.match(route, /source_generation_id/);
+  assert.match(route, /source_photo_id/);
   assert.match(route, /\.eq\("user_id", userId\)/);
   assert.match(route, /original_image_path/);
   assert.match(route, /createGenerationImageSignedUrl/);
   assert.match(route, /sourceImageUrl/);
+  assert.match(route, /generation_upload_drafts/);
+  assert.match(route, /\["ready", "accepted"\]\.includes/);
+  assert.match(route, /Date\.parse\(String\(draftRow\?\.expires_at\)\) > Date\.now\(\)/);
   assert.doesNotMatch(route, /getPublicUrl/);
 });
 

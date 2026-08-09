@@ -48,11 +48,16 @@ state:
   server_owned:
     - consultation-snapshot
     - analysis-evidence-v2
+    - analysis-evidence-correction-revision
+    - append-only-manual-coordinate-corrections
     - version
     - current-stage
   client_owned:
     - stage-map-open
     - form-drafts
+    - active-evidence-id
+    - visible-evidence-layers
+    - selected-landmark-id
 
 a11y_contract:
   stage_map: dialog-with-escape-and-focus-return
@@ -65,6 +70,8 @@ test_surface:
   interaction: required
   visual: required
   evidence_overlay: persisted-normalized-coordinates-only
+  evidence_correction: server-revision-locked-user-adjustment-with-model-original-preserved
+  evidence_linkage: photo-overlay-ledger-direction-matrix-share-active-evidence-id
 
 change_policy:
   current_gate: feature

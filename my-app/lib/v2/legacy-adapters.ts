@@ -58,6 +58,15 @@ export async function syncLegacyAftercareV2(input: {
       services: [input.serviceType],
       serviceDate: input.serviceDate,
       designerNotes: "Legacy aftercare confirmation adapter",
+      today: ["디자이너가 안내한 세정·열기구 제한을 우선 적용합니다."],
+      checkpoints: [
+        { offset: "D+3", action: "두피와 모발 반응을 확인합니다.", complete: false },
+        { offset: "W+2", action: "형태 유지와 손질 난이도를 확인합니다.", complete: false },
+        { offset: "W+6", action: "볼륨·컬·색 빠짐을 확인합니다.", complete: false },
+        { offset: "W+10", action: "다음 시술 또는 커트 주기를 결정합니다.", complete: false },
+      ],
+      concerns: [],
+      satisfaction: null,
     });
     return { state: "synced" as const };
   } catch (error) {

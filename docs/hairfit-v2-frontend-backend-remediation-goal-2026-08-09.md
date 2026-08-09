@@ -12,28 +12,30 @@
 
 이번 작업은 11개 URL과 헤더리스 Scene을 유지하며 기존 CSS 파일을 변경하지 않는다. 레거시 마법사는 기능 플래그 롤백 및 기존 생성 엔진과의 호환 브리지일 뿐, 새 상담 여정에 노출되는 기본 UI가 아니다.
 
-## 2. 확인된 현재 상태
+## 2. 구현·검증 취합
 
-### 완료된 기반
+### 로컬 구현에서 닫힌 항목
 
-- `/consulting/[sessionId]/*` 11개 Scene과 서버 소유 snapshot, optimistic concurrency가 구현되어 있다.
-- 사진 업로드 뒤 브라우저 사전검사와 서버 Sharp 사전검사를 거쳐 적격 사진만 AI 분석으로 전달한다.
-- AI 분석 결과는 `analysis_evidence_v2`에 버전 근거로 저장하며 재분석 시 식별자/FK 충돌을 피한다.
-- 전략 확정 뒤 기존 유료 생성 접수와 V2 3×3 프리뷰 보드를 연결하는 브리지가 있다.
-- 원격 Supabase의 필수 V2 테이블, RLS/권한, 비공개 생성 결과 버킷이 확인되었다.
+- `/consulting/[sessionId]/[stage]`는 문서의 11개 고유 URL과 헤더리스 Scene을 유지한다. 상담 시작 CTA는 새 AI 컨설턴트로 직접 연결되고 구 마법사는 기본 경로가 아니다.
+- Scene 01의 목적, 현재 모발 구조, 허용 시술, 관리 시간, 열기구 빈도, 변화 강도, 회피 조건은 서버 snapshot과 V2 preferences, 전략 및 생성 prompt input으로 이어진다.
+- Scene 02는 브라우저 검사 후 private draft를 업로드하고 서버 Sharp 검사, 서버 FaceMesh 좌표 추출, 생성형 AI 설명 순으로 처리한다. 생성 ID 없이 분석을 끝내 Scene 03으로 이동하고 유료 생성은 Scene 06에서만 시작한다.
+- `analysis_evidence_v2`는 landmark, detected contour, inferred hairline, measurements, skin sample, excluded region을 원본 사진 좌표계의 정규화 좌표로 보존한다. Web/Expo는 이 서버 값을 사진 위에 렌더링하며 클라이언트가 얼굴 좌표를 추론하지 않는다.
+- 사용자 좌표 보정은 AI 원본을 덮어쓰지 않는다. `correction_revision`과 append-only `manual_corrections`를 사용하는 service-role RPC로 원본점과 보정점을 함께 남긴다.
+- Scene 03~05는 사진 overlay, Evidence Ledger, Focus Ribbon, Direction Matrix가 같은 Evidence ID를 공유하고 추천·현재 선택·영향·trade-off를 함께 표시한다.
+- Scene 06은 BALANCE/IMAGE/LIFESTYLE 3×3 실제 생성 보드를 사용하며 품질 통과 결과가 2~3개가 되는 즉시 shortlist/compare를 허용한다.
+- Salon Brief는 사용자가 수정한 audience, summary, cut, volume, color, styling, cautions를 V2 버전 문서로 저장한다. 공유 토큰의 만료/취소 및 원본 얼굴 비포함 원칙은 기존 서버 흐름을 유지한다.
+- Aftercare는 실제 시술 record를 먼저 잠그고 오늘 행동, 체크포인트 완료 상태, concern, satisfaction을 V2 version patch로 저장한다. 동의한 after photo만 private Storage에 연결한다.
+- Fashion은 `DAILY 3 + WORK 3 + STATEMENT 3 = 9` 고정 슬롯과 상황·장르·계절·핏·노출·예산·회피 조건을 서버 생성에 전달하며 완료 결과 2~3개 비교와 최종 metadata history를 저장한다.
+- Expo는 같은 shared contract/API client로 서버 evidence overlay와 좌표 보정, 상담 재개, 3×3 결정 핵심 흐름을 사용한다.
 
-### 수정이 필요한 결함
+### 종료를 막는 외부 상태
 
-| 우선순위 | 영역 | 확인된 문제 | 완료 기준 |
-|---|---|---|---|
-| P0 | 상태 계약 | 사진 단계 guard가 아직 생성 전인데 `generationId`를 요구한다. 생성은 Scene 06에서만 시작하므로 사진 분석 후 Scene 03으로 갈 수 없다. | 업로드·사용 범위·8개 시스템 검사·AI 근거가 있으면 `photo → scan` 전환, 생성 ID는 Scene 06에서 연결 |
-| P0 | 프리뷰 | 9개 전부가 준비되어야 shortlist를 저장할 수 있다. 문서는 품질 통과 후보가 2~3개 준비되면 부분 의사결정을 허용한다. | accepted 후보 2~3개면 비교로 진행하고 나머지 생성 상태는 계속 표시 |
-| P1 | 사용자 입력 | 목적, 구조화한 현재 모발, 허용 시술, 열기구 빈도, 변화 강도가 계약·프롬프트에 충분히 반영되지 않는다. | Scene 01 입력이 서버 snapshot과 전략/생성 프롬프트의 명시적 제약으로 이어짐 |
-| P1 | 분석 근거 UX | Scan/Analysis/Direction이 근거 ID와 추천·영향·trade-off를 충분히 연결하지 않는다. | 선택 근거를 추적할 수 있고 사용자가 추천을 수정해 확정 가능 |
-| P0 | 얼굴 좌표 근거 | `analysis_evidence_v2`의 contour/hairline/measurement가 비어 있고 사진 UI는 `<img>`만 표시한다. | 서버 landmark 모델의 정규화 좌표를 저장하고 Scan/Analysis 사진 위 SVG가 같은 Evidence ID를 렌더링 |
-| P1 | 접근성 | Scene URL 전환 뒤 주 제목으로 프로그램 포커스가 이동하지 않는다. | Scene 변경/직접 진입 후 `h1` 포커스 및 기존 오버레이 포커스 계약 유지 |
-| P2 | 후속 Scene | Aftercare 사진은 임의 URL 입력이고 Fashion은 정적 placeholder 중심이다. | 실제 업로드와 같은 선택 snapshot을 쓰는 생성 흐름으로 교체 — 구현 완료, 원격 migration/auth smoke 대기 |
-| P2 | 플랫폼 | Expo 상담 화면과 전체 인증 E2E 증거가 없다. | shared/API client 기반 재개·분석·overlay·board·결정 구현 완료, 실제 기기·인증·구매 복원 검증 대기 |
+| 영역 | 현재 증거 | 종료 전 필요한 증거 |
+|---|---|---|
+| 원격 DB | 원격 필수 V2 테이블/RLS는 읽기 전용 점검했지만 로컬 migration `202608090001`~`004`는 원격 미적용 | 별도 승인 후 migration 적용, 함수 권한/RLS/column smoke |
+| 실제 인증 브라우저 | 로컬 harness의 11 Scene/overlay/API 상호작용은 검증 가능 | 로그인된 HairFit 계정으로 실제 사진 업로드→사전검사→FaceMesh→AI 분석→생성→결정→Aftercare/Fashion smoke |
+| 실제 모바일 | Expo 정적/계약/테스트는 가능 | 실제 기기 background/resume, deep link/push, 구매 복원, Aftercare/Fashion native smoke |
+| 라이브 AI/결제 | 서버 호출 경로와 계약은 구현됨 | 실제 제공자 키·잔액이 있는 승인된 환경에서 모델 응답과 결제 반환 확인 |
 
 ## 3. 목표 데이터 흐름
 
@@ -56,10 +58,13 @@
 - [x] P1 근거→추천→사용자 수정→전략 확정 연결을 강화한다.
 - [x] P0 서버 FaceMesh landmark→normalized geometry→V2 저장→SVG overlay를 연결하고 클라이언트 좌표 주입 경로를 제거한다.
 - [x] P2 Aftercare 실제 사진을 private Storage와 `actual_services_v2`에 연결한다.
-- [x] P2 Fashion 정적 placeholder를 제거하고 확정 snapshot 기반 실제 추천·견적·생성·2~3개 비교 흐름으로 교체한다.
+- [x] Aftercare의 사용자 관리 입력을 V2 초기 program과 versioned patch에 연결하고 실제 시술 필드는 최초 확정 뒤 잠근다.
+- [x] Salon Brief의 사용자 편집값을 V2 버전 payload에 연결한다.
+- [x] P2 Fashion 정적 placeholder를 제거하고 구조화 방향, 정확히 9개 슬롯, 확정 snapshot 기반 실제 추천·견적·생성·2~3개 비교 흐름으로 교체한다.
 - [x] P2 Expo 상담 home/resume, 서버 사진 분석, native normalized overlay, 3×3 shortlist/선택/확정/brief core parity를 shared API client로 연결한다.
+- [x] AI 원본 좌표를 보존하는 Web/Expo landmark 보정과 service-role revision RPC를 추가한다.
 - [ ] Expo 실제 기기, 인증 계정, background/resume, deep link/push, Google Play 복원과 Fashion/Aftercare 전체 native smoke를 수행한다.
-- [x] 로컬 구현 전체를 대상으로 마지막 종합 검증을 수행한다.
+- [x] 모든 코드·문서 수정이 끝난 뒤에만 최종 종합 검증을 다시 수행한다.
 
 ## 5. 검증과 종료조건
 
@@ -67,14 +72,14 @@
 
 - [x] 기존 CSS 파일과 공개 CSS 클래스/토큰 계약에 의도하지 않은 변경이 없다.
 - [x] 11개 Scene URL과 헤더리스 구조가 유지되고, 레거시 마법사가 기본 상담 여정에 노출되지 않는다.
-- [ ] 실제 사진 업로드가 시스템 검사→AI 분석→근거 저장→Scan 전환으로 이어진다.
-- [x] renderer가 저장된 detected/inferred 좌표와 같은 Evidence ID를 사진 위에 표시하며, 키보드로 측정선을 선택할 수 있다.
+- [ ] 로그인된 실제 계정의 실제 사진 업로드가 시스템 검사→FaceMesh→생성형 AI 분석→근거 저장→Scan 전환으로 이어진다. 로컬 코드/fixture 증거만으로는 이 항목을 완료하지 않는다.
+- [x] renderer가 저장된 detected/inferred 좌표와 같은 Evidence ID를 사진 위에 표시하며, 키보드로 측정선을 선택하고 원본 보존형 좌표 보정을 적용할 수 있다.
 - [x] 사용자 입력과 확정 전략이 생성 요청/프롬프트에 반영된다.
 - [x] 품질 통과 후보 2~3개로 shortlist, 비교, 최종 결정을 진행할 수 있다.
-- [x] 최신 전체 변경 기준 `typecheck`, `lint`, 상담/V2/Expo 계약 테스트, component/CSS 계약, production build가 통과한다.
-- [x] 최신 전체 변경 기준 브라우저 E2E에서 11개 Scene, 직접 URL, 포커스, 모바일 overflow/a11y, 부분 생성, 저장 landmark overlay, Fashion 실제 API 연결 UI를 검증한다.
+- [x] 최신 전체 변경 기준 `typecheck`, `lint`, 상담/V2/Expo 계약 테스트, migration mirror/fresh, component/CSS 계약, production build가 통과한다.
+- [x] 최신 전체 변경 기준 브라우저 E2E에서 11개 Scene, 직접 URL, 포커스, 모바일 overflow/a11y, 부분 생성, 저장 landmark overlay/보정, Fashion 9-slot 실제 API 연결 UI를 검증한다.
 - [ ] 로그인된 실제 계정으로 사진 업로드·Aftercare 업로드·Fashion 생성까지 브라우저 smoke를 수행한다.
-- [x] 원격 Supabase는 읽기 전용으로 세션·분석 근거·생성 연결 상태와 RLS를 재확인한다.
+- [x] 최종 코드 변경 뒤 원격 Supabase를 읽기 전용으로 다시 확인해 적용/미적용 migration, RLS, 필수 객체 상태를 기록한다.
 - [x] Docker 등 환경 제한이나 실제 인증 smoke 미실행 항목은 통과로 위장하지 않고 남은 위험으로 기록한다.
 
 ## 6. 배포와 롤백
@@ -89,16 +94,18 @@
 ## 7. 재사용 가능한 골 프롬프트
 
 ```text
-새 개발 브랜치에서 HairFit V2를 문서 정의의 비마법사형 AI 헤어스타일 컨설턴트 서비스로 완성한다.
+새 개발 브랜치에서 HairFit V2를 문서 정의의 비마법사형 AI 헤어스타일 컨설턴트 서비스로 완성한다. 페이지 구조는 HairFit_Interactive_Consulting_Frontend_Design_Plan_v1.0.docx의 11개 Scene을 권위로 사용한다.
 
-먼저 프론트엔드·백엔드의 구현·검증 결과와 미완료 항목을 하나의 실행 문서에 통합한다. 기존 CSS 스타일은 변경하지 않고 프론트 문서의 11개 헤더리스 Scene 구조를 유지한다. 사진 업로드→시스템 사전검사→AI 이미지 분석→근거 저장→스캔/분석/방향 결정→사용자 옵션과 확정 전략이 반영된 이미지 생성→품질 통과 후보 shortlist/비교/결정 흐름을 실제 서버 상태로 연결한다. 레거시 생성 마법사는 기본 여정에서 제거하고 기능 플래그 롤백 및 호환 브리지로만 유지한다.
+먼저 프론트엔드·백엔드의 구현·검증 결과와 미완료 항목을 하나의 실행 문서에 통합한다. 기존 CSS 파일, 토큰, 타이포그래피, 간격, 표면 스타일은 변경하지 않고 11개 헤더리스 Scene과 `01 / 11 + 큰 작업명` 구조를 유지한다. 고정 헤더, 오른쪽 consultant panel, 단계별 Next 중심 마법사 UI를 만들지 않는다. 레거시 생성 마법사는 기본 여정에서 제거하고 기능 플래그 롤백 및 호환 브리지로만 유지한다.
 
-수정 우선순위는 사용자 흐름을 막는 상태 계약, 부분 생성 의사결정, 구조화 사용자 입력과 프롬프트 반영, 분석 근거 추적, 접근성, Aftercare/Fashion/Expo 순이다. 이미 구현된 기능과 계획만 있는 기능을 구분하며, 검증은 모든 수정이 끝난 마지막 단계에서 타입·린트·계약·빌드·브라우저 E2E·읽기 전용 원격 Supabase 증거를 한 번에 수행한다. 문서의 종료조건을 모두 만족하고 남은 환경 제한을 정직하게 기록한 경우에만 골을 완료한다. 병합·푸시·배포는 별도 승인 없이는 수행하지 않는다.
+사진 업로드→시스템 사전검사→서버 FaceMesh→생성형 AI 이미지 분석→버전 근거 저장→사진 위 landmark/contour/hairline/measurement/skin/excluded overlay→스캔/분석/방향 결정→사용자 옵션과 확정 전략이 반영된 3×3 이미지 생성→품질 통과 후보 2~3개 shortlist/비교/결정→구조화 Salon Brief→실제 시술 기반 Aftercare→구조화 방향이 반영된 DAILY 3 + WORK 3 + STATEMENT 3 Fashion 흐름을 실제 서버 상태로 연결한다. 사용자 좌표 보정은 AI 원본을 덮어쓰지 않고 revision audit로 저장한다. Web과 Expo는 같은 shared contract와 server truth를 사용한다.
+
+수정 우선순위는 사용자 흐름을 막는 상태 계약, 사진/분석/생성 연결, 사용자 옵션과 프롬프트 반영, 분석 근거 추적, 부분 생성 의사결정, 접근성, Salon Brief/Aftercare/Fashion/Expo 순이다. 이미 구현된 기능과 계획만 있는 기능을 구분한다. 원격 migration, 병합, 푸시, 배포는 별도 승인이 없으면 수행하지 않는다. 검증은 모든 수정이 끝난 마지막 단계에서만 타입·린트·계약·migration mirror/fresh·component/CSS 계약·production build·브라우저 E2E·Expo 및 읽기 전용 원격 Supabase 증거를 종합한다. 실제 인증, 라이브 AI/결제, 실제 기기처럼 실행하지 못한 항목을 통과로 위장하지 않는다. 모든 종료조건이 충족된 경우에만 골을 완료한다.
 ```
 
 ## 8. 구현 상태
 
-현재 상태는 **진행 중**이다.
+현재 상태는 **로컬 구현·종합 회귀·실제 Clerk 진입·라이브 AI 분석 단위 smoke 완료, 원격 migration·통합 실인증·실기기 검증 대기**다.
 
 2026-08-09 구현·검증 결과:
 
@@ -108,11 +115,14 @@
 - 시스템 사전검사 뒤 서버 TensorFlow.js MediaPipe FaceMesh가 478개 keypoint를 추출한다. 핵심 landmark 13개, 실제 face contour, inferred hairline, 정규화 측정선을 `analysis_evidence_v2`에 저장하며 브라우저는 저장값만 SVG로 렌더링한다.
 - 사진 단계 완료 guard는 같은 상담의 persisted landmark 5개 이상, contour 1개 이상, measurement 4개 이상을 서버에서 다시 확인한다. 고객용 V2 분석 API가 임의 `AnalysisEvidenceV2`를 직접 저장하던 경로는 draft 기반 서버 분석으로 교체했다.
 - 품질 통과 결과 2~3개로 shortlist할 수 있으며, V2 shortlist/selection/confirm, salon brief, aftercare dual-write를 연결했다.
-- additive mirror migration `202608090001_hairfit_v2_partial_preview_decision.sql`, `202608090002_hairfit_v2_analysis_landmarks.sql`, `202608090003_hairfit_v2_aftercare_fashion_bridge.sql`은 생성했지만 원격에는 적용하지 않았다. 읽기 전용 조회에서 `20260809%` migration version은 없고 landmark/measurement, Aftercare private-photo, Fashion source bridge 컬럼·함수도 모두 없는 상태다.
-- 원격 최신 상담은 `row_version=3`, `snapshot_version=3`, `lifecycle_state=draft`, `current_stage=photo`, 분석 근거 있음, source generation/preview board 없음이다.
+- additive mirror migration `202608090001_hairfit_v2_partial_preview_decision.sql`, `202608090002_hairfit_v2_analysis_landmarks.sql`, `202608090003_hairfit_v2_aftercare_fashion_bridge.sql`, `202608090004_hairfit_v2_analysis_corrections.sql`은 생성했지만 원격에는 적용하지 않았다. 원격에는 이 브랜치에 아직 없는 `20260808090000_extend_hairstyle_blueprint_v4.sql`이 이미 적용되어 있으므로, 향후 원격 migration 전에 `ca8afd9` 계보를 통합 브랜치에 먼저 반영하고 순서를 재검증해야 한다. read-only merge-tree preflight에서 `ca8afd9` 전체 통합은 7개 실제 충돌(`generate.tsx`, `upload.tsx`, generation prepare/accept, 두 generation controller, API client)을 보였으므로 자동 cherry-pick 대상이 아니며, 승인 후 수동·선택 통합과 재검증이 필요하다. 이번 작업에서는 원격 쓰기나 Git 통합을 수행하지 않았다.
+- 원격 최신 상담은 `row_version=3`, `snapshot_version=3`, `lifecycle_state=draft`, `current_stage=photo`, 분석 근거 있음, `source_photo_id`·source generation·preview board 없음이다.
 - 원격 V2 필수 테이블 17/17은 RLS enabled+forced이며 anon/authenticated SELECT가 모두 회수되어 있다. transition/selection RPC는 service role만 실행 가능하다.
-- landmark 구현 체크포인트 통과: 공식 portrait fixture에서 얼굴 1명·478 keypoint, 410×512 원본 좌표계, 핵심 landmark 13개·37점 contour·측정선 13개를 추출했다. 최신 전체 회귀에서 `typecheck` 전 workspace, lint 0 error(기존 Expo `Array<T>` warning 1개), HairFit V2 13/13, 상담/landmark 16/16, styling 7/7, paid-action 20/20, CSS 9/9, component registry 51/51, Expo 41 suite·170 test가 통과했다. Next production build는 129 routes, Expo Web/Android/iOS bundle, Playwright는 7/7을 통과했다. overlay는 원본 가로·세로 비율과 사진의 `object-cover` 변환을 동일하게 적용하고, 키보드 포커스 시 SVG 기본 아웃라인이 사진을 덮지 않도록 활성 측정선 자체를 포커스 표시로 사용한다. CSS 파일은 변경하지 않았다.
-- Aftercare는 시술 record를 먼저 확정한 뒤 동의한 파일만 Sharp 정규화·SHA-256 fingerprint와 함께 비공개 `aftercare-photos` 버킷에 저장한다. 고객 snapshot에는 URL 대신 service ID·fingerprint·업로드 시각만 남기고 계정 삭제 outbox에도 포함한다.
-- Fashion Scene 11은 정적 `LOOKS`와 구 Styler 마법사 링크를 제거했다. 확정 V2 snapshot을 레거시 generated variant에 검증 가능한 방식으로 매핑하고, 6개 상황의 추천→최신 유료 견적→실제 AI 생성→완료된 세션 2~3개 shortlist→최종 룩 확정을 한 Scene에서 처리한다. 다른 상담·다른 snapshot·미완료 세션 ID는 서버가 거부한다.
+- landmark 구현 체크포인트: 저장소 portrait fixture에서 얼굴 1명·478 keypoint, 341×512 원본 좌표계, 핵심 landmark 13개·37점 contour·측정선 13개·skin region 4개·excluded region 3개를 실제 서버 FaceMesh 경로로 추출했다. 브라우저 집중 검증에서는 저장된 얼굴 사진 위 SVG가 detected landmark/contour, inferred hairline, measurement, skin sample, excluded region을 렌더링하고 nose-tip 보정 뒤 `user_adjusted`, `data-original-x`, correction revision을 유지했다. hydration error overlay와 console error도 없었다. 이 증거는 FaceMesh 추출과 저장 근거 overlay를 입증하며, 아래 라이브 AI 단위 smoke와 함께 확인했지만 아직 동일한 원격 상담의 통합 흐름 증거는 아니다.
+- 실제 인증·AI 단위 smoke: Clerk 개발 인스턴스의 기존 `+clerk_test` member와 Supabase profile을 읽기 전용으로 매칭해 테스트 토큰 로그인 후 `http://localhost:3103/consulting/new`에서 HTTP 200, 인증 사용자, 헤더리스 CTA, runtime overlay 0, console error 0을 확인했다. 같은 341×512 portrait fixture를 `analyzeFaceForCatalog`에 입력한 실제 Gemini `gemini-2.5-pro` 호출은 약 14.9초 안에 fallback 없이 완료됐고, 얼굴/두상/이마/현재·추천 가르마/균형/길이/볼륨/회피/요약 필드 전체를 반환했다. Clerk sign-in token 외에 원격 Supabase 쓰기나 migration 적용은 하지 않았다.
+- Aftercare는 시술 record를 먼저 확정한 뒤 동의한 파일만 Sharp 정규화·SHA-256 fingerprint와 함께 비공개 `aftercare-photos` 버킷에 저장한다. 고객 snapshot에는 URL 대신 service ID·fingerprint·업로드 시각만 남기고 계정 삭제 outbox에도 포함한다. DB는 path·fingerprint·consent timestamp가 모두 비어 있거나 모두 채워지는 bundle constraint를 강제한다. 계정 삭제 RPC는 고정 `search_path=''`의 `SECURITY DEFINER`이되 `service_role`에만 execute를 허용한다. PostgreSQL 16 직접 권한 smoke에서 service role 삭제·tombstone 기록은 성공했고 anon/authenticated execute는 모두 거부됨을 확인했다.
+- Fashion Scene 11은 정적 `LOOKS`와 구 Styler 마법사 링크를 제거했다. 확정 V2 snapshot과 구조화 방향을 정확히 9개 슬롯에 매핑하고 추천→최신 유료 견적→실제 AI 생성→완료 세션 2~3개 shortlist→최종 룩 확정을 한 Scene에서 처리한다. 다른 상담·다른 snapshot·미완료 세션 ID는 서버가 거부한다.
 - Expo는 `/consulting`을 기본 상담 진입점으로 사용한다. 활성 V2 상담 ID를 SecureStore에 보존하고, 같은 `consultationId`로 업로드·서버 사전검사·FaceMesh/AI 분석·유료 생성 접수를 연결한다. 서버 normalized landmark/contour를 native overlay로 표시하고 3×3 board, persisted shortlist, 선택·확정, salon brief까지 재개한다.
-- 미완료: migration 3개 원격 적용, 로그인된 실제 사진 재업로드→FaceMesh→AI 분석→부분 생성→선택→Aftercare/Fashion smoke, `SALON_BRIEF_V2_ENABLED`·`STYLING_LINK_V2_ENABLED` 단계적 활성화, Expo 실제 기기/background/deep link/push/구매 복원 및 Fashion/Aftercare 전체 native smoke다. 따라서 로컬 구현과 종합 회귀는 끝났지만 골의 전체 종료조건은 완료 처리하지 않는다.
+- 추가 보완: 사용자가 편집한 Salon Brief 필드를 V2 버전에 저장하고, Aftercare today/checkpoints/concerns/satisfaction을 실제 시술 이후 versioned server patch로 유지한다. landmark 수동 보정은 Web/Expo 모두 같은 API를 사용한다.
+- 최종 회귀: 모든 workspace typecheck 통과, lint 0 error(기존 Expo generic-array warning 1건), 상담 계약 16/16, HairFit V2 계약 14/14, styling workflow 7/7, paid-action 20/20, CSS 계약 9/9, Expo Jest 41 suite·170 test, component registry/passport 51/51, migration mirror 81/81 및 PostgreSQL 16 fresh-chain 81개, Next production/E2E production build 각 129 route, Expo Web/iOS/Android bundle, Chromium Playwright 7/7이 통과했다. 이후 migration 003 보안 보완도 V2 계약 14/14, mirror 81개, fresh-chain 81개, service-role 직접 RPC smoke로 다시 검증했다. CSS 파일 변경과 diff whitespace 오류는 없다.
+- 미완료: 원격에 이미 적용된 `20260808090000` 계보 통합 및 로컬 migration 4개 원격 적용(각각 별도 승인 필요), 위에서 각각 검증한 실제 인증·FaceMesh·라이브 AI를 하나의 상담으로 연결하는 사진 재업로드→근거 저장→부분 생성→선택→Aftercare/Fashion 통합 smoke, `SALON_BRIEF_V2_ENABLED`·`STYLING_LINK_V2_ENABLED` 단계적 활성화, Expo 실제 기기/background/deep link/push/구매 복원 및 Fashion/Aftercare 전체 native smoke다. 따라서 골은 완료 처리하지 않는다.

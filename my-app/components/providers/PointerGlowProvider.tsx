@@ -78,6 +78,9 @@ export function PointerGlowProvider() {
         clearSurfaces();
         return;
       }
+      // The consulting scene is dynamically loaded. Avoid mutating surface
+      // styles while its server markup is still hydrating.
+      if (document.querySelector('[data-consulting-hydrated="false"]')) return;
 
       latestEvent = event;
 

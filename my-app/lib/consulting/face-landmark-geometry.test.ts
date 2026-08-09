@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertFaceGeometryEvidenceV2 } from "../../../packages/shared/src/v2/analysis/contract.ts";
+import { assertFaceGeometryEvidenceV2, effectiveEvidencePointV2 } from "../../../packages/shared/src/v2/analysis/contract.ts";
 import type { AnalysisEvidenceV2, NormalizedPointV2 } from "../../../packages/shared/src/v2/analysis/contract.ts";
 import { buildFaceGeometryV2 } from "../../../packages/shared/src/v2/analysis/geometry.ts";
 
@@ -23,6 +23,17 @@ test("MediaPipe keypoints become versioned normalized contour, hairline, landmar
   assert.equal(geometry.contours[0].points.length, 37);
   assert.equal(geometry.hairline?.lines[0].source, "inferred");
   assert.ok((geometry.hairline?.lines[0].points[2].y ?? 1) < keypointFixture()[10].y);
+  assert.deepEqual(geometry.skinSampleRegions.map((item) => item.id), [
+    "skin_forehead",
+    "skin_left_cheek",
+    "skin_right_cheek",
+    "skin_chin",
+  ]);
+  assert.deepEqual(geometry.excludedRegions.map((item) => item.id), [
+    "excluded_left_eye",
+    "excluded_right_eye",
+    "excluded_lips",
+  ]);
   for (const id of ["face_length","forehead_width","cheekbone_width","jaw_width","chin_width","vertical_symmetry_axis"]) {
     assert.ok(geometry.measurements.some((item) => item.id === id), `${id} must be persisted`);
   }
@@ -37,11 +48,26 @@ test("MediaPipe keypoints become versioned normalized contour, hairline, landmar
     quality: { status: "pass", overall: .9, frontal: .9, lighting: .9, resolution: .9, blur: .9, occlusion: .9, hairlineVisibility: .8, warnings: [] },
     ...geometry,
     faceShape: { primary: "oval", secondary: null, blend: { oval: 1 }, summary: "fixture" },
-    skinSampleRegions: [],
-    excludedRegions: [],
+    correctionRevision: 0,
+    manualCorrections: [],
     correctedAt: null,
     createdAt: "2026-08-09T00:00:00.000Z",
   };
+  assert.doesNotThrow(() => assertFaceGeometryEvidenceV2(evidence));
+  const original = evidence.landmarks[0].point;
+  const adjusted = { ...original, x: Math.min(1, original.x + .01) };
+  evidence.manualCorrections.push({
+    id: "00000000-0000-4000-8000-000000000003",
+    targetType: "landmark",
+    targetId: evidence.landmarks[0].id,
+    pointIndex: 0,
+    originalPoint: original,
+    adjustedPoint: adjusted,
+    correctedAt: "2026-08-09T00:01:00.000Z",
+  });
+  evidence.correctionRevision = 1;
+  assert.deepEqual(effectiveEvidencePointV2(evidence, "landmark", evidence.landmarks[0].id, 0, original), adjusted);
+  assert.deepEqual(evidence.landmarks[0].point, original, "model point remains immutable");
   assert.doesNotThrow(() => assertFaceGeometryEvidenceV2(evidence));
 });
 

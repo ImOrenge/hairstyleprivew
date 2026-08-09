@@ -58,6 +58,8 @@ import type {
   SalonBriefV2,
   AftercareProgramV2,
   AnalysisEvidenceV2,
+  EvidenceCorrectionTargetV2,
+  NormalizedPointV2,
   FashionPreviewCandidateV2,
   FashionPreviewSetV2,
   StyleSelectionSnapshotV2,
@@ -861,6 +863,29 @@ export class HairfitApiClient {
     );
   }
 
+  correctV2AnalysisEvidence(input: {
+    consultationId: string;
+    expectedRevision: number;
+    targetType: EvidenceCorrectionTargetV2;
+    targetId: string;
+    pointIndex: number;
+    adjustedPoint: NormalizedPointV2;
+  }) {
+    return this.request<{ evidence: AnalysisEvidenceV2 }>(
+      `/api/v2/consultations/${encodeURIComponent(input.consultationId)}/evidence`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          expectedRevision: input.expectedRevision,
+          targetType: input.targetType,
+          targetId: input.targetId,
+          pointIndex: input.pointIndex,
+          adjustedPoint: input.adjustedPoint,
+        }),
+      },
+    );
+  }
+
   attachV2ConsultationPhoto(consultationId: string, generationId: string, expectedVersion: number) {
     return this.request<{ consultation: ConsultationSessionV2 }>(
       `/api/v2/consultations/${encodeURIComponent(consultationId)}/photo`,
@@ -915,10 +940,18 @@ export class HairfitApiClient {
     );
   }
 
-  createV2SalonBrief(consultationId: string, idempotencyKey: string) {
+  createV2SalonBrief(consultationId: string, idempotencyKey: string, brief?: {
+    audience: "customer" | "designer";
+    summary: string;
+    cut: Record<string, unknown>;
+    volumeTexture: Record<string, unknown>;
+    color: Record<string, unknown> | null;
+    styling: string[];
+    cautions: string[];
+  }) {
     return this.request<{ brief: SalonBriefV2 }>(
       `/api/v2/consultations/${encodeURIComponent(consultationId)}/salon-brief`,
-      { method: "POST", headers: { "Idempotency-Key": idempotencyKey } },
+      { method: "POST", headers: { "Idempotency-Key": idempotencyKey }, body: JSON.stringify({ brief }) },
     );
   }
 
@@ -928,11 +961,48 @@ export class HairfitApiClient {
     services: string[];
     serviceDate: string;
     designerNotes?: string;
+    today: string[];
+    checkpoints: AftercareProgramV2["checkpoints"];
+    concerns: string[];
+    satisfaction: number | null;
   }) {
     return this.request<{ program: AftercareProgramV2 }>(
       `/api/v2/consultations/${encodeURIComponent(input.consultationId)}/aftercare`,
       {
         method: "POST",
+        headers: { "Idempotency-Key": input.idempotencyKey },
+        body: JSON.stringify(input),
+      },
+    );
+  }
+
+  getV2Aftercare(consultationId: string) {
+    return this.request<{
+      program: AftercareProgramV2 | null;
+      actualService: {
+        id: string;
+        services: string[];
+        serviceDate: string;
+        designerNotes: string;
+        confirmedAt: string;
+      } | null;
+    }>(`/api/v2/consultations/${encodeURIComponent(consultationId)}/aftercare`);
+  }
+
+  updateV2Aftercare(input: {
+    consultationId: string;
+    actualServiceId: string;
+    expectedVersion: number;
+    idempotencyKey: string;
+    today: string[];
+    checkpoints: AftercareProgramV2["checkpoints"];
+    concerns: string[];
+    satisfaction: number | null;
+  }) {
+    return this.request<{ program: AftercareProgramV2 }>(
+      `/api/v2/consultations/${encodeURIComponent(input.consultationId)}/aftercare`,
+      {
+        method: "PATCH",
         headers: { "Idempotency-Key": input.idempotencyKey },
         body: JSON.stringify(input),
       },

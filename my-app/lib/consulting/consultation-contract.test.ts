@@ -95,6 +95,14 @@ test("photo analysis precedes strategy-confirmed V2 preview generation", () => {
   );
   assert.doesNotMatch(analysisServer, /qualityForAnalysis/);
   assert.match(analysisServer, /saveAnalysisEvidenceV2/);
+  assert.match(analysisServer, /source_photo_id: input\.draftId/);
+  assert.match(analysisServer, /p_next_state: nextState/);
+  assert.match(analysisServer, /row\.lifecycle_state === "draft"/);
+  assert.match(analysisServer, /row\.lifecycle_state === "photo_validated"/);
+  assert.ok(
+    analysisServer.indexOf("const evidenceId = await saveAnalysisEvidenceV2") < analysisServer.indexOf("const consultationVersion = await linkPhotoDraftAndAdvanceAnalysis({"),
+    "persisted evidence must exist before the consultation advances to analysis_ready",
+  );
   const evidenceServer = read("../v2/analysis-server.ts");
   const saveAnalysisBlock = evidenceServer.slice(
     evidenceServer.indexOf("export async function saveAnalysisEvidenceV2"),
@@ -114,7 +122,10 @@ test("server-produced landmark evidence is persisted and rendered without client
   const analysisRoute = read("../../app/api/v2/consultations/[consultationId]/analysis/route.ts");
   const photoEvidence = read("../../components/consulting/photo/ConsultationPhotoEvidence.tsx");
   const overlay = read("../../components/consulting/photo/FaceEvidenceOverlay.tsx");
+  const analysisWorkbench = read("../../components/consulting/workbenches/AnalysisWorkbench.tsx");
+  const geometry = read("../../../packages/shared/src/v2/analysis/geometry.ts");
   const migration = read("../../../supabase/migrations/202608090002_hairfit_v2_analysis_landmarks.sql");
+  const correctionMigration = read("../../../supabase/migrations/202608090004_hairfit_v2_analysis_corrections.sql");
   assert.match(landmarkServer, /MediaPipeFaceMesh/);
   assert.match(landmarkServer, /runtime: "tfjs"/);
   assert.match(landmarkServer, /buildFaceGeometryV2/);
@@ -129,6 +140,20 @@ test("server-produced landmark evidence is persisted and rendered without client
   assert.match(overlay, /data-face-evidence-overlay/);
   assert.match(overlay, /data-landmark-id/);
   assert.match(overlay, /data-evidence-source/);
+  assert.match(geometry, /skinSampleRegions/);
+  assert.match(geometry, /excludedRegions/);
+  assert.match(photoEvidence, /분석 레이어/);
+  assert.match(photoEvidence, /activeEvidenceId/);
+  assert.match(photoEvidence, /랜드마크 좌표 보정/);
+  assert.match(photoEvidence, /method: "PATCH"/);
+  assert.match(overlay, /effectiveEvidencePointV2/);
+  assert.match(overlay, /data-original-x/);
+  assert.match(correctionMigration, /manual_corrections/);
+  assert.match(correctionMigration, /originalPoint/);
+  assert.match(correctionMigration, /for update/);
+  assert.match(analysisWorkbench, /data-evidence-ledger-id/);
+  assert.match(analysisWorkbench, /Hair Direction Matrix/);
+  assert.match(analysisWorkbench, /onEvidenceSelect=\{setActiveEvidenceId\}/);
   assert.doesNotMatch(photoEvidence, /tensorflow|MediaPipeFaceMesh|createDetector/);
 });
 
@@ -180,14 +205,22 @@ test("decision chain enforces accepted shortlist, finalist, immutable revision a
 test("fashion Scene stays non-wizard and uses generated server-owned preview sessions", () => {
   const fashion = read("../../components/consulting/workbenches/FashionWorkbench.tsx");
   const outputs = read("../v2/outputs-server.ts");
-  assert.match(fashion, /GENRE_GROUPS/);
+  assert.match(fashion, /const FASHION_SLOTS/);
+  assert.match(fashion, /data-fashion-board-size="9"/);
+  assert.match(fashion, /daily-casual/);
+  assert.match(fashion, /work-office/);
+  assert.match(fashion, /statement-date/);
+  assert.match(fashion, /fashionSlotId: selectedSlot\.id/);
+  assert.match(fashion, /direction,/);
   assert.match(fashion, /consultationId: snapshot\.sessionId/);
   assert.match(fashion, /stylingSessionIds: shortlist/);
   assert.match(fashion, /selectedStylingSessionId: selected\.lookId/);
   assert.match(fashion, /preview\.imageUrl/);
-  assert.doesNotMatch(fashion, /StylerWizard|currentStep|const LOOKS/);
+  assert.doesNotMatch(fashion, /StylerWizard|currentStep|const LOOKS|GENRE_GROUPS/);
   assert.match(outputs, /source_mode", "v2_selection"/);
   assert.match(outputs, /generated_image_path/);
+  assert.match(outputs, /directionSnapshot: selectedDirection/);
+  assert.match(outputs, /selectedLook:/);
 });
 
 test("signed generation assets have both automatic and explicit refresh paths", () => {

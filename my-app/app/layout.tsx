@@ -59,6 +59,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   const subscriptionAccessMode = getSubscriptionAccessMode();
+  const e2eHarnessEnabled = process.env.E2E_UI_HARNESS_ENABLED === "true";
 
   return (
     <html lang="ko" className={`${inter.variable} ${notoSansKR.variable}`} suppressHydrationWarning>
@@ -78,7 +79,7 @@ export default function RootLayout({
             <PointerGlowProvider />
             <Header />
             <main id="main-content" tabIndex={-1}>
-              <GenerationAuthBoundary>{children}</GenerationAuthBoundary>
+              <GenerationAuthBoundary bypass={e2eHarnessEnabled}>{children}</GenerationAuthBoundary>
             </main>
             <Footer />
             {subscriptionAccessMode === "waitlist" ? <SubscriptionPaymentNoticeModal /> : null}

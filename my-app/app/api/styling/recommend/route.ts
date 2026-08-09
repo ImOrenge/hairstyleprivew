@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import type { FashionCategory, FashionDirectionSnapshot } from "@hairfit/shared";
 import type { GeneratedVariant, RecommendationSet } from "../../../../lib/recommendation-types";
 import type { FashionGenre, FashionMood, FashionOccasion, FashionRecommendation, StyleProfile } from "../../../../lib/fashion-types";
 import { ensureFashionCatalogAvailable, selectFashionCatalogItem } from "../../../../lib/fashion-catalog";
@@ -22,6 +23,44 @@ interface StylingRecommendRequest {
   genre?: string;
   occasion?: string;
   mood?: string;
+  fashionSlotId?: string;
+  direction?: unknown;
+}
+
+const FASHION_SLOTS: Record<string, { category: FashionCategory; genre: FashionGenre }> = {
+  "daily-casual": { category: "DAILY", genre: "casual" },
+  "daily-minimal": { category: "DAILY", genre: "minimal" },
+  "daily-athleisure": { category: "DAILY", genre: "athleisure" },
+  "work-office": { category: "WORK", genre: "office" },
+  "work-classic": { category: "WORK", genre: "classic" },
+  "work-smart": { category: "WORK", genre: "minimal" },
+  "statement-street": { category: "STATEMENT", genre: "street" },
+  "statement-formal": { category: "STATEMENT", genre: "formal" },
+  "statement-date": { category: "STATEMENT", genre: "date" },
+};
+
+function normalizeFashionDirection(raw: unknown, genre: FashionGenre): FashionDirectionSnapshot | null {
+  if (!isObject(raw)) return null;
+  const situations = ["daily", "work", "date", "formal"] as const;
+  const seasons = ["spring", "summer", "autumn", "winter", "all-season"] as const;
+  const fits = ["slim", "regular", "relaxed", "oversized"] as const;
+  const exposures = ["low", "balanced", "bold"] as const;
+  const situation = situations.find((value) => value === raw.situation);
+  const season = seasons.find((value) => value === raw.season);
+  const fit = fits.find((value) => value === raw.fit);
+  const exposure = exposures.find((value) => value === raw.exposure);
+  if (!situation || !season || !fit || !exposure) return null;
+  return {
+    situation,
+    genre,
+    season,
+    fit,
+    exposure,
+    budget: typeof raw.budget === "string" ? raw.budget.trim().slice(0, 80) : "",
+    avoidItems: Array.isArray(raw.avoidItems)
+      ? [...new Set(raw.avoidItems.filter((item): item is string => typeof item === "string").map((item) => item.trim()).filter(Boolean))].slice(0, 20)
+      : [],
+  };
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -73,6 +112,7 @@ export async function POST(request: Request) {
   let generationId = body.generationId?.trim() || "";
   let selectedVariantId = body.selectedVariantId?.trim() || "";
   const genre = body.genre?.trim() || "";
+  const fashionSlotId = body.fashionSlotId?.trim() || "";
 
   let v2Source: Awaited<ReturnType<typeof loadConfirmedV2StylingSource>> | null = null;
   if (consultationId) {
@@ -135,6 +175,14 @@ export async function POST(request: Request) {
     }
     selectedVariant = getGeneratedVariant(recommendationSet, selectedVariantId);
   }
+  const fashionSlot = fashionSlotId ? FASHION_SLOTS[fashionSlotId] : null;
+  if (v2Source && (!fashionSlot || fashionSlot.genre !== genre)) {
+    return NextResponse.json({ error: "9개 패션 보드의 상황 슬롯을 다시 선택해 주세요." }, { status: 400 });
+  }
+  const fashionDirection = v2Source ? normalizeFashionDirection(body.direction, genre) : null;
+  if (v2Source && !fashionDirection) {
+    return NextResponse.json({ error: "상황·계절·핏·노출 패션 방향을 확인해 주세요." }, { status: 400 });
+  }
   if (!selectedVariant) {
     return NextResponse.json({ error: "선택한 헤어스타일을 찾을 수 없습니다." }, { status: 404 });
   }
@@ -169,6 +217,7 @@ export async function POST(request: Request) {
     .eq("genre", genre)
     .eq("source_mode", v2Source ? "v2_selection" : "legacy");
   if (v2Source) existingSessionQuery = existingSessionQuery.eq("selection_snapshot_id", v2Source.selectionSnapshotId);
+  if (v2Source) existingSessionQuery = existingSessionQuery.eq("fashion_slot_id", fashionSlotId);
   const { data: existingSession, error: existingSessionError } = await existingSessionQuery
     .in("status", ["recommended", "failed", "generating", "completed"])
     .order("created_at", { ascending: false })
@@ -200,13 +249,29 @@ export async function POST(request: Request) {
     hairVariant: selectedVariant,
     analysis: recommendationSet.analysis,
   });
-  const recommendation = generateFashionRecommendation({
+  const generatedRecommendation = generateFashionRecommendation({
     profile,
     hairVariant: selectedVariant,
     analysis: recommendationSet.analysis,
     genre,
     catalogItem,
   });
+  const recommendation: FashionRecommendation = v2Source && fashionSlot && fashionDirection
+    ? {
+        ...generatedRecommendation,
+        consultationSlotId: fashionSlotId,
+        consultationCategory: fashionSlot.category,
+        consultationDirection: fashionDirection,
+        neckline: fashionDirection.exposure === "low" ? "높은 넥라인" : fashionDirection.exposure === "bold" ? "열린 넥라인" : "균형 넥라인",
+        shoppingKeywords: generatedRecommendation.items.map((item) => `${item.color} ${item.name}`).slice(0, 8),
+        stylingNotes: [
+          ...generatedRecommendation.stylingNotes,
+          `상황 ${fashionDirection.situation}, 계절 ${fashionDirection.season}, 핏 ${fashionDirection.fit}, 노출 ${fashionDirection.exposure}`,
+          fashionDirection.budget ? `예산 범위 ${fashionDirection.budget}` : "",
+          fashionDirection.avoidItems.length ? `회피 아이템 ${fashionDirection.avoidItems.join(", ")}` : "",
+        ].filter(Boolean),
+      }
+    : generatedRecommendation;
   const legacyOccasion = genreToLegacyOccasion(genre);
   const legacyMood = genreToLegacyMood(genre);
 
@@ -227,6 +292,8 @@ export async function POST(request: Request) {
       consultation_id: v2Source?.consultationId ?? null,
       selection_snapshot_id: v2Source?.selectionSnapshotId ?? null,
       source_mode: v2Source ? "v2_selection" : "legacy",
+      fashion_slot_id: v2Source ? fashionSlotId : null,
+      fashion_direction: v2Source ? fashionDirection : {},
     })
     .select("id,status,created_at")
     .single();

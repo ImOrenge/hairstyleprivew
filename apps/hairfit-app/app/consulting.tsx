@@ -6,6 +6,7 @@ import type {
   SalonBriefV2,
   StyleSelectionSnapshotV2,
 } from "@hairfit/shared";
+import { effectiveEvidencePointV2 } from "@hairfit/shared";
 import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
@@ -67,6 +68,7 @@ export default function MobileConsultingScreen() {
   const [finalistId, setFinalistId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [selectedLandmarkId, setSelectedLandmarkId] = useState<string | null>(null);
 
   const load = useCallback(async (consultationId: string) => {
     setLoading(true);
@@ -92,6 +94,9 @@ export default function MobileConsultingScreen() {
           : Promise.resolve(null),
       ]);
       setEvidence(nextEvidence);
+      setSelectedLandmarkId((current) => current && nextEvidence?.evidence.landmarks.some((item) => item.id === current)
+        ? current
+        : nextEvidence?.evidence.landmarks[0]?.id ?? null);
       setBoard(nextBoard?.board ?? null);
       if (nextShortlist?.shortlist.previewVariantIds) {
         setShortlist(nextShortlist.shortlist.previewVariantIds);
@@ -207,6 +212,41 @@ export default function MobileConsultingScreen() {
     }
   };
 
+  const cycleLandmark = () => {
+    const landmarks = evidence?.evidence.landmarks ?? [];
+    if (!landmarks.length) return;
+    const currentIndex = landmarks.findIndex((item) => item.id === selectedLandmarkId);
+    setSelectedLandmarkId(landmarks[(currentIndex + 1) % landmarks.length].id);
+  };
+
+  const correctLandmark = async (deltaX: number, deltaY: number, restore = false) => {
+    if (!consultation || !evidence || !selectedLandmarkId) return;
+    const landmark = evidence.evidence.landmarks.find((item) => item.id === selectedLandmarkId);
+    if (!landmark) return;
+    const current = effectiveEvidencePointV2(evidence.evidence, "landmark", landmark.id, 0, landmark.point);
+    setLoading(true);
+    try {
+      const response = await api.correctV2AnalysisEvidence({
+        consultationId: consultation.id,
+        expectedRevision: evidence.evidence.correctionRevision,
+        targetType: "landmark",
+        targetId: landmark.id,
+        pointIndex: 0,
+        adjustedPoint: restore ? landmark.point : {
+          ...current,
+          x: Math.max(0, Math.min(1, current.x + deltaX)),
+          y: Math.max(0, Math.min(1, current.y + deltaY)),
+        },
+      });
+      setEvidence({ ...evidence, evidence: response.evidence });
+      setMessage(`AI 원본 좌표를 보존하고 사용자 보정 리비전 ${response.evidence.correctionRevision}을 저장했습니다.`);
+    } catch (error) {
+      setMessage(mapMobileUserError(error, "랜드마크 좌표를 저장하지 못했습니다."));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isLoaded || loading && !consultation) {
     return <AppScreen><Card><BodyText>AI 상담 상태를 불러오는 중...</BodyText></Card></AppScreen>;
   }
@@ -226,7 +266,7 @@ export default function MobileConsultingScreen() {
 
     {message ? <View accessibilityLiveRegion="assertive" accessibilityRole="alert"><Card><BodyText>{message}</BodyText></Card></View> : null}
 
-    {evidence?.overlayEnabled ? <Panel><Stack><Kicker>서버 AI 분석 근거</Kicker><Heading style={styles.sectionHeading}>얼굴 랜드마크와 측정 근거</Heading><NativeFaceEvidenceOverlay evidence={evidence.evidence} sourceImageUrl={evidence.sourceImageUrl} /><BodyText>{evidence.evidence.faceShape.summary}</BodyText></Stack></Panel> : null}
+    {evidence?.overlayEnabled ? <Panel><Stack><Kicker>서버 AI 분석 근거</Kicker><Heading style={styles.sectionHeading}>얼굴 랜드마크와 측정 근거</Heading><NativeFaceEvidenceOverlay evidence={evidence.evidence} sourceImageUrl={evidence.sourceImageUrl} /><BodyText>{evidence.evidence.faceShape.summary}</BodyText><BodyText>선택 기준점: {selectedLandmarkId ?? "없음"} · 보정 리비전 {evidence.evidence.correctionRevision}</BodyText><Cluster><Button variant="secondary" onPress={cycleLandmark}>다음 기준점</Button><Button variant="secondary" onPress={() => void correctLandmark(0, -0.005)}>위</Button><Button variant="secondary" onPress={() => void correctLandmark(-0.005, 0)}>왼쪽</Button><Button variant="secondary" onPress={() => void correctLandmark(0.005, 0)}>오른쪽</Button><Button variant="secondary" onPress={() => void correctLandmark(0, 0.005)}>아래</Button><Button variant="secondary" onPress={() => void correctLandmark(0, 0, true)}>AI 원본</Button></Cluster><BodyText>사용자 보정은 표시 좌표에만 적용되며 AI 원본 좌표는 감사 이력으로 보존됩니다.</BodyText></Stack></Panel> : null}
 
     {!consultation.analysisEvidenceId ? <Panel><Stack><Kicker>Photo quality</Kicker><Heading style={styles.sectionHeading}>사진 업로드와 AI 분석</Heading><BodyText>기기 기본 검사를 통과한 사진만 서버 사전검사와 얼굴 랜드마크 분석으로 보냅니다.</BodyText><Button onPress={() => router.push(photoRoute)}>사진 선택·분석</Button></Stack></Panel> : null}
 

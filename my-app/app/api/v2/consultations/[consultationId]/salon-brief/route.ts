@@ -10,6 +10,7 @@ export async function POST(request: Request, { params }: Params) {
   const disabled = v2Disabled("CONSULTATION_SESSION_V2_ENABLED", "SALON_BRIEF_V2_ENABLED"); if (disabled) return disabled;
   const { consultationId } = await params;
   const idempotencyKey = request.headers.get("Idempotency-Key")?.trim() || "";
-  try { return NextResponse.json({ brief: await createSalonBriefV2({ userId, consultationId, idempotencyKey }) }, { status: 201 }); }
+  const body = (await request.json().catch(() => ({}))) as { brief?: unknown };
+  try { return NextResponse.json({ brief: await createSalonBriefV2({ userId, consultationId, idempotencyKey, brief: body.brief }) }, { status: 201 }); }
   catch (error) { return v2Failure(error); }
 }

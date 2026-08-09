@@ -24,16 +24,50 @@ begin
 exception when duplicate_object then null;
 end $$;
 
+do $$
+begin
+  alter table public.actual_services_v2
+    add constraint actual_services_v2_after_photo_bundle_check
+    check (
+      (after_photo_path is null and after_photo_fingerprint is null and after_photo_consent_at is null)
+      or
+      (after_photo_path is not null and after_photo_fingerprint is not null and after_photo_consent_at is not null)
+    );
+exception when duplicate_object then null;
+end $$;
+
 alter table public.styling_sessions
   add column if not exists consultation_id uuid references public.consultation_sessions(id) on delete cascade,
   add column if not exists selection_snapshot_id uuid references public.style_selection_snapshots_v2(id) on delete restrict,
-  add column if not exists source_mode text not null default 'legacy';
+  add column if not exists source_mode text not null default 'legacy',
+  add column if not exists fashion_slot_id text,
+  add column if not exists fashion_direction jsonb not null default '{}'::jsonb;
 
 do $$
 begin
   alter table public.styling_sessions
     add constraint styling_sessions_source_mode_check
     check (source_mode in ('legacy', 'v2_selection'));
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter table public.styling_sessions
+    add constraint styling_sessions_fashion_slot_check
+    check (fashion_slot_id is null or fashion_slot_id in (
+      'daily-casual', 'daily-minimal', 'daily-athleisure',
+      'work-office', 'work-classic', 'work-smart',
+      'statement-street', 'statement-formal', 'statement-date'
+    ));
+exception when duplicate_object then null;
+end $$;
+
+do $$
+begin
+  alter table public.styling_sessions
+    add constraint styling_sessions_fashion_direction_object_check
+    check (jsonb_typeof(fashion_direction) = 'object');
 exception when duplicate_object then null;
 end $$;
 
@@ -54,6 +88,9 @@ create index if not exists idx_styling_sessions_consultation
 create index if not exists idx_styling_sessions_selection_snapshot
   on public.styling_sessions (selection_snapshot_id)
   where selection_snapshot_id is not null;
+create unique index if not exists uq_styling_sessions_v2_fashion_slot
+  on public.styling_sessions (user_id, selection_snapshot_id, fashion_slot_id)
+  where source_mode = 'v2_selection' and fashion_slot_id is not null;
 
 create or replace function public.sync_style_selection_v2_source(
   p_user_id text,
@@ -236,7 +273,7 @@ returns table (
 )
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   v_user_id text := btrim(coalesce(p_user_id, ''));

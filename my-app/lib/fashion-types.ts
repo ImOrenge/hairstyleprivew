@@ -1,4 +1,5 @@
 import type { FaceAnalysisSummary, GeneratedVariant } from "./recommendation-types";
+import type { FashionCategory, FashionDirectionSnapshot } from "@hairfit/shared";
 
 export type FashionOccasion = "daily" | "work" | "date" | "formal";
 export type FashionMood = "minimal" | "trendy" | "soft" | "classic";
@@ -138,6 +139,11 @@ export interface FashionRecommendation {
   silhouette: string;
   items: FashionRecommendationItem[];
   stylingNotes: string[];
+  consultationSlotId?: string;
+  consultationCategory?: FashionCategory;
+  consultationDirection?: FashionDirectionSnapshot;
+  neckline?: string;
+  shoppingKeywords?: string[];
   catalogItemId?: string | null;
   catalogCycleId?: string | null;
   sourceSummary?: FashionCatalogSourceSummary | null;

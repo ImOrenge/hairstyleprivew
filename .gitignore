@@ -16,6 +16,7 @@ yarn-error.log*
 .artifacts/playwright-auth/
 .artifacts/playwright-protected/
 .artifacts/generation-notification-staging/
+.artifacts/live-auth-smoke/
 playwright/.clerk/
 my-app/.next-e2e/
 my-app/.next-*/

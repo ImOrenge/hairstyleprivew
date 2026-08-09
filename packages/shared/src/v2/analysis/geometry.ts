@@ -1,6 +1,7 @@
 import type {
   AnalysisEvidenceV2,
   EvidenceLandmarkV2,
+  EvidencePolygonV2,
   FacialMeasurementV2,
   NormalizedPointV2,
 } from "./contract.ts";
@@ -37,6 +38,8 @@ export interface FaceGeometryV2 {
   contours: AnalysisEvidenceV2["contours"];
   hairline: AnalysisEvidenceV2["hairline"];
   measurements: AnalysisEvidenceV2["measurements"];
+  skinSampleRegions: AnalysisEvidenceV2["skinSampleRegions"];
+  excludedRegions: AnalysisEvidenceV2["excludedRegions"];
 }
 
 function round(value: number) {
@@ -89,6 +92,22 @@ function measurement(
   confidence: number,
 ): FacialMeasurementV2 {
   return { ...input, normalizedValue: round(input.normalizedValue), confidence };
+}
+
+function polygon(
+  id: string,
+  label: string,
+  indices: readonly number[],
+  points: readonly NormalizedPointV2[],
+  confidence: number,
+): EvidencePolygonV2 {
+  return {
+    id,
+    label,
+    source: "detected",
+    confidence,
+    points: indices.map((index) => ({ ...pointAt(points, index), confidence })),
+  };
 }
 
 export function buildFaceGeometryV2(
@@ -152,6 +171,22 @@ export function buildFaceGeometryV2(
     measurement({ id: "forehead_jaw_ratio", kind: "ratio", normalizedValue: foreheadWidth / Math.max(0.01, jawWidth), category: ratioCategory(foreheadWidth / Math.max(0.01, jawWidth)), geometry: [detectedPoint(54),detectedPoint(284),detectedPoint(172),detectedPoint(397)] }, confidence),
   ];
 
+  // These regions are evidence coordinates, not a skin-tone diagnosis. They
+  // identify stable FaceMesh areas that a downstream color analyzer may sample
+  // or explicitly exclude. The source remains auditable and the browser does
+  // not reconstruct polygons from raw keypoints.
+  const skinSampleRegions: EvidencePolygonV2[] = [
+    polygon("skin_forehead", "이마 샘플", [109,10,338,151], keypoints, confidence),
+    polygon("skin_left_cheek", "왼쪽 볼 샘플", [50,117,123,101], keypoints, confidence),
+    polygon("skin_right_cheek", "오른쪽 볼 샘플", [280,346,352,330], keypoints, confidence),
+    polygon("skin_chin", "턱 샘플", [175,152,400,377], keypoints, confidence),
+  ];
+  const excludedRegions: EvidencePolygonV2[] = [
+    polygon("excluded_left_eye", "왼쪽 눈 제외", [33,160,158,133,153,144], keypoints, confidence),
+    polygon("excluded_right_eye", "오른쪽 눈 제외", [362,385,387,263,373,380], keypoints, confidence),
+    polygon("excluded_lips", "입술 제외", [61,37,0,267,291,314,17,84], keypoints, confidence),
+  ];
+
   return {
     landmarks,
     contours: [{ id: "face_contour", source: "detected", confidence, points: contourPoints }],
@@ -161,5 +196,7 @@ export function buildFaceGeometryV2(
       lines: [{ id: "hairline_estimate", source: "inferred", confidence: hairlineConfidence, points: inferredHairlinePoints }],
     },
     measurements,
+    skinSampleRegions,
+    excludedRegions,
   };
 }

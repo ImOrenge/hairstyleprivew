@@ -50,8 +50,33 @@ export interface FinalistSelection { finalistPreviewId: string | null; backupPre
 export interface SelectedStyleSnapshot { id: string; revision: number; previewId: string; label: string; reason: string; imageUrl: string | null; generatedImagePath: string | null; feasibility: string; currentHairGap: string; services: string[]; maintenance: string; limitations: string[]; strategy: StrategySnapshot; selectedAt: string; supersedesSnapshotId: string | null; serviceConfirmedAt: string | null }
 export interface SalonBriefVersion { version: number; mode: "customer" | "designer"; summary: string; cut: string; volumeTexture: string; styling: string; caution: string[]; shareExpiryHours: 24 | 168 | 720; shareRevokedAt: string | null; rawFaceIncluded: false; createdAt: string | null }
 export interface ActualServiceRecord { services: string[]; serviceDate: string | null; designerNotes: string; confirmedAt: string | null }
-export interface CareProgram { today: string[]; checkpoints: Array<{ offset: "D+3" | "W+2" | "W+6" | "W+10"; action: string; complete: boolean }>; concerns: string[]; afterPhotoUrl: string | null; afterPhotoUpload?: { actualServiceId: string; fingerprint: string; uploadedAt: string } | null; satisfaction: number | null }
-export interface SelectedFashionLook { direction: string; shortlistIds: string[]; lookId: string | null; category: "DAILY" | "WORK" | "STATEMENT" | null; label: string; selectedAt: string | null }
+export interface CareProgram { actualServiceId: string | null; programVersion: number; today: string[]; checkpoints: Array<{ offset: "D+3" | "W+2" | "W+6" | "W+10"; action: string; complete: boolean }>; concerns: string[]; afterPhotoUrl: string | null; afterPhotoUpload?: { actualServiceId: string; fingerprint: string; uploadedAt: string } | null; satisfaction: number | null }
+export type FashionCategory = "DAILY" | "WORK" | "STATEMENT";
+export interface FashionDirectionSnapshot {
+  situation: "daily" | "work" | "date" | "formal";
+  genre: string;
+  season: "spring" | "summer" | "autumn" | "winter" | "all-season";
+  fit: "slim" | "regular" | "relaxed" | "oversized";
+  exposure: "low" | "balanced" | "bold";
+  budget: string;
+  avoidItems: string[];
+}
+export interface FashionLookItem { slot: string; name: string; color: string; fit: string; material: string }
+export interface SelectedFashionLook {
+  direction: string;
+  directionSnapshot: FashionDirectionSnapshot;
+  shortlistIds: string[];
+  lookId: string | null;
+  category: FashionCategory | null;
+  label: string;
+  items: FashionLookItem[];
+  palette: string[];
+  neckline: string;
+  silhouette: string;
+  avoidCombinations: string[];
+  shoppingKeywords: string[];
+  selectedAt: string | null;
+}
 
 export interface ConsultationSnapshot {
   schemaVersion: 1; sessionId: string; userId: string; version: number; currentStage: ConsultationStage; completedStages: ConsultationStage[];

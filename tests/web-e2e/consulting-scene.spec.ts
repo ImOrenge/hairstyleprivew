@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
+import type { AnalysisEvidenceV2 } from "@hairfit/shared/v2";
 
 const STAGES = [
   ["discovery","DISCOVERY"],["photo","PHOTO"],["scan","FACE SCAN"],["analysis","ANALYSIS"],["direction","DIRECTION"],
@@ -24,11 +25,13 @@ const LANDMARK_EVIDENCE = {
     { id: "cheekbone_width", kind: "width", normalizedValue: .42, category: "balanced", confidence: .9, geometry: [{x:.29,y:.45},{x:.71,y:.45}] },
   ],
   faceShape: { primary: "oval", secondary: null, blend: { oval: 1 }, summary: "fixture" },
-  skinSampleRegions: [],
-  excludedRegions: [],
+  skinSampleRegions: [{ id: "skin_left_cheek", label: "왼쪽 볼 샘플", source: "detected", confidence: .9, points: [{x:.31,y:.48},{x:.39,y:.45},{x:.4,y:.56},{x:.32,y:.58}] }],
+  excludedRegions: [{ id: "excluded_lips", label: "입술 제외", source: "detected", confidence: .9, points: [{x:.43,y:.63},{x:.5,y:.6},{x:.57,y:.63},{x:.5,y:.68}] }],
+  correctionRevision: 0,
+  manualCorrections: [],
   correctedAt: null,
   createdAt: "2026-08-08T00:00:00.000Z",
-};
+} as AnalysisEvidenceV2;
 
 const FACE_PHOTO_FIXTURE = `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="500" height="400" viewBox="0 0 5 4">
   <rect width="5" height="4" fill="#d8d2ca"/>
@@ -84,18 +87,40 @@ test("two quality-accepted previews can open comparison before all nine finish",
 });
 
 test("Scan renders persisted face landmarks and measurement interactions over the photo", async ({ page }, testInfo) => {
+  let landmarkEvidence: AnalysisEvidenceV2 = structuredClone(LANDMARK_EVIDENCE);
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
   await page.route("**/api/consultations/**/photo-assets", (route) => route.fulfill({
     status: 200,
     contentType: "application/json",
     body: JSON.stringify({ primaryUrl: FACE_PHOTO_FIXTURE }),
   }));
-  await page.route("**/api/v2/consultations/**/evidence", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({ evidence: LANDMARK_EVIDENCE }),
-  }));
+  await page.route("**/api/v2/consultations/**/evidence", async (route) => {
+    if (route.request().method() === "PATCH") {
+      const body = route.request().postDataJSON() as { targetId: string; adjustedPoint: { x: number; y: number } };
+      const original = landmarkEvidence.landmarks.find((item) => item.id === body.targetId)?.point ?? { x: 0, y: 0 };
+      landmarkEvidence = {
+        ...landmarkEvidence,
+        correctionRevision: landmarkEvidence.correctionRevision + 1,
+        correctedAt: "2026-08-09T00:10:00.000Z",
+        manualCorrections: [...landmarkEvidence.manualCorrections, {
+          id: "00000000-0000-4000-8000-000000000099",
+          targetType: "landmark" as const,
+          targetId: body.targetId,
+          pointIndex: 0,
+          originalPoint: original,
+          adjustedPoint: body.adjustedPoint,
+          correctedAt: "2026-08-09T00:10:00.000Z",
+        }],
+      };
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ evidence: landmarkEvidence }) });
+  });
   await page.goto("/consulting/e2e-harness?stage=scan");
   await dismissGlobalNotices(page);
+  await expect(page.locator('[data-consulting-hydrated="true"]')).toBeVisible();
   await page.getByRole("button", { name: "signed URL 갱신" }).click();
   await expect(page.getByRole("img", { name: "상담 분석용 원본 사진" })).toBeVisible();
   const overlay = page.locator('[data-face-evidence-overlay="true"]');
@@ -109,10 +134,26 @@ test("Scan renders persisted face landmarks and measurement interactions over th
   await expect(faceContour).toHaveAttribute("data-evidence-source", "detected");
   await expect(faceContour).toHaveCSS("fill", "none");
   await expect(overlay.locator('[data-evidence-id="hairline_estimate"]')).toHaveAttribute("data-evidence-source", "inferred");
+  await page.getByRole("button", { name: "피부 샘플" }).click();
+  await expect(overlay.locator('[data-evidence-id="skin_left_cheek"]')).toBeVisible();
+  await page.getByRole("button", { name: "컬러 제외" }).click();
+  await expect(overlay.locator('[data-evidence-id="excluded_lips"]')).toBeVisible();
+  await page.getByRole("button", { name: /hairline 사진 근거 강조/ }).click();
+  await expect(overlay.locator('[data-evidence-id="hairline_estimate"]')).toHaveAttribute("data-evidence-active", "true");
   const cheekbone = page.getByRole("button", { name: "광대 폭 측정 근거" });
   await cheekbone.focus();
   await expect(cheekbone).toHaveAttribute("aria-pressed", "true");
   await expect(cheekbone).toHaveCSS("outline-style", "none");
+  await page.getByLabel("보정할 AI 기준점").selectOption("nose-tip");
+  await page.getByRole("button", { name: "오른쪽으로 이동" }).click();
+  const correctedNose = overlay.locator('[data-landmark-id="nose-tip"]');
+  await expect(correctedNose).toHaveAttribute("cx", "2.525");
+  await expect(correctedNose).toHaveAttribute("data-evidence-source", "user_adjusted");
+  await expect(correctedNose).toHaveAttribute("data-original-x", "0.5");
+  await expect(page.getByText(/AI 원본 좌표를 보존하고 사용자 보정 리비전 1/)).toBeVisible();
+  await expect(page.locator("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay")).toHaveCount(0);
+  expect(await page.locator("body").innerText()).not.toHaveLength(0);
+  expect(consoleErrors).toEqual([]);
   await page.locator('[data-photo-evidence-stage="true"]').screenshot({
     path: testInfo.outputPath("scan-landmark-overlay.png"),
     animations: "disabled",
@@ -122,9 +163,10 @@ test("Scan renders persisted face landmarks and measurement interactions over th
 test("Fashion Scene recommends, quotes, generates, and compares real server sessions without a wizard", async ({ page }) => {
   const consultationId = "00000000-0000-4000-8000-000000000011";
   const activeSessionId = "00000000-0000-4000-8000-000000000031";
+  const fashionDirection = { situation: "daily", genre: "casual", season: "all-season", fit: "regular", exposure: "balanced", budget: "20만 원 이내", avoidItems: ["모자"] };
   const basePreviews = [
-    { stylingSessionId: "00000000-0000-4000-8000-000000000032", genre: "office", headline: "워크 룩 A" },
-    { stylingSessionId: "00000000-0000-4000-8000-000000000033", genre: "formal", headline: "포멀 룩 B" },
+    { stylingSessionId: "00000000-0000-4000-8000-000000000032", slotId: "work-office", category: "WORK", genre: "office", headline: "워크 룩 A" },
+    { stylingSessionId: "00000000-0000-4000-8000-000000000033", slotId: "statement-formal", category: "STATEMENT", genre: "formal", headline: "포멀 룩 B" },
   ];
   let generated = false;
 
@@ -140,7 +182,13 @@ test("Fashion Scene recommends, quotes, generates, and compares real server sess
         ...preview,
         selectionSnapshotId: "00000000-0000-4000-8000-000000000021",
         status: "completed",
+        direction: fashionDirection,
         summary: `${preview.headline} summary`,
+        palette: ["navy", "ivory"],
+        silhouette: "balanced",
+        neckline: "균형 넥라인",
+        items: [],
+        shoppingKeywords: [preview.headline],
         imageUrl: FACE_PHOTO_FIXTURE,
         errorMessage: null,
         createdAt: "2026-08-09T00:00:00.000Z",
@@ -149,10 +197,18 @@ test("Fashion Scene recommends, quotes, generates, and compares real server sess
       {
         stylingSessionId: activeSessionId,
         selectionSnapshotId: "00000000-0000-4000-8000-000000000021",
+        slotId: "daily-casual",
+        category: "DAILY",
         genre: "casual",
+        direction: fashionDirection,
         status: generated ? "completed" : "recommended",
         headline: "데일리 룩 C",
         summary: "확정 헤어와 바디 프로필을 반영한 데일리 룩",
+        palette: ["navy", "ivory"],
+        silhouette: "balanced",
+        neckline: "균형 넥라인",
+        items: [],
+        shoppingKeywords: ["navy jacket"],
         imageUrl: generated ? FACE_PHOTO_FIXTURE : null,
         errorMessage: null,
         createdAt: "2026-08-09T00:00:00.000Z",
@@ -208,14 +264,15 @@ test("Fashion Scene recommends, quotes, generates, and compares real server sess
 
   await page.goto("/consulting/e2e-harness?stage=fashion");
   await dismissGlobalNotices(page);
+  await expect(page.locator("[data-fashion-slot-id]")).toHaveCount(9);
   await page.getByRole("button", { name: "패션 추천 만들기" }).click();
   await expect(page.getByRole("heading", { name: "데일리 룩 C" })).toBeVisible();
   await expect(page.getByText("20크레딧 사용 예정")).toBeVisible();
   await page.getByRole("button", { name: "실제 패션 프리뷰 생성" }).click();
-  await expect(page.getByRole("heading", { name: "실제 생성 결과 3개" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "실제 생성 결과 3개 / 9개" })).toBeVisible();
 
   for (const label of ["워크 룩 A", "포멀 룩 B", "데일리 룩 C"]) {
-    await page.getByRole("button", { name: new RegExp(label) }).first().click();
+    await page.getByRole("button", { name: new RegExp(`후보 담기 · ${label}`) }).click();
   }
   await expect(page.getByText("현재 3개.")).toBeVisible();
   await page.getByRole("button", { name: /데일리 룩 C.*DAILY/ }).last().click();

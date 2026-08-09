@@ -94,6 +94,7 @@ export async function runGeminiOutfitGeneration(
   const itemList = request.recommendation.items
     .map((item) => `${item.slot}: ${item.name}, ${item.color}, ${item.fit}, ${item.material}`)
     .join("\n");
+  const consultationDirection = request.recommendation.consultationDirection;
 
   const prompt = `
 You are a fashion lookbook image-generation agent.
@@ -120,10 +121,19 @@ Customer profile:
 Selected hairstyle: ${request.hairVariant.label}
 Outfit headline: ${request.recommendation.headline}
 Fashion genre: ${request.recommendation.genre}
+Consultation slot: ${request.recommendation.consultationSlotId || "legacy"}
+Consultation situation: ${consultationDirection?.situation || "unspecified"}
+Consultation season: ${consultationDirection?.season || "all-season"}
+Consultation fit: ${consultationDirection?.fit || request.profile.fitPreference || "regular"}
+Consultation exposure: ${consultationDirection?.exposure || request.profile.exposurePreference || "balanced"}
+Consultation budget: ${consultationDirection?.budget || "unspecified"}
+Consultation avoid items: ${consultationDirection?.avoidItems.join(", ") || "none"}
 Legacy occasion: ${request.recommendation.occasion || "none"}
 Legacy mood: ${request.recommendation.mood || "none"}
 Palette: ${request.recommendation.palette.join(", ")}
 Silhouette: ${request.recommendation.silhouette}
+Neckline: ${request.recommendation.neckline || "balanced"}
+Styling notes: ${request.recommendation.stylingNotes.join("; ")}
 Items:
 ${itemList}
 `.trim();

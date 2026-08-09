@@ -1,7 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import type { AnalysisEvidenceV2, FacialMeasurementV2, NormalizedPointV2 } from "@hairfit/shared/v2";
+import {
+  effectiveEvidencePointV2,
+  hasEvidencePointCorrectionV2,
+  type AnalysisEvidenceV2,
+  type EvidenceCorrectionTargetV2,
+  type FacialMeasurementV2,
+  type NormalizedPointV2,
+} from "@hairfit/shared/v2";
+
+export type FaceEvidenceLayer = "contour" | "hairline" | "measurement" | "skin" | "excluded";
+
+const DEFAULT_VISIBLE_LAYERS: readonly FaceEvidenceLayer[] = [
+  "contour",
+  "hairline",
+  "measurement",
+];
 
 const VISIBLE_MEASUREMENTS = new Set([
   "face_length",
@@ -38,8 +53,18 @@ function evidenceOpacity(confidence: number) {
   return Math.max(0.42, Math.min(0.94, confidence));
 }
 
+function correctedPoints(
+  evidence: AnalysisEvidenceV2,
+  targetType: EvidenceCorrectionTargetV2,
+  targetId: string,
+  source: readonly NormalizedPointV2[],
+) {
+  return source.map((point, index) => effectiveEvidencePointV2(evidence, targetType, targetId, index, point));
+}
+
 function MeasurementLine({
   measurement,
+  evidence,
   active,
   onActivate,
   sourceWidth,
@@ -47,6 +72,7 @@ function MeasurementLine({
   unit,
 }: {
   measurement: FacialMeasurementV2;
+  evidence: AnalysisEvidenceV2;
   active: boolean;
   onActivate: () => void;
   sourceWidth: number;
@@ -54,7 +80,8 @@ function MeasurementLine({
   unit: number;
 }) {
   const label = MEASUREMENT_LABELS[measurement.id] || measurement.id;
-  const endpoint = measurement.geometry.at(-1);
+  const geometry = correctedPoints(evidence, "measurement", measurement.id, measurement.geometry);
+  const endpoint = geometry.at(-1);
   return <g
     role="button"
     tabIndex={0}
@@ -73,7 +100,7 @@ function MeasurementLine({
     }}
   >
     <polyline
-      points={points(measurement.geometry, sourceWidth, sourceHeight)}
+      points={points(geometry, sourceWidth, sourceHeight)}
       fill="none"
       style={{ fill: "none" }}
       stroke="var(--app-success)"
@@ -82,7 +109,7 @@ function MeasurementLine({
       strokeWidth={unit * (active ? 0.008 : 0.004)}
       opacity={active ? 1 : evidenceOpacity(measurement.confidence)}
     />
-    {measurement.geometry.map((point, index) => <circle
+    {geometry.map((point, index) => <circle
       key={`${measurement.id}-${index}`}
       cx={point.x * sourceWidth}
       cy={point.y * sourceHeight}
@@ -104,12 +131,28 @@ function MeasurementLine({
   </g>;
 }
 
-export function FaceEvidenceOverlay({ evidence }: { evidence: AnalysisEvidenceV2 }) {
+export function FaceEvidenceOverlay({
+  evidence,
+  visibleLayers = DEFAULT_VISIBLE_LAYERS,
+  activeEvidenceId = null,
+  onEvidenceSelect,
+  selectedLandmarkId = null,
+  onLandmarkSelect,
+}: {
+  evidence: AnalysisEvidenceV2;
+  visibleLayers?: readonly FaceEvidenceLayer[];
+  activeEvidenceId?: string | null;
+  onEvidenceSelect?: (evidenceId: string) => void;
+  selectedLandmarkId?: string | null;
+  onLandmarkSelect?: (landmarkId: string) => void;
+}) {
   const measurements = evidence.measurements.filter((item) => VISIBLE_MEASUREMENTS.has(item.id));
   const [activeMeasurementId, setActiveMeasurementId] = useState(measurements[0]?.id ?? null);
   const sourceWidth = Math.max(1, evidence.sourceTransform.sourceWidth || 1);
   const sourceHeight = Math.max(1, evidence.sourceTransform.sourceHeight || 1);
   const unit = Math.min(sourceWidth, sourceHeight);
+  const visible = new Set(visibleLayers);
+  const layerActive = (layer: FaceEvidenceLayer) => activeEvidenceId === layer;
   return <>
     <svg
       className="absolute inset-0 h-full w-full"
@@ -121,58 +164,110 @@ export function FaceEvidenceOverlay({ evidence }: { evidence: AnalysisEvidenceV2
     >
       <title>AI 얼굴 분석 랜드마크</title>
       <desc>서버에 저장된 정규화 좌표로 얼굴 윤곽, 핵심 기준점, 추정 헤어라인과 측정선을 표시합니다.</desc>
-      {evidence.contours.map((contour) => <polyline
+      {visible.has("contour") ? evidence.contours.map((contour) => <polyline
         key={contour.id}
         data-evidence-id={contour.id}
         data-evidence-source={contour.source}
-        points={points(contour.points, sourceWidth, sourceHeight)}
+        data-evidence-active={layerActive("contour") || activeEvidenceId === contour.id}
+        points={points(correctedPoints(evidence, "contour", contour.id, contour.points), sourceWidth, sourceHeight)}
         fill="none"
         style={{ fill: "none" }}
         stroke="var(--app-accent)"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth={unit * 0.006}
-        opacity={evidenceOpacity(contour.confidence)}
-      />)}
-      {evidence.landmarks.map((landmark) => <circle
-        key={landmark.id}
-        data-landmark-id={landmark.id}
-        data-evidence-source={landmark.source}
-        cx={landmark.point.x * sourceWidth}
-        cy={landmark.point.y * sourceHeight}
-        r={unit * 0.0075}
-        fill="var(--app-accent)"
-        stroke="var(--app-surface)"
-        strokeWidth={unit * 0.003}
-        opacity={evidenceOpacity(landmark.confidence)}
-      />)}
-      {evidence.hairline?.lines.map((line) => <polyline
+        strokeWidth={unit * (layerActive("contour") || activeEvidenceId === contour.id ? 0.01 : 0.006)}
+        opacity={layerActive("contour") || activeEvidenceId === contour.id ? 1 : evidenceOpacity(contour.confidence)}
+      />) : null}
+      {visible.has("contour") ? evidence.landmarks.map((landmark) => {
+        const point = effectiveEvidencePointV2(evidence, "landmark", landmark.id, 0, landmark.point);
+        const corrected = hasEvidencePointCorrectionV2(evidence, "landmark", landmark.id, 0);
+        const selected = selectedLandmarkId === landmark.id;
+        return <circle
+          key={landmark.id}
+          role={onLandmarkSelect ? "button" : undefined}
+          tabIndex={onLandmarkSelect ? 0 : undefined}
+          aria-label={onLandmarkSelect ? `${landmark.id} 랜드마크 좌표 보정` : undefined}
+          aria-pressed={onLandmarkSelect ? selected : undefined}
+          data-landmark-id={landmark.id}
+          data-evidence-source={corrected ? "user_adjusted" : landmark.source}
+          data-original-x={landmark.point.x}
+          data-original-y={landmark.point.y}
+          cx={point.x * sourceWidth}
+          cy={point.y * sourceHeight}
+          r={unit * (selected ? 0.014 : layerActive("contour") ? 0.011 : 0.0075)}
+          fill={corrected ? "var(--app-warning)" : "var(--app-accent)"}
+          stroke="var(--app-surface)"
+          strokeWidth={unit * 0.003}
+          opacity={selected || layerActive("contour") ? 1 : evidenceOpacity(landmark.confidence)}
+          className={onLandmarkSelect ? "cursor-pointer" : undefined}
+          onClick={() => onLandmarkSelect?.(landmark.id)}
+          onFocus={() => onLandmarkSelect?.(landmark.id)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onLandmarkSelect?.(landmark.id);
+            }
+          }}
+        />;
+      }) : null}
+      {visible.has("hairline") ? evidence.hairline?.lines.map((line) => <polyline
         key={line.id}
         data-evidence-id={line.id}
         data-evidence-source={line.source}
-        points={points(line.points, sourceWidth, sourceHeight)}
+        data-evidence-active={layerActive("hairline") || activeEvidenceId === line.id}
+        points={points(correctedPoints(evidence, "hairline", line.id, line.points), sourceWidth, sourceHeight)}
         fill="none"
         style={{ fill: "none" }}
         stroke="var(--app-warning)"
         strokeDasharray={`${unit * 0.014} ${unit * 0.009}`}
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth={unit * 0.006}
-        opacity={evidenceOpacity(line.confidence)}
-      />)}
-      {measurements.map((measurement) => <MeasurementLine
+        strokeWidth={unit * (layerActive("hairline") || activeEvidenceId === line.id ? 0.01 : 0.006)}
+        opacity={layerActive("hairline") || activeEvidenceId === line.id ? 1 : evidenceOpacity(line.confidence)}
+      />) : null}
+      {visible.has("skin") ? evidence.skinSampleRegions.map((region) => <polygon
+        key={region.id}
+        data-evidence-id={region.id}
+        data-evidence-source={region.source}
+        data-evidence-active={layerActive("skin") || activeEvidenceId === region.id}
+        points={points(correctedPoints(evidence, "skin", region.id, region.points), sourceWidth, sourceHeight)}
+        fill="var(--app-success)"
+        stroke="var(--app-surface)"
+        strokeWidth={unit * (layerActive("skin") || activeEvidenceId === region.id ? 0.008 : 0.004)}
+        opacity={layerActive("skin") || activeEvidenceId === region.id ? 0.46 : 0.24}
+      />) : null}
+      {visible.has("excluded") ? evidence.excludedRegions.map((region) => <polygon
+        key={region.id}
+        data-evidence-id={region.id}
+        data-evidence-source={region.source}
+        data-evidence-active={layerActive("excluded") || activeEvidenceId === region.id}
+        points={points(correctedPoints(evidence, "excluded", region.id, region.points), sourceWidth, sourceHeight)}
+        fill="var(--app-danger)"
+        stroke="var(--app-danger)"
+        strokeDasharray={`${unit * 0.012} ${unit * 0.008}`}
+        strokeWidth={unit * (layerActive("excluded") || activeEvidenceId === region.id ? 0.009 : 0.005)}
+        opacity={layerActive("excluded") || activeEvidenceId === region.id ? 0.42 : 0.22}
+      />) : null}
+      {visible.has("measurement") ? measurements.map((measurement) => <MeasurementLine
         key={measurement.id}
         measurement={measurement}
-        active={activeMeasurementId === measurement.id}
-        onActivate={() => setActiveMeasurementId(measurement.id)}
+        evidence={evidence}
+        active={activeEvidenceId === measurement.id
+          || ((activeEvidenceId === "measurement" || activeEvidenceId === null) && activeMeasurementId === measurement.id)}
+        onActivate={() => {
+          setActiveMeasurementId(measurement.id);
+          onEvidenceSelect?.("measurement");
+        }}
         sourceWidth={sourceWidth}
         sourceHeight={sourceHeight}
         unit={unit}
-      />)}
+      />) : null}
     </svg>
     <div className="pointer-events-none absolute inset-x-3 top-3 flex flex-wrap gap-2" aria-hidden="true">
-      <span className="border border-[var(--app-accent)] bg-[color-mix(in_srgb,var(--app-bg)_86%,transparent)] px-2 py-1 text-[10px] font-black text-[var(--app-text)]">감지 좌표</span>
-      <span className="border border-[var(--app-warning)] bg-[color-mix(in_srgb,var(--app-bg)_86%,transparent)] px-2 py-1 text-[10px] font-black text-[var(--app-text)]">추정 헤어라인</span>
+      {visible.has("contour") ? <span className="border border-[var(--app-accent)] bg-[color-mix(in_srgb,var(--app-bg)_86%,transparent)] px-2 py-1 text-[10px] font-black text-[var(--app-text)]">감지 좌표</span> : null}
+      {visible.has("hairline") ? <span className="border border-[var(--app-warning)] bg-[color-mix(in_srgb,var(--app-bg)_86%,transparent)] px-2 py-1 text-[10px] font-black text-[var(--app-text)]">추정 헤어라인</span> : null}
+      {visible.has("skin") ? <span className="border border-[var(--app-success)] bg-[color-mix(in_srgb,var(--app-bg)_86%,transparent)] px-2 py-1 text-[10px] font-black text-[var(--app-text)]">피부 샘플</span> : null}
+      {visible.has("excluded") ? <span className="border border-[var(--app-danger)] bg-[color-mix(in_srgb,var(--app-bg)_86%,transparent)] px-2 py-1 text-[10px] font-black text-[var(--app-text)]">컬러 제외</span> : null}
     </div>
   </>;
 }

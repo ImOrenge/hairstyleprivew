@@ -92,7 +92,9 @@ test("the root layout gates page content through the Clerk generation boundary",
     "utf8",
   );
 
-  assert.match(layout, /<GenerationAuthBoundary>\s*\{children\}\s*<\/GenerationAuthBoundary>/);
+  assert.match(layout, /<GenerationAuthBoundary bypass=\{e2eHarnessEnabled\}>\s*\{children\}\s*<\/GenerationAuthBoundary>/);
+  assert.match(layout, /process\.env\.E2E_UI_HARNESS_ENABLED === "true"/);
+  assert.match(boundary, /bypass \|\| !hasClerkProvider/);
   assert.match(boundary, /useAuth\(\)/);
   assert.match(boundary, /bindGenerationOwner\(activeOwnerId\)/);
   assert.match(boundary, /generationOwnerId !== activeOwnerId/);
