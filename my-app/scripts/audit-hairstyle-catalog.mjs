@@ -271,6 +271,7 @@ assert(runtimeSmokeScript.includes("requireWriteConfirmation"), "runtime smoke r
 assert(runtimeSmokeScript.includes("adminAuthHeaders"), "runtime smoke runner must support service-role admin fallback");
 assert(runtimeSmokeScript.includes("HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL"), "runtime smoke runner must support target confirmation env");
 assert(runtimeSmokeScript.includes("beforeActiveCycleId === afterActiveCycleId"), "runtime smoke dry-run must verify active cycle is unchanged");
+assert(runtimeSmokeScript.includes("expectedRssTransport"), "runtime smoke dry-run must support RSS transport evidence");
 assert(runtimeSmokeScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime smoke alert query must use service role env");
 assert(runtimeSmokeScript.includes(".env.assets"), "runtime smoke runner must load asset/runtime env file copied from the main worktree");
 assert(runtimeSmokeScript.includes("readLinkedProjectRef"), "runtime smoke runner must derive Supabase URL from linked project ref");

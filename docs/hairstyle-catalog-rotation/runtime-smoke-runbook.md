@@ -18,6 +18,7 @@
 | edge function base URL | Supabase functions base URL | post-rotation mail cron 대상 |
 | edge function headers | `Authorization`, `apikey` | post-rotation mail cron이 service role key를 두 header에 모두 넣어 호출한다. |
 | edge function auth | `verify_jwt=false` + service-key 내부 검증 | 새 API key 형식과 pg_cron 호출을 모두 견디되, header 없이는 401로 차단한다. |
+| RSS proxy URL | `HAIRSTYLE_RSS_PROXY_URL` | Worker의 Google News RSS 요청을 내부 `hairstyle-rss-proxy`로 전달한다. |
 | remote check timeout | `HAIRSTYLE_CATALOG_REMOTE_CHECK_TIMEOUT_MS=120000` | Supabase CLI 지연 시 guard가 명확히 실패하도록 조정 가능 |
 | remote check lock | `my-app/supabase/.temp/hairstyle-catalog-remote-check.lock` | 같은 worktree에서 dry-run guard를 동시에 실행하지 않는다. |
 | runtime smoke target confirmation | `--confirmAppUrl=<app-url>` 또는 `HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL` | active 변경 가능 호출은 대상 URL 확인 없이는 실행하지 않는다. |
@@ -37,6 +38,8 @@
 | 4 | migration 적용 | `npm run hairstyle:catalog:remote:check -- --write` | active pointer, lineup, event RPC, cron helper가 생성된다. |
 | 5 | trend mail function deploy dry-run | `npm run hairstyle:catalog:trend-mail:deploy` | `verify_jwt=false`, `--no-verify-jwt`, 함수 내부 service-key auth, Deno check, deploy command를 원격 변경 없이 확인한다. |
 | 6 | trend mail function deploy | `npm run hairstyle:catalog:trend-mail:deploy -- --write` | `HAIRSTYLE_CATALOG_FUNCTION_DEPLOY_ALLOW_WRITE=1`과 project ref 확인 env가 있을 때만 `cron-trend-emails`를 배포한다. |
+| 6a | RSS proxy deploy dry-run | `npm run hairstyle:catalog:rss-proxy:deploy` | Google News host/path allowlist, service-key auth, response 상한, Deno check와 guarded deploy command를 확인한다. |
+| 6b | RSS proxy deploy | `npm run hairstyle:catalog:rss-proxy:deploy -- --write` | `HAIRSTYLE_RSS_PROXY_DEPLOY_ALLOW_WRITE=1`과 project ref 확인 env가 있을 때만 배포한다. |
 | 7 | launch readiness summary | `npm run hairstyle:catalog:launch:check -- --allowMissingExternal --summaryJson=my-app/supabase/.temp/hairstyle-launch-summary.json` | 로컬 감사, remote readiness, env, Cloudflare secret, trend mail deploy dry-run을 한 번에 실행하고 남은 외부 blocker를 확인한다. Runtime smoke는 `--runReadOnlyRuntimeSmoke`, admin dry-run POST는 `--runAdminDryRunSmoke`로 분리하고, prerequisite 실패 시 실행을 skip한다. 특정 cycle 검증은 `--cycleId=<id> --market=kr --expectAlert`를 함께 넘긴다. |
 | 8 | launch summary schema | `npm run hairstyle:catalog:launch:summary:check -- --path=my-app/supabase/.temp/hairstyle-launch-summary.json --expectBlocked --expectReadyForWrite=false` | summary JSON이 secret 없이 blocker/fatal 계약을 유지한다. |
 | 9 | cron 등록 | `select public.register_hairstyle_catalog_rotation_cron('<web-url>', '<admin-secret>', '<edge-base-url>', '<service-role-key>');` | `cron.job`에 rotation check와 post-rotation mail job이 존재한다. |
@@ -50,6 +53,8 @@
 | 17 | alert idempotency | `npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert` | `catalog_rotation` alert가 cycle당 1개만 존재한다. |
 | 18 | failure fallback | 강제 실패 조건에서 rebuild 호출 | failed cycle만 기록되고 기존 active cycle은 유지된다. |
 | 19 | post-rotation mail | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 기본은 due alert가 있으면 실제 메일 발송 방지를 위해 거부한다. 의도한 live smoke는 `--allowPendingAlerts --expectPendingCatalogAlert`를 붙이고, `processedAlerts`/`catalogRotationProcessed`와 delivery 중복 방지를 함께 확인한다. |
+| 20 | RSS proxy | `npm run hairstyle:catalog:runtime:smoke -- --mode=rss-proxy` | 실제 Google News feed에 item/source가 있고 인증·allowlist가 적용된다. |
+| 21 | Worker RSS dry-run | `npm run hairstyle:catalog:runtime:smoke -- --mode=dry-run --expectedRssTransport=supabase-edge --appUrl=<app-url>` | researched cycle validation을 통과하고 RSS transport가 proxy이며 active pointer가 바뀌지 않는다. |
 
 ## SQL 확인
 
@@ -73,6 +78,9 @@
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` | 스크립트 보강. 실제 Supabase service role과 cron status RPC 적용 필요 |
 | `npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function` | 스크립트 보강. `catalog_rotation` due alert 처리 증거와 delivery 중복을 확인한다. 실제 Supabase service role과 함수 URL 필요 |
 | `npm run hairstyle:catalog:trend-mail:deploy` | dry-run 통과. `cron-trend-emails` Deno check와 배포 guard 확인 |
+| `npm run hairstyle:catalog:rss-proxy:deploy` | dry-run과 실제 배포 통과. strict allowlist, 함수 내부 service-key auth, Deno check 확인 |
+| `npm run hairstyle:catalog:runtime:smoke -- --mode=rss-proxy` | item/source 각 80개. 무인증 401, 외부 host 400, GET 405 확인 |
+| production RSS dry-run | `supabase-edge`, 60 query 중 45 성공, 근거 3건, 182-row validation, active pointer 불변 |
 | `npm run hairstyle:catalog:remote:check` | 통과. `readyForWrite:false` |
 | `npm run hairstyle:catalog:remote:check` blocker detail | `blockingMigrationDetails`가 `202607030001_plan_credit_policy_aftercare.sql`의 local operations를 보여준다. 이 migration은 credit/aftercare 정책 쪽 변경이므로 헤어 migration write 전에 별도 적용 판단이 필요하다. |
 | `npm run hairstyle:catalog:env:check -- --appUrl=https://hairfit.beauty` | 메인 worktree env 복사 후 Supabase service role/Resend/public URL 통과. `INTERNAL_API_SECRET`는 placeholder라 admin/API smoke blocker |

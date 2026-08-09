@@ -98,6 +98,7 @@ Env or args:
   --expectedMode=shadow|live
   --expectedRolloutPercentage=0|10|50|100
   --expectReason=shadow|internal_allowlist|percentage_canary|percentage_control
+  --expectedRssTransport=direct|supabase-edge
   --market=kr
   --functionUrl=https://<project-ref>.functions.supabase.co/cron-trend-emails
   --rssProxyUrl=https://<project-ref>.supabase.co/functions/v1/hairstyle-rss-proxy
@@ -439,6 +440,14 @@ async function runDryRunSmoke() {
   assert(result.dryRun === true, "dry-run response must set dryRun=true");
   assert(result.activated === false, "dry-run must not activate a catalog cycle");
   assert(!result.trendAlertId, "dry-run must not enqueue a trend alert");
+  const expectedRssTransport = getArg("expectedRssTransport");
+  if (expectedRssTransport) {
+    assert(isObject(result.sourceSummary), "dry-run response missing sourceSummary");
+    assert(
+      result.sourceSummary.rssTransport === expectedRssTransport,
+      `dry-run RSS transport mismatch: expected=${expectedRssTransport}, got=${result.sourceSummary.rssTransport}`,
+    );
+  }
 
   const after = await adminRequest("/api/admin/hairstyles/cycles/latest");
   validateStatus(after);
@@ -455,6 +464,16 @@ async function runDryRunSmoke() {
     status: result.status,
     validation: result.validation,
     lineupCounts: result.lineupCounts,
+    rss: isObject(result.sourceSummary)
+      ? {
+          transport: result.sourceSummary.rssTransport ?? null,
+          queryCount: result.sourceSummary.queryCount ?? null,
+          querySuccessCount: result.sourceSummary.querySuccessCount ?? null,
+          queryFailureCount: result.sourceSummary.queryFailureCount ?? null,
+          documentsUsed: result.sourceSummary.documentsUsed ?? null,
+          qualityGateStatus: result.sourceSummary.qualityGateStatus ?? null,
+        }
+      : null,
   }, null, 2));
 }
 

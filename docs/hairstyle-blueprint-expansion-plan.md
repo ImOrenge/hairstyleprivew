@@ -1,9 +1,9 @@
 # Google News RSS 기반 헤어스타일 블루프린트 150개 확장 계획
 
 작성일: 2026-08-08
-상태: 원격 migration·코드 canary·A/B/C 카탈로그 rollout·rollback drill 완료, 개인화 실사용 표본 기반 10%→50%→100% 전환 대기
+상태: 원격 migration·A/B/C 카탈로그·RSS proxy·rollback drill 완료, 개인화 실사용 표본 기반 10%→50%→100% 전환 대기
 대상 시장: `kr`
-기준 브랜치: `main@6fe19e6`, 통합 후보 `develop/2026-08-08-hairstyle-blueprint-expansion@0dc5fd5`
+기준 브랜치: `main@6fe19e6`, RSS proxy 코드 `develop/2026-08-08-hairstyle-blueprint-expansion@d7095b4`
 연계 문서: [헤어스타일 카탈로그 순환 아키텍처](hairstyle-catalog-rotation-architecture.md)
 
 ## 1. 결정 요약
@@ -18,7 +18,7 @@
 | RSS 역할 | Google News RSS는 스타일 발견과 트렌드 점수 근거로 사용한다. 기사 제목만으로 블루프린트를 자동 게시하거나 화학 시술 안전성을 판단하지 않는다. |
 | 추천 방식 | 활성 cycle과 기존 lineup을 유지하되, 전체 활성 풀에서 현재 모발 호환 후보를 먼저 뽑고 lineup의 트렌드·회전 후보를 혼합해 9개를 만든다. |
 | 출시 방식 | 50개씩 3개 배치로 추가하고, 각 배치마다 정적 감사·프롬프트 샘플·shadow 추천을 통과한 뒤 다음 배치로 진행한다. |
-| 운영 경계 | 150개 데이터와 DB migration, web/mobile/salon 전달, 추천 로직, A/B/C active cycle, rollback flag는 운영에 반영됐다. 개인화는 실사용 표본이 0건이므로 `shadow/0%`를 유지하며, 10%→50%→100% live 전환은 표본 게이트를 통과한 뒤 수행한다. |
+| 운영 경계 | 150개 데이터와 DB migration, web/mobile/salon 전달, 추천 로직, A/B/C active cycle, RSS proxy, rollback flag는 운영에 반영됐다. 개인화는 실사용 표본이 0건이므로 `shadow/0%`를 유지하며, 10%→50%→100% live 전환은 표본 게이트를 통과한 뒤 수행한다. |
 
 ## 2. 현재 기준선과 해결할 문제
 
@@ -517,8 +517,8 @@ rollback drill은 `이전 active cycle 유지`, `9개 추천 반환`, `기존 32
 - [x] 선행 `20260722120000_google_play_billing.sql`과 `20260808090000_extend_hairstyle_blueprint_v4.sql`을 원격 적용하고 migration 정합성·v4 RPC runtime smoke를 통과한다.
 - [x] 배포된 코드에서 A/B/C active cycle shadow와 master-off/기존 32개 포인터 rollback drill 및 C 복구 증거가 남는다.
 - [ ] 개인화 실사용 표본을 확보해 내부 allowlist → 10% → 50% → 100%의 `personalization-metrics` 게이트를 통과한다. 현재 표본은 0건이며 `shadow/0%`다.
-- [ ] Cloudflare Worker 직접 Google News RSS 수집이 근거 0건으로 차단되는 egress 문제를 해소하고 자동 rotation 경로를 다시 검증한다. 현재 active C는 제어 실행 환경에서 60/60 RSS 성공 후 생성됐고, Worker 실패 시 기존 active cycle을 보존한다.
-- [ ] 위 두 운영 관측이 끝나기 전에는 전체 개인화 rollout을 완료로 표시하지 않는다.
+- [x] Cloudflare Worker의 Google News RSS egress를 service-role 인증 Supabase Edge proxy로 분리하고 자동 rotation과 같은 production dry-run 경로를 다시 검증한다. 60개 중 45개 query가 성공하고 근거 3건을 사용해 182-row validation을 통과했으며 기존 active C 포인터는 유지됐다.
+- [ ] 개인화 실사용 운영 관측이 끝나기 전에는 전체 개인화 rollout을 완료로 표시하지 않는다.
 
 로컬 UI 검증은 `/e2e-harness/hair-profile`의 HTTP 200과 길이·형태·굵기·상태 필드 SSR 출력을 확인했다. 자동 브라우저 런타임은 로컬 경로 오류로 연결되지 않아 스크린샷·클릭 상호작용 검증은 배포 전 잔여 항목으로 둔다.
 
@@ -546,3 +546,12 @@ rollback drill은 `이전 active cycle 유지`, `9개 추천 반환`, `기존 32
 - 복구 후 smoke: 182 rows, 남녀 후보 각 93, lineup 각 9, warning 0, 공개 페이지 10/10 정상.
 - 운영 편차: Cloudflare preview의 직접 Google News RSS 수집은 유효 근거 0건으로 fail-closed 됐다. A의 첫 제어 호출은 Windows `curl` JSON 인용 문제로 기본 활성화 요청으로 해석됐지만 82-row activation validation을 통과했고, 이후 B/C는 Node `fetch`의 명시적 `dryRun` 응답을 확인한 뒤 활성화했다.
 - 개인화 증거: 최종 C cycle의 generation/evaluated/selected 표본은 모두 0건이다. 따라서 내부·10%·50%·100% live 전환은 수행하지 않고 shadow를 유지한다.
+
+### 14.3 2026-08-09 RSS egress 복구와 최종 운영 증거
+
+- Supabase Edge Function: `hairstyle-rss-proxy`를 `dpzdhxlqnogfpubpslbf`에 배포했다. `verify_jwt=false` 대신 함수 내부에서 service role `apikey`/Bearer를 검증하고, `https://news.google.com/rss/search` 및 `q/hl/gl/ceid`만 허용한다.
+- 프록시 smoke: 정상 feed는 item/source 각 80개, 무인증 요청 401, 허용되지 않은 upstream 400, 잘못된 method 405를 반환했다.
+- Worker: `fba6c1fd-170d-4717-8bd8-53f432464912`를 기존 `08e7e3bb-d518-4ac6-bf57-b70fc97f6e50` 90%/신규 10% canary로 배포한 뒤 공개 페이지 30/30과 관리자 상태 30/30을 확인하고 신규 버전을 100%로 승격했다.
+- production 자동 경로 dry-run: `rssTransport=supabase-edge`, query 60개 중 성공 45·실패 15, 사용 근거 3건, `qualityGateStatus=warn`, 182 rows, 남녀 후보 각 93, lineup 각 9, prompt mismatch 0으로 통과했다. dry-run 전후 active cycle은 `d95d2899-a6e6-420d-9561-a8e9e4260ed9`로 동일하다.
+- 최종 DB: active C 182 rows, 남녀 후보 각 93, lineup 각 9, catalog rotation alert 0, delivery 0이다.
+- 개인화 표본은 generation/evaluated/selected 모두 0건이다. 따라서 안전한 운영값인 `shadow/0%`를 유지하고 실제 표본 없이 내부·10%·50%·100%를 강제하지 않는다.
