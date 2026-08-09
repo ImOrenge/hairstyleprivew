@@ -144,7 +144,7 @@ export function PricingPreview({
 
   const handlePlanClick = (planKey: PlanKey) => {
     if (planKey === "free") {
-      window.location.assign("/workspace");
+      window.location.assign("/consulting/new");
       return;
     }
 

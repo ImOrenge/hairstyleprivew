@@ -145,9 +145,9 @@ function buildCta(dashboard: CustomerHomeDashboard) {
 
   return {
     eyebrow: "새 작업",
-    title: "새 헤어 만들기",
-    description: "정면 사진 한 장으로 3x3 헤어 추천 보드를 시작하세요.",
-    href: "/workspace",
+    title: "AI 헤어 컨설턴트 시작",
+    description: "원하는 변화와 관리 조건을 정리하고 3x3 헤어 추천 보드까지 이어가세요.",
+    href: "/consulting/new",
     icon: Grid3X3,
   };
 }
@@ -369,14 +369,14 @@ export default async function CustomerHomePage() {
 
   const { accountSetupComplete, dashboard, viewerName } = await loadDashboard(userId);
   const secondaryCta = buildCta(dashboard);
-  const showSecondaryCta = secondaryCta.href !== "/workspace";
+  const showSecondaryCta = secondaryCta.href !== "/consulting/new";
   const CtaIcon = ImagePlus;
   const confirmedStyleItems = dashboard.recentConfirmedStyles.slice(0, 3);
   const stylingItems = dashboard.recentStylingSessions.slice(0, 3);
   const selectedHair = findSelectedHair(dashboard);
   const styleEmptyHref = selectedHair?.selectedVariantId
     ? `/styler/new?generationId=${encodeURIComponent(selectedHair.id)}&variant=${encodeURIComponent(selectedHair.selectedVariantId)}`
-    : "/workspace";
+    : "/consulting/new";
 
   return (
     <AppPage className="flex flex-col gap-5 pb-16">
@@ -426,17 +426,17 @@ export default async function CustomerHomePage() {
         <div className="grid gap-0 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
           <div className="flex min-h-64 flex-col justify-between bg-[var(--app-inverse)] p-5 text-[var(--app-inverse-text)] sm:p-6">
             <div>
-              <p className="app-inverse-kicker">헤어스타일 생성</p>
-              <h2 className="mt-3 max-w-xl text-3xl font-black tracking-tight sm:text-4xl">사진 업로드로 새 헤어 만들기</h2>
+              <p className="app-inverse-kicker">AI 헤어 컨설턴트</p>
+              <h2 className="mt-3 max-w-xl text-3xl font-black tracking-tight sm:text-4xl">나에게 맞는 헤어 방향 상담 시작</h2>
               <p className="app-inverse-muted mt-3 max-w-xl text-sm leading-6 sm:text-base">
-                정면 사진 한 장으로 3x3 헤어 추천 보드를 바로 시작하세요.
+                원하는 변화, 현재 모발, 관리 조건을 먼저 정리하고 3x3 헤어 추천 보드까지 이어가세요.
               </p>
             </div>
             <Link
-              href="/workspace"
+              href="/consulting/new"
               className="app-inverse-cta mt-6 inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] transition sm:w-auto"
             >
-              사진 업로드
+              AI 컨설팅 시작
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
             <Link
@@ -490,7 +490,7 @@ export default async function CustomerHomePage() {
 
           <div className="mt-5 grid gap-3">
             {confirmedStyleItems.length === 0 ? (
-              <EmptyCard href="/workspace" label="스타일 찾기" title="아직 시술 확정한 스타일이 없습니다." />
+              <EmptyCard href="/consulting/new" label="AI 컨설팅 시작" title="아직 시술 확정한 스타일이 없습니다." />
             ) : (
               confirmedStyleItems.map((item) => (
                 <Link

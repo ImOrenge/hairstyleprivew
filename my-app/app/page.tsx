@@ -218,10 +218,10 @@ function FinalCtaBlock() {
         9가지 헤어 후보를 먼저 비교하고, 선택한 헤어에 맞는 패션 코디까지 이어보세요.
       </p>
       <Link
-        href="/workspace"
+        href="/consulting/new"
         className="app-inverse-cta mt-7 inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold uppercase tracking-[0.04em] transition"
       >
-        무료로 내 스타일 보기
+        AI 헤어 컨설턴트 시작
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
     </InverseSection>
@@ -232,10 +232,10 @@ function MobileStickyCtaBar() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-2 lg:hidden">
       <Link
-        href="/workspace"
+        href="/consulting/new"
         className="flex w-full items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
       >
-        무료로 내 스타일 보기
+        AI 헤어 컨설턴트 시작
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
     </div>
@@ -321,10 +321,10 @@ export default async function HomePage() {
               HairFit은 AI 헤어스타일 미리보기 결과를 단순 합성 이미지로 끝내지 않고, 패션 코디와 상담 이미지로 이어가기 쉬운 기준으로 정리합니다.
             </p>
             <Link
-              href="/workspace"
+              href="/consulting/new"
               className="mt-6 inline-flex rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
             >
-              사진 한 장으로 시작하기
+              AI 헤어 컨설턴트 시작
             </Link>
           </Panel>
           <div className="grid gap-4 sm:grid-cols-2">

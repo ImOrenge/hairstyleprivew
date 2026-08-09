@@ -14,7 +14,7 @@ const ko = {
     "hero.subtitle": "정면 사진 한 장으로 9가지 헤어 후보를 비교하고, 선택한 헤어에 맞는 패션 코디까지 이어보세요. 첫 단계는 사진 업로드만으로 충분합니다.",
     "hero.supporting": "트렌드 사진을 그대로 복사하기보다 내 특징에 맞는 방향부터 확인하고, 길이와 볼륨, 무드를 이미지로 정리해 상담에 활용하세요.",
     "hero.socialProof": "+ {{count}} USERS",
-    "hero.cta.start": "사진 한 장으로 시작하기",
+    "hero.cta.start": "AI 헤어 컨설턴트 시작",
     "hero.cta.demo": "결과 예시 보기",
     "hero.gender.male": "남성",
     "hero.gender.female": "여성",

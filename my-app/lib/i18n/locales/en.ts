@@ -19,7 +19,7 @@ const en: Record<TranslationKey, string> = {
     "hero.subtitle": "Upload one front-facing photo to compare 9 hairstyle ideas, then continue into outfit recommendations matched to the hair you choose. The first step is just one photo.",
     "hero.supporting": "Instead of copying a trend photo, start with options that fit your own features and prepare the length, volume, and mood you want to explain with an image.",
     "hero.socialProof": "+ {{count}} USERS",
-    "hero.cta.start": "Start with one photo",
+    "hero.cta.start": "Start AI hair consultation",
     "hero.cta.demo": "See result examples",
     "hero.gender.male": "Male",
     "hero.gender.female": "Female",

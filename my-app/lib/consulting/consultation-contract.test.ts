@@ -46,6 +46,19 @@ test("feature flag off preserves workspace and legacy bridge remains available",
   assert.match(photo, /workspace\?legacy=1/);
 });
 
+test("customer entry CTAs point directly to the AI consultant while legacy remains an explicit bridge", () => {
+  const landing = read("../../app/page.tsx");
+  const hero = read("../../components/home/HeroSection.tsx");
+  const pricing = read("../../components/home/PricingPreview.tsx");
+  const customerHome = read("../../app/home/page.tsx");
+  for (const source of [landing, hero, pricing, customerHome]) {
+    assert.match(source, /\/consulting\/new/);
+  }
+  assert.match(landing, /AI 헤어 컨설턴트 시작/);
+  assert.match(customerHome, /AI 헤어 컨설턴트/);
+  assert.match(read("../../components/consulting/workbenches/PhotoWorkbench.tsx"), /workspace\?legacy=1/);
+});
+
 test("decision chain enforces accepted shortlist, finalist, immutable revision and actual-service lock", () => {
   const guards = read("./stage-guards.ts");
   const store = read("./server-store.ts");
