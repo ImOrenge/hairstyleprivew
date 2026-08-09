@@ -133,7 +133,32 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
   };
 
   const toggle = (id: string) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : current.length < 3 ? [...current, id] : current);
-  const ready = boardState === "ready" && acceptedCount === 9;
+  const canCompare = selected.length >= 2
+    && selected.length <= 3
+    && selected.every((id) => previews.some((preview) => preview.id === id && preview.status === "accepted"));
+
+  const saveShortlist = async () => {
+    if (!canCompare) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const v2Response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/shortlist`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ previewVariantIds: selected, expectedVersion: snapshot.version }),
+      });
+      const v2Error = (await v2Response.json().catch(() => ({}))) as { error?: string };
+      const v2Disabled = v2Response.status === 404 && v2Error.error === "HairFit V2 feature is disabled.";
+      if (!v2Disabled && !v2Response.ok) {
+        throw new Error(v2Error.error || "V2 shortlist를 저장하지 못했습니다.");
+      }
+      await mutate({ previews, shortlist: { previewIds: selected, updatedAt: new Date().toISOString() }, completeStage: "previews", currentStage: "compare" });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "shortlist를 저장하지 못했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return <div className="grid gap-5">
     <SurfaceCard className="flex flex-wrap items-center justify-between gap-4 p-5">
@@ -142,6 +167,6 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
     </SurfaceCard>
     {error ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}
     <div className="grid gap-5 lg:grid-cols-3">{(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => <Panel key={axis} className="p-4"><p className="app-kicker">{axis}</p><div className="mt-4 grid gap-3">{previews.filter((item) => item.axis === axis).map((preview) => <button key={preview.id} type="button" disabled={preview.status !== "accepted"} onClick={() => toggle(preview.id)} aria-pressed={selected.includes(preview.id)} className={`overflow-hidden border text-left ${selected.includes(preview.id) ? "border-[var(--app-border-strong)] ring-2 ring-[var(--app-ring)]" : "border-[var(--app-border)]"} disabled:opacity-55`}><div className="aspect-[4/5] bg-[var(--app-surface-muted)]">{preview.imageUrl ? <img src={preview.imageUrl} alt={preview.label} className="h-full w-full object-cover" decoding="async" loading="lazy" /> : <div className="flex h-full items-center justify-center p-4 text-center text-xs text-[var(--app-muted)]">{preview.status === "failed" ? "품질 검사 실패" : preview.status === "generating" ? "AI 생성 및 품질 검사 중" : "결과 대기 중"}</div>}</div><div className="p-3"><p className="font-black">{preview.label}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--app-muted)]">{preview.reason}</p></div></button>)}</div></Panel>)}</div>
-    <SurfaceCard className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-black">Shortlist {selected.length} / 3</p><p className="mt-1 text-sm text-[var(--app-muted)]">9개가 모두 준비되면 최소 2개, 최대 3개를 선택하세요.</p></div><SaveStageButton loading={saving} disabled={!ready || selected.length < 2 || selected.length > 3} onClick={() => void mutate({ previews, shortlist: { previewIds: selected, updatedAt: new Date().toISOString() }, completeStage: "previews", currentStage: "compare" })}>선택한 후보 비교하기</SaveStageButton></SurfaceCard>
+    <SurfaceCard className="flex flex-wrap items-center justify-between gap-4 p-5"><div><p className="font-black">Shortlist {selected.length} / 3</p><p className="mt-1 text-sm text-[var(--app-muted)]">품질 검사를 통과한 결과 중 최소 2개, 최대 3개를 선택하세요. 나머지 결과가 생성 중이어도 비교를 시작할 수 있습니다.</p></div><SaveStageButton loading={saving || loading} disabled={!canCompare} onClick={() => void saveShortlist()}>선택한 후보 비교하기</SaveStageButton></SurfaceCard>
   </div>;
 }

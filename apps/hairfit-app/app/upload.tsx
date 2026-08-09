@@ -10,7 +10,7 @@ import {
   validateGenerationUploadMetadata,
   type PersonalColorResult,
 } from "@hairfit/shared";
-import { type Href, useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { BodyText, Button, Card, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
 import { AppScreen } from "../components/app/AppScreen";
 import { useHairfitApi } from "../lib/api";
@@ -23,6 +23,10 @@ import { usePhotoLibraryPermissionRecovery } from "../hooks/usePhotoLibraryPermi
 
 export default function UploadScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ consultationId?: string | string[] }>();
+  const consultationId = Array.isArray(params.consultationId)
+    ? params.consultationId[0] ?? ""
+    : params.consultationId ?? "";
   const api = useHairfitApi();
   const { isLoaded, isSignedIn } = useAuth();
   const flow = useGenerationFlow();
@@ -49,7 +53,7 @@ export default function UploadScreen() {
   }, [showMessage]);
   const navigateBack = useSafeBackNavigation({
     blocked: isUploadingPortrait,
-    fallback: "/",
+    fallback: consultationId ? "/consulting" : "/",
     onBlocked: explainBlockedBack,
   });
   const handleOpenPermissionSettings = useCallback(async () => {
@@ -61,6 +65,20 @@ export default function UploadScreen() {
       opened ? "polite" : "assertive",
     );
   }, [openPermissionSettings, showMessage]);
+
+  const analyzeForConsultation = useCallback(async (draftId: string) => {
+    if (!consultationId) return;
+    showMessage("서버가 사진 품질을 검사하고 얼굴 랜드마크와 AI 상담 근거를 분석하고 있습니다.");
+    const current = await api.getV2Consultation(consultationId);
+    const result = await api.analyzeV2ConsultationPhoto({
+      consultationId,
+      draftId,
+      expectedVersion: current.consultation.version,
+    });
+    if (result.requiresRetry || !result.evidenceId) {
+      throw new Error(result.preflightMessage || "사진 사전검사를 통과하지 못했습니다.");
+    }
+  }, [api, consultationId, showMessage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -268,13 +286,16 @@ export default function UploadScreen() {
         clientRequestId,
         referenceImageDataUrl: dataUrl,
       });
+      await analyzeForConsultation(receipt.draftId);
       flow.setDraftReceipt({
         draftId: receipt.draftId,
         clientRequestId: receipt.clientRequestId,
         uploadedAt: receipt.uploadedAt,
         expiresAt: receipt.expiresAt,
       });
-      showMessage("사진 보안 업로드가 완료되었습니다. 이제 작은 생성 접수 명령만 남았습니다.");
+      showMessage(consultationId
+        ? "사진 보안 업로드, 시스템 검사, 얼굴 랜드마크와 AI 분석이 완료되었습니다."
+        : "사진 보안 업로드가 완료되었습니다. 이제 작은 생성 접수 명령만 남았습니다.");
     } catch (error) {
       showMessage(mapMobileUserError(
         error,
@@ -296,13 +317,16 @@ export default function UploadScreen() {
         clientRequestId,
         referenceImageDataUrl: flow.imageDataUrl,
       });
+      await analyzeForConsultation(receipt.draftId);
       flow.setDraftReceipt({
         draftId: receipt.draftId,
         clientRequestId: receipt.clientRequestId,
         uploadedAt: receipt.uploadedAt,
         expiresAt: receipt.expiresAt,
       });
-      showMessage("사진 보안 업로드가 완료되었습니다. 생성 접수를 시작할 수 있습니다.");
+      showMessage(consultationId
+        ? "사진 보안 업로드와 AI 분석이 완료되었습니다. 3×3 생성 접수를 시작할 수 있습니다."
+        : "사진 보안 업로드가 완료되었습니다. 생성 접수를 시작할 수 있습니다.");
     } catch (error) {
       showMessage(mapMobileUserError(
         error,
@@ -388,7 +412,9 @@ export default function UploadScreen() {
           ) : null}
           <Button
             disabled={!flow.draftReceiptHydrated || !flow.draftReceipt || isUploadingPortrait}
-            onPress={() => router.push("/generate")}
+            onPress={() => router.push((consultationId
+              ? `/generate?consultationId=${encodeURIComponent(consultationId)}`
+              : "/generate") as Href)}
           >
             {flow.draftReceipt ? "접수 준비 완료 · 생성 단계로" : "사진 업로드 후 계속"}
           </Button>

@@ -9,7 +9,7 @@ import {
   type PaidActionQuoteErrorCode,
 } from "@hairfit/shared";
 import { BodyText, Button, Card, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
-import { useRouter } from "expo-router";
+import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { View } from "react-native";
 import { AppScreen } from "../components/app/AppScreen";
@@ -86,6 +86,10 @@ interface AcceptedGenerationGuideState {
 
 export default function GenerateScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ consultationId?: string | string[] }>();
+  const consultationId = Array.isArray(params.consultationId)
+    ? params.consultationId[0] ?? ""
+    : params.consultationId ?? "";
   const api = useHairfitApi();
   const flow = useGenerationFlow();
   const [isAccepting, setIsAccepting] = useState(false);
@@ -108,7 +112,9 @@ export default function GenerateScreen() {
   }, [showMessage]);
   const navigateBack = useSafeBackNavigation({
     blocked: isAccepting,
-    fallback: acceptedGeneration ? "/mypage" : "/upload",
+    fallback: acceptedGeneration
+      ? consultationId ? "/consulting" : "/mypage"
+      : consultationId ? `/upload?consultationId=${encodeURIComponent(consultationId)}` as Href : "/upload",
     mode: acceptedGeneration ? "replace" : "history",
     onBlocked: explainBlockedBack,
   });
@@ -194,7 +200,9 @@ export default function GenerateScreen() {
     setIsAccepting(true);
     showMessage("생성 작업을 안전하게 접수하고 있습니다. 접수 영수증이 표시될 때까지 앱을 유지해 주세요.");
     try {
-      const accepted = await api.acceptGenerationDraft(receipt.draftId, quote.quoteId);
+      const accepted = consultationId
+        ? await api.acceptGenerationDraft(receipt.draftId, quote.quoteId, consultationId)
+        : await api.acceptGenerationDraft(receipt.draftId, quote.quoteId);
       if (!accepted.generationId || !accepted.acceptedAt) {
         throw new Error("생성 접수 영수증이 완전하지 않습니다.");
       }
@@ -291,6 +299,7 @@ export default function GenerateScreen() {
         <Button onPress={() => router.push(`/generate/${acceptedGeneration.generationId}`)}>
           작업 현황 보기
         </Button>
+        {consultationId ? <Button onPress={() => router.replace("/consulting")}>AI 상담 진행 보기</Button> : null}
         <Button variant="secondary" onPress={() => router.replace("/")}>
           홈으로 이동
         </Button>
@@ -327,7 +336,9 @@ export default function GenerateScreen() {
                 <Kicker>사진 업로드 필요</Kicker>
                 <Heading>사진 보안 업로드가 필요합니다</Heading>
                 <BodyText>사진을 선택하고 업로드 완료 영수증을 받은 뒤 생성을 시작해 주세요.</BodyText>
-                <Button onPress={() => router.replace("/upload")}>사진 선택</Button>
+                <Button onPress={() => router.replace((consultationId
+                  ? `/upload?consultationId=${encodeURIComponent(consultationId)}`
+                  : "/upload") as Href)}>사진 선택</Button>
               </Stack>
             </Card>
           ) : (

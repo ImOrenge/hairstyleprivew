@@ -2,12 +2,18 @@ import "server-only";
 
 import type {
   AftercareProgramV2,
+  FashionPreviewCandidateV2,
   FashionPreviewSetV2,
   SalonBriefV2,
   StyleSelectionSnapshotV2,
 } from "@hairfit/shared/v2";
 import { randomUUID } from "node:crypto";
 import { getSupabaseAdminClient } from "../supabase";
+import {
+  STYLING_RESULTS_BUCKET,
+  createSignedUrl,
+  type ServerSupabaseLike,
+} from "../style-profile-server";
 import { HairfitV2Error } from "./errors";
 
 type ConfirmedSelection = {
@@ -193,13 +199,17 @@ export async function createFashionPreviewSetV2(input: {
   userId: string;
   consultationId: string;
   idempotencyKey: string;
-  previewIds: string[];
+  stylingSessionIds: string[];
+  selectedStylingSessionId: string;
   personalColorEvidenceId?: string | null;
 }) {
   validateIdempotencyKey(input.idempotencyKey);
-  const previewIds = [...new Set(input.previewIds.map((item) => item.trim()).filter(Boolean))].slice(0, 20);
-  if (!previewIds.length) {
-    throw new HairfitV2Error("FASHION_PREVIEW_EMPTY", 400, "연결할 패션 프리뷰가 없습니다.");
+  const stylingSessionIds = [...new Set(input.stylingSessionIds.map((item) => item.trim()).filter(Boolean))];
+  if (stylingSessionIds.length < 2 || stylingSessionIds.length > 3) {
+    throw new HairfitV2Error("FASHION_SHORTLIST_SIZE_INVALID", 400, "완료된 패션 프리뷰를 2~3개 선택해 주세요.");
+  }
+  if (!stylingSessionIds.includes(input.selectedStylingSessionId)) {
+    throw new HairfitV2Error("FASHION_SELECTION_INVALID", 400, "최종 룩은 shortlist 안에서 선택해 주세요.");
   }
   const db = getSupabaseAdminClient();
   const replay = await db
@@ -211,6 +221,32 @@ export async function createFashionPreviewSetV2(input: {
   if (replay.error) throw new Error(replay.error.message);
   if (replay.data) return (replay.data as unknown as { preview_set: FashionPreviewSetV2 }).preview_set;
   const selection = await confirmedSelection(input.userId, input.consultationId);
+  const sessions = await db
+    .from("styling_sessions")
+    .select("id,selection_snapshot_id,status,generated_image_path")
+    .in("id", stylingSessionIds)
+    .eq("user_id", input.userId)
+    .eq("consultation_id", input.consultationId)
+    .eq("selection_snapshot_id", selection.id)
+    .eq("source_mode", "v2_selection")
+    .eq("status", "completed");
+  if (sessions.error) throw new Error(sessions.error.message);
+  const completedSessions = (sessions.data ?? []) as unknown as Array<{
+    id: string;
+    selection_snapshot_id: string;
+    status: string;
+    generated_image_path: string | null;
+  }>;
+  if (
+    completedSessions.length !== stylingSessionIds.length
+    || completedSessions.some((session) => !session.generated_image_path)
+  ) {
+    throw new HairfitV2Error(
+      "FASHION_PREVIEW_NOT_COMPLETED",
+      409,
+      "현재 확정 헤어를 사용해 생성이 완료된 패션 프리뷰만 선택할 수 있습니다.",
+    );
+  }
   if (input.personalColorEvidenceId) {
     const color = await db
       .from("personal_color_evidence_v2")
@@ -229,7 +265,8 @@ export async function createFashionPreviewSetV2(input: {
     selectionSnapshotId: selection.id,
     personalColorEvidenceId: input.personalColorEvidenceId ?? null,
     selectedHairSnapshotId: selection.id,
-    previewIds,
+    stylingSessionIds,
+    selectedStylingSessionId: input.selectedStylingSessionId,
     version,
     createdAt: new Date().toISOString(),
   };
@@ -246,4 +283,59 @@ export async function createFashionPreviewSetV2(input: {
   if (inserted.error) throw new Error(inserted.error.message);
   await transitionOutputState(input.userId, input.consultationId, "fashion_ready");
   return previewSet;
+}
+
+export async function getFashionPreviewStateV2(userId: string, consultationId: string) {
+  const db = getSupabaseAdminClient();
+  const selection = await confirmedSelection(userId, consultationId);
+  const [sessions, latestSet] = await Promise.all([
+    db
+      .from("styling_sessions")
+      .select("id,selection_snapshot_id,genre,recommendation,status,generated_image_path,error_message,created_at,updated_at")
+      .eq("user_id", userId)
+      .eq("consultation_id", consultationId)
+      .eq("selection_snapshot_id", selection.id)
+      .eq("source_mode", "v2_selection")
+      .order("created_at", { ascending: false }),
+    db
+      .from("fashion_preview_sets_v2")
+      .select("preview_set")
+      .eq("user_id", userId)
+      .eq("consultation_id", consultationId)
+      .eq("selection_snapshot_id", selection.id)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+  if (sessions.error) throw new Error(sessions.error.message);
+  if (latestSet.error) throw new Error(latestSet.error.message);
+
+  const signingClient = db as unknown as ServerSupabaseLike;
+  const previews: FashionPreviewCandidateV2[] = await Promise.all(
+    ((sessions.data ?? []) as unknown as Array<Record<string, unknown>>).map(async (session) => {
+      const recommendation = session.recommendation && typeof session.recommendation === "object"
+        ? session.recommendation as Record<string, unknown>
+        : {};
+      const imagePath = typeof session.generated_image_path === "string" ? session.generated_image_path : null;
+      return {
+        stylingSessionId: String(session.id),
+        selectionSnapshotId: String(session.selection_snapshot_id),
+        genre: typeof session.genre === "string" ? session.genre : "unknown",
+        status: typeof session.status === "string" ? session.status : "unknown",
+        headline: typeof recommendation.headline === "string" ? recommendation.headline : "패션 프리뷰",
+        summary: typeof recommendation.summary === "string" ? recommendation.summary : "",
+        imageUrl: await createSignedUrl(signingClient, STYLING_RESULTS_BUCKET, imagePath),
+        errorMessage: typeof session.error_message === "string" ? session.error_message : null,
+        createdAt: typeof session.created_at === "string" ? session.created_at : new Date().toISOString(),
+        updatedAt: typeof session.updated_at === "string" ? session.updated_at : null,
+      };
+    }),
+  );
+
+  return {
+    previews,
+    previewSet: latestSet.data
+      ? (latestSet.data as unknown as { preview_set: FashionPreviewSetV2 }).preview_set
+      : null,
+  };
 }

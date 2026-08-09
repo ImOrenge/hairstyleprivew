@@ -57,6 +57,8 @@ import type {
   PreviewBoardV2,
   SalonBriefV2,
   AftercareProgramV2,
+  AnalysisEvidenceV2,
+  FashionPreviewCandidateV2,
   FashionPreviewSetV2,
   StyleSelectionSnapshotV2,
 } from "@hairfit/shared";
@@ -827,6 +829,38 @@ export class HairfitApiClient {
     );
   }
 
+  analyzeV2ConsultationPhoto(input: {
+    consultationId: string;
+    draftId: string;
+    expectedVersion: number;
+  }) {
+    return this.request<{
+      requiresRetry: boolean;
+      evidenceId?: string;
+      quality?: Array<{ id: string; status: string; message: string }>;
+      preflightMessage?: string;
+    }>(
+      `/api/consultations/${encodeURIComponent(input.consultationId)}/photo-analysis`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          draftId: input.draftId,
+          expectedVersion: input.expectedVersion,
+        }),
+      },
+    );
+  }
+
+  getV2AnalysisEvidence(consultationId: string) {
+    return this.request<{
+      evidence: AnalysisEvidenceV2;
+      sourceImageUrl: string | null;
+      overlayEnabled: boolean;
+    }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/evidence`,
+    );
+  }
+
   attachV2ConsultationPhoto(consultationId: string, generationId: string, expectedVersion: number) {
     return this.request<{ consultation: ConsultationSessionV2 }>(
       `/api/v2/consultations/${encodeURIComponent(consultationId)}/photo`,
@@ -847,10 +881,30 @@ export class HairfitApiClient {
     );
   }
 
+  getV2Shortlist(consultationId: string) {
+    return this.request<{
+      shortlist: {
+        consultationId: string;
+        boardId: string;
+        previewVariantIds: string[];
+        version: number;
+        updatedAt: string | null;
+      };
+    }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/shortlist`,
+    );
+  }
+
   selectV2Style(consultationId: string, previewVariantId: string, expectedVersion: number) {
     return this.request<{ selection: StyleSelectionSnapshotV2 }>(
       `/api/v2/consultations/${encodeURIComponent(consultationId)}/selection`,
       { method: "POST", body: JSON.stringify({ previewVariantId, expectedVersion }) },
+    );
+  }
+
+  getV2Selection(consultationId: string) {
+    return this.request<{ selection: StyleSelectionSnapshotV2 }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/selection`,
     );
   }
 
@@ -888,7 +942,8 @@ export class HairfitApiClient {
   createV2FashionPreviews(input: {
     consultationId: string;
     idempotencyKey: string;
-    previewIds: string[];
+    stylingSessionIds: string[];
+    selectedStylingSessionId: string;
     personalColorEvidenceId?: string | null;
   }) {
     return this.request<{ previewSet: FashionPreviewSetV2 }>(
@@ -898,6 +953,16 @@ export class HairfitApiClient {
         headers: { "Idempotency-Key": input.idempotencyKey },
         body: JSON.stringify(input),
       },
+    );
+  }
+
+  getV2FashionPreviews(consultationId: string) {
+    return this.request<{
+      previews: FashionPreviewCandidateV2[];
+      previewSet: FashionPreviewSetV2 | null;
+    }>(
+      `/api/v2/consultations/${encodeURIComponent(consultationId)}/fashion-previews`,
+      { method: "GET" },
     );
   }
 

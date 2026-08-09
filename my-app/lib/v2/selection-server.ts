@@ -28,6 +28,11 @@ async function ownedSession(userId: string, consultationId: string) {
   return data as unknown as SessionRow;
 }
 
+function acceptsCompatibilityVersion(session: SessionRow, expectedVersion: number) {
+  const snapshotVersion = Number((session.snapshot as { version?: unknown } | null)?.version);
+  return session.version === expectedVersion || snapshotVersion === expectedVersion;
+}
+
 export async function saveShortlistV2(input: {
   userId: string;
   consultationId: string;
@@ -35,15 +40,15 @@ export async function saveShortlistV2(input: {
   expectedVersion: number;
 }) {
   const uniqueIds = [...new Set(input.previewVariantIds)];
-  if (uniqueIds.length < 1 || uniqueIds.length > 3) {
-    throw new HairfitV2Error("SHORTLIST_SIZE_INVALID", 400, "shortlist는 1개 이상 3개 이하여야 합니다.");
+  if (uniqueIds.length < 2 || uniqueIds.length > 3) {
+    throw new HairfitV2Error("SHORTLIST_SIZE_INVALID", 400, "shortlist는 2개 이상 3개 이하여야 합니다.");
   }
   const session = await ownedSession(input.userId, input.consultationId);
-  if (session.version !== input.expectedVersion) {
+  if (!acceptsCompatibilityVersion(session, input.expectedVersion)) {
     throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "상담이 다른 위치에서 변경되었습니다.");
   }
-  if (!["preview_board_ready", "shortlisted"].includes(session.lifecycle_state)) {
-    throw new HairfitV2Error("PREVIEW_BOARD_NOT_READY", 409, "완료된 프리뷰 보드에서만 shortlist를 만들 수 있습니다.");
+  if (!["preview_board_queued", "preview_board_ready", "shortlisted"].includes(session.lifecycle_state)) {
+    throw new HairfitV2Error("PREVIEW_BOARD_NOT_READY", 409, "품질을 통과한 프리뷰가 준비된 상담에서만 shortlist를 만들 수 있습니다.");
   }
   const db = getSupabaseAdminClient();
   const { data: variants, error } = await db
@@ -53,12 +58,14 @@ export async function saveShortlistV2(input: {
     .eq("user_id", input.userId)
     .eq("status", "accepted")
     .eq("preview_boards_v2.consultation_id", input.consultationId)
-    .eq("preview_boards_v2.state", "ready");
+    .in("preview_boards_v2.state", ["generating", "ready"]);
   if (error) throw new Error(error.message);
-  if ((variants ?? []).length !== uniqueIds.length) {
+  const variantRows = (variants ?? []) as unknown as Array<{ board_id: string }>;
+  const boardIds = new Set(variantRows.map((variant) => String(variant.board_id)));
+  if (variantRows.length !== uniqueIds.length || boardIds.size !== 1) {
     throw new HairfitV2Error("SHORTLIST_VARIANT_INVALID", 400, "수락된 동일 보드의 결과만 shortlist에 넣을 수 있습니다.");
   }
-  const boardId = String((variants?.[0] as unknown as { board_id: string }).board_id);
+  const boardId = String(variantRows[0]?.board_id);
   const current = await db
     .from("consultation_shortlists_v2")
     .select("version")
@@ -77,16 +84,62 @@ export async function saveShortlistV2(input: {
     { onConflict: "consultation_id" },
   );
   if (shortlist.error) throw new Error(shortlist.error.message);
-  if (session.lifecycle_state === "preview_board_ready") {
+  const board = await db
+    .from("preview_boards_v2")
+    .select("entitlement_consumption_id")
+    .eq("id", boardId)
+    .eq("consultation_id", input.consultationId)
+    .eq("user_id", input.userId)
+    .single();
+  if (board.error) throw new Error(board.error.message);
+  const consumptionId = (board.data as { entitlement_consumption_id: unknown }).entitlement_consumption_id;
+  if (typeof consumptionId !== "string" || !consumptionId) {
+    throw new HairfitV2Error("ENTITLEMENT_CONSUMPTION_NOT_FOUND", 409, "프리뷰 처리량 예약을 확인하지 못했습니다.");
+  }
+  const consumption = await db
+    .from("entitlement_consumptions_v2")
+    .update({ state: "consumed", settled_at: new Date().toISOString() })
+    .eq("id", consumptionId)
+    .eq("user_id", input.userId)
+    .eq("state", "reserved");
+  if (consumption.error) throw new Error(consumption.error.message);
+  let consultationVersion = session.version;
+  if (["preview_board_queued", "preview_board_ready"].includes(session.lifecycle_state)) {
     const transition = await db.rpc("transition_consultation_v2", {
       p_user_id: input.userId,
       p_consultation_id: input.consultationId,
-      p_expected_version: input.expectedVersion,
+      p_expected_version: session.version,
       p_next_state: "shortlisted",
     });
     if (transition.error) throw new Error(transition.error.message);
+    const transitionResult = transition.data as { state?: string; version?: number } | null;
+    if (transitionResult?.state === "conflict") {
+      throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "상담이 다른 위치에서 변경되었습니다.");
+    }
+    consultationVersion = Number(transitionResult?.version ?? session.version + 1);
   }
-  return { consultationId: input.consultationId, boardId, previewVariantIds: uniqueIds };
+  return { consultationId: input.consultationId, boardId, previewVariantIds: uniqueIds, consultationVersion };
+}
+
+export async function getShortlistV2(userId: string, consultationId: string) {
+  const result = await getSupabaseAdminClient()
+    .from("consultation_shortlists_v2")
+    .select("consultation_id,board_id,preview_variant_ids,version,updated_at")
+    .eq("consultation_id", consultationId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  if (!result.data) return null;
+  const row = result.data as unknown as Record<string, unknown>;
+  return {
+    consultationId: String(row.consultation_id),
+    boardId: String(row.board_id),
+    previewVariantIds: Array.isArray(row.preview_variant_ids)
+      ? row.preview_variant_ids.filter((item): item is string => typeof item === "string")
+      : [],
+    version: Number(row.version),
+    updatedAt: typeof row.updated_at === "string" ? row.updated_at : null,
+  };
 }
 
 export async function selectStyleV2(input: {
@@ -96,10 +149,10 @@ export async function selectStyleV2(input: {
   expectedVersion: number;
 }) {
   const session = await ownedSession(input.userId, input.consultationId);
-  if (session.version !== input.expectedVersion) {
+  if (!acceptsCompatibilityVersion(session, input.expectedVersion)) {
     throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "상담이 다른 위치에서 변경되었습니다.");
   }
-  if (!["preview_board_ready", "shortlisted", "style_selected"].includes(session.lifecycle_state)) {
+  if (!["preview_board_queued", "preview_board_ready", "shortlisted", "style_selected"].includes(session.lifecycle_state)) {
     throw new HairfitV2Error("SELECTION_NOT_ALLOWED", 409, "현재 상담 상태에서는 스타일을 선택할 수 없습니다.");
   }
   const db = getSupabaseAdminClient();
@@ -208,7 +261,7 @@ export async function selectStyleV2(input: {
     p_preview_variant_id: input.previewVariantId,
     p_snapshot_id: snapshotId,
     p_snapshot_version: snapshotVersion,
-    p_expected_version: input.expectedVersion,
+    p_expected_version: session.version,
     p_snapshot: snapshot,
   });
   if (drafted.error) throw new HairfitV2Error("SELECTION_DRAFT_FAILED", 409, "선택 상태가 변경되어 저장하지 못했습니다.");
@@ -221,7 +274,10 @@ export async function selectStyleV2(input: {
     eventType: "selection.drafted",
     payload: { snapshotId, snapshotVersion, previewVariantId: input.previewVariantId },
   });
-  return snapshot;
+  return {
+    snapshot,
+    consultationVersion: Number((drafted.data as { version?: unknown } | null)?.version ?? session.version + 1),
+  };
 }
 
 export async function confirmStyleSelectionV2(input: {
@@ -243,12 +299,15 @@ export async function confirmStyleSelectionV2(input: {
 export async function getSelectionSnapshotV2(userId: string, consultationId: string) {
   const { data, error } = await getSupabaseAdminClient()
     .from("style_selection_snapshots_v2")
-    .select("snapshot")
+    .select("snapshot,status,confirmed_at")
     .eq("consultation_id", consultationId)
     .eq("user_id", userId)
     .order("snapshot_version", { ascending: false })
     .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data as { snapshot?: StyleSelectionSnapshotV2 } | null)?.snapshot ?? null;
+  const row = data as { snapshot?: StyleSelectionSnapshotV2; status?: StyleSelectionSnapshotV2["status"]; confirmed_at?: string | null } | null;
+  return row?.snapshot
+    ? { ...row.snapshot, status: row.status ?? row.snapshot.status, confirmedAt: row.confirmed_at ?? row.snapshot.confirmedAt }
+    : null;
 }

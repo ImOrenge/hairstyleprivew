@@ -25,8 +25,9 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "previewVariantId와 expectedVersion을 확인해 주세요." }, { status: 400 });
   }
   try {
-    return NextResponse.json({ selection: await selectStyleV2({
+    const result = await selectStyleV2({
       userId, consultationId, previewVariantId: body.previewVariantId, expectedVersion: body.expectedVersion as number,
-    }) }, { status: 201 });
+    });
+    return NextResponse.json({ selection: result.snapshot, consultationVersion: result.consultationVersion }, { status: 201 });
   } catch (error) { return v2Failure(error); }
 }

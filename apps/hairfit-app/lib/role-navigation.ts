@@ -12,7 +12,7 @@ export interface RoleNavigationItem {
 
 const customerItems: readonly RoleNavigationItem[] = [
   { activePaths: ["/"], exact: true, href: "/", label: "홈" },
-  { activePaths: ["/upload", "/workspace"], href: "/upload", label: "생성" },
+  { activePaths: ["/consulting", "/upload", "/workspace"], href: "/consulting", label: "상담" },
   { activePaths: ["/mypage"], href: "/mypage", label: "기록" },
   { activePaths: ["/account"], href: "/account", label: "계정" },
 ];
@@ -34,6 +34,7 @@ const navigationHiddenPrefixes = [
   "/login",
   "/signup",
   "/sso-callback",
+  "/consulting",
   "/upload",
   "/workspace",
   "/generate",

@@ -19,6 +19,7 @@ test("consultation state is server-owned and guarded by optimistic concurrency",
   const route = read("../../app/api/consultations/[sessionId]/route.ts");
   assert.match(store, /from\("consultation_sessions"\)/);
   assert.match(store, /current\.version !== patch\.expectedVersion/);
+  assert.match(store, /storedSnapshotVersion !== patch\.expectedVersion/);
   assert.match(store, /eq\("version", current\.version\)/);
   assert.match(store, /STYLE_LOCKED/);
   assert.match(route, /status === "conflict"/);
@@ -48,6 +49,21 @@ test("feature flag off preserves workspace while consulting photo uses the direc
   assert.doesNotMatch(photo, /workspace\?legacy=1/);
 });
 
+test("structured discovery options persist into the V2 generation prompt contract", () => {
+  const contracts = read("../../../packages/shared/src/consulting/contract.ts");
+  const discovery = read("../../components/consulting/workbenches/DiscoveryWorkbench.tsx");
+  const store = read("./server-store.ts");
+  const prompt = read("../v2/prompt-server.ts");
+  for (const field of ["purpose", "hairLength", "hairDensity", "strandThickness", "hairTexture", "damageLevel", "treatmentHistory", "allowedServices", "morningMinutes", "heatStyling", "salonCycleWeeks", "changeLevel"]) {
+    assert.match(contracts, new RegExp(field));
+    assert.match(store, new RegExp(`next\\.discovery\\.${field}`));
+    assert.match(prompt, new RegExp(`snapshot\\.discovery\\.${field}`));
+  }
+  assert.match(discovery, /Input Snapshot/);
+  assert.match(discovery, /가능한 시술 범위/);
+  assert.match(discovery, /충돌/);
+});
+
 test("customer entry CTAs point directly to the AI consultant while legacy remains an explicit bridge", () => {
   const landing = read("../../app/page.tsx");
   const hero = read("../../components/home/HeroSection.tsx");
@@ -70,10 +86,12 @@ test("photo analysis precedes strategy-confirmed V2 preview generation", () => {
   assert.match(photoRoute, /ANALYSIS_EVIDENCE_V2_ENABLED/);
   assert.match(photoRoute, /normalizePhotoFaceDetectionEvidence/);
   assert.match(analysisServer, /inspectConsultationPhotoPreflight/);
+  assert.match(analysisServer, /extractFaceLandmarkEvidence/);
   assert.match(analysisServer, /analyzeFaceForCatalog/);
   assert.ok(
-    analysisServer.indexOf("inspectConsultationPhotoPreflight") < analysisServer.indexOf("analyzeFaceForCatalog(imageDataUrl)"),
-    "system photo preflight must run before AI analysis",
+    analysisServer.indexOf("inspectConsultationPhotoPreflight") < analysisServer.indexOf("extractFaceLandmarkEvidence(imageDataUrl")
+      && analysisServer.indexOf("extractFaceLandmarkEvidence(imageDataUrl") < analysisServer.indexOf("analyzeFaceForCatalog(imageDataUrl)"),
+    "system photo preflight and landmark extraction must run before generative AI analysis",
   );
   assert.doesNotMatch(analysisServer, /qualityForAnalysis/);
   assert.match(analysisServer, /saveAnalysisEvidenceV2/);
@@ -90,6 +108,65 @@ test("photo analysis precedes strategy-confirmed V2 preview generation", () => {
   assert.match(previews, /\/preview-board/);
 });
 
+test("server-produced landmark evidence is persisted and rendered without client inference", () => {
+  const landmarkServer = read("./face-landmark-server.ts");
+  const analysisServer = read("../v2/analysis-server.ts");
+  const analysisRoute = read("../../app/api/v2/consultations/[consultationId]/analysis/route.ts");
+  const photoEvidence = read("../../components/consulting/photo/ConsultationPhotoEvidence.tsx");
+  const overlay = read("../../components/consulting/photo/FaceEvidenceOverlay.tsx");
+  const migration = read("../../../supabase/migrations/202608090002_hairfit_v2_analysis_landmarks.sql");
+  assert.match(landmarkServer, /MediaPipeFaceMesh/);
+  assert.match(landmarkServer, /runtime: "tfjs"/);
+  assert.match(landmarkServer, /buildFaceGeometryV2/);
+  assert.match(analysisServer, /landmarks:evidence\.landmarks/);
+  assert.match(analysisServer, /landmarks,contours,hairline,measurements/);
+  assert.match(analysisRoute, /analyzeConsultationPhoto/);
+  assert.match(analysisRoute, /normalizePhotoFaceDetectionEvidence/);
+  assert.doesNotMatch(analysisRoute, /AnalysisEvidenceV2|saveAnalysisEvidenceV2/);
+  assert.match(migration, /add column if not exists landmarks jsonb/);
+  assert.match(photoEvidence, /\/api\/v2\/consultations\/\$\{encodeURIComponent\(sessionId\)\}\/evidence/);
+  assert.match(photoEvidence, /FaceEvidenceOverlay/);
+  assert.match(overlay, /data-face-evidence-overlay/);
+  assert.match(overlay, /data-landmark-id/);
+  assert.match(overlay, /data-evidence-source/);
+  assert.doesNotMatch(photoEvidence, /tensorflow|MediaPipeFaceMesh|createDetector/);
+});
+
+test("photo analysis can advance before generation while scan review remains explicit", () => {
+  const guards = read("./stage-guards.ts");
+  const store = read("./server-store.ts");
+  const photoBlock = guards.slice(guards.indexOf("if (patch.photo"), guards.indexOf("if (patch.completeStage === \"scan\"") + 300);
+  assert.match(photoBlock, /patch\.photo\.draftId/);
+  assert.doesNotMatch(photoBlock, /patch\.photo\.generationId/);
+  assert.match(photoBlock, /patch\.completeStage === "photo"/);
+  assert.match(photoBlock, /new Set\(recommendations\.map/);
+  assert.match(photoBlock, /patch\.completeStage === "scan"/);
+  assert.match(photoBlock, /evidence\.pipelineStatus !== "reviewed"/);
+  assert.match(store, /assertPersistedPhotoGeometry/);
+  assert.match(store, /select\("id,landmarks,contours,measurements"\)/);
+  assert.match(store, /row\.landmarks\.length < 5/);
+});
+
+test("AI strategy recommendations remain linked to evidence through confirmation", () => {
+  const analysis = read("./photo-analysis-server.ts");
+  const photo = read("../../components/consulting/workbenches/PhotoWorkbench.tsx");
+  const direction = read("../../components/consulting/workbenches/DirectionWorkbench.tsx");
+  for (const axis of ["length", "fringe", "parting", "layerStart", "crownVolume", "sideVolume", "texture", "color"]) {
+    assert.match(analysis, new RegExp(`axis: "${axis}"`));
+  }
+  assert.match(photo, /strategyRecommendations: data\.strategyRecommendations/);
+  assert.match(direction, /Evidence ID/);
+  assert.match(direction, /Trade-off/);
+  assert.match(direction, /AI 추천/);
+});
+
+test("preview comparison permits two accepted results before the full board is ready", () => {
+  const previews = read("../../components/consulting/workbenches/PreviewsWorkbench.tsx");
+  assert.match(previews, /const canCompare = selected\.length >= 2/);
+  assert.doesNotMatch(previews, /acceptedCount === 9/);
+  assert.match(previews, /나머지 결과가 생성 중이어도 비교를 시작/);
+});
+
 test("decision chain enforces accepted shortlist, finalist, immutable revision and actual-service lock", () => {
   const guards = read("./stage-guards.ts");
   const store = read("./server-store.ts");
@@ -98,6 +175,19 @@ test("decision chain enforces accepted shortlist, finalist, immutable revision a
   assert.match(guards, /patch\.selectedStyle\.previewId !== snapshot\.finalist\.finalistPreviewId/);
   assert.match(store, /supersedesSnapshotId/);
   assert.match(store, /serviceConfirmedAt/);
+});
+
+test("fashion Scene stays non-wizard and uses generated server-owned preview sessions", () => {
+  const fashion = read("../../components/consulting/workbenches/FashionWorkbench.tsx");
+  const outputs = read("../v2/outputs-server.ts");
+  assert.match(fashion, /GENRE_GROUPS/);
+  assert.match(fashion, /consultationId: snapshot\.sessionId/);
+  assert.match(fashion, /stylingSessionIds: shortlist/);
+  assert.match(fashion, /selectedStylingSessionId: selected\.lookId/);
+  assert.match(fashion, /preview\.imageUrl/);
+  assert.doesNotMatch(fashion, /StylerWizard|currentStep|const LOOKS/);
+  assert.match(outputs, /source_mode", "v2_selection"/);
+  assert.match(outputs, /generated_image_path/);
 });
 
 test("signed generation assets have both automatic and explicit refresh paths", () => {

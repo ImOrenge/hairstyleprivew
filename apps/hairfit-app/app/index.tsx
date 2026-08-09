@@ -122,8 +122,8 @@ function buildCta(customer: CustomerDashboard | null) {
     kicker: "새 작업",
     title: "새 헤어 만들기",
     description: "정면 사진 한 장으로 3x3 헤어 추천 보드를 시작하세요.",
-    route: "/upload",
-    button: "사진 선택",
+    route: "/consulting",
+    button: "AI 상담 시작",
   };
 }
 
@@ -297,13 +297,13 @@ function CustomerHome({
 }) {
   const router = useRouter();
   const secondaryCta = buildCta(customer);
-  const showSecondaryCta = secondaryCta.route !== "/upload";
+  const showSecondaryCta = secondaryCta.route !== "/consulting";
   const selectedHair = findSelectedHair(customer);
   const confirmedStyleItems = (customer?.recentConfirmedStyles ?? []).slice(0, 3);
   const stylingItems = (customer?.recentStylingSessions ?? []).slice(0, 3);
   const styleEmptyRoute = selectedHair?.selectedVariantId
     ? `/styler/new?generationId=${encodeURIComponent(selectedHair.id)}&variant=${encodeURIComponent(selectedHair.selectedVariantId)}`
-    : "/upload";
+    : "/consulting";
 
   return (
     <AppScreen>
@@ -344,10 +344,10 @@ function CustomerHome({
 
       <Panel style={styles.ctaPanel}>
         <Stack>
-          <Kicker>헤어스타일 생성</Kicker>
-          <Heading>사진 업로드로 새 헤어 만들기</Heading>
-          <BodyText style={styles.ctaText}>정면 사진 한 장으로 3x3 헤어 추천 보드를 바로 시작하세요.</BodyText>
-          <Button onPress={() => router.push("/upload")}>사진 업로드</Button>
+          <Kicker>AI 헤어 컨설턴트</Kicker>
+          <Heading>사진 근거부터 최종 결정까지 한 상담으로 이어가기</Heading>
+          <BodyText style={styles.ctaText}>사진 품질 검사, AI 얼굴 근거, 3×3 비교와 최종 확정을 서버 세션에서 이어갑니다.</BodyText>
+          <Button onPress={() => router.push("/consulting")}>AI 헤어 컨설턴트 시작</Button>
           <Button variant="secondary" onPress={() => router.push("/personal-color?source=upload")}>
             퍼스널컬러 진단
           </Button>
@@ -364,7 +364,7 @@ function CustomerHome({
           <Kicker>확정 스타일</Kicker>
           <Heading style={styles.sectionHeading}>시술 확정 목록</Heading>
           {confirmedStyleItems.length === 0 ? (
-            <EmptyHistoryCard button="스타일 찾기" route="/upload" title="아직 시술 확정한 스타일이 없습니다." />
+            <EmptyHistoryCard button="AI 상담 시작" route="/consulting" title="아직 시술 확정한 스타일이 없습니다." />
           ) : (
             confirmedStyleItems.map((item) => <ConfirmedStyleCard item={item} key={item.id} />)
           )}

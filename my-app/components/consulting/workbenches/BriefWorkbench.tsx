@@ -22,6 +22,7 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
+  const [savingBrief, setSavingBrief] = useState(false);
 
   const createShare = async () => {
     setShareLoading(true); setShareError(null);
@@ -46,6 +47,28 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
     finally { setShareLoading(false); }
   };
 
+  const saveBrief = async () => {
+    const version = snapshot.salonBrief.createdAt ? snapshot.salonBrief.version + 1 : 1;
+    setSavingBrief(true);
+    setShareError(null);
+    try {
+      const v2Response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/salon-brief`, {
+        method: "POST",
+        headers: { "Idempotency-Key": `${snapshot.sessionId}:brief:${version}` },
+      });
+      const v2Error = (await v2Response.json().catch(() => ({}))) as { error?: string };
+      const v2Disabled = v2Response.status === 404 && v2Error.error === "HairFit V2 feature is disabled.";
+      if (!v2Disabled && !v2Response.ok) {
+        throw new Error(v2Error.error || "V2 살롱 브리프를 저장하지 못했습니다.");
+      }
+      await mutate({ salonBrief: { ...brief, version, rawFaceIncluded: false, createdAt: new Date().toISOString() }, completeStage: "salon-brief", currentStage: "aftercare" });
+    } catch (cause) {
+      setShareError(cause instanceof Error ? cause.message : "살롱 브리프를 저장하지 못했습니다.");
+    } finally {
+      setSavingBrief(false);
+    }
+  };
+
   return <WorkbenchGrid>
     <Panel className="grid gap-5 p-5 sm:p-7">
       <div className="flex gap-2">{(["customer","designer"] as const).map((mode) => <button key={mode} type="button" onClick={() => setBrief({ ...brief, mode })} aria-pressed={brief.mode === mode} className={`min-h-11 border px-4 text-sm font-black uppercase ${brief.mode === mode ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{mode}</button>)}</div>
@@ -54,7 +77,7 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
       <TextField label="볼륨·질감" value={brief.volumeTexture} onChange={(volumeTexture) => setBrief({ ...brief, volumeTexture })} />
       <TextField label="스타일링" value={brief.styling} onChange={(styling) => setBrief({ ...brief, styling })} />
       <fieldset><legend className="text-sm font-black">공유 만료</legend><div className="mt-2 flex gap-2">{([24,168,720] as const).map((hours) => <button key={hours} type="button" onClick={() => setBrief({ ...brief, shareExpiryHours: hours, shareRevokedAt: null })} className={`min-h-11 border px-3 text-sm font-black ${brief.shareExpiryHours === hours ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : ""}`}>{hours === 24 ? "24시간" : hours === 168 ? "7일" : "30일"}</button>)}</div></fieldset>
-      <SaveStageButton loading={saving} disabled={!style || !brief.summary.trim()} onClick={() => void mutate({ salonBrief: { ...brief, version: snapshot.salonBrief.createdAt ? snapshot.salonBrief.version + 1 : 1, rawFaceIncluded: false, createdAt: new Date().toISOString() }, completeStage: "salon-brief", currentStage: "aftercare" })}>브리프 버전 저장</SaveStageButton>
+      <SaveStageButton loading={saving || savingBrief} disabled={!style || !brief.summary.trim()} onClick={() => void saveBrief()}>브리프 버전 저장</SaveStageButton>
     </Panel>
     <div className="grid gap-4">
       <SurfaceCard className="p-5"><p className="app-kicker">SalonBriefVersion</p><h2 className="mt-3 text-xl font-black">{style?.label || "선택 대기"}</h2><p className="mt-3 text-sm leading-6">{brief.summary}</p></SurfaceCard>

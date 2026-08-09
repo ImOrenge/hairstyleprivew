@@ -12,6 +12,8 @@ import type {
   FaceAnalysis,
   PhotoQualityDiagnostic,
   PhotoSnapshot,
+  StrategyRecommendation,
+  StrategySnapshot,
 } from "../../../lib/consulting/contracts";
 import { convertImageFileToWebp } from "../../../lib/webp-client";
 import { useUpload } from "../../../hooks/useUpload";
@@ -30,6 +32,7 @@ type AnalysisResponse = {
   requiresRetry?: boolean;
   evidence?: AnalysisEvidenceDraft;
   faceAnalysis?: FaceAnalysis;
+  strategyRecommendations?: StrategyRecommendation[];
   quality?: PhotoQualityDiagnostic[];
   analyzedAt?: string;
   preflightMessage?: string;
@@ -159,7 +162,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
         setError(data.preflightMessage || "사진 사전검사를 통과하지 못했습니다. 다른 사진을 선택해 주세요.");
         return;
       }
-      if (!response.ok || !data.evidence || !data.faceAnalysis || !data.quality || !data.analyzedAt) {
+      if (!response.ok || !data.evidence || !data.faceAnalysis || !data.strategyRecommendations || !data.quality || !data.analyzedAt) {
         throw new Error(data.error || "사진 분석을 완료하지 못했습니다.");
       }
       const nextPhoto: PhotoSnapshot = {
@@ -168,10 +171,16 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
         quality: data.quality,
       };
       setPhoto(nextPhoto);
+      const recommendedStrategy: Partial<StrategySnapshot> = {};
+      for (const recommendation of data.strategyRecommendations) {
+        recommendedStrategy[recommendation.axis] = recommendation.recommendedValue;
+      }
       const result = await mutate({
         photo: nextPhoto,
         evidence: data.evidence,
         faceAnalysis: data.faceAnalysis,
+        strategyRecommendations: data.strategyRecommendations,
+        strategy: { ...snapshot.strategy, ...recommendedStrategy },
         completeStage: "photo",
         currentStage: "scan",
       }) as { ok?: boolean };

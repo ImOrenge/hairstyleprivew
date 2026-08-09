@@ -22,6 +22,9 @@ import {
 } from "../../../../lib/release-rollout";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 import { dispatchStylingWorkflowOutbox } from "../../../../lib/styling-workflow-outbox";
+import { HairfitV2Error } from "../../../../lib/v2/errors";
+import { v2Failure } from "../../../../lib/v2/http";
+import { resolveV2StylingSessionVariant } from "../../../../lib/v2/styling-source-server";
 import {
   STYLING_RESULTS_BUCKET,
   createSignedUrl,
@@ -169,15 +172,24 @@ export async function POST(request: Request) {
     const recommendationSet = normalizeRecommendationSet(
       isObject(generation.options) ? generation.options.recommendationSet : null,
     );
-    if (!recommendationSet?.selectedVariantId || recommendationSet.selectedVariantId !== session.selected_variant_id) {
+    if (!recommendationSet) {
+      return NextResponse.json({ error: "헤어 추천 세트를 찾을 수 없습니다." }, { status: 409 });
+    }
+    const selectedVariant = session.source_mode === "v2_selection"
+      ? await resolveV2StylingSessionVariant({
+          userId,
+          session: session as unknown as Record<string, unknown>,
+          recommendationSet,
+        })
+      : recommendationSet.selectedVariantId === session.selected_variant_id
+        ? recommendationSet.variants.find((variant) => variant.id === session.selected_variant_id) ?? null
+        : null;
+    if (!selectedVariant) {
       return NextResponse.json(
         { error: "패션 룩북은 현재 선택한 헤어스타일을 기준으로만 생성할 수 있습니다." },
         { status: 409 },
       );
     }
-    const selectedVariant = recommendationSet.variants.find(
-      (variant) => variant.id === session.selected_variant_id,
-    ) || null;
     if (!selectedVariant?.outputUrl && !selectedVariant?.generatedImagePath) {
       return NextResponse.json({ error: "선택한 헤어스타일 이미지가 아직 준비되지 않았습니다." }, { status: 409 });
     }
@@ -290,6 +302,7 @@ export async function POST(request: Request) {
     if (error instanceof PaidActionQuoteContextError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
+    if (error instanceof HairfitV2Error) return v2Failure(error);
 
     const message = error instanceof Error ? error.message : "룩북 생성 접수에 실패했습니다.";
     const quote = await createPaidActionQuoteForUser({

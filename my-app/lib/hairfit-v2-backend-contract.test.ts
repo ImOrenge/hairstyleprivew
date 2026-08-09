@@ -24,6 +24,80 @@ test("V2 migration is mirrored and protects every exposed table", () => {
   assert.match(root, /requested_count integer not null default 9 check \(requested_count = 9\)/);
 });
 
+test("partial preview decision migration is mirrored, service-only, and keeps accepted-result guards", () => {
+  const root = readRepo("supabase/migrations/202608090001_hairfit_v2_partial_preview_decision.sql");
+  const mirror = readApp("supabase/migrations/202608090001_hairfit_v2_partial_preview_decision.sql");
+  assert.equal(root, mirror);
+  assert.match(root, /\('preview_board_queued','shortlisted'\)/);
+  assert.match(root, /b\.state in \('generating', 'ready'\)/);
+  assert.match(root, /v\.status = 'accepted'/);
+  assert.match(root, /security invoker/);
+  assert.match(root, /from public, anon, authenticated/);
+  assert.match(root, /to service_role/);
+  assert.doesNotMatch(root, /security definer/i);
+});
+
+test("web decision flow dual-writes V2 shortlist, selection, brief, and aftercare", () => {
+  const shortlist = readApp("components/consulting/workbenches/PreviewsWorkbench.tsx");
+  const decision = readApp("components/consulting/workbenches/DecisionWorkbench.tsx");
+  const brief = readApp("components/consulting/workbenches/BriefWorkbench.tsx");
+  const aftercare = readApp("components/consulting/workbenches/AftercareWorkbench.tsx");
+  const selectionServer = readApp("lib/v2/selection-server.ts");
+  assert.match(shortlist, /\/api\/v2\/consultations\/.*\/shortlist/);
+  assert.match(decision, /\/selection/);
+  assert.match(decision, /\/confirm/);
+  assert.match(brief, /\/salon-brief/);
+  assert.match(aftercare, /\/aftercare/);
+  assert.match(aftercare, /\/aftercare-photo/);
+  assert.match(aftercare, /type="file"/);
+  assert.doesNotMatch(aftercare, /type="url"/);
+  assert.match(selectionServer, /boardIds\.size !== 1/);
+  assert.match(selectionServer, /state: "consumed"/);
+});
+
+test("aftercare photos are private, snapshot-linked, and included in account deletion cleanup", () => {
+  const root = readRepo("supabase/migrations/202608090003_hairfit_v2_aftercare_fashion_bridge.sql");
+  const mirror = readApp("supabase/migrations/202608090003_hairfit_v2_aftercare_fashion_bridge.sql");
+  const route = readApp("app/api/v2/consultations/[consultationId]/aftercare-photo/route.ts");
+  assert.equal(root, mirror);
+  assert.match(root, /'aftercare-photos', 'aftercare-photos', false/);
+  assert.match(root, /actual_services_v2[\s\S]*after_photo_path/);
+  assert.match(root, /select 'aftercare-photos'::text, btrim\(service\.after_photo_path\)/);
+  assert.match(route, /\.eq\("consultation_id", consultationId\)/);
+  assert.match(route, /\.eq\("user_id", userId\)/);
+  assert.match(route, /\.webp\(\{ quality: 86 \}\)/);
+  assert.match(route, /after_photo_fingerprint/);
+  assert.doesNotMatch(route, /createSignedUrl|publicUrl/);
+});
+
+test("fashion previews use confirmed V2 hair and completed real Styler sessions", () => {
+  const root = readRepo("supabase/migrations/202608090003_hairfit_v2_aftercare_fashion_bridge.sql");
+  const route = readApp("app/api/v2/consultations/[consultationId]/fashion-previews/route.ts");
+  const outputs = readApp("lib/v2/outputs-server.ts");
+  const source = readApp("lib/v2/styling-source-server.ts");
+  const recommend = readApp("app/api/styling/recommend/route.ts");
+  const generate = readApp("app/api/styling/generate/route.ts");
+  const workflow = readApp("lib/styling-workflow-execution.ts");
+  const fashion = readApp("components/consulting/workbenches/FashionWorkbench.tsx");
+  assert.match(root, /source_mode in \('legacy', 'v2_selection'\)/);
+  assert.match(root, /sync_style_selection_v2_source/);
+  assert.match(root, /v2PreviewVariantId/);
+  assert.match(source, /status", "confirmed"/);
+  assert.match(source, /v2PreviewVariantId === snapshot\.previewVariantId/);
+  assert.match(recommend, /consultationId/);
+  assert.match(recommend, /source_mode: v2Source \? "v2_selection" : "legacy"/);
+  assert.match(generate, /resolveV2StylingSessionVariant/);
+  assert.match(workflow, /resolveV2StylingSessionVariant/);
+  assert.match(route, /export async function GET/);
+  assert.match(route, /stylingSessionIds/);
+  assert.match(outputs, /\.eq\("status", "completed"\)/);
+  assert.match(outputs, /STYLING_RESULTS_BUCKET/);
+  assert.match(fashion, /\/api\/styling\/recommend/);
+  assert.match(fashion, /\/api\/styling\/generate/);
+  assert.match(fashion, /PaidActionQuoteCard/);
+  assert.doesNotMatch(fashion, /const LOOKS/);
+});
+
 test("frontend consultation links before workflow dispatch and preparation compiles V2 prompts before tokens", () => {
   const accept = readApp("app/api/generations/accept/route.ts");
   const prepare = readApp("app/api/generations/prepare/route.ts");
@@ -60,9 +134,19 @@ test("V2 prompts and provider response bodies are absent from customer and log s
 
 test("V2 API client exposes Web and Expo compatible consultation methods", () => {
   const client = readRepo("packages/api-client/src/index.ts");
-  for (const method of ["createV2Consultation","getV2Consultation","attachV2ConsultationPhoto","getV2PreviewBoard","saveV2Shortlist","selectV2Style","confirmV2Style","createV2SalonBrief","createV2Aftercare","createV2FashionPreviews"]) {
+  for (const method of ["createV2Consultation","getV2Consultation","analyzeV2ConsultationPhoto","getV2AnalysisEvidence","attachV2ConsultationPhoto","getV2PreviewBoard","saveV2Shortlist","getV2Shortlist","selectV2Style","getV2Selection","confirmV2Style","createV2SalonBrief","createV2Aftercare","createV2FashionPreviews","getV2FashionPreviews"]) {
     assert.match(client, new RegExp(`${method}\\(`));
   }
+});
+
+test("evidence API returns a short-lived owned source photo for Web and native overlays", () => {
+  const route = readApp("app/api/v2/consultations/[consultationId]/evidence/route.ts");
+  assert.match(route, /source_generation_id/);
+  assert.match(route, /\.eq\("user_id", userId\)/);
+  assert.match(route, /original_image_path/);
+  assert.match(route, /createGenerationImageSignedUrl/);
+  assert.match(route, /sourceImageUrl/);
+  assert.doesNotMatch(route, /getPublicUrl/);
 });
 
 test("every customer-facing V2 route fails closed behind an explicit feature flag", () => {
@@ -81,6 +165,7 @@ test("every customer-facing V2 route fails closed behind an explicit feature fla
     "app/api/v2/consultations/[consultationId]/confirm/route.ts",
     "app/api/v2/consultations/[consultationId]/salon-brief/route.ts",
     "app/api/v2/consultations/[consultationId]/aftercare/route.ts",
+    "app/api/v2/consultations/[consultationId]/aftercare-photo/route.ts",
     "app/api/v2/consultations/[consultationId]/fashion-previews/route.ts",
   ];
   for (const route of routes) {

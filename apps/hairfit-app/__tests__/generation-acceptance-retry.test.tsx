@@ -70,6 +70,7 @@ jest.mock("@clerk/clerk-expo", () => ({
   }),
 }));
 jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => ({}),
   useRouter: () => ({
     back: jest.fn(),
     canGoBack: () => false,

@@ -1,4 +1,5 @@
 export * from "./analysis/contract";
+export * from "./analysis/geometry";
 export * from "./catalog/contract";
 export * from "./consultation/contract";
 export * from "./entitlement/contract";

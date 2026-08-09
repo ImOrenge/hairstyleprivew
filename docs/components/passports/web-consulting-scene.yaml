@@ -9,6 +9,8 @@ related_source:
   - my-app/components/consulting/scene/SceneIdentity.tsx
   - my-app/components/consulting/scene/FloatingStageControls.tsx
   - my-app/components/consulting/scene/StageMapOverlay.tsx
+  - my-app/components/consulting/photo/ConsultationPhotoEvidence.tsx
+  - my-app/components/consulting/photo/FaceEvidenceOverlay.tsx
 owner: consulting-feature
 
 public_api:
@@ -32,6 +34,7 @@ boundaries:
       - scene-identity
       - floating-navigation
       - stage-map-overlay
+      - persisted-analysis-evidence-overlay
   forbidden:
     - generation-domain-workflow
     - backend-refactor-package-contracts
@@ -44,6 +47,7 @@ styling:
 state:
   server_owned:
     - consultation-snapshot
+    - analysis-evidence-v2
     - version
     - current-stage
   client_owned:
@@ -53,12 +57,14 @@ state:
 a11y_contract:
   stage_map: dialog-with-escape-and-focus-return
   navigation: labelled-native-links-and-buttons
+  scene_entry: programmatic-focus-on-level-one-heading
   reduced_motion: no-required-motion
 
 test_surface:
   structure: my-app/lib/consulting/consultation-contract.test.ts
   interaction: required
   visual: required
+  evidence_overlay: persisted-normalized-coordinates-only
 
 change_policy:
   current_gate: feature

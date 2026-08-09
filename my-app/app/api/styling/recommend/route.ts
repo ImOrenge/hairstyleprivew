@@ -6,6 +6,8 @@ import { ensureFashionCatalogAvailable, selectFashionCatalogItem } from "../../.
 import { generateFashionRecommendation, isFashionGenre } from "../../../../lib/fashion-recommendation-generator";
 import { getOpenAIImageModel } from "../../../../lib/openai-image";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
+import { v2Disabled, v2Failure } from "../../../../lib/v2/http";
+import { loadConfirmedV2StylingSource } from "../../../../lib/v2/styling-source-server";
 import {
   ensureCurrentUserProfile,
   isStyleProfileComplete,
@@ -14,6 +16,7 @@ import {
 } from "../../../../lib/style-profile-server";
 
 interface StylingRecommendRequest {
+  consultationId?: string;
   generationId?: string;
   selectedVariantId?: string;
   genre?: string;
@@ -66,9 +69,23 @@ export async function POST(request: Request) {
   }
 
   const body = (await request.json().catch(() => ({}))) as StylingRecommendRequest;
-  const generationId = body.generationId?.trim() || "";
-  const selectedVariantId = body.selectedVariantId?.trim() || "";
+  const consultationId = body.consultationId?.trim() || "";
+  let generationId = body.generationId?.trim() || "";
+  let selectedVariantId = body.selectedVariantId?.trim() || "";
   const genre = body.genre?.trim() || "";
+
+  let v2Source: Awaited<ReturnType<typeof loadConfirmedV2StylingSource>> | null = null;
+  if (consultationId) {
+    const disabled = v2Disabled("CONSULTATION_SESSION_V2_ENABLED", "STYLING_LINK_V2_ENABLED");
+    if (disabled) return disabled;
+    try {
+      v2Source = await loadConfirmedV2StylingSource({ userId, consultationId });
+      generationId = v2Source.generationId;
+      selectedVariantId = v2Source.selectedVariantId;
+    } catch (error) {
+      return v2Failure(error);
+    }
+  }
 
   if (!generationId) {
     return NextResponse.json({ error: "헤어 추천 결과를 선택해 주세요." }, { status: 400 });
@@ -87,38 +104,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: ensured.error.message }, { status: 500 });
   }
 
-  const { data: generation, error: generationError } = await supabase
-    .from("generations")
-    .select("id,user_id,options")
-    .eq("id", generationId)
-    .maybeSingle();
-
-  if (generationError) {
-    return NextResponse.json({ error: generationError.message }, { status: 500 });
-  }
-  if (!generation) {
-    return NextResponse.json({ error: "헤어 추천 결과를 찾을 수 없습니다." }, { status: 404 });
-  }
-  if (generation.user_id !== userId) {
-    return NextResponse.json({ error: "이 헤어 추천 결과에 접근할 수 없습니다." }, { status: 403 });
-  }
-
-  const recommendationSet = normalizeRecommendationSet(
-    isObject(generation.options) ? generation.options.recommendationSet : null,
-  );
-  if (!recommendationSet) {
-    return NextResponse.json({ error: "헤어 추천 세트를 찾을 수 없습니다." }, { status: 400 });
-  }
-  if (!recommendationSet.selectedVariantId || recommendationSet.selectedVariantId !== selectedVariantId) {
-    return NextResponse.json(
-      { error: "패션 룩북은 선택한 헤어스타일을 기준으로만 생성할 수 있습니다." },
-      { status: 409 },
+  let recommendationSet = v2Source?.recommendationSet ?? null;
+  let selectedVariant = v2Source?.selectedVariant ?? null;
+  if (!v2Source) {
+    const { data: generation, error: generationError } = await supabase
+      .from("generations")
+      .select("id,user_id,options")
+      .eq("id", generationId)
+      .maybeSingle();
+    if (generationError) {
+      return NextResponse.json({ error: generationError.message }, { status: 500 });
+    }
+    if (!generation) {
+      return NextResponse.json({ error: "헤어 추천 결과를 찾을 수 없습니다." }, { status: 404 });
+    }
+    if (generation.user_id !== userId) {
+      return NextResponse.json({ error: "이 헤어 추천 결과에 접근할 수 없습니다." }, { status: 403 });
+    }
+    recommendationSet = normalizeRecommendationSet(
+      isObject(generation.options) ? generation.options.recommendationSet : null,
     );
+    if (!recommendationSet) {
+      return NextResponse.json({ error: "헤어 추천 세트를 찾을 수 없습니다." }, { status: 400 });
+    }
+    if (!recommendationSet.selectedVariantId || recommendationSet.selectedVariantId !== selectedVariantId) {
+      return NextResponse.json(
+        { error: "패션 룩북은 선택한 헤어스타일을 기준으로만 생성할 수 있습니다." },
+        { status: 409 },
+      );
+    }
+    selectedVariant = getGeneratedVariant(recommendationSet, selectedVariantId);
   }
-
-  const selectedVariant = getGeneratedVariant(recommendationSet, selectedVariantId);
   if (!selectedVariant) {
     return NextResponse.json({ error: "선택한 헤어스타일을 찾을 수 없습니다." }, { status: 404 });
+  }
+  if (!recommendationSet) {
+    return NextResponse.json({ error: "헤어 추천 세트를 찾을 수 없습니다." }, { status: 400 });
   }
   if (!selectedVariant.outputUrl && !selectedVariant.generatedImagePath) {
     return NextResponse.json({ error: "선택한 헤어스타일 이미지가 아직 준비되지 않았습니다." }, { status: 409 });
@@ -139,14 +160,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "바디 프로필을 먼저 완성해 주세요." }, { status: 409 });
   }
 
-  const { data: existingSession, error: existingSessionError } = await adminSupabase
+  let existingSessionQuery = adminSupabase
     .from("styling_sessions")
     .select("id,status,recommendation")
     .eq("user_id", userId)
     .eq("generation_id", generationId)
     .eq("selected_variant_id", selectedVariantId)
     .eq("genre", genre)
-    .in("status", ["recommended", "failed", "generating"])
+    .eq("source_mode", v2Source ? "v2_selection" : "legacy");
+  if (v2Source) existingSessionQuery = existingSessionQuery.eq("selection_snapshot_id", v2Source.selectionSnapshotId);
+  const { data: existingSession, error: existingSessionError } = await existingSessionQuery
+    .in("status", ["recommended", "failed", "generating", "completed"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -161,6 +185,7 @@ export async function POST(request: Request) {
         recommendation: existingSession.recommendation as unknown as FashionRecommendation,
         profile: profile satisfies StyleProfile,
         selectedVariant,
+        sourceMode: v2Source ? "v2_selection" : "legacy",
         idempotentReplay: true,
       },
       { status: 200 },
@@ -199,6 +224,9 @@ export async function POST(request: Request) {
       credits_used: 0,
       model_provider: "openai",
       model_name: getOpenAIImageModel(),
+      consultation_id: v2Source?.consultationId ?? null,
+      selection_snapshot_id: v2Source?.selectionSnapshotId ?? null,
+      source_mode: v2Source ? "v2_selection" : "legacy",
     })
     .select("id,status,created_at")
     .single();
@@ -214,6 +242,7 @@ export async function POST(request: Request) {
       recommendation: recommendation satisfies FashionRecommendation,
       profile: profile satisfies StyleProfile,
       selectedVariant,
+      sourceMode: v2Source ? "v2_selection" : "legacy",
     },
     { status: 200 },
   );

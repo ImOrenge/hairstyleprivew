@@ -9,7 +9,7 @@ export function SceneIdentity({ stage }: { stage: ConsultationStage }) {
       <p className="mt-5 text-[clamp(2.5rem,8vw,7.5rem)] font-black uppercase leading-[0.82] tracking-[-0.075em] text-[var(--app-text)]" aria-hidden="true">
         {definition.task}
       </p>
-      <h1 className="mt-7 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">{definition.title}</h1>
+      <h1 id="consultation-scene-title" tabIndex={-1} className="mt-7 text-2xl font-black tracking-tight text-[var(--app-text)] outline-none sm:text-4xl">{definition.title}</h1>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--app-muted)] sm:text-base">{definition.description}</p>
     </header>
   );

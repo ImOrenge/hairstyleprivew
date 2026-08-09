@@ -15,6 +15,7 @@ import {
   normalizeStyleProfile,
 } from "./style-profile-server";
 import { getSupabaseAdminClient } from "./supabase";
+import { resolveV2StylingSessionVariant } from "./v2/styling-source-server";
 
 export interface StylingWorkflowExecutionInput {
   sessionId: string;
@@ -188,10 +189,18 @@ export async function runStylingWorkflowAttempt(
     isObject(generation.options) ? generation.options.recommendationSet : null,
   );
   const selectedVariantId = stringValue(initial.session.selected_variant_id);
-  if (!selectedVariantId || recommendationSet?.selectedVariantId !== selectedVariantId) {
+  if (!selectedVariantId || !recommendationSet) {
     throw new StylingWorkflowTerminalError("The selected hairstyle changed before execution");
   }
-  const selectedVariant = recommendationSet.variants.find((variant) => variant.id === selectedVariantId);
+  const selectedVariant = stringValue(initial.session.source_mode) === "v2_selection"
+    ? await resolveV2StylingSessionVariant({
+        userId,
+        session: initial.session,
+        recommendationSet,
+      })
+    : recommendationSet.selectedVariantId === selectedVariantId
+      ? recommendationSet.variants.find((variant) => variant.id === selectedVariantId)
+      : null;
   if (!selectedVariant?.outputUrl && !selectedVariant?.generatedImagePath) {
     throw new StylingWorkflowTerminalError("The selected hairstyle image is unavailable");
   }

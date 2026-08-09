@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import type { ConsultationSnapshot, ConsultationStage } from "../../../lib/consulting/contracts";
 import { SceneIdentity } from "./SceneIdentity";
 import { FloatingStageControls } from "./FloatingStageControls";
@@ -10,6 +10,9 @@ export function ConsultationScene({ snapshot, stage, children, notice, onRefresh
   const [mapOpen, setMapOpen] = useState(false);
   const openMap = useCallback(() => setMapOpen(true), []);
   const closeMap = useCallback(() => setMapOpen(false), []);
+  useEffect(() => {
+    document.getElementById("consultation-scene-title")?.focus();
+  }, [stage]);
   return (
     <div className="mx-auto min-h-dvh w-full max-w-[96rem] px-4 pb-28 pt-8 sm:px-8 sm:pt-12 lg:px-12">
       <SceneIdentity stage={stage} />

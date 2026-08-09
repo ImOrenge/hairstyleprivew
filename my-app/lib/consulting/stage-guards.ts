@@ -10,9 +10,39 @@ export function validateConsultationPatch(snapshot: ConsultationSnapshot, patch:
     if (nextIndex === currentIndex + 1 && patch.completeStage !== snapshot.currentStage) fail("현재 단계를 완료한 뒤 이동해 주세요.");
   }
   if (patch.completeStage && patch.completeStage !== snapshot.currentStage && !snapshot.completedStages.includes(patch.completeStage)) fail("현재 열려 있는 단계를 먼저 완료해 주세요.");
-  if (patch.discovery && (!patch.discovery.goals.length || !patch.discovery.currentHair.trim())) fail("목표와 현재 모발 상태가 필요합니다.");
-  if (patch.photo && (!patch.photo.generationId || !patch.photo.usageScopes.length || patch.photo.quality.some((item) => item.status === "pending"))) fail("사진 연결, 사용 범위와 8개 품질 확인이 필요합니다.");
-  if (patch.evidence && (!patch.evidence.items.length || patch.evidence.pipelineStatus !== "reviewed")) fail("분석 근거를 검토해 주세요.");
+  if (patch.discovery && (
+    !patch.discovery.purpose.trim()
+    || !patch.discovery.goals.length
+    || !patch.discovery.currentHair.trim()
+    || !patch.discovery.hairLength
+    || !patch.discovery.hairDensity
+    || !patch.discovery.strandThickness
+    || !patch.discovery.hairTexture
+    || !patch.discovery.damageLevel
+    || !patch.discovery.allowedServices.length
+  )) fail("상담 목적, 현재 모발, 가능한 시술 범위와 목표가 필요합니다.");
+  if (patch.discovery) {
+    const unavailable = patch.discovery.desiredServices.filter((service) => service !== "아직 모름" && !patch.discovery?.allowedServices.includes(service));
+    if (unavailable.length) fail(`고려 중인 시술이 가능한 범위와 충돌합니다: ${unavailable.join(", ")}`);
+  }
+  if (patch.photo && (
+    !patch.photo.draftId
+    || !patch.photo.usageScopes.includes("analysis")
+    || !patch.photo.usageScopes.includes("preview")
+    || patch.photo.quality.length !== 8
+    || patch.photo.quality.some((item) => item.status === "pending")
+  )) fail("사진 업로드, 사용 범위와 8개 시스템 품질 확인이 필요합니다.");
+  if (patch.evidence && !patch.evidence.items.length) fail("저장된 분석 근거가 필요합니다.");
+  if (patch.completeStage === "photo") {
+    const photo = patch.photo ?? snapshot.photo;
+    const evidence = patch.evidence ?? snapshot.evidence;
+    const recommendations = patch.strategyRecommendations ?? snapshot.strategyRecommendations;
+    if (!photo.capturedAt || !evidence.items.length || evidence.pipelineStatus === "idle" || new Set(recommendations.map((item) => item.axis)).size !== 8) fail("AI 분석 근거와 8개 전략 추천을 저장한 뒤 다음 단계로 이동해 주세요.");
+  }
+  if (patch.completeStage === "scan") {
+    const evidence = patch.evidence ?? snapshot.evidence;
+    if (evidence.pipelineStatus !== "reviewed" || !evidence.reviewedAt) fail("분석 근거를 검토해 주세요.");
+  }
   if (patch.strategy?.confirmedAt && Object.values(patch.strategy).some((value) => typeof value === "string" && !value.trim())) fail("8개 전략 축을 모두 선택해 주세요.");
   if (patch.strategy && snapshot.selectedStyleHistory.at(-1)?.serviceConfirmedAt) fail("실제 시술 확정 후에는 전략을 변경할 수 없습니다.");
   if (patch.shortlist) {

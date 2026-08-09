@@ -49,7 +49,7 @@ describe("role navigation contracts", () => {
     expect(readAccountTypeMetadata({ public_metadata: { accountType: "salon_owner" } })).toBe("salon_owner");
     expect(resolveRoleNavigationRole(null, "/admin/members")).toBe("admin");
     expect(resolveRoleNavigationRole(null, "/salon/connections")).toBe("customer");
-    expect(getRoleNavigationItems("customer").map((item) => item.label)).toEqual(["홈", "생성", "기록", "계정"]);
+    expect(getRoleNavigationItems("customer").map((item) => item.label)).toEqual(["홈", "상담", "기록", "계정"]);
     expect(
       getRoleNavigationItems("admin")
         .filter((item) => isRoleNavigationItemActive("/admin/members/123", item))
@@ -57,6 +57,7 @@ describe("role navigation contracts", () => {
     ).toEqual(["회원"]);
     expect(isRoleNavigationHidden("/generate/123")).toBe(true);
     expect(isRoleNavigationHidden("/aftercare/123")).toBe(true);
+    expect(isRoleNavigationHidden("/consulting")).toBe(true);
     expect(isRoleNavigationHidden("/admin/stats")).toBe(false);
   });
 

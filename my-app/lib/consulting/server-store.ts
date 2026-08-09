@@ -12,7 +12,18 @@ type Row = { id: string; user_id: string; version: number; current_stage: string
 
 function normalizeRow(row: Row): ConsultationSnapshot {
   const snapshot = row.snapshot as ConsultationSnapshot;
-  return { ...snapshot, sessionId: row.id, userId: row.user_id, version: row.version, currentStage: isConsultationStage(row.current_stage) ? row.current_stage : "discovery", createdAt: row.created_at, updatedAt: row.updated_at };
+  const defaults = createConsultationSnapshot({ sessionId: row.id, userId: row.user_id, now: row.created_at });
+  return {
+    ...defaults,
+    ...snapshot,
+    discovery: { ...defaults.discovery, ...snapshot.discovery },
+    sessionId: row.id,
+    userId: row.user_id,
+    version: row.version,
+    currentStage: isConsultationStage(row.current_stage) ? row.current_stage : "discovery",
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
 }
 
 export async function createServerConsultation(userId: string) {
@@ -66,7 +77,7 @@ function buildSelectedStyle(current: ConsultationSnapshot, patch: NonNullable<Co
 
 function applyPatch(current: ConsultationSnapshot, patch: ConsultationPatch, now: string) {
   const next: ConsultationSnapshot = { ...current, updatedAt: now };
-  const keys = ["discovery", "photo", "evidence", "faceAnalysis", "personalColor", "strategy", "previews", "shortlist", "finalist", "salonBrief", "actualService", "careProgram", "fashion"] as const;
+  const keys = ["discovery", "photo", "evidence", "faceAnalysis", "personalColor", "strategyRecommendations", "strategy", "previews", "shortlist", "finalist", "salonBrief", "actualService", "careProgram", "fashion"] as const;
   for (const key of keys) {
     if (patch[key] !== undefined) Object.assign(next, { [key]: patch[key] });
   }
@@ -97,10 +108,43 @@ function applyPatch(current: ConsultationSnapshot, patch: ConsultationPatch, now
 
 export type ConsultationUpdateResult = { status: "updated"; snapshot: ConsultationSnapshot } | { status: "conflict"; snapshot: ConsultationSnapshot };
 
+async function assertPersistedPhotoGeometry(userId: string, sessionId: string) {
+  const { data, error } = await getSupabaseAdminClient()
+    .from("analysis_evidence_v2")
+    .select("id,landmarks,contours,measurements")
+    .eq("consultation_id", sessionId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const row = data as unknown as { landmarks?: unknown; contours?: unknown; measurements?: unknown } | null;
+  if (!row
+    || !Array.isArray(row.landmarks)
+    || row.landmarks.length < 5
+    || !Array.isArray(row.contours)
+    || row.contours.length < 1
+    || !Array.isArray(row.measurements)
+    || row.measurements.length < 4) {
+    throw new Error("INVALID_PATCH:저장된 얼굴 랜드마크 분석을 완료한 뒤 다음 단계로 이동해 주세요.");
+  }
+}
+
 export async function updateServerConsultation(userId: string, sessionId: string, patch: ConsultationPatch): Promise<ConsultationUpdateResult> {
   const current = await readServerConsultation(userId, sessionId);
   if (!current) throw new Error("NOT_FOUND");
-  if (current.version !== patch.expectedVersion) return { status: "conflict", snapshot: current };
+  if (current.version !== patch.expectedVersion) {
+    const stored = await getSupabaseAdminClient()
+      .from("consultation_sessions")
+      .select("snapshot")
+      .eq("id", sessionId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (stored.error) throw new Error(stored.error.message);
+    const storedSnapshotVersion = Number((stored.data?.snapshot as { version?: unknown } | null)?.version);
+    if (storedSnapshotVersion !== patch.expectedVersion) return { status: "conflict", snapshot: current };
+  }
+  if (patch.completeStage === "photo" && isHairfitV2Enabled("ANALYSIS_EVIDENCE_V2_ENABLED")) {
+    await assertPersistedPhotoGeometry(userId, sessionId);
+  }
   validateConsultationPatch(current, patch);
   const now = new Date().toISOString();
   const next = applyPatch(current, patch, now);
@@ -123,13 +167,29 @@ export async function updateServerConsultation(userId: string, sessionId: string
     ? {
         source_generation_id: next.photo.generationId,
         preferences: {
-          currentHair: { description: next.discovery.currentHair },
+          currentHair: {
+            description: next.discovery.currentHair,
+            length: next.discovery.hairLength,
+            density: next.discovery.hairDensity,
+            strandThickness: next.discovery.strandThickness,
+            texture: next.discovery.hairTexture,
+            treatmentHistory: next.discovery.treatmentHistory,
+            damageLevel: next.discovery.damageLevel,
+          },
           styleGoal: {
-            imageKeywords: next.discovery.goals,
-            desiredServices: next.discovery.desiredServices,
+            imageKeywords: [next.discovery.purpose, ...next.discovery.goals].filter(Boolean),
+            changeLevel: next.discovery.changeLevel,
+            desiredServices: next.discovery.allowedServices.length
+              ? next.discovery.allowedServices
+              : next.discovery.desiredServices.filter((service) => service !== "아직 모름"),
             notes: next.discovery.notes,
           },
-          maintenance: { maintenanceLevel: next.discovery.maintenanceLevel },
+          maintenance: {
+            morningMinutes: next.discovery.morningMinutes,
+            heatStyling: next.discovery.heatStyling,
+            salonCycleWeeks: next.discovery.salonCycleWeeks,
+            maintenanceLevel: next.discovery.maintenanceLevel,
+          },
           avoidConditions: next.discovery.avoid,
         },
       }
