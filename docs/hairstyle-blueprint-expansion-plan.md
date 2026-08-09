@@ -554,4 +554,5 @@ rollback drill은 `이전 active cycle 유지`, `9개 추천 반환`, `기존 32
 - Worker: `fba6c1fd-170d-4717-8bd8-53f432464912`를 기존 `08e7e3bb-d518-4ac6-bf57-b70fc97f6e50` 90%/신규 10% canary로 배포한 뒤 공개 페이지 30/30과 관리자 상태 30/30을 확인하고 신규 버전을 100%로 승격했다.
 - production 자동 경로 dry-run: `rssTransport=supabase-edge`, query 60개 중 성공 45·실패 15, 사용 근거 3건, `qualityGateStatus=warn`, 182 rows, 남녀 후보 각 93, lineup 각 9, prompt mismatch 0으로 통과했다. dry-run 전후 active cycle은 `d95d2899-a6e6-420d-9561-a8e9e4260ed9`로 동일하다.
 - 최종 DB: active C 182 rows, 남녀 후보 각 93, lineup 각 9, catalog rotation alert 0, delivery 0이다.
+- post-merge migration list에서 헤어 v4 `20260808090000`은 local/remote가 일치한다. 다만 다른 작업에서 적용된 원격 전용 `202608080001`, `202608080002`가 현재 main migration 폴더에 없어 전체 `db push --dry-run`은 history drift로 차단된다. 이 작업에서는 무관한 migration history를 repair하거나 되돌리지 않았다.
 - 개인화 표본은 generation/evaluated/selected 모두 0건이다. 따라서 안전한 운영값인 `shadow/0%`를 유지하고 실제 표본 없이 내부·10%·50%·100%를 강제하지 않는다.
