@@ -91,17 +91,22 @@ export function readPortoneStoreId(): string {
   return v;
 }
 
-export function readPortoneChannelKey(): string | undefined {
+/** Billing-key issuance and recurring charges must use the subscription channel. */
+export function readPortoneBillingKeyChannelKey(): string | undefined {
   return (
+    process.env.NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY?.trim() ||
+    process.env.PORTONE_V2_BILLING_KEY_CHANNEL_KEY?.trim() ||
     process.env.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY?.trim() ||
     process.env.PORTONE_V2_CHANNEL_KEY?.trim() ||
     undefined
   );
 }
 
-/** One-time usage packs use their own V2 channel so recurring/mobile routing stays unchanged. */
-export function readPortoneUsagePackChannelKey(): string | undefined {
+/** Authenticated one-time payments use a channel distinct from billing-key payments. */
+export function readPortonePaymentChannelKey(): string | undefined {
   return (
+    process.env.NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY?.trim() ||
+    process.env.PORTONE_V2_PAYMENT_CHANNEL_KEY?.trim() ||
     process.env.NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY?.trim() ||
     process.env.PORTONE_V2_USAGE_PACK_CHANNEL_KEY?.trim() ||
     undefined
@@ -182,7 +187,7 @@ export async function chargeBillingKey(
   input: PortOneBillingKeyChargeInput,
 ): Promise<PortOnePaymentResult> {
   const url = `${PORTONE_API_BASE}/payments/${encodeURIComponent(input.paymentId)}/billing-key`;
-  const channelKey = input.channelKey?.trim() || readPortoneChannelKey();
+  const channelKey = input.channelKey?.trim() || readPortoneBillingKeyChannelKey();
   const response = await fetch(url, {
     method: "POST",
     headers: {

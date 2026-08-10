@@ -94,6 +94,9 @@ export default async function UsagePackCheckoutPage({
               서비스 제공기간: {item.servicePeriodLabelKo}
             </p>
             <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
+              패션은 헤어+패션 1세트 기준
+            </p>
+            <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
               서비스 내부 기능에서만 사용되며 양도, 출금, 현금 교환은 지원하지 않습니다.
             </p>
           </Link>

@@ -2,7 +2,7 @@ export interface MobileRuntimeConfig {
   apiBaseUrl: string;
   clerkPublishableKey: string;
   portoneStoreId?: string;
-  portoneChannelKey?: string;
+  portoneBillingKeyChannelKey?: string;
 }
 
 export function requireMobileRuntimeConfig(env: Record<string, string | undefined>): MobileRuntimeConfig {
@@ -20,6 +20,8 @@ export function requireMobileRuntimeConfig(env: Record<string, string | undefine
     apiBaseUrl,
     clerkPublishableKey,
     portoneStoreId: env.EXPO_PUBLIC_PORTONE_STORE_ID?.trim(),
-    portoneChannelKey: env.EXPO_PUBLIC_PORTONE_CHANNEL_KEY?.trim(),
+    portoneBillingKeyChannelKey:
+      env.EXPO_PUBLIC_PORTONE_BILLING_KEY_CHANNEL_KEY?.trim() ||
+      env.EXPO_PUBLIC_PORTONE_CHANNEL_KEY?.trim(),
   };
 }

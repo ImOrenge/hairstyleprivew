@@ -267,8 +267,13 @@ const groups = {
     (group) =>
       checkAlternative(
         group,
-        ["NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY", "PORTONE_V2_CHANNEL_KEY"],
-        "PortOne channel key",
+        [
+          "NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY",
+          "PORTONE_V2_BILLING_KEY_CHANNEL_KEY",
+          "NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY",
+          "PORTONE_V2_CHANNEL_KEY",
+        ],
+        "PortOne billing-key channel key",
         { optional: true },
       ),
     (group) => checkExact(group, "PORTONE_V2_API_SECRET", "PortOne API secret"),
@@ -300,8 +305,13 @@ const groups = {
     (group) =>
       checkAlternative(
         group,
-        ["NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY", "PORTONE_V2_USAGE_PACK_CHANNEL_KEY"],
-        "PortOne V2 usage-pack channel key",
+        [
+          "NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY",
+          "PORTONE_V2_PAYMENT_CHANNEL_KEY",
+          "NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY",
+          "PORTONE_V2_USAGE_PACK_CHANNEL_KEY",
+        ],
+        "PortOne V2 authenticated-payment channel key",
       ),
     (group) => checkExact(group, "PORTONE_V2_API_SECRET", "PortOne V2 API secret"),
     (group) => checkWebhookSecret(group),
@@ -322,8 +332,13 @@ const groups = {
     (group) =>
       checkAlternative(
         group,
-        ["PORTONE_V2_CHANNEL_KEY", "NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY"],
-        "PortOne channel key",
+        [
+          "PORTONE_V2_BILLING_KEY_CHANNEL_KEY",
+          "NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY",
+          "PORTONE_V2_CHANNEL_KEY",
+          "NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY",
+        ],
+        "PortOne billing-key channel key",
         { optional: true },
       ),
     (group) => checkExact(group, "PORTONE_V2_API_SECRET", "PortOne API secret"),

@@ -17,6 +17,8 @@ function readPublicPortoneConfig() {
       process.env.PORTONE_V2_STORE_ID?.trim() ||
       "",
     channelKey:
+      process.env.NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY?.trim() ||
+      process.env.PORTONE_V2_BILLING_KEY_CHANNEL_KEY?.trim() ||
       process.env.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY?.trim() ||
       process.env.PORTONE_V2_CHANNEL_KEY?.trim() ||
       undefined,

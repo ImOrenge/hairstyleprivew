@@ -14,7 +14,7 @@ import {
   PLAN_AMOUNT_KRW,
   PLAN_CREDITS,
   PLAN_ORDER_NAME,
-  readPortoneChannelKey,
+  readPortoneBillingKeyChannelKey,
   readPortoneStoreId,
 } from "../../../../lib/portone";
 import {
@@ -116,7 +116,7 @@ function maskPublicConfig(value: string | undefined): string | null {
 
 function resolvePortoneCheckoutConfig(body: SubscribeRequestBody) {
   const storeId = readPortoneStoreId();
-  const channelKey = readPortoneChannelKey();
+  const channelKey = readPortoneBillingKeyChannelKey();
   const requestStoreId = readOptionalText(body.storeId);
   const requestChannelKey = readOptionalText(body.channelKey);
 

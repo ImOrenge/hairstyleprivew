@@ -5,7 +5,7 @@ import {
   isSelfServeBillingPlanKey,
 } from "../../../../../lib/billing-plan";
 import {
-  readPortoneChannelKey,
+  readPortoneBillingKeyChannelKey,
   readPortoneStoreId,
 } from "../../../../../lib/portone";
 import { buildPortoneBillingKeyIssueId } from "../../../../../lib/portone-payment-id";
@@ -22,7 +22,7 @@ interface PrepareBillingKeyRequest {
 function readPublicPortoneConfig() {
   return {
     storeId: readPortoneStoreId(),
-    channelKey: readPortoneChannelKey(),
+    channelKey: readPortoneBillingKeyChannelKey(),
   };
 }
 

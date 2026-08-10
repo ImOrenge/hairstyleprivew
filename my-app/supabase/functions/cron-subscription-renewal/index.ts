@@ -14,7 +14,9 @@ const PORTONE_V2_STORE_ID =
   Deno.env.get("PORTONE_V2_STORE_ID")?.trim() ||
   Deno.env.get("NEXT_PUBLIC_PORTONE_V2_STORE_ID")?.trim() ||
   "";
-const PORTONE_V2_CHANNEL_KEY =
+const PORTONE_V2_BILLING_KEY_CHANNEL_KEY =
+  Deno.env.get("PORTONE_V2_BILLING_KEY_CHANNEL_KEY")?.trim() ||
+  Deno.env.get("NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY")?.trim() ||
   Deno.env.get("PORTONE_V2_CHANNEL_KEY")?.trim() ||
   Deno.env.get("NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY")?.trim() ||
   "";
@@ -152,7 +154,9 @@ async function chargeBillingKey(
     body: JSON.stringify({
       storeId: PORTONE_V2_STORE_ID,
       billingKey,
-      ...(PORTONE_V2_CHANNEL_KEY ? { channelKey: PORTONE_V2_CHANNEL_KEY } : {}),
+      ...(PORTONE_V2_BILLING_KEY_CHANNEL_KEY
+        ? { channelKey: PORTONE_V2_BILLING_KEY_CHANNEL_KEY }
+        : {}),
       orderName,
       customer: { id: customerId },
       amount: { total: amountKrw },

@@ -133,7 +133,8 @@ const portoneWebhook = assertFile("lib/portone-webhook.ts");
 const portonePaymentId = assertFile("lib/portone-payment-id.ts");
 assertIncludes(portone, 'storeId:\\s*input\\.storeId\\?\\.trim\\(\\)\\s*\\|\\|\\s*readPortoneStoreId\\(\\)', "billing-key charge must include storeId");
 assertIncludes(portone, 'process\\.env\\.NEXT_PUBLIC_PORTONE_V2_STORE_ID\\?\\.trim\\(\\)\\s*\\|\\|\\s*process\\.env\\.PORTONE_V2_STORE_ID', "browser issue and server charge must prefer the same PortOne store id source");
-assertIncludes(portone, 'process\\.env\\.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY\\?\\.trim\\(\\)\\s*\\|\\|\\s*process\\.env\\.PORTONE_V2_CHANNEL_KEY', "browser issue and server charge must prefer the same PortOne channel key source");
+assertIncludes(portone, 'process\\.env\\.NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY\\?\\.trim\\(\\)\\s*\\|\\|\\s*process\\.env\\.PORTONE_V2_BILLING_KEY_CHANNEL_KEY', "billing-key issue and recurring charge must prefer the canonical billing-key channel source");
+assertIncludes(portone, 'process\\.env\\.NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY\\?\\.trim\\(\\)\\s*\\|\\|\\s*process\\.env\\.PORTONE_V2_PAYMENT_CHANNEL_KEY', "authenticated one-time payment must prefer the canonical payment channel source");
 assertIncludes(portone, 'customer:\\s*\\{\\s*id:\\s*input\\.customerId\\s*\\}', "REST billing-key charge must use customer.id");
 assertIncludes(portone, 'amount:\\s*\\{\\s*total:\\s*input\\.amount\\s*\\}', "billing-key charge must use server amount");
 assertIncludes(portone, 'parsePortonePaymentResult\\(input\\.paymentId,\\s*data\\)', "billing-key charge must parse wrapped PortOne payment responses");
@@ -191,7 +192,7 @@ assertAbsent(subscribe, 'getBillingKey\\(billingKey\\)', "web subscribe must not
 const billingKeyPrepare = assertFile("app/api/payments/billing-key/prepare/route.ts");
 assertIncludes(billingKeyPrepare, 'buildPortoneBillingKeyIssueId\\(plan\\)', "billing-key prepare must generate INIStdPay-safe short issue IDs");
 assertIncludes(billingKeyPrepare, 'readPortoneStoreId\\(\\)', "billing-key prepare must use the shared PortOne store config helper");
-assertIncludes(billingKeyPrepare, 'readPortoneChannelKey\\(\\)', "billing-key prepare must use the shared PortOne channel config helper");
+assertIncludes(billingKeyPrepare, 'readPortoneBillingKeyChannelKey\\(\\)', "billing-key prepare must use the shared billing-key channel config helper");
 assertAbsent(billingKeyPrepare, 'crypto\\.randomUUID\\(\\)', "billing-key prepare must not use full UUID issue IDs");
 assertIncludes(mobilePrepare, 'buildPortonePaymentId\\("mob",\\s*body\\.plan\\)', "mobile prepare must generate PortOne-safe short payment IDs");
 assertIncludes(subscribe, 'status:\\s*"pending"', "web subscribe must create pending transaction before charge");
@@ -375,6 +376,9 @@ assertIncludes(cloudflareSecretSyncScript, 'CLOUDFLARE_API_TOKEN', "Cloudflare s
 assertIncludes(cloudflareSecretSyncScript, 'PORTONE_V2_WEBHOOK_SECRET', "Cloudflare secret sync must include the PortOne webhook secret");
 assertIncludes(cloudflareSecretSyncScript, 'BILLING_KEY_ENCRYPTION_SECRET', "Cloudflare secret sync must include the billing-key encryption secret");
 assertIncludes(cloudflareSecretSyncScript, 'SUPABASE_SERVICE_ROLE_KEY', "Cloudflare secret sync must include Supabase service role key");
+assertIncludes(cloudflareSecretSyncScript, '"NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY"', "Cloudflare secret sync must include the canonical authenticated-payment channel key");
+assertIncludes(cloudflareSecretSyncScript, '"NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY"', "Cloudflare secret sync must include the canonical billing-key channel key");
+assertIncludes(cloudflareSecretSyncScript, 'LEGACY_SECRET_NAMES', "Cloudflare secret sync must isolate legacy channel names from default writes");
 assertIncludes(cloudflareSecretSyncScript, 'ALLOWED_SECRET_NAMES', "Cloudflare secret sync must validate --only names against an allow-list");
 assertIncludes(cloudflareSecretSyncScript, 'Unsupported secret name\\(s\\)', "Cloudflare secret sync must reject typoed or unsupported secret names");
 assertIncludes(cloudflareSecretSyncScript, 'wrangler", "secret", "list"', "Cloudflare secret sync must be able to verify deployed secret names");
