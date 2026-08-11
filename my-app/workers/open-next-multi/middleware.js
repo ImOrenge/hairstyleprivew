@@ -1,7 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 
 import { runWithCloudflareRequestContext } from "../../.open-next/cloudflare/init.js";
-import { handler as middlewareHandler } from "../../.open-next/middleware/handler.mjs";
 
 function fetchPinnedServer(service, request, versionId) {
   const downstreamHeaders = new Headers(request.headers);
@@ -70,6 +69,11 @@ export default class HairFitOpenNextRouter extends WorkerEntrypoint {
     }
 
     return runWithCloudflareRequestContext(request, this.env, this.ctx, async () => {
+      // The compiled middleware reads process.env while its module initializes.
+      // Load it only after OpenNext has installed the per-request env context.
+      const { handler: middlewareHandler } = await import(
+        "../../.open-next/middleware/handler.mjs"
+      );
       const requestOrResponse = await middlewareHandler(request, this.env, this.ctx);
 
       if (requestOrResponse instanceof Response) {
