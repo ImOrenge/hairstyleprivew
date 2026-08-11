@@ -6,6 +6,20 @@
   "compatibility_flags": ["nodejs_compat"],
   "minify": true,
   "keep_vars": true,
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "hairfit.beauty",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.hairfit.beauty",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "HAIRFIT_SOURCE_REVISION": "unversioned"
+  },
   "workflows": [
     {
       "name": "hairfit-generation-workflow",

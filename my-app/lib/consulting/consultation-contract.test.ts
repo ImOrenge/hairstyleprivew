@@ -229,8 +229,14 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   const packageJson = JSON.parse(read("../../package.json"));
 
   assert.match(router, /Cloudflare-Workers-Version-Overrides/);
-  assert.match(router, /hairstyleprivew=\"\$\{this\.env\.WORKER_VERSION_ID\}\"/);
-  assert.match(router, /this\.env\.DEFAULT_WORKER\.fetch/);
+  assert.match(router, /hairstyleprivew=\"\$\{versionId\}\"/);
+  assert.match(router, /function fetchPinnedServer\(service, request, versionId\)/);
+  assert.match(router, /const downstreamHeaders = new Headers\(request\.headers\)/);
+  assert.match(router, /const downstreamRequest = new Request\(request/);
+  assert.match(router, /service\.fetch\(downstreamRequest/);
+  assert.match(router, /\/\.well-known\/hairfit-deployment/);
+  assert.match(router, /\/\.well-known\/hairfit-router/);
+  assert.match(router, /pinnedServerVersion: this\.env\.WORKER_VERSION_ID/);
   assert.match(server, /server-functions\/default\/handler\.mjs/);
   assert.equal(routerConfig.name, "hairstyleprivew-router");
   assert.equal(routerConfig.keep_vars, true);
@@ -241,9 +247,13 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   ]);
   assert.equal(serverConfig.name, "hairstyleprivew");
   assert.equal(serverConfig.keep_vars, true);
+  assert.equal(serverConfig.vars.HAIRFIT_SOURCE_REVISION, "unversioned");
   assert.deepEqual(serverConfig.services, [
     { binding: "WORKER_SELF_REFERENCE", service: "hairstyleprivew-router" },
   ]);
+  assert.match(server, /\/\.well-known\/hairfit-deployment/);
+  assert.match(server, /sourceRevision: env\.HAIRFIT_SOURCE_REVISION/);
+  assert.match(server, /"cache-control": "no-store, max-age=0"/);
   assert.equal(packageJson.dependencies["@tensorflow/tfjs"], undefined);
   assert.equal(packageJson.dependencies["@tensorflow/tfjs-core"], "^4.22.0");
   assert.equal(packageJson.dependencies["@tensorflow/tfjs-backend-cpu"], "^4.22.0");
