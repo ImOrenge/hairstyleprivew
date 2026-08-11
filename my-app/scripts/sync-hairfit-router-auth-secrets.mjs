@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,7 +21,7 @@ export const ROUTER_AUTH_SECRET_NAMES = Object.freeze([
 function parseEnv(source) {
   const values = {};
   for (const line of source.split(/\r?\n/u)) {
-    const match = line.match(/^([A-Z][A-Z0-9_]*)=(.*)$/u);
+    const match = line.match(/^\uFEFF?(?:export\s+)?([A-Z][A-Z0-9_]*)\s*=\s*(.*)$/u);
     if (!match) continue;
     let value = match[2].trim();
     if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
@@ -46,13 +47,22 @@ function runWrangler(args, input) {
   });
   if (result.error) throw result.error;
   if (result.status !== 0) {
-    throw new Error("Wrangler rejected the router auth secret update");
+    const safeDetail = `${result.stderr || ""}\n${result.stdout || ""}`
+      .replace(/[A-Za-z0-9_./:+-]{24,}/gu, "[redacted]")
+      .slice(0, 1200)
+      .trim();
+    throw new Error(`Wrangler rejected the router auth secret update${safeDetail ? `: ${safeDetail}` : ""}`);
   }
+  return result.stdout || "";
+}
+
+function argumentValue(name) {
+  return process.argv.find((value) => value.startsWith(`${name}=`))?.slice(name.length + 1) ?? "";
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const apply = process.argv.includes("--apply");
-  const suppliedConfirmation = process.argv.find((value) => value.startsWith("--confirm="))?.slice(10) ?? "";
+  const suppliedConfirmation = argumentValue("--confirm");
   if (!apply) {
     console.log(`target Worker: ${targetWorker}`);
     console.log(`router auth secrets: ${ROUTER_AUTH_SECRET_NAMES.length}`);
@@ -63,13 +73,35 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     throw new Error(`--apply requires --confirm=${confirmation}`);
   }
 
-  const local = parseEnv(readFileSync(envPath, "utf8"));
+  const sourceEnvPath = resolve(argumentValue("--env-file") || envPath);
+  const serverVersionId = argumentValue("--server-version-id");
+  if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/iu.test(serverVersionId)) {
+    throw new Error("--apply requires --server-version-id=<UUID>");
+  }
+  const local = parseEnv(readFileSync(sourceEnvPath, "utf8"));
   const missing = ROUTER_AUTH_SECRET_NAMES.filter((name) => !local[name]?.trim());
   if (missing.length) throw new Error(`Missing local router auth inputs: ${missing.join(", ")}`);
+  if (!local.CLERK_SECRET_KEY.startsWith("sk_live_") || !local.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.startsWith("pk_live_")) {
+    throw new Error("Production router auth sync requires matching live Clerk keys");
+  }
   const payload = Object.fromEntries(ROUTER_AUTH_SECRET_NAMES.map((name) => [name, local[name]]));
-  runWrangler([
-    "secret", "bulk", "--config", configPath, "--name", targetWorker,
-  ], `${JSON.stringify(payload)}\n`);
-  console.log(`router auth secrets registered: ${ROUTER_AUTH_SECRET_NAMES.length}/${ROUTER_AUTH_SECRET_NAMES.length}`);
-  console.log("secret values rendered: no");
+  const tempRoot = mkdtempSync(resolve(tmpdir(), "hairfit-router-auth-"));
+  const secretsPath = resolve(tempRoot, "secrets.json");
+  try {
+    writeFileSync(secretsPath, `${JSON.stringify(payload)}\n`, { encoding: "utf8", mode: 0o600 });
+    const output = runWrangler([
+      "versions", "upload", "--config", configPath, "--keep-vars",
+      "--var", `WORKER_VERSION_ID:${serverVersionId}`,
+      "--secrets-file", secretsPath,
+      "--message", "HairFit-V2-router-auth-sync",
+    ]);
+    const uploadedVersion = output.match(/Worker Version ID:\s*([0-9a-f-]+)/iu)?.[1];
+    if (!uploadedVersion) throw new Error("Router upload succeeded without a parseable version ID");
+    console.log(`router auth secrets registered: ${ROUTER_AUTH_SECRET_NAMES.length}/${ROUTER_AUTH_SECRET_NAMES.length}`);
+    console.log(`router version uploaded: ${uploadedVersion}`);
+    console.log("router version deployed: no");
+    console.log("secret values rendered: no");
+  } finally {
+    rmSync(tempRoot, { recursive: true, force: true });
+  }
 }

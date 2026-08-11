@@ -22,7 +22,7 @@
 
 두 Worker는 OpenNext 공식 멀티 워커 예제와 동일하게 `nodejs_compat`, `allow_importable_env`, `global_fetch_strictly_public` compatibility flag를 사용한다. 특히 라우터의 Clerk 설정은 middleware module 초기화 시 import 가능한 env가 필요하므로 `allow_importable_env`를 제거하면 안 된다.
 
-라우터 wrapper는 위 4개 인증 binding만 `process.env`에 보충한 뒤 컴파일된 Next middleware를 지연 로드한다. Cloudflare isolate에서 이미 설정된 값은 덮어쓰지 않으며 provider·결제·callback/admin secret은 이 경로에 포함하지 않는다.
+라우터 wrapper는 위 4개 인증 binding만 매 요청 `process.env`에 동기화한 뒤 컴파일된 Next middleware를 지연 로드한다. warm isolate에 이전 version의 키가 남아도 현재 encrypted binding으로 교체하며 provider·결제·callback/admin secret은 이 경로에 포함하지 않는다.
 
 ## 배포 전 게이트
 
@@ -43,7 +43,7 @@
 
    Worker가 이미 존재하면 이 단계는 건너뛴다. 이후 모든 라우터 버전은 정식 `wrangler.middleware.jsonc`를 사용해 자기 참조 binding을 복원한다.
 
-   최초 생성 뒤 또는 인증키 회전 시 로컬 승인 환경에서 `npm run cf:multi:router:auth-sync -- --apply --confirm=HAIRFIT_ROUTER_AUTH_SECRETS`를 실행한다. 스크립트는 값은 출력하지 않고 위 4개만 라우터에 등록한다. generation callback과 catalog admin 요청은 서버 handler가 자체 secret 검증을 수행하는 정확한 경로만 라우터 wrapper에서 직접 전달한다.
+   최초 생성 뒤 또는 인증키 회전 시 HairFit 운영 live Clerk 키가 있는 승인 환경 파일을 사용해 `npm run cf:multi:router:auth-sync -- --apply --confirm=HAIRFIT_ROUTER_AUTH_SECRETS --env-file=<HAIRFIT_PRODUCTION_ENV> --server-version-id=<NEW_SERVER_ID>`를 실행한다. test Clerk 키는 거부한다. 스크립트는 값을 출력하지 않고 위 4개가 포함된 새 라우터 version만 업로드하며 자동 배포하지 않는다. generation callback과 catalog admin 요청은 서버 handler가 자체 secret 검증을 수행하는 정확한 경로만 라우터 wrapper에서 직접 전달한다.
 
 1. 서버 새 version을 업로드한다.
 

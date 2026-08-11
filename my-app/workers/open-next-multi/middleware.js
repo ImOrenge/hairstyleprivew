@@ -50,7 +50,7 @@ const ROUTER_AUTH_ENV_NAMES = [
 function ensureMiddlewareProcessEnv(env) {
   for (const name of ROUTER_AUTH_ENV_NAMES) {
     if (typeof env[name] === "string" && env[name].length > 0) {
-      process.env[name] ??= env[name];
+      process.env[name] = env[name];
     }
   }
 }
