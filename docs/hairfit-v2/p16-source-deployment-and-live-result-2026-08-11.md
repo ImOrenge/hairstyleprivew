@@ -1,10 +1,10 @@
 # P16 HairFit V2 소스 배포·실분석 실행 결과
 
 - 실행일: 2026-08-11 KST
-- 최종 검증 소스: `1d66bd73665510793950cba405ccdb95544d8349`
+- 최종 운영 OFF 소스: `59b88aeac9388bbffd29ebab64164a815083bda9`
 - 원격 feature/develop: 위 SHA로 일치
 - 대상 Worker: `hairstyleprivew`
-- 판정: `live_local_canary_pass / cloudflare_source_deploy_blocked / production_unchanged`
+- 판정: `live_local_analysis_pass / cloudflare_off_source_deploy_pass / public_canary_pending`
 
 ## 승인 적용 범위
 
@@ -22,15 +22,15 @@
 | 통합 방식 | 두 차례 모두 `git merge --ff-only` |
 | main | 변경하지 않음 |
 
-## Cloudflare 배포 시도
+## Cloudflare 배포 결과
 
 서버 rollout flag 25개를 모두 `false`로 재등록하고 `PROMPT_VISION_MODEL=gpt-4o`를 정확한 확인 토큰으로 재등록했다. 필수 서버 secret 이름은 값 조회 없이 `32/32`를 확인했다.
 
-`22394d2` OFF bundle은 Next.js 130 routes와 OpenNext bundle을 만들었으나 Cloudflare API가 Worker 압축 크기 3 MiB 제한으로 신규 version을 거부했다. 운영 Worker version은 교체되지 않았다.
+초기 단일 Worker 배포는 3 MiB 제한으로 거부됐지만, FaceMesh에 필요한 `tfjs-core`와 CPU backend만 유지하고 OpenNext 공식 멀티 워커 구조로 서버와 미들웨어를 분리했다. 최종 upload gzip은 server `3,049.89 KiB`, router `189.10 KiB`로 Free 한도 안에 들어왔다.
 
-아이콘을 1024px/178,916 bytes에서 동일 로고의 512px/19,689 bytes로 최적화한 `44733f2`에서 server handler gzip은 `3,119,769 bytes`로 내려갔다. 그러나 Wrangler가 middleware 등 전체 모듈을 합산한 업로드는 `3,406.17 KiB`였고 다시 `code 10027`로 거부됐다. 따라서 OFF smoke와 원격 canary는 시작되지 않았고 공개 서비스는 기존 version을 유지한다.
+최종 server version은 `e3f951b5-9548-4898-8831-e73ef953cbb4`, router version은 `6d5af697-52e4-4198-a299-3b5203f7d679`다. 라우터가 pin한 server ID와 `/.well-known/hairfit-deployment`의 source revision이 위 값과 SHA를 반환한다. root/login/www는 `200`, workspace는 로그인으로 `307`, 비인증 보호 API는 `401`을 3회 연속 확인했다.
 
-MediaPipe/TensorFlow 서버 랜드마크 청크는 요구 기능이며 제거하거나 가짜 좌표로 대체하지 않았다. Cloudflare 유료 Worker 한도 상향은 비용 발생 외부 결정이므로 자동 수행하지 않았다.
+MediaPipe/TensorFlow 서버 랜드마크 청크는 요구 기능이며 제거하거나 가짜 좌표로 대체하지 않았다. 플랜 업그레이드나 Docker 없이 배포했다. 서버 flag 25개는 OFF 상태를 유지했으며 공개 V2 canary는 시작하지 않았다.
 
 ## 실인증·실분석 결과
 
@@ -71,5 +71,4 @@ production deploy와 분리해 로컬 Web canary를 모든 V2 flag ON, legacy en
 
 ## 종료 판정
 
-실인증·실분석·랜드마크 렌더링은 검증됐다. 하지만 production source deploy가 계정 3 MiB 한도에서 거부됐으므로 P16 전체는 완료가 아니다. 운영 canary, 실제 유료 hair/Fashion generation, actual service/Aftercare live, Expo 실기기와 rollback 관찰은 production source가 배포되기 전까지 닫을 수 없다.
-
+실인증·실분석·랜드마크 렌더링과 production OFF source deploy는 검증됐다. P16의 배포 차단은 해소됐지만 공개 Web canary, 실제 유료 hair/Fashion generation, actual service/Aftercare live, Expo 실기기와 canary 관찰은 아직 닫히지 않았다. 상세 배포·롤백 증거는 `p19-cloudflare-off-deployment-result-2026-08-11.md`를 따른다.
