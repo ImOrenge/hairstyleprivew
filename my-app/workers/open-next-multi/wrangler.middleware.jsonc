@@ -1,0 +1,30 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hairstyleprivew-router",
+  "main": "middleware.js",
+  "compatibility_date": "2026-02-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "minify": true,
+  "keep_vars": true,
+  "workers_dev": false,
+  "assets": {
+    "directory": "../../.open-next/assets",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "WORKER_VERSION_ID": "00000000-0000-0000-0000-000000000000"
+  },
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "hairstyleprivew-router"
+    },
+    {
+      "binding": "DEFAULT_WORKER",
+      "service": "hairstyleprivew"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

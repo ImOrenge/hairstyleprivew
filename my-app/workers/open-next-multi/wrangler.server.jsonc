@@ -1,0 +1,26 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hairstyleprivew",
+  "main": "server.js",
+  "compatibility_date": "2026-02-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "minify": true,
+  "keep_vars": true,
+  "workflows": [
+    {
+      "name": "hairfit-generation-workflow",
+      "binding": "GENERATION_WORKFLOW",
+      "class_name": "GenerationWorkflow",
+      "script_name": "hairfit-generation-workflow"
+    }
+  ],
+  "services": [
+    {
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "hairstyleprivew-router"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

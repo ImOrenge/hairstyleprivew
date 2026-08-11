@@ -186,6 +186,9 @@ test("server-produced landmark evidence is persisted and rendered without client
   const correctionMigration = read("../../../supabase/migrations/202608090004_hairfit_v2_analysis_corrections.sql");
   assert.match(landmarkServer, /MediaPipeFaceMesh/);
   assert.match(landmarkServer, /runtime: "tfjs"/);
+  assert.match(landmarkServer, /@tensorflow\/tfjs-core/);
+  assert.match(landmarkServer, /@tensorflow\/tfjs-backend-cpu/);
+  assert.doesNotMatch(landmarkServer, /@tensorflow\/tfjs"/);
   assert.match(landmarkServer, /buildFaceGeometryV2/);
   assert.match(analysisServer, /landmarks:evidence\.landmarks/);
   assert.match(analysisServer, /landmarks,contours,hairline,measurements/);
@@ -216,6 +219,34 @@ test("server-produced landmark evidence is persisted and rendered without client
   assert.match(analysisWorkbench, /onEvidenceLoad=\{setGeometryEvidence\}/);
   assert.match(analysisWorkbench, /onEvidenceSelect=\{setActiveEvidenceId\}/);
   assert.doesNotMatch(photoEvidence, /tensorflow|MediaPipeFaceMesh|createDetector/);
+});
+
+test("Cloudflare multi-worker deployment keeps server secrets and pins the exact downstream version", () => {
+  const router = read("../../workers/open-next-multi/middleware.js");
+  const server = read("../../workers/open-next-multi/server.js");
+  const routerConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.middleware.jsonc"));
+  const serverConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.server.jsonc"));
+  const packageJson = JSON.parse(read("../../package.json"));
+
+  assert.match(router, /Cloudflare-Workers-Version-Overrides/);
+  assert.match(router, /hairstyleprivew=\"\$\{this\.env\.WORKER_VERSION_ID\}\"/);
+  assert.match(router, /this\.env\.DEFAULT_WORKER\.fetch/);
+  assert.match(server, /server-functions\/default\/handler\.mjs/);
+  assert.equal(routerConfig.name, "hairstyleprivew-router");
+  assert.equal(routerConfig.keep_vars, true);
+  assert.equal(routerConfig.workers_dev, false);
+  assert.deepEqual(routerConfig.services, [
+    { binding: "WORKER_SELF_REFERENCE", service: "hairstyleprivew-router" },
+    { binding: "DEFAULT_WORKER", service: "hairstyleprivew" },
+  ]);
+  assert.equal(serverConfig.name, "hairstyleprivew");
+  assert.equal(serverConfig.keep_vars, true);
+  assert.deepEqual(serverConfig.services, [
+    { binding: "WORKER_SELF_REFERENCE", service: "hairstyleprivew-router" },
+  ]);
+  assert.equal(packageJson.dependencies["@tensorflow/tfjs"], undefined);
+  assert.equal(packageJson.dependencies["@tensorflow/tfjs-core"], "^4.22.0");
+  assert.equal(packageJson.dependencies["@tensorflow/tfjs-backend-cpu"], "^4.22.0");
 });
 
 test("photo analysis advances through a durable automatic pipeline without scan approval", () => {

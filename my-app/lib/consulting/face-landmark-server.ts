@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { FaceLandmarksDetector } from "@tensorflow-models/face-landmarks-detection";
-import type * as TensorFlow from "@tensorflow/tfjs";
+import type * as TensorFlowCore from "@tensorflow/tfjs-core";
 import type { NormalizedPointV2, PhotoQualityV2 } from "@hairfit/shared/v2";
 import { buildFaceGeometryV2 } from "@hairfit/shared/v2";
 import sharp from "sharp";
@@ -9,13 +9,13 @@ import sharp from "sharp";
 const LANDMARK_MODEL = {
   provider: "tensorflow-js",
   name: "MediaPipeFaceMesh",
-  version: "face-landmarks-detection@1.0.6/tfjs@4.22.0",
+  version: "face-landmarks-detection@1.0.6/tfjs-core@4.22.0/cpu@4.22.0",
 } as const;
 const MAX_INFERENCE_DIMENSION = 512;
 
 interface LandmarkRuntime {
   detector: FaceLandmarksDetector;
-  tf: typeof TensorFlow;
+  tf: typeof TensorFlowCore;
 }
 
 let runtimePromise: Promise<LandmarkRuntime> | null = null;
@@ -34,7 +34,8 @@ function imageBufferFromDataUrl(dataUrl: string) {
 async function createRuntime(): Promise<LandmarkRuntime> {
   const [faceLandmarksDetection, tf] = await Promise.all([
     import("@tensorflow-models/face-landmarks-detection"),
-    import("@tensorflow/tfjs"),
+    import("@tensorflow/tfjs-core"),
+    import("@tensorflow/tfjs-backend-cpu"),
   ]);
   if (tf.getBackend() !== "cpu") await tf.setBackend("cpu");
   await tf.ready();
