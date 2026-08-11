@@ -10,7 +10,6 @@ import { isAuthorizedGenerationWorkflowCallback } from "./lib/generation-workflo
 import { isAccountType, parseOnboardingMetadata } from "./lib/onboarding";
 import { getSubscriptionAccessMode } from "./lib/subscription-access";
 
-const { canUseClerkServer: hasClerkConfig } = getClerkConfigState();
 const isProtectedRoute = createRouteMatcher([
   "/admin(.*)",
   "/aftercare(.*)",
@@ -197,8 +196,7 @@ async function loadDbAccount(userId: string) {
   }
 }
 
-const clerkAppMiddleware = hasClerkConfig
-  ? clerkMiddleware(async (auth, req) => {
+const clerkAppMiddleware = clerkMiddleware(async (auth, req) => {
       const legacyGenerationRedirect = redirectLegacyGenerationEntry(req);
       if (legacyGenerationRedirect) {
         return legacyGenerationRedirect;
@@ -292,14 +290,9 @@ const clerkAppMiddleware = hasClerkConfig
       }
 
       return withMobileCors(req, NextResponse.next());
-    })
-  : null;
+    });
 
-const proxy = hasClerkConfig && clerkAppMiddleware
-  ? (req: NextRequest, event: NextFetchEvent) => {
-      return clerkAppMiddleware(req, event);
-    }
-  : async (req: NextRequest) => {
+async function clerkUnavailableMiddleware(req: NextRequest) {
       const legacyGenerationRedirect = redirectLegacyGenerationEntry(req);
       if (legacyGenerationRedirect) {
         return legacyGenerationRedirect;
@@ -328,7 +321,14 @@ const proxy = hasClerkConfig && clerkAppMiddleware
       }
 
       return withMobileCors(req, clerkConfigRequiredResponse(req));
-    };
+}
+
+const proxy = (req: NextRequest, event: NextFetchEvent) => {
+  const { canUseClerkServer } = getClerkConfigState();
+  return canUseClerkServer
+    ? clerkAppMiddleware(req, event)
+    : clerkUnavailableMiddleware(req);
+};
 
 export default proxy;
 
