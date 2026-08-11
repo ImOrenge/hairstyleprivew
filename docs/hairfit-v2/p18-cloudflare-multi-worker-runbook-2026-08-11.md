@@ -20,6 +20,8 @@
 
 라우터는 `DEFAULT_WORKER` service binding으로 서버를 호출한다. `Cloudflare-Workers-Version-Overrides` 헤더의 키는 binding 이름이 아니라 실제 Worker 이름인 `hairstyleprivew`이며, 값은 이번 배포에서 업로드한 서버 version ID다. 서버 config의 `keep_vars: true`와 Wrangler의 secret 보존 계약으로 기존 비밀값을 삭제하지 않는다.
 
+두 Worker는 OpenNext 공식 멀티 워커 예제와 동일하게 `nodejs_compat`, `allow_importable_env`, `global_fetch_strictly_public` compatibility flag를 사용한다. 특히 라우터의 Clerk 설정은 middleware module 초기화 시 import 가능한 env가 필요하므로 `allow_importable_env`를 제거하면 안 된다.
+
 ## 배포 전 게이트
 
 1. feature와 `develop/2026-08-08-hairfit-v2-backend`가 동일한 원격 SHA여야 한다.

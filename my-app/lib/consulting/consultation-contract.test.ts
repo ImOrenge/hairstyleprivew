@@ -244,6 +244,11 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(server, /server-functions\/default\/handler\.mjs/);
   assert.equal(routerConfig.name, "hairstyleprivew-router");
   assert.equal(routerConfig.keep_vars, true);
+  assert.deepEqual(routerConfig.compatibility_flags, [
+    "nodejs_compat",
+    "allow_importable_env",
+    "global_fetch_strictly_public",
+  ]);
   assert.equal(routerConfig.workers_dev, false);
   assert.deepEqual(routerConfig.services, [
     { binding: "WORKER_SELF_REFERENCE", service: "hairstyleprivew-router" },
@@ -251,6 +256,7 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   ]);
   assert.equal(serverConfig.name, "hairstyleprivew");
   assert.equal(serverConfig.keep_vars, true);
+  assert.deepEqual(serverConfig.compatibility_flags, routerConfig.compatibility_flags);
   assert.equal(serverConfig.vars.HAIRFIT_SOURCE_REVISION, "unversioned");
   assert.deepEqual(serverConfig.services, [
     { binding: "WORKER_SELF_REFERENCE", service: "hairstyleprivew-router" },
