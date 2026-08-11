@@ -86,3 +86,12 @@
 - 원격 Supabase에 `20260722120000`, `202608080001`, `202608080002`가 적용됐고 원격 pending migration은 0이다. `consultation_sessions` Data API service read와 active `hair_decision_once` offering을 확인했다.
 - 검증: consultation 8/8, HairFit V2 8/8, upload 5/5, generation entry 14/14, generation workflow 69/69, global CSS 9/9, component registry, migration mirror, monorepo typecheck, 집중 lint, V2 flag ON production build 129 routes 통과.
 - 실제 사용자 사진·Clerk 로그인·외부 Gemini 9장 생성은 사용자 입력과 유료 처리량이 필요한 최종 smoke이므로 정적/빌드 결과로 완료 주장하지 않는다.
+
+## 2026-08-11 P16/P17 실행 후속
+
+- feature와 `develop/2026-08-08-hairfit-v2-backend`를 `1d66bd73665510793950cba405ccdb95544d8349`까지 ff-only 통합하고 원격 SHA 일치를 확인했다.
+- 원격 Supabase migration은 `85/85`, 서버 rollout flag 25개는 OFF, vision model은 `gpt-4o`, 필수 secret 이름은 값 조회 없이 `32/32`다.
+- 실 Clerk 개발 인증과 저장소 데모 얼굴 fixture로 Discovery 7개 autosave→Photo preflight/crop→비동기 analysis→MediaPipe landmark→`gpt-4o`→원격 evidence→overlay를 검증했고 live E2E `1/1`이 58.3초에 통과했다.
+- 실검증에서 부분 autosave를 전체 완료로 막던 server guard와 autosave 후 조기 Photo 이동을 수정했다. 계약 `73/73`, typecheck와 lint가 통과했다.
+- Cloudflare source deploy는 전체 압축 `3,406.17 KiB`로 계정 3 MiB 제한을 넘어 `code 10027`에서 거부됐다. production version은 교체되지 않았고 OFF smoke/canary/실기기·유료 generation은 미완료다.
+- 상세 증거와 재개 조건은 `p16-source-deployment-and-live-result-2026-08-11.md`, `p17-final-handoff-2026-08-11.md`를 따른다. 이 상태에서 전체 goal을 완료로 선언하지 않는다.

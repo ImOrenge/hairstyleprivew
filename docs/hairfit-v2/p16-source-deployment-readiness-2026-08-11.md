@@ -1,9 +1,11 @@
 # P16 HairFit V2 소스 배포 준비
 
 - 작성일: 2026-08-11 KST
-- 상태: `cloudflare_bundle_pass / source_revision_not_committed / deployment_not_authorized`
+- 상태: `superseded_by_execution_result / cloudflare_size_blocked`
 - 대상 Worker: `hairstyleprivew`
-- 원격 변경: 없음
+- 원격 변경: feature/develop push, server flags OFF와 vision model 이름 등록; source version 교체는 실패
+
+> 이 문서는 배포 전 snapshot이다. 실제 승인·실행 결과와 현재 판정은 `p16-source-deployment-and-live-result-2026-08-11.md` 및 `p17-final-handoff-2026-08-11.md`를 따른다.
 
 ## 로컬 배포 산출물 검증
 

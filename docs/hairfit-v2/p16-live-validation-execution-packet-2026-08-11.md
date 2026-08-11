@@ -2,8 +2,8 @@
 
 - 작성일: 2026-08-11 KST
 - 범위: HairFit V2 원격 migration, 실인증, live AI/provider, canary, Expo 실기기 검증
-- 현재 상태: `database_read_only_pass / server_flags_off_registered / migration_gate_pass / vision_model_registered / live_provider_not_authorized`
-- 원격 변경: 승인된 migration 3개와 `PROMPT_VISION_MODEL=gpt-4o` 단일 이름 등록 완료, 그 외 변경 없음
+- 현재 상태: `migration_pass / server_flags_off / vision_model_registered / local_live_analysis_pass / production_deploy_size_blocked`
+- 원격 변경: 승인된 migration 3개, server rollout flag 25개 OFF, `PROMPT_VISION_MODEL=gpt-4o`, feature/develop source push. Worker source version 교체는 Cloudflare 3 MiB 제한으로 거부됨
 - 제품 경계: 사용자에게 유료 생성 여부·견적·결제 승인을 묻지 않는다. entitlement·사용량·멱등·복구는 서버 내부에서 검증한다.
 
 ## 1. 현재 비파괴 준비 결과
