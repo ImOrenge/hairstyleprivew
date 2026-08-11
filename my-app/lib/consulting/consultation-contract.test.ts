@@ -238,6 +238,8 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /\/\.well-known\/hairfit-router/);
   assert.match(router, /pinnedServerVersion: this\.env\.WORKER_VERSION_ID/);
   assert.match(router, /function isServerVerifiedRequest\(pathname\)/);
+  assert.match(router, /function ensureMiddlewareProcessEnv\(env\)/);
+  assert.match(router, /process\.env\[name\] \?\?= env\[name\]/);
   assert.match(router, /await import\(\s*"\.\.\/\.\.\/\.open-next\/middleware\/handler\.mjs"/);
   assert.match(router, /SERVER_VERIFIED_CALLBACK_PATHS/);
   assert.match(router, /pathname\.startsWith\("\/api\/admin\/hairstyles\/"\)/);

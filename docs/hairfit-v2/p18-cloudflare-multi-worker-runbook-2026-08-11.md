@@ -22,6 +22,8 @@
 
 두 Worker는 OpenNext 공식 멀티 워커 예제와 동일하게 `nodejs_compat`, `allow_importable_env`, `global_fetch_strictly_public` compatibility flag를 사용한다. 특히 라우터의 Clerk 설정은 middleware module 초기화 시 import 가능한 env가 필요하므로 `allow_importable_env`를 제거하면 안 된다.
 
+라우터 wrapper는 위 4개 인증 binding만 `process.env`에 보충한 뒤 컴파일된 Next middleware를 지연 로드한다. Cloudflare isolate에서 이미 설정된 값은 덮어쓰지 않으며 provider·결제·callback/admin secret은 이 경로에 포함하지 않는다.
+
 ## 배포 전 게이트
 
 1. feature와 `develop/2026-08-08-hairfit-v2-backend`가 동일한 원격 SHA여야 한다.

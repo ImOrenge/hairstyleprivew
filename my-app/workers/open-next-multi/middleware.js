@@ -40,8 +40,24 @@ function isServerVerifiedRequest(pathname) {
   );
 }
 
+const ROUTER_AUTH_ENV_NAMES = [
+  "CLERK_SECRET_KEY",
+  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+];
+
+function ensureMiddlewareProcessEnv(env) {
+  for (const name of ROUTER_AUTH_ENV_NAMES) {
+    if (typeof env[name] === "string" && env[name].length > 0) {
+      process.env[name] ??= env[name];
+    }
+  }
+}
+
 export default class HairFitOpenNextRouter extends WorkerEntrypoint {
   async fetch(request) {
+    ensureMiddlewareProcessEnv(this.env);
     const pathname = new URL(request.url).pathname;
     if (pathname === "/.well-known/hairfit-router") {
       return Response.json(
