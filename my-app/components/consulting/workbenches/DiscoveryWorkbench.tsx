@@ -14,7 +14,7 @@ function selectedLabel<T extends string>(value: T, labels: Record<T, string>) {
   return [labels[value]];
 }
 
-type DiscoveryWorkbenchProps = { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">) => Promise<unknown>; saving: boolean; interviewEnabled?: boolean };
+type DiscoveryWorkbenchProps = { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">, options?: { navigate?: boolean }) => Promise<unknown>; saving: boolean; interviewEnabled?: boolean };
 
 export function DiscoveryWorkbench(props: DiscoveryWorkbenchProps) {
   return props.interviewEnabled ? <DiscoveryInterview {...props} /> : <DiscoveryFormWorkbench {...props} />;

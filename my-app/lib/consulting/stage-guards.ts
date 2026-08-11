@@ -4,19 +4,20 @@ import type { ConsultationPatch, ConsultationSnapshot } from "./contracts";
 function fail(message: string): never { throw new Error(`INVALID_PATCH:${message}`); }
 
 export function validateConsultationPatch(snapshot: ConsultationSnapshot, patch: ConsultationPatch) {
-  if (patch.discovery && (
-    !patch.discovery.purpose.trim()
-    || !patch.discovery.goals.length
-    || !patch.discovery.currentHair.trim()
-    || !patch.discovery.hairLength
-    || !patch.discovery.hairDensity
-    || !patch.discovery.strandThickness
-    || !patch.discovery.hairTexture
-    || !patch.discovery.damageLevel
-    || !patch.discovery.allowedServices.length
-  )) fail("상담 목적, 현재 모발, 가능한 시술 범위와 목표가 필요합니다.");
-  if (patch.discovery) {
-    const unavailable = patch.discovery.desiredServices.filter((service) => service !== "아직 모름" && !patch.discovery?.allowedServices.includes(service));
+  if (patch.completeStage === "discovery") {
+    const discovery = patch.discovery ?? snapshot.discovery;
+    if (
+      !discovery.purpose.trim()
+      || !discovery.goals.length
+      || !discovery.currentHair.trim()
+      || !discovery.hairLength
+      || !discovery.hairDensity
+      || !discovery.strandThickness
+      || !discovery.hairTexture
+      || !discovery.damageLevel
+      || !discovery.allowedServices.length
+    ) fail("상담 목적, 현재 모발, 가능한 시술 범위와 목표가 필요합니다.");
+    const unavailable = discovery.desiredServices.filter((service) => service !== "아직 모름" && !discovery.allowedServices.includes(service));
     if (unavailable.length) fail(`고려 중인 시술이 가능한 범위와 충돌합니다: ${unavailable.join(", ")}`);
   }
   if (patch.photo && (

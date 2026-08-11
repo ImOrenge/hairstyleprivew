@@ -105,7 +105,7 @@ function schema(topicId: TopicId): InterviewQuestionSchema {
 
 export function DiscoveryInterview({ snapshot, mutate, saving }: {
   snapshot: ConsultationSnapshot;
-  mutate: (patch: Omit<ConsultationPatch, "expectedVersion">) => Promise<unknown>;
+  mutate: (patch: Omit<ConsultationPatch, "expectedVersion">, options?: { navigate?: boolean }) => Promise<unknown>;
   saving: boolean;
 }) {
   const router = useRouter();
@@ -130,7 +130,10 @@ export function DiscoveryInterview({ snapshot, mutate, saving }: {
     const normalized = withTopicMetadata(nextDraft, topicId, fields);
     setDraft(normalized);
     setSaveState("saving");
-    const result = await mutate({ discovery: normalized, currentStage: "discovery" }) as { ok?: boolean; conflict?: boolean } | undefined;
+    const result = await mutate(
+      { discovery: normalized, currentStage: "discovery" },
+      { navigate: false },
+    ) as { ok?: boolean; conflict?: boolean } | undefined;
     setSaveState(result?.ok ? "saved" : result?.conflict ? "conflict" : "offline");
     if (result?.ok) {
       setEditTopic(null);

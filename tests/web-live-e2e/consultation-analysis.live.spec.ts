@@ -29,16 +29,37 @@ test("existing customer keeps one consultation through preflight, AI analysis, e
   expect(consultationId).toMatch(UUID_PATTERN);
   await expect(page).toHaveURL(new RegExp(`/consulting/${consultationId}/discovery$`));
 
-  await page.getByRole("group", { name: "이번 상담 목적" }).getByRole("button", { name: "일상 이미지 정리" }).click();
-  await page.getByRole("group", { name: "원하는 변화" }).getByRole("button", { name: "얼굴 균형 보완" }).click();
+  await page.getByRole("radio", { name: "일상 이미지 정리" }).check();
+  await expect(page.getByRole("heading", { name: "어떤 인상과 결과를 원하나요?" })).toBeVisible();
+  await page.getByRole("checkbox", { name: "얼굴 균형 보완" }).check();
+  await page.getByRole("button", { name: "답변 저장" }).click();
+
+  await expect(page.getByRole("heading", { name: "지금 모발 상태를 알려주세요." })).toBeVisible();
   await page.getByLabel("현재 모발 상태").fill("어깨 아래 중간 길이의 직모이며 끝부분이 건조함");
-  await page.getByRole("group", { name: "가능한 시술 범위" }).getByRole("button", { name: "커트" }).click();
-  await page.getByRole("button", { name: "저장하고 다음 단계 열기" }).click();
-  await expect(page.getByRole("link", { name: "다음 상담 단계" })).toBeVisible();
-  await page.getByRole("link", { name: "다음 상담 단계" }).click();
+  await page.getByRole("button", { name: "답변 저장" }).click();
+
+  await expect(page.getByRole("heading", { name: "최근 시술과 손상 상태는 어떤가요?" })).toBeVisible();
+  await page.getByRole("button", { name: "답변 저장" }).click();
+
+  await expect(page.getByRole("heading", { name: "원하는 시술과 실제 가능한 범위는 어디까지인가요?" })).toBeVisible();
+  const desiredServices = page.getByRole("group", { name: "고려 중인 서비스" });
+  const allowedServices = page.getByRole("group", { name: "가능한 시술 범위" });
+  if (await desiredServices.getByRole("button", { name: "커트" }).getAttribute("aria-pressed") !== "true") {
+    await desiredServices.getByRole("button", { name: "커트" }).click();
+  }
+  if (await allowedServices.getByRole("button", { name: "커트" }).getAttribute("aria-pressed") !== "true") {
+    await allowedServices.getByRole("button", { name: "커트" }).click();
+  }
+  await page.getByRole("button", { name: "답변 저장" }).click();
+
+  await expect(page.getByRole("heading", { name: "아침과 미용실에서 어느 정도 관리할 수 있나요?" })).toBeVisible();
+  await page.getByRole("button", { name: "답변 저장" }).click();
+  await expect(page.getByRole("heading", { name: "변화 강도와 피하고 싶은 것을 정리해볼게요." })).toBeVisible();
+  await page.getByRole("button", { name: "답변 저장" }).click();
+  await page.getByRole("button", { name: "이 기준으로 사진 준비" }).click();
   await expect(page).toHaveURL(new RegExp(`/consulting/${consultationId}/photo$`));
 
-  const photoInput = page.locator('input[type="file"]');
+  const photoInput = page.locator("label").filter({ hasText: "정면 사진 선택" }).locator('input[type="file"]');
   await photoInput.setInputFiles(path.resolve("my-app/public/hero/befor.png"));
   await expect(page.getByText("사진 사전검사를 통과했습니다.")).toBeVisible();
   await expect(page.locator("p").filter({ hasText: /^896×1344px ·/ })).toBeVisible();
@@ -51,7 +72,7 @@ test("existing customer keeps one consultation through preflight, AI analysis, e
     const url = new URL(response.url());
     return response.request().method() === "POST" && url.pathname === `/api/consultations/${consultationId}/photo-analysis`;
   }, { timeout: 150_000 });
-  await page.getByRole("button", { name: "사진 업로드 및 AI 상담 분석" }).click();
+  await page.getByRole("button", { name: "이 프레이밍 사용" }).click();
 
   const draftResponse = await draftResponsePromise;
   expect(draftResponse.status()).toBe(201);
@@ -59,39 +80,40 @@ test("existing customer keeps one consultation through preflight, AI analysis, e
   expect(draft.draftId).toMatch(UUID_PATTERN);
 
   const analysisResponse = await analysisResponsePromise;
-  expect(analysisResponse.status()).toBe(200);
-  const analysis = await analysisResponse.json() as {
-    requiresRetry?: boolean;
-    evidenceId?: string;
-    consultationVersion?: number;
-    evidence?: { pipelineStatus?: string; items?: unknown[] };
-    faceAnalysis?: { confidence?: string; faceShape?: string };
-    strategyRecommendations?: unknown[];
-    quality?: Array<{ id?: string; status?: string }>;
+  expect(analysisResponse.status()).toBe(202);
+  const accepted = await analysisResponse.json() as {
+    accepted?: boolean;
+    run?: { id?: string; state?: string };
+    snapshot?: { version?: number; currentStage?: string };
   };
-  expect(analysis.requiresRetry).toBe(false);
-  expect(analysis.evidenceId).toMatch(UUID_PATTERN);
-  expect(analysis.consultationVersion).toBeGreaterThan(Number(creation.snapshot?.version));
-  expect(analysis.evidence?.pipelineStatus).toBe("linked");
-  expect(analysis.evidence?.items).toHaveLength(6);
-  expect(analysis.faceAnalysis?.confidence).toBe("high");
-  expect(analysis.faceAnalysis?.faceShape).not.toBe("확인 전");
-  expect(analysis.strategyRecommendations).toHaveLength(8);
-  expect(analysis.quality).toEqual(expect.arrayContaining([
-    expect.objectContaining({ id: "resolution", status: "pass" }),
-  ]));
+  expect(accepted.accepted).toBe(true);
+  expect(accepted.run?.id).toMatch(UUID_PATTERN);
+  expect(accepted.run?.state).toBe("queued");
+  expect(accepted.snapshot?.currentStage).toBe("scan");
+  expect(Number(accepted.snapshot?.version)).toBeGreaterThan(Number(creation.snapshot?.version));
 
-  await expect(page).toHaveURL(new RegExp(`/consulting/${consultationId}/scan$`), { timeout: 30_000 });
+  const supabase = createClient(environment.supabaseUrl, environment.serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  await expect.poll(async () => {
+    const result = await supabase
+      .from("consultation_sessions")
+      .select("lifecycle_state")
+      .eq("id", consultationId)
+      .eq("user_id", fixture.userId)
+      .single();
+    if (result.error) throw result.error;
+    return result.data?.lifecycle_state;
+  }, { timeout: 180_000, intervals: [1_000, 2_000, 4_000] }).toBe("analysis_ready");
+
+  await expect(page).toHaveURL(new RegExp(`/consulting/${consultationId}/analysis$`), { timeout: 30_000 });
+  await page.goto(`/consulting/${consultationId}/scan`, { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { name: "분석 근거를 검토해요" })).toBeVisible();
-  await page.getByRole("button", { name: "signed URL 갱신" }).click();
   const overlay = page.locator('[data-face-evidence-overlay="true"]');
   await expect(overlay).toBeVisible();
   expect(await overlay.locator("[data-landmark-id]").count()).toBeGreaterThanOrEqual(5);
   await expect(page.getByText(/MediaPipeFaceMesh 좌표 근거/)).toBeVisible();
 
-  const supabase = createClient(environment.supabaseUrl, environment.serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
   const sessionResult = await supabase
     .from("consultation_sessions")
     .select("id,user_id,current_stage,lifecycle_state,source_photo_id,analysis_evidence_id,snapshot")
@@ -102,19 +124,29 @@ test("existing customer keeps one consultation through preflight, AI analysis, e
   expect(sessionResult.data).toEqual(expect.objectContaining({
     id: consultationId,
     user_id: fixture.userId,
-    current_stage: "scan",
+    current_stage: "analysis",
     lifecycle_state: "analysis_ready",
     source_photo_id: draft.draftId,
-    analysis_evidence_id: analysis.evidenceId,
+    analysis_evidence_id: expect.stringMatching(UUID_PATTERN),
   }));
   expect(sessionResult.data?.snapshot?.sessionId).toBe(consultationId);
   expect(sessionResult.data?.snapshot?.photo?.draftId).toBe(draft.draftId);
   expect(sessionResult.data?.snapshot?.evidence?.pipelineStatus).toBe("linked");
+  expect(sessionResult.data?.snapshot?.evidence?.items).toHaveLength(6);
+  expect(sessionResult.data?.snapshot?.faceAnalysis?.confidence).toBe("high");
+  expect(sessionResult.data?.snapshot?.faceAnalysis?.faceShape).not.toBe("확인 전");
+  expect(sessionResult.data?.snapshot?.strategyRecommendations).toHaveLength(8);
+  expect(sessionResult.data?.snapshot?.photo?.quality).toEqual(expect.arrayContaining([
+    expect.objectContaining({ id: "resolution", status: "pass" }),
+  ]));
+
+  const evidenceId = sessionResult.data?.analysis_evidence_id ?? "";
+  expect(evidenceId).toMatch(UUID_PATTERN);
 
   const evidenceResult = await supabase
     .from("analysis_evidence_v2")
     .select("id,consultation_id,user_id,model_name,landmarks,contours,measurements,correction_revision")
-    .eq("id", analysis.evidenceId)
+    .eq("id", evidenceId)
     .eq("consultation_id", consultationId)
     .eq("user_id", fixture.userId)
     .single();

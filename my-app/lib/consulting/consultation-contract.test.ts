@@ -358,6 +358,7 @@ test("durable capability execution reclaims retryable failures and expired lease
 
 test("Discovery interview covers seven topics, autosaves choices, and opens Photo from one summary confirmation", () => {
   const discovery = read("../../components/consulting/interview/DiscoveryInterview.tsx");
+  const guards = read("./stage-guards.ts");
   const fallback = read("../../components/consulting/workbenches/DiscoveryWorkbench.tsx");
   const stagePage = read("../../components/consulting/ConsultationStagePage.tsx");
   const route = read("../../app/consulting/[sessionId]/[stage]/page.tsx");
@@ -365,6 +366,9 @@ test("Discovery interview covers seven topics, autosaves choices, and opens Phot
     assert.match(discovery, new RegExp(`id: "${topic}"`));
   }
   assert.match(discovery, /window\.setTimeout\(\(\) => void saveTopic\("purpose"/);
+  assert.match(discovery, /\{ navigate: false \}/);
+  assert.match(guards, /patch\.completeStage === "discovery"/);
+  assert.doesNotMatch(guards, /if \(patch\.discovery &&/);
   assert.match(discovery, /completeStage: "discovery", currentStage: "photo"/);
   assert.match(discovery, /이 기준으로 사진 준비/);
   assert.match(discovery, /잘 모르겠어요/);
