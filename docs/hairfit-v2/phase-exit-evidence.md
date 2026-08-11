@@ -92,6 +92,6 @@
 - feature와 `develop/2026-08-08-hairfit-v2-backend`를 `1d66bd73665510793950cba405ccdb95544d8349`까지 ff-only 통합하고 원격 SHA 일치를 확인했다.
 - 원격 Supabase migration은 `85/85`, 서버 rollout flag 25개는 OFF, vision model은 `gpt-4o`, 필수 secret 이름은 값 조회 없이 `32/32`다.
 - 실 Clerk 개발 인증과 저장소 데모 얼굴 fixture로 Discovery 7개 autosave→Photo preflight/crop→비동기 analysis→MediaPipe landmark→`gpt-4o`→원격 evidence→overlay를 검증했고 live E2E `1/1`이 58.3초에 통과했다.
-- 실검증에서 부분 autosave를 전체 완료로 막던 server guard와 autosave 후 조기 Photo 이동을 수정했다. 계약 `73/73`, typecheck와 lint가 통과했다.
-- 초기 단일 Cloudflare source deploy는 `3,406.17 KiB`로 3 MiB 제한에서 거부됐으나, OpenNext 멀티 워커로 분리해 server `3,049.89 KiB`, router `189.10 KiB`로 배포했다. 최종 OFF source `59b88aeac9388bbffd29ebab64164a815083bda9`, server `e3f951b5-9548-4898-8831-e73ef953cbb4`, router `85202800-01e8-4c26-b9e7-aeb6725b4893`의 probe와 인증 경계를 확인했다. 공개 canary/실기기·유료 generation은 미완료다.
+- 실검증에서 부분 autosave를 전체 완료로 막던 server guard와 autosave 후 조기 Photo 이동을 수정했다. 계약 `75/75`, typecheck와 lint가 통과했다.
+- 초기 단일 Cloudflare source deploy는 `3,406.17 KiB`로 3 MiB 제한에서 거부됐으나, OpenNext 멀티 워커로 분리해 server `3,049.89 KiB`, router `189.10 KiB`로 배포했다. 0% staff canary의 version override가 적용되지 않아 공개 비율을 올리지 않고 복구했다. 최종 OFF source `c4763844af9496d68759b07aa8907183c0902b41`, server `52c8f342-a9af-4f3f-807b-18ed3a4c8862`, router `1b759a85-a42f-44e7-942c-d02ac9900112`의 exact probe와 인증 경계를 확인했다. 공개 canary/실기기·유료 generation은 미완료다.
 - 상세 증거와 재개 조건은 `p16-source-deployment-and-live-result-2026-08-11.md`, `p17-final-handoff-2026-08-11.md`를 따른다. 이 상태에서 전체 goal을 완료로 선언하지 않는다.

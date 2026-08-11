@@ -1,9 +1,9 @@
 # P19 Cloudflare HairFit V2 OFF 배포 결과
 
 - 실행일: 2026-08-11 KST
-- source revision: `59b88aeac9388bbffd29ebab64164a815083bda9`
-- server Worker/version: `hairstyleprivew` / `e3f951b5-9548-4898-8831-e73ef953cbb4`
-- router Worker/version: `hairstyleprivew-router` / `85202800-01e8-4c26-b9e7-aeb6725b4893`
+- source revision: `c4763844af9496d68759b07aa8907183c0902b41`
+- server Worker/version: `hairstyleprivew` / `52c8f342-a9af-4f3f-807b-18ed3a4c8862`
+- router Worker/version: `hairstyleprivew-router` / `1b759a85-a42f-44e7-942c-d02ac9900112`
 - 판정: `production_off_pass / public_canary_pending`
 
 ## 배포 계약
@@ -51,3 +51,5 @@ V2 server flag 25개는 OFF다. `/consulting/new`의 Next streaming shell이 HTT
 - 승인된 실제 사용자 사진 검증(현재 실분석은 저장소 demo fixture)
 
 따라서 production OFF 배포는 완료지만 전체 HairFit V2 goal은 아직 완료가 아니다.
+
+스태프 0% 카나리 시도와 최신 OFF 재고정 과정은 `p20-staff-canary-attempt-and-off-recovery-2026-08-11.md`를 따른다.

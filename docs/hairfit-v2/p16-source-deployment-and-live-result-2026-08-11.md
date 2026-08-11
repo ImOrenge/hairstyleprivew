@@ -1,7 +1,7 @@
 # P16 HairFit V2 소스 배포·실분석 실행 결과
 
 - 실행일: 2026-08-11 KST
-- 최종 운영 OFF 소스: `59b88aeac9388bbffd29ebab64164a815083bda9`
+- 최종 운영 OFF 소스: `c4763844af9496d68759b07aa8907183c0902b41`
 - 원격 feature/develop: 위 SHA로 일치
 - 대상 Worker: `hairstyleprivew`
 - 판정: `live_local_analysis_pass / cloudflare_off_source_deploy_pass / public_canary_pending`
@@ -28,7 +28,7 @@
 
 초기 단일 Worker 배포는 3 MiB 제한으로 거부됐지만, FaceMesh에 필요한 `tfjs-core`와 CPU backend만 유지하고 OpenNext 공식 멀티 워커 구조로 서버와 미들웨어를 분리했다. 최종 upload gzip은 server `3,049.89 KiB`, router `189.10 KiB`로 Free 한도 안에 들어왔다.
 
-최종 server version은 `e3f951b5-9548-4898-8831-e73ef953cbb4`, router version은 `85202800-01e8-4c26-b9e7-aeb6725b4893`다. 라우터가 pin한 server ID와 `/.well-known/hairfit-deployment`의 source revision이 위 값과 SHA를 반환한다. root/login/www는 `200`, workspace는 로그인으로 `307`, 비인증 보호 API는 `401`을 3회 연속 확인했다.
+최종 server version은 `52c8f342-a9af-4f3f-807b-18ed3a4c8862`, router version은 `1b759a85-a42f-44e7-942c-d02ac9900112`다. 라우터가 pin한 server ID와 `/.well-known/hairfit-deployment`의 source revision이 위 값과 SHA를 반환한다. root/login/www는 `200`, workspace는 로그인으로 `307`, 비인증 보호 API는 `401`을 확인했고 exact router/source probe는 5회 연속 통과했다.
 
 MediaPipe/TensorFlow 서버 랜드마크 청크는 요구 기능이며 제거하거나 가짜 좌표로 대체하지 않았다. 플랜 업그레이드나 Docker 없이 배포했다. 서버 flag 25개는 OFF 상태를 유지했으며 공개 V2 canary는 시작하지 않았다.
 
@@ -60,7 +60,7 @@ production deploy와 분리해 로컬 Web canary를 모든 V2 flag ON, legacy en
 
 ## 검증 요약
 
-- consulting contract: `73/73`
+- consulting contract: `75/75`
 - HairFit V2 contract: `15/15`
 - shared: `85/85`
 - Web Playwright consulting: `20/20`
@@ -71,4 +71,4 @@ production deploy와 분리해 로컬 Web canary를 모든 V2 flag ON, legacy en
 
 ## 종료 판정
 
-실인증·실분석·랜드마크 렌더링과 production OFF source deploy는 검증됐다. P16의 배포 차단은 해소됐지만 공개 Web canary, 실제 유료 hair/Fashion generation, actual service/Aftercare live, Expo 실기기와 canary 관찰은 아직 닫히지 않았다. 상세 배포·롤백 증거는 `p19-cloudflare-off-deployment-result-2026-08-11.md`를 따른다.
+실인증·실분석·랜드마크 렌더링과 production OFF source deploy는 검증됐다. 0% staff canary version은 만들었지만 version override가 적용되지 않아 공개 비율을 올리지 않고 OFF로 복구했다. 공개 Web canary, 실제 유료 hair/Fashion generation, actual service/Aftercare live, Expo 실기기와 canary 관찰은 아직 닫히지 않았다. 상세 배포·롤백 증거는 `p19-cloudflare-off-deployment-result-2026-08-11.md`, `p20-staff-canary-attempt-and-off-recovery-2026-08-11.md`를 따른다.
