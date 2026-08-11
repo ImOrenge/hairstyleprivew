@@ -29,9 +29,10 @@
 1. feature와 `develop/2026-08-08-hairfit-v2-backend`가 동일한 원격 SHA여야 한다.
 2. feature worktree가 clean이어야 한다.
 3. `npm run typecheck`, `npm --prefix my-app run consulting:contract:test`, `npm --prefix my-app run cf:multi:server:dry-run`, `npm --prefix my-app run cf:multi:router:dry-run`이 통과해야 한다.
-4. 서버 flag 25개는 OFF, `PROMPT_VISION_MODEL=gpt-4o`, 필수 secret 이름은 `32/32`여야 한다.
-5. 라우터에는 인증 미들웨어 실행에 필요한 정확히 4개(`CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)만 등록한다. provider·결제·callback/admin secret은 복제하지 않는다.
-6. 현재 production deployment ID, 두 Custom Domain의 대상 `hairstyleprivew`, 두 classic route의 대상 Worker를 증거에 기록한다.
+4. 스태프 전용 카나리는 `npm --prefix my-app run cf:multi:server:staff-canary -- --apply --confirm=HAIRFIT_V2_STAFF_CANARY_UPLOAD --source-revision=<40자 Git SHA>`로 새 server version만 업로드한다. 이 명령은 V2 server flag를 켜되 legacy entitlement bridge는 끄며 production traffic을 변경하지 않는다.
+5. 서버 flag 25개는 OFF, `PROMPT_VISION_MODEL=gpt-4o`, 필수 secret 이름은 `32/32`여야 한다.
+6. 라우터에는 인증 미들웨어 실행에 필요한 정확히 4개(`CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)만 등록한다. provider·결제·callback/admin secret은 복제하지 않는다.
+7. 현재 production deployment ID, 두 Custom Domain의 대상 `hairstyleprivew`, 두 classic route의 대상 Worker를 증거에 기록한다.
 
 ## 무중단 배포 순서
 
@@ -43,7 +44,7 @@
 
    Worker가 이미 존재하면 이 단계는 건너뛴다. 이후 모든 라우터 버전은 정식 `wrangler.middleware.jsonc`를 사용해 자기 참조 binding을 복원한다.
 
-   최초 생성 뒤 또는 인증키 회전 시 HairFit 운영 live Clerk 키가 있는 승인 환경 파일을 사용해 `npm run cf:multi:router:auth-sync -- --apply --confirm=HAIRFIT_ROUTER_AUTH_SECRETS --env-file=<HAIRFIT_PRODUCTION_ENV> --server-version-id=<NEW_SERVER_ID>`를 실행한다. test Clerk 키는 거부한다. 스크립트는 값을 출력하지 않고 위 4개가 포함된 새 라우터 version만 업로드하며 자동 배포하지 않는다. generation callback과 catalog admin 요청은 서버 handler가 자체 secret 검증을 수행하는 정확한 경로만 라우터 wrapper에서 직접 전달한다.
+   최초 생성 뒤 또는 인증키 회전 시 HairFit 운영 live Clerk 키가 있는 승인 환경 파일을 사용해 `npm run cf:multi:router:auth-sync -- --apply --confirm=HAIRFIT_ROUTER_AUTH_SECRETS --env-file=<HAIRFIT_PRODUCTION_ENV> --server-version-id=<NEW_SERVER_ID>`를 실행한다. test Clerk 키와 Clerk API 최소 조회 검증에 실패한 키는 거부하며 사용자 데이터는 출력하지 않는다. 스크립트는 값을 출력하지 않고 위 4개가 포함된 새 라우터 version만 업로드하며 자동 배포하지 않는다. generation callback과 catalog admin 요청은 서버 handler가 자체 secret 검증을 수행하는 정확한 경로만 라우터 wrapper에서 직접 전달한다.
 
 1. 서버 새 version을 업로드한다.
 

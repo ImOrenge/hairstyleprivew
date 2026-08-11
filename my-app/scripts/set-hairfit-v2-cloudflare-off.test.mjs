@@ -8,6 +8,7 @@ import {
   validateApplyRequest,
   workerNameFromConfig,
 } from "./set-hairfit-v2-cloudflare-off.mjs";
+import { buildStaffCanaryPayload } from "./upload-hairfit-v2-staff-canary.mjs";
 
 test("OFF payload contains exactly the 25 server flags and only false values", () => {
   const payload = buildOffPayload();
@@ -22,6 +23,15 @@ test("OFF payload excludes model, credential and paid-confirmation keys", () => 
   assert.equal(names.includes("PROMPT_VISION_MODEL"), false);
   assert.equal(names.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
   assert.equal(names.includes("PAID_ACTION_QUOTE_SECRET"), false);
+});
+
+test("staff canary enables V2 server flags but keeps the legacy entitlement bridge off", () => {
+  const payload = buildStaffCanaryPayload();
+  assert.equal(Object.keys(payload).length, 25);
+  assert.equal(payload.ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED, "false");
+  assert.equal(Object.entries(payload).every(([name, value]) => (
+    name === "ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED" ? value === "false" : value === "true"
+  )), true);
 });
 
 test("apply refuses an unexpected Worker or missing exact confirmation", () => {

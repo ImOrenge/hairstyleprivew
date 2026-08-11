@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createClerkClient } from "@clerk/backend";
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appRoot, "..");
@@ -60,6 +61,15 @@ function argumentValue(name) {
   return process.argv.find((value) => value.startsWith(`${name}=`))?.slice(name.length + 1) ?? "";
 }
 
+async function assertProductionClerkCredential(secretKey) {
+  try {
+    const clerk = createClerkClient({ secretKey });
+    await clerk.users.getUserList({ limit: 1 });
+  } catch {
+    throw new Error("Production Clerk API rejected the supplied router credential");
+  }
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const apply = process.argv.includes("--apply");
   const suppliedConfirmation = argumentValue("--confirm");
@@ -84,6 +94,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   if (!local.CLERK_SECRET_KEY.startsWith("sk_live_") || !local.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.startsWith("pk_live_")) {
     throw new Error("Production router auth sync requires matching live Clerk keys");
   }
+  await assertProductionClerkCredential(local.CLERK_SECRET_KEY);
   const payload = Object.fromEntries(ROUTER_AUTH_SECRET_NAMES.map((name) => [name, local[name]]));
   const tempRoot = mkdtempSync(resolve(tmpdir(), "hairfit-router-auth-"));
   const secretsPath = resolve(tempRoot, "secrets.json");

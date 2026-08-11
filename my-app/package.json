@@ -98,6 +98,7 @@
     "cf:multi:router:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.middleware.jsonc",
     "cf:multi:router:bootstrap": "wrangler deploy --config workers/open-next-multi/wrangler.middleware.bootstrap.jsonc",
     "cf:multi:router:auth-sync": "node scripts/sync-hairfit-router-auth-secrets.mjs",
+    "cf:multi:server:staff-canary": "node scripts/upload-hairfit-v2-staff-canary.mjs",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:typegen": "wrangler types"

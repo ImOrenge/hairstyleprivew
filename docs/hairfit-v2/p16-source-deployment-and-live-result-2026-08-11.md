@@ -28,7 +28,7 @@
 
 초기 단일 Worker 배포는 3 MiB 제한으로 거부됐지만, FaceMesh에 필요한 `tfjs-core`와 CPU backend만 유지하고 OpenNext 공식 멀티 워커 구조로 서버와 미들웨어를 분리했다. 최종 upload gzip은 server `3,049.89 KiB`, router `189.10 KiB`로 Free 한도 안에 들어왔다.
 
-최종 server version은 `e3f951b5-9548-4898-8831-e73ef953cbb4`, router version은 `6d5af697-52e4-4198-a299-3b5203f7d679`다. 라우터가 pin한 server ID와 `/.well-known/hairfit-deployment`의 source revision이 위 값과 SHA를 반환한다. root/login/www는 `200`, workspace는 로그인으로 `307`, 비인증 보호 API는 `401`을 3회 연속 확인했다.
+최종 server version은 `e3f951b5-9548-4898-8831-e73ef953cbb4`, router version은 `85202800-01e8-4c26-b9e7-aeb6725b4893`다. 라우터가 pin한 server ID와 `/.well-known/hairfit-deployment`의 source revision이 위 값과 SHA를 반환한다. root/login/www는 `200`, workspace는 로그인으로 `307`, 비인증 보호 API는 `401`을 3회 연속 확인했다.
 
 MediaPipe/TensorFlow 서버 랜드마크 청크는 요구 기능이며 제거하거나 가짜 좌표로 대체하지 않았다. 플랜 업그레이드나 Docker 없이 배포했다. 서버 flag 25개는 OFF 상태를 유지했으며 공개 V2 canary는 시작하지 않았다.
 

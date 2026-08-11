@@ -3,7 +3,7 @@
 - 실행일: 2026-08-11 KST
 - source revision: `59b88aeac9388bbffd29ebab64164a815083bda9`
 - server Worker/version: `hairstyleprivew` / `e3f951b5-9548-4898-8831-e73ef953cbb4`
-- router Worker/version: `hairstyleprivew-router` / `6d5af697-52e4-4198-a299-3b5203f7d679`
+- router Worker/version: `hairstyleprivew-router` / `85202800-01e8-4c26-b9e7-aeb6725b4893`
 - 판정: `production_off_pass / public_canary_pending`
 
 ## 배포 계약

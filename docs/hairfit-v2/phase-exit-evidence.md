@@ -93,5 +93,5 @@
 - 원격 Supabase migration은 `85/85`, 서버 rollout flag 25개는 OFF, vision model은 `gpt-4o`, 필수 secret 이름은 값 조회 없이 `32/32`다.
 - 실 Clerk 개발 인증과 저장소 데모 얼굴 fixture로 Discovery 7개 autosave→Photo preflight/crop→비동기 analysis→MediaPipe landmark→`gpt-4o`→원격 evidence→overlay를 검증했고 live E2E `1/1`이 58.3초에 통과했다.
 - 실검증에서 부분 autosave를 전체 완료로 막던 server guard와 autosave 후 조기 Photo 이동을 수정했다. 계약 `73/73`, typecheck와 lint가 통과했다.
-- 초기 단일 Cloudflare source deploy는 `3,406.17 KiB`로 3 MiB 제한에서 거부됐으나, OpenNext 멀티 워커로 분리해 server `3,049.89 KiB`, router `189.10 KiB`로 배포했다. 최종 OFF source `59b88aeac9388bbffd29ebab64164a815083bda9`, server `e3f951b5-9548-4898-8831-e73ef953cbb4`, router `6d5af697-52e4-4198-a299-3b5203f7d679`의 probe와 인증 경계를 확인했다. 공개 canary/실기기·유료 generation은 미완료다.
+- 초기 단일 Cloudflare source deploy는 `3,406.17 KiB`로 3 MiB 제한에서 거부됐으나, OpenNext 멀티 워커로 분리해 server `3,049.89 KiB`, router `189.10 KiB`로 배포했다. 최종 OFF source `59b88aeac9388bbffd29ebab64164a815083bda9`, server `e3f951b5-9548-4898-8831-e73ef953cbb4`, router `85202800-01e8-4c26-b9e7-aeb6725b4893`의 probe와 인증 경계를 확인했다. 공개 canary/실기기·유료 generation은 미완료다.
 - 상세 증거와 재개 조건은 `p16-source-deployment-and-live-result-2026-08-11.md`, `p17-final-handoff-2026-08-11.md`를 따른다. 이 상태에서 전체 goal을 완료로 선언하지 않는다.

@@ -272,6 +272,10 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.equal(packageJson.dependencies["@tensorflow/tfjs-core"], "^4.22.0");
   assert.equal(packageJson.dependencies["@tensorflow/tfjs-backend-cpu"], "^4.22.0");
   assert.equal(packageJson.scripts["cf:multi:router:auth-sync"], "node scripts/sync-hairfit-router-auth-secrets.mjs");
+  const routerAuthSync = read("../../scripts/sync-hairfit-router-auth-secrets.mjs");
+  assert.match(routerAuthSync, /createClerkClient/);
+  assert.match(routerAuthSync, /getUserList\(\{ limit: 1 \}\)/);
+  assert.match(routerAuthSync, /Production Clerk API rejected the supplied router credential/);
 });
 
 test("photo analysis advances through a durable automatic pipeline without scan approval", () => {
