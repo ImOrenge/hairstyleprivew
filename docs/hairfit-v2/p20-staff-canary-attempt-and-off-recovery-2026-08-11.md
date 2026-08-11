@@ -38,3 +38,7 @@ Cloudflare 공식 version override 헤더를 운영 도메인 요청에 적용�
 - Expo 실기기 parity
 
 위 항목이 닫히기 전 전체 Goal을 완료로 선언하지 않는다.
+
+## 후속 안전장치
+
+첫 시도에서 기존 OFF version 재선택이 secret 변경으로 거부된 문제를 반영해 server upload 도구를 `canary`와 `off` 두 mode의 version API 전용 경로로 통합했다. 이후 카나리는 ON upload 뒤 더 최신 OFF server/router를 먼저 준비하고, active deployment에 OFF 100%와 ON 0%를 함께 등록한다. 따라서 override 검증 실패 시 secret bulk나 강제 rollback 없이 최신 OFF version 단독 100%로 복구할 수 있다.

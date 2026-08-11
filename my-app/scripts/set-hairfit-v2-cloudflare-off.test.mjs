@@ -8,7 +8,7 @@ import {
   validateApplyRequest,
   workerNameFromConfig,
 } from "./set-hairfit-v2-cloudflare-off.mjs";
-import { buildStaffCanaryPayload } from "./upload-hairfit-v2-staff-canary.mjs";
+import { buildServerVersionPayload, buildStaffCanaryPayload } from "./upload-hairfit-v2-staff-canary.mjs";
 
 test("OFF payload contains exactly the 25 server flags and only false values", () => {
   const payload = buildOffPayload();
@@ -32,6 +32,13 @@ test("staff canary enables V2 server flags but keeps the legacy entitlement brid
   assert.equal(Object.entries(payload).every(([name, value]) => (
     name === "ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED" ? value === "false" : value === "true"
   )), true);
+});
+
+test("versioned OFF upload keeps every server rollout flag false", () => {
+  const payload = buildServerVersionPayload("off");
+  assert.equal(Object.keys(payload).length, 25);
+  assert.equal(Object.values(payload).every((value) => value === "false"), true);
+  assert.throws(() => buildServerVersionPayload("invalid"), /mode/);
 });
 
 test("apply refuses an unexpected Worker or missing exact confirmation", () => {

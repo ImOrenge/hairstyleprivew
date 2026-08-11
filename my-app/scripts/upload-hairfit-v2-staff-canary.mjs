@@ -8,13 +8,27 @@ import { SERVER_ROLLOUT_FLAGS } from "./set-hairfit-v2-cloudflare-off.mjs";
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appRoot, "..");
 const configPath = "my-app/workers/open-next-multi/wrangler.server.jsonc";
-const confirmation = "HAIRFIT_V2_STAFF_CANARY_UPLOAD";
+const modeContracts = Object.freeze({
+  canary: {
+    confirmation: "HAIRFIT_V2_STAFF_CANARY_UPLOAD",
+    message: "HairFit-V2-staff-canary",
+  },
+  off: {
+    confirmation: "HAIRFIT_V2_OFF_VERSION_UPLOAD",
+    message: "HairFit-V2-OFF-server",
+  },
+});
 
-export function buildStaffCanaryPayload() {
+export function buildServerVersionPayload(mode) {
+  if (!(mode in modeContracts)) throw new Error("--mode must be canary or off");
   return Object.fromEntries(SERVER_ROLLOUT_FLAGS.map((name) => [
     name,
-    name === "ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED" ? "false" : "true",
+    mode === "canary" && name !== "ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED" ? "true" : "false",
   ]));
+}
+
+export function buildStaffCanaryPayload() {
+  return buildServerVersionPayload("canary");
 }
 
 function argumentValue(name) {
@@ -46,35 +60,38 @@ function runWrangler(args) {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const apply = process.argv.includes("--apply");
+  const mode = argumentValue("--mode");
+  const contract = modeContracts[mode];
+  if (!contract) throw new Error("--mode must be canary or off");
   if (!apply) {
-    console.log("HairFit V2 staff canary upload plan");
+    console.log(`HairFit V2 ${mode} server version upload plan`);
     console.log(`server rollout flags: ${SERVER_ROLLOUT_FLAGS.length}`);
-    console.log("legacy entitlement bridge: false");
+    console.log(`target values: ${mode === "canary" ? "V2 true, legacy entitlement bridge false" : "all false"}`);
     console.log("production traffic changed: no");
     console.log("secret values rendered: no");
     process.exit(0);
   }
-  if (argumentValue("--confirm") !== confirmation) {
-    throw new Error(`--apply requires --confirm=${confirmation}`);
+  if (argumentValue("--confirm") !== contract.confirmation) {
+    throw new Error(`--apply requires --confirm=${contract.confirmation}`);
   }
   const sourceRevision = argumentValue("--source-revision");
   if (!/^[0-9a-f]{40}$/iu.test(sourceRevision)) {
     throw new Error("--apply requires --source-revision=<40-character Git SHA>");
   }
 
-  const tempRoot = mkdtempSync(resolve(tmpdir(), "hairfit-v2-staff-canary-"));
+  const tempRoot = mkdtempSync(resolve(tmpdir(), `hairfit-v2-${mode}-version-`));
   const secretsPath = resolve(tempRoot, "secrets.json");
   try {
-    writeFileSync(secretsPath, `${JSON.stringify(buildStaffCanaryPayload())}\n`, { encoding: "utf8", mode: 0o600 });
+    writeFileSync(secretsPath, `${JSON.stringify(buildServerVersionPayload(mode))}\n`, { encoding: "utf8", mode: 0o600 });
     const output = runWrangler([
       "versions", "upload", "--config", configPath, "--keep-vars",
       "--var", `HAIRFIT_SOURCE_REVISION:${sourceRevision}`,
       "--secrets-file", secretsPath,
-      "--message", "HairFit-V2-staff-canary",
+      "--message", contract.message,
     ]);
     const uploadedVersion = output.match(/Worker Version ID:\s*([0-9a-f-]+)/iu)?.[1];
     if (!uploadedVersion) throw new Error("Server upload succeeded without a parseable version ID");
-    console.log(`server canary flags registered: ${SERVER_ROLLOUT_FLAGS.length}/${SERVER_ROLLOUT_FLAGS.length}`);
+    console.log(`${mode} server flags registered: ${SERVER_ROLLOUT_FLAGS.length}/${SERVER_ROLLOUT_FLAGS.length}`);
     console.log(`server version uploaded: ${uploadedVersion}`);
     console.log("server version deployed: no");
     console.log("production traffic changed: no");

@@ -69,7 +69,7 @@
     "hairfit-v2:db:smoke": "node --no-warnings scripts/verify-hairfit-v2-database.mjs",
     "hairfit-v2:live:preflight": "node --no-warnings scripts/verify-hairfit-v2-live-readiness.mjs",
     "hairfit-v2:cloudflare:preflight": "node --no-warnings scripts/check-hairfit-v2-cloudflare-secret-names.mjs",
-    "hairfit-v2:cloudflare:off": "node --no-warnings scripts/set-hairfit-v2-cloudflare-off.mjs",
+    "hairfit-v2:cloudflare:off": "node --no-warnings scripts/upload-hairfit-v2-staff-canary.mjs --mode=off",
     "hairfit-v2:cloudflare:model": "node --no-warnings scripts/set-hairfit-v2-cloudflare-model.mjs",
     "hairfit-v2:supabase:apply": "node --no-warnings scripts/apply-hairfit-v2-supabase-migrations.mjs",
     "hairfit-v2:supabase:post-apply": "node --no-warnings scripts/verify-hairfit-v2-supabase-post-apply.mjs",
@@ -98,7 +98,7 @@
     "cf:multi:router:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.middleware.jsonc",
     "cf:multi:router:bootstrap": "wrangler deploy --config workers/open-next-multi/wrangler.middleware.bootstrap.jsonc",
     "cf:multi:router:auth-sync": "node scripts/sync-hairfit-router-auth-secrets.mjs",
-    "cf:multi:server:staff-canary": "node scripts/upload-hairfit-v2-staff-canary.mjs",
+    "cf:multi:server:staff-canary": "node scripts/upload-hairfit-v2-staff-canary.mjs --mode=canary",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:typegen": "wrangler types"
