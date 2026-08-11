@@ -1,12 +1,31 @@
-﻿"use client";
+"use client";
 
 import { Camera, CheckCircle2, Grid3X3, Shirt } from "lucide-react";
+import Image from "next/image";
 import { useT } from "../../lib/i18n/useT";
-import { Panel, SurfaceCard } from "../ui/Surface";
+import { LandingScene, SceneHeader } from "./LandingScene";
+
+const featureImages = [
+  {
+    src: "/landing/editorial/feature-face-line.webp",
+    alt: "거울을 보며 앞머리와 관자 옆볼륨이 얼굴선을 감싸는 정도를 확인하는 모습",
+  },
+  {
+    src: "/landing/editorial/feature-neckline.webp",
+    alt: "같은 헤어 길이에 오픈 칼라와 하이넥을 대어 목선과 상체 실루엣을 비교하는 모습",
+  },
+  {
+    src: "/landing/editorial/feature-mood.webp",
+    alt: "선택한 헤어 사진과 차콜, 아이보리, 코발트 원단으로 착장 무드를 연결하는 모습",
+  },
+  {
+    src: "/landing/editorial/feature-occasion-tablet-v2.webp",
+    alt: "한 인물이 태블릿에서 동일한 헤어의 데일리, 워크, 데이트 전신 코디를 상황별로 비교하는 모습",
+  },
+];
 
 export function FeatureShowcase() {
   const t = useT();
-
   const features = [
     {
       title: t("features.1.title"),
@@ -35,40 +54,44 @@ export function FeatureShowcase() {
   ];
 
   return (
-    <Panel as="section" className="p-5 transition-colors sm:p-6">
-      <div className="flex flex-col gap-2">
-        <p className="app-kicker">{t("features.badge")}</p>
-        <h2 className="text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
-          {t("features.title")}
-        </h2>
-      </div>
-
-      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4 max-md:max-h-[30rem] max-md:overflow-y-auto max-md:snap-y max-md:snap-mandatory max-md:overscroll-contain max-md:pr-1">
+    <LandingScene id="home-features" number="05" layout="editorial-split">
+      <SceneHeader
+        eyebrow={t("features.badge")}
+        title={t("features.title")}
+        description="기능을 작은 카드로 나누지 않고, 실제 헤어와 패션이 이어지는 장면으로 보여드립니다."
+      />
+      <div className="f-feature-stories">
         {features.map((feature, index) => {
           const Icon = feature.icon;
+          const media = featureImages[index];
+
           return (
-            <SurfaceCard
-              as="article"
+            <article
+              className="f-feature-story"
+              data-reveal-item
+              data-reveal-order={index + 4}
               key={feature.title}
-              className="group flex min-h-64 flex-col p-4 transition duration-300 hover:-translate-y-0.5 hover:border-[var(--app-accent)] max-md:min-h-[18rem] max-md:snap-start"
             >
-              <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--app-radius-control)] bg-[var(--app-inverse)] text-[var(--app-inverse-text)]">
-                  <Icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="text-xs font-black uppercase tracking-[0.18em] text-[var(--app-border)]">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
+              <div className="f-feature-story__media" data-landing-media data-detail-closeup>
+                <Image
+                  src={media.src}
+                  alt={media.alt}
+                  fill
+                  className="f-feature-story__image"
+                  sizes="(max-width: 840px) 92vw, 58vw"
+                />
               </div>
-              <h3 className="mt-5 text-lg font-bold text-[var(--app-text)]">{feature.title}</h3>
-              <p className="mt-2 flex-1 text-sm leading-6 text-[var(--app-muted)]">{feature.description}</p>
-              <p className="mt-5 border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-2 text-xs font-semibold text-[var(--app-text)]">
-                {feature.point}
-              </p>
-            </SurfaceCard>
+              <div>
+                <p className="f-feature-story__index">{String(index + 1).padStart(2, "0")}</p>
+                <Icon className="f-feature-story__icon" aria-hidden="true" />
+                <h3 className="f-feature-story__title">{feature.title}</h3>
+                <p className="f-feature-story__description">{feature.description}</p>
+                <p className="f-feature-story__point">{feature.point}</p>
+              </div>
+            </article>
           );
         })}
       </div>
-    </Panel>
+    </LandingScene>
   );
 }

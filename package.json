@@ -55,6 +55,8 @@
     "auth-recovery:contract:test": "npm --prefix my-app run auth-recovery:contract:test",
     "copy-terminology:contract:test": "npm --prefix my-app run copy-terminology:contract:test",
     "web-image:contract:test": "npm --prefix my-app run web-image:contract:test",
+    "landing-flat-surface:contract:test": "npm --prefix my-app run landing-flat-surface:contract:test",
+    "landing-motion:contract:test": "npm --prefix my-app run landing-motion:contract:test",
     "component-registry:validate": "node scripts/validate-component-registry.mjs",
     "paid-action:contract:test": "npm --prefix my-app run paid-action:contract:test",
     "billing-content:contract:test": "npm --prefix my-app run billing-content:contract:test",

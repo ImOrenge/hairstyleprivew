@@ -1,0 +1,87 @@
+id: web.home.reveal-on-scroll
+name: RevealOnScroll
+platform: web
+kind: layout
+status: candidate
+source: my-app/components/home/RevealOnScroll.tsx
+owner: home-feature
+
+public_api:
+  exports:
+    - RevealOnScroll
+  props:
+    - children: ReactNode
+    - className: string optional
+  slots:
+    - children
+  events:
+    - viewport-entry
+    - descendant-focus
+
+dependencies:
+  internal:
+    - my-app/lib/utils.ts#cn
+  external:
+    - react
+    - framer-motion
+  forbidden:
+    - route-state
+    - feature-stores
+    - api-clients
+
+styling:
+  strategy: feature-global-css-data-contract
+  global_css:
+    file: my-app/app/landing.css
+    layer: features
+    namespace: f-reveal-group
+  tokens:
+    - --landing-motion-reveal
+    - --landing-motion-stagger
+    - --landing-reveal-delay
+  data_contract:
+    data-reveal-state: hidden | visible | reduced
+    data-reveal-item: present on independently animated descendants
+    data-reveal-order: integer 0 through 13
+  allows_className: true
+  inline_styles_allowed: framer-motion transform and opacity only
+
+state:
+  owned:
+    - hasEntered
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  focus_reveal: descendant focus makes the group visible before interaction
+  reduced_motion: transform, opacity animation, transition, and keyframes are removed
+  content_order: DOM order remains the reading and keyboard order
+
+test_surface:
+  unit:
+    - my-app/lib/landing-motion-contract.test.ts
+  interaction:
+    - browser anchor, scroll-entry, and keyboard-focus verification
+  visual:
+    - 1440px desktop stagger sequence
+    - 390px mobile completed state
+
+observed_usage:
+  production_consumer_files: 1
+  scope: LandingScene reveal motion wrapper
+
+change_policy:
+  current_gate: behavior
+  compatible_change_requires:
+    - passport-update
+    - motion-contract-test
+    - typecheck
+    - reduced-motion-verification
+    - responsive-visual-verification
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_blockers:
+  - automated browser reduced-motion emulation is not stored as a repository fixture
+  - no second route-level consumer exists

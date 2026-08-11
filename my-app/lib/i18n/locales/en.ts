@@ -83,6 +83,21 @@ const en: Record<TranslationKey, string> = {
     "hero.demo.female.card.8.title": "Hippie Perm",
     "hero.demo.female.card.9.title": "Face-Framing Long",
 
+    "hairstylePreview.eyebrow": "3×3 Hairstyle Preview",
+    "hairstylePreview.title": "Compare nine possibilities on one face",
+    "hairstylePreview.description": "See short, medium, and long changes on the same person at a glance, then choose the result that feels right.",
+    "hairstylePreview.original": "Origin model",
+    "hairstylePreview.originalAlt": "original model photo",
+    "hairstylePreview.optionAlt": "AI hairstyle preview",
+    "hairstylePreview.analysis": "Original analysis",
+    "hairstylePreview.ready": "9 results ready",
+    "hairstylePreview.selection": "Selected hairstyle",
+    "hairstylePreview.length": "Length",
+    "hairstylePreview.balance": "Balance focus",
+    "hairstylePreview.score": "Match score",
+    "hairstylePreview.summary": "Your selected hair becomes the reference for silhouette and mood in the fashion preview that follows.",
+    "hairstylePreview.cta": "See 9 styles on my photo",
+
     // Features
     "features.badge": "Hair to Fashion Flow",
     "features.title": "Once the hair is set, the outfit criteria get clearer",

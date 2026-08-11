@@ -1,19 +1,21 @@
-﻿import nextDynamic from "next/dynamic";
-import type { Metadata } from "next";
-import Link from "next/link";
 import { auth, createClerkClient } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import { ArrowRight } from "lucide-react";
-import { FeatureShowcase } from "../components/home/FeatureShowcase";
+import type { Metadata } from "next";
+import nextDynamic from "next/dynamic";
+import Image from "next/image";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 import { FashionDemoShowcase } from "../components/home/FashionDemoShowcase";
+import { FaqShowcase } from "../components/home/FaqShowcase";
+import { FeatureShowcase } from "../components/home/FeatureShowcase";
+import { HairstylePreviewShowcase } from "../components/home/HairstylePreviewShowcase";
 import { HeroSection } from "../components/home/HeroSection";
+import { LandingScene, SceneHeader } from "../components/home/LandingScene";
 import { MobileStickyCtaBar } from "../components/home/MobileStickyCtaBar";
 import { RevealOnScroll } from "../components/home/RevealOnScroll";
-import { AppPage, InverseSection, Panel, SurfaceCard } from "../components/ui/Surface";
+import { AppPage } from "../components/ui/Surface";
 import { resolveSignedInAccountHomeHref } from "../lib/account-home-server";
 import { getClerkConfigState, getProductionClerkSecretKey } from "../lib/clerk";
-import { getPlanDisplayBenefits } from "../lib/plan-benefit-display";
-import { getSubscriptionAccessMode } from "../lib/subscription-access";
 import {
   homeNavItems,
   homeSeo,
@@ -22,16 +24,54 @@ import {
   salonUseCases,
   structuredDataName,
 } from "../lib/home-content";
+import { getPlanDisplayBenefits } from "../lib/plan-benefit-display";
 import { getSiteUrl } from "../lib/site-url";
+import { getSubscriptionAccessMode } from "../lib/subscription-access";
 import { loadPublishedSupportFaqs } from "../lib/support-server";
 
-const PricingPreview = nextDynamic(() => import("../components/home/PricingPreview").then((mod) => mod.PricingPreview), {
-  loading: () => <div className="h-96 animate-pulse border border-[var(--app-border)] bg-[var(--app-surface-muted)]" />,
-});
+const PricingPreview = nextDynamic(
+  () => import("../components/home/PricingPreview").then((mod) => mod.PricingPreview),
+  { loading: () => <div className="f-landing-skeleton h-96 animate-pulse" /> },
+);
 
-const ReviewCarousel = nextDynamic(() => import("../components/home/ReviewCarousel").then((mod) => mod.ReviewCarousel), {
-  loading: () => <div className="h-64 animate-pulse border border-[var(--app-border)] bg-[var(--app-surface-muted)]" />,
-});
+const ReviewCarousel = nextDynamic(
+  () => import("../components/home/ReviewCarousel").then((mod) => mod.ReviewCarousel),
+  { loading: () => <div className="f-landing-skeleton h-64 animate-pulse" /> },
+);
+
+const workflowImages = [
+  {
+    src: "/landing/editorial/workflow-upload-same-person-tablet.webp",
+    alt: "한 인물이 태블릿에서 자신과 같은 포니테일과 크림색 니트의 정면 사진 촬영 영역을 확인하는 모습",
+  },
+  {
+    src: "/landing/editorial/workflow-choice-same-person-v2.webp",
+    alt: "동일한 크림색 니트 차림의 여성이 같은 태블릿에서 자신의 아홉 가지 헤어 후보 중 하나를 선택하는 모습",
+  },
+  {
+    src: "/landing/editorial/workflow-save-same-person-v2.webp",
+    alt: "동일한 여성이 같은 태블릿에서 선택한 헤어와 전신 패션 착장을 확인하고 저장하는 모습",
+  },
+];
+
+const criteriaImages = [
+  {
+    src: "/landing/editorial/criteria-face-shape-landmark-system.webp",
+    alt: "정면 얼굴 위 중심축과 다점 랜드마크, 관자·광대·턱 폭 브래킷과 대각 비율선으로 얼굴 비율을 분석하는 모습",
+  },
+  {
+    src: "/landing/editorial/criteria-head-balance-metrics.webp",
+    alt: "3분의 4 얼굴 위 중첩 정수리 곡선과 높이 눈금, 측두 폭과 후두부 투영선으로 두상 균형을 분석하는 모습",
+  },
+  {
+    src: "/landing/editorial/criteria-length-measurement-system.webp",
+    alt: "정면 인물 위 턱·어깨·쇄골 곡선과 세로 눈금, 구간 화살표와 모발 끝 투영선으로 머리 길이를 분석하는 모습",
+  },
+  {
+    src: "/landing/editorial/criteria-style-mood-triptych-v2.webp",
+    alt: "동일한 인물의 깔끔한 가르마, 부드러운 레이어, 트렌디한 펌을 세 가지 분석선과 함께 비교하는 모습",
+  },
+];
 
 const siteUrl = getSiteUrl();
 
@@ -56,10 +96,7 @@ async function loadSocialProofFromProductionClerk(): Promise<HomeSocialProof> {
     const client = createClerkClient({ secretKey: productionSecretKey });
     const [userCount, latestUsers] = await Promise.all([
       client.users.getCount(),
-      client.users.getUserList({
-        limit: 6,
-        orderBy: "-created_at",
-      }),
+      client.users.getUserList({ limit: 6, orderBy: "-created_at" }),
     ]);
 
     return {
@@ -93,9 +130,7 @@ export const metadata: Metadata = {
   title: homeSeo.title,
   description: homeSeo.description,
   keywords: homeSeo.keywords,
-  alternates: {
-    canonical: "/",
-  },
+  alternates: { canonical: "/" },
   openGraph: {
     title: homeSeo.title,
     description: homeSeo.description,
@@ -152,10 +187,7 @@ function buildHomeJsonLd(faqs: Array<{ question: string; answer: string }>) {
       mainEntity: faqs.map((faq) => ({
         "@type": "Question",
         name: faq.question,
-        acceptedAnswer: {
-          "@type": "Answer",
-          text: faq.answer,
-        },
+        acceptedAnswer: { "@type": "Answer", text: faq.answer },
       })),
     },
     {
@@ -183,50 +215,68 @@ function buildHomeJsonLd(faqs: Array<{ question: string; answer: string }>) {
 
 function FloatingHomeNav() {
   return (
-    <nav
-      aria-label="홈페이지 섹션 바로가기"
-      className="fixed right-[max(1rem,calc((100vw-72rem)/2-6rem))] top-1/2 z-40 hidden -translate-y-1/2 min-[1360px]:flex"
-    >
-      <div className="flex flex-col gap-1.5 border border-[var(--app-border)] bg-[var(--app-surface)] p-1.5 shadow-2xl">
+    <nav className="f-landing-floating-nav" aria-label="홈페이지 섹션 바로가기">
+      <ul className="f-landing-floating-nav__list">
         {homeNavItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="group relative flex h-11 w-11 items-center justify-center border border-transparent text-[0.68rem] font-black text-[var(--app-muted)] transition hover:border-[var(--app-border-strong)] hover:bg-[var(--app-text)] hover:text-[var(--app-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-accent)]"
-          >
-            <span aria-hidden="true">{item.shortLabel}</span>
-            <span className="pointer-events-none absolute right-14 top-1/2 hidden -translate-y-1/2 whitespace-nowrap border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-1.5 text-xs font-bold text-[var(--app-text)] opacity-0 shadow-lg transition group-hover:block group-hover:opacity-100 group-focus-visible:block group-focus-visible:opacity-100">
-              {item.label}
-            </span>
-            <span className="sr-only">{item.label}</span>
-          </Link>
+          <li key={item.href}>
+            <Link className="f-landing-floating-nav__link" href={item.href}>
+              <span aria-hidden="true">{item.shortLabel}</span>
+              <span className="f-landing-floating-nav__label" aria-hidden="true">
+                {item.label}
+              </span>
+              <span className="sr-only">{item.label}</span>
+            </Link>
+          </li>
         ))}
-      </div>
+      </ul>
     </nav>
   );
 }
 
 function FinalCtaBlock() {
   return (
-    <InverseSection
-      as="section"
+    <LandingScene
+      id="home-final-cta"
+      number="11"
+      layout="closing-stage"
+      tone="inverse"
       aria-label="서비스 시작하기"
-      className="p-8 text-center sm:p-10"
     >
-      <h2 className="text-2xl font-black tracking-tight sm:text-3xl">
-        사진 한 장으로 내 스타일을 시작하세요
-      </h2>
-      <p className="app-inverse-muted mt-3 text-sm leading-6 sm:text-base">
-        9가지 헤어 후보를 먼저 비교하고, 선택한 헤어에 맞는 패션 코디까지 이어보세요.
-      </p>
-      <Link
-        href="/consulting/new"
-        className="app-inverse-cta mt-7 inline-flex items-center gap-2 px-7 py-3.5 text-sm font-bold uppercase tracking-[0.04em] transition"
-      >
-        AI 헤어 컨설턴트 시작
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-      </Link>
-    </InverseSection>
+      <div className="f-closing-stage">
+          <div
+            className="f-closing-stage__media"
+            data-landing-media
+            data-detail-closeup
+            data-reveal-item
+            data-reveal-order="1"
+          >
+          <Image
+            src="/landing/editorial/final-photo-start.webp"
+            alt="정면 사진 한 장으로 새로운 헤어와 스타일 탐색을 시작하는 모습"
+            fill
+            sizes="(max-width: 840px) 92vw, 55vw"
+          />
+        </div>
+        <div className="f-closing-stage__copy">
+          <p className="f-closing-stage__eyebrow" data-reveal-item data-reveal-order="2">Your next look</p>
+          <h2 className="f-closing-stage__title" data-reveal-item data-reveal-order="3">
+            사진 한 장으로 내 스타일을 시작하세요
+          </h2>
+          <p className="f-closing-stage__description" data-reveal-item data-reveal-order="4">
+            9가지 헤어 후보를 먼저 비교하고, 선택한 헤어에 맞는 패션 코디까지 이어보세요.
+          </p>
+          <Link
+            href="/consulting/new"
+            className="f-landing-cta f-landing-cta--inverse"
+            data-reveal-item
+            data-reveal-order="5"
+          >
+            AI 헤어 컨설턴트 시작
+            <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        </div>
+      </div>
+    </LandingScene>
   );
 }
 
@@ -244,204 +294,195 @@ export default async function HomePage() {
 
   return (
     <>
-      <AppPage className="flex flex-col gap-6 pb-24 sm:gap-8 lg:pb-8">
+      <AppPage className="f-landing">
         <FloatingHomeNav />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
         />
 
-        {/* 1. Hero */}
-        <div id="home-hero" className="scroll-mt-24">
+        <div id="home-hero" className="f-landing-hero-shell scroll-mt-24">
           <HeroSection userCount={userCount} avatars={avatars} />
         </div>
 
-        {/* 2. Fashion Demo */}
         <RevealOnScroll>
-          <div id="home-fashion" className="scroll-mt-24">
-            <FashionDemoShowcase />
-          </div>
+          <HairstylePreviewShowcase />
         </RevealOnScroll>
 
-        {/* 3. 사용 흐름 */}
         <RevealOnScroll>
-          <Panel
-            as="section"
-            id="home-workflow"
-            className="scroll-mt-24 p-5 sm:p-6"
-          >
-            <div className="max-w-3xl">
-              <p className="app-kicker">
-                How HairFit Works
-              </p>
-              <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
-                사진 한 장으로 9가지 후보까지
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-[var(--app-muted)] sm:text-base">
-                업로드, 비교, 저장만 기억하면 됩니다. 패션 추천은 선택한 헤어 이후에 자연스럽게 이어집니다.
-              </p>
-            </div>
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              {homeWorkflow.map((item) => (
-                <SurfaceCard as="article" key={item.step} className="p-4">
-                  <p className="text-xs font-black tracking-[0.22em] text-[var(--app-accent-strong)]">{item.step}</p>
-                  <h3 className="mt-3 text-lg font-black text-[var(--app-text)]">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{item.description}</p>
-                </SurfaceCard>
-              ))}
-            </div>
-          </Panel>
+          <FashionDemoShowcase />
         </RevealOnScroll>
 
-        {/* 4. 헤어+패션 차별점 */}
         <RevealOnScroll>
-          <div id="home-features" className="scroll-mt-24">
-            <FeatureShowcase />
-          </div>
-        </RevealOnScroll>
-
-        {/* 5. 추천 기준 */}
-        <RevealOnScroll>
-          <section id="home-criteria" className="grid scroll-mt-24 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
-            <Panel className="p-5 sm:p-6">
-            <p className="app-kicker">
-              Recommendation Criteria
-            </p>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
-              얼굴형 헤어스타일 추천은 이런 기준으로 비교합니다
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
-              HairFit은 AI 헤어스타일 미리보기 결과를 단순 합성 이미지로 끝내지 않고, 패션 코디와 상담 이미지로 이어가기 쉬운 기준으로 정리합니다.
-            </p>
-            <Link
-              href="/consulting/new"
-              className="mt-6 inline-flex rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
-            >
-              AI 헤어 컨설턴트 시작
-            </Link>
-            </Panel>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {recommendationCriteria.map((item) => (
-                <SurfaceCard
-                  as="article"
-                  key={item.title}
-                  className="p-4 transition-colors"
-                >
-                  <h3 className="text-base font-black text-[var(--app-text)]">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{item.description}</p>
-                </SurfaceCard>
-              ))}
-            </div>
-          </section>
-        </RevealOnScroll>
-
-        {/* 6. 가격 */}
-        <RevealOnScroll>
-          <div id="home-pricing" className="scroll-mt-24">
-            <PricingPreview
-              initialDisplayBenefits={pricingDisplayBenefits}
-              subscriptionAccessMode={subscriptionAccessMode}
-            />
-          </div>
-        </RevealOnScroll>
-
-        {/* 7. 후기/신뢰 */}
-        <RevealOnScroll>
-          <div id="home-reviews" className="scroll-mt-24">
-            <ReviewCarousel />
-          </div>
-        </RevealOnScroll>
-
-        {/* 8. FAQ */}
-        <RevealOnScroll>
-          <Panel
-            as="section"
-            id="home-faq"
-            className="scroll-mt-24 p-5 sm:p-6"
-          >
-          <div className="max-w-3xl">
-            <p className="app-kicker">FAQ</p>
-            <h2 className="mt-3 text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
-              AI 헤어스타일 미리보기를 시작하기 전 자주 묻는 질문
-            </h2>
-          </div>
-          <div className="mt-6 grid gap-3">
-            {faqs.map((faq) => (
-              <SurfaceCard
-                as="details"
-                key={faq.question}
-                className="group p-4 open:bg-[var(--app-surface)]"
-              >
-                <summary className="cursor-pointer list-none text-base font-black text-[var(--app-text)]">
-                  {faq.question}
-                </summary>
-                <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">{faq.answer}</p>
-              </SurfaceCard>
-            ))}
-          </div>
-          </Panel>
-        </RevealOnScroll>
-
-        {/* 9. 살롱/B2B 보조 전환 */}
-        <RevealOnScroll>
-          <Panel
-            as="section"
-            id="home-salon"
-            className="scroll-mt-24 border-[var(--app-accent)] p-5 text-[var(--app-text)] sm:p-6"
-          >
-          <div className="grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
-            <div>
-              <p className="app-kicker">
-                Salon Consultation
-              </p>
-              <h2 className="mt-3 text-2xl font-black tracking-tight sm:text-3xl">
-                살롱에서도 상담 이미지로 활용할 수 있습니다
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">
-                HairFit의 9가지 헤어 후보와 패션 코디 흐름은 고객이 원하는 분위기를 이미지로 정리하는 보조 자료로 활용할 수 있습니다.
-              </p>
-            </div>
-            <div className="grid gap-3">
-              <ul className="grid gap-3">
-                {salonUseCases.map((item) => (
-                  <SurfaceCard
-                    as="li"
-                    key={item}
-                    className="px-4 py-3 text-sm font-bold leading-6"
+          <LandingScene id="home-workflow" number="04" layout="sticky-stage" motion="scroll-progress">
+            <div className="f-workflow">
+              <div className="f-workflow__intro">
+                <SceneHeader
+                  eyebrow="How HairFit Works"
+                  title="사진 한 장에서 스타일 결정까지"
+                  description="업로드, 비교, 선택의 흐름을 따라가면 패션 추천까지 자연스럽게 이어집니다."
+                />
+                <p className="f-workflow__intro-note" data-reveal-item data-reveal-order="4">
+                  Scroll to follow the sequence
+                </p>
+              </div>
+              <ol className="f-workflow__steps">
+                {homeWorkflow.map((item, index) => (
+                  <li
+                    className="f-workflow-step"
+                    key={item.step}
+                    data-reveal-item
+                    data-reveal-order={index + 4}
                   >
-                    {item}
-                  </SurfaceCard>
+                    <span className="f-workflow-step__number" aria-hidden="true">
+                      {item.step}
+                    </span>
+                    <article>
+                      <div className="f-workflow-step__media" data-landing-media data-detail-closeup>
+                        <Image
+                          src={workflowImages[index].src}
+                          alt={workflowImages[index].alt}
+                          fill
+                          className="f-workflow-step__image"
+                          sizes="(max-width: 840px) 92vw, 54vw"
+                        />
+                      </div>
+                      <h3 className="f-workflow-step__title">{item.title}</h3>
+                      <p className="f-workflow-step__description">{item.description}</p>
+                    </article>
+                  </li>
                 ))}
-              </ul>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Link
-                  href="/b2b/signup"
-                  className="inline-flex items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] !text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
-                >
-                  B2B 회원가입
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-                <Link
-                  href="/b2b/contact"
-                  className="inline-flex items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border)] bg-[var(--app-surface)] px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] text-[var(--app-text)] transition hover:border-[var(--app-border-strong)] hover:bg-[var(--app-surface-muted)]"
-                >
-                  도입 문의
-                </Link>
+              </ol>
+            </div>
+          </LandingScene>
+        </RevealOnScroll>
+
+        <RevealOnScroll>
+          <FeatureShowcase />
+        </RevealOnScroll>
+
+        <RevealOnScroll>
+          <LandingScene id="home-criteria" number="06" layout="editorial-split" tone="quiet">
+            <SceneHeader
+              eyebrow="Recommendation Criteria"
+              title="얼굴형만 보지 않고, 전체 스타일을 함께 봅니다"
+              description="HairFit은 합성 이미지를 보여주는 데서 끝나지 않고 실제 상담과 패션 선택으로 이어질 기준을 정리합니다."
+            />
+            <div className="f-criteria">
+              <ol className="f-criteria__list">
+                {recommendationCriteria.map((item, index) => (
+                  <li
+                    className="f-criteria__item"
+                    key={item.title}
+                    data-reveal-item
+                    data-reveal-order={index + 4}
+                  >
+                    <div className="f-criteria__media" data-landing-media data-detail-closeup>
+                      <Image
+                        src={criteriaImages[index].src}
+                        alt={criteriaImages[index].alt}
+                        fill
+                        className="f-criteria__image"
+                        sizes="(max-width: 840px) 92vw, 48vw"
+                      />
+                    </div>
+                    <div className="f-criteria__copy">
+                      <span className="f-criteria__index" aria-hidden="true">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <div>
+                        <h3 className="f-criteria__title">{item.title}</h3>
+                        <p className="f-criteria__description">{item.description}</p>
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <Link href="/consulting/new" className="f-landing-cta" data-reveal-item data-reveal-order="8">
+                사진 한 장으로 시작하기
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            </div>
+          </LandingScene>
+        </RevealOnScroll>
+
+        <RevealOnScroll>
+          <ReviewCarousel />
+        </RevealOnScroll>
+
+        <RevealOnScroll>
+          <PricingPreview
+            initialDisplayBenefits={pricingDisplayBenefits}
+            subscriptionAccessMode={subscriptionAccessMode}
+          />
+        </RevealOnScroll>
+
+        <RevealOnScroll>
+          <LandingScene id="home-faq" number="09" layout="typographic-index">
+            <SceneHeader
+              eyebrow="FAQ"
+              title="시작하기 전에 궁금한 것들"
+              description="사진, 결과, 패션 추천과 미용실 상담 활용까지 필요한 답을 모았습니다."
+            />
+            <FaqShowcase faqs={faqs} />
+          </LandingScene>
+        </RevealOnScroll>
+
+        <RevealOnScroll>
+          <LandingScene id="home-salon" number="10" layout="editorial-split" tone="quiet">
+            <div className="f-salon">
+              <div
+                className="f-salon__media"
+                data-landing-media
+                data-detail-closeup
+                data-reveal-item
+                data-reveal-order="1"
+              >
+                <Image
+                  src="/landing/editorial/salon-consultation-tablet-chair.webp"
+                  alt="미용실 의자에 앉은 고객과 헤어디자이너가 태블릿의 동일 고객 헤어 후보와 전신 패션 무드를 함께 보며 상담하는 모습"
+                  fill
+                  className="f-salon__image"
+                  sizes="(max-width: 840px) 92vw, 54vw"
+                />
+              </div>
+              <div>
+                <SceneHeader
+                  eyebrow="Salon Consultation"
+                  title="상담도 말보다 이미지로 선명하게"
+                  description="고객이 고른 헤어 후보와 패션 무드를 함께 보며 원하는 방향을 더 구체적으로 이야기할 수 있습니다."
+                />
+                <ol className="f-salon__list">
+                  {salonUseCases.map((item, index) => (
+                    <li
+                      className="f-salon__list-item"
+                      key={item}
+                      data-reveal-item
+                      data-reveal-order={index + 4}
+                    >
+                      <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                      {item}
+                    </li>
+                  ))}
+                </ol>
+                <div className="f-salon__actions" data-reveal-item data-reveal-order="7">
+                  <Link href="/b2b/signup" className="f-landing-cta">
+                    B2B 회원가입
+                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                  </Link>
+                  <Link href="/b2b/contact" className="f-landing-ghost-cta">
+                    도입 문의
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-          </Panel>
+          </LandingScene>
         </RevealOnScroll>
 
-        {/* 10. 마감 CTA */}
         <RevealOnScroll>
           <FinalCtaBlock />
         </RevealOnScroll>
       </AppPage>
-
-      {/* 모바일 고정 CTA 바 */}
       <MobileStickyCtaBar />
     </>
   );

@@ -1,0 +1,96 @@
+id: web.home.hairstyle-preview-showcase
+name: HairstylePreviewShowcase
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/home/HairstylePreviewShowcase.tsx
+owner: home-feature
+
+public_api:
+  exports:
+    - HairstylePreviewShowcase
+  props: []
+  slots: []
+  events:
+    - gender-tab-change
+    - hairstyle-selection-change
+
+dependencies:
+  internal:
+    - my-app/components/home/LandingScene.tsx
+    - my-app/lib/i18n/useT.ts
+    - my-app/lib/i18n/locales/ko.ts#TranslationKey
+  external:
+    - lucide-react
+    - next/image
+    - next/link
+    - react
+  forbidden:
+    - shared-card-surfaces
+    - feature-stores
+    - api-clients
+
+styling:
+  strategy: feature-global-css
+  global_css:
+    file: my-app/app/landing.css
+    layer: features
+    namespace: f-hairstyle-preview
+  tokens:
+    - --landing-ink
+    - --landing-muted
+    - --landing-subtle
+    - --landing-accent
+    - --landing-media-radius
+    - --landing-motion-fast
+  variants:
+    - male
+    - female
+    - selected
+  data_contract:
+    data-landing-media: present on each preview image frame
+  allows_className: false
+  inline_styles_allowed: false
+
+state:
+  owned:
+    - activeGender
+    - activeIndex
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  role: section with tablist and tabpanel
+  keyboard: Arrow keys, Home, and End move gender tabs; hairstyle choices are native buttons
+  live_region: selected hairstyle summary uses aria-live polite
+  heading_structure: LandingScene receives one h2 and selected result uses one h3
+  reduced_motion: landing.css removes hover transforms and image transitions
+
+test_surface:
+  unit:
+    - my-app/lib/landing-flat-surface-contract.test.ts
+    - my-app/lib/web-image-contract.test.ts
+  interaction:
+    - browser gender keyboard and hairstyle selection verification
+  visual:
+    - 1440px desktop 3x3 board
+    - 390px mobile 3x3 board
+
+observed_usage:
+  production_consumer_files: 1
+  scope: public landing route
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+    - interaction-verification
+    - responsive-visual-verification
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_blockers:
+  - browser visual baselines are not yet stored as repository fixtures
+  - recommendation scores are illustrative landing demo data

@@ -1,0 +1,90 @@
+id: web.home.faq-showcase
+name: FaqShowcase
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/home/FaqShowcase.tsx
+owner: home-feature
+
+public_api:
+  exports:
+    - FaqShowcase
+  props:
+    - faqs
+  slots: []
+  events:
+    - faq-toggle
+
+dependencies:
+  internal: []
+  external:
+    - next/image
+    - react
+  forbidden:
+    - shared-card-surfaces
+    - feature-stores
+    - api-clients
+
+styling:
+  strategy: feature-global-css
+  global_css:
+    file: my-app/app/landing.css
+    layer: features
+    namespace: f-faq
+  tokens:
+    - --landing-ink
+    - --landing-muted
+    - --landing-accent
+    - --landing-media-radius
+  variants:
+    - photo
+    - preview
+    - salon
+    - fashion
+  data_contract:
+    data-landing-media: present on the active editorial image
+    details-open: selects the visual matching the opened question
+  allows_className: false
+  inline_styles_allowed: false
+
+state:
+  owned:
+    - activeVisual
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  role: FAQ details list paired with one explanatory figure
+  keyboard: native summary and details behavior
+  live_region: active explanatory figure uses aria-live polite
+  image_alternatives: each mapped visual has a context-specific Korean alt
+  reduced_motion: landing.css removes the visual transition
+
+test_surface:
+  unit:
+    - my-app/lib/landing-flat-surface-contract.test.ts
+    - my-app/lib/web-image-contract.test.ts
+  interaction:
+    - browser FAQ expansion and visual mapping verification
+  visual:
+    - 1440px desktop split layout
+    - 390px mobile stacked layout
+
+observed_usage:
+  production_consumer_files: 1
+  scope: public landing route
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+    - interaction-verification
+    - responsive-visual-verification
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_blockers:
+  - browser visual baselines are not yet stored as repository fixtures
+  - question-to-image matching is specific to the current Korean landing copy

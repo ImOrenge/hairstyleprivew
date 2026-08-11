@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "registry_id": "hairfit.frontend.components",
-  "updated_at": "2026-08-09",
+  "updated_at": "2026-08-12",
   "baseline": {
     "git_branch": "develop/2026-07-14-generation-completion-notifications",
     "git_head": "eb77c7f5421b9b8ac44e540e66931573f4097a41",
@@ -86,6 +86,62 @@
       "observed_usage": {
         "import_files": 23,
         "scope": "my-app source TSX"
+      }
+    },
+    {
+      "id": "web.home.landing-scene",
+      "name": "LandingScene family",
+      "platform": "web",
+      "kind": "layout",
+      "status": "candidate",
+      "source": "my-app/components/home/LandingScene.tsx",
+      "owner": "home-feature",
+      "passport": "docs/components/passports/web-landing-scene.yaml",
+      "observed_usage": {
+        "production_consumer_files": 6,
+        "scope": "public landing route and home feature components"
+      }
+    },
+    {
+      "id": "web.home.reveal-on-scroll",
+      "name": "RevealOnScroll",
+      "platform": "web",
+      "kind": "layout",
+      "status": "candidate",
+      "source": "my-app/components/home/RevealOnScroll.tsx",
+      "owner": "home-feature",
+      "passport": "docs/components/passports/web-reveal-on-scroll.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "scope": "LandingScene reveal motion wrapper"
+      }
+    },
+    {
+      "id": "web.home.hairstyle-preview-showcase",
+      "name": "HairstylePreviewShowcase",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/home/HairstylePreviewShowcase.tsx",
+      "owner": "home-feature",
+      "passport": "docs/components/passports/web-hairstyle-preview-showcase.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "scope": "public landing route"
+      }
+    },
+    {
+      "id": "web.home.faq-showcase",
+      "name": "FaqShowcase",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/home/FaqShowcase.tsx",
+      "owner": "home-feature",
+      "passport": "docs/components/passports/web-faq-showcase.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "scope": "public landing route"
       }
     },
     {

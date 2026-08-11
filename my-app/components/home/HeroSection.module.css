@@ -3,12 +3,11 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  border: 1px solid var(--app-border);
-  border-radius: clamp(0.9rem, 2vw, 1.5rem);
-  background:
-    radial-gradient(circle at 50% 34%, color-mix(in srgb, var(--app-accent-soft) 58%, transparent), transparent 42%),
-    color-mix(in srgb, var(--app-surface) 84%, var(--app-bg));
-  padding: clamp(0.5rem, 1.5vw, 1rem) clamp(0.5rem, 1.5vw, 1.25rem) clamp(2.5rem, 6vw, 5rem);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 0 clamp(2.5rem, 6vw, 5rem);
 }
 
 .visualStage {
@@ -224,7 +223,7 @@
   margin-top: clamp(1.75rem, 4vw, 3rem);
   align-items: center;
   gap: 0.4rem;
-  color: var(--app-subtle);
+  color: var(--app-text);
   font-size: 0.6rem;
   font-weight: 850;
   letter-spacing: 0.18em;
@@ -267,8 +266,8 @@
 @media (max-width: 640px) {
   .hero {
     --rail-gap: 4px;
-    border-radius: 0.8rem;
-    padding-inline: 0.35rem;
+    border-radius: 0;
+    padding-inline: 0;
   }
 
   .visualStage {

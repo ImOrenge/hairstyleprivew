@@ -1,0 +1,111 @@
+id: web.home.landing-scene
+name: LandingScene family
+platform: web
+kind: layout
+status: candidate
+source: my-app/components/home/LandingScene.tsx
+owner: home-feature
+
+public_api:
+  exports:
+    - LandingScene
+    - SceneHeader
+    - LandingSceneLayout
+    - LandingSceneTone
+    - LandingSceneMotion
+  props:
+    - id: string
+    - number: string optional
+    - layout: rolling-rail | sticky-stage | editorial-split | typographic-index | closing-stage
+    - tone: canvas | inverse | quiet
+    - motion: none | reveal | scroll-progress | continuous
+    - className: string optional
+    - children: ReactNode
+  slots:
+    - children
+  events:
+    - inherited-section-events
+
+dependencies:
+  internal:
+    - my-app/lib/utils.ts#cn
+  external:
+    - react
+  forbidden:
+    - feature-stores
+    - route-state
+    - api-clients
+
+styling:
+  strategy: feature-global-css-data-contract
+  global_css:
+    file: my-app/app/landing.css
+    layer: features
+    namespace: f-landing-scene
+  tokens:
+    - --landing-canvas
+    - --landing-ink
+    - --landing-muted
+    - --landing-accent
+    - --landing-gutter
+    - --landing-scene-block
+    - --landing-copy-max
+    - --landing-media-radius
+    - --landing-motion-fast
+    - --landing-motion-reveal
+    - --landing-motion-stagger
+  variants:
+    - rolling-rail
+    - sticky-stage
+    - editorial-split
+    - typographic-index
+    - closing-stage
+  data_contract:
+    data-landing-surface: present on scene root
+    data-layout: LandingSceneLayout
+    data-tone: LandingSceneTone
+    data-motion: LandingSceneMotion
+    data-reveal-item: present on section number and SceneHeader text elements
+    data-reveal-order: section number 0, eyebrow 1, title 2, description 3
+  allows_className: true
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  role: native-section
+  heading_structure: consumer supplies one h2 through SceneHeader
+  landmark_semantics: id anchors the public landing navigation
+  reduced_motion: RevealOnScroll renders reduced state and landing.css removes opacity, transform, transition, and animation
+
+test_surface:
+  unit:
+    - my-app/lib/landing-flat-surface-contract.test.ts
+    - my-app/lib/landing-motion-contract.test.ts
+  interaction:
+    - browser keyboard and anchor navigation verification
+  visual:
+    - 1440x1000 desktop landing screenshot
+    - 390x844 mobile landing screenshot
+
+observed_usage:
+  production_consumer_files: 6
+  scope: public landing route and home feature components
+
+change_policy:
+  current_gate: style-contract
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+    - responsive-visual-verification
+  breaking_change_requires:
+    - usage-search
+    - migration-note
+
+promotion_blockers:
+  - browser visual baselines are not yet stored as repository fixtures
+  - no second feature consumer exists
+  - authenticated CTA destinations remain an external integration gate

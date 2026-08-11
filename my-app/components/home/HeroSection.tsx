@@ -1,10 +1,10 @@
 "use client";
 
-import type { CSSProperties } from "react";
-import { useEffect, useRef, useState } from "react";
+import { ArrowDown, ArrowRight, Sparkles } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, ArrowRight, Sparkles } from "lucide-react";
+import type { CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import styles from "./HeroSection.module.css";
 
 interface HeroSectionProps {
@@ -30,13 +30,13 @@ const MODEL_TILES: Record<string, [RollingTile, RollingTile]> = {
   model01: [
     {
       src: "/hero/rolling/model-01-hair.webp",
-      alt: "허쉬컷 헤어를 보여주는 여성 모델 클로즈업",
+      alt: "내추럴 쇼트 헤어를 보여주는 남성 모델 클로즈업",
       model: "모델 1",
       kind: "hair",
     },
     {
       src: "/hero/rolling/model-01-fashion.webp",
-      alt: "같은 허쉬컷 여성 모델의 아이보리 트렌치 패션",
+      alt: "같은 내추럴 쇼트 헤어 남성 모델의 미니멀 패션",
       model: "모델 1",
       kind: "fashion",
     },
@@ -44,13 +44,13 @@ const MODEL_TILES: Record<string, [RollingTile, RollingTile]> = {
   model02: [
     {
       src: "/hero/rolling/model-02-hair.webp",
-      alt: "텍스처 콤마 헤어를 보여주는 남성 모델 클로즈업",
+      alt: "텍스처 보브 헤어를 보여주는 여성 모델 클로즈업",
       model: "모델 2",
       kind: "hair",
     },
     {
       src: "/hero/rolling/model-02-fashion.webp",
-      alt: "같은 콤마 헤어 남성 모델의 차콜 테일러링 패션",
+      alt: "같은 보브 헤어 여성 모델의 차분한 테일러링 패션",
       model: "모델 2",
       kind: "fashion",
     },
@@ -78,7 +78,7 @@ const MODEL_TILES: Record<string, [RollingTile, RollingTile]> = {
     },
     {
       src: "/hero/rolling/model-04-fashion.webp",
-      alt: "같은 커튼 헤어 남성 모델의 올리브 오버셔츠 패션",
+      alt: "같은 커튼 헤어 남성 모델의 네이비 블레이저 패션",
       model: "모델 4",
       kind: "fashion",
     },
@@ -92,7 +92,7 @@ const MODEL_TILES: Record<string, [RollingTile, RollingTile]> = {
     },
     {
       src: "/hero/rolling/model-05-fashion.webp",
-      alt: "같은 레이어드 헤어 여성 모델의 버건디 레더 패션",
+      alt: "같은 레이어드 헤어 여성 모델의 버건디 데님 패션",
       model: "모델 5",
       kind: "fashion",
     },
@@ -106,7 +106,7 @@ const MODEL_TILES: Record<string, [RollingTile, RollingTile]> = {
     },
     {
       src: "/hero/rolling/model-06-fashion.webp",
-      alt: "같은 아이비리그 헤어 남성 모델의 카멜 봄버 패션",
+      alt: "같은 아이비리그 헤어 남성 모델의 캐멀 오버 패션",
       model: "모델 6",
       kind: "fashion",
     },
@@ -219,9 +219,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
     if (!hero) return;
 
     let isInViewport = true;
-    const syncPlayback = () => {
-      setIsActive(isInViewport && document.visibilityState === "visible");
-    };
+    const syncPlayback = () => setIsActive(isInViewport && document.visibilityState === "visible");
     const observer = new IntersectionObserver(
       ([entry]) => {
         isInViewport = entry.isIntersecting;
@@ -245,7 +243,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
     <section ref={heroRef} className={styles.hero} aria-labelledby="landing-hero-title">
       <div
         className={styles.visualStage}
-        aria-label="헤어와 패션이 이어지는 4열 4행 스타일 롤링 갤러리"
+        aria-label="헤어와 패션이 이어지는 네 줄 세로 롤링 갤러리"
         data-testid="hero-rolling-stage"
       >
         <div
@@ -265,7 +263,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
           AI HAIR · FASHION CONTINUITY
         </p>
         <h1 id="landing-hero-title" className={styles.title}>
-          헤어를 고르면,
+          헤어를 고르면
           <span>패션이 이어집니다</span>
         </h1>
         <p className={styles.description}>
@@ -278,7 +276,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
             사진으로 시작하기
             <ArrowRight className={styles.actionIcon} aria-hidden="true" />
           </Link>
-          <Link href="#home-fashion" className={styles.secondaryAction}>
+          <Link href="#home-hairstyles" className={styles.secondaryAction}>
             결과 예시 보기
           </Link>
         </div>
@@ -301,11 +299,13 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
                 ))}
               </div>
             )}
-            {userCount > 0 && <span>{userCount.toLocaleString("ko-KR")}명이 HairFit으로 스타일을 비교했어요</span>}
+            {userCount > 0 ? (
+              <span>{userCount.toLocaleString("ko-KR")}명이 HairFit으로 스타일을 비교했어요</span>
+            ) : null}
           </div>
         )}
 
-        <a href="#home-fashion" className={styles.scrollCue} aria-label="다음 섹션으로 이동">
+        <a href="#home-hairstyles" className={styles.scrollCue} aria-label="다음 섹션으로 이동">
           <span>SCROLL</span>
           <ArrowDown aria-hidden="true" />
         </a>

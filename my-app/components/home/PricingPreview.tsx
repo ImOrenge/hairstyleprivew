@@ -1,13 +1,13 @@
-﻿"use client";
+"use client";
 
+import Image from "next/image";
+import { useT } from "../../lib/i18n/useT";
 import type { PlanDisplayBenefit } from "../../lib/plan-benefit-display";
 import type { PricingTierKey } from "../../lib/pricing-plan";
 import type { SubscriptionAccessMode } from "../../lib/subscription-access";
-import { cn } from "../../lib/utils";
-import { useT } from "../../lib/i18n/useT";
 import { PortoneSubscriptionButton } from "../payments/PortoneSubscriptionButton";
 import { Button } from "../ui/Button";
-import { Panel, SurfaceCard } from "../ui/Surface";
+import { LandingScene, SceneHeader } from "./LandingScene";
 
 type PlanKey = PricingTierKey;
 type PaymentPlanKey = Exclude<PlanKey, "free" | "salon">;
@@ -46,18 +46,9 @@ function featureLines(plan: PlanBlueprint, benefit: PlanDisplayBenefit, t: Retur
     t("pricing.usage.aftercarePolicy", { count: benefit.usage.aftercareProgramCount }),
   ];
 
-  if (plan.key === "free") {
-    return [t("pricing.free.f1"), ...base, t("pricing.free.f3")];
-  }
-
-  if (plan.key === "pro") {
-    return [...base, t("pricing.pro.f3"), t("pricing.pro.f5")];
-  }
-
-  if (plan.key === "standard") {
-    return [...base, t("pricing.standard.f2"), t("pricing.standard.f3")];
-  }
-
+  if (plan.key === "free") return [t("pricing.free.f1"), ...base, t("pricing.free.f3")];
+  if (plan.key === "pro") return [...base, t("pricing.pro.f3"), t("pricing.pro.f5")];
+  if (plan.key === "standard") return [...base, t("pricing.standard.f2"), t("pricing.standard.f3")];
   return [...base, t("pricing.basic.f2"), t("pricing.basic.f3")];
 }
 
@@ -68,9 +59,8 @@ export function PricingPreview({
 }: PricingPreviewProps) {
   const t = useT();
   const subscriptionWaitlistMode = subscriptionAccessMode === "waitlist";
-  const displayBenefits = initialDisplayBenefits;
   const benefitByKey = new Map<string, PlanDisplayBenefit>(
-    displayBenefits.map((benefit) => [benefit.key, benefit]),
+    initialDisplayBenefits.map((benefit) => [benefit.key, benefit]),
   );
   const planBlueprint: PlanBlueprint[] = [
     {
@@ -135,11 +125,7 @@ export function PricingPreview({
       };
     }
 
-    return {
-      ...plan,
-      price: benefit.priceLabel,
-      features: featureLines(plan, benefit, t),
-    };
+    return { ...plan, price: benefit.priceLabel, features: featureLines(plan, benefit, t) };
   });
 
   const handlePlanClick = (planKey: PlanKey) => {
@@ -155,91 +141,61 @@ export function PricingPreview({
   };
 
   return (
-    <Panel as="section" className="p-5 transition-colors sm:p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="app-kicker">
-            {t("pricing.badge")}
-          </p>
-          <h2 className="text-2xl font-black tracking-tight text-[var(--app-text)] sm:text-3xl">
-            {t("pricing.title")}
-          </h2>
-        </div>
-        <p className="text-sm text-[var(--app-muted)]">
+    <LandingScene id="home-pricing" number="08" layout="typographic-index">
+      <div className="f-pricing__header">
+        <SceneHeader eyebrow={t("pricing.badge")} title={t("pricing.title")} />
+        <p className="f-pricing__credit-note" data-reveal-item data-reveal-order="3">
           {t("pricing.creditNote")}
         </p>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {plans.map((plan) => (
-          <SurfaceCard
-            as="article"
+      <div
+        className="f-pricing__media"
+        data-landing-media
+        data-detail-closeup
+        data-reveal-item
+        data-reveal-order="4"
+      >
+        <Image
+          src="/landing/editorial/pricing-plan-comparison-v2.webp"
+          alt="한 인물이 태블릿에서 헤어 비교, 패션 연결, 결과 보관 범위가 단계적으로 늘어나는 세 가지 이용 범위를 비교하는 모습"
+          fill
+          className="f-pricing__image"
+          sizes="(max-width: 840px) 92vw, 86vw"
+        />
+      </div>
+
+      <div className="f-pricing__plans">
+        {plans.map((plan, index) => (
+          <article
+            className="f-pricing-plan"
+            data-landing-surface
+            data-recommended={plan.recommended}
+            data-reveal-item
+            data-reveal-order={Math.min(index + 5, 13)}
             key={plan.name}
-            className={cn(
-              "relative flex h-full flex-col p-4 transition-colors",
-              plan.tone === "recommended" &&
-                "border-[var(--app-accent)]",
-              plan.tone === "premium" &&
-                "border-[var(--app-border)]",
-              plan.tone === "enterprise" &&
-                "border-[var(--app-border-strong)]",
-              plan.tone === "basic" &&
-                "border-[var(--app-border)]",
-            )}
           >
-            {plan.recommended ? (
-              <span className="absolute right-3 top-3 border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-2.5 py-0.5 text-[10px] font-semibold text-[var(--app-inverse-text)]">
-                추천
-              </span>
-            ) : null}
+            <p className="f-pricing-plan__index">{String(index + 1).padStart(2, "0")}</p>
+            {plan.recommended ? <span className="f-pricing-plan__recommended">추천 플랜</span> : null}
+            <p className="f-pricing-plan__subtitle">{plan.subtitle}</p>
+            <h3 className="f-pricing-plan__name">{plan.name}</h3>
+            <p className="f-pricing-plan__description">{plan.description}</p>
 
-            <p
-              className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--app-subtle)]"
-            >
-              {plan.subtitle}
-            </p>
-            <h3
-              className="mt-1.5 text-lg font-bold text-[var(--app-text)]"
-            >
-              {plan.name}
-            </h3>
-            <p
-              className="mt-1 min-h-[3.75rem] text-xs leading-relaxed text-[var(--app-muted)]"
-            >
-              {plan.description}
-            </p>
-
-            <div className="mt-4 flex items-end gap-1">
-              <p
-                className="text-2xl font-black tracking-tight text-[var(--app-text)]"
-              >
-                {plan.price}
-              </p>
-              <p
-                className="pb-0.5 text-xs text-[var(--app-subtle)]"
-              >
-                {plan.period}
-              </p>
+            <div className="f-pricing-plan__price-row">
+              <p className="f-pricing-plan__price">{plan.price}</p>
+              <p className="f-pricing-plan__period">{plan.period}</p>
             </div>
 
-            <ul className="mt-3 flex-1 space-y-1.5">
+            <ul className="f-pricing-plan__features">
               {plan.features.map((feature) => (
-                <li
-                  key={feature}
-                  className="flex items-start gap-1.5 text-xs text-[var(--app-muted)]"
-                >
-                  <span
-                    className="mt-0.5 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full bg-[var(--app-inverse)] text-[9px] text-[var(--app-inverse-text)]"
-                  >
-                    ✓
-                  </span>
+                <li className="f-pricing-plan__feature" key={feature}>
                   {feature}
                 </li>
               ))}
             </ul>
 
             {plan.key !== "free" && plan.key !== "salon" ? (
-              <p className="mt-3 text-[10px] text-[var(--app-subtle)]">
+              <p className="f-pricing-plan__note">
                 {subscriptionWaitlistMode ? t("pricing.waitlist.note") : t("pricing.recurringNote")}
               </p>
             ) : null}
@@ -249,7 +205,7 @@ export function PricingPreview({
                 planKey={plan.key as PaymentPlanKey}
                 subscriptionAccessMode={subscriptionAccessMode}
                 variant={plan.tone === "basic" ? "secondary" : "primary"}
-                className="mt-4 w-full px-3 py-2 text-xs"
+                className="f-pricing-plan__action"
                 successRedirectPath={successRedirectPath}
               >
                 {plan.cta}
@@ -259,14 +215,14 @@ export function PricingPreview({
                 type="button"
                 onClick={() => handlePlanClick(plan.key)}
                 variant={plan.tone === "basic" ? "secondary" : "primary"}
-                className="mt-4 w-full px-3 py-2 text-xs"
+                className="f-pricing-plan__action"
               >
                 {plan.cta}
               </Button>
             )}
-          </SurfaceCard>
+          </article>
         ))}
       </div>
-    </Panel>
+    </LandingScene>
   );
 }

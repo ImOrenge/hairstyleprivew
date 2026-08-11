@@ -1,11 +1,26 @@
-﻿"use client";
+"use client";
 
+import Image from "next/image";
 import { useT } from "../../lib/i18n/useT";
-import { InverseCard, InverseSection } from "../ui/Surface";
+import { LandingScene, SceneHeader } from "./LandingScene";
+
+const reviewImages = [
+  {
+    src: "/landing/editorial/review-compare-tablet-v2.webp",
+    alt: "한 여성이 태블릿에서 자신의 짧은 보브, 미디엄 레이어, 긴 웨이브 후보를 비교하는 모습",
+  },
+  {
+    src: "/landing/editorial/review-salon-tablet-v2.webp",
+    alt: "헤어디자이너가 고객과 태블릿의 동일 고객 헤어 후보를 함께 보며 선택 방향을 이야기하는 모습",
+  },
+  {
+    src: "/landing/editorial/review-fashion-tablet-v2.webp",
+    alt: "한 인물이 태블릿의 선택 헤어와 전신 코디 연결 화면을 보며 실제 네이비 재킷을 고르는 모습",
+  },
+];
 
 export function ReviewCarousel() {
   const t = useT();
-
   const reviews = [
     {
       author: t("reviews.r1.author"),
@@ -33,58 +48,55 @@ export function ReviewCarousel() {
     { label: t("reviews.metrics.3.label"), value: t("reviews.metrics.3.value") },
   ];
 
-  const rollingReviews = [...reviews, ...reviews];
-
   return (
-    <InverseSection as="section" className="overflow-hidden p-5 sm:p-6">
-      <div className="grid gap-4 border-b border-[color-mix(in_srgb,var(--app-inverse-text)_12%,transparent)] pb-5 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.55fr)] lg:items-end">
-        <div>
-          <p className="app-inverse-kicker">{t("reviews.badge")}</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-3xl">{t("reviews.title")}</h2>
-          <p className="app-inverse-muted mt-3 max-w-2xl text-sm leading-6">{t("reviews.subtitle")}</p>
-        </div>
-
-        <InverseCard className="grid grid-cols-3">
-          {metrics.map((metric) => (
-            <div key={metric.label} className="border-r border-[color-mix(in_srgb,var(--app-inverse-text)_12%,transparent)] p-3 text-center last:border-r-0">
-              <p className="text-2xl font-black">{metric.value}</p>
-              <p className="app-inverse-subtle mt-1 text-[11px] font-semibold uppercase tracking-[0.08em]">
-                {metric.label}
-              </p>
+    <LandingScene id="home-reviews" number="07" layout="rolling-rail" tone="inverse">
+      <div className="f-proof__header">
+        <SceneHeader
+          eyebrow={t("reviews.badge")}
+          title={t("reviews.title")}
+          description={t("reviews.subtitle")}
+        />
+        <div className="f-proof__metrics" aria-label="HairFit 이용 지표">
+          {metrics.map((metric, index) => (
+            <div data-reveal-item data-reveal-order={index + 4} key={metric.label}>
+              <p className="f-proof__metric-value">{metric.value}</p>
+              <p className="f-proof__metric-label">{metric.label}</p>
             </div>
           ))}
-        </InverseCard>
+        </div>
       </div>
 
       <div
-        className="-mx-5 mt-5 overflow-x-auto focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-accent)] sm:-mx-6"
+        className="f-proof__rail"
         aria-label={`${t("reviews.title")} — 좌우로 스크롤할 수 있습니다`}
         tabIndex={0}
       >
-        <div className="review-roll gap-3 px-5 sm:px-6">
-          {rollingReviews.map((review, index) => (
-            <InverseCard
-              as="article"
-              key={`${review.author}-${index}`}
-              className="flex min-h-56 w-[19rem] shrink-0 flex-col p-4 sm:w-[23rem]"
-            >
-              <div className="flex items-center justify-between gap-3 border-b border-[color-mix(in_srgb,var(--app-inverse-text)_10%,transparent)] pb-3">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--app-accent)]">5.0 Review</p>
-                <span className="border border-[var(--app-accent)] px-2 py-1 text-[11px] font-bold text-[var(--app-accent)]">
-                  {review.result}
-                </span>
-              </div>
-
-              <p className="mt-4 flex-1 text-sm leading-6 text-[var(--app-inverse-text)]">&quot;{review.body}&quot;</p>
-
-              <div className="mt-5 border-t border-[color-mix(in_srgb,var(--app-inverse-text)_10%,transparent)] pt-3">
-                <p className="text-sm font-black text-[var(--app-inverse-text)]">{review.author}</p>
-                <p className="app-inverse-subtle mt-1 text-xs font-semibold">{review.role}</p>
-              </div>
-            </InverseCard>
-          ))}
-        </div>
+        {reviews.map((review, index) => (
+          <article
+            className="f-review"
+            data-reveal-item
+            data-reveal-order={index + 5}
+            key={review.author}
+          >
+            <div className="f-review__media" data-landing-media data-detail-closeup>
+              <Image
+                src={reviewImages[index].src}
+                alt={reviewImages[index].alt}
+                fill
+                className="f-review__image"
+                sizes="(max-width: 600px) 86vw, 28vw"
+              />
+            </div>
+            <div>
+              <p className="f-review__rating">5.0 Review</p>
+              <blockquote className="f-review__quote">“{review.body}”</blockquote>
+              <p className="f-review__result">{review.result}</p>
+              <p className="f-review__author">{review.author}</p>
+              <p className="f-review__role">{review.role}</p>
+            </div>
+          </article>
+        ))}
       </div>
-    </InverseSection>
+    </LandingScene>
   );
 }
