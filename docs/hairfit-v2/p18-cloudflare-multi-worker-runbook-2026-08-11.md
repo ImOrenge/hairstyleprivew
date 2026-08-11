@@ -26,7 +26,8 @@
 2. feature worktree가 clean이어야 한다.
 3. `npm run typecheck`, `npm --prefix my-app run consulting:contract:test`, `npm --prefix my-app run cf:multi:server:dry-run`, `npm --prefix my-app run cf:multi:router:dry-run`이 통과해야 한다.
 4. 서버 flag 25개는 OFF, `PROMPT_VISION_MODEL=gpt-4o`, 필수 secret 이름은 `32/32`여야 한다.
-5. 현재 production deployment ID, 두 Custom Domain의 대상 `hairstyleprivew`, 두 classic route의 대상 Worker를 증거에 기록한다.
+5. 라우터에는 인증 미들웨어 실행에 필요한 정확히 4개(`CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)만 등록한다. provider·결제·callback/admin secret은 복제하지 않는다.
+6. 현재 production deployment ID, 두 Custom Domain의 대상 `hairstyleprivew`, 두 classic route의 대상 Worker를 증거에 기록한다.
 
 ## 무중단 배포 순서
 
@@ -37,6 +38,8 @@
    `npm run cf:multi:router:bootstrap -- --var WORKER_VERSION_ID:<CURRENT_SERVER_ID>`
 
    Worker가 이미 존재하면 이 단계는 건너뛴다. 이후 모든 라우터 버전은 정식 `wrangler.middleware.jsonc`를 사용해 자기 참조 binding을 복원한다.
+
+   최초 생성 뒤 또는 인증키 회전 시 로컬 승인 환경에서 `npm run cf:multi:router:auth-sync -- --apply --confirm=HAIRFIT_ROUTER_AUTH_SECRETS`를 실행한다. 스크립트는 값은 출력하지 않고 위 4개만 라우터에 등록한다. generation callback과 catalog admin 요청은 서버 handler가 자체 secret 검증을 수행하는 정확한 경로만 라우터 wrapper에서 직접 전달한다.
 
 1. 서버 새 version을 업로드한다.
 
@@ -89,6 +92,7 @@
 - server/router 실제 upload gzip 크기
 - OFF production smoke, canary 단계별 결과, rollback 관찰 창
 - secret 값이 아닌 이름/개수만 포함한 readiness 결과
+- 비인증 보호 API가 `401`이며 `Authentication is not configured` 503 또는 handler 500이 아니라는 probe
 
 ## 2026-08-11 전환 리허설에서 확인한 주의점
 

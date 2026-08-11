@@ -237,6 +237,9 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /\/\.well-known\/hairfit-deployment/);
   assert.match(router, /\/\.well-known\/hairfit-router/);
   assert.match(router, /pinnedServerVersion: this\.env\.WORKER_VERSION_ID/);
+  assert.match(router, /function isServerVerifiedRequest\(pathname\)/);
+  assert.match(router, /SERVER_VERIFIED_CALLBACK_PATHS/);
+  assert.match(router, /pathname\.startsWith\("\/api\/admin\/hairstyles\/"\)/);
   assert.match(server, /server-functions\/default\/handler\.mjs/);
   assert.equal(routerConfig.name, "hairstyleprivew-router");
   assert.equal(routerConfig.keep_vars, true);
@@ -257,6 +260,7 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.equal(packageJson.dependencies["@tensorflow/tfjs"], undefined);
   assert.equal(packageJson.dependencies["@tensorflow/tfjs-core"], "^4.22.0");
   assert.equal(packageJson.dependencies["@tensorflow/tfjs-backend-cpu"], "^4.22.0");
+  assert.equal(packageJson.scripts["cf:multi:router:auth-sync"], "node scripts/sync-hairfit-router-auth-secrets.mjs");
 });
 
 test("photo analysis advances through a durable automatic pipeline without scan approval", () => {
