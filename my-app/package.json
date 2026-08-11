@@ -64,7 +64,7 @@
     "admin-high-risk:contract:test": "node --no-warnings --test lib/admin-high-risk-action.test.ts",
     "result-ux:contract:test": "node --no-warnings --test lib/result-decision-ux.test.ts lib/generation-adapter-parity.test.ts lib/generation-selected-variant-dual-field.test.ts",
     "workspace-decomposition:contract:test": "node --no-warnings --test lib/workspace-decomposition.test.ts",
-    "consulting:contract:test": "node --no-warnings --test lib/capabilities/runtime.test.ts lib/vision-model.test.ts lib/consulting/consultation-contract.test.ts lib/consulting/consultation-operations-contract.test.ts lib/consulting/face-landmark-geometry.test.ts lib/consulting/personal-color-mapping.test.ts lib/consulting/supabase-errors.test.ts scripts/verify-hairfit-v2-live-readiness.test.mjs scripts/check-hairfit-v2-cloudflare-secret-names.test.mjs scripts/set-hairfit-v2-cloudflare-off.test.mjs scripts/set-hairfit-v2-cloudflare-model.test.mjs scripts/apply-hairfit-v2-supabase-migrations.test.mjs scripts/verify-hairfit-v2-supabase-post-apply.test.mjs",
+    "consulting:contract:test": "node --no-warnings --test lib/capabilities/runtime.test.ts lib/vision-model.test.ts lib/consulting/consultation-contract.test.ts lib/consulting/consultation-operations-contract.test.ts lib/consulting/face-landmark-geometry.test.ts lib/consulting/personal-color-mapping.test.ts lib/consulting/supabase-errors.test.ts scripts/verify-hairfit-v2-live-readiness.test.mjs scripts/verify-hairfit-v2-version-override.test.mjs scripts/check-hairfit-v2-cloudflare-secret-names.test.mjs scripts/set-hairfit-v2-cloudflare-off.test.mjs scripts/set-hairfit-v2-cloudflare-model.test.mjs scripts/apply-hairfit-v2-supabase-migrations.test.mjs scripts/verify-hairfit-v2-supabase-post-apply.test.mjs",
     "hairfit-v2:contract:test": "node --no-warnings --test lib/hairfit-v2-backend-contract.test.ts lib/v2/prompt-input.test.ts",
     "hairfit-v2:db:smoke": "node --no-warnings scripts/verify-hairfit-v2-database.mjs",
     "hairfit-v2:live:preflight": "node --no-warnings scripts/verify-hairfit-v2-live-readiness.mjs",
@@ -99,6 +99,7 @@
     "cf:multi:router:bootstrap": "wrangler deploy --config workers/open-next-multi/wrangler.middleware.bootstrap.jsonc",
     "cf:multi:router:auth-sync": "node scripts/sync-hairfit-router-auth-secrets.mjs",
     "cf:multi:server:staff-canary": "node scripts/upload-hairfit-v2-staff-canary.mjs --mode=canary",
+    "cf:multi:staff-canary:verify": "node scripts/verify-hairfit-v2-version-override.mjs",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cf:typegen": "wrangler types"

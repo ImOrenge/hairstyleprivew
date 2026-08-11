@@ -1,7 +1,7 @@
 # P17 HairFit V2 최종 인계
 
 - 기준일: 2026-08-11 KST
-- 검증 소스: `c4763844af9496d68759b07aa8907183c0902b41`
+- 검증 소스: `19b5d682088bbd71083ce273e8efc0b8a06b18c2`
 - 상태: `in_progress_live_gates`
 - 완료 선언: 하지 않음
 
@@ -24,7 +24,7 @@
 |---|---|---|
 | production source deploy | 통과 | OpenNext server/router 분리, Free 한도 내 upload와 source probe 일치 |
 | OFF production smoke | 통과 | root/login/www, workspace redirect, 보호 API 401을 연속 확인 |
-| Web canary 5→25→100% | 대기 | 0% ON version은 준비했으나 운영 도메인 version override가 OFF로 fallback하여 공개 비율을 올리지 않음 |
+| Web canary 5→25→100% | 대기 | 독립된 두 번의 0% ON 시도에서 override가 각각 OFF로 fallback했고, 두 번째는 baseline 수렴 뒤 60초·12회 재검증함 |
 | 실제 hair 3×3·partial/retry | 미실행 | 실제 사용량/비용을 소비하는 production canary 필요 |
 | 실제 Fashion 9-look·selection | 미실행 | 동일 |
 | actual service→Aftercare live | 미실행 | 승인된 테스트 시술 기록과 관찰 창 필요 |

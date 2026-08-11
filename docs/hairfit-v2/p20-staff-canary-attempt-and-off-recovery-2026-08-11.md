@@ -1,7 +1,7 @@
 # P20 HairFit V2 스태프 카나리 시도와 OFF 복구 결과
 
 - 실행일: 2026-08-11 KST
-- 고정 Git SHA: `c4763844af9496d68759b07aa8907183c0902b41`
+- 최초 안전장치 Git SHA: `c4763844af9496d68759b07aa8907183c0902b41`
 - 판정: `staff_canary_version_ready / override_not_applied / production_off_recovered`
 
 ## 수행 범위
@@ -27,7 +27,7 @@ Cloudflare 공식 version override 헤더를 운영 도메인 요청에 적용�
 4. 두 version을 각각 100% 단일 deployment로 고정했다.
 5. router/source exact probe 5회 연속, root/www/login `200`, workspace 비인증 `307`, V2 생성 API 비인증 `401`을 확인했다.
 
-현재 production은 source `c4763844af9496d68759b07aa8907183c0902b41`, server `52c8f342-a9af-4f3f-807b-18ed3a4c8862`, router `1b759a85-a42f-44e7-942c-d02ac9900112`의 OFF 상태다.
+이 첫 복구 직후 production은 source `c4763844af9496d68759b07aa8907183c0902b41`, server `52c8f342-a9af-4f3f-807b-18ed3a4c8862`, router `1b759a85-a42f-44e7-942c-d02ac9900112`의 OFF 상태였다. 현재 최종 production은 아래 두 번째 시도의 최신 OFF 쌍이다.
 
 ## 남은 종료 게이트
 
@@ -42,3 +42,7 @@ Cloudflare 공식 version override 헤더를 운영 도메인 요청에 적용�
 ## 후속 안전장치
 
 첫 시도에서 기존 OFF version 재선택이 secret 변경으로 거부된 문제를 반영해 server upload 도구를 `canary`와 `off` 두 mode의 version API 전용 경로로 통합했다. 이후 카나리는 ON upload 뒤 더 최신 OFF server/router를 먼저 준비하고, active deployment에 OFF 100%와 ON 0%를 함께 등록한다. 따라서 override 검증 실패 시 secret bulk나 강제 rollback 없이 최신 OFF version 단독 100%로 복구할 수 있다.
+
+두 번째 시도에서는 source `19b5d682088bbd71083ce273e8efc0b8a06b18c2`로 ON server `e66fe68f-2e5f-413c-8621-75b7b7f0065b`·router `f0e03b6f-180f-4562-8883-608c5a28428d`를 만들고, 더 최신 OFF server `82eabfb8-3016-4216-9dd8-7e8e24f71d42`·router `8221300d-eace-4332-9c69-4f22f43420d9`를 준비했다. OFF 100%·ON 0% active deployment와 OFF baseline 5회 연속 수렴을 확인한 뒤에도 version override는 60초·12회 모두 OFF router로 fallback했다. 전파 지연으로 보지 않고 계정/플랫폼 측 override 미적용으로 판정했으며, 공개 비율을 올리지 않고 최신 OFF 쌍 단일 100%로 복귀했다. OFF exact router/source/API 경계는 5회 연속 통과했다.
+
+후속 verifier는 ON router가 ON server를 pin하고 source SHA도 일치하는 경우에만 PASS한다. 둘 중 하나라도 60초 동안 일치하지 않으면 fail-closed로 종료해 공개 canary를 차단한다.

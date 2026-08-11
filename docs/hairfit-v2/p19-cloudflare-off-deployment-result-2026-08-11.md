@@ -1,9 +1,9 @@
 # P19 Cloudflare HairFit V2 OFF 배포 결과
 
 - 실행일: 2026-08-11 KST
-- source revision: `c4763844af9496d68759b07aa8907183c0902b41`
-- server Worker/version: `hairstyleprivew` / `52c8f342-a9af-4f3f-807b-18ed3a4c8862`
-- router Worker/version: `hairstyleprivew-router` / `1b759a85-a42f-44e7-942c-d02ac9900112`
+- source revision: `19b5d682088bbd71083ce273e8efc0b8a06b18c2`
+- server Worker/version: `hairstyleprivew` / `82eabfb8-3016-4216-9dd8-7e8e24f71d42`
+- router Worker/version: `hairstyleprivew-router` / `8221300d-eace-4332-9c69-4f22f43420d9`
 - 판정: `production_off_pass / public_canary_pending`
 
 ## 배포 계약
