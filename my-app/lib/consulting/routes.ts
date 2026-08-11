@@ -36,7 +36,9 @@ export function adjacentConsultationStages(stage: ConsultationStage) {
 }
 
 export function canEnterConsultationStage(snapshot: ConsultationSnapshot, stage: ConsultationStage) {
-  const requested = consultationStageIndex(stage);
-  const current = consultationStageIndex(snapshot.currentStage);
-  return requested <= current || snapshot.completedStages.includes(stage);
+  return snapshot.journey.allowedStages.includes(stage);
+}
+
+export function consultationStageBlockingReason(snapshot: ConsultationSnapshot, stage: ConsultationStage) {
+  return snapshot.journey.blockingActions.find((action) => action.stage === stage) ?? null;
 }

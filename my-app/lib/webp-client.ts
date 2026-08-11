@@ -1,3 +1,5 @@
+import type { PhotoCropTransform } from "@hairfit/shared";
+
 const DEFAULT_WEBP_QUALITY = 0.9;
 
 function isBrowser() {
@@ -102,6 +104,40 @@ export async function convertImageFileToWebp(
     });
   } catch {
     return file;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+export async function cropImageFileToWebp(
+  file: File,
+  crop: PhotoCropTransform,
+  quality = DEFAULT_WEBP_QUALITY,
+): Promise<File> {
+  if (!isBrowser()) return file;
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const image = await loadImage(objectUrl);
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+    if (!sourceWidth || !sourceHeight) throw new Error("image_size_invalid");
+    const sourceX = Math.round(crop.x * sourceWidth);
+    const sourceY = Math.round(crop.y * sourceHeight);
+    const croppedWidth = Math.max(1, Math.min(sourceWidth - sourceX, Math.round(crop.width * sourceWidth)));
+    const croppedHeight = Math.max(1, Math.min(sourceHeight - sourceY, Math.round(crop.height * sourceHeight)));
+    const canvas = document.createElement("canvas");
+    canvas.width = crop.outputWidth;
+    canvas.height = crop.outputHeight;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("canvas_unavailable");
+    context.drawImage(image, sourceX, sourceY, croppedWidth, croppedHeight, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob>((resolve, reject) => canvas.toBlob(
+      (value) => value ? resolve(value) : reject(new Error("image_encode_failed")),
+      "image/webp",
+      quality,
+    ));
+    const baseName = file.name.replace(/\.[^/.]+$/, "") || "consultation-photo";
+    return new File([blob], `${baseName}-crop.webp`, { type: "image/webp", lastModified: Date.now() });
   } finally {
     URL.revokeObjectURL(objectUrl);
   }

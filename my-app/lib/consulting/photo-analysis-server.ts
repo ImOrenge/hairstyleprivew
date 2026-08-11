@@ -1,25 +1,31 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import type { PhotoFaceDetectionEvidence } from "@hairfit/shared";
+import { isConsultationPhotoCrop, type PhotoFaceDetectionEvidence } from "@hairfit/shared";
 import { assertFaceGeometryEvidenceV2, type AnalysisEvidenceV2 } from "@hairfit/shared/v2";
+import { runFaceAnalysisCapability } from "../capabilities/hair-blueprint-service";
+import { runPersonalColorCapability } from "../capabilities/personal-color-service";
+import { recordV2Event } from "../v2/observability";
 import { downloadGenerationOriginalImageDataUrl } from "../generation-image-storage";
-import { analyzeFaceForCatalog } from "../recommendation-generator";
 import type { FaceAnalysisSummary } from "../recommendation-types";
 import { getSupabaseAdminClient } from "../supabase";
-import { saveAnalysisEvidenceV2 } from "../v2/analysis-server";
+import { saveAnalysisEvidenceV2, savePersonalColorEvidenceV2 } from "../v2/analysis-server";
 import { HairfitV2Error } from "../v2/errors";
 import type {
   AnalysisEvidenceDraft,
+  ConsultationAnalysisRun,
   ConsultationInputProfile,
   ConsultationSnapshot,
   EvidenceItem,
   FaceAnalysis,
   StrategyRecommendation,
+  PhotoSnapshot,
 } from "./contracts";
 import { createConsultationSnapshot } from "./defaults";
 import { extractFaceLandmarkEvidence } from "./face-landmark-server";
 import { inspectConsultationPhotoPreflight } from "./photo-preflight-server";
+import { createPersonalColorEvidence, mapPersonalColorProfile } from "./personal-color-mapping";
+import { readServerConsultation, updateServerConsultation } from "./server-store";
 
 type DraftRow = {
   id: string;
@@ -29,6 +35,131 @@ type DraftRow = {
   checksum_sha256: string;
   expires_at: string;
 };
+
+const ANALYSIS_PIPELINE = {
+  upload: "complete",
+  preflight: "pending",
+  landmarks: "pending",
+  analysis: "pending",
+  persistence: "pending",
+} as const;
+
+type AnalysisProgressStage = "preflight" | "landmarks" | "analyzing";
+
+function mapAnalysisRun(row: {
+  id: string; state: ConsultationAnalysisRun["state"]; pipeline: ConsultationAnalysisRun["pipeline"];
+  error_code: string | null; error_message: string | null; attempt_count: number;
+  started_at: string | null; completed_at: string | null; updated_at: string;
+}): ConsultationAnalysisRun {
+  return {
+    id: row.id, state: row.state, pipeline: row.pipeline, errorCode: row.error_code,
+    errorMessage: row.error_message, attemptCount: row.attempt_count,
+    startedAt: row.started_at, completedAt: row.completed_at, updatedAt: row.updated_at,
+  };
+}
+
+export async function readLatestConsultationAnalysisRun(userId: string, consultationId: string) {
+  const result = await getSupabaseAdminClient().from("consultation_analysis_runs_v2")
+    .select("id,state,pipeline,error_code,error_message,attempt_count,started_at,completed_at,updated_at")
+    .eq("consultation_id", consultationId).eq("user_id", userId)
+    .order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  return result.data ? mapAnalysisRun(result.data as unknown as Parameters<typeof mapAnalysisRun>[0]) : null;
+}
+
+async function updateAnalysisRun(input: {
+  userId: string; runId: string; state: ConsultationAnalysisRun["state"];
+  pipeline: ConsultationAnalysisRun["pipeline"];
+  errorCode?: string | null; errorMessage?: string | null; complete?: boolean;
+}) {
+  const now = new Date().toISOString();
+  const result = await getSupabaseAdminClient().from("consultation_analysis_runs_v2").update({
+    state: input.state,
+    pipeline: input.pipeline,
+    error_code: input.errorCode ?? null,
+    error_message: input.errorMessage ?? null,
+    completed_at: input.complete ? now : null,
+    updated_at: now,
+  }).eq("id", input.runId).eq("user_id", input.userId);
+  if (result.error) throw new Error(result.error.message);
+}
+
+export async function queueConsultationPhotoAnalysis(input: {
+  userId: string; consultationId: string; draftId: string; expectedVersion: number;
+  faceEvidence: PhotoFaceDetectionEvidence; photo: PhotoSnapshot;
+}) {
+  const queuedSnapshot = await updateServerConsultation(input.userId, input.consultationId, {
+    expectedVersion: input.expectedVersion,
+    photo: input.photo,
+    currentStage: "scan",
+  });
+  if (queuedSnapshot.status === "conflict") {
+    throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "상담이 다른 화면에서 변경되었습니다. 새로고침 후 다시 시도해 주세요.");
+  }
+  const now = new Date().toISOString();
+  const created = await getSupabaseAdminClient().from("consultation_analysis_runs_v2").insert({
+    consultation_id: input.consultationId,
+    user_id: input.userId,
+    source_photo_id: input.draftId,
+    idempotency_key: `${input.consultationId}:${input.draftId}`,
+    state: "queued",
+    pipeline: ANALYSIS_PIPELINE,
+    attempt_count: 1,
+    started_at: now,
+    updated_at: now,
+  }).select("id,state,pipeline,error_code,error_message,attempt_count,started_at,completed_at,updated_at").single();
+  if (created.error) throw new Error(created.error.message);
+  return {
+    run: mapAnalysisRun(created.data as unknown as Parameters<typeof mapAnalysisRun>[0]),
+    snapshot: queuedSnapshot.snapshot,
+    input: { ...input, expectedVersion: queuedSnapshot.snapshot.version },
+  };
+}
+
+export async function processConsultationPhotoAnalysis(input: {
+  runId: string; userId: string; consultationId: string; draftId: string;
+  expectedVersion: number; faceEvidence: PhotoFaceDetectionEvidence;
+}) {
+  let pipeline: ConsultationAnalysisRun["pipeline"] = { ...ANALYSIS_PIPELINE };
+  const progress = async (stage: AnalysisProgressStage) => {
+    if (stage === "preflight") pipeline = { ...pipeline, preflight: "running" };
+    if (stage === "landmarks") pipeline = { ...pipeline, preflight: "complete", landmarks: "running" };
+    if (stage === "analyzing") pipeline = { ...pipeline, landmarks: "complete", analysis: "running" };
+    await updateAnalysisRun({ userId: input.userId, runId: input.runId, state: stage, pipeline });
+  };
+  try {
+    const result = await analyzeConsultationPhoto({ ...input, onProgress: progress });
+    if (result.requiresRetry) {
+      pipeline = { ...pipeline, preflight: "failed" };
+      await updateAnalysisRun({ userId: input.userId, runId: input.runId, state: "retry_required", pipeline, errorCode: "PHOTO_PREFLIGHT_RETRY", errorMessage: result.preflightMessage, complete: true });
+      return;
+    }
+    pipeline = { ...pipeline, preflight: "complete", landmarks: "complete", analysis: "complete", persistence: "running" };
+    await updateAnalysisRun({ userId: input.userId, runId: input.runId, state: "analyzing", pipeline });
+    const current = await readServerConsultation(input.userId, input.consultationId);
+    if (!current) throw new HairfitV2Error("CONSULTATION_NOT_FOUND", 404, "상담을 찾을 수 없습니다.");
+    const strategy = { ...current.strategy };
+    for (const recommendation of result.strategyRecommendations) strategy[recommendation.axis] = recommendation.recommendedValue;
+    const updated = await updateServerConsultation(input.userId, input.consultationId, {
+      expectedVersion: current.version,
+      photo: { ...current.photo, capturedAt: result.analyzedAt, quality: result.quality },
+      evidence: result.evidence,
+      faceAnalysis: result.faceAnalysis,
+      ...(result.personalColor ? { personalColor: result.personalColor } : {}),
+      strategyRecommendations: result.strategyRecommendations,
+      strategy,
+      completeStage: "photo",
+      currentStage: "analysis",
+    });
+    if (updated.status === "conflict") throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "분석 결과 저장 중 상담이 변경되었습니다.");
+    pipeline = { ...pipeline, persistence: "complete" };
+    await updateAnalysisRun({ userId: input.userId, runId: input.runId, state: "completed", pipeline, complete: true });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "사진 분석을 완료하지 못했습니다.";
+    pipeline = Object.fromEntries(Object.entries(pipeline).map(([key, value]) => [key, value === "running" ? "failed" : value]));
+    await updateAnalysisRun({ userId: input.userId, runId: input.runId, state: "failed", pipeline, errorCode: error instanceof HairfitV2Error ? error.code : "ANALYSIS_FAILED", errorMessage: message, complete: true });
+  }
+}
 
 async function linkPhotoDraftAndAdvanceAnalysis(input: {
   userId: string;
@@ -134,6 +265,8 @@ export async function analyzeConsultationPhoto(input: {
   draftId: string;
   expectedVersion: number;
   faceEvidence: PhotoFaceDetectionEvidence;
+  photo?: PhotoSnapshot;
+  onProgress?: (stage: AnalysisProgressStage) => Promise<void>;
 }) {
   const db = getSupabaseAdminClient();
   const consultation = await db
@@ -145,6 +278,7 @@ export async function analyzeConsultationPhoto(input: {
   if (consultation.error) throw new Error(consultation.error.message);
   if (!consultation.data) throw new HairfitV2Error("CONSULTATION_NOT_FOUND", 404, "상담을 찾을 수 없습니다.");
   const consultationRow = consultation.data as unknown as { version: number; lifecycle_state: string; snapshot: ConsultationSnapshot };
+  const photoSnapshot = input.photo ?? consultationRow.snapshot.photo;
   if (Number(consultationRow.version) !== input.expectedVersion) {
     throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "상담이 변경되었습니다. 새로고침 후 다시 시도해 주세요.");
   }
@@ -166,6 +300,7 @@ export async function analyzeConsultationPhoto(input: {
   }
 
   const imageDataUrl = await downloadGenerationOriginalImageDataUrl(db, draft.original_image_path);
+  await input.onProgress?.("preflight");
   const preflight = await inspectConsultationPhotoPreflight(imageDataUrl, input.faceEvidence);
   if (!preflight.canAnalyze) {
     return {
@@ -176,6 +311,7 @@ export async function analyzeConsultationPhoto(input: {
   }
   let landmarkRun: Awaited<ReturnType<typeof extractFaceLandmarkEvidence>>;
   try {
+    await input.onProgress?.("landmarks");
     landmarkRun = await extractFaceLandmarkEvidence(imageDataUrl, preflight.quality);
   } catch {
     throw new HairfitV2Error(
@@ -196,14 +332,66 @@ export async function analyzeConsultationPhoto(input: {
       preflightMessage: faceMessage,
     };
   }
-  const analysisRun = await analyzeFaceForCatalog(imageDataUrl);
+  await input.onProgress?.("analyzing");
+  const shouldAnalyzePersonalColor = photoSnapshot.usageScopes.includes("personalColor");
+  let colorImageDataUrl = imageDataUrl;
+  let colorSourceFingerprint = draft.checksum_sha256;
+  let colorSourceDraftId = input.draftId;
+  let colorPhotoQuality = preflight.quality;
+  if (shouldAnalyzePersonalColor && photoSnapshot.colorAssistDraftId) {
+    const assistResult = await db
+      .from("generation_upload_drafts")
+      .select("id,user_id,state,original_image_path,checksum_sha256,expires_at")
+      .eq("id", photoSnapshot.colorAssistDraftId)
+      .eq("user_id", input.userId)
+      .maybeSingle();
+    if (assistResult.error) throw new Error(assistResult.error.message);
+    const assistDraft = assistResult.data as unknown as DraftRow | null;
+    if (assistDraft && ["ready", "accepted"].includes(assistDraft.state) && Date.parse(assistDraft.expires_at) > Date.now()) {
+      const assistImageDataUrl = await downloadGenerationOriginalImageDataUrl(db, assistDraft.original_image_path);
+      const assistPreflight = await inspectConsultationPhotoPreflight(assistImageDataUrl, { status: "unsupported", count: null, box: null });
+      if (assistPreflight.canAnalyze) {
+        colorImageDataUrl = assistImageDataUrl;
+        colorSourceFingerprint = assistDraft.checksum_sha256;
+        colorSourceDraftId = assistDraft.id;
+        colorPhotoQuality = assistPreflight.quality;
+      }
+    }
+  }
+  const [faceAnalysisRun, personalColorRun] = await Promise.all([
+    runFaceAnalysisCapability({
+      userId: input.userId,
+      consultationId: input.consultationId,
+      idempotencyKey: `${input.consultationId}:${input.draftId}:face-analysis`,
+      referenceImageDataUrl: imageDataUrl,
+      sourceImageFingerprint: draft.checksum_sha256,
+    }),
+    shouldAnalyzePersonalColor
+      ? runPersonalColorCapability({
+        userId: input.userId,
+        consultationId: input.consultationId,
+        idempotencyKey: `${input.consultationId}:${colorSourceDraftId}:personal-color`,
+        referenceImageDataUrl: colorImageDataUrl,
+        sourceImageFingerprint: colorSourceFingerprint,
+      })
+      : Promise.resolve(null),
+  ]);
+  if (faceAnalysisRun.state !== "completed" || !faceAnalysisRun.output) {
+    throw new HairfitV2Error("FACE_ANALYSIS_PROVIDER_FAILED", 503, faceAnalysisRun.failure?.message || "얼굴 분석을 완료하지 못했습니다.");
+  }
+  const analysisRun = faceAnalysisRun.output;
   const now = new Date().toISOString();
   const evidence: AnalysisEvidenceV2 = {
     schemaVersion: "analysis-evidence-v1",
     id: randomUUID(),
     consultationId: input.consultationId,
     sourceImageFingerprint: draft.checksum_sha256,
-    sourceTransform: {
+    sourceTransform: isConsultationPhotoCrop(photoSnapshot.crop) ? {
+      rotationDegrees: 0,
+      sourceWidth: photoSnapshot.crop.sourceWidth,
+      sourceHeight: photoSnapshot.crop.sourceHeight,
+      crop: { x: photoSnapshot.crop.x, y: photoSnapshot.crop.y, width: photoSnapshot.crop.width, height: photoSnapshot.crop.height },
+    } : {
       rotationDegrees: 0,
       sourceWidth: landmarkRun.sourceSize.width,
       sourceHeight: landmarkRun.sourceSize.height,
@@ -225,6 +413,23 @@ export async function analyzeConsultationPhoto(input: {
   };
   assertFaceGeometryEvidenceV2(evidence);
   const evidenceId = await saveAnalysisEvidenceV2(input.userId, evidence, input.expectedVersion);
+  await recordV2Event({
+    consultationId: input.consultationId,
+    userId: input.userId,
+    eventType: "analysis.evidence_ready",
+    payload: { engineVersion: evidence.model.version, provider: evidence.model.provider, model: evidence.model.name },
+  });
+  const personalColorResult = personalColorRun?.state === "completed" ? personalColorRun.output : null;
+  if (personalColorResult) {
+    await savePersonalColorEvidenceV2(input.userId, createPersonalColorEvidence({
+      id: randomUUID(),
+      consultationId: input.consultationId,
+      sourceAnalysisEvidenceId: evidenceId,
+      result: personalColorResult,
+      photoQuality: colorPhotoQuality,
+      createdAt: now,
+    }));
+  }
   const consultationVersion = await linkPhotoDraftAndAdvanceAnalysis({
     userId: input.userId,
     consultationId: input.consultationId,
@@ -238,6 +443,7 @@ export async function analyzeConsultationPhoto(input: {
     evidenceId,
     evidence: evidenceDraft(analysisRun.analysis, analysisRun.model),
     faceAnalysis: faceAnalysis(analysisRun.analysis, analysisRun.model),
+    personalColor: personalColorResult ? mapPersonalColorProfile(personalColorResult) : null,
     strategyRecommendations: recommendations,
     quality: preflight.diagnostics,
     analyzedAt: now,

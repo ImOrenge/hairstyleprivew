@@ -1,23 +1,94 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import type { AnalysisEvidenceV2, FacialMeasurementV2 } from "@hairfit/shared/v2";
 import type { ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
-import { Button } from "../../ui/Button";
 import { ConsultationPhotoEvidence } from "../photo/ConsultationPhotoEvidence";
-import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
+import { ConsultationSystemData, DefinitionRows, Panel, SurfaceCard, WorkbenchGrid } from "./shared";
 
-export function AnalysisWorkbench({ snapshot, mutate, saving }: {
+const MEASUREMENT_LABELS: Record<string, string> = {
+  face_length: "얼굴 세로 길이",
+  forehead_width: "이마 폭",
+  cheekbone_width: "광대 폭",
+  jaw_width: "턱선 폭",
+  chin_width: "턱 끝 폭",
+  upper_face_length: "상안부",
+  mid_face_length: "중안부",
+  lower_face_length: "하안부",
+  jaw_angle_left: "왼쪽 턱각",
+  jaw_angle_right: "오른쪽 턱각",
+  vertical_symmetry_axis: "세로 중심축",
+  face_length_ratio: "세로 / 광대 폭",
+  forehead_jaw_ratio: "이마 / 턱선 폭",
+};
+
+function measurementValue(measurement: FacialMeasurementV2) {
+  if (measurement.kind === "ratio") return measurement.normalizedValue.toFixed(2);
+  if (measurement.kind === "angle") return `${Math.round(measurement.normalizedValue * 180)}°`;
+  return `${Math.round(measurement.normalizedValue * 100)}%`;
+}
+
+function measurementMax(measurement: FacialMeasurementV2) {
+  return measurement.kind === "ratio" ? Math.max(2, measurement.normalizedValue) : 1;
+}
+
+function FacialProportionMatrix({ evidence }: { evidence: AnalysisEvidenceV2 | null }) {
+  if (!evidence) return <SurfaceCard className="p-5" data-analysis-proportion-matrix="pending">
+    <p className="app-kicker">Facial proportion matrix</p>
+    <p className="mt-3 text-sm text-[var(--app-muted)]">저장된 측정 근거를 불러오면 얼굴 비율 차트가 표시됩니다.</p>
+  </SurfaceCard>;
+
+  return <SurfaceCard className="p-5" data-analysis-proportion-matrix="ready">
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <p className="app-kicker">Facial proportion matrix</p>
+        <h3 className="mt-2 text-base font-black">사진 좌표에서 계산한 비율 근거</h3>
+      </div>
+      <span className="text-xs font-black">{evidence.measurements.length} measurements</span>
+    </div>
+    <div className="mt-4 grid gap-4 sm:grid-cols-2" aria-label="얼굴 비율 측정 차트">
+      {evidence.measurements.map((measurement) => <div
+        key={measurement.id}
+        className="grid gap-2 border-l-2 border-[var(--app-accent)] pl-3"
+        data-analysis-measurement-id={measurement.id}
+      >
+        <div className="flex items-baseline justify-between gap-3 text-xs">
+          <span className="font-black">{MEASUREMENT_LABELS[measurement.id] ?? measurement.id}</span>
+          <span className="font-bold">{measurementValue(measurement)}</span>
+        </div>
+        <meter
+          className="h-2 w-full"
+          min={0}
+          max={measurementMax(measurement)}
+          value={Math.max(0, measurement.normalizedValue)}
+          aria-label={`${MEASUREMENT_LABELS[measurement.id] ?? measurement.id} ${measurementValue(measurement)}`}
+        />
+        <div className="flex flex-wrap justify-between gap-2 text-[11px] text-[var(--app-muted)]">
+          <span>{measurement.category}</span>
+          <span>근거 신뢰도 {Math.round(measurement.confidence * 100)}%</span>
+        </div>
+      </div>)}
+    </div>
+    <p className="mt-4 border-t border-[var(--app-border)] pt-3 text-[11px] leading-5 text-[var(--app-muted)]">길이·폭은 crop 안의 정규화 거리이며 실제 cm가 아닙니다. 각도는 0~180° 환산값이고 비율은 두 측정선의 상대값입니다.</p>
+  </SurfaceCard>;
+}
+
+export function AnalysisWorkbench({ snapshot }: {
   snapshot: ConsultationSnapshot;
   mutate: (patch: Omit<ConsultationPatch, "expectedVersion">) => Promise<unknown>;
   saving: boolean;
 }) {
-  const [color, setColor] = useState(snapshot.personalColor);
+  const personalColorConsent = snapshot.photo.usageScopes.includes("personalColor");
+  const hasSnapshotColor = snapshot.personalColor.season !== "확인 전";
+  const [color, setColor] = useState(personalColorConsent ? snapshot.personalColor : { season: "사용 동의 없음", undertone: "미사용", palette: [], confidence: "low" as const });
   const [colorLoading, setColorLoading] = useState(false);
+  const [geometryEvidence, setGeometryEvidence] = useState<AnalysisEvidenceV2 | null>(null);
   const [activeEvidenceId, setActiveEvidenceId] = useState<string | null>(snapshot.evidence.items[0]?.id ?? null);
   const activeEvidence = snapshot.evidence.items.find((item) => item.id === activeEvidenceId) ?? null;
   const linkedRecommendations = snapshot.strategyRecommendations.filter((item) => item.evidenceId === activeEvidenceId);
 
-  const loadColor = async () => {
+  const loadColor = useCallback(async () => {
     setColorLoading(true);
     try {
       const response = await fetch("/api/style-profile", { cache: "no-store" });
@@ -36,7 +107,14 @@ export function AnalysisWorkbench({ snapshot, mutate, saving }: {
     } finally {
       setColorLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!personalColorConsent || hasSnapshotColor) return;
+    const timer = window.setTimeout(() => void loadColor(), 0);
+    return () => window.clearTimeout(timer);
+  // Personal color is optional supporting evidence and must not block analysis rendering.
+  }, [hasSnapshotColor, loadColor, personalColorConsent]);
 
   return <WorkbenchGrid output={<>
     <div className="grid gap-4">
@@ -45,7 +123,9 @@ export function AnalysisWorkbench({ snapshot, mutate, saving }: {
         enabled={snapshot.photo.usageScopes.includes("analysis")}
         activeEvidenceId={activeEvidenceId}
         onEvidenceSelect={setActiveEvidenceId}
+        onEvidenceLoad={setGeometryEvidence}
       />
+      <FacialProportionMatrix evidence={geometryEvidence} />
       <SurfaceCard className="p-5">
         <p className="app-kicker">Evidence ledger</p>
         <div className="mt-4 grid gap-3" aria-label="분석 근거 목록">
@@ -66,6 +146,7 @@ export function AnalysisWorkbench({ snapshot, mutate, saving }: {
     <ConsultationSystemData snapshot={snapshot} items={[
       { label: "Focused evidence", value: activeEvidence?.layer || "선택 전" },
       { label: "Linked directions", value: `${linkedRecommendations.length}건` },
+      { label: "Geometry", value: geometryEvidence ? `${geometryEvidence.measurements.length} measurements · r${geometryEvidence.correctionRevision}` : "불러오는 중" },
       { label: "Color profile", value: `${color.season} · ${color.confidence}` },
     ]} />
   </>} input={
@@ -111,18 +192,9 @@ export function AnalysisWorkbench({ snapshot, mutate, saving }: {
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-[var(--app-muted)]">퍼스널 컬러는 사진 품질과 별도 근거로 연결합니다.</p>
-        <Button type="button" variant="secondary" loading={colorLoading} onClick={() => void loadColor()}>저장된 퍼스널 컬러 연결</Button>
+        <span className="text-xs font-black">{colorLoading ? "저장된 컬러 근거 자동 연결 중" : `${color.season} · ${color.confidence}`}</span>
       </div>
-      <SaveStageButton
-        loading={saving}
-        disabled={!snapshot.evidence.reviewedAt}
-        onClick={() => void mutate({
-          faceAnalysis: snapshot.faceAnalysis,
-          personalColor: color,
-          completeStage: "analysis",
-          currentStage: "direction",
-        })}
-      />
+      <Link href={`/consulting/${encodeURIComponent(snapshot.sessionId)}/direction`} className="inline-flex min-h-12 items-center justify-center border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 text-sm font-black text-[var(--app-inverse-text)]">추천 전략 조정하기</Link>
     </Panel>
   } />;
 }

@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import type { ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
+import { buildComparisonAxes } from "../../../lib/consulting/decision-derivation";
 import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
 
 export function CompareWorkbench({ snapshot, mutate, saving }: { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">) => Promise<unknown>; saving: boolean }) {
@@ -26,6 +27,7 @@ export function CompareWorkbench({ snapshot, mutate, saving }: { snapshot: Consu
     <div className={`grid gap-4 ${candidates.length === 3 ? "xl:grid-cols-3" : "xl:grid-cols-2"}`}>{candidates.map((candidate) => <Panel key={candidate.id} className="overflow-hidden"><div className="aspect-[4/5] bg-[var(--app-surface-muted)]">{candidate.imageUrl ? <img src={candidate.imageUrl} alt={candidate.label} className="h-full w-full object-cover" decoding="async" loading="lazy" /> : <div className="flex h-full items-center justify-center text-sm text-[var(--app-muted)]">이미지 대기</div>}</div><div className="grid gap-3 p-4"><div><p className="app-kicker">{candidate.axis}</p><h2 className="mt-2 text-xl font-black">{candidate.label}</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{candidate.reason}</p></div><DefinitionRows items={[
       { label: "Quality", value: candidate.status },
       { label: "Role", value: finalist === candidate.id ? "최종 후보" : backup === candidate.id ? "백업 후보" : "미지정" },
+      ...buildComparisonAxes(snapshot, candidate).map((axis) => ({ label: axis.label, value: <span>{axis.value}<span className="mt-1 block text-xs font-normal text-[var(--app-muted)]">{axis.evidence}</span></span> })),
     ]} /></div></Panel>)}</div>
     <ConsultationSystemData snapshot={snapshot} items={[
       { label: "Comparison set", value: `${candidates.length}개 승인 결과` },

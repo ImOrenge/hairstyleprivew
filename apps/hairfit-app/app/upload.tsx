@@ -8,9 +8,10 @@ import {
   getGenerationUploadValidationMessage,
   resolveGenerationEntryDecision,
   validateGenerationUploadMetadata,
+  type PhotoSnapshot,
   type PersonalColorResult,
 } from "@hairfit/shared";
-import type { CurrentHairProfileInput } from "@hairfit/api-client";
+import type { CurrentHairProfileInput, GenerationDraftResponse } from "@hairfit/api-client";
 import { type Href, useLocalSearchParams, useRouter } from "expo-router";
 import { BodyText, Button, Card, Heading, Kicker, Panel, Stack } from "@hairfit/ui-native";
 import { AppScreen } from "../components/app/AppScreen";
@@ -35,6 +36,11 @@ const HAIR_CONDITION_OPTIONS = [
   ["damaged", "손상"], ["bleached", "탈색"], ["colored", "염색"], ["permed", "펌"],
 ] as const;
 
+type ColorAssistUpload = {
+  uri: string;
+  receipt: GenerationDraftResponse;
+};
+
 export default function UploadScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ consultationId?: string | string[] }>();
@@ -54,6 +60,8 @@ export default function UploadScreen() {
     updateHairProfile({ conditionTags });
   };
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null);
+  const [colorAssistUpload, setColorAssistUpload] = useState<ColorAssistUpload | null>(null);
   const [message, setMessage] = useState("얼굴이 선명하게 보이는 정면 사진을 선택해 주세요.");
   const [messageLiveRegion, setMessageLiveRegion] = useState<"polite" | "assertive">("polite");
   const [personalColor, setPersonalColor] = useState<PersonalColorResult | null>(null);
@@ -89,19 +97,44 @@ export default function UploadScreen() {
     );
   }, [openPermissionSettings, showMessage]);
 
-  const analyzeForConsultation = useCallback(async (draftId: string) => {
+  const analyzeForConsultation = useCallback(async (receipt: GenerationDraftResponse, size: { width: number; height: number }) => {
     if (!consultationId) return;
     showMessage("서버가 사진 품질을 검사하고 얼굴 랜드마크와 AI 상담 근거를 분석하고 있습니다.");
-    const current = await api.getV2Consultation(consultationId);
+    const current = await api.getConsultation(consultationId);
+    const basePhoto = current.snapshot.photo;
+    const photo: PhotoSnapshot = {
+      ...basePhoto,
+      draftId: receipt.draftId,
+      clientRequestId: receipt.clientRequestId,
+      uploadedAt: receipt.uploadedAt,
+      expiresAt: receipt.expiresAt,
+      colorAssistDraftId: colorAssistUpload?.receipt.draftId ?? null,
+      colorAssistUploadedAt: colorAssistUpload?.receipt.uploadedAt ?? null,
+      colorAssistExpiresAt: colorAssistUpload?.receipt.expiresAt ?? null,
+      crop: {
+        x: 0,
+        y: 0,
+        width: 1,
+        height: 1,
+        sourceWidth: size.width,
+        sourceHeight: size.height,
+        outputWidth: size.width,
+        outputHeight: size.height,
+      },
+      usageScopes: colorAssistUpload && !basePhoto.usageScopes.includes("personalColor")
+        ? [...basePhoto.usageScopes, "personalColor"]
+        : basePhoto.usageScopes,
+    };
     const result = await api.analyzeV2ConsultationPhoto({
       consultationId,
-      draftId,
-      expectedVersion: current.consultation.version,
+      draftId: receipt.draftId,
+      expectedVersion: current.snapshot.version,
+      photo,
     });
-    if (result.requiresRetry || !result.evidenceId) {
+    if (result.requiresRetry || (!result.accepted && !result.evidenceId)) {
       throw new Error(result.preflightMessage || "사진 사전검사를 통과하지 못했습니다.");
     }
-  }, [api, consultationId, showMessage]);
+  }, [api, colorAssistUpload, consultationId, showMessage]);
 
   useEffect(() => {
     let cancelled = false;
@@ -237,6 +270,52 @@ export default function UploadScreen() {
     );
   }
 
+  const pickColorAssist = async () => {
+    if (isUploadingPortrait) return;
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync().catch(() => null);
+    if (!permission || resolvePhotoLibraryPermission(permission) !== "granted") {
+      showMessage("자연광 보조 사진을 선택하려면 사진 보관함 권한이 필요합니다.", "assertive");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [4, 5],
+      base64: true,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.9,
+    });
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    if (!asset?.uri || !asset.base64) {
+      showMessage("자연광 보조 사진을 읽지 못했습니다.", "assertive");
+      return;
+    }
+    const validation = validateGenerationUploadMetadata({
+      mimeType: "image/jpeg",
+      byteSize: getBase64DecodedByteSize(asset.base64),
+      width: asset.width,
+      height: asset.height,
+    });
+    if (!validation.ok) {
+      showMessage(validation.messageKo, "assertive");
+      return;
+    }
+    setIsUploadingPortrait(true);
+    showMessage("자연광 보조 사진을 private Storage에 준비하고 있습니다.");
+    try {
+      const receipt = await api.prepareGenerationDraft({
+        clientRequestId: Crypto.randomUUID(),
+        referenceImageDataUrl: `data:image/jpeg;base64,${asset.base64}`,
+      });
+      setColorAssistUpload({ uri: asset.uri, receipt });
+      showMessage("자연광 보조 사진이 준비되었습니다. 정면 사진을 선택하면 퍼스널 컬러에만 함께 사용합니다.");
+    } catch (error) {
+      showMessage(mapMobileUserError(error, "자연광 보조 사진을 저장하지 못했습니다.", "photo"), "assertive");
+    } finally {
+      setIsUploadingPortrait(false);
+    }
+  };
+
   const pickImage = async () => {
     if (isUploadingPortrait) return;
     let permission;
@@ -301,6 +380,7 @@ export default function UploadScreen() {
     flow.setDraft(null);
     flow.setDraftReceipt(null);
     setImageUri(asset.uri);
+    setImageSize({ width: asset.width, height: asset.height });
     setIsUploadingPortrait(true);
     showMessage("사진을 서버에 안전하게 업로드하고 있습니다. 이 단계가 끝날 때까지 앱을 유지해 주세요.");
     try {
@@ -309,7 +389,7 @@ export default function UploadScreen() {
         clientRequestId,
         referenceImageDataUrl: dataUrl,
       });
-      await analyzeForConsultation(receipt.draftId);
+      await analyzeForConsultation(receipt, { width: asset.width, height: asset.height });
       flow.setDraftReceipt({
         draftId: receipt.draftId,
         clientRequestId: receipt.clientRequestId,
@@ -331,7 +411,7 @@ export default function UploadScreen() {
   };
 
   const retryPortraitUpload = async () => {
-    if (!flow.imageDataUrl || isUploadingPortrait) return;
+    if (!flow.imageDataUrl || !imageSize || isUploadingPortrait) return;
     setIsUploadingPortrait(true);
     showMessage("사진 보안 업로드를 다시 시도하고 있습니다.");
     try {
@@ -340,7 +420,7 @@ export default function UploadScreen() {
         clientRequestId,
         referenceImageDataUrl: flow.imageDataUrl,
       });
-      await analyzeForConsultation(receipt.draftId);
+      await analyzeForConsultation(receipt, imageSize);
       flow.setDraftReceipt({
         draftId: receipt.draftId,
         clientRequestId: receipt.clientRequestId,
@@ -456,6 +536,8 @@ export default function UploadScreen() {
               </Stack>
             </Card>
           ) : null}
+          {consultationId ? <Card><Stack><Kicker>자연광 컬러 보조 사진 · 선택</Kicker><BodyText>필터 없는 자연광 얼굴 사진이 있으면 별도 private draft로 저장해 퍼스널 컬러에만 사용합니다. 정면 사진은 얼굴·헤어 분석과 프리뷰 원본으로 유지합니다.</BodyText>{colorAssistUpload ? <Image accessibilityLabel="자연광 컬러 보조 사진" accessibilityRole="image" source={{ uri: colorAssistUpload.uri }} style={styles.assistImage} /> : null}<Button variant="secondary" disabled={isUploadingPortrait} onPress={() => void pickColorAssist()}>{colorAssistUpload ? "자연광 사진 다시 선택" : "자연광 사진 추가"}</Button></Stack></Card> : null}
+          {consultationId ? <BodyText>사진 선택기의 4:5 프레이밍을 확정하면 서버 업로드·분석이 자동으로 이어집니다.</BodyText> : null}
           <Button disabled={isUploadingPortrait} onPress={pickImage}>
             {isUploadingPortrait ? "사진 보안 업로드 중..." : "사진 선택"}
           </Button>
@@ -482,6 +564,12 @@ export default function UploadScreen() {
 }
 
 const styles = StyleSheet.create({
+  assistImage: {
+    alignSelf: "center",
+    aspectRatio: 4 / 5,
+    borderRadius: 8,
+    width: 120,
+  },
   preview: {
     alignItems: "center",
     aspectRatio: 4 / 5,

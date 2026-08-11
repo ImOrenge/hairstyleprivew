@@ -9,6 +9,8 @@ import type {
 } from "@hairfit/shared/v2";
 import type { FashionCategory, FashionDirectionSnapshot, FashionLookItem } from "@hairfit/shared";
 import { randomUUID } from "node:crypto";
+import { runAftercareCapability } from "../capabilities/aftercare-service";
+import type { ServiceType } from "../hair-care-generator";
 import { getSupabaseAdminClient } from "../supabase";
 import {
   STYLING_RESULTS_BUCKET,
@@ -16,6 +18,7 @@ import {
   type ServerSupabaseLike,
 } from "../style-profile-server";
 import { HairfitV2Error } from "./errors";
+import { loadConfirmedV2StylingSource } from "./styling-source-server";
 
 type ConfirmedSelection = {
   id: string;
@@ -85,6 +88,36 @@ function validateIdempotencyKey(value: string) {
 }
 
 const AFTERCARE_OFFSETS = ["D+3", "W+2", "W+6", "W+10"] as const;
+
+function aftercareServiceType(services: string[]): ServiceType {
+  const joined = services.join(" ").toLowerCase();
+  if (joined.includes("탈색") || joined.includes("bleach")) return "bleach";
+  if (joined.includes("펌") || joined.includes("perm")) return "perm";
+  if (joined.includes("염색") || joined.includes("color")) return "color";
+  if (joined.includes("클리닉") || joined.includes("트리트먼트") || joined.includes("treatment")) return "treatment";
+  if (joined.includes("커트") || joined.includes("cut")) return "cut";
+  return "other";
+}
+
+function generatedAftercareProgramInput(guide: Awaited<ReturnType<typeof runAftercareCapability>>["output"]) {
+  if (!guide) throw new HairfitV2Error("AFTERCARE_PROGRAM_GENERATION_FAILED", 503, "관리 프로그램을 준비하지 못했습니다.");
+  const actions = [
+    guide.sections.dry.steps,
+    guide.sections.treatment.steps,
+    guide.sections.styling.steps,
+    guide.recommendedNextActions,
+  ];
+  return {
+    today: guide.sections.dry.steps.slice(0, 4),
+    checkpoints: AFTERCARE_OFFSETS.map((offset, index) => ({
+      offset,
+      action: (actions[index].join(" ") || guide.overview.summary).slice(0, 500),
+      complete: false,
+    })),
+    concerns: guide.warnings.slice(0, 10),
+    satisfaction: null,
+  };
+}
 
 function normalizeAftercareProgramInput(input: {
   today: unknown;
@@ -206,6 +239,8 @@ export async function createSalonBriefV2(input: {
   if (replay.error) throw new Error(replay.error.message);
   if (replay.data) return (replay.data as unknown as { brief: SalonBriefV2 }).brief;
   const selection = await confirmedSelection(input.userId, input.consultationId);
+  const stylingSource = await loadConfirmedV2StylingSource({ userId: input.userId, consultationId: input.consultationId });
+  const generatedBrief = stylingSource.selectedVariant.designerBrief;
   const version = await nextVersion("salon_brief_versions_v2", "consultation_id", input.consultationId);
   const style = selection.snapshot.style;
   const requested = record(input.brief);
@@ -225,15 +260,16 @@ export async function createSalonBriefV2(input: {
     selectionSnapshotId: selection.id,
     version,
     audience,
-    summary: summary || `${style.name}: ${style.recommendationReason}`,
-    cut: Object.keys(requestedCut).length ? requestedCut : style.design,
+    summary: summary || generatedBrief?.consultationSummary || `${style.name}: ${style.recommendationReason}`,
+    cut: Object.keys(requestedCut).length ? requestedCut : generatedBrief ? { direction: generatedBrief.cutDirection } : style.design,
     volumeTexture: Object.keys(requestedVolumeTexture).length ? requestedVolumeTexture : {
+      ...(generatedBrief ? { direction: generatedBrief.volumeTextureDirection } : {}),
       strategyBucket: style.strategyBucket,
       implementationFeasibility: style.implementationFeasibility,
     },
     color: input.brief ? requestedColor : style.color,
-    styling: requestedStyling.length ? requestedStyling : ["선택 이미지와 현재 모발 차이를 디자이너와 먼저 확인합니다."],
-    cautions: requestedCautions.length ? requestedCautions : ["신원 보존 프리뷰는 시술 결과 보장이 아니며 모질·손상도에 따라 조정해야 합니다."],
+    styling: requestedStyling.length ? requestedStyling : generatedBrief ? [generatedBrief.stylingDirection] : ["선택 이미지와 현재 모발 차이를 디자이너와 먼저 확인합니다."],
+    cautions: requestedCautions.length ? requestedCautions : generatedBrief?.cautionNotes?.length ? generatedBrief.cautionNotes : ["신원 보존 프리뷰는 시술 결과 보장이 아니며 모질·손상도에 따라 조정해야 합니다."],
     createdAt: new Date().toISOString(),
   };
   const insert = await db.from("salon_brief_versions_v2").insert({
@@ -245,6 +281,15 @@ export async function createSalonBriefV2(input: {
     version,
     brief,
   });
+  if (insert.error?.code === "23505") {
+    const racedBrief = await db.from("salon_brief_versions_v2").select("brief")
+      .eq("user_id", input.userId).eq("idempotency_key", input.idempotencyKey).single();
+    if (racedBrief.error || !(racedBrief.data as { brief?: unknown } | null)?.brief) {
+      throw new Error(racedBrief.error?.message || insert.error.message);
+    }
+    await transitionOutputState(input.userId, input.consultationId, "salon_brief_ready");
+    return (racedBrief.data as unknown as { brief: SalonBriefV2 }).brief;
+  }
   if (insert.error) throw new Error(insert.error.message);
   await transitionOutputState(input.userId, input.consultationId, "salon_brief_ready");
   return brief;
@@ -267,7 +312,6 @@ export async function recordActualServiceAndAftercareV2(input: {
   if (!services.length || !/^\d{4}-\d{2}-\d{2}$/.test(input.serviceDate)) {
     throw new HairfitV2Error("ACTUAL_SERVICE_INVALID", 400, "실제 시술 내용과 날짜를 확인해 주세요.");
   }
-  const care = normalizeAftercareProgramInput(input);
   const db = getSupabaseAdminClient();
   const replay = await db
     .from("aftercare_programs_v2")
@@ -278,18 +322,53 @@ export async function recordActualServiceAndAftercareV2(input: {
   if (replay.error) throw new Error(replay.error.message);
   if (replay.data) return normalizeStoredAftercareProgram((replay.data as unknown as { program: unknown }).program);
   const selection = await confirmedSelection(input.userId, input.consultationId);
-  const actualServiceId = randomUUID();
-  const actual = await db.from("actual_services_v2").insert({
-    id: actualServiceId,
-    consultation_id: input.consultationId,
-    selection_snapshot_id: selection.id,
-    user_id: input.userId,
-    idempotency_key: `${input.idempotencyKey}:service`,
-    services,
-    service_date: input.serviceDate,
-    designer_notes: (input.designerNotes ?? "").trim().slice(0, 2000),
+  const serviceIdempotencyKey = `${input.idempotencyKey}:service`;
+  const existingActual = await db.from("actual_services_v2").select("id")
+    .eq("user_id", input.userId).eq("idempotency_key", serviceIdempotencyKey).maybeSingle();
+  if (existingActual.error) throw new Error(existingActual.error.message);
+  let actualServiceId = typeof (existingActual.data as { id?: unknown } | null)?.id === "string"
+    ? String((existingActual.data as { id: string }).id)
+    : randomUUID();
+  if (!existingActual.data) {
+    const actual = await db.from("actual_services_v2").insert({
+      id: actualServiceId,
+      consultation_id: input.consultationId,
+      selection_snapshot_id: selection.id,
+      user_id: input.userId,
+      idempotency_key: serviceIdempotencyKey,
+      services,
+      service_date: input.serviceDate,
+      designer_notes: (input.designerNotes ?? "").trim().slice(0, 2000),
+    });
+    if (actual.error?.code === "23505") {
+      const racedActual = await db.from("actual_services_v2").select("id")
+        .eq("user_id", input.userId).eq("idempotency_key", serviceIdempotencyKey).single();
+      if (racedActual.error || typeof (racedActual.data as { id?: unknown } | null)?.id !== "string") {
+        throw new Error(racedActual.error?.message || actual.error.message);
+      }
+      actualServiceId = String((racedActual.data as { id: string }).id);
+    } else if (actual.error) {
+      throw new Error(actual.error.message);
+    }
+  }
+  const stylingSource = await loadConfirmedV2StylingSource({ userId: input.userId, consultationId: input.consultationId });
+  const guideCapability = await runAftercareCapability({
+    userId: input.userId,
+    consultationId: input.consultationId,
+    idempotencyKey: `${actualServiceId}:aftercare-guide`,
+    aftercareInput: {
+      styleName: selection.snapshot.style.name,
+      serviceType: aftercareServiceType(services),
+      serviceDate: input.serviceDate,
+      analysis: stylingSource.recommendationSet.analysis,
+      designerBrief: stylingSource.selectedVariant.designerBrief,
+    },
   });
-  if (actual.error) throw new Error(actual.error.message);
+  if (guideCapability.state !== "completed" || !guideCapability.output) {
+    throw new HairfitV2Error("AFTERCARE_PROGRAM_GENERATION_PENDING", 503, guideCapability.failure?.message || "관리 프로그램을 준비하고 있습니다. 실제 시술 기록은 유지됩니다.");
+  }
+  const suppliedToday = stringArray(input.today).map((item) => item.trim()).filter(Boolean);
+  const care = normalizeAftercareProgramInput(suppliedToday.length ? input : generatedAftercareProgramInput(guideCapability.output));
   const version = await nextVersion("aftercare_programs_v2", "actual_service_id", actualServiceId);
   const program: AftercareProgramV2 = {
     schemaVersion: "aftercare-program-v2",
@@ -310,8 +389,16 @@ export async function recordActualServiceAndAftercareV2(input: {
     version,
     program,
   });
+  if (aftercare.error?.code === "23505") {
+    const racedProgram = await db.from("aftercare_programs_v2").select("program")
+      .eq("user_id", input.userId).eq("idempotency_key", input.idempotencyKey).single();
+    if (racedProgram.error || !(racedProgram.data as { program?: unknown } | null)?.program) {
+      throw new Error(racedProgram.error?.message || aftercare.error.message);
+    }
+    await transitionOutputState(input.userId, input.consultationId, "aftercare_ready");
+    return normalizeStoredAftercareProgram((racedProgram.data as { program: unknown }).program);
+  }
   if (aftercare.error) {
-    await db.from("actual_services_v2").delete().eq("id", actualServiceId).eq("user_id", input.userId);
     throw new Error(aftercare.error.message);
   }
   await transitionOutputState(input.userId, input.consultationId, "aftercare_ready");

@@ -130,10 +130,19 @@ insert into public.consultation_sessions(id,user_id,idempotency_key,lifecycle_st
   ('00000000-0000-4000-8000-000000000104','hairfit_v2_db_smoke_a','db-smoke-session-104','preview_board_queued',3,'previews','{}');
 
 insert into public.generations(id,user_id,original_image_path,prompt_used,status,credits_used)
-values (
-  '00000000-0000-4000-8000-000000000190','hairfit_v2_db_smoke_a',
-  'db-smoke/original.webp','protected fixture prompt','queued',5
-);
+values
+  (
+    '00000000-0000-4000-8000-000000000190','hairfit_v2_db_smoke_a',
+    'db-smoke/original.webp','protected fixture prompt','queued',5
+  ),
+  (
+    '00000000-0000-4000-8000-000000000191','hairfit_v2_db_smoke_a',
+    'db-smoke/board-source.webp','protected board fixture prompt','queued',5
+  );
+
+update public.consultation_sessions
+   set source_generation_id='00000000-0000-4000-8000-000000000191'
+ where id='00000000-0000-4000-8000-000000000104';
 
 do $$
 begin
@@ -346,6 +355,29 @@ begin
 end
 $$;
 
+update public.generations
+   set options = jsonb_build_object(
+     'recommendationSet',
+     jsonb_build_object(
+       'variants',
+       (
+         select jsonb_agg(
+           jsonb_build_object(
+             'id', 'db-smoke-variant-' || variant.slot,
+             'v2PreviewVariantId', variant.id::text,
+             'generatedImagePath', attempt.output_path
+           )
+           order by variant.slot
+         )
+           from public.preview_variants_v2 as variant
+           join public.generation_attempts_v2 as attempt
+             on attempt.id = variant.accepted_attempt_id
+          where variant.board_id='00000000-0000-4000-8000-000000000401'
+       )
+     )
+   )
+ where id='00000000-0000-4000-8000-000000000191';
+
 do $$
 declare session_version integer; variant_id uuid; first_snapshot jsonb; second_snapshot jsonb;
 begin
@@ -382,6 +414,146 @@ const concurrentConfirmCalls = await Promise.all([
 if (concurrentConfirmCalls.some((result) => result.status !== 0)) {
   throw new Error(`idempotent concurrent confirm failed: ${JSON.stringify(concurrentConfirmCalls)}`);
 }
+
+runSql(String.raw`
+do $$
+declare
+  protected_table text;
+  first_claim public.consultation_capability_tasks_v2%rowtype;
+  reclaimed public.consultation_capability_tasks_v2%rowtype;
+  retry_claim public.consultation_capability_tasks_v2%rowtype;
+  completed public.consultation_capability_tasks_v2%rowtype;
+  stale_fence_rejected boolean := false;
+begin
+  foreach protected_table in array array[
+    'consultation_analysis_runs_v2',
+    'fashion_preview_batches_v2',
+    'hairfit_v2_engine_source_manifests',
+    'consultation_capability_tasks_v2',
+    'consultation_capability_attempts_v2',
+    'consultation_capability_results_v2',
+    'consultation_interview_drafts_v2'
+  ] loop
+    if to_regclass('public.' || protected_table) is null
+       or not (select relrowsecurity and relforcerowsecurity
+                 from pg_class where oid=to_regclass('public.' || protected_table)) then
+      raise exception 'lifecycle table is missing forced RLS: %', protected_table;
+    end if;
+  end loop;
+
+  if has_table_privilege('authenticated','public.consultation_capability_tasks_v2','SELECT')
+     or has_table_privilege('authenticated','public.fashion_preview_batches_v2','SELECT')
+     or has_function_privilege('anon','public.claim_consultation_capability_tasks_v2(integer,uuid,integer)','EXECUTE')
+     or has_function_privilege('anon','public.claim_consultation_capability_task_v2(uuid,uuid,integer)','EXECUTE')
+     or has_function_privilege('anon','public.complete_consultation_capability_task_v2(uuid,bigint,jsonb,text,jsonb)','EXECUTE')
+     or not has_function_privilege('service_role','public.claim_consultation_capability_tasks_v2(integer,uuid,integer)','EXECUTE')
+     or not has_function_privilege('service_role','public.claim_consultation_capability_task_v2(uuid,uuid,integer)','EXECUTE')
+     or not has_function_privilege('service_role','public.complete_consultation_capability_task_v2(uuid,bigint,jsonb,text,jsonb)','EXECUTE') then
+    raise exception 'lifecycle task role privileges are invalid';
+  end if;
+
+  if pg_get_functiondef('public.claim_consultation_capability_tasks_v2(integer,uuid,integer)'::regprocedure) !~* 'for update skip locked'
+     or pg_get_functiondef('public.claim_consultation_capability_task_v2(uuid,uuid,integer)'::regprocedure) !~* 'failed.*retryable.*lease_expires_at'
+     or pg_get_functiondef('public.complete_consultation_capability_task_v2(uuid,bigint,jsonb,text,jsonb)'::regprocedure) !~* 'fencing_token = p_fencing_token' then
+    raise exception 'lifecycle task locking contract changed';
+  end if;
+  if not coalesce((
+       select indexdef ~* 'unique.*consultation_id.*where.*queued'
+         from pg_indexes
+        where schemaname='public' and indexname='uq_consultation_analysis_runs_v2_active'
+     ),false)
+     or not coalesce((
+       select indexdef ~* 'unique.*consultation_id, selection_snapshot_id.*where.*draft'
+         from pg_indexes
+        where schemaname='public' and indexname='uq_fashion_preview_batches_v2_active'
+     ),false) then
+    raise exception 'active lifecycle task uniqueness contract changed';
+  end if;
+
+  insert into public.consultation_capability_tasks_v2(
+    id,consultation_id,user_id,capability,idempotency_key,input_fingerprint,
+    engine_version,source_revision,total_units
+  ) values (
+    '00000000-0000-4000-8000-000000000801',
+    '00000000-0000-4000-8000-000000000103',
+    'hairfit_v2_db_smoke_a','personal-color-analysis','db-smoke-capability-801',
+    repeat('a',32),'fixture-v1','40c6f753e6c5b1e8e5913f2ec542f0f4b27e2501',1
+  );
+
+  select * into strict first_claim
+    from public.claim_consultation_capability_task_v2(
+      '00000000-0000-4000-8000-000000000801',
+      '00000000-0000-4000-8000-000000000811',30
+    );
+  if first_claim.state <> 'running' or first_claim.current_attempt <> 1 or first_claim.fencing_token <> 1 then
+    raise exception 'initial capability claim contract failed';
+  end if;
+
+  update public.consultation_capability_tasks_v2
+     set lease_expires_at=timezone('utc',now())-interval '1 second'
+   where id='00000000-0000-4000-8000-000000000801';
+  select * into strict reclaimed
+    from public.claim_consultation_capability_task_v2(
+      '00000000-0000-4000-8000-000000000801',
+      '00000000-0000-4000-8000-000000000812',30
+    );
+  if reclaimed.current_attempt <> 2 or reclaimed.fencing_token <> 2 then
+    raise exception 'expired lease was not fenced and reclaimed';
+  end if;
+
+  begin
+    perform public.complete_consultation_capability_task_v2(
+      reclaimed.id,first_claim.fencing_token,'{"fixture":"stale"}',repeat('b',32),'{}'
+    );
+  exception when others then
+    if sqlerrm = 'CAPABILITY_TASK_STALE_FENCE' then stale_fence_rejected := true;
+    else raise;
+    end if;
+  end;
+  if not stale_fence_rejected then raise exception 'stale fencing token was accepted'; end if;
+
+  select * into strict completed
+    from public.complete_consultation_capability_task_v2(
+      reclaimed.id,reclaimed.fencing_token,'{"fixture":"complete"}',repeat('c',32),
+      '{"providerCostMinor":0,"settlement":"fixture"}'
+    );
+  if completed.state <> 'completed'
+     or (select count(*) from public.consultation_capability_results_v2 where task_id=completed.id) <> 1 then
+    raise exception 'capability completion/result persistence failed';
+  end if;
+
+  insert into public.consultation_capability_tasks_v2(
+    id,consultation_id,user_id,capability,state,idempotency_key,input_fingerprint,
+    engine_version,source_revision,retryable,error_code,total_units
+  ) values (
+    '00000000-0000-4000-8000-000000000802',
+    '00000000-0000-4000-8000-000000000103',
+    'hairfit_v2_db_smoke_a','salon-brief-generation','failed','db-smoke-capability-802',
+    repeat('d',32),'fixture-v1','40c6f753e6c5b1e8e5913f2ec542f0f4b27e2501',true,'FIXTURE_RETRY',1
+  );
+  select * into strict retry_claim
+    from public.claim_consultation_capability_task_v2(
+      '00000000-0000-4000-8000-000000000802',
+      '00000000-0000-4000-8000-000000000813',30
+    );
+  if retry_claim.state <> 'running' or retry_claim.error_code is not null then
+    raise exception 'retryable failed task was not reclaimed cleanly';
+  end if;
+
+  begin
+    insert into public.consultation_capability_tasks_v2(
+      consultation_id,user_id,capability,idempotency_key,input_fingerprint,engine_version,source_revision
+    ) values (
+      '00000000-0000-4000-8000-000000000103','hairfit_v2_db_smoke_a',
+      'salon-brief-generation','db-smoke-capability-802',repeat('e',32),'fixture-v1',
+      '40c6f753e6c5b1e8e5913f2ec542f0f4b27e2501'
+    );
+    raise exception 'duplicate capability idempotency key was accepted';
+  exception when unique_violation then null;
+  end;
+end
+$$;
+`, "capability task RLS, lease, fencing, retry, and replay assertions");
 
 runSql(String.raw`
 do $$

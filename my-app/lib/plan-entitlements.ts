@@ -65,7 +65,7 @@ interface SupabaseEntitlementClient {
   rpc?: (
     fn: string,
     params: Record<string, unknown>,
-  ) => Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
+  ) => PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
   from: (table: string) => {
     select: (columns: string) => {
       eq: (column: string, value: string) => unknown;

@@ -1,9 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import {
-  createGenerationWorkflowInstance,
-  getGenerationWorkflowBinding,
-} from "../../../../lib/generation-workflow";
+  createHairPreviewWorkflowInstance as createGenerationWorkflowInstance,
+  getHairPreviewWorkflowBinding as getGenerationWorkflowBinding,
+} from "../../../../lib/capabilities/hair-preview-service";
 import { dispatchGenerationWorkflowOutbox } from "../../../../lib/generation-workflow-outbox";
 import {
   getGenerationCompletionNotificationState,

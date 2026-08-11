@@ -6,7 +6,7 @@ import { SceneIdentity } from "./SceneIdentity";
 import { FloatingStageControls } from "./FloatingStageControls";
 import { StageMapOverlay } from "./StageMapOverlay";
 
-export function ConsultationScene({ snapshot, stage, children, notice, onRefresh, nextDisabled }: { snapshot: ConsultationSnapshot; stage: ConsultationStage; children: ReactNode; notice?: string | null; onRefresh?: () => void; nextDisabled?: boolean }) {
+export function ConsultationScene({ snapshot, stage, children, notice, onRefresh }: { snapshot: ConsultationSnapshot; stage: ConsultationStage; children: ReactNode; notice?: string | null; onRefresh?: () => void }) {
   const [mapOpen, setMapOpen] = useState(false);
   const hydrated = useSyncExternalStore(
     () => () => {},
@@ -16,6 +16,7 @@ export function ConsultationScene({ snapshot, stage, children, notice, onRefresh
   const openMap = useCallback(() => setMapOpen(true), []);
   const closeMap = useCallback(() => setMapOpen(false), []);
   useEffect(() => {
+    if (document.querySelector(".f-consultant-transition, .f-consulting-interview")) return;
     document.getElementById("consultation-scene-title")?.focus();
   }, [stage]);
   return (
@@ -23,7 +24,7 @@ export function ConsultationScene({ snapshot, stage, children, notice, onRefresh
       <SceneIdentity stage={stage} />
       {notice ? <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border border-[var(--app-warning)] bg-[var(--app-warning-bg)] px-4 py-3 text-sm"><p>{notice}</p>{onRefresh ? <button type="button" className="font-black underline" onClick={onRefresh}>서버 상태 다시 불러오기</button> : null}</div> : null}
       <div className="mt-10 lg:mt-6 lg:min-h-0 lg:flex-1">{children}</div>
-      <FloatingStageControls snapshot={snapshot} stage={stage} onOpenMap={openMap} nextDisabled={nextDisabled} />
+      <FloatingStageControls snapshot={snapshot} stage={stage} onOpenMap={openMap} />
       <StageMapOverlay open={mapOpen} onClose={closeMap} snapshot={snapshot} stage={stage} />
     </div>
   );

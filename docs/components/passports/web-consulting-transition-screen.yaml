@@ -1,0 +1,117 @@
+id: web.consulting.transition-screen
+name: ConsultationTransitionScreen
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/consulting/transition/ConsultationTransitionScreen.tsx
+related_source:
+  - my-app/components/consulting/transition/ConsultationTaskRuntime.tsx
+  - my-app/components/consulting/transition/ConsultantActivityRail.tsx
+  - my-app/components/consulting/transition/ConsultantSmallTalkCarousel.tsx
+  - my-app/components/consulting/transition/ConsultantKineticCanvas.tsx
+  - my-app/components/consulting/transition/PartialResultReveal.tsx
+  - my-app/components/consulting/transition/CompletionMoment.tsx
+  - my-app/components/consulting/transition/RecoverableTaskNotice.tsx
+owner: consulting-feature
+
+public_api:
+  exports:
+    - ConsultationTransitionScreen
+  props:
+    - snapshot
+    - stage
+    - task
+    - onPoll
+    - onClear
+  events:
+    - poll-real-task
+    - pause-presentation
+    - resume-presentation
+    - readiness-auto-replace
+    - recover-failed-task
+
+boundaries:
+  feature:
+    owns:
+      - full-canvas-transient-waiting
+      - real-task-activity-rail
+      - curated-smalltalk-carousel
+      - task-specific-kinetic-visual
+      - result-neutral-optional-fidget
+      - partial-result-priority
+      - completion-moment
+      - recoverable-failure
+  forbidden:
+    - consultation-input-mutation
+    - prompt-payload-mutation
+    - readiness-inference-from-animation
+    - pointer-coordinate-analytics
+    - network-request-from-animation-or-fidget
+    - twelfth-consultation-stage
+
+styling:
+  strategy: global-feature-css-with-existing-app-tokens
+  global_css:
+    file: my-app/app/globals.css
+    namespaces:
+      - f-consultant-transition
+      - f-consultant-activity
+      - f-consultant-kinetic
+  tokens:
+    - app-bg
+    - app-surface
+    - app-border
+    - app-text
+    - app-muted
+    - app-accent
+    - app-success
+    - app-danger
+  inline_styles_allowed:
+    - kinetic-order-css-custom-property-only
+
+state:
+  server_owned:
+    - task-kind
+    - task-status
+    - phase
+    - unit-progress
+    - partial-output-count
+    - readiness
+    - destination-stage
+  client_owned:
+    - presentation-paused
+    - document-visible
+    - carousel-index
+    - fidget-visible-after-five-seconds
+    - result-neutral-fidget-pulse
+
+a11y_contract:
+  semantic_status: activity-rail-and-live-milestones
+  decorative_svg: aria-hidden
+  carousel: aria-live-off
+  milestone_announcements: polite
+  failure: alert
+  pause_control: native-button-with-aria-pressed
+  reduced_motion: static-kinetic-illustration-and-no-fidget
+  focus: transition-heading-then-destination-scene-heading
+
+test_surface:
+  contract: packages/shared/src/consulting/presentation.test.ts
+  structure: my-app/lib/consulting/consultation-contract.test.ts
+  interaction: tests/web-e2e/consulting-scene.spec.ts
+  performance: ten-second-performance-observer-harness
+  visual: desktop-mobile-light-dark-reduced-motion
+
+change_policy:
+  current_gate: behavioral-compatible-style-contract
+  compatible_change_requires:
+    - passport-update
+    - shared-and-web-typecheck
+    - consulting-contract-test
+  behavioral_change_requires:
+    - browser-interaction-regression
+    - readiness-and-recovery-regression
+
+promotion_blockers:
+  - authenticated-live-ai-and-paid-generation-smoke-not-yet-run
+  - remote-lifecycle-migration-requires-separate-approval

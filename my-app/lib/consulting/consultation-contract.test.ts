@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { buildConsultationHairProfile } from "./hair-profile.ts";
 
 function read(relativePath: string) { return readFileSync(new URL(relativePath, import.meta.url), "utf8"); }
 
@@ -11,7 +12,11 @@ test("consulting routes define the complete 11-stage document journey", () => {
     assert.match(contracts, new RegExp(`"${stage}"`));
     assert.match(routes, new RegExp(`slug: "${stage}"`));
   }
-  assert.match(routes, /requested <= current/);
+  const journey = read("../../../packages/shared/src/consulting/journey.ts");
+  assert.match(journey, /recommendedStage/);
+  assert.match(journey, /allowedStages/);
+  assert.match(journey, /activeTasks/);
+  assert.doesNotMatch(routes, /requested <= current/);
 });
 
 test("consultation state is server-owned and guarded by optimistic concurrency", () => {
@@ -31,7 +36,7 @@ test("Scene composition is headerless and dynamically loads all workbenches", ()
   const header = read("../../components/layout/Header.tsx");
   const footer = read("../../components/layout/Footer.tsx");
   const scene = read("../../components/consulting/scene/ConsultationScene.tsx");
-  for (const component of ["DiscoveryWorkbench","PhotoWorkbench","ScanWorkbench","AnalysisWorkbench","DirectionWorkbench","PreviewsWorkbench","CompareWorkbench","DecisionWorkbench","BriefWorkbench","AftercareWorkbench","FashionWorkbench"]) assert.match(stagePage, new RegExp(component));
+  for (const component of ["DiscoveryWorkbench","PhotoWorkbench","ScanWorkbench","AnalysisWorkbench","DirectionWorkbench","PreviewsWorkbench","CompareWorkbench","DecisionWorkbench","BriefWorkbench","AftercareWorkbench","FashionBatchWorkbench"]) assert.match(stagePage, new RegExp(component));
   assert.match(header, /pathname\.startsWith\("\/consulting"\)/);
   assert.match(footer, /pathname\.startsWith\("\/consulting"\)/);
   assert.match(scene, /StageMapOverlay/);
@@ -40,15 +45,19 @@ test("Scene composition is headerless and dynamically loads all workbenches", ()
 
 test("all consultant workbenches use a semantic input and AI-output split canvas", () => {
   const shared = read("../../components/consulting/workbenches/shared.tsx");
+  const globalCss = read("../../app/globals.css");
   const scene = read("../../components/consulting/scene/ConsultationScene.tsx");
   assert.match(shared, /data-consulting-split-canvas="true"/);
   assert.match(shared, /data-consulting-pane="input"/);
   assert.match(shared, /data-consulting-pane="output"/);
   assert.match(shared, /lg:overflow-y-auto/);
   assert.match(shared, /ConsultationSystemData/);
+  assert.equal((shared.match(/data-consulting-input-control="true"/g) || []).length, 2);
+  assert.match(globalCss, /\.f-consulting-input-control\s*\{[\s\S]*?border-bottom:\s*1px solid var\(--app-border\)/);
+  assert.match(globalCss, /\.f-consulting-input-control:last-child\s*\{[\s\S]*?border-bottom:\s*0/);
   assert.match(scene, /lg:h-dvh/);
   assert.match(scene, /lg:overflow-hidden/);
-  for (const workbench of ["Discovery","Photo","Scan","Analysis","Direction","Previews","Compare","Decision","Brief","Aftercare","Fashion"]) {
+  for (const workbench of ["Discovery","Photo","Scan","Analysis","Direction","Previews","Compare","Decision","Brief","Aftercare","FashionBatch"]) {
     const source = read(`../../components/consulting/workbenches/${workbench}Workbench.tsx`);
     assert.match(source, /<WorkbenchGrid/);
     assert.match(source, /input=\{/);
@@ -85,6 +94,34 @@ test("structured discovery options persist into the V2 generation prompt contrac
   assert.match(discovery, /충돌/);
 });
 
+test("main hairstyle blueprint selection receives normalized consultation hair inputs", () => {
+  assert.deepEqual(buildConsultationHairProfile({
+    currentHair: "어깨 아래 길이, 탈색으로 끝부분 손상",
+    hairLength: "중간",
+    strandThickness: "가늘음",
+    hairTexture: "약한 웨이브",
+    damageLevel: "높음",
+    treatmentHistory: ["탈색", "염색"],
+  }, { length: "long" }), {
+    currentLength: "medium",
+    textureType: "wavy_curly",
+    strandThickness: "fine",
+    conditionTags: ["bleached", "colored", "damaged"],
+    damageLevel: "high",
+    desiredLength: "long",
+    source: "user",
+  });
+
+  const previews = read("../../components/consulting/workbenches/PreviewsWorkbench.tsx");
+  const accept = read("../../app/api/generations/accept/route.ts");
+  const prepare = read("../../app/api/generations/prepare/route.ts");
+  assert.match(previews, /buildConsultationHairProfile\(snapshot\.discovery, snapshot\.strategy\)/);
+  assert.match(previews, /hairProfile:/);
+  assert.match(accept, /normalizeCurrentHairProfile\(body\.hairProfile\)/);
+  assert.match(prepare, /runHairBlueprintCapability\(\{[\s\S]*?hairProfile/);
+  assert.doesNotMatch(prepare, /generateRecommendationSet\(/);
+});
+
 test("customer entry CTAs point directly to the AI consultant while legacy remains an explicit bridge", () => {
   const landing = read("../../app/page.tsx");
   const hero = read("../../components/home/HeroSection.tsx");
@@ -96,7 +133,7 @@ test("customer entry CTAs point directly to the AI consultant while legacy remai
   assert.match(landing, /AI 헤어 컨설턴트 시작/);
   assert.match(customerHome, /AI 헤어 컨설턴트/);
   const photo = read("../../components/consulting/workbenches/PhotoWorkbench.tsx");
-  assert.match(photo, /사진 업로드 및 AI 상담 분석/);
+  assert.match(photo, /AI 상담 분석이 자동으로 이어집니다/);
   assert.doesNotMatch(photo, /workspace\?legacy=1/);
 });
 
@@ -108,10 +145,10 @@ test("photo analysis precedes strategy-confirmed V2 preview generation", () => {
   assert.match(photoRoute, /normalizePhotoFaceDetectionEvidence/);
   assert.match(analysisServer, /inspectConsultationPhotoPreflight/);
   assert.match(analysisServer, /extractFaceLandmarkEvidence/);
-  assert.match(analysisServer, /analyzeFaceForCatalog/);
+  assert.match(analysisServer, /runFaceAnalysisCapability/);
   assert.ok(
     analysisServer.indexOf("inspectConsultationPhotoPreflight") < analysisServer.indexOf("extractFaceLandmarkEvidence(imageDataUrl")
-      && analysisServer.indexOf("extractFaceLandmarkEvidence(imageDataUrl") < analysisServer.indexOf("analyzeFaceForCatalog(imageDataUrl)"),
+      && analysisServer.indexOf("extractFaceLandmarkEvidence(imageDataUrl") < analysisServer.indexOf("runFaceAnalysisCapability({"),
     "system photo preflight and landmark extraction must run before generative AI analysis",
   );
   assert.doesNotMatch(analysisServer, /qualityForAnalysis/);
@@ -174,23 +211,199 @@ test("server-produced landmark evidence is persisted and rendered without client
   assert.match(correctionMigration, /for update/);
   assert.match(analysisWorkbench, /data-evidence-ledger-id/);
   assert.match(analysisWorkbench, /Hair Direction Matrix/);
+  assert.match(analysisWorkbench, /Facial proportion matrix/);
+  assert.match(analysisWorkbench, /data-analysis-measurement-id/);
+  assert.match(analysisWorkbench, /onEvidenceLoad=\{setGeometryEvidence\}/);
   assert.match(analysisWorkbench, /onEvidenceSelect=\{setActiveEvidenceId\}/);
   assert.doesNotMatch(photoEvidence, /tensorflow|MediaPipeFaceMesh|createDetector/);
 });
 
-test("photo analysis can advance before generation while scan review remains explicit", () => {
+test("photo analysis advances through a durable automatic pipeline without scan approval", () => {
   const guards = read("./stage-guards.ts");
   const store = read("./server-store.ts");
-  const photoBlock = guards.slice(guards.indexOf("if (patch.photo"), guards.indexOf("if (patch.completeStage === \"scan\"") + 300);
-  assert.match(photoBlock, /patch\.photo\.draftId/);
-  assert.doesNotMatch(photoBlock, /patch\.photo\.generationId/);
-  assert.match(photoBlock, /patch\.completeStage === "photo"/);
-  assert.match(photoBlock, /new Set\(recommendations\.map/);
-  assert.match(photoBlock, /patch\.completeStage === "scan"/);
-  assert.match(photoBlock, /evidence\.pipelineStatus !== "reviewed"/);
+  const analysisServer = read("./photo-analysis-server.ts");
+  const analysisWorkbench = read("../../components/consulting/workbenches/AnalysisWorkbench.tsx");
+  const route = read("../../app/api/consultations/[sessionId]/photo-analysis/route.ts");
+  const scan = read("../../components/consulting/workbenches/ScanWorkbench.tsx");
+  assert.match(guards, /patch\.photo\.draftId/);
+  assert.match(guards, /patch\.completeStage === "photo"/);
+  assert.match(guards, /new Set\(recommendations\.map/);
+  assert.doesNotMatch(guards, /patch\.completeStage === "scan"/);
+  assert.match(analysisServer, /queueConsultationPhotoAnalysis/);
+  assert.match(analysisServer, /processConsultationPhotoAnalysis/);
+  assert.match(route, /after\(\(\) => processConsultationPhotoAnalysis/);
+  assert.match(route, /status: 202/);
+  assert.match(scan, /setTimeout\(poll, 1200\)/);
+  assert.doesNotMatch(scan, /근거 검토 완료/);
   assert.match(store, /assertPersistedPhotoGeometry/);
   assert.match(store, /select\("id,landmarks,contours,measurements"\)/);
   assert.match(store, /row\.landmarks\.length < 5/);
+  assert.match(analysisServer, /photoSnapshot\.usageScopes\.includes\("personalColor"\)/);
+  assert.match(analysisServer, /runPersonalColorCapability/);
+  assert.match(analysisServer, /savePersonalColorEvidenceV2/);
+  assert.match(analysisWorkbench, /personalColorConsent/);
+  assert.match(analysisWorkbench, /hasSnapshotColor/);
+  assert.match(analysisWorkbench, /사용 동의 없음/);
+});
+
+test("Photo uses a non-destructive crop transform and an optional private natural-light color source", () => {
+  const photo = read("../../components/consulting/workbenches/PhotoWorkbench.tsx");
+  const crop = read("../../../packages/shared/src/consulting/photo-crop.ts");
+  const contract = read("../../../packages/shared/src/consulting/contract.ts");
+  const analysis = read("./photo-analysis-server.ts");
+  const guards = read("./stage-guards.ts");
+  assert.match(contract, /interface PhotoCropTransform/);
+  assert.match(contract, /colorAssistDraftId/);
+  assert.match(photo, /createConsultationPhotoCrop/);
+  assert.match(photo, /cropImageFileToWebp/);
+  assert.match(photo, /자연광 컬러 보조 사진/);
+  assert.match(photo, /이 프레이밍 사용/);
+  assert.match(crop, /TARGET_ASPECT_RATIO = 4 \/ 5/);
+  assert.match(guards, /isConsultationPhotoCrop/);
+  assert.match(analysis, /photoSnapshot\.colorAssistDraftId/);
+  assert.match(analysis, /colorImageDataUrl = assistImageDataUrl/);
+  assert.match(analysis, /sourceTransform: isConsultationPhotoCrop/);
+  assert.match(analysis, /sourceImageFingerprint: colorSourceFingerprint/);
+  assert.doesNotMatch(photo, /paid|quote|결제 승인|유료 생성/);
+});
+
+test("consulting interview foundation is domain independent and never models wizard state", () => {
+  const interview = read("../../components/consulting/interview/ConsultationInterview.tsx");
+  const css = read("../../app/globals.css");
+  const passport = read("../../../docs/components/passports/web-consulting-interview.yaml");
+  const registry = read("../../../docs/components/component-registry.json");
+  for (const name of ["ConsultationInterviewShell", "InterviewQuestionRenderer", "InterviewCoverageIndicator", "InterviewSummaryDrawer", "InterviewSaveStatus"]) {
+    assert.match(interview, new RegExp(`export function ${name}`));
+  }
+  assert.match(interview, /InterviewQuestionSchema/);
+  assert.doesNotMatch(interview, /ConsultationInputProfile|FashionDirectionSnapshot|currentStep|questionIndex|fetch\(/);
+  assert.match(interview, /type=\{isMultiple \? "checkbox" : "radio"\}/);
+  assert.match(interview, /headingRef\.current\?\.focus/);
+  assert.match(css, /\.f-consulting-interview/);
+  assert.match(css, /prefers-reduced-motion/);
+  assert.match(passport, /status: candidate/);
+  assert.match(registry, /"id": "web\.consulting\.interview"/);
+});
+
+test("all six legacy engines have UI-independent Capability Service facades", () => {
+  const services = [
+    ["hair-blueprint-service.ts", "hair-blueprint-recommendation"],
+    ["hair-preview-service.ts", "hair-preview-generation"],
+    ["personal-color-service.ts", "personal-color-analysis"],
+    ["salon-brief-service.ts", "salon-brief-generation"],
+    ["aftercare-service.ts", "aftercare-program-generation"],
+    ["fashion-service.ts", "fashion-recommendation-generation"],
+  ] as const;
+  for (const [file, capability] of services) {
+    const source = read(`../capabilities/${file}`);
+    assert.match(source, new RegExp(`capability: "${capability}"`));
+    assert.match(source, /runInlineCapability/);
+    assert.match(source, /HAIRFIT_LEGACY_SOURCE_REVISION/);
+    assert.doesNotMatch(source, /components\/|workbenches|Wizard|currentStep/);
+  }
+  const photoAnalysis = read("./photo-analysis-server.ts");
+  const personalColorRoute = read("../../app/api/personal-color/analyze/route.ts");
+  assert.match(photoAnalysis, /runFaceAnalysisCapability/);
+  assert.match(photoAnalysis, /runPersonalColorCapability/);
+  assert.match(personalColorRoute, /runPersonalColorCapability/);
+});
+
+test("gpt-4o vision configuration selects the OpenAI image-analysis runtime and matching provenance", () => {
+  const catalog = read("../hairstyle-catalog.ts");
+  const service = read("../capabilities/hair-blueprint-service.ts");
+  const modelContract = read("../vision-model.ts");
+  assert.match(modelContract, /PROMPT_VISION_MODEL\?\.trim\(\)[\s\S]*PROMPT_RESEARCH_MODEL/);
+  assert.match(modelContract, /\^\(\?:gpt-\|o\\d\)/);
+  assert.match(catalog, /const provider = getVisionProvider\(modelName\)/);
+  assert.match(catalog, /provider === "openai" \? process\.env\.OPENAI_API_KEY : process\.env\.GOOGLE_API_KEY/);
+  assert.match(catalog, /https:\/\/api\.openai\.com\/v1\/responses/);
+  assert.match(catalog, /type: "input_image"/);
+  assert.match(catalog, /type: "json_schema"/);
+  assert.match(catalog, /new GoogleGenerativeAI\(apiKey\)/);
+  assert.match(service, /provider: getVisionProvider\(visionModel\)/);
+  assert.match(service, /model: visionModel/);
+});
+
+test("V2 capability calls persist completed results and replay identical idempotent input", () => {
+  const durableRuntime = read("../capabilities/durable-runtime.ts");
+  const photoAnalysis = read("./photo-analysis-server.ts");
+  const fashionBatch = read("./fashion-recommendation-batch-server.ts");
+  const generationPrepare = read("../../app/api/generations/prepare/route.ts");
+  assert.match(durableRuntime, /consultation_capability_tasks_v2/);
+  assert.match(durableRuntime, /consultation_capability_attempts_v2/);
+  assert.match(durableRuntime, /consultation_capability_results_v2/);
+  assert.match(durableRuntime, /CAPABILITY_IDEMPOTENCY_INPUT_MISMATCH/);
+  assert.match(durableRuntime, /inserted\.error\.code === "23505"/);
+  assert.match(durableRuntime, /complete_consultation_capability_task_v2/);
+  assert.match(durableRuntime, /existing\.task\.state === "completed"\) return replayResult/);
+  assert.match(photoAnalysis, /runFaceAnalysisCapability\(\{[\s\S]*userId: input\.userId/);
+  assert.match(photoAnalysis, /runPersonalColorCapability\(\{[\s\S]*userId: input\.userId/);
+  assert.match(fashionBatch, /runFashionRecommendationCapability\(\{[\s\S]*userId: input\.userId/);
+  assert.match(generationPrepare, /runHairBlueprintCapability/);
+  assert.match(generationPrepare, /runSalonBriefCapability/);
+  assert.doesNotMatch(generationPrepare, /import \{ generateRecommendationSet \}/);
+  assert.doesNotMatch(generationPrepare, /import \{ generateDesignerBriefs \}/);
+});
+
+test("durable capability execution reclaims retryable failures and expired leases with fencing", () => {
+  const runtime = read("../capabilities/durable-runtime.ts");
+  const migration = read("../../../supabase/migrations/20260809111554_consultation_lifecycle_tasks.sql");
+  assert.match(runtime, /claim_consultation_capability_task_v2/);
+  assert.match(runtime, /executeClaimedTask/);
+  assert.match(runtime, /fencingToken/);
+  assert.match(migration, /task\.state = 'failed' and task\.retryable/);
+  assert.match(migration, /task\.lease_expires_at < timezone\('utc', now\(\)\)/);
+  assert.match(migration, /task\.current_attempt < 20/);
+});
+
+test("Discovery interview covers seven topics, autosaves choices, and opens Photo from one summary confirmation", () => {
+  const discovery = read("../../components/consulting/interview/DiscoveryInterview.tsx");
+  const fallback = read("../../components/consulting/workbenches/DiscoveryWorkbench.tsx");
+  const stagePage = read("../../components/consulting/ConsultationStagePage.tsx");
+  const route = read("../../app/consulting/[sessionId]/[stage]/page.tsx");
+  for (const topic of ["purpose", "goals", "current-hair", "history", "services", "maintenance", "change"]) {
+    assert.match(discovery, new RegExp(`id: "${topic}"`));
+  }
+  assert.match(discovery, /window\.setTimeout\(\(\) => void saveTopic\("purpose"/);
+  assert.match(discovery, /completeStage: "discovery", currentStage: "photo"/);
+  assert.match(discovery, /이 기준으로 사진 준비/);
+  assert.match(discovery, /잘 모르겠어요/);
+  assert.match(discovery, /salon_confirmation_required/);
+  assert.doesNotMatch(discovery, /currentStep|questionIndex|다음 단계|유료 생성/);
+  assert.match(fallback, /interviewEnabled \? <DiscoveryInterview/);
+  assert.match(fallback, /DiscoveryFormWorkbench/);
+  assert.match(stagePage, /interviewEnabled=\{interviewEnabled\}/);
+  assert.match(route, /isConsultationDiscoveryInterviewEnabled/);
+});
+
+test("Fashion direction interview reuses hair and color, autosaves seven topics, and never asks for paid-generation confirmation", () => {
+  const interview = read("../../components/consulting/interview/FashionDirectionInterview.tsx");
+  const workbench = read("../../components/consulting/workbenches/FashionBatchWorkbench.tsx");
+  const route = read("../../app/consulting/[sessionId]/[stage]/page.tsx");
+  for (const topic of ["context", "impression", "fit", "exposure", "season", "budget", "avoid"]) {
+    assert.match(interview, new RegExp(`\\b${topic}\\b`));
+  }
+  assert.match(interview, /selectedHair/);
+  assert.match(interview, /personalColor/);
+  assert.match(interview, /discoveryAvoid/);
+  assert.match(interview, /onAutosave\(normalized\)/);
+  assert.match(interview, /이 방향으로 9개 룩 준비/);
+  assert.doesNotMatch(interview, /currentStep|questionIndex|유료 생성|결제 확인|견적 승인/);
+  assert.match(workbench, /interviewEnabled && !batchState\.batch \? <FashionDirectionInterview/);
+  assert.match(workbench, /onConfirm=\{prepareBatch\}/);
+  assert.doesNotMatch(workbench, /normalizePaidActionQuote|\/api\/paid-actions\/quote|\/api\/styling\/generate/);
+  assert.doesNotMatch(workbench, /\/api\/styling\/recommend/);
+  assert.doesNotMatch(workbench, /견적 승인하고|유료 생성 확인/);
+  assert.match(route, /isConsultationFashionInterviewEnabled/);
+});
+
+test("optional lifecycle tables tolerate both PostgreSQL and PostgREST missing-table errors", () => {
+  const store = read("./server-store.ts");
+  const errors = read("./supabase-errors.ts");
+  assert.match(store, /isMissingOptionalTableError\(analysis\.error\)/);
+  assert.match(store, /isMissingOptionalTableError\(fashion\.error\)/);
+  assert.match(errors, /code === "42P01" \|\| code === "PGRST205"/);
+  assert.doesNotMatch(errors, /PGRST204|42501/);
 });
 
 test("AI strategy recommendations remain linked to evidence through confirmation", () => {
@@ -211,6 +424,9 @@ test("preview comparison permits two accepted results before the full board is r
   assert.match(previews, /const canCompare = selected\.length >= 2/);
   assert.doesNotMatch(previews, /acceptedCount === 9/);
   assert.match(previews, /나머지 결과가 생성 중이어도 비교를 시작/);
+  assert.match(previews, /autoStartAttempted/);
+  assert.match(previews, /void startGeneration\(\)/);
+  assert.doesNotMatch(previews, /이용 조건 확인|3×3 생성 시작/);
 });
 
 test("decision chain enforces accepted shortlist, finalist, immutable revision and actual-service lock", () => {
@@ -223,25 +439,153 @@ test("decision chain enforces accepted shortlist, finalist, immutable revision a
   assert.match(store, /serviceConfirmedAt/);
 });
 
-test("fashion Scene stays non-wizard and uses generated server-owned preview sessions", () => {
-  const fashion = read("../../components/consulting/workbenches/FashionWorkbench.tsx");
+test("fashion Scene confirms direction once and auto-starts an entitlement-checked batch", () => {
+  const fashion = read("../../components/consulting/workbenches/FashionBatchWorkbench.tsx");
+  const batchServer = read("./fashion-batch-server.ts");
+  const batchRoute = read("../../app/api/v2/consultations/[consultationId]/fashion-batch/route.ts");
   const outputs = read("../v2/outputs-server.ts");
-  assert.match(fashion, /const FASHION_SLOTS/);
+  assert.match(fashion, /const SLOTS/);
   assert.match(fashion, /data-fashion-board-size="9"/);
   assert.match(fashion, /daily-casual/);
   assert.match(fashion, /work-office/);
   assert.match(fashion, /statement-date/);
-  assert.match(fashion, /fashionSlotId: selectedSlot\.id/);
-  assert.match(fashion, /direction,/);
-  assert.match(fashion, /consultationId: snapshot\.sessionId/);
+  assert.match(fashion, /이 방향으로 9개 룩 준비/);
+  assert.match(fashion, /미완료 슬롯 자동 재접수/);
+  assert.doesNotMatch(fashion, /\/api\/styling\/recommend/);
   assert.match(fashion, /stylingSessionIds: shortlist/);
   assert.match(fashion, /selectedStylingSessionId: selected\.lookId/);
   assert.match(fashion, /preview\.imageUrl/);
-  assert.doesNotMatch(fashion, /StylerWizard|currentStep|const LOOKS|GENRE_GROUPS/);
+  assert.match(batchServer, /fashion_preview_batches_v2/);
+  assert.match(batchServer, /FASHION_BATCH_ENTITLEMENT_REQUIRED/);
+  assert.match(batchServer, /idempotentReplay/);
+  assert.match(batchServer, /dispatchFashionBatch/);
+  assert.match(batchServer, /begin_styling_execution/);
+  assert.match(batchServer, /dispatchStylingWorkflowOutbox/);
+  const recommendationBatchServer = read("./fashion-recommendation-batch-server.ts");
+  assert.match(recommendationBatchServer, /runFashionRecommendationCapability/);
+  assert.match(recommendationBatchServer, /CONSULTATION_FASHION_SLOTS\.map/);
+  assert.match(recommendationBatchServer, /inserted\.error\?\.code === "23505"/);
+  assert.match(batchRoute, /prepareFashionRecommendationSessions/);
+  assert.match(batchServer, /createPaidActionExecutionQuoteSnapshot/);
+  assert.match(batchServer, /reconcileFashionBatch/);
+  assert.match(batchRoute, /body\.action === "dispatch"/);
+  assert.doesNotMatch(batchRoute, /approvedCostCredits|action === "approve"/);
+  assert.doesNotMatch(fashion, /견적 승인|Batch quote|batchState\.quote|\/api\/paid-actions\/quote|\/api\/styling\/generate|for \(const sessionId/);
+  assert.doesNotMatch(fashion, /StylerWizard|currentStep|const LOOKS|GENRE_GROUPS|selectedSlotId/);
   assert.match(outputs, /source_mode", "v2_selection"/);
   assert.match(outputs, /generated_image_path/);
   assert.match(outputs, /directionSnapshot: selectedDirection/);
   assert.match(outputs, /selectedLook:/);
+});
+
+test("navigation has no common Next control and outputs open by lifecycle capability", () => {
+  const controls = read("../../components/consulting/scene/FloatingStageControls.tsx");
+  const overlay = read("../../components/consulting/scene/StageMapOverlay.tsx");
+  const mutation = read("../../hooks/useConsultationMutation.ts");
+  assert.doesNotMatch(controls, />Next</i);
+  assert.match(controls, /recommendedStage/);
+  assert.match(overlay, /allowedStages/);
+  assert.match(mutation, /snapshot\.journey\.recommendedStage/);
+});
+
+test("every consultation Scene can exit while preserving saved server work", () => {
+  const controls = read("../../components/consulting/scene/FloatingStageControls.tsx");
+  assert.match(controls, /ConfirmActionDialog/);
+  assert.match(controls, /상담 나가기/);
+  assert.match(controls, /저장된 상담 내용과 진행 중인 AI 작업은 유지됩니다/);
+  assert.match(controls, /아직 저장하지 않은 입력은 사라질 수 있습니다/);
+  assert.match(controls, /router\.push\("\/home"\)/);
+});
+
+test("consultation liveness uses real task state, optional kinetic fidget, and automatic readiness handoff", () => {
+  const contract = read("../../../packages/shared/src/consulting/contract.ts");
+  const presentation = read("../../../packages/shared/src/consulting/presentation.ts");
+  const stagePage = read("../../components/consulting/ConsultationStagePage.tsx");
+  const transition = read("../../components/consulting/transition/ConsultationTransitionScreen.tsx");
+  const kinetic = read("../../components/consulting/transition/ConsultantKineticCanvas.tsx");
+  const carousel = read("../../components/consulting/transition/ConsultantSmallTalkCarousel.tsx");
+  const events = read("./consultation-liveness-events.ts");
+  const css = read("../../app/globals.css");
+  for (const field of ["kind", "originStage", "transitionHostStage", "destinationStage", "readinessKey", "phaseKey", "phaseIndex", "phaseCount", "completedUnits", "totalUnits", "messageSetKey", "partialOutputCount", "retryable"]) assert.match(contract, new RegExp(field));
+  for (const kind of ["analysis", "preview-generation", "brief", "fashion-generation", "aftercare-preparation"]) assert.match(presentation, new RegExp(`"${kind}"`));
+  assert.match(stagePage, /resolveConsultationTransitionTask/);
+  assert.match(stagePage, /mapPreviewBoard/);
+  assert.match(stagePage, /action: "reconcile"/);
+  assert.match(transition, /router\.replace/);
+  assert.match(transition, /setInterval\(\(\) => void poll\(\), 2_000\)/);
+  assert.doesNotMatch(transition, />Next</i);
+  assert.match(kinetic, /setTimeout\(\(\) => setFidgetReadyTaskId\(task\.id\), 5_000\)/);
+  assert.match(kinetic, /결과에 영향을 주지 않는 대기 인터랙션/);
+  assert.doesNotMatch(kinetic, /fetch\(|XMLHttpRequest|sendBeacon|pointerCoordinates|clientX|clientY/);
+  for (const event of ["consultant_task_visible", "consultant_phase_changed", "consultant_first_partial_visible", "consultant_task_completed_visible", "consultant_task_recovery_shown", "consultant_auto_transitioned", "consultant_fidget_used"]) assert.match(events, new RegExp(event));
+  assert.match(events, /window\.dispatchEvent/);
+  assert.doesNotMatch(events, /fetch\(|XMLHttpRequest|sendBeacon|sessionId|taskId|userId|clientX|clientY|pointerCoordinates|pointerPath/);
+  assert.match(carousel, /3_200/);
+  assert.match(carousel, /aria-live="off"/);
+  assert.match(css, /\.f-consultant-transition/);
+  assert.match(css, /\.f-consultant-kinetic/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.f-consultant-kinetic__fidget[\s\S]*?display: none/);
+});
+
+test("comparison, decision, brief and aftercare use derived lifecycle data", () => {
+  const decision = read("./decision-derivation.ts");
+  const compare = read("../../components/consulting/workbenches/CompareWorkbench.tsx");
+  const decisionWorkbench = read("../../components/consulting/workbenches/DecisionWorkbench.tsx");
+  const brief = read("../../components/consulting/workbenches/BriefWorkbench.tsx");
+  const aftercare = read("../../components/consulting/workbenches/AftercareWorkbench.tsx");
+  const fashion = read("../../components/consulting/workbenches/FashionBatchWorkbench.tsx");
+  const sharedContract = read("../../../packages/shared/src/consulting/contract.ts");
+  const outputs = read("../v2/outputs-server.ts");
+  for (const axis of ["face-balance", "silhouette-volume", "current-hair-gap", "services", "damage-feasibility", "maintenance-time", "salon-cycle", "limitations"]) assert.match(decision, new RegExp(axis));
+  assert.match(compare, /buildComparisonAxes/);
+  assert.match(decisionWorkbench, /deriveDecisionSnapshot/);
+  assert.doesNotMatch(decisionWorkbench, /TextField/);
+  assert.match(brief, /실제 시술 기록 후 Aftercare 열기/);
+  assert.match(brief, /미용사 응답 · 별도 revision/);
+  assert.match(brief, /확정 스타일 snapshot을 변경하지 않습니다/);
+  assert.match(sharedContract, /designerFeedback\?:/);
+  assert.match(fashion, /Fashion comparison/);
+  for (const axis of ["Palette", "Neckline", "Silhouette", "Hair link", "Items", "Search"]) assert.match(fashion, new RegExp(axis));
+  assert.match(outputs, /loadConfirmedV2StylingSource/);
+  assert.match(outputs, /generatedBrief\?\.consultationSummary/);
+  assert.match(outputs, /runAftercareCapability/);
+  assert.match(outputs, /generatedAftercareProgramInput/);
+  assert.doesNotMatch(outputs, /delete\(\)\.eq\("id", actualServiceId\)/);
+  assert.match(aftercare, /실제 시술 확정하고 관리 프로그램 자동 생성/);
+  assert.match(aftercare, /AI care output/);
+});
+
+test("lifecycle task migrations are additive, mirrored and service-role only", () => {
+  const root = read("../../../supabase/migrations/20260809111554_consultation_lifecycle_tasks.sql");
+  const app = read("../../supabase/migrations/20260809111554_consultation_lifecycle_tasks.sql");
+  const pgTap = read("../../../supabase/tests/consultation_lifecycle_tasks_contract.sql");
+  assert.equal(root, app);
+  assert.match(root, /consultation_analysis_runs_v2/);
+  assert.match(root, /fashion_preview_batches_v2/);
+  for (const table of [
+    "hairfit_v2_engine_source_manifests",
+    "consultation_capability_tasks_v2",
+    "consultation_capability_attempts_v2",
+    "consultation_capability_results_v2",
+    "consultation_interview_drafts_v2",
+  ]) assert.match(root, new RegExp(table));
+  assert.match(root, /unique \(user_id, idempotency_key\)/);
+  assert.match(root, /for update skip locked/);
+  assert.match(root, /fencing_token/);
+  assert.match(root, /security invoker/);
+  assert.match(root, /set search_path = ''/);
+  assert.match(root, /CAPABILITY_TASK_STALE_FENCE/);
+  assert.doesNotMatch(root, /provider_raw_response|raw_prompt|service_role_secret/);
+  assert.match(root, /force row level security/);
+  assert.match(root, /revoke all[\s\S]*authenticated/i);
+  assert.match(root, /grant select, insert, update, delete[\s\S]*service_role/i);
+  assert.match(root, /grant execute[\s\S]*claim_consultation_capability_tasks_v2[\s\S]*service_role/i);
+  assert.match(pgTap, /select plan\(27\)/);
+  assert.match(pgTap, /claim_consultation_capability_task_v2/);
+  assert.match(pgTap, /relrowsecurity and relforcerowsecurity/);
+  assert.match(pgTap, /not has_function_privilege\('anon'/);
+  assert.match(pgTap, /for update skip locked/);
+  assert.match(pgTap, /fencing_token = p_fencing_token/);
 });
 
 test("signed generation assets have both automatic and explicit refresh paths", () => {

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { ConsultationSnapshot, ConsultationStage } from "../../../lib/consulting/contracts";
-import { CONSULTATION_STAGE_DEFINITIONS, consultationStageHref, consultationStageIndex } from "../../../lib/consulting/routes";
+import { CONSULTATION_STAGE_DEFINITIONS, consultationStageHref } from "../../../lib/consulting/routes";
 
 export function StageMapOverlay({ open, onClose, snapshot, stage }: { open: boolean; onClose: () => void; snapshot: ConsultationSnapshot; stage: ConsultationStage }) {
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -27,7 +27,6 @@ export function StageMapOverlay({ open, onClose, snapshot, stage }: { open: bool
     return () => { document.removeEventListener("keydown", onKeyDown); previous?.focus(); };
   }, [onClose, open]);
   if (!open) return null;
-  const maxOpenIndex = consultationStageIndex(snapshot.currentStage);
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-[var(--app-bg)] p-4 sm:p-8" role="dialog" aria-modal="true" aria-labelledby="all-stages-title">
       <div className="mx-auto max-w-[82rem]">
@@ -37,9 +36,11 @@ export function StageMapOverlay({ open, onClose, snapshot, stage }: { open: bool
         </div>
         <ol className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {CONSULTATION_STAGE_DEFINITIONS.map((item, index) => {
-            const enabled = index <= maxOpenIndex || snapshot.completedStages.includes(item.slug);
-            const content = <><span className="text-xs font-black text-[var(--app-accent-strong)]">{String(index + 1).padStart(2, "0")}</span><span className="text-xl font-black">{item.task}</span><span className="text-sm text-[var(--app-muted)]">{item.title}</span></>;
-            return <li key={item.slug}>{enabled ? <Link onClick={onClose} href={consultationStageHref(snapshot.sessionId, item.slug)} aria-current={stage === item.slug ? "step" : undefined} className="grid min-h-32 gap-2 border border-[var(--app-border)] bg-[var(--app-surface)] p-5 hover:border-[var(--app-border-strong)]" data-pointer-glow="surface">{content}</Link> : <div className="grid min-h-32 gap-2 border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-5 opacity-55" aria-disabled="true">{content}<span className="text-xs">이전 단계를 먼저 완료해 주세요.</span></div>}</li>;
+            const enabled = snapshot.journey.allowedStages.includes(item.slug);
+            const stageStatus = snapshot.journey.stageStatus[item.slug];
+            const blocking = snapshot.journey.blockingActions.find((action) => action.stage === item.slug);
+            const content = <><span className="flex items-center justify-between gap-3 text-xs font-black text-[var(--app-accent-strong)]"><span>{String(index + 1).padStart(2, "0")}</span><span>{stageStatus}</span></span><span className="text-xl font-black">{item.task}</span><span className="text-sm text-[var(--app-muted)]">{item.title}</span></>;
+            return <li key={item.slug}>{enabled ? <Link onClick={onClose} href={consultationStageHref(snapshot.sessionId, item.slug)} aria-current={stage === item.slug ? "step" : undefined} className="grid min-h-32 gap-2 border border-[var(--app-border)] bg-[var(--app-surface)] p-5 hover:border-[var(--app-border-strong)]" data-pointer-glow="surface">{content}</Link> : <div className="grid min-h-32 gap-2 border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-5 opacity-55" aria-disabled="true">{content}<span className="text-xs">{blocking?.reason ?? "현재 상담 상태에서는 아직 열리지 않았습니다."}</span></div>}</li>;
           })}
         </ol>
       </div>

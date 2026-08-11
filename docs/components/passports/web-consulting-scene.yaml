@@ -2,7 +2,7 @@ id: web.consulting.scene
 name: ConsultationScene
 platform: web
 kind: layout
-status: experimental
+status: candidate
 source: my-app/components/consulting/scene/ConsultationScene.tsx
 related_source:
   - my-app/components/consulting/ConsultationStagePage.tsx
@@ -12,6 +12,9 @@ related_source:
   - my-app/components/consulting/workbenches/shared.tsx
   - my-app/components/consulting/photo/ConsultationPhotoEvidence.tsx
   - my-app/components/consulting/photo/FaceEvidenceOverlay.tsx
+  - my-app/components/consulting/transition/ConsultationTransitionScreen.tsx
+  - my-app/components/consulting/workbenches/BriefWorkbench.tsx
+  - my-app/components/consulting/workbenches/AftercareWorkbench.tsx
 owner: consulting-feature
 
 public_api:
@@ -22,11 +25,12 @@ public_api:
     - stage
     - notice
     - onRefresh
-    - nextDisabled
   events:
     - open-stage-map
-    - previous-next-navigation
+    - open-recommended-task
     - server-snapshot-refresh
+    - request-consultation-exit
+    - confirm-consultation-exit-to-home
 
 boundaries:
   feature:
@@ -40,6 +44,20 @@ boundaries:
       - desktop-independent-pane-scrolling
       - stage-specific-ai-and-system-data-rail
       - compact-desktop-scene-identity
+      - lifecycle-capability-navigation
+      - durable-analysis-task-status
+      - fashion-batch-status
+      - automatic-salon-brief-hydration
+      - actual-service-triggered-aftercare-generation
+      - rich-aftercare-ai-output
+      - designer-feedback-separate-brief-revision
+      - fashion-shortlist-comparison-matrix
+      - hairstyle-blueprint-user-profile-handoff
+      - face-aware-four-by-five-photo-crop
+      - optional-private-natural-light-color-assist
+      - persisted-facial-proportion-matrix
+      - transient-liveness-screen-host
+      - consultation-exit-confirmation
   forbidden:
     - generation-domain-workflow
     - backend-refactor-package-contracts
@@ -47,7 +65,15 @@ boundaries:
 
 styling:
   strategy: existing-tailwind-utilities-with-global-app-tokens
-  global_css_changes: false
+  global_css_changes: true
+  global_css:
+    file: my-app/app/globals.css
+    namespace: f-consulting-input-control
+  tokens:
+    - app-border
+  runtime_inline_styles:
+    - normalized-photo-crop-preview-position-and-size
+  input_control_separator: one-pixel-tokenized-bottom-rule-except-last-sibling
 
 state:
   server_owned:
@@ -56,7 +82,12 @@ state:
     - analysis-evidence-correction-revision
     - append-only-manual-coordinate-corrections
     - version
-    - current-stage
+    - lifecycle-state
+    - recommended-stage
+    - allowed-stages
+    - completed-stages
+    - active-tasks
+    - blocking-actions
   client_owned:
     - stage-map-open
     - form-drafts
@@ -64,25 +95,40 @@ state:
     - visible-evidence-layers
     - selected-landmark-id
     - independent-pane-scroll-position
+    - consultation-exit-dialog-open
 
 a11y_contract:
   stage_map: dialog-with-escape-and-focus-return
-  navigation: labelled-native-links-and-buttons
+  navigation: labelled-native-links-and-buttons-without-common-next-control
+  exit: confirmation-dialog-with-escape-focus-return-and-saved-state-disclosure
   scene_entry: programmatic-focus-on-level-one-heading
   reduced_motion: no-required-motion
   split_canvas: labelled-regions-input-first-in-dom-mobile-stacked
+  split_canvas_scroll: input-and-output-scroll-regions-keyboard-focusable-with-visible-focus-ring
+  photo_crop: labelled-native-range-controls-and-explicit-framing-confirmation
+  analysis_matrix: native-meter-values-with-text-equivalents-and-non-physical-unit-disclosure
 
 test_surface:
   structure: my-app/lib/consulting/consultation-contract.test.ts
   interaction: required
   visual: required
+  hairstyle_blueprint: discovery-hair-inputs-normalized-before-generation-acceptance
   evidence_overlay: persisted-normalized-coordinates-only
   evidence_correction: server-revision-locked-user-adjustment-with-model-original-preserved
   evidence_linkage: photo-overlay-ledger-direction-matrix-share-active-evidence-id
   split_canvas: all-11-scenes-desktop-independent-scroll-and-mobile-stacking
+  split_canvas_scroll: all-11-scenes-serious-critical-axe-zero
+  input_control_separator: shared-choice-and-text-controls-use-visible-tokenized-boundaries
+  salon_brief: entry-auto-generation-without-user-save-click
+  aftercare: actual-service-first-then-generated-care-editing
+  brief_feedback: separate-revision-without-selected-style-mutation
+  fashion_compare: two-to-three-shortlist-common-axis-matrix
+  photo_crop: shared-four-by-five-transform-unit-and-browser-interaction
+  photo_color_assist: separate-private-draft-used-only-for-personal-color-when-valid
+  analysis_matrix: persisted-measurements-only-without-client-inference-or-centimeter-claims
 
 change_policy:
-  current_gate: feature
+  current_gate: consultation-frontend-and-lifecycle-feature-flags
   compatible_change_requires:
     - passport-update
     - consulting-contract-test
@@ -91,5 +137,5 @@ change_policy:
     - 11-stage-browser-regression
 
 promotion_blockers:
-  - no-authenticated-browser-interaction-evidence
-  - feature-flag-defaults-off
+  - remote-lifecycle-migration-not-applied
+  - authenticated-entitlement-backed-fashion-batch-smoke-requires-explicit-approval

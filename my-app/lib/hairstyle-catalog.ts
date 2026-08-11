@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getSupabaseAdminClient } from "./supabase";
 import {
-  HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
   buildCatalogRowsForCycle,
   buildKoreanWeeklyStyleQueries,
+  getRuntimeHairstyleCatalogPromptTemplateVersion,
   isHairstyleBlueprintV4Enabled,
   type BlueprintTrendSignal,
 } from "./hairstyle-catalog-seed";
@@ -13,11 +13,25 @@ import {
   buildCatalogLineupsForCycle,
   computeLineupOverlap,
 } from "./hairstyle-catalog-lineup";
+import {
+  hasHardHairConflict,
+  hasKnownHairProfile,
+  isTextureAndThicknessCompatible,
+  selectLineupBackedCatalogRows,
+} from "./hairstyle-catalog-recommendation";
 import { collectKoreanHairstyleTrendResearch } from "./hairstyle-trend-research";
+import {
+  extractOpenAIResponseText,
+  getPromptVisionModel,
+  getVisionProvider,
+  type OpenAIResponsePayload,
+} from "./vision-model";
 import type {
   CatalogBackedRecommendationCandidate,
   CatalogSelectionContext,
   CurrentHairProfile,
+  HairProfilePersonalizationEvaluation,
+  HairProfilePersonalizationMode,
   FaceAnalysisSummary,
   HairConditionTag,
   HairStrandThickness,
@@ -62,6 +76,37 @@ Rules:
 - If the visible parting is unclear, covered by bangs, or not reliable, recommend a conservative soft off-center parting unless full bangs are clearly the better fit.
 - partingStrategy should explain the recommended parting in one short generation-safe phrase.
 `;
+
+const FACE_ANALYSIS_JSON_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "faceShape",
+    "headShape",
+    "foreheadExposure",
+    "observedPartingShape",
+    "recommendedPartingShape",
+    "partingStrategy",
+    "balance",
+    "bestLengthStrategy",
+    "volumeFocus",
+    "avoidNotes",
+    "summary",
+  ],
+  properties: {
+    faceShape: { type: "string" },
+    headShape: { type: "string" },
+    foreheadExposure: { type: "string" },
+    observedPartingShape: { type: "string" },
+    recommendedPartingShape: { type: "string" },
+    partingStrategy: { type: "string" },
+    balance: { type: "string" },
+    bestLengthStrategy: { type: "string" },
+    volumeFocus: { type: "array", items: { type: "string" } },
+    avoidNotes: { type: "array", items: { type: "string" } },
+    summary: { type: "string" },
+  },
+} as const;
 
 export const RECOMMENDATION_PROMPT_VERSION = "catalog-backed-grid-v2";
 
@@ -585,6 +630,10 @@ function normalizeSourceSummary(raw: unknown): HairstyleCatalogSourceSummary | n
 
   return {
     mode,
+    rssTransport:
+      raw.rssTransport === "direct" || raw.rssTransport === "supabase-edge"
+        ? raw.rssTransport
+        : undefined,
     queries,
     notes,
     providers: Array.isArray(raw.providers)
@@ -603,6 +652,23 @@ function normalizeSourceSummary(raw: unknown): HairstyleCatalogSourceSummary | n
         : undefined,
     documentsCollected: typeof raw.documentsCollected === "number" ? raw.documentsCollected : undefined,
     documentsUsed: typeof raw.documentsUsed === "number" ? raw.documentsUsed : undefined,
+    queryCount: typeof raw.queryCount === "number" ? raw.queryCount : undefined,
+    querySuccessCount: typeof raw.querySuccessCount === "number" ? raw.querySuccessCount : undefined,
+    queryFailureCount: typeof raw.queryFailureCount === "number" ? raw.queryFailureCount : undefined,
+    querySuccessRatio: typeof raw.querySuccessRatio === "number" ? raw.querySuccessRatio : undefined,
+    rssFacetEmptyCount: typeof raw.rssFacetEmptyCount === "number" ? raw.rssFacetEmptyCount : undefined,
+    distinctSourceCount: typeof raw.distinctSourceCount === "number" ? raw.distinctSourceCount : undefined,
+    maxSourceConcentration: typeof raw.maxSourceConcentration === "number" ? raw.maxSourceConcentration : undefined,
+    sourceConcentrationCappedSignalCount: typeof raw.sourceConcentrationCappedSignalCount === "number"
+      ? raw.sourceConcentrationCappedSignalCount
+      : undefined,
+    qualityGateStatus:
+      raw.qualityGateStatus === "pass" || raw.qualityGateStatus === "warn" || raw.qualityGateStatus === "blocked"
+        ? raw.qualityGateStatus
+        : undefined,
+    coverageWarnings: Array.isArray(raw.coverageWarnings)
+      ? raw.coverageWarnings.filter((item): item is string => typeof item === "string").map(cleanText).filter(Boolean)
+      : undefined,
     sourceNames: Array.isArray(raw.sourceNames)
       ? raw.sourceNames.filter((item): item is string => typeof item === "string").map(cleanText).filter(Boolean)
       : undefined,
@@ -764,6 +830,7 @@ function isActiveCatalogDue(activeCycle: HairstyleCatalogActiveCycle | null, now
 }
 
 function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, "id"> | HairstyleCatalogRow>): CatalogValidationResult {
+  const expectedPromptTemplateVersion = getRuntimeHairstyleCatalogPromptTemplateVersion();
   const targetBlueprintPoolSize = isHairstyleBlueprintV4Enabled()
     ? TARGET_BLUEPRINT_POOL_SIZE
     : LEGACY_BLUEPRINT_POOL_SIZE;
@@ -773,7 +840,7 @@ function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, 
   const maleCandidateCount = rows.filter((row) => row.styleTargets.includes("male")).length;
   const femaleCandidateCount = rows.filter((row) => row.styleTargets.includes("female")).length;
   const promptVersionMismatchCount = rows.filter(
-    (row) => row.promptTemplateVersion !== HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
+    (row) => row.promptTemplateVersion !== expectedPromptTemplateVersion,
   ).length;
   const warnings: string[] = [];
 
@@ -805,7 +872,7 @@ function validateCatalogRowsForActivation(rows: Array<Omit<HairstyleCatalogRow, 
     maleCandidateCount,
     femaleCandidateCount,
     targetStyleTargetCount: targetStyleTargetPoolSize,
-    promptTemplateVersion: HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
+    promptTemplateVersion: expectedPromptTemplateVersion,
     promptVersionMismatchCount,
     lineupCounts: { male: 0, female: 0 },
     warnings,
@@ -1262,49 +1329,6 @@ export function buildCatalogSelectionContext(
   };
 }
 
-function hasKnownHairProfile(profile: CurrentHairProfile | null): profile is CurrentHairProfile {
-  return Boolean(profile && (
-    profile.currentLength !== "unknown" ||
-    profile.textureType !== "unknown" ||
-    profile.strandThickness !== "unknown" ||
-    profile.conditionTags.length > 0 ||
-    profile.damageLevel !== "unknown" ||
-    profile.desiredLength
-  ));
-}
-
-function hasHardHairConflict(row: HairstyleCatalogRow, profile: CurrentHairProfile | null): boolean {
-  if (!hasKnownHairProfile(profile) || profile.source === "image_estimate") {
-    return false;
-  }
-
-  if (profile.textureType !== "unknown" && row.avoidTextureTags.includes(profile.textureType)) {
-    return true;
-  }
-  if (profile.strandThickness !== "unknown" && row.avoidStrandThicknessTags.includes(profile.strandThickness)) {
-    return true;
-  }
-  if (profile.conditionTags.some((condition) => row.avoidConditionTags.includes(condition))) {
-    return true;
-  }
-
-  return profile.damageLevel === "high" && (
-    row.requiredServices.includes("bleach") ||
-    row.requiredServices.includes("straightening") ||
-    row.requiredServices.includes("perm")
-  );
-}
-
-function isTextureAndThicknessCompatible(row: HairstyleCatalogRow, profile: CurrentHairProfile): boolean {
-  const textureCompatible = profile.textureType === "unknown" ||
-    row.primaryTexture === profile.textureType ||
-    row.compatibleTextureTags.includes(profile.textureType);
-  const thicknessCompatible = profile.strandThickness === "unknown" ||
-    row.primaryStrandThickness === profile.strandThickness ||
-    row.compatibleStrandThicknessTags.includes(profile.strandThickness);
-  return textureCompatible && thicknessCompatible;
-}
-
 function scoreCatalogRow(row: HairstyleCatalogRow, context: CatalogSelectionContext): number {
   let score = row.trendScore * 0.35 + row.freshnessScore * 0.25;
 
@@ -1377,217 +1401,22 @@ function buildRecommendationCandidate(
   };
 }
 
-function buildLengthQuotas(
-  context: CatalogSelectionContext,
-  limit: number,
-): Record<RecommendationLengthBucket, number> {
-  const desired = context.hairProfile?.desiredLength;
-  if (desired && limit === 9) {
-    const adjacent: RecommendationLengthBucket = desired === "short" ? "medium" : desired === "long" ? "medium" : "long";
-    const exploration = (["short", "medium", "long"] as const).find((bucket) => bucket !== desired && bucket !== adjacent) || "short";
-    return { short: 0, medium: 0, long: 0, [desired]: 6, [adjacent]: 2, [exploration]: 1 };
-  }
-  if (desired && limit === 6) {
-    const adjacent: RecommendationLengthBucket = desired === "short" ? "medium" : desired === "long" ? "medium" : "long";
-    const exploration = (["short", "medium", "long"] as const).find((bucket) => bucket !== desired && bucket !== adjacent) || "short";
-    return { short: 0, medium: 0, long: 0, [desired]: 4, [adjacent]: 1, [exploration]: 1 };
-  }
-
-  const base = Math.floor(limit / 3);
-  const remainder = limit % 3;
-  return {
-    short: base + (remainder > 0 ? 1 : 0),
-    medium: base + (remainder > 1 ? 1 : 0),
-    long: base,
-  };
-}
-
-function buildTopNine(
-  rows: HairstyleCatalogRow[],
-  context: CatalogSelectionContext,
-  cycleId: string,
-  excludedCatalogItemIds = new Set<string>(),
-  startRank = 1,
-  limit = 9,
-): CatalogBackedRecommendationCandidate[] {
-  if (limit <= 0) {
-    return [];
-  }
-
-  const scored = rows
-    .filter((row) => !hasHardHairConflict(row, context.hairProfile))
-    .map((row) => ({ row, score: scoreCatalogRow(row, context) }))
-    .sort((a, b) => b.score - a.score);
-
-  const selected: Array<{ row: HairstyleCatalogRow; score: number }> = [];
-  const picked = new Set<string>(excludedCatalogItemIds);
-  const familyCounts = new Map<string, number>();
-  const quotas = buildLengthQuotas(context, limit);
-  const requiredBuckets: RecommendationLengthBucket[] = ["short", "medium", "long"];
-
-  for (const bucket of requiredBuckets) {
-    while (selected.filter((item) => item.row.lengthBucket === bucket).length < quotas[bucket]) {
-      const match = scored.find((item) =>
-        item.row.lengthBucket === bucket &&
-        !picked.has(item.row.id) &&
-        (familyCounts.get(item.row.styleFamily) || 0) < 2
-      );
-      if (!match) break;
-      selected.push(match);
-      picked.add(match.row.id);
-      familyCounts.set(match.row.styleFamily, (familyCounts.get(match.row.styleFamily) || 0) + 1);
-    }
-  }
-
-  for (const item of scored) {
-    if (selected.length >= limit) {
-      break;
-    }
-    if (picked.has(item.row.id)) {
-      continue;
-    }
-    if ((familyCounts.get(item.row.styleFamily) || 0) >= 2) continue;
-    selected.push(item);
-    picked.add(item.row.id);
-    familyCounts.set(item.row.styleFamily, (familyCounts.get(item.row.styleFamily) || 0) + 1);
-  }
-
-  return selected
-    .slice(0, limit)
-    .map(({ row, score }, index) => buildRecommendationCandidate(row, context, cycleId, startRank + index, score));
-}
-
 export function buildLineupBackedRecommendations(
   rows: HairstyleCatalogRow[],
   lineups: HairstyleCatalogLineupRow[],
   context: CatalogSelectionContext,
   cycleId: string,
 ): CatalogBackedRecommendationCandidate[] {
-  const rowsById = new Map(rows.map((row) => [row.id, row]));
-  const hairProfile = context.hairProfile;
-  if (hasKnownHairProfile(hairProfile)) {
-    const eligibleRows = rows.filter((row) => !hasHardHairConflict(row, hairProfile));
-    const compatibleRows = eligibleRows.filter((row) => isTextureAndThicknessCompatible(row, hairProfile));
-    const personalized = buildTopNine(compatibleRows, context, cycleId, new Set(), 1, 6);
-    const picked = new Set(personalized.map((item) => item.catalogItemId).filter((id): id is string => Boolean(id)));
-    const lineupMix: CatalogBackedRecommendationCandidate[] = [];
-    const finalQuotas = buildLengthQuotas(context, 9);
-    const lengthCounts = new Map<RecommendationLengthBucket, number>(
-      (["short", "medium", "long"] as const).map((bucket) => [bucket, personalized.filter((item) => item.lengthBucket === bucket).length]),
+  return selectLineupBackedCatalogRows(rows, lineups, context, scoreCatalogRow)
+    .map(({ row, selectionScore }, index) =>
+      buildRecommendationCandidate(row, context, cycleId, index + 1, selectionScore)
     );
-    const familyCounts = new Map<string, number>();
-    for (const item of personalized) {
-      const row = item.catalogItemId ? rowsById.get(item.catalogItemId) : null;
-      if (row) familyCounts.set(row.styleFamily, (familyCounts.get(row.styleFamily) || 0) + 1);
-    }
-
-    for (const lineup of lineups
-      .filter((item) => item.styleTarget === context.styleTarget)
-      .sort((a, b) => a.rank - b.rank)) {
-      if (lineupMix.length >= 3) break;
-      const row = rowsById.get(lineup.catalogItemId);
-      if (
-        !row || picked.has(row.id) || hasHardHairConflict(row, hairProfile) ||
-        (lengthCounts.get(row.lengthBucket) || 0) >= finalQuotas[row.lengthBucket] ||
-        (familyCounts.get(row.styleFamily) || 0) >= 2
-      ) continue;
-      lineupMix.push(buildRecommendationCandidate(
-        row,
-        context,
-        cycleId,
-        personalized.length + lineupMix.length + 1,
-        Math.round((lineup.rotationScore + scoreCatalogRow(row, context)) * 100) / 100,
-      ));
-      picked.add(row.id);
-      lengthCounts.set(row.lengthBucket, (lengthCounts.get(row.lengthBucket) || 0) + 1);
-      familyCounts.set(row.styleFamily, (familyCounts.get(row.styleFamily) || 0) + 1);
-    }
-
-    const selected = [...personalized, ...lineupMix];
-    if (selected.length < 9) {
-      const fillers = eligibleRows
-        .filter((row) => !picked.has(row.id))
-        .sort((a, b) => scoreCatalogRow(b, context) - scoreCatalogRow(a, context));
-      for (const bucket of ["short", "medium", "long"] as const) {
-        while ((lengthCounts.get(bucket) || 0) < finalQuotas[bucket] && selected.length < 9) {
-          const row = fillers.find((candidate) =>
-            candidate.lengthBucket === bucket &&
-            !picked.has(candidate.id) &&
-            (familyCounts.get(candidate.styleFamily) || 0) < 2
-          );
-          if (!row) break;
-          selected.push(buildRecommendationCandidate(row, context, cycleId, selected.length + 1, scoreCatalogRow(row, context)));
-          picked.add(row.id);
-          lengthCounts.set(bucket, (lengthCounts.get(bucket) || 0) + 1);
-          familyCounts.set(row.styleFamily, (familyCounts.get(row.styleFamily) || 0) + 1);
-        }
-      }
-    }
-    return selected.slice(0, 9);
-  }
-
-  const selected: CatalogBackedRecommendationCandidate[] = [];
-  const picked = new Set<string>();
-  const defaultQuotas = buildLengthQuotas(context, 9);
-  const lengthCounts = new Map<RecommendationLengthBucket, number>([["short", 0], ["medium", 0], ["long", 0]]);
-  const familyCounts = new Map<string, number>();
-
-  for (const lineup of lineups
-    .filter((item) => item.styleTarget === context.styleTarget)
-    .sort((a, b) => a.rank - b.rank)) {
-    if (selected.length >= 9) {
-      break;
-    }
-
-    const row = rowsById.get(lineup.catalogItemId);
-    if (
-      !row || picked.has(row.id) || !row.styleTargets.includes(context.styleTarget) ||
-      (lengthCounts.get(row.lengthBucket) || 0) >= defaultQuotas[row.lengthBucket] ||
-      (familyCounts.get(row.styleFamily) || 0) >= 2
-    ) {
-      continue;
-    }
-
-    selected.push(
-      buildRecommendationCandidate(
-        row,
-        context,
-        cycleId,
-        selected.length + 1,
-        Math.round((lineup.rotationScore + scoreCatalogRow(row, context)) * 100) / 100,
-      ),
-    );
-    picked.add(row.id);
-    lengthCounts.set(row.lengthBucket, (lengthCounts.get(row.lengthBucket) || 0) + 1);
-    familyCounts.set(row.styleFamily, (familyCounts.get(row.styleFamily) || 0) + 1);
-  }
-
-  if (selected.length >= 9) {
-    return selected;
-  }
-
-  const fillers = rows
-    .filter((row) => !picked.has(row.id) && !hasHardHairConflict(row, context.hairProfile))
-    .sort((a, b) => scoreCatalogRow(b, context) - scoreCatalogRow(a, context));
-  for (const bucket of ["short", "medium", "long"] as const) {
-    while ((lengthCounts.get(bucket) || 0) < defaultQuotas[bucket] && selected.length < 9) {
-      const row = fillers.find((candidate) =>
-        candidate.lengthBucket === bucket &&
-        !picked.has(candidate.id) &&
-        (familyCounts.get(candidate.styleFamily) || 0) < 2
-      );
-      if (!row) break;
-      selected.push(buildRecommendationCandidate(row, context, cycleId, selected.length + 1, scoreCatalogRow(row, context)));
-      picked.add(row.id);
-      lengthCounts.set(bucket, (lengthCounts.get(bucket) || 0) + 1);
-      familyCounts.set(row.styleFamily, (familyCounts.get(row.styleFamily) || 0) + 1);
-    }
-  }
-  return selected.slice(0, 9);
 }
 
 async function runImageAnalysis(referenceImageDataUrl: string): Promise<{ analysis: FaceAnalysisSummary | null; model: string }> {
-  const apiKey = process.env.GOOGLE_API_KEY;
+  const modelName = getPromptVisionModel();
+  const provider = getVisionProvider(modelName);
+  const apiKey = provider === "openai" ? process.env.OPENAI_API_KEY : process.env.GOOGLE_API_KEY;
   if (!apiKey || apiKey.includes("YOUR_")) {
     return {
       analysis: null,
@@ -1603,7 +1432,43 @@ async function runImageAnalysis(referenceImageDataUrl: string): Promise<{ analys
     };
   }
 
-  const modelName = process.env.PROMPT_RESEARCH_MODEL || process.env.PROMPT_LLM_MODEL || "gemini-2.5-flash";
+  if (provider === "openai") {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: modelName,
+        input: [{
+          role: "user",
+          content: [
+            { type: "input_text", text: ANALYSIS_SYSTEM_PROMPT.trim() },
+            { type: "input_image", image_url: referenceImageDataUrl, detail: "high" },
+          ],
+        }],
+        text: {
+          format: {
+            type: "json_schema",
+            name: "hairfit_face_analysis",
+            strict: true,
+            schema: FACE_ANALYSIS_JSON_SCHEMA,
+          },
+        },
+      }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as OpenAIResponsePayload;
+    if (!response.ok) {
+      throw new Error(payload.error?.message || "OpenAI face analysis request failed");
+    }
+    const parsedResult = parseJsonResponse<Record<string, unknown>>(extractOpenAIResponseText(payload));
+    return {
+      analysis: normalizeAnalysis(parsedResult),
+      model: modelName,
+    };
+  }
+
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: modelName });
 
@@ -1749,6 +1614,12 @@ async function rebuildCatalogWithMode(
     const validation = validateCatalogRowsForActivation(rows);
     if (research.sourceSummary.freshnessStatus && research.sourceSummary.freshnessStatus !== "fresh") {
       validation.warnings.push(`freshness_status:${research.sourceSummary.freshnessStatus}`);
+    }
+    if (research.sourceSummary.qualityGateStatus === "warn") {
+      validation.warnings.push(
+        `rss_query_success_ratio:${research.sourceSummary.querySuccessRatio ?? 0}`,
+        `rss_facet_empty_count:${research.sourceSummary.rssFacetEmptyCount ?? 0}`,
+      );
     }
 
     if (!validation.passed) {
@@ -2167,9 +2038,10 @@ function filterRowsForStyleTarget(rows: HairstyleCatalogRow[], styleTarget: Memb
 }
 
 function needsStyleTargetCatalogRefresh(rows: HairstyleCatalogRow[]) {
+  const expectedPromptTemplateVersion = getRuntimeHairstyleCatalogPromptTemplateVersion();
   return (
     rows.length < 9 ||
-    rows.some((row) => row.promptTemplateVersion !== HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION)
+    rows.some((row) => row.promptTemplateVersion !== expectedPromptTemplateVersion)
   );
 }
 
@@ -2177,6 +2049,7 @@ export async function generateCatalogBackedRecommendationSet(
   referenceImageDataUrl: string,
   styleTarget: MemberStyleTarget,
   hairProfile: CurrentHairProfile | null = null,
+  personalizationMode: HairProfilePersonalizationMode = hairProfile ? "live" : "off",
 ) {
   const { activeCycle, cycle, rows, lineups } = await ensureCatalogAvailable();
   const targetRows = filterRowsForStyleTarget(rows, styleTarget);
@@ -2188,8 +2061,43 @@ export async function generateCatalogBackedRecommendationSet(
   }
 
   const analysisRun = await analyzeFaceForCatalog(referenceImageDataUrl);
-  const selectionContext = buildCatalogSelectionContext(analysisRun.analysis, styleTarget, hairProfile);
-  const recommendations = buildLineupBackedRecommendations(targetRows, lineups, selectionContext, cycle.cycleId);
+  const baselineContext = buildCatalogSelectionContext(analysisRun.analysis, styleTarget, null);
+  const baselineRecommendations = buildLineupBackedRecommendations(targetRows, lineups, baselineContext, cycle.cycleId);
+  const shouldEvaluateProfile = Boolean(hairProfile && personalizationMode !== "off");
+  const personalizedContext = shouldEvaluateProfile
+    ? buildCatalogSelectionContext(analysisRun.analysis, styleTarget, hairProfile)
+    : baselineContext;
+  const personalizedRecommendations = shouldEvaluateProfile
+    ? buildLineupBackedRecommendations(targetRows, lineups, personalizedContext, cycle.cycleId)
+    : baselineRecommendations;
+  const recommendations = personalizationMode === "live"
+    ? personalizedRecommendations
+    : baselineRecommendations;
+  const selectionContext = personalizationMode === "live" ? personalizedContext : baselineContext;
+  const rowsById = new Map(targetRows.map((row) => [row.id, row]));
+  const baselineIds = new Set(baselineRecommendations.map((item) => item.catalogItemId));
+  const overlapCount = personalizedRecommendations.filter((item) => baselineIds.has(item.catalogItemId)).length;
+  const profileCompatibleResultCount = hairProfile
+    ? personalizedRecommendations.filter((item) => {
+        const row = rowsById.get(item.catalogItemId);
+        return row ? isTextureAndThicknessCompatible(row, hairProfile) : false;
+      }).length
+    : 0;
+  const personalizationEvaluation: HairProfilePersonalizationEvaluation | null = shouldEvaluateProfile && hairProfile
+    ? {
+        mode: personalizationMode,
+        baselineResultCount: baselineRecommendations.length,
+        personalizedResultCount: personalizedRecommendations.length,
+        overlapCount,
+        changedCount: personalizedRecommendations.length - overlapCount,
+        hardConflictCandidateCount: personalizedRecommendations.filter((item) => {
+          const row = rowsById.get(item.catalogItemId);
+          return row ? hasHardHairConflict(row, hairProfile) : true;
+        }).length,
+        profileCompatibleResultCount,
+        profileFallbackUsed: personalizedRecommendations.length < 9 || profileCompatibleResultCount < 6,
+      }
+    : null;
 
   if (recommendations.length === 0) {
     throw new Error("No catalog-backed recommendations could be selected.");
@@ -2202,5 +2110,6 @@ export async function generateCatalogBackedRecommendationSet(
     promptVersion: RECOMMENDATION_PROMPT_VERSION,
     catalogCycleId: cycle.cycleId,
     selectionContext,
+    personalizationEvaluation,
   };
 }

@@ -9,14 +9,23 @@ import type {
   RecommendationCorrectionFocus,
   RecommendationLengthBucket,
 } from "./recommendation-types";
-import femaleLongBlueprints from "../data/hairstyle-blueprints/v4/female-long.json";
-import femaleMediumBlueprints from "../data/hairstyle-blueprints/v4/female-medium.json";
-import femaleShortBlueprints from "../data/hairstyle-blueprints/v4/female-short.json";
-import maleLongBlueprints from "../data/hairstyle-blueprints/v4/male-long.json";
-import maleMediumBlueprints from "../data/hairstyle-blueprints/v4/male-medium.json";
-import maleShortBlueprints from "../data/hairstyle-blueprints/v4/male-short.json";
+import femaleLongBlueprints from "../data/hairstyle-blueprints/v4/female-long.json" with { type: "json" };
+import femaleMediumBlueprints from "../data/hairstyle-blueprints/v4/female-medium.json" with { type: "json" };
+import femaleShortBlueprints from "../data/hairstyle-blueprints/v4/female-short.json" with { type: "json" };
+import maleLongBlueprints from "../data/hairstyle-blueprints/v4/male-long.json" with { type: "json" };
+import maleMediumBlueprints from "../data/hairstyle-blueprints/v4/male-medium.json" with { type: "json" };
+import maleShortBlueprints from "../data/hairstyle-blueprints/v4/male-short.json" with { type: "json" };
 
 export const HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v4";
+export const LEGACY_HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION = "catalog-v3";
+
+export type HairstyleBlueprintExpansionBatch = "expansion-a" | "expansion-b" | "expansion-c";
+
+const HAIRSTYLE_BLUEPRINT_EXPANSION_BATCH_ORDER: HairstyleBlueprintExpansionBatch[] = [
+  "expansion-a",
+  "expansion-b",
+  "expansion-c",
+];
 
 export interface HairstyleCatalogBlueprint {
   slug: string;
@@ -51,7 +60,7 @@ export interface HairstyleCatalogBlueprint {
   requiredServices?: HairstyleRequiredService[];
   serviceConstraints?: string[];
   maintenanceLevel?: HairstyleMaintenanceLevel;
-  introducedIn?: "legacy-32" | "expansion-a" | "expansion-b" | "expansion-c";
+  introducedIn?: "legacy-32" | HairstyleBlueprintExpansionBatch;
 }
 
 export interface BlueprintTrendSignal {
@@ -59,6 +68,11 @@ export interface BlueprintTrendSignal {
   signalCount: number;
   trendScore: number;
   freshnessScore: number;
+  evidenceStatus?: "strong" | "weak" | "seeded";
+  distinctSourceCount?: number;
+  sourceConcentration?: number;
+  sourceConcentrationCapped?: boolean;
+  facetMatchCount?: number;
 }
 
 const DEFAULT_NEGATIVE_PROMPT = [
@@ -909,13 +923,38 @@ export const KOREAN_HAIRSTYLE_BLUEPRINTS: HairstyleCatalogBlueprint[] = [
 ];
 
 export function isHairstyleBlueprintV4Enabled() {
-  return process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true";
+  return process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true" &&
+    getRuntimeHairstyleBlueprintExpansionBatch() !== null;
+}
+
+export function getRuntimeHairstyleBlueprintExpansionBatch(): HairstyleBlueprintExpansionBatch | null {
+  const configured = process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH?.trim().toLowerCase();
+  if (!configured) return "expansion-c";
+  return HAIRSTYLE_BLUEPRINT_EXPANSION_BATCH_ORDER.includes(configured as HairstyleBlueprintExpansionBatch)
+    ? configured as HairstyleBlueprintExpansionBatch
+    : null;
 }
 
 export function getRuntimeHairstyleBlueprints() {
+  if (!isHairstyleBlueprintV4Enabled()) return LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS;
+
+  const activeBatch = getRuntimeHairstyleBlueprintExpansionBatch();
+  if (!activeBatch) return LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS;
+
+  const maximumBatchIndex = HAIRSTYLE_BLUEPRINT_EXPANSION_BATCH_ORDER.indexOf(activeBatch);
+  return [
+    ...LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS,
+    ...EXPANSION_KOREAN_HAIRSTYLE_BLUEPRINTS.filter((blueprint) => {
+      if (!blueprint.introducedIn || blueprint.introducedIn === "legacy-32") return false;
+      return HAIRSTYLE_BLUEPRINT_EXPANSION_BATCH_ORDER.indexOf(blueprint.introducedIn) <= maximumBatchIndex;
+    }),
+  ];
+}
+
+export function getRuntimeHairstyleCatalogPromptTemplateVersion() {
   return isHairstyleBlueprintV4Enabled()
-    ? KOREAN_HAIRSTYLE_BLUEPRINTS
-    : LEGACY_KOREAN_HAIRSTYLE_BLUEPRINTS;
+    ? HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION
+    : LEGACY_HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION;
 }
 
 function inferLegacyTexture(texture: string): HairTextureProfile {
@@ -954,7 +993,7 @@ export function buildCatalogRowsForCycle(
       freshnessScore: clampScore(signal?.freshnessScore ?? item.baselineFreshnessScore, 20, 99),
       promptTemplate: item.promptTemplate,
       negativePrompt: item.negativePrompt,
-      promptTemplateVersion: HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION,
+      promptTemplateVersion: getRuntimeHairstyleCatalogPromptTemplateVersion(),
       styleTargets: item.styleTargets ?? resolveStyleTargets(item.slug),
       styleFamily: item.styleFamily ?? item.slug,
       variantKey: item.variantKey ?? `legacy-${item.slug}`,

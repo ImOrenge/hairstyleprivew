@@ -1,10 +1,10 @@
 import "server-only";
 
 import {
-  createGenerationWorkflowInstance,
-  getGenerationWorkflowBinding,
-  type GenerationWorkflowBinding,
-} from "./generation-workflow";
+  createHairPreviewWorkflowInstance as createGenerationWorkflowInstance,
+  getHairPreviewWorkflowBinding as getGenerationWorkflowBinding,
+} from "./capabilities/hair-preview-service";
+import type { GenerationWorkflowBinding } from "./generation-workflow";
 import {
   isLocalGenerationWorkflowAvailable,
   scheduleLocalGenerationWorkflow,

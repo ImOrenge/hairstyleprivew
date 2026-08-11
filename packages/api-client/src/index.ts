@@ -50,6 +50,8 @@ import type {
   SalonConnectionConsentAcceptance,
   ConsultationPatch,
   ConsultationSnapshot,
+  PhotoFaceDetectionEvidence,
+  PhotoSnapshot,
   ConsultationKindV2,
   ConsultationSessionV2,
   EntitlementDecisionV2,
@@ -62,6 +64,8 @@ import type {
   NormalizedPointV2,
   FashionPreviewCandidateV2,
   FashionPreviewSetV2,
+  FashionPreviewBatch,
+  FashionDirectionSnapshot,
   StyleSelectionSnapshotV2,
 } from "@hairfit/shared";
 
@@ -445,8 +449,11 @@ export class HairfitApiClient {
     return payload as T;
   }
 
-  createConsultation() {
-    return this.request<{ snapshot: ConsultationSnapshot }>("/api/consultations", { method: "POST" });
+  createConsultation(idempotencyKey?: string) {
+    return this.request<{ snapshot: ConsultationSnapshot }>("/api/consultations", {
+      method: "POST",
+      ...(idempotencyKey ? { headers: { "Idempotency-Key": idempotencyKey } } : {}),
+    });
   }
 
   getLatestConsultation() {
@@ -851,8 +858,11 @@ export class HairfitApiClient {
     consultationId: string;
     draftId: string;
     expectedVersion: number;
+    photo: PhotoSnapshot;
+    faceEvidence?: PhotoFaceDetectionEvidence;
   }) {
     return this.request<{
+      accepted?: boolean;
       requiresRetry: boolean;
       evidenceId?: string;
       quality?: Array<{ id: string; status: string; message: string }>;
@@ -864,6 +874,8 @@ export class HairfitApiClient {
         body: JSON.stringify({
           draftId: input.draftId,
           expectedVersion: input.expectedVersion,
+          photo: input.photo,
+          faceEvidence: input.faceEvidence ?? { status: "unsupported", count: null, box: null },
         }),
       },
     );
@@ -1050,6 +1062,48 @@ export class HairfitApiClient {
       `/api/v2/consultations/${encodeURIComponent(consultationId)}/fashion-previews`,
       { method: "GET" },
     );
+  }
+
+  getV2FashionBatch(consultationId: string) {
+    return this.request<{
+      batch: FashionPreviewBatch | null;
+      stylingSessionIds: string[];
+    }>(`/api/v2/consultations/${encodeURIComponent(consultationId)}/fashion-batch`);
+  }
+
+  prepareV2FashionBatch(input: {
+    consultationId: string;
+    idempotencyKey: string;
+    direction: FashionDirectionSnapshot;
+  }) {
+    return this.request<{
+      batch: FashionPreviewBatch;
+      stylingSessionIds: string[];
+    }>(`/api/v2/consultations/${encodeURIComponent(input.consultationId)}/fashion-batch`, {
+      method: "POST",
+      headers: { "Idempotency-Key": input.idempotencyKey },
+      body: JSON.stringify({ direction: input.direction }),
+    });
+  }
+
+  reconcileV2FashionBatch(consultationId: string, batchId: string) {
+    return this.request<{
+      batch: FashionPreviewBatch;
+      stylingSessionIds: string[];
+    }>(`/api/v2/consultations/${encodeURIComponent(consultationId)}/fashion-batch`, {
+      method: "PATCH",
+      body: JSON.stringify({ action: "reconcile", batchId }),
+    });
+  }
+
+  dispatchV2FashionBatch(consultationId: string, batchId: string) {
+    return this.request<{
+      batch: FashionPreviewBatch;
+      stylingSessionIds: string[];
+    }>(`/api/v2/consultations/${encodeURIComponent(consultationId)}/fashion-batch`, {
+      method: "PATCH",
+      body: JSON.stringify({ action: "dispatch", batchId }),
+    });
   }
 
   startGeneration(generationId: string) {

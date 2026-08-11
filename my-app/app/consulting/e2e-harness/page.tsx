@@ -1,13 +1,15 @@
 import { notFound } from "next/navigation";
 import { ConsultationStagePage } from "../../../components/consulting/ConsultationStagePage";
-import { CONSULTATION_STAGE_SLUGS, isConsultationStage } from "../../../lib/consulting/contracts";
+import { CONSULTATION_STAGE_SLUGS, isConsultationStage, isConsultationTaskKind } from "../../../lib/consulting/contracts";
 import { createConsultationSnapshot } from "../../../lib/consulting/defaults";
+import { deriveConsultationJourney } from "../../../lib/consulting/contracts";
 
 export const metadata = { title: "Consulting Scene E2E Harness", robots: { index: false, follow: false } };
-interface Props { searchParams: Promise<{ stage?: string }> }
+interface Props { searchParams: Promise<{ stage?: string; transition?: string; liveness?: string; transitionState?: string; polling?: string; interview?: string }> }
 export default async function ConsultingSceneHarnessPage({ searchParams }: Props) {
   if (process.env.E2E_UI_HARNESS_ENABLED !== "true") notFound();
-  const requested = (await searchParams).stage || "discovery";
+  const query = await searchParams;
+  const requested = query.stage || "discovery";
   if (!isConsultationStage(requested)) notFound();
   const snapshot = createConsultationSnapshot({ sessionId: "00000000-0000-4000-8000-000000000011", userId: "e2e-consulting", now: "2026-08-08T00:00:00.000Z" });
   snapshot.currentStage = "fashion";
@@ -58,5 +60,33 @@ export default async function ConsultingSceneHarnessPage({ searchParams }: Props
     tradeoff: "관리 조건과 함께 확인",
   }));
   snapshot.previews = snapshot.previews.map((preview, index) => index < 2 ? { ...preview, status: "accepted" } : preview);
-  return <ConsultationStagePage initialSnapshot={snapshot} stage={requested} />;
+  if (query.liveness === "1" && query.transition === "analysis" && ["running", "failed"].includes(query.transitionState ?? "")) {
+    snapshot.currentStage = "scan";
+    snapshot.lifecycleState = "photo_validated";
+    snapshot.evidence = { pipelineStatus: "idle", reviewedAt: null, items: [] };
+    snapshot.strategyRecommendations = [];
+    snapshot.analysisRun = {
+      id: "00000000-0000-4000-8000-000000000014",
+      state: query.transitionState === "failed" ? "failed" : "landmarks",
+      pipeline: { preflight: "complete", landmarks: query.transitionState === "failed" ? "failed" : "running", analyzing: "pending" },
+      errorCode: query.transitionState === "failed" ? "ANALYSIS_FAILED" : null,
+      errorMessage: query.transitionState === "failed" ? "사진 분석 연결이 중단되었습니다." : null,
+      attemptCount: 1,
+      startedAt: "2026-08-09T00:00:00.000Z",
+      completedAt: null,
+      updatedAt: "2026-08-09T00:00:01.000Z",
+    };
+  }
+  if (query.liveness === "1" && query.transition === "preview-generation" && query.transitionState === "partial") {
+    snapshot.currentStage = "previews";
+    snapshot.lifecycleState = "preview_board_queued";
+    snapshot.strategy = { ...snapshot.strategy, confirmedAt: "2026-08-09T00:00:00.000Z" };
+    snapshot.previews = snapshot.previews.map((preview, index) => index === 0 ? {
+      ...preview,
+      status: "accepted",
+      imageUrl: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='300'%3E%3Crect width='240' height='300' fill='%23d8d2ca'/%3E%3C/svg%3E",
+    } : { ...preview, status: "generating" });
+  }
+  snapshot.journey = deriveConsultationJourney(snapshot, snapshot.lifecycleState);
+  return <ConsultationStagePage initialSnapshot={snapshot} stage={requested} initialTransitionKind={isConsultationTaskKind(query.transition) ? query.transition : null} livenessEnabled={query.liveness === "1"} pollingEnabled={query.polling === "1"} interviewEnabled={query.interview === "1"} />;
 }

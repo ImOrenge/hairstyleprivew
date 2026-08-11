@@ -1,0 +1,106 @@
+id: web.consulting.interview
+name: ConsultationInterview
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/consulting/interview/ConsultationInterview.tsx
+related_source:
+  - my-app/components/consulting/interview/DiscoveryInterview.tsx
+  - my-app/components/consulting/interview/FashionDirectionInterview.tsx
+  - my-app/lib/consulting/interview-observability-client.ts
+owner: consulting-feature
+
+public_api:
+  exports:
+    - ConsultationInterviewShell
+    - InterviewQuestionRenderer
+    - InterviewCoverageIndicator
+    - InterviewSummaryDrawer
+    - InterviewSaveStatus
+  props:
+    - domain-independent-question-schema
+    - coverage-without-step-index
+    - externally-owned-save-state
+    - externally-owned-summary-state
+    - exit-request
+  events:
+    - answer-change
+    - answer-commit
+    - summary-open-change
+    - exit-request
+    - privacy-safe-opened-resumed-topic-confirmed-confirmed-exited-save-failed
+
+boundaries:
+  feature:
+    owns:
+      - standalone-interview-layout
+      - question-focus
+      - radio-checkbox-text-range-compound-rendering
+      - coverage-presentation
+      - summary-dialog
+      - save-state-feedback
+      - allow-listed-interview-observability
+  forbidden:
+    - consultation-domain-dto-import
+    - arbitrary-observability-payload
+    - lifecycle-navigation
+    - current-step-state
+    - question-index-locking
+    - paid-generation-confirmation
+
+styling:
+  strategy: scoped-global-feature-css-with-existing-app-tokens
+  global_css:
+    file: my-app/app/globals.css
+    namespaces:
+      - f-consulting-interview
+  tokens:
+    - app-bg
+    - app-surface
+    - app-surface-muted
+    - app-border
+    - app-border-strong
+    - app-text
+    - app-muted
+    - app-accent
+    - app-danger
+
+state:
+  parent_owned:
+    - question
+    - answer
+    - coverage
+    - save-state
+    - summary-open
+  component_owned:
+    - question-heading-ref
+    - one-entry-observability-signal
+
+a11y_contract:
+  question_heading: focus-on-question-id-change
+  single_choice: native-radio-group
+  multiple_choice: native-checkboxes
+  summary: focus-trapped-dialog-with-return-focus
+  save_failure: polite-or-alert-status
+  reduced_motion: no-question-transition-animation
+  zoom_and_mobile: single-column-at-390px-and-200-percent-text
+
+test_surface:
+  contract: my-app/lib/consulting/consultation-contract.test.ts
+  component: my-app/components/consulting/interview/ConsultationInterview.test.tsx
+  browser: tests/web-e2e/consulting-interview.spec.ts
+  visual: 390px-768px-desktop-light-dark-reduced-motion
+
+change_policy:
+  current_gate: behavioral-compatible-style-contract
+  compatible_change_requires:
+    - passport-update
+    - web-typecheck
+    - consulting-contract-test
+    - component-registry-validation
+  behavioral_change_requires:
+    - keyboard-focus-summary-exit-regression
+
+promotion_blockers:
+  - authenticated-interview-browser-regression-not-yet-run
+  - durable-server-fashion-batch-dispatch-not-yet-complete

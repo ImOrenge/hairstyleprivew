@@ -1681,6 +1681,117 @@ textarea::placeholder {
   color: var(--app-accent);
 }
 
+.f-consulting-input-control {
+  border-bottom: 1px solid var(--app-border);
+  padding-bottom: 1.25rem;
+}
+
+.f-consulting-input-control:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.f-consulting-scroll-pane:focus-visible {
+  outline: 2px solid var(--app-focus-ring);
+  outline-offset: -2px;
+}
+
+.f-consulting-interview {
+  display: grid;
+  gap: 1.25rem;
+  min-height: 100%;
+  border-block: 1px solid var(--app-border);
+  background: var(--app-bg);
+  padding: 1.25rem 0 6rem;
+}
+
+.f-consulting-interview__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.f-consulting-interview__coverage,
+.f-consulting-interview__save-status,
+.f-consulting-interview__question,
+.f-consulting-interview__footer {
+  width: min(100%, 48rem);
+  margin-inline: auto;
+}
+
+.f-consulting-interview__question {
+  min-height: 20rem;
+  border-top: 1px solid var(--app-border);
+  padding-top: 2rem;
+  animation: f-consulting-interview-enter 180ms ease-out both;
+}
+
+.f-consulting-interview__choices {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.f-consulting-interview__choice {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+  min-height: 3.25rem;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+}
+
+.f-consulting-interview__choice:has(input:checked) {
+  border-color: var(--app-border-strong);
+  background: var(--app-surface-muted);
+}
+
+.f-consulting-interview__choice input {
+  margin-top: 0.2rem;
+  accent-color: var(--app-accent-strong);
+}
+
+.f-consulting-interview__choice small {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--app-muted);
+  font-size: 0.75rem;
+}
+
+.f-consulting-interview__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  border-top: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-bg) 92%, transparent);
+  padding-block: 0.75rem max(0.75rem, env(safe-area-inset-bottom));
+  backdrop-filter: blur(12px);
+}
+
+.f-consulting-interview[data-save-state="conflict"] .f-consulting-interview__save-status,
+.f-consulting-interview[data-save-state="offline"] .f-consulting-interview__save-status {
+  color: var(--app-danger);
+}
+
+@keyframes f-consulting-interview-enter {
+  from { opacity: 0; transform: translateY(0.35rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 390px) {
+  .f-consulting-interview { padding-bottom: 5rem; }
+  .f-consulting-interview__header { display: grid; }
+  .f-consulting-interview__question { min-height: 16rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .f-consulting-interview__question { animation: none; }
+}
+
 .app-muted,
 .hf-muted {
   color: var(--app-muted);
@@ -2244,5 +2355,465 @@ textarea::placeholder {
   .personal-color-scan-line {
     top: 50%;
     opacity: 1;
+  }
+}
+
+/* HairFit AI consultant transient activity canvas. */
+.f-consultant-transition {
+  display: grid;
+  min-height: 32rem;
+  gap: 1.25rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-block: 1px solid var(--app-border);
+  padding: 1.25rem 0 7rem;
+  scrollbar-gutter: stable;
+}
+
+.f-consultant-transition__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.f-consultant-transition__header h1 {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-weight: 900;
+  letter-spacing: -0.045em;
+}
+
+.f-consultant-transition__header p:last-child {
+  margin-top: 0.55rem;
+  max-width: 50rem;
+  color: var(--app-muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.f-consultant-transition__body {
+  display: grid;
+  min-height: 24rem;
+  grid-template-columns: minmax(0, 1.05fr) minmax(18rem, 0.95fr);
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow);
+}
+
+.f-consultant-kinetic {
+  position: relative;
+  display: grid;
+  min-height: 24rem;
+  place-items: center;
+  overflow: hidden;
+  contain: layout paint style;
+  border-right: 1px solid var(--app-border);
+  background:
+    linear-gradient(135deg, transparent 0 48%, var(--app-component-pattern-line) 48% 49%, transparent 49% 100%),
+    var(--app-inverse);
+  background-size: 42px 42px;
+  color: var(--app-inverse-text);
+}
+
+.f-consultant-kinetic__motion {
+  display: grid;
+  width: 100%;
+  place-items: center;
+  animation: consultant-kinetic-breathe 3.2s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
+.f-consultant-kinetic[data-kind="analysis"] .f-consultant-kinetic__motion {
+  animation-name: consultant-kinetic-focus;
+}
+
+.f-consultant-kinetic[data-kind="preview-generation"] .f-consultant-kinetic__motion,
+.f-consultant-kinetic[data-kind="fashion-generation"] .f-consultant-kinetic__motion {
+  animation-name: consultant-kinetic-grid;
+}
+
+.f-consultant-kinetic[data-kind="brief"] .f-consultant-kinetic__motion {
+  animation-name: consultant-kinetic-document;
+}
+
+.f-consultant-kinetic[data-kind="aftercare-preparation"] .f-consultant-kinetic__motion {
+  animation-name: consultant-kinetic-timeline;
+}
+
+.f-consultant-kinetic__canvas {
+  width: min(88%, 31rem);
+  height: auto;
+  max-height: 22rem;
+  color: var(--app-accent);
+  opacity: 0.94;
+  transition: opacity 240ms ease;
+}
+
+.f-consultant-kinetic__canvas path,
+.f-consultant-kinetic__canvas circle,
+.f-consultant-kinetic__canvas ellipse,
+.f-consultant-kinetic__canvas rect {
+  fill: transparent;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+.f-consultant-kinetic[data-kind="complete"] .f-consultant-kinetic__motion {
+  animation: none;
+  transform: scale(0.96);
+  opacity: 1;
+}
+
+.f-consultant-kinetic[data-kind="failed"] .f-consultant-kinetic__motion,
+.f-consultant-kinetic[data-partial="true"] .f-consultant-kinetic__motion {
+  opacity: 0.35;
+}
+
+.f-consultant-kinetic[data-paused="true"] *,
+.f-consultant-kinetic[data-kind="failed"] * {
+  animation-play-state: paused;
+}
+
+.f-consultant-kinetic__fidget {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--app-inverse-text) 35%, transparent);
+  padding: 0.55rem 0.75rem;
+  color: var(--app-inverse-text);
+  background: color-mix(in srgb, var(--app-inverse) 82%, transparent);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.f-consultant-kinetic__fidget > span {
+  width: 0.65rem;
+  height: 0.65rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+}
+
+.f-consultant-kinetic__fidget[data-pulse="0"] > span {
+  animation: consultant-fidget-pulse-a 560ms ease-out;
+}
+
+.f-consultant-kinetic__fidget[data-pulse="1"] > span {
+  animation: consultant-fidget-pulse-b 560ms ease-out;
+}
+
+.f-consultant-activity {
+  display: grid;
+  align-content: center;
+  gap: 1.25rem;
+  min-width: 0;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+}
+
+.f-consultant-activity__heading,
+.f-consultant-activity__progress-copy {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.f-consultant-activity__heading h2,
+.f-consultant-activity__partial h2,
+.f-consultant-activity__recovery h2 {
+  margin-top: 0.35rem;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.f-consultant-activity__heading > span {
+  border: 1px solid var(--app-border);
+  padding: 0.35rem 0.55rem;
+  color: var(--app-muted);
+  font-size: 0.65rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.f-consultant-activity__phases {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0;
+  list-style: none;
+}
+
+.f-consultant-activity__phases li {
+  display: grid;
+  grid-template-columns: 0.75rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--app-muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.f-consultant-activity__phases li > span {
+  width: 0.55rem;
+  height: 0.55rem;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+
+.f-consultant-activity__phases li[data-state="active"] {
+  color: var(--app-text);
+}
+
+.f-consultant-activity__phases li[data-state="active"] > span {
+  border-color: var(--app-accent);
+  background: var(--app-accent);
+  animation: consultant-activity-pulse 1.4s ease-in-out infinite;
+}
+
+.f-consultant-activity__phases li[data-state="complete"] > span {
+  border-color: var(--app-success);
+  background: var(--app-success);
+}
+
+.f-consultant-activity__phases li[data-state="failed"] > span {
+  border-color: var(--app-danger);
+  background: var(--app-danger);
+}
+
+.f-consultant-activity__progress {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.f-consultant-activity__progress-copy {
+  color: var(--app-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.f-consultant-activity__progress progress {
+  width: 100%;
+  height: 0.35rem;
+  border: 0;
+  background: var(--app-surface-muted);
+  accent-color: var(--app-accent);
+}
+
+.f-consultant-activity__indeterminate {
+  position: relative;
+  height: 0.35rem;
+  overflow: hidden;
+  background: var(--app-surface-muted);
+}
+
+.f-consultant-activity__indeterminate::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 28%;
+  background: var(--app-accent);
+  animation: consultant-activity-slide 1.8s ease-in-out infinite;
+}
+
+.f-consultant-activity__smalltalk,
+.f-consultant-activity__completion,
+.f-consultant-activity__partial,
+.f-consultant-activity__recovery {
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 1rem 1.25rem;
+}
+
+.f-consultant-activity__smalltalk > p:last-child {
+  margin-top: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.f-consultant-activity__completion {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-color: var(--app-success);
+  background: var(--app-success-bg);
+}
+
+.f-consultant-activity__completion > span {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--app-success);
+  color: var(--app-success);
+  font-weight: 900;
+}
+
+.f-consultant-activity__completion strong {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.f-consultant-activity__completion p:last-child,
+.f-consultant-activity__recovery p {
+  margin-top: 0.25rem;
+  color: var(--app-muted);
+  font-size: 0.78rem;
+}
+
+.f-consultant-activity__partial {
+  display: grid;
+  min-height: 12rem;
+  gap: 1rem;
+  contain: layout style;
+}
+
+.f-consultant-activity__result-grid,
+.f-consultant-activity__slot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.f-consultant-activity__result-grid article,
+.f-consultant-activity__slot-grid > div,
+.f-consultant-activity__partial dl > div,
+.f-consultant-activity__partial li {
+  border: 1px solid var(--app-border);
+  padding: 0.75rem;
+  background: var(--app-surface-raised);
+  font-size: 0.75rem;
+}
+
+.f-consultant-activity__result-grid img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+}
+
+.f-consultant-activity__result-grid strong,
+.f-consultant-activity__slot-grid span,
+.f-consultant-activity__partial dt,
+.f-consultant-activity__partial dd {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+.f-consultant-activity__recovery {
+  display: grid;
+  gap: 1rem;
+  border-color: var(--app-danger);
+  background: var(--app-danger-bg);
+}
+
+.f-consultant-activity__recovery > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.8rem;
+  font-weight: 900;
+  text-decoration: underline;
+}
+
+@keyframes consultant-kinetic-breathe {
+  0%, 100% { transform: scale(0.96); opacity: 0.72; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes consultant-kinetic-focus {
+  0%, 100% { transform: scale(0.97); opacity: 0.68; }
+  50% { transform: scale(1.01); opacity: 1; }
+}
+
+@keyframes consultant-kinetic-grid {
+  0%, 100% { transform: translate3d(-0.35rem, 0, 0); opacity: 0.72; }
+  50% { transform: translate3d(0.35rem, 0, 0); opacity: 1; }
+}
+
+@keyframes consultant-kinetic-document {
+  0%, 100% { transform: translate3d(0, -0.3rem, 0); opacity: 0.72; }
+  50% { transform: translate3d(0, 0.3rem, 0); opacity: 1; }
+}
+
+@keyframes consultant-kinetic-timeline {
+  0%, 100% { transform: scaleX(0.97); opacity: 0.72; }
+  50% { transform: scaleX(1); opacity: 1; }
+}
+
+@keyframes consultant-fidget-pulse-a {
+  from { transform: scale(0.7); opacity: 0.4; }
+  to { transform: scale(1.8); opacity: 1; }
+}
+
+@keyframes consultant-fidget-pulse-b {
+  from { transform: scale(0.75); opacity: 0.45; }
+  to { transform: scale(1.85); opacity: 1; }
+}
+
+@keyframes consultant-activity-pulse {
+  0%, 100% { transform: scale(0.82); opacity: 0.55; }
+  50% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes consultant-activity-slide {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(360%); }
+}
+
+@media (max-width: 767px) {
+  .f-consultant-transition__header,
+  .f-consultant-activity__progress-copy {
+    display: grid;
+  }
+
+  .f-consultant-transition__body {
+    grid-template-columns: 1fr;
+  }
+
+  .f-consultant-kinetic {
+    min-height: 17rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--app-border);
+  }
+
+  .f-consultant-kinetic__canvas circle:nth-of-type(n + 6),
+  .f-consultant-kinetic__canvas rect:nth-of-type(n + 7) {
+    display: none;
+  }
+
+  .f-consultant-kinetic__fidget {
+    right: 0.75rem;
+    bottom: 0.75rem;
+    max-width: calc(100% - 1.5rem);
+  }
+
+  .f-consultant-activity__result-grid,
+  .f-consultant-activity__slot-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .f-consultant-kinetic__motion,
+  .f-consultant-kinetic__canvas *,
+  .f-consultant-activity__phases li > span,
+  .f-consultant-activity__indeterminate::after {
+    animation: none;
+    transition: none;
+  }
+
+  .f-consultant-kinetic__canvas path,
+  .f-consultant-kinetic__canvas ellipse {
+    stroke-dashoffset: 0;
+  }
+
+  .f-consultant-kinetic__fidget {
+    display: none;
   }
 }

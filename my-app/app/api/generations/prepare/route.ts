@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { generateDesignerBriefs } from "../../../../lib/designer-brief-generator";
+import { runHairBlueprintCapability } from "../../../../lib/capabilities/hair-blueprint-service";
+import { runSalonBriefCapability } from "../../../../lib/capabilities/salon-brief-service";
 import {
   isHairProfilePersonalizationEnabled,
   normalizeCurrentHairProfile,
@@ -9,7 +10,6 @@ import { isAuthorizedGenerationWorkflowCallback } from "../../../../lib/generati
 import { isMemberStyleTarget } from "../../../../lib/onboarding";
 import { getCreditsPerStyle } from "../../../../lib/pricing-plan";
 import { createPromptArtifactToken } from "../../../../lib/prompt-artifact-token";
-import { generateRecommendationSet } from "../../../../lib/recommendation-generator";
 import type {
   GeneratedVariant,
   RecommendationSet,
@@ -189,11 +189,6 @@ export async function POST(request: Request) {
     const hairProfile = isHairProfilePersonalizationEnabled()
       ? normalizeCurrentHairProfile(claim.options.hairProfile)
       : null;
-    const generated = await generateRecommendationSet(
-      referenceImageDataUrl,
-      styleTargetValue,
-      hairProfile,
-    );
     const generationLink = isHairfitV2Enabled("PROMPT_POLICY_V2_ENABLED")
       ? await supabase
           .from("generations")
@@ -208,6 +203,19 @@ export async function POST(request: Request) {
       typeof (generationLink.data as Record<string, unknown>).consultation_id === "string"
         ? String((generationLink.data as Record<string, unknown>).consultation_id)
         : null;
+    const blueprint = await runHairBlueprintCapability({
+      userId: consultationId ? claim.userId : undefined,
+      consultationId: consultationId || generationId,
+      idempotencyKey: `${generationId}:hair-blueprint`,
+      referenceImageDataUrl,
+      sourceImageFingerprint: fingerprintPromptSourceImage(referenceImageDataUrl),
+      styleTarget: styleTargetValue,
+      hairProfile,
+    });
+    if (blueprint.state !== "completed" || !blueprint.output) {
+      throw new Error(blueprint.failure?.message || "헤어 블루프린트 준비가 진행 중입니다.");
+    }
+    const generated = blueprint.output;
     const promptPlans = consultationId
       ? await buildGenerationPromptPlansV2({
           userId: claim.userId,
@@ -233,10 +241,16 @@ export async function POST(request: Request) {
           plans: promptPlans,
         })
       : null;
-    const designerBriefs = await generateDesignerBriefs({
-      analysis: generated.analysis,
-      candidates: generated.recommendations,
+    const briefCapability = await runSalonBriefCapability({
+      userId: consultationId ? claim.userId : undefined,
+      consultationId: consultationId || generationId,
+      idempotencyKey: `${generationId}:designer-briefs:${blueprint.provenance.outputFingerprint}`,
+      briefInput: { analysis: generated.analysis, candidates: generated.recommendations },
     });
+    if (briefCapability.state !== "completed" || !briefCapability.output) {
+      throw new Error(briefCapability.failure?.message || "살롱 브리프 준비가 진행 중입니다.");
+    }
+    const designerBriefs = briefCapability.output;
     // New durable acceptances lock their price in the reservation snapshot.
     // The environment value remains only for pre-migration generations.
     const creditsRequired = readReservedGenerationCredits(claim.options) ?? getCreditsPerStyle();

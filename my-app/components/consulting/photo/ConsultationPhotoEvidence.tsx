@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { effectiveEvidencePointV2, type AnalysisEvidenceV2, type NormalizedPointV2 } from "@hairfit/shared/v2";
 import { Button } from "../../ui/Button";
 import { SurfaceCard } from "../../ui/Surface";
@@ -31,7 +31,7 @@ export function ConsultationPhotoEvidence({
   const [url, setUrl] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<AnalysisEvidenceV2 | null>(null);
   const [message, setMessage] = useState(enabled
-    ? "사진과 분석 좌표를 불러오려면 주소를 발급해 주세요."
+    ? "사진과 분석 좌표를 자동으로 불러오고 있습니다."
     : "사진 분석 사용 범위가 선택되지 않았습니다.");
   const [loading, setLoading] = useState(false);
   const [correctionSaving, setCorrectionSaving] = useState(false);
@@ -41,12 +41,13 @@ export function ConsultationPhotoEvidence({
     "hairline",
     "measurement",
   ]);
+  const automaticRefreshes = useRef(0);
 
   const toggleLayer = (layer: FaceEvidenceLayer) => setVisibleLayers((current) => current.includes(layer)
     ? current.filter((item) => item !== layer)
     : [...current, layer]);
 
-  const load = async () => {
+  const load = useCallback(async (automatic = false) => {
     if (!enabled) {
       setMessage("사진 분석 사용 범위가 선택되지 않았습니다.");
       return;
@@ -63,6 +64,7 @@ export function ConsultationPhotoEvidence({
         throw new Error(photoData.error || "사진을 불러오지 못했습니다.");
       }
       setUrl(photoData.primaryUrl);
+      if (!automatic) automaticRefreshes.current = 0;
       const nextEvidence = evidenceResponse.ok && evidenceData.overlayEnabled !== false ? evidenceData.evidence ?? null : null;
       const geometryCount = (nextEvidence?.landmarks.length ?? 0)
         + (nextEvidence?.contours.length ?? 0)
@@ -86,6 +88,25 @@ export function ConsultationPhotoEvidence({
     } finally {
       setLoading(false);
     }
+  }, [enabled, onEvidenceLoad, sessionId]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const timer = window.setTimeout(() => void load(true), 0);
+    return () => window.clearTimeout(timer);
+  }, [enabled, load]);
+
+  const recoverExpiredAsset = () => {
+    setUrl(null);
+    setEvidence(null);
+    onEvidenceLoad?.(null);
+    if (automaticRefreshes.current < 1) {
+      automaticRefreshes.current += 1;
+      setMessage("사진 주소가 만료되어 자동으로 다시 불러오고 있습니다.");
+      void load(true);
+      return;
+    }
+    setMessage("사진 주소 자동 갱신에 실패했습니다. 수동으로 다시 시도해 주세요.");
   };
 
   const saveLandmarkCorrection = async (adjustedPoint: NormalizedPointV2) => {
@@ -140,12 +161,7 @@ export function ConsultationPhotoEvidence({
         className="h-full w-full object-cover"
         decoding="async"
         loading="lazy"
-        onError={() => {
-          setUrl(null);
-          setEvidence(null);
-          onEvidenceLoad?.(null);
-          setMessage("사진 주소가 만료되었습니다. 다시 발급해 주세요.");
-        }}
+        onError={recoverExpiredAsset}
       />
       {evidence ? <FaceEvidenceOverlay
         evidence={evidence}
@@ -202,7 +218,7 @@ export function ConsultationPhotoEvidence({
       </fieldset> : null}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-xs text-[var(--app-muted)]" aria-live="polite">{message}</p>
-        <Button type="button" variant="ghost" loading={loading} onClick={() => void load()}>signed URL 갱신</Button>
+        <Button type="button" variant="ghost" loading={loading} onClick={() => void load(false)}>사진 다시 불러오기</Button>
       </div>
     </div>
   </SurfaceCard>;

@@ -1,5 +1,5 @@
 import { createPendingPhotoDiagnostics } from "@hairfit/shared";
-import type { ConsultationPreview, ConsultationSnapshot } from "./contracts";
+import { deriveConsultationJourney, type ConsultationPreview, type ConsultationSnapshot } from "./contracts";
 
 export function createPreviewSlots(): ConsultationPreview[] {
   const axes = ["BALANCE", "IMAGE", "LIFESTYLE"] as const;
@@ -17,13 +17,16 @@ export function createPreviewSlots(): ConsultationPreview[] {
 
 export function createConsultationSnapshot(input: { sessionId: string; userId: string; now?: string }): ConsultationSnapshot {
   const now = input.now ?? new Date().toISOString();
-  return {
+  const snapshot = {
     schemaVersion: 1,
     sessionId: input.sessionId,
     userId: input.userId,
     version: 1,
+    lifecycleState: "draft" as const,
     currentStage: "discovery",
     completedStages: [],
+    analysisRun: null,
+    fashionBatch: null,
     discovery: {
       purpose: "",
       goals: [],
@@ -46,7 +49,7 @@ export function createConsultationSnapshot(input: { sessionId: string; userId: s
     },
     photo: {
       generationId: null, draftId: null, clientRequestId: null, uploadedAt: null, expiresAt: null,
-      primaryUrl: null, colorAssistUrl: null,
+      primaryUrl: null, colorAssistUrl: null, colorAssistDraftId: null, colorAssistUploadedAt: null, colorAssistExpiresAt: null, crop: null,
       quality: createPendingPhotoDiagnostics(),
       usageScopes: ["analysis", "preview"], retentionDays: 7, capturedAt: null,
     },
@@ -59,7 +62,7 @@ export function createConsultationSnapshot(input: { sessionId: string; userId: s
     shortlist: { previewIds: [], updatedAt: null },
     finalist: { finalistPreviewId: null, backupPreviewId: null, decidedAt: null },
     selectedStyleHistory: [],
-    salonBrief: { version: 1, mode: "customer", summary: "", cut: "", volumeTexture: "", styling: "", caution: [], shareExpiryHours: 24, shareRevokedAt: null, rawFaceIncluded: false, createdAt: null },
+    salonBrief: { version: 1, mode: "customer", summary: "", cut: "", volumeTexture: "", styling: "", caution: [], shareExpiryHours: 24, shareRevokedAt: null, rawFaceIncluded: false, designerFeedback: null, createdAt: null },
     actualService: { services: [], serviceDate: null, designerNotes: "", confirmedAt: null },
     careProgram: { actualServiceId: null, programVersion: 0, today: [], checkpoints: ["D+3", "W+2", "W+6", "W+10"].map((offset) => ({ offset: offset as "D+3" | "W+2" | "W+6" | "W+10", action: "상태를 확인하고 필요한 관리만 기록해 주세요.", complete: false })), concerns: [], afterPhotoUrl: null, afterPhotoUpload: null, satisfaction: null },
     fashion: {
@@ -79,5 +82,6 @@ export function createConsultationSnapshot(input: { sessionId: string; userId: s
     },
     createdAt: now,
     updatedAt: now,
-  };
+  } satisfies Omit<ConsultationSnapshot, "journey">;
+  return { ...snapshot, journey: deriveConsultationJourney(snapshot, snapshot.lifecycleState) };
 }

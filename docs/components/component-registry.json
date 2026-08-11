@@ -263,6 +263,26 @@
       }
     },
     {
+      "id": "native.consulting.screen",
+      "name": "MobileConsultingScreen",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/app/consulting.tsx",
+      "related_source": [
+        "apps/hairfit-app/components/consulting/NativeFaceEvidenceOverlay.tsx",
+        "apps/hairfit-app/lib/v2-consultation-resume.ts",
+        "packages/api-client/src/index.ts",
+        "packages/shared/src/consulting/contract.ts"
+      ],
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/native-consulting-screen.yaml",
+      "observed_usage": {
+        "route_files": 1,
+        "scope": "HairFit Expo AI consultant route"
+      }
+    },
+    {
       "id": "native.mypage.screen",
       "name": "MyPageScreen",
       "platform": "native",
@@ -621,11 +641,35 @@
       }
     },
     {
+      "id": "web.consulting.transition-screen",
+      "name": "ConsultationTransitionScreen",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/consulting/transition/ConsultationTransitionScreen.tsx",
+      "related_source": [
+        "my-app/components/consulting/transition/ConsultationTaskRuntime.tsx",
+        "my-app/components/consulting/transition/ConsultantActivityRail.tsx",
+        "my-app/components/consulting/transition/ConsultantSmallTalkCarousel.tsx",
+        "my-app/components/consulting/transition/ConsultantKineticCanvas.tsx",
+        "my-app/components/consulting/transition/PartialResultReveal.tsx",
+        "my-app/components/consulting/transition/CompletionMoment.tsx",
+        "my-app/components/consulting/transition/RecoverableTaskNotice.tsx"
+      ],
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/web-consulting-transition-screen.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "harness_consumer_files": 1,
+        "scope": "HairFit AI consulting transient server-task presentation"
+      }
+    },
+    {
       "id": "web.consulting.scene",
       "name": "ConsultationScene",
       "platform": "web",
       "kind": "layout",
-      "status": "experimental",
+      "status": "candidate",
       "source": "my-app/components/consulting/scene/ConsultationScene.tsx",
       "related_source": [
         "my-app/components/consulting/workbenches/shared.tsx"
@@ -635,6 +679,25 @@
       "observed_usage": {
         "consumer_files": 11,
         "scope": "11-stage HairFit AI consulting workbenches with semantic split canvas"
+      }
+    },
+    {
+      "id": "web.consulting.interview",
+      "name": "ConsultationInterview",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/consulting/interview/ConsultationInterview.tsx",
+      "related_source": [
+        "my-app/components/consulting/interview/DiscoveryInterview.tsx",
+        "my-app/components/consulting/interview/FashionDirectionInterview.tsx",
+        "my-app/lib/consulting/interview-observability-client.ts"
+      ],
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/web-consulting-interview.yaml",
+      "observed_usage": {
+        "consumer_files": 2,
+        "scope": "HairFit Discovery and Fashion direction interviews with allow-listed server observation"
       }
     },
     {

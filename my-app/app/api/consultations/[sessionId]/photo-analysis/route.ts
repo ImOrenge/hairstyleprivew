@@ -1,6 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-import { analyzeConsultationPhoto } from "../../../../../lib/consulting/photo-analysis-server";
+import { after, NextResponse } from "next/server";
+import type { PhotoSnapshot } from "../../../../../lib/consulting/contracts";
+import { isConsultationAsyncAnalysisEnabled } from "../../../../../lib/consulting/feature-flag";
+import { analyzeConsultationPhoto, processConsultationPhotoAnalysis, queueConsultationPhotoAnalysis, readLatestConsultationAnalysisRun } from "../../../../../lib/consulting/photo-analysis-server";
 import { normalizePhotoFaceDetectionEvidence } from "../../../../../lib/consulting/photo-preflight-server";
 import { v2Disabled, v2Failure } from "../../../../../lib/v2/http";
 
@@ -13,19 +15,55 @@ export async function POST(request: Request, { params }: Params) {
   const disabled = v2Disabled("CONSULTATION_SESSION_V2_ENABLED", "ANALYSIS_EVIDENCE_V2_ENABLED");
   if (disabled) return disabled;
   const { sessionId } = await params;
-  const body = (await request.json().catch(() => null)) as { draftId?: unknown; expectedVersion?: unknown; faceEvidence?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as { draftId?: unknown; expectedVersion?: unknown; faceEvidence?: unknown; photo?: unknown } | null;
   if (!body || typeof body.draftId !== "string" || !UUID_PATTERN.test(body.draftId) || !Number.isInteger(body.expectedVersion)) {
     return NextResponse.json({ error: "draftId와 expectedVersion을 확인해 주세요." }, { status: 400 });
   }
   try {
+    const faceEvidence = normalizePhotoFaceDetectionEvidence(body.faceEvidence);
+    const photo = body.photo as PhotoSnapshot | undefined;
+    if (!photo || photo.draftId !== body.draftId || !Array.isArray(photo.quality)) {
+      return NextResponse.json({ error: "업로드된 사진 snapshot을 확인해 주세요." }, { status: 400 });
+    }
+    if (isConsultationAsyncAnalysisEnabled()) {
+      const queued = await queueConsultationPhotoAnalysis({
+        userId,
+        consultationId: sessionId,
+        draftId: body.draftId,
+        expectedVersion: body.expectedVersion as number,
+        faceEvidence,
+        photo,
+      });
+      after(() => processConsultationPhotoAnalysis({
+        runId: queued.run.id,
+        userId,
+        consultationId: sessionId,
+        draftId: body.draftId as string,
+        expectedVersion: queued.input.expectedVersion,
+        faceEvidence,
+      }));
+      return NextResponse.json({ accepted: true, run: queued.run, snapshot: queued.snapshot }, { status: 202 });
+    }
     const result = await analyzeConsultationPhoto({
       userId,
       consultationId: sessionId,
       draftId: body.draftId,
       expectedVersion: body.expectedVersion as number,
-      faceEvidence: normalizePhotoFaceDetectionEvidence(body.faceEvidence),
+      faceEvidence,
+      photo,
     });
     return NextResponse.json(result, { status: result.requiresRetry ? 422 : 200 });
+  } catch (error) {
+    return v2Failure(error);
+  }
+}
+
+export async function GET(_request: Request, { params }: Params) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  const { sessionId } = await params;
+  try {
+    return NextResponse.json({ run: await readLatestConsultationAnalysisRun(userId, sessionId) });
   } catch (error) {
     return v2Failure(error);
   }

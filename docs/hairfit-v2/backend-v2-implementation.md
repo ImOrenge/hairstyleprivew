@@ -3,9 +3,11 @@
 작성일: 2026-08-08
 기준: `HairFit_V2_Product_Refactor_Phase_Package_2026-08-07`의 Phase 0~9, ADR, 수용 기준, 컷오버 런북
 
+문서 상태: 초기 backend V2 구현 기록. 최신 lifecycle·대기·구 엔진 공용화 경계는 각각 `../hairfit-v2-lifecycle-workspace-completion-2026-08-09.md`, `../hairfit-v2-consulting-liveness-improvement-plan-2026-08-09.md`, `../hairfit-v2-legacy-wizard-engine-recycling-plan-2026-08-10.md`가 권위다.
+
 ## 구현 경계
 
-이 변경은 완료된 프론트엔드 리팩터링 커밋 `d51ffcb9823d8f94dd60e90f11fe90bea8aad425`에서 이어진다. 프론트엔드가 확정한 페이지/워크벤치형 AI 컨설턴트 구조와 CSS는 변경하지 않는다. `/consulting/{id}/photo`가 private generation draft 업로드와 AI 분석을 직접 수행하고, 근거 검토·전략 확정 뒤 `/consulting/{id}/previews`에서 consultation ID를 generation acceptance에 연결한다. 따라서 사용자가 입력한 상담 옵션과 확정 전략이 백엔드 분석·프롬프트·결과 계약으로 계속 이어진다.
+이 변경은 완료된 프론트엔드 리팩터링 커밋 `d51ffcb9823d8f94dd60e90f11fe90bea8aad425`에서 이어진다. 프론트엔드가 확정한 페이지/워크벤치형 AI 컨설턴트 구조와 기존 공개 시각 토큰은 유지한다. 이후 입력 구분선·전환 화면은 V2 scoped CSS로 추가됐다. `/consulting/{id}/photo`가 private generation draft 업로드와 AI 분석을 직접 수행하고, 근거 검토·전략 확정 뒤 `/consulting/{id}/previews`에서 consultation ID를 generation acceptance에 연결한다. 따라서 사용자가 입력한 상담 옵션과 확정 전략이 백엔드 분석·프롬프트·결과 계약으로 계속 이어진다.
 
 이 작업은 additive backend refactor다. 기존 generation, Result, PortOne, Google Play, legacy credit, hair record, aftercare 경로는 기능 플래그가 꺼진 기본 상태에서 그대로 동작한다. 가격 가설은 운영 가격으로 seed하지 않았고, 실제 상품/가격 승인은 별도 운영 결정이다.
 
@@ -46,7 +48,7 @@ Route handler는 provider prompt나 원본 민감 입력을 응답하지 않는�
 4. 통과한 사진만 얼굴형·헤어 전략 AI 분석을 실행한다. 8개 사진 품질 카드는 AI 성공 여부에 따른 고정 점수가 아니라 시스템 사전검사 결과다.
 5. 분석 결과는 `analysis_evidence_v2`와 consultation snapshot의 Evidence → Meaning → Action 항목에 함께 저장된다.
 6. 사용자가 근거를 검토하고 8축 전략을 확정한다.
-7. 프리뷰 화면이 paid-action quote를 확인한 뒤 같은 draft를 consultation ID와 함께 accept한다.
+7. 전략 확정 뒤 서버가 entitlement와 중복 소비 여부를 내부 검증하고, 사용자에게 별도 유료 생성 확인이나 견적 승인 화면을 노출하지 않은 채 같은 draft를 consultation ID와 함께 accept한다.
 8. durable generation workflow가 V2 사용자 옵션 프롬프트, 3×3 slot, quality retry를 실행하고 프리뷰 화면은 V2 board를 폴링한다.
 
 브라우저에는 원본 Storage path, service role, provider prompt, prompt input snapshot을 반환하지 않는다. 원본 확인은 10분 signed URL만 사용한다.
@@ -83,7 +85,7 @@ Prompt compiler는 같은 정규화 입력에 대해 다음 9개 slot을 결정�
 - 이미지 변화형(`image_change`) 3개
 - 관리 현실형(`manageability`) 3개
 
-각 attempt에는 prompt policy version `hairfit-consultation-prompt-v2`, normalized input snapshot, slot intent, SHA-256 prompt hash, provider/model version이 저장된다. 기존 catalog prompt template `catalog-v3`는 catalog migration 없이 변경하지 않는다.
+각 attempt에는 prompt policy version `hairfit-consultation-prompt-v2`, normalized input snapshot, slot intent, SHA-256 prompt hash, provider/model version이 저장된다. 현재 확장 catalog prompt template은 `catalog-v4`이고 `catalog-v3`는 legacy 호환 상수로만 유지한다. consultation prompt policy와 catalog template version은 서로 독립적으로 기록한다.
 
 실제 Gemini provider 입력에는 V2 positive/negative prompt가 전달된다. identity, style, geometry, artifact, background, hair-boundary, safety, exact/near-duplicate gate를 모두 통과한 attempt 한 개만 slot에 accepted된다. 중복 판정은 원본 바이트 SHA-256과 머리 영역 중심 256-bit dHash를 함께 저장하고, dHash Hamming distance 6 이하를 근접 중복으로 거절한다. 정확히 9개가 accepted되어야 board가 ready가 되며, timeout/부분 실패/품질 거절은 최대 3회까지 같은 slot에서 새 attempt로 재시도된다. terminal board failure는 해당 consumption을 restore한다.
 

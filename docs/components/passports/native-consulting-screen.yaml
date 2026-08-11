@@ -1,0 +1,93 @@
+id: native.consulting.screen
+name: MobileConsultingScreen
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/app/consulting.tsx
+related_source:
+  - apps/hairfit-app/components/consulting/NativeFaceEvidenceOverlay.tsx
+  - apps/hairfit-app/lib/v2-consultation-resume.ts
+  - packages/api-client/src/index.ts
+  - packages/shared/src/consulting/contract.ts
+owner: consulting-feature
+
+public_api:
+  route: /consulting
+  inputs:
+    - authenticated-user
+    - active-consultation-id-from-secure-store
+    - shared-ConsultationSnapshot
+  outputs:
+    - discovery-interview
+    - photo-analysis-entry
+    - native-landmark-evidence
+    - hair-preview-comparison-and-decision
+    - automatic-salon-brief
+    - actual-service-aftercare
+    - fashion-interview-and-nine-slot-batch
+
+boundaries:
+  authoritative_state: server-consultation-snapshot
+  projections:
+    - v2-analysis-evidence
+    - v2-preview-board
+    - v2-selection
+    - v2-output-tables
+  local_state:
+    - unsaved-current-control-value
+    - shortlist-selection-before-save
+    - selected-landmark
+  forbidden:
+    - wizard-current-step
+    - common-next-control
+    - client-authoritative-lifecycle
+    - paid-generation-confirmation
+    - raw-photo-or-provider-payload-logging
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  stylesheet: apps/hairfit-app/app/consulting.tsx#styles
+  tokens:
+    - ui-native-Panel
+    - ui-native-Card
+    - ui-native-Button
+    - ui-native-Chip
+  css_contract_change: none
+
+state:
+  server_owned:
+    - ConsultationSnapshot.version
+    - journey.recommendedStage
+    - lifecycle-state
+    - capability-results
+    - actual-service
+    - fashion-batch
+  durable_resume: SecureStore-holds-only-consultation-id
+  concurrency: optimistic-version-and-idempotency-key
+
+a11y_contract:
+  controls: native-buttons-and-labelled-text-inputs
+  selection: accessibilityState-selected
+  disabled: accessibilityState-disabled
+  dynamic_errors: assertive-live-region-alert
+  images: accessibility-label-required
+  screen_reader_order: input-before-generated-output
+
+test_surface:
+  contract: apps/hairfit-app/__tests__/mobile-v2-consultation.test.js
+  full_jest: npm --workspace @hairfit/app run test
+  typecheck: npm --workspace @hairfit/app run typecheck
+  lint: targeted-app-consulting-eslint
+  bundle: npm run mobile:bundle
+
+change_policy:
+  current_gate: behavioral-compatible
+  compatible_change_requires:
+    - native-typecheck
+    - mobile-v2-consultation-contract
+    - web-android-ios-bundle
+    - component-registry-validation
+  promotion_blockers:
+    - authenticated-device-smoke-not-run
+    - offline-conflict-interaction-test-not-run
+    - visual-accessibility-device-audit-not-run

@@ -1,0 +1,127 @@
+{
+  "schemaVersion": "hairfit-v2-source-manifest-v1",
+  "capturedAt": "2026-08-11T00:00:00+09:00",
+  "repository": "D:/HariStyle-Preview",
+  "worktree": "D:/HariStyle-Preview-worktrees/feat-2026-08-08-hairfit-v2-backend",
+  "branch": "feat/2026-08-08-hairfit-v2-backend",
+  "worktreeRevision": "347626045335c09606d4b05286a12d8f3ba8bb2d",
+  "sourceRef": "origin/main",
+  "sourceRevision": "40c6f753e6c5b1e8e5913f2ec542f0f4b27e2501",
+  "mergeBase": "489005a6e95e83e3072c69ddedc9b777ca177ff0",
+  "leftRightCommitCount": {
+    "worktreeOnly": 14,
+    "sourceOnly": 17
+  },
+  "authorizationBoundary": {
+    "allowed": [
+      "read and fetch source refs",
+      "edit the existing HairFit V2 feature worktree",
+      "run local static, contract, build, and browser verification"
+    ],
+    "requiresSeparateUserApproval": [
+      "branch switch or branch creation",
+      "commit, merge, rebase, push, or tag",
+      "remote migration, live AI generation, payment consumption, deploy, or canary"
+    ]
+  },
+  "conflictPolicy": {
+    "untrackedRecommendationModule": "my-app/lib/hairstyle-catalog-recommendation.ts is byte-identical to origin/main and remains part of this feature change; do not replace it from another branch.",
+    "additiveV2Types": [
+      "my-app/lib/recommendation-types.ts",
+      "my-app/lib/fashion-types.ts"
+    ],
+    "additiveV2TypePolicy": "Preserve the consulting-only optional fields. Their origin/main base remains the engine source and the V2 additions must be verified by normalized adapter tests.",
+    "dirtyWorktreePolicy": "All pre-existing consulting, lifecycle, CSS, migration, document, and test changes belong to the same active HairFit V2 context. Do not discard, reset, or overwrite them."
+  },
+  "capabilities": [
+    {
+      "id": "hair_blueprint_recommendation",
+      "exports": [
+        "analyzeFaceForCatalog",
+        "generateCatalogBackedRecommendationSet",
+        "buildCatalogSelectionContext",
+        "buildLineupBackedRecommendations",
+        "selectLineupBackedCatalogRows"
+      ],
+      "legacyCallers": [
+        "my-app/lib/recommendation-generator.ts",
+        "my-app/app/api/generations/prepare/route.ts"
+      ],
+      "files": [
+        { "path": "my-app/lib/hairstyle-catalog.ts", "gitBlob": "9e22d29470287a39bf6df551f3181e5db758f6ed", "sha256": "da293ce9682caee3832a6db0b6cf46794589eb1c503d76953a6c884abfc920c5", "worktreeState": "git-identical" },
+        { "path": "my-app/lib/hairstyle-catalog-recommendation.ts", "gitBlob": "769d9144f0a3e33eee49581329a158b3b03ee6fd", "sha256": "3dce2ff90de89c629cb2b095f31856c58efe24ea6001b0bc97458ea8dea1ccf5", "worktreeState": "untracked-byte-identical" },
+        { "path": "my-app/lib/recommendation-types.ts", "gitBlob": "4cd42c00fae0eb9eef5249c099729673190bbcbc", "sha256": "a2b39c6df21aec72bab74ef5152c03a1d9e41dce6594fe1989a8f7b7084d2f02", "worktreeState": "additive-v2-extension" },
+        { "path": "my-app/data/hairstyle-blueprints/v4/schema.json", "gitBlob": "bf019cec0ec414d120d6d3128a6947382e526da7", "sha256": "6c229c7c7ec90c96380840a74a37570cbca177086e184ccd70837e6a63b9c28c", "worktreeState": "git-identical" },
+        { "path": "my-app/data/hairstyle-blueprints/v4/female-short.json", "gitBlob": "caf5d567a7afe19d3e992ed10ebfb92f83dc7690", "sha256": "2c09e4a1c424116edabc694720bf7e21fa77a7faf27a01b1d3f78c0aee51b679", "worktreeState": "git-identical" },
+        { "path": "my-app/data/hairstyle-blueprints/v4/female-medium.json", "gitBlob": "4e0c9e0ff237e0cdf808f687b3de8edadbcac786", "sha256": "14076422b4d8b6477833c7fc9e1c9f9b10331f2d8250846501a87faf6751eab0", "worktreeState": "git-identical" },
+        { "path": "my-app/data/hairstyle-blueprints/v4/female-long.json", "gitBlob": "e5e0117cc3a731234d369e51f83429572eb7c1e7", "sha256": "bb3019ec388d67f8c22f3a9eab2f17f96659428574f01ea633c4ebbd73b2d74c", "worktreeState": "git-identical" },
+        { "path": "my-app/data/hairstyle-blueprints/v4/male-short.json", "gitBlob": "bb854057224e689755ee44058d803f6e55bf6347", "sha256": "987fe471281166588b27cac9173bd9e17e7800121e1de019e1e38a4b70716f61", "worktreeState": "git-identical" },
+        { "path": "my-app/data/hairstyle-blueprints/v4/male-medium.json", "gitBlob": "6d262f0b6c11b9c206b24c349ae1d5f2baa8b88d", "sha256": "02173646defd8d0d4b2f837c536f7b7c435228c7d226937c4603d91820056a37", "worktreeState": "git-identical" },
+        { "path": "my-app/data/hairstyle-blueprints/v4/male-long.json", "gitBlob": "d75e3ed0ee536f0335b4fc96ad9b5533d3cf86eb", "sha256": "c713bdeec313c5e40e691fa6bf0f29d92d1f0dca7c15e7db3a504c97109e3232", "worktreeState": "git-identical" }
+      ]
+    },
+    {
+      "id": "hair_preview_generation",
+      "exports": [
+        "generatePrompt",
+        "loadGenerationEntryAccountState",
+        "getGenerationWorkflowBinding",
+        "createGenerationWorkflowInstance"
+      ],
+      "legacyCallers": [
+        "my-app/app/api/generations/prepare/route.ts",
+        "my-app/app/api/generations/run/route.ts",
+        "my-app/app/api/generations/workflow-dispatch/route.ts"
+      ],
+      "files": [
+        { "path": "my-app/lib/prompt-generator.ts", "gitBlob": "e73d17cef6905c56715af8660968640d75f9c6c9", "sha256": "28a1b23f6b865171c164a959f0b642ffbe4522026d6b9bdfbb40ca0305689852", "worktreeState": "git-identical" },
+        { "path": "my-app/lib/generation-entry-server.ts", "gitBlob": "da81de83ed1f86d086c2f9224bbdddc6d4d765cb", "sha256": "8d6ca64cd163dac6cab421d2bd51d915901245ba3eefee8f2cd05b0b86cf535b", "worktreeState": "git-identical" },
+        { "path": "my-app/lib/generation-workflow.ts", "gitBlob": "332a4350feba851a4ed6f4ad5d17b343b917eea5", "sha256": "546403fac79c7317f6f15398fb34054ee1933ece58603adf00ff34a350ea4395", "worktreeState": "git-identical" }
+      ]
+    },
+    {
+      "id": "personal_color_analysis",
+      "exports": ["analyzePersonalColor"],
+      "legacyCallers": ["my-app/app/api/personal-color/analyze/route.ts"],
+      "files": [
+        { "path": "my-app/lib/personal-color.ts", "gitBlob": "92417d502620cfd397c5dc6bcc3d3f5a860eaf6c", "sha256": "132ea9b0edf0abba0b96fa81bf1d773b914f67bf87cb1832156a3b35e9d77be6", "worktreeState": "git-identical" }
+      ]
+    },
+    {
+      "id": "salon_brief_generation",
+      "exports": ["buildFallbackDesignerBrief", "generateDesignerBriefs"],
+      "legacyCallers": ["my-app/app/api/generations/prepare/route.ts"],
+      "files": [
+        { "path": "my-app/lib/designer-brief-generator.ts", "gitBlob": "cc90152f5b194aeedfbd538f619ff15068d0511e", "sha256": "a8b9706328356dbb910031dcbb22486e7458ae6c05049d48c4465544f56ba125", "worktreeState": "git-identical" }
+      ]
+    },
+    {
+      "id": "aftercare_program_generation",
+      "exports": ["generateAftercareGuide", "generateHairCareContents", "getAftercareLlmModel"],
+      "legacyCallers": ["my-app/app/api/hair-records/route.ts"],
+      "files": [
+        { "path": "my-app/lib/aftercare-guide-generator.ts", "gitBlob": "e6535250e9365ba2dd7374da0593386e7c9475d1", "sha256": "2328b8b5c12733bf3e5dc8ed7244d3c81e77da8bcdd605c1941ed2c803cc8e69", "worktreeState": "git-identical" },
+        { "path": "my-app/lib/hair-care-generator.ts", "gitBlob": "ba7df68bffd6a5acdced7c0695f0680b633452a9", "sha256": "cf12118677d2fd1aa2f5dad2f8c54a653b46583cb042bbfb2a210fe6768486a3", "worktreeState": "git-identical" },
+        { "path": "my-app/lib/aftercare-model.ts", "gitBlob": "03cf69d78311af0eda94c0199ad76e20c0925290", "sha256": "5ec28f4496df9f0c7e1634e218c86ec953a52f939cae82dbd7be9678753bde28", "worktreeState": "git-identical" }
+      ]
+    },
+    {
+      "id": "fashion_recommendation_and_generation",
+      "exports": [
+        "generateFashionRecommendation",
+        "ensureFashionCatalogAvailable",
+        "selectFashionCatalogItem"
+      ],
+      "legacyCallers": [
+        "my-app/app/api/styling/recommend/route.ts",
+        "my-app/app/api/styling/hairstyles/route.ts"
+      ],
+      "files": [
+        { "path": "my-app/lib/fashion-recommendation-generator.ts", "gitBlob": "9ac8ddae698ce4865711904e30c3164f7cb8e048", "sha256": "db33dddb48d19888d689b9a206e109272a45de97a62e38ae9e6bb1b3007177ca", "worktreeState": "git-identical" },
+        { "path": "my-app/lib/fashion-catalog.ts", "gitBlob": "f494ed79ef37c30467c355ecb8719f875b7c8bb8", "sha256": "3581e2c752bedd858c0086d815682522db85e4f72ca97167e608606049e40cd2", "worktreeState": "git-identical" },
+        { "path": "my-app/lib/fashion-template-catalog.ts", "gitBlob": "2f697444c1285e8040806c0f29af4d54fac00a6f", "sha256": "d5024a95e223d04b5fcf8af29fd9aeca129583d9e0399e73f0a0011aab833936", "worktreeState": "git-identical" },
+        { "path": "my-app/lib/fashion-types.ts", "gitBlob": "2d41ef753e27c7f94d65a58bd6278f86744d47ee", "sha256": "7aed1818df61fd5fc59e7a8a398d016255619f067d0ab4a45b5bdcd9b00e74cd", "worktreeState": "additive-v2-extension" }
+      ]
+    }
+  ]
+}

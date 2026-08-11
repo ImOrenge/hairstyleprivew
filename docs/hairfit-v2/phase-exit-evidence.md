@@ -82,7 +82,7 @@
 - 상담 사진 화면에서 구 마법사 handoff와 generation ID 수동 입력을 제거하고 private upload draft → AI photo analysis로 직접 연결했다.
 - 사진 선택 시 시스템 사전검사 결과가 8개 품질 카드에 연결되며 `AI 분석 대기`라는 오해 소지가 있는 상태 문구를 제거했다. 서버는 Sharp로 품질 신호를 재검사하고 blocking 사진에는 AI를 호출하지 않는다.
 - 분석 근거를 저장하고 검토한 뒤 전략을 확정해야 프리뷰 생성 접수가 가능하도록 순서를 고정했다.
-- 프리뷰 화면은 paid-action quote → consultation-linked durable acceptance → V2 3×3 board polling을 수행하며 accepted 9 전에는 shortlist를 열지 않는다.
+- 전략 확정 뒤 서버는 entitlement·중복 소비를 내부 검증하고 consultation-linked durable acceptance → V2 3×3 board polling을 수행한다. 사용자에게 별도 유료 생성 확인·견적 승인 CTA를 노출하지 않으며, 품질 승인 결과가 2개 이상이면 전체 9개 완료 전에도 비교를 열 수 있다.
 - 원격 Supabase에 `20260722120000`, `202608080001`, `202608080002`가 적용됐고 원격 pending migration은 0이다. `consultation_sessions` Data API service read와 active `hair_decision_once` offering을 확인했다.
 - 검증: consultation 8/8, HairFit V2 8/8, upload 5/5, generation entry 14/14, generation workflow 69/69, global CSS 9/9, component registry, migration mirror, monorepo typecheck, 집중 lint, V2 flag ON production build 129 routes 통과.
 - 실제 사용자 사진·Clerk 로그인·외부 Gemini 9장 생성은 사용자 입력과 유료 처리량이 필요한 최종 smoke이므로 정적/빌드 결과로 완료 주장하지 않는다.

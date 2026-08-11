@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { analyzePersonalColor } from "../../../../lib/personal-color";
+import { runPersonalColorCapability } from "../../../../lib/capabilities/personal-color-service";
 import {
   ensureCurrentUserProfile,
   type ServerSupabaseLike,
@@ -33,7 +34,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const personalColor = await analyzePersonalColor(referenceImageDataUrl);
+    const sourceImageFingerprint = createHash("sha256").update(referenceImageDataUrl).digest("hex");
+    const capability = await runPersonalColorCapability({
+      consultationId: `legacy-personal-color:${userId}`,
+      idempotencyKey: request.headers.get("Idempotency-Key")?.trim() || `personal-color:${userId}:${sourceImageFingerprint}`,
+      referenceImageDataUrl,
+      sourceImageFingerprint,
+    });
+    if (!capability.output || capability.failure) {
+      return NextResponse.json({ error: capability.failure?.message || "Personal color analysis failed" }, { status: 502 });
+    }
+    const personalColor = capability.output;
     const { error } = await supabase
       .from("user_style_profiles")
       .upsert(
@@ -54,7 +65,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ personalColor }, { status: 200 });
+    return NextResponse.json({ personalColor, capability: {
+      taskId: capability.taskId,
+      state: capability.state,
+      provenance: capability.provenance,
+    } }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Personal color analysis failed";
     return NextResponse.json({ error: message }, { status: 500 });

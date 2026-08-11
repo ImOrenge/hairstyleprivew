@@ -13,6 +13,7 @@ export * from "./fixtures/product-contract";
 export * from "./fixtures/generation-selection";
 export * from "./fixtures/generation-selection-lock";
 export * from "./fixtures/generation-notification";
+export * from "./fixtures/consulting-v2";
 export * from "./generation/contract";
 export * from "./generation/funnel";
 export * from "./generation/notification";
@@ -727,5 +728,10 @@ export const initialMobileRoutePorts: MobileRoutePort[] = [
 ];
 export * from "./account-deletion";
 export * from "./consulting/contract";
+export * from "./consulting/capability";
+export * from "./consulting/interview";
+export * from "./consulting/journey";
+export * from "./consulting/presentation";
 export * from "./consulting/photo-preflight";
+export * from "./consulting/photo-crop";
 export * from "./v2/index";

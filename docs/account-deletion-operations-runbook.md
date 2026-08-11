@@ -11,6 +11,7 @@
 
 1. `request_account_deletion`이 사용자 해시 tombstone을 만들고 Storage 경로를 outbox에 적재한 뒤 `public.users`를 삭제한다.
 2. FK `on delete cascade`로 Push 토큰과 사용자 소유 row를 함께 삭제한다.
+   HairFit V2 capability task·attempt·result, interview draft, domain event도 사용자 또는 consultation cascade로 함께 삭제된다.
 3. 서버는 `storage.objects`를 직접 수정하지 않고 Supabase Storage API로 bucket별 객체를 삭제한다.
 4. Storage 영수증이 모두 완료된 뒤 Clerk identity를 삭제한다.
 5. Clerk 실패 시 tombstone이 `ensure_user_profile` 재생성을 차단하고 사용자는 같은 요청으로 재시도한다.
@@ -37,6 +38,7 @@ order by bucket, last_error_code;
 - `storage_pending > 0`: Storage bucket 권한·object path·서비스 역할 환경을 확인하고 사용자의 같은 DELETE 요청 또는 운영 재시도를 수행한다.
 - `identity_pending > 0`: Clerk Backend API 상태를 확인한다. 앱 데이터는 이미 삭제됐고 tombstone이 프로필 재생성을 차단한다.
 - raw Clerk user ID, 이메일, Push token, Storage path를 애플리케이션 로그에 남기지 않는다.
+- 관측 event payload에는 사진·prompt·provider 응답·입력 원문·URL을 남기지 않는다.
 - 원격 migration과 실제 Clerk 계정 삭제는 운영 승인·테스트 계정 없이 실행하지 않는다.
 
 ## 검증

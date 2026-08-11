@@ -9,11 +9,12 @@ export async function GET() {
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "상담을 불러오지 못했습니다." }, { status: 500 }); }
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   try {
-    return NextResponse.json({ snapshot: await createServerConsultation(userId) }, { status: 201 });
+    const idempotencyKey = request.headers.get("Idempotency-Key")?.trim() || undefined;
+    return NextResponse.json({ snapshot: await createServerConsultation(userId, idempotencyKey) }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "상담을 시작하지 못했습니다." }, { status: 500 });
   }

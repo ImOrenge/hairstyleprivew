@@ -1,6 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import type { AnalysisEvidenceV2 } from "@hairfit/shared/v2";
+import path from "node:path";
 
 const STAGES = [
   ["discovery","DISCOVERY"],["photo","PHOTO"],["scan","FACE SCAN"],["analysis","ANALYSIS"],["direction","DIRECTION"],
@@ -63,11 +64,13 @@ test("all 11 document Scenes are headerless, addressable, and overflow-safe", as
     expect(await page.locator('[data-consulting-scene-identity="true"]').evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(240);
     const overflow = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
+    const accessibility = await new AxeBuilder({ page }).include("main").withTags(["wcag2a","wcag2aa","wcag21a","wcag21aa"]).analyze();
+    expect(accessibility.violations.filter((item) => item.impact === "serious" || item.impact === "critical")).toEqual([]);
   }
   await page.screenshot({ path: testInfo.outputPath("consulting-fashion-desktop.png"), fullPage: true, animations: "disabled" });
 });
 
-test("desktop panes scroll independently while mobile keeps input before output", async ({ page }) => {
+test("desktop panes scroll independently while mobile keeps input before output", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/consulting/e2e-harness?stage=discovery");
   await dismissGlobalNotices(page);
@@ -92,6 +95,13 @@ test("desktop panes scroll independently while mobile keeps input before output"
   expect(desktop.outputHeight).toBe(desktop.inputHeight);
   expect(desktop.inputScrollable).toBe(true);
   expect(desktop.outputScrollable).toBe(true);
+  const inputControlSeparators = await page.locator('[data-consulting-input-control="true"]').evaluateAll((controls) => controls.map((control) => {
+    const style = getComputedStyle(control);
+    return { width: style.borderBottomWidth, style: style.borderBottomStyle, color: style.borderBottomColor };
+  }));
+  expect(inputControlSeparators.length).toBeGreaterThan(10);
+  expect(inputControlSeparators.filter((separator) => separator.width === "1px" && separator.style === "solid").length).toBeGreaterThan(8);
+  await page.screenshot({ path: testInfo.outputPath("consulting-discovery-input-separators.png"), fullPage: true, animations: "disabled" });
   const independentScroll = await page.locator('[data-consulting-split-canvas="true"]').evaluate((canvas) => {
     const input = canvas.querySelector<HTMLElement>('[data-consulting-pane="input"]');
     const output = canvas.querySelector<HTMLElement>('[data-consulting-pane="output"]');
@@ -133,10 +143,75 @@ test("ALL STAGES overlay traps focus, closes with Escape, and returns focus", as
   await page.keyboard.press("Enter");
   const dialog = page.getByRole("dialog", { name: "ALL STAGES" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.getByRole("link")).toHaveCount(11);
+  await expect(dialog.locator("li")).toHaveCount(11);
+  await expect(dialog.getByRole("link")).toHaveCount(6);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(trigger).toBeFocused();
+});
+
+test("Discovery and Fashion use standalone, keyboard-safe interview layouts without paid confirmation", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  for (const stage of ["discovery", "fashion"] as const) {
+    await page.goto(`/consulting/e2e-harness?stage=${stage}&interview=1`);
+    await dismissGlobalNotices(page);
+    const interview = page.locator(".f-consulting-interview");
+    await expect(interview).toBeVisible();
+    await expect(interview).toHaveAttribute("data-kind", stage === "discovery" ? "discovery" : "fashion-direction");
+    await expect(interview.locator("[data-question-id] h3")).toBeFocused();
+    await expect(interview).not.toContainText(/다음 단계|유료 생성|결제 확인|견적 승인/);
+    await expect(interview.locator(".f-consulting-interview__question")).toHaveCSS("animation-name", "none");
+    const overflow = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+    expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
+
+    const summaryTrigger = page.getByRole("button", { name: "전체 답변 보기" });
+    await summaryTrigger.click();
+    const summary = page.getByRole("dialog", { name: "전체 상담 기준" });
+    await expect(summary).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(summary).toBeHidden();
+    await expect(summaryTrigger).toBeFocused();
+  }
+});
+
+test("Photo offers an optional natural-light source and a face-aware crop before automatic analysis handoff", async ({ page }) => {
+  await page.goto("/consulting/e2e-harness?stage=photo");
+  await dismissGlobalNotices(page);
+  const fixture = path.resolve("my-app/public/hero/demo/female-01.webp");
+  const inputs = page.locator('main input[type="file"]');
+  await expect(inputs).toHaveCount(2);
+  await inputs.nth(0).setInputFiles(fixture);
+  await expect(page.getByText("컬러 진단 보조 사진 준비됨")).toBeVisible();
+  await inputs.nth(1).setInputFiles(fixture);
+  await expect(page.getByText("분석 프레이밍", { exact: true })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "가로 위치" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "세로 위치" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "이 프레이밍 사용" })).toBeEnabled();
+  await expect(page.getByText("프레이밍을 확정하면 분석을 별도로 다시 요청하지 않아도 Scan 대기 화면까지 자동으로 이어집니다.")).toBeVisible();
+});
+
+test("consultation exit confirms saved state and remains available during work", async ({ page }) => {
+  await page.goto("/consulting/e2e-harness?stage=discovery");
+  await dismissGlobalNotices(page);
+  const exit = page.getByRole("button", { name: "상담 나가기" });
+  await exit.click();
+  const dialog = page.getByRole("dialog", { name: "상담을 나갈까요?" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("저장된 상담 내용과 진행 중인 AI 작업은 유지됩니다.");
+  await expect(dialog).toContainText("아직 저장하지 않은 입력은 사라질 수 있습니다.");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(exit).toBeFocused();
+
+  await page.goto("/consulting/e2e-harness?stage=scan&liveness=1&transition=analysis&transitionState=running");
+  await dismissGlobalNotices(page);
+  await page.getByRole("button", { name: "상담 나가기" }).click();
+  await expect(page.getByRole("dialog", { name: "상담을 나갈까요?" })).toBeVisible();
+  const homeRequest = page.waitForRequest((request) => new URL(request.url()).pathname === "/home");
+  await page.getByRole("button", { name: "저장된 상태로 나가기" }).click();
+  await homeRequest;
 });
 
 test("two quality-accepted previews can open comparison before all nine finish", async ({ page }) => {
@@ -147,6 +222,150 @@ test("two quality-accepted previews can open comparison before all nine finish",
   await page.getByRole("button", { name: /BALANCE 2/ }).click();
   await expect(page.getByText("Shortlist 2 / 3")).toBeVisible();
   await expect(page.getByRole("button", { name: "선택한 후보 비교하기" })).toBeEnabled();
+});
+
+test("transient consultant activity is lively, pausable, result-neutral, and layout-stable", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.addInitScript(() => {
+    const target = window as typeof window & { __consultantEvents?: unknown[] };
+    target.__consultantEvents = [];
+    window.addEventListener("hairfit:consultation-liveness", (event) => {
+      target.__consultantEvents?.push((event as CustomEvent).detail);
+    });
+  });
+  await page.goto("/consulting/e2e-harness?stage=scan&liveness=1&transition=analysis&transitionState=running");
+  await dismissGlobalNotices(page);
+  const transition = page.locator(".f-consultant-transition");
+  const kinetic = page.locator(".f-consultant-kinetic");
+  await expect(transition).toBeVisible();
+  const meaningfulStateDelay = await page.evaluate(() => {
+    const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return performance.now() - (navigation?.responseEnd ?? 0);
+  });
+  expect(meaningfulStateDelay).toBeLessThanOrEqual(300);
+  await expect(page.locator('[data-consulting-split-canvas="true"]')).toHaveCount(0);
+  await expect(page.locator("#consultant-transition-title")).toBeFocused();
+  await expect(kinetic.locator("svg")).toHaveAttribute("aria-hidden", "true");
+  const accessibility = await new AxeBuilder({ page }).include("main").withTags(["wcag2a","wcag2aa","wcag21a","wcag21aa"]).analyze();
+  expect(accessibility.violations.filter((item) => item.impact === "serious" || item.impact === "critical")).toEqual([]);
+  await expect(page.getByRole("button", { name: "결과에 영향을 주지 않는 대기 인터랙션" })).toHaveCount(0);
+  await page.evaluate(() => {
+    const target = window as typeof window & { __consultantLongTasks?: number[]; __consultantLayoutShifts?: number[]; __consultantLongTaskObserver?: PerformanceObserver; __consultantLayoutShiftObserver?: PerformanceObserver };
+    target.__consultantLongTasks = [];
+    target.__consultantLayoutShifts = [];
+    if (typeof PerformanceObserver === "undefined") return;
+    if (PerformanceObserver.supportedEntryTypes.includes("longtask")) {
+      target.__consultantLongTaskObserver = new PerformanceObserver((list) => {
+        target.__consultantLongTasks?.push(...list.getEntries().map((entry) => entry.duration));
+      });
+      target.__consultantLongTaskObserver.observe({ type: "longtask" });
+    }
+    if (PerformanceObserver.supportedEntryTypes.includes("layout-shift")) {
+      target.__consultantLayoutShiftObserver = new PerformanceObserver((list) => {
+        target.__consultantLayoutShifts?.push(...list.getEntries().map((entry) => (entry as PerformanceEntry & { value: number }).value));
+      });
+      target.__consultantLayoutShiftObserver.observe({ type: "layout-shift" });
+    }
+  });
+  const animationRequests: string[] = [];
+  const recordRequest = (request: import("@playwright/test").Request) => animationRequests.push(request.url());
+  page.on("request", recordRequest);
+  const before = await kinetic.boundingBox();
+  await page.waitForTimeout(5_200);
+  const fidget = page.getByRole("button", { name: "결과에 영향을 주지 않는 대기 인터랙션" });
+  await expect(fidget).toBeVisible();
+  await fidget.click();
+  await page.waitForTimeout(250);
+  const productEvents = await page.evaluate(() => (window as typeof window & { __consultantEvents?: Array<Record<string, unknown>> }).__consultantEvents ?? []);
+  expect(productEvents.some((event) => event.event === "consultant_task_visible")).toBe(true);
+  expect(productEvents.some((event) => event.event === "consultant_phase_changed")).toBe(true);
+  expect(productEvents.some((event) => event.event === "consultant_fidget_used" && event.fidgetUseCount === 1)).toBe(true);
+  for (const event of productEvents) {
+    expect(Object.keys(event).sort()).toEqual(expect.arrayContaining(["event", "taskKind"]));
+    expect(event).not.toHaveProperty("sessionId");
+    expect(event).not.toHaveProperty("taskId");
+    expect(event).not.toHaveProperty("clientX");
+    expect(event).not.toHaveProperty("clientY");
+  }
+  await page.getByRole("button", { name: "연출 멈춤" }).click();
+  await expect(kinetic).toHaveAttribute("data-paused", "true");
+  await page.waitForTimeout(4_550);
+  const after = await kinetic.boundingBox();
+  expect(after?.x).toBeCloseTo(before?.x ?? 0, 1);
+  expect(after?.y).toBeCloseTo(before?.y ?? 0, 1);
+  expect(after?.width).toBeCloseTo(before?.width ?? 0, 1);
+  expect(after?.height).toBeCloseTo(before?.height ?? 0, 1);
+  const longTasks = await page.evaluate(() => (window as typeof window & { __consultantLongTasks?: number[] }).__consultantLongTasks ?? []);
+  expect(longTasks.filter((duration) => duration > 50)).toEqual([]);
+  const layoutShift = await page.evaluate(() => ((window as typeof window & { __consultantLayoutShifts?: number[] }).__consultantLayoutShifts ?? []).reduce((sum, value) => sum + value, 0));
+  expect(layoutShift).toBe(0);
+  page.off("request", recordRequest);
+  expect(animationRequests).toEqual([]);
+  const overflow = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
+  expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
+
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.reload();
+  await dismissGlobalNotices(page);
+  await expect(page.locator(".f-consultant-kinetic__canvas path").first()).toHaveCSS("animation-name", "none");
+});
+
+test("partial output replaces small talk and failure stops decorative waiting", async ({ page }) => {
+  await page.goto("/consulting/e2e-harness?stage=previews&liveness=1&transition=preview-generation&transitionState=partial");
+  await dismissGlobalNotices(page);
+  const partial = page.locator(".f-consultant-transition");
+  await expect(partial).toHaveAttribute("data-task-status", "partial");
+  await expect(page.getByRole("heading", { name: "완성된 프리뷰 1개" })).toBeVisible();
+  const partialRevealDelay = await page.evaluate(() => {
+    const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+    return performance.now() - (navigation?.responseEnd ?? 0);
+  });
+  expect(partialRevealDelay).toBeLessThanOrEqual(300);
+  await expect(page.locator(".f-consultant-activity__smalltalk")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "결과에 영향을 주지 않는 대기 인터랙션" })).toHaveCount(0);
+
+  await page.goto("/consulting/e2e-harness?stage=scan&liveness=1&transition=analysis&transitionState=failed");
+  await dismissGlobalNotices(page);
+  await expect(page.locator(".f-consultant-transition")).toHaveAttribute("data-task-status", "failed");
+  await expect(page.locator(".f-consultant-activity__recovery")).toContainText("이미 저장된 사진과 완료 결과는 유지됩니다.");
+  await expect(page.locator(".f-consultant-activity__smalltalk")).toHaveCount(0);
+  await expect(page.locator(".f-consultant-kinetic__motion")).toHaveCount(0);
+});
+
+test("running task resumes after refresh without repeating its visible consultant note", async ({ page }) => {
+  const url = "/consulting/e2e-harness?stage=scan&liveness=1&transition=analysis&transitionState=running";
+  await page.goto(url);
+  await dismissGlobalNotices(page);
+  const note = page.locator(".f-consultant-activity__smalltalk > p").last();
+  const before = await note.textContent();
+  await page.reload();
+  await dismissGlobalNotices(page);
+  await expect(page.locator(".f-consultant-transition")).toBeVisible();
+  await expect(note).not.toHaveText(before ?? "");
+});
+
+test("polling failure is not presented as normal waiting and keeps recovery in place", async ({ page }) => {
+  await page.route("**/api/consultations/**", (route) => route.fulfill({
+    status: 503,
+    contentType: "application/json",
+    body: JSON.stringify({ error: "네트워크 연결이 일시적으로 중단되었습니다." }),
+  }));
+  await page.goto("/consulting/e2e-harness?stage=scan&liveness=1&polling=1&transition=analysis&transitionState=running");
+  await dismissGlobalNotices(page);
+  await expect(page.locator(".f-consultant-activity__recovery")).toContainText("네트워크 연결이 일시적으로 중단되었습니다.");
+  await expect(page.locator(".f-consultant-activity__smalltalk")).toHaveCount(0);
+  await expect(page.locator(".f-consultant-kinetic__motion")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "실패한 작업 상태 다시 확인" })).toBeVisible();
+});
+
+test("completed readiness performs its completion moment and automatic handoff within budget", async ({ page }) => {
+  const destination = page.waitForRequest((request) => /\/consulting\/[^/]+\/analysis(?:\?|$)/.test(request.url()));
+  const startedAt = Date.now();
+  await page.goto("/consulting/e2e-harness?stage=scan&liveness=1&transition=analysis&transitionState=complete");
+  await dismissGlobalNotices(page);
+  await expect(page.locator(".f-consultant-activity__completion")).toBeVisible();
+  await destination;
+  expect(Date.now() - startedAt).toBeLessThanOrEqual(1_500);
 });
 
 test("Scan renders persisted face landmarks and measurement interactions over the photo", async ({ page }, testInfo) => {
@@ -184,7 +403,6 @@ test("Scan renders persisted face landmarks and measurement interactions over th
   await page.goto("/consulting/e2e-harness?stage=scan");
   await dismissGlobalNotices(page);
   await expect(page.locator('[data-consulting-hydrated="true"]')).toBeVisible();
-  await page.getByRole("button", { name: "signed URL 갱신" }).click();
   await expect(page.getByRole("img", { name: "상담 분석용 원본 사진" })).toBeVisible();
   const overlay = page.locator('[data-face-evidence-overlay="true"]');
   await expect(overlay).toBeVisible();
@@ -223,126 +441,136 @@ test("Scan renders persisted face landmarks and measurement interactions over th
   });
 });
 
-test("Fashion Scene recommends, quotes, generates, and compares real server sessions without a wizard", async ({ page }) => {
-  const consultationId = "00000000-0000-4000-8000-000000000011";
-  const activeSessionId = "00000000-0000-4000-8000-000000000031";
-  const fashionDirection = { situation: "daily", genre: "casual", season: "all-season", fit: "regular", exposure: "balanced", budget: "20만 원 이내", avoidItems: ["모자"] };
-  const basePreviews = [
-    { stylingSessionId: "00000000-0000-4000-8000-000000000032", slotId: "work-office", category: "WORK", genre: "office", headline: "워크 룩 A" },
-    { stylingSessionId: "00000000-0000-4000-8000-000000000033", slotId: "statement-formal", category: "STATEMENT", genre: "formal", headline: "포멀 룩 B" },
-  ];
-  let generated = false;
+test("Analysis renders the persisted facial proportion matrix without inventing physical units", async ({ page }) => {
+  await page.route("**/api/consultations/**/photo-assets", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ primaryUrl: FACE_PHOTO_FIXTURE }),
+  }));
+  await page.route("**/api/v2/consultations/**/evidence", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify({ evidence: LANDMARK_EVIDENCE }),
+  }));
+  await page.goto("/consulting/e2e-harness?stage=analysis");
+  await dismissGlobalNotices(page);
+  const matrix = page.locator('[data-analysis-proportion-matrix="ready"]');
+  await expect(matrix).toBeVisible();
+  await expect(matrix.getByRole("heading", { name: "사진 좌표에서 계산한 비율 근거" })).toBeVisible();
+  await expect(matrix.locator("[data-analysis-measurement-id]" )).toHaveCount(2);
+  await expect(matrix.getByLabel(/얼굴 세로 길이 59%/)).toHaveAttribute("value", "0.59");
+  await expect(matrix).toContainText("실제 cm가 아닙니다");
+});
 
-  await page.route("**/api/style-profile", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({ profile: { bodyPhotoPath: "private/body.webp" } }),
-  }));
-  await page.route("**/api/v2/consultations/**/fashion-previews", (route) => {
-    if (route.request().method() !== "GET") return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ previewSet: {} }) });
-    const previews = [
-      ...basePreviews.map((preview) => ({
-        ...preview,
-        selectionSnapshotId: "00000000-0000-4000-8000-000000000021",
-        status: "completed",
-        direction: fashionDirection,
-        summary: `${preview.headline} summary`,
-        palette: ["navy", "ivory"],
-        silhouette: "balanced",
-        neckline: "균형 넥라인",
-        items: [],
-        shoppingKeywords: [preview.headline],
-        imageUrl: FACE_PHOTO_FIXTURE,
-        errorMessage: null,
-        createdAt: "2026-08-09T00:00:00.000Z",
-        updatedAt: "2026-08-09T00:00:00.000Z",
-      })),
-      {
-        stylingSessionId: activeSessionId,
-        selectionSnapshotId: "00000000-0000-4000-8000-000000000021",
-        slotId: "daily-casual",
-        category: "DAILY",
-        genre: "casual",
-        direction: fashionDirection,
-        status: generated ? "completed" : "recommended",
-        headline: "데일리 룩 C",
-        summary: "확정 헤어와 바디 프로필을 반영한 데일리 룩",
-        palette: ["navy", "ivory"],
-        silhouette: "balanced",
-        neckline: "균형 넥라인",
-        items: [],
-        shoppingKeywords: ["navy jacket"],
-        imageUrl: generated ? FACE_PHOTO_FIXTURE : null,
-        errorMessage: null,
-        createdAt: "2026-08-09T00:00:00.000Z",
-        updatedAt: "2026-08-09T00:00:00.000Z",
-      },
-    ];
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ previews, previewSet: null }) });
+test("Fashion Scene sends one direction request and lets the server prepare and dispatch all nine slots", async ({ page }) => {
+  const slots = ["daily-casual","daily-minimal","daily-athleisure","work-office","work-classic","work-smart","statement-street","statement-formal","statement-date"];
+  const fashionDirection = { situation: "daily", genre: "casual", season: "all-season", fit: "regular", exposure: "balanced", budget: "20만 원 이내", avoidItems: [] };
+  const sessionIds = slots.map((_, index) => `00000000-0000-4000-8000-${String(index + 31).padStart(12, "0")}`);
+  let generatedCount = 0;
+  let batchPrepared = false;
+  let legacyRecommendationRequests = 0;
+
+  page.on("request", (request) => {
+    if (request.url().includes("/api/styling/recommend")) legacyRecommendationRequests += 1;
   });
-  await page.route("**/api/styling/recommend", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({
-      sessionId: activeSessionId,
-      status: "recommended",
-      recommendation: {
-        headline: "데일리 룩 C",
-        summary: "확정 헤어와 바디 프로필을 반영한 추천",
-        genre: "casual",
-        palette: ["navy", "ivory"],
-        silhouette: "balanced",
-        items: [],
-        stylingNotes: [],
-        generatedAt: "2026-08-09T00:00:00.000Z",
-      },
-    }),
-  }));
-  await page.route("**/api/paid-actions/quote", (route) => route.fulfill({
-    status: 200,
-    contentType: "application/json",
-    body: JSON.stringify({ quote: {
-      quoteId: "signed-fashion-quote",
-      action: "outfit_generation",
-      subjectId: activeSessionId,
-      billingScope: "customer",
-      costCredits: 20,
-      currentBalance: 100,
-      balanceAfter: 80,
-      shortfallCredits: 0,
-      isFree: false,
-      freeReason: null,
-      isAllowed: true,
-      issuedAt: "2026-08-09T00:00:00.000Z",
-      expiresAt: "2099-08-09T00:30:00.000Z",
-      policyVersion: "hairfit-credit-policy-2026-07",
-      lockConsequence: null,
-      failurePolicy: "실패하면 예약 크레딧을 환불합니다.",
-    } }),
-  }));
-  await page.route("**/api/styling/generate", (route) => {
-    generated = true;
-    return route.fulfill({ status: 202, contentType: "application/json", body: JSON.stringify({ sessionId: activeSessionId, status: "generating" }) });
+
+  await page.route("**/api/style-profile", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ profile: { bodyPhotoPath: "private/body.webp" } }) }));
+  await page.route("**/api/v2/consultations/**/fashion-batch", async (route) => {
+    const batchPayload = { id: "00000000-0000-4000-8000-000000000099", state: generatedCount ? "generating" : "approved", requestedCount: 9, completedCount: generatedCount, failedCount: 0, quoteId: "batch", slotState: {}, errorCode: null, errorMessage: null, updatedAt: "2026-08-09T00:00:00.000Z" };
+    if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(batchPrepared ? { batch: batchPayload, stylingSessionIds: sessionIds } : { batch: null, stylingSessionIds: [] }) });
+    const body = route.request().postDataJSON() as { action?: string };
+    if (!body.action) { batchPrepared = true; generatedCount = 9; }
+    const state = generatedCount ? "generating" : "approved";
+    return route.fulfill({ status: body.action ? 200 : 201, contentType: "application/json", body: JSON.stringify({
+      batch: { ...batchPayload, state },
+      stylingSessionIds: sessionIds,
+    }) });
+  });
+  await page.route("**/api/v2/consultations/**/fashion-previews", (route) => {
+    if (route.request().method() !== "GET") return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ previewSet: { directionSnapshot: fashionDirection } }) });
+    const previews = generatedCount === 9 ? slots.map((slotId, index) => ({ stylingSessionId: sessionIds[index], selectionSnapshotId: "00000000-0000-4000-8000-000000000021", slotId, category: index < 3 ? "DAILY" : index < 6 ? "WORK" : "STATEMENT", genre: "casual", direction: fashionDirection, status: "completed", headline: `배치 룩 ${index + 1}`, summary: "배치 결과", palette: [], silhouette: "balanced", neckline: "balanced", items: [], shoppingKeywords: [], imageUrl: FACE_PHOTO_FIXTURE, errorMessage: null, createdAt: "2026-08-09T00:00:00.000Z", updatedAt: null })) : [];
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ previews, previewSet: null }) });
   });
 
   await page.goto("/consulting/e2e-harness?stage=fashion");
   await dismissGlobalNotices(page);
   await expect(page.locator("[data-fashion-slot-id]")).toHaveCount(9);
-  await page.getByRole("button", { name: "패션 추천 만들기" }).click();
-  await expect(page.getByRole("heading", { name: "데일리 룩 C" })).toBeVisible();
-  await expect(page.getByText("20크레딧 사용 예정")).toBeVisible();
-  await page.getByRole("button", { name: "실제 패션 프리뷰 생성" }).click();
-  await expect(page.getByRole("heading", { name: "실제 생성 결과 3개 / 9개" })).toBeVisible();
+  await page.getByRole("button", { name: "이 방향으로 9개 룩 준비" }).click();
+  expect(batchPrepared).toBe(true);
+  expect(legacyRecommendationRequests).toBe(0);
+  await expect.poll(() => generatedCount).toBe(9);
+  await expect(page.getByRole("button", { name: /견적 승인/ })).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "데일리 캐주얼 AI 패션 프리뷰" })).toBeVisible();
+  expect(await page.getByText("장르 선택").count()).toBe(0);
+});
 
-  for (const label of ["워크 룩 A", "포멀 룩 B", "데일리 룩 C"]) {
-    await page.getByRole("button", { name: new RegExp(`후보 담기 · ${label}`) }).click();
-  }
-  await expect(page.getByText("현재 3개.")).toBeVisible();
-  await page.getByRole("button", { name: /데일리 룩 C.*DAILY/ }).last().click();
-  await expect(page.getByRole("button", { name: "AI 컨설팅 여정 완료" })).toBeEnabled();
-  expect(await page.locator("text=프로필 확인").count()).toBe(0);
-  expect(await page.locator("text=장르 선택").count()).toBe(0);
-  expect(consultationId).toBeTruthy();
+test("Aftercare starts from actual service and renders server-generated care as AI output", async ({ page }) => {
+  let generated = false;
+  await page.route("**/api/v2/consultations/**/aftercare", (route) => route.fulfill({
+    status: 200,
+    contentType: "application/json",
+    body: JSON.stringify(generated ? {
+      actualService: { services: ["커트", "펌"], serviceDate: "2026-08-10", designerNotes: "앞머리 길이 조정", confirmedAt: "2026-08-10T10:00:00.000Z" },
+      program: {
+        schemaVersion: "aftercare-program-v2",
+        consultationId: "00000000-0000-4000-8000-000000000001",
+        selectionSnapshotId: "00000000-0000-4000-8000-000000000021",
+        actualServiceId: "00000000-0000-4000-8000-000000000071",
+        version: 1,
+        today: ["두피부터 중간 바람으로 말립니다.", "찬바람으로 끝선을 정리합니다."],
+        checkpoints: ["D+3", "W+2", "W+6", "W+10"].map((offset) => ({ offset, action: `${offset} 모발 상태와 실루엣을 확인합니다.`, complete: false })),
+        concerns: ["강한 열을 한곳에 오래 사용하지 않습니다."],
+        satisfaction: null,
+        createdAt: "2026-08-10T10:00:00.000Z",
+      },
+    } : { actualService: null, program: null }),
+  }));
+
+  await page.goto("/consulting/e2e-harness?stage=aftercare");
+  await dismissGlobalNotices(page);
+  await expect(page.getByRole("button", { name: "실제 시술 확정하고 관리 프로그램 자동 생성" })).toBeVisible();
+  await expect(page.getByLabel("오늘 할 관리")).toHaveCount(0);
+
+  generated = true;
+  await page.reload();
+  await dismissGlobalNotices(page);
+  const aiOutput = page.getByLabel("AI 출력 및 시스템 데이터");
+  await expect(aiOutput.getByText("AI care output")).toBeVisible();
+  await expect(aiOutput.getByText("두피부터 중간 바람으로 말립니다.", { exact: true })).toBeVisible();
+  await expect(aiOutput.getByText("W+10 모발 상태와 실루엣을 확인합니다.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "관리 프로그램 새 버전 저장" })).toBeVisible();
+});
+
+test("Salon Brief auto-loads the durable designer brief without a user save request", async ({ page }) => {
+  let automaticBriefRequests = 0;
+  await page.route("**/api/v2/consultations/**/salon-brief", (route) => {
+    automaticBriefRequests += 1;
+    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ brief: {
+      schemaVersion: "salon-brief-v2",
+      consultationId: "00000000-0000-4000-8000-000000000011",
+      selectionSnapshotId: "00000000-0000-4000-8000-000000000021",
+      version: 1,
+      audience: "designer",
+      summary: "얼굴 균형과 확정 헤어를 연결한 자동 살롱 요약입니다.",
+      cut: { direction: "쇄골 기장과 얼굴선 레이어를 유지합니다." },
+      volumeTexture: { direction: "정수리 볼륨과 사이드 무게를 분리합니다." },
+      color: null,
+      styling: ["얼굴 바깥 방향으로 드라이합니다."],
+      cautions: ["실제 모질과 손상도를 현장에서 다시 확인합니다."],
+      createdAt: "2026-08-10T10:00:00.000Z",
+    } }) });
+  });
+  await page.route("**/api/consultations/**", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "harness snapshot write omitted" }) });
+  });
+
+  await page.goto("/consulting/e2e-harness?stage=salon-brief");
+  await dismissGlobalNotices(page);
+  const aiOutput = page.getByLabel("AI 출력 및 시스템 데이터");
+  await expect(aiOutput.getByText("얼굴 균형과 확정 헤어를 연결한 자동 살롱 요약입니다.")).toBeVisible();
+  await expect(aiOutput.getByText("쇄골 기장과 얼굴선 레이어를 유지합니다.")).toBeVisible();
+  expect(automaticBriefRequests).toBe(1);
 });
 
 for (const viewport of [{ width: 390, height: 844, colorScheme: "light" as const }, { width: 768, height: 1024, colorScheme: "dark" as const }]) {

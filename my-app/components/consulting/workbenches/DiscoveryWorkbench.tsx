@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ConsultationInputProfile, ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
+import { DiscoveryInterview } from "../interview/DiscoveryInterview";
 import { ChoiceGroup, ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
 
 const PURPOSES = ["출근·업무 이미지", "일상 이미지 정리", "중요 일정", "큰 스타일 변화"];
@@ -13,7 +14,13 @@ function selectedLabel<T extends string>(value: T, labels: Record<T, string>) {
   return [labels[value]];
 }
 
-export function DiscoveryWorkbench({ snapshot, mutate, saving }: { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">) => Promise<unknown>; saving: boolean }) {
+type DiscoveryWorkbenchProps = { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">) => Promise<unknown>; saving: boolean; interviewEnabled?: boolean };
+
+export function DiscoveryWorkbench(props: DiscoveryWorkbenchProps) {
+  return props.interviewEnabled ? <DiscoveryInterview {...props} /> : <DiscoveryFormWorkbench {...props} />;
+}
+
+function DiscoveryFormWorkbench({ snapshot, mutate, saving }: DiscoveryWorkbenchProps) {
   const [value, setValue] = useState<ConsultationInputProfile>(snapshot.discovery);
   const toggle = (key: "goals" | "treatmentHistory" | "desiredServices" | "allowedServices" | "avoid", item: string) => setValue((current) => ({ ...current, [key]: current[key].includes(item) ? current[key].filter((entry) => entry !== item) : [...current[key], item] }));
   const unavailableServices = value.desiredServices.filter((service) => service !== "아직 모름" && !value.allowedServices.includes(service));
