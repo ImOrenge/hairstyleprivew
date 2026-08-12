@@ -34,6 +34,7 @@ boundaries:
   feature:
     owns:
       - standalone-interview-layout
+      - bounded-discovery-scroll-region
       - question-focus
       - radio-checkbox-text-range-compound-rendering
       - coverage-presentation
@@ -81,6 +82,7 @@ a11y_contract:
   single_choice: native-radio-group
   multiple_choice: native-checkboxes
   summary: focus-trapped-dialog-with-return-focus
+  discovery_scroll: keyboard-focusable-contained-region-on-desktop
   save_failure: polite-or-alert-status
   reduced_motion: no-question-transition-animation
   zoom_and_mobile: single-column-at-390px-and-200-percent-text
@@ -100,6 +102,7 @@ change_policy:
     - component-registry-validation
   behavioral_change_requires:
     - keyboard-focus-summary-exit-regression
+    - discovery-wheel-and-keyboard-scroll-regression
 
 promotion_blockers:
   - authenticated-interview-browser-regression-not-yet-run

@@ -363,9 +363,12 @@ test("consulting interview foundation is domain independent and never models wiz
   assert.doesNotMatch(interview, /ConsultationInputProfile|FashionDirectionSnapshot|currentStep|questionIndex|fetch\(/);
   assert.match(interview, /type=\{isMultiple \? "checkbox" : "radio"\}/);
   assert.match(interview, /headingRef\.current\?\.focus/);
+  assert.match(interview, /aria-label=\{scrollLabel\} tabIndex=\{0\}/);
   assert.match(css, /\.f-consulting-interview/);
+  assert.match(css, /\.f-consulting-interview\[data-kind="discovery"\]\s*\{[\s\S]*?height:\s*100%;[\s\S]*?min-height:\s*0;[\s\S]*?overflow-y:\s*auto;[\s\S]*?overscroll-behavior-y:\s*contain;[\s\S]*?scrollbar-gutter:\s*stable;/);
   assert.match(css, /prefers-reduced-motion/);
   assert.match(passport, /status: candidate/);
+  assert.match(passport, /discovery_scroll: keyboard-focusable-contained-region-on-desktop/);
   assert.match(registry, /"id": "web\.consulting\.interview"/);
 });
 

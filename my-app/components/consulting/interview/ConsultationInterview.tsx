@@ -63,7 +63,8 @@ export function ConsultationInterviewShell({ kind, title, description, coverage,
   summary: ReactNode;
   footer?: ReactNode;
 }) {
-  return <section className="f-consulting-interview" data-kind={kind} data-save-state={saveState}>
+  const scrollLabel = kind === "discovery" ? "디스커버리 인터뷰" : "패션 방향 인터뷰";
+  return <section className="f-consulting-interview" data-kind={kind} data-save-state={saveState} aria-label={scrollLabel} tabIndex={0}>
     <header className="f-consulting-interview__header">
       <div>
         <p className="app-kicker">Consultant interview</p>
