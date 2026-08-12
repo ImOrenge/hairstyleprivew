@@ -9,6 +9,15 @@ function read(relativePath: string) {
 }
 
 describe("root router layout", () => {
+  test("ships the splash-screen native module required by the development client", () => {
+    const manifest = JSON.parse(read("package.json")) as {
+      dependencies?: Record<string, string>;
+    };
+
+    expect(manifest.dependencies?.["expo-dev-client"]).toBeDefined();
+    expect(manifest.dependencies?.["expo-splash-screen"]).toBe("~55.0.23");
+  });
+
   test("owns the route stack while keeping role navigation outside the active screen", () => {
     const layout = read("app/_layout.tsx");
     const scaffoldOpen = layout.indexOf("<RoleNavigationScaffold>");
