@@ -523,6 +523,10 @@ test("preview comparison permits two accepted results before the full board is r
   assert.match(previews, /const canCompare = selected\.length >= 2/);
   assert.doesNotMatch(previews, /acceptedCount === 9/);
   assert.match(previews, /나머지 결과가 생성 중이어도 비교를 시작/);
+  assert.match(previews, /비교 가능 · 나머지 프리뷰 생성 중/);
+  assert.match(previews, /data-generation-state=\{generationStatus\.state\}/);
+  assert.match(previews, /품질 승인 결과/);
+  assert.doesNotMatch(previews, /snapshot\.previews\.some\(\(item\) => item\.status === "accepted"\) \? "ready"/);
   assert.match(previews, /autoStartAttempted/);
   assert.match(previews, /void startGeneration\(\)/);
   assert.doesNotMatch(previews, /이용 조건 확인|3×3 생성 시작/);

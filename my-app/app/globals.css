@@ -1838,6 +1838,81 @@ textarea::placeholder {
   color: var(--app-inverse-text);
 }
 
+.f-preview-generation-status {
+  display: grid;
+  gap: 1rem;
+}
+
+.f-preview-generation-status__heading,
+.f-preview-generation-status__copy,
+.f-preview-generation-status__progress > div {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.f-preview-generation-status__copy {
+  justify-content: flex-start;
+}
+
+.f-preview-generation-status__copy h2 {
+  margin-top: 0.35rem;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.f-preview-generation-status__signal {
+  width: 0.8rem;
+  height: 0.8rem;
+  flex: 0 0 auto;
+  margin-top: 0.2rem;
+  border-radius: 999px;
+  background: var(--app-muted);
+}
+
+.f-preview-generation-status[data-generation-state="generating"] .f-preview-generation-status__signal {
+  background: var(--app-accent-strong);
+  animation: f-preview-generation-pulse 1.4s ease-in-out infinite;
+}
+
+.f-preview-generation-status[data-generation-state="partial"] .f-preview-generation-status__signal {
+  background: var(--app-warning);
+  animation: f-preview-generation-pulse 1.8s ease-in-out infinite;
+}
+
+.f-preview-generation-status[data-generation-state="complete"] .f-preview-generation-status__signal {
+  background: var(--app-success);
+}
+
+.f-preview-generation-status[data-generation-state="failed"] .f-preview-generation-status__signal {
+  background: var(--app-danger);
+}
+
+.f-preview-generation-status__detail {
+  color: var(--app-muted);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.f-preview-generation-status__progress {
+  display: grid;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.f-preview-generation-status__progress progress {
+  width: 100%;
+  height: 0.5rem;
+  accent-color: var(--app-accent-strong);
+}
+
+@keyframes f-preview-generation-pulse {
+  0%, 100% { opacity: 0.45; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
 @media (min-width: 64rem) {
   .f-consulting-interview[data-kind="discovery"] {
     height: 100%;
@@ -1874,7 +1949,8 @@ textarea::placeholder {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .f-consulting-interview__question { animation: none; }
+  .f-consulting-interview__question,
+  .f-preview-generation-status__signal { animation: none; }
 }
 
 .app-muted,

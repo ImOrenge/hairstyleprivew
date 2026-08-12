@@ -12,6 +12,7 @@ related_source:
   - my-app/components/consulting/transition/PartialResultReveal.tsx
   - my-app/components/consulting/transition/CompletionMoment.tsx
   - my-app/components/consulting/transition/RecoverableTaskNotice.tsx
+  - my-app/components/consulting/workbenches/PreviewsWorkbench.tsx
 owner: consulting-feature
 
 public_api:
@@ -41,6 +42,7 @@ boundaries:
       - partial-result-priority
       - completion-moment
       - recoverable-failure
+      - explicit-preview-generating-partial-compare-ready-and-complete-status
   forbidden:
     - consultation-input-mutation
     - prompt-payload-mutation
@@ -87,6 +89,7 @@ state:
 
 a11y_contract:
   semantic_status: activity-rail-and-live-milestones
+  preview_status: localized-live-region-with-quality-approved-count
   decorative_svg: aria-hidden
   carousel: aria-live-off
   milestone_announcements: polite

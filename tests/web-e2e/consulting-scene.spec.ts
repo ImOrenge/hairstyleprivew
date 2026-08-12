@@ -218,8 +218,15 @@ test("two quality-accepted previews can open comparison before all nine finish",
   await page.route("**/api/v2/consultations/**/preview-board", (route) => route.fulfill({ status: 202, contentType: "application/json", body: JSON.stringify({ state: "generating" }) }));
   await page.goto("/consulting/e2e-harness?stage=previews");
   await dismissGlobalNotices(page);
-  await page.getByRole("button", { name: /BALANCE 1/ }).click();
-  await page.getByRole("button", { name: /BALANCE 2/ }).click();
+  const generationStatus = page.locator('[data-generation-state="partial"]');
+  await expect(generationStatus).toContainText("비교 가능 · 나머지 프리뷰 생성 중");
+  await expect(generationStatus).toContainText("2 / 9");
+  const balanceOne = page.getByRole("button", { name: /BALANCE 1/ });
+  const balanceTwo = page.getByRole("button", { name: /BALANCE 2/ });
+  await balanceOne.click();
+  await expect(balanceOne).toHaveAttribute("aria-pressed", "true");
+  await balanceTwo.click();
+  await expect(balanceTwo).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText("Shortlist 2 / 3")).toBeVisible();
   await expect(page.getByRole("button", { name: "선택한 후보 비교하기" })).toBeEnabled();
 });
@@ -321,6 +328,7 @@ test("partial output replaces small talk and failure stops decorative waiting", 
     return performance.now() - (navigation?.responseEnd ?? 0);
   });
   expect(partialRevealDelay).toBeLessThanOrEqual(300);
+  await expect(page.locator(".f-consultant-activity__heading [data-task-status=partial]")).toHaveText("일부 완료 · 생성 계속 중");
   await expect(page.locator(".f-consultant-activity__smalltalk")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "결과에 영향을 주지 않는 대기 인터랙션" })).toHaveCount(0);
 
