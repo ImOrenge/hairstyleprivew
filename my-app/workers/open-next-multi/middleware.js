@@ -18,6 +18,18 @@ function fetchPinnedServer(service, request, versionId) {
   });
 }
 
+async function fetchPinnedServerDiagnostic(service, request, versionId) {
+  const response = await fetchPinnedServer(service, request, versionId);
+  const headers = new Headers(response.headers);
+  headers.set("x-hairfit-pinned-server-version", versionId);
+  headers.set("cache-control", "no-store, max-age=0");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 const SERVER_VERIFIED_CALLBACK_PATHS = new Set([
   "/api/generations/run",
   "/api/generations/prepare",
@@ -74,7 +86,7 @@ export default class HairFitOpenNextRouter extends WorkerEntrypoint {
     }
 
     if (pathname === "/.well-known/hairfit-deployment") {
-      return fetchPinnedServer(this.env.DEFAULT_WORKER, request, this.env.WORKER_VERSION_ID);
+      return fetchPinnedServerDiagnostic(this.env.DEFAULT_WORKER, request, this.env.WORKER_VERSION_ID);
     }
 
     // These handlers perform their own constant-time secret verification on the

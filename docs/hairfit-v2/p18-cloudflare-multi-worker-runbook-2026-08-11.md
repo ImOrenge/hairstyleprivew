@@ -107,3 +107,4 @@
 - classic route를 제거한 뒤 라우터 Custom Domain만 남기는 방식은 service binding 원점 경로에서 `522`를 만들 수 있으므로 사용하지 않는다.
 - 실제 리허설에서 두 route를 서버로 복원해 `/`, `/login`, `/workspace`, `www`를 정상화한 뒤, Custom Domain은 서버에 둔 채 두 route의 script만 라우터로 바꾸는 방식으로 성공했다.
 - 운영 probe는 `/.well-known/hairfit-router`의 pinned server version과 `/.well-known/hairfit-deployment`의 source revision을 모두 `no-store` 응답으로 확인한다.
+- 카나리 비율 관찰은 서로 다른 두 요청을 결합하지 않는다. `/.well-known/hairfit-deployment` 단일 응답의 `x-hairfit-pinned-server-version` 헤더와 JSON `sourceRevision`을 한 쌍으로 판정한다.

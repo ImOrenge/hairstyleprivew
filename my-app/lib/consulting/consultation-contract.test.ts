@@ -233,6 +233,8 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   const packageJson = JSON.parse(read("../../package.json"));
 
   assert.match(router, /Cloudflare-Workers-Version-Overrides/);
+  assert.match(router, /x-hairfit-pinned-server-version/);
+  assert.match(router, /fetchPinnedServerDiagnostic/);
   assert.match(router, /hairstyleprivew=\"\$\{versionId\}\"/);
   assert.match(router, /function fetchPinnedServer\(service, request, versionId\)/);
   assert.match(router, /const downstreamHeaders = new Headers\(request\.headers\)/);
