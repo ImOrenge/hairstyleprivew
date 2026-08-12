@@ -488,8 +488,12 @@ test("Fashion direction interview reuses hair and color, autosaves seven topics,
   assert.match(interview, /onAutosave\(normalized\)/);
   assert.match(interview, /이 방향으로 9개 룩 준비/);
   assert.doesNotMatch(interview, /currentStep|questionIndex|유료 생성|결제 확인|견적 승인/);
-  assert.match(workbench, /interviewEnabled && !batchState\.batch \? <FashionDirectionInterview/);
+  assert.match(interview, /aria-label="패션 방향 인터뷰 목록"/);
+  assert.match(interview, /complete \? "✓"/);
+  assert.match(workbench, /if \(interviewEnabled && !batchState\.batch\)/);
+  assert.match(workbench, /return <FashionDirectionInterview/);
   assert.match(workbench, /onConfirm=\{prepareBatch\}/);
+  assert.ok(workbench.indexOf("return <FashionDirectionInterview") < workbench.indexOf("return <WorkbenchGrid"));
   assert.doesNotMatch(workbench, /normalizePaidActionQuote|\/api\/paid-actions\/quote|\/api\/styling\/generate/);
   assert.doesNotMatch(workbench, /\/api\/styling\/recommend/);
   assert.doesNotMatch(workbench, /견적 승인하고|유료 생성 확인/);

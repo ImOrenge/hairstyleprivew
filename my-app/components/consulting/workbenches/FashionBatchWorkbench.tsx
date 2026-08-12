@@ -172,8 +172,9 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
 
   const completed = previews.filter((preview) => preview.status === "completed" && preview.imageUrl);
   const shortlistPreviews = shortlist.map((id) => previews.find((preview) => preview.stylingSessionId === id)).filter(Boolean) as FashionPreviewCandidateV2[];
-  return <WorkbenchGrid input={<div className="grid gap-5">
-    {interviewEnabled && !batchState.batch ? <FashionDirectionInterview
+
+  if (interviewEnabled && !batchState.batch) {
+    return <FashionDirectionInterview
       consultationId={snapshot.sessionId}
       direction={direction}
       selectedHair={style?.label || "확정한 헤어"}
@@ -186,7 +187,11 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
         return await mutate({ fashion: { ...snapshot.fashion, directionSnapshot: nextDirection }, currentStage: "fashion" }, { navigate: false }) as { ok?: boolean; conflict?: boolean };
       }}
       onConfirm={prepareBatch}
-    /> : <Panel className="grid gap-5 p-5 sm:p-7">
+    />;
+  }
+
+  return <WorkbenchGrid input={<div className="grid gap-5">
+    <Panel className="grid gap-5 p-5 sm:p-7">
       <div><p className="app-kicker">One direction · nine outputs</p><h2 className="mt-2 text-xl font-black">{style?.label || "확정한 헤어"}에서 9개 룩을 한 번에 준비합니다</h2><p className="mt-2 text-sm text-[var(--app-muted)]">상황·계절·핏·노출·예산·회피 조건을 한 번 정하면 DAILY·WORK·STATEMENT 9개 슬롯 전체에 반영됩니다.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-2 text-sm font-black">계절<select value={direction.season} onChange={(event) => setDirection({ ...direction, season: event.target.value as FashionDirectionSnapshot["season"] })} className="app-input min-h-11 px-3"><option value="spring">spring</option><option value="summer">summer</option><option value="autumn">autumn</option><option value="winter">winter</option><option value="all-season">all-season</option></select></label>
@@ -197,7 +202,7 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
       <label className="grid gap-2 text-sm font-black">회피 아이템<input value={direction.avoidItems.join(", ")} onChange={(event) => setDirection({ ...direction, avoidItems: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })} className="app-input min-h-11 px-3 font-normal" /></label>
       {profileReady === false ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">전신 사진과 바디 프로필이 필요합니다. <Link href="/mypage" className="font-black underline">프로필 완성</Link></p> : null}
       <Button type="button" loading={working} disabled={!profileReady || Boolean(batchState.batch && ["approved", "generating", "partial", "ready"].includes(batchState.batch.state))} onClick={() => void prepareBatch(direction)}>이 방향으로 9개 룩 준비</Button>
-    </Panel>}
+    </Panel>
     {batchState.batch && ["approved", "partial", "failed"].includes(batchState.batch.state) ? <Button type="button" variant="secondary" loading={working} onClick={() => void resumeIncomplete()}>미완료 슬롯 자동 재접수</Button> : null}
     {needsPurchase ? <p className="border border-[var(--app-border)] bg-[var(--app-surface)] p-3 text-sm">인터뷰 답변은 저장되어 있습니다. <Link href="/billing" className="font-black underline">이용 상품을 선택한 뒤 이어서 진행</Link>할 수 있습니다.</p> : null}
     {error ? <p role="alert" className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}

@@ -1935,6 +1935,28 @@ textarea::placeholder {
   .f-consulting-interview[data-kind="discovery"] .f-consulting-interview__topic-list {
     grid-template-columns: 1fr;
   }
+
+  .f-consulting-interview[data-kind="fashion-direction"] {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+  }
+
+  .f-consulting-interview[data-kind="fashion-direction"] .f-consulting-interview__body {
+    grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .f-consulting-interview[data-kind="fashion-direction"] .f-consulting-interview__navigation {
+    position: sticky;
+    top: 0;
+  }
+
+  .f-consulting-interview[data-kind="fashion-direction"] .f-consulting-interview__topic-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 @keyframes f-consulting-interview-enter {

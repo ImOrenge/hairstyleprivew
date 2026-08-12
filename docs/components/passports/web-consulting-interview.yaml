@@ -36,7 +36,10 @@ boundaries:
     owns:
       - standalone-interview-layout
       - bounded-discovery-scroll-region
+      - bounded-fashion-scroll-region
       - discovery-topic-navigation-with-completion-state
+      - fashion-topic-navigation-with-completion-state
+      - fashion-interview-before-generation-gate
       - question-focus
       - radio-checkbox-text-range-compound-rendering
       - coverage-presentation
@@ -85,6 +88,7 @@ a11y_contract:
   multiple_choice: native-checkboxes
   summary: focus-trapped-dialog-with-return-focus
   discovery_scroll: keyboard-focusable-contained-region-on-desktop
+  fashion_scroll: keyboard-focusable-contained-region-on-desktop
   topic_navigation: aria-current-topic-and-screen-reader-completion-state
   save_failure: polite-or-alert-status
   reduced_motion: no-question-transition-animation
@@ -106,6 +110,7 @@ change_policy:
   behavioral_change_requires:
     - keyboard-focus-summary-exit-regression
     - discovery-wheel-and-keyboard-scroll-regression
+    - fashion-generation-boundary-regression
 
 promotion_blockers:
   - authenticated-interview-browser-regression-not-yet-run

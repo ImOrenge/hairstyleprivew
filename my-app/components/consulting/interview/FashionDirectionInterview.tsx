@@ -12,6 +12,16 @@ import { ConsultationInterviewShell, InterviewQuestionRenderer, type InterviewSa
 const TOPICS = ["context", "impression", "fit", "exposure", "season", "budget", "avoid"] as const;
 type TopicId = (typeof TOPICS)[number];
 
+const TOPIC_LABELS: Record<TopicId, string> = {
+  context: "착용 상황",
+  impression: "원하는 인상",
+  fit: "선호 핏",
+  exposure: "노출 범위",
+  season: "계절",
+  budget: "예산",
+  avoid: "피하고 싶은 것",
+};
+
 const QUESTIONS: Record<TopicId, InterviewQuestionSchema> = {
   context: { id: "fashion-context", topicId: "fashion-context", kind: "single", prompt: "가장 먼저 필요한 룩은 어디에서 입을 예정인가요?", required: true, options: [
     { value: "daily", label: "일상" }, { value: "work", label: "업무" }, { value: "date", label: "데이트·모임" }, { value: "formal", label: "격식 있는 일정" },
@@ -106,6 +116,15 @@ export function FashionDirectionInterview({ consultationId, direction, selectedH
   };
 
   const allComplete = completed.length === TOPICS.length;
+  const topicNavigation = <nav aria-label="패션 방향 인터뷰 목록">
+    <p className="app-kicker">Interview topics</p>
+    <ol className="f-consulting-interview__topic-list mt-3">{TOPICS.map((topic, index) => {
+      const complete = marker(direction, topic);
+      const active = topic === activeTopic;
+      return <li key={topic}><button type="button" className="f-consulting-interview__topic" data-state={complete ? "complete" : active ? "active" : "pending"} aria-current={active ? "true" : undefined} onClick={() => setEditTopic(topic)}><span className="f-consulting-interview__topic-marker" aria-hidden="true">{complete ? "✓" : String(index + 1).padStart(2, "0")}</span><span>{TOPIC_LABELS[topic]}</span><span className="sr-only">{complete ? "완료" : active ? "현재 질문" : "미완료"}</span></button></li>;
+    })}</ol>
+  </nav>;
+
   return <>
     <ConsultationInterviewShell
       kind="fashion-direction"
@@ -116,6 +135,7 @@ export function FashionDirectionInterview({ consultationId, direction, selectedH
       summaryOpen={summaryOpen}
       onSummaryOpenChange={setSummaryOpen}
       onExitRequest={() => setExitOpen(true)}
+      navigation={topicNavigation}
       summary={<div className="grid gap-5"><DefinitionRows items={[
         { label: "확정 헤어", value: selectedHair }, { label: "컬러 근거", value: personalColor },
         { label: "착용 상황", value: draft.situation }, { label: "분위기", value: draft.genre },

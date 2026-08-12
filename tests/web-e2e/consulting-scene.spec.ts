@@ -160,6 +160,11 @@ test("Discovery and Fashion use standalone, keyboard-safe interview layouts with
     const interview = page.locator(".f-consulting-interview");
     await expect(interview).toBeVisible();
     await expect(interview).toHaveAttribute("data-kind", stage === "discovery" ? "discovery" : "fashion-direction");
+    if (stage === "fashion") {
+      await expect(page.getByRole("navigation", { name: "패션 방향 인터뷰 목록" })).toBeVisible();
+      await expect(page.locator("[data-fashion-board-size='9']")).toHaveCount(0);
+      await expect(page.getByText("AI 출력 및 시스템 데이터", { exact: true })).toHaveCount(0);
+    }
     await expect(interview.locator("[data-question-id] h3")).toBeFocused();
     await expect(interview).not.toContainText(/다음 단계|유료 생성|결제 확인|견적 승인/);
     await expect(interview.locator(".f-consulting-interview__question")).toHaveCSS("animation-name", "none");
@@ -174,6 +179,28 @@ test("Discovery and Fashion use standalone, keyboard-safe interview layouts with
     await expect(summary).toBeHidden();
     await expect(summaryTrigger).toBeFocused();
   }
+});
+
+test("Fashion direction is a standalone desktop interview before its generation board", async ({ page }) => {
+  await page.goto("/consulting/e2e-harness?stage=fashion&interview=1");
+  await dismissGlobalNotices(page);
+
+  const interview = page.locator(".f-consulting-interview[data-kind='fashion-direction']");
+  const navigation = page.getByRole("navigation", { name: "패션 방향 인터뷰 목록" });
+  const question = interview.locator(".f-consulting-interview__question");
+  await expect(interview).toBeVisible();
+  await expect(navigation).toBeVisible();
+  await expect(page.locator("[data-fashion-board-size='9']")).toHaveCount(0);
+
+  const [navigationBox, questionBox, overflowY] = await Promise.all([
+    navigation.boundingBox(),
+    question.boundingBox(),
+    interview.evaluate((element) => getComputedStyle(element).overflowY),
+  ]);
+  expect(navigationBox).not.toBeNull();
+  expect(questionBox).not.toBeNull();
+  expect(navigationBox!.x).toBeLessThan(questionBox!.x);
+  expect(overflowY).toBe("auto");
 });
 
 test("Photo offers an optional natural-light source and a face-aware crop before automatic analysis handoff", async ({ page }) => {
