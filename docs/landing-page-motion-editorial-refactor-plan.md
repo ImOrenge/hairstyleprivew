@@ -1,5 +1,7 @@
 # HairFit Motion Editorial 랜딩페이지 전체 리팩터링 계획
 
+> **V2 적용 고지 (2026-08-12):** 이 문서는 에디토리얼 레이아웃·모션·이미지 자산의 구현 이력을 보존한다. 아래의 `/workspace`, 무료 생성기, 기존 가격·크레딧 계약은 더 이상 제품 기준이 아니다. 현재 기준은 `docs/hairfit-v2-premium-landing-baseline-2026-08-12.md`이며 B2C 진입점은 `/consulting/new`이다.
+
 - 작성일: 2026-08-04
 - 상태: 구현 및 검증 완료
 - 작업 모드: `redesign`

@@ -304,7 +304,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
           <span className="text-sm font-black">자연광 사진 추가</span>
           <input ref={assistInputRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={working || saving} onChange={(event) => { const selected = event.target.files?.[0]; if (selected) void selectAssistFile(selected); }} />
         </label>
-        {assistPreviewUrl ? <div className="grid grid-cols-[5rem_1fr] items-center gap-3 border border-[var(--app-border)] p-3"><img src={assistPreviewUrl} alt="자연광 컬러 보조 사진 미리보기" className="aspect-square w-20 object-cover" /><p className="text-xs text-[var(--app-muted)]">컬러 진단 보조 사진 준비됨 · 원본 경로는 공개되지 않습니다.</p></div> : null}
+        {assistPreviewUrl ? <div className="grid min-h-[5rem] grid-cols-[5rem_1fr] items-center gap-3 border border-[var(--app-border)] p-3"><img src={assistPreviewUrl} alt="자연광 컬러 보조 사진 미리보기" className="aspect-square w-20 object-cover" loading="lazy" decoding="async" /><p className="text-xs text-[var(--app-muted)]">컬러 진단 보조 사진 준비됨 · 원본 경로는 공개되지 않습니다.</p></div> : null}
       </div>
       <label className="grid cursor-pointer gap-3 border border-dashed border-[var(--app-border-strong)] bg-[var(--app-surface)] p-5 text-center">
         <span className="text-sm font-black">정면 사진 선택</span>
@@ -313,7 +313,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
       </label>
       {previewUrl && crop ? <div className="grid gap-4 border border-[var(--app-border)] p-4">
         <div><p className="text-sm font-black">분석 프레이밍</p><p className="mt-1 text-xs text-[var(--app-muted)]">얼굴 신호를 기준으로 4:5 프레임을 먼저 맞췄습니다. 필요한 경우 가로·세로 위치만 조정하세요.</p></div>
-        <div className="relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden bg-[var(--app-surface-muted)]"><img src={previewUrl} alt="분석할 영역 미리보기" className="absolute max-w-none" style={cropPreviewStyle} /></div>
+        <div className="relative mx-auto aspect-[4/5] w-full max-w-sm overflow-hidden bg-[var(--app-surface-muted)]"><img src={previewUrl} alt="분석할 영역 미리보기" className="absolute max-w-none" style={cropPreviewStyle} loading="eager" decoding="async" /></div>
         <label className="grid gap-2 text-xs font-bold">가로 위치<input type="range" min={0} max={Math.max(0, 1 - crop.width)} step={0.001} value={crop.x} disabled={crop.width >= 1 || working || saving} onChange={(event) => setCropPosition("x", Number(event.target.value))} /></label>
         <label className="grid gap-2 text-xs font-bold">세로 위치<input type="range" min={0} max={Math.max(0, 1 - crop.height)} step={0.001} value={crop.y} disabled={crop.height >= 1 || working || saving} onChange={(event) => setCropPosition("y", Number(event.target.value))} /></label>
         <SaveStageButton loading={working || saving} disabled={working || saving} onClick={() => void analyze(file, photo, faceEvidence, assistFile)}>이 프레이밍 사용</SaveStageButton>

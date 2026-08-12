@@ -241,7 +241,7 @@ export function HairstylePreviewShowcase() {
             </div>
           </dl>
           <p className="f-hairstyle-preview__summary-copy">{t("hairstylePreview.summary")}</p>
-          <Link href="/workspace" className="f-landing-cta">
+          <Link href="/consulting/new" className="f-landing-cta">
             {t("hairstylePreview.cta")}
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </Link>

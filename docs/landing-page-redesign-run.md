@@ -1,11 +1,13 @@
 # HairFit landing page redesign run
 
 - date: `2026-08-04`
-- updated: `2026-08-11`
+- updated: `2026-08-12`
 - mode: `redesign`
-- phase: `handoff`
-- primary conversion: `/workspace`에서 사진 업로드 시작
+- phase: `premium-baseline`
+- primary conversion: `/consulting/new`에서 프라이빗 AI 컨설팅 시작
 - technical target: Next.js 16 App Router의 기존 `/` 경로
+
+> 2026-08-12 V2 기준: 이 문서의 에디토리얼 구조·모션·이미지 계약은 유지한다. 제품 포지셔닝, 상품·가격, CTA 카피는 `docs/hairfit-v2-premium-landing-baseline-2026-08-12.md`와 프리미엄 전략 문서를 우선한다.
 
 ## Outcome
 
@@ -103,4 +105,4 @@
 
 ## Next action
 
-사용자 시각 승인 후에만 커밋·병합·푸시 범위를 별도로 결정한다.
+프리미엄 전략의 메시지 맵을 11개 장면에 대응시키고, 기존 무료 생성기 카피를 컨설팅 가치·근거·결과물 중심으로 교체한다.
