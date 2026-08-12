@@ -22,6 +22,7 @@ public_api:
     - coverage-without-step-index
     - externally-owned-save-state
     - externally-owned-summary-state
+    - optional-topic-navigation
     - exit-request
   events:
     - answer-change
@@ -35,6 +36,7 @@ boundaries:
     owns:
       - standalone-interview-layout
       - bounded-discovery-scroll-region
+      - discovery-topic-navigation-with-completion-state
       - question-focus
       - radio-checkbox-text-range-compound-rendering
       - coverage-presentation
@@ -83,6 +85,7 @@ a11y_contract:
   multiple_choice: native-checkboxes
   summary: focus-trapped-dialog-with-return-focus
   discovery_scroll: keyboard-focusable-contained-region-on-desktop
+  topic_navigation: aria-current-topic-and-screen-reader-completion-state
   save_failure: polite-or-alert-status
   reduced_motion: no-question-transition-animation
   zoom_and_mobile: single-column-at-390px-and-200-percent-text

@@ -1777,6 +1777,67 @@ textarea::placeholder {
   color: var(--app-danger);
 }
 
+.f-consulting-interview__body,
+.f-consulting-interview__content {
+  display: grid;
+  min-width: 0;
+  gap: 1.25rem;
+}
+
+.f-consulting-interview__navigation {
+  min-width: 0;
+  border: 1px solid var(--app-border);
+  background: var(--app-surface);
+  padding: 1rem;
+}
+
+.f-consulting-interview__topic-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.5rem;
+}
+
+.f-consulting-interview__topic {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid transparent;
+  padding: 0.5rem;
+  color: var(--app-muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-align: left;
+}
+
+.f-consulting-interview__topic:hover,
+.f-consulting-interview__topic:focus-visible,
+.f-consulting-interview__topic[data-state="active"] {
+  border-color: var(--app-border-strong);
+  color: var(--app-text);
+}
+
+.f-consulting-interview__topic[data-state="complete"] {
+  color: var(--app-text);
+}
+
+.f-consulting-interview__topic-marker {
+  display: grid;
+  width: 1.5rem;
+  height: 1.5rem;
+  place-items: center;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  font-size: 0.65rem;
+}
+
+.f-consulting-interview__topic[data-state="complete"] .f-consulting-interview__topic-marker {
+  border-color: var(--app-accent-strong);
+  background: var(--app-accent-strong);
+  color: var(--app-inverse-text);
+}
+
 @media (min-width: 64rem) {
   .f-consulting-interview[data-kind="discovery"] {
     height: 100%;
@@ -1784,6 +1845,20 @@ textarea::placeholder {
     overflow-y: auto;
     overscroll-behavior-y: contain;
     scrollbar-gutter: stable;
+  }
+
+  .f-consulting-interview[data-kind="discovery"] .f-consulting-interview__body {
+    grid-template-columns: minmax(12rem, 15rem) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .f-consulting-interview[data-kind="discovery"] .f-consulting-interview__navigation {
+    position: sticky;
+    top: 0;
+  }
+
+  .f-consulting-interview[data-kind="discovery"] .f-consulting-interview__topic-list {
+    grid-template-columns: 1fr;
   }
 }
 

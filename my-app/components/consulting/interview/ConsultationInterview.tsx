@@ -49,7 +49,7 @@ export function InterviewSummaryDrawer({ open, onOpenChange, title, children, fo
   </Dialog>;
 }
 
-export function ConsultationInterviewShell({ kind, title, description, coverage, saveState, savedAt, summaryOpen, onSummaryOpenChange, onExitRequest, children, summary, footer }: {
+export function ConsultationInterviewShell({ kind, title, description, coverage, saveState, savedAt, summaryOpen, onSummaryOpenChange, onExitRequest, children, navigation, summary, footer }: {
   kind: "discovery" | "fashion-direction";
   title: string;
   description: string;
@@ -60,6 +60,7 @@ export function ConsultationInterviewShell({ kind, title, description, coverage,
   onSummaryOpenChange: (open: boolean) => void;
   onExitRequest: () => void;
   children: ReactNode;
+  navigation?: ReactNode;
   summary: ReactNode;
   footer?: ReactNode;
 }) {
@@ -76,10 +77,15 @@ export function ConsultationInterviewShell({ kind, title, description, coverage,
         <Button type="button" variant="ghost" onClick={onExitRequest}>상담 나가기</Button>
       </div>
     </header>
-    <InterviewCoverageIndicator {...coverage} />
-    <InterviewSaveStatus state={saveState} savedAt={savedAt} />
-    <div className="f-consulting-interview__question">{children}</div>
-    {footer ? <footer className="f-consulting-interview__footer">{footer}</footer> : null}
+    <div className="f-consulting-interview__body">
+      {navigation ? <aside className="f-consulting-interview__navigation">{navigation}</aside> : null}
+      <div className="f-consulting-interview__content">
+        <InterviewCoverageIndicator {...coverage} />
+        <InterviewSaveStatus state={saveState} savedAt={savedAt} />
+        <div className="f-consulting-interview__question">{children}</div>
+        {footer ? <footer className="f-consulting-interview__footer">{footer}</footer> : null}
+      </div>
+    </div>
     <InterviewSummaryDrawer open={summaryOpen} onOpenChange={onSummaryOpenChange} title="전체 상담 기준">{summary}</InterviewSummaryDrawer>
   </section>;
 }

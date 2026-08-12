@@ -15,13 +15,13 @@ const SERVICES = ["커트", "펌", "염색", "클리닉"];
 const AVOID = ["짧은 앞머리", "과한 볼륨", "강한 컬", "잦은 뿌리 염색", "매일 고데기"];
 
 const TOPICS = [
-  { id: "purpose", prompt: "이번 상담에서 가장 바꾸고 싶은 것은 무엇인가요?", kind: "single" },
-  { id: "goals", prompt: "어떤 인상과 결과를 원하나요?", kind: "multiple" },
-  { id: "current-hair", prompt: "지금 모발 상태를 알려주세요.", kind: "compound" },
-  { id: "history", prompt: "최근 시술과 손상 상태는 어떤가요?", kind: "compound" },
-  { id: "services", prompt: "원하는 시술과 실제 가능한 범위는 어디까지인가요?", kind: "compound" },
-  { id: "maintenance", prompt: "아침과 미용실에서 어느 정도 관리할 수 있나요?", kind: "compound" },
-  { id: "change", prompt: "변화 강도와 피하고 싶은 것을 정리해볼게요.", kind: "compound" },
+  { id: "purpose", label: "상담 목적", prompt: "이번 상담에서 가장 바꾸고 싶은 것은 무엇인가요?", kind: "single" },
+  { id: "goals", label: "원하는 인상", prompt: "어떤 인상과 결과를 원하나요?", kind: "multiple" },
+  { id: "current-hair", label: "현재 모발", prompt: "지금 모발 상태를 알려주세요.", kind: "compound" },
+  { id: "history", label: "시술·손상", prompt: "최근 시술과 손상 상태는 어떤가요?", kind: "compound" },
+  { id: "services", label: "시술 범위", prompt: "원하는 시술과 실제 가능한 범위는 어디까지인가요?", kind: "compound" },
+  { id: "maintenance", label: "관리 범위", prompt: "아침과 미용실에서 어느 정도 관리할 수 있나요?", kind: "compound" },
+  { id: "change", label: "변화·회피", prompt: "변화 강도와 피하고 싶은 것을 정리해볼게요.", kind: "compound" },
 ] as const;
 
 type TopicId = (typeof TOPICS)[number]["id"];
@@ -88,6 +88,10 @@ function withTopicMetadata(profile: ConsultationInputProfile, topicId: TopicId, 
   };
 }
 
+function describeCurrentHair(profile: ConsultationInputProfile) {
+  return `${profile.hairLength} 길이 · ${profile.hairTexture} · 모발 양 ${profile.hairDensity} · 모발 굵기 ${profile.strandThickness}`;
+}
+
 function schema(topicId: TopicId): InterviewQuestionSchema {
   const topic = TOPICS.find((item) => item.id === topicId) ?? TOPICS[0];
   const options = topic.id === "purpose" ? PURPOSES.map((value) => ({ value, label: value }))
@@ -127,7 +131,10 @@ export function DiscoveryInterview({ snapshot, mutate, saving }: {
 
   const saveTopic = async (topicId: TopicId, fields: string[], nextDraft = draft) => {
     if (!navigator.onLine) { setSaveState("offline"); return; }
-    const normalized = withTopicMetadata(nextDraft, topicId, fields);
+    const preparedDraft = topicId === "current-hair"
+      ? { ...nextDraft, currentHair: describeCurrentHair(nextDraft) }
+      : nextDraft;
+    const normalized = withTopicMetadata(preparedDraft, topicId, fields);
     setDraft(normalized);
     setSaveState("saving");
     const result = await mutate(
@@ -146,7 +153,6 @@ export function DiscoveryInterview({ snapshot, mutate, saving }: {
   const question = schema(activeTopic);
   const questionValue = activeTopic === "purpose" ? draft.purpose : activeTopic === "goals" ? draft.goals : null;
   const compound = activeTopic === "current-hair" ? <div className="grid gap-5">
-    <TextField label="현재 모발 상태" value={draft.currentHair} onChange={(currentHair) => setDraft({ ...draft, currentHair })} placeholder="예: 어깨 아래 길이, 염색으로 끝부분 손상" />
     <ChoiceGroup label="현재 길이" values={["짧음", "중간", "김"]} selected={[draft.hairLength]} multiple={false} onToggle={(hairLength) => setDraft({ ...draft, hairLength })} />
     <ChoiceGroup label="모발 형태" values={["직모", "약한 웨이브", "곱슬"]} selected={[draft.hairTexture]} multiple={false} onToggle={(hairTexture) => setDraft({ ...draft, hairTexture })} />
     <ChoiceGroup label="모발 양" values={["적음", "보통", "많음", "잘 모르겠어요"]} selected={[draft.hairDensity]} multiple={false} onToggle={(hairDensity) => setDraft({ ...draft, hairDensity })} />
@@ -174,6 +180,29 @@ export function DiscoveryInterview({ snapshot, mutate, saving }: {
     maintenance: ["maintenanceLevel", "morningMinutes", "heatStyling", "salonCycleWeeks"], change: ["changeLevel", "avoid", "notes"],
   };
 
+  const topicNavigation = <nav aria-label="디스커버리 인터뷰 목록">
+    <p className="app-kicker">Interview topics</p>
+    <ol className="f-consulting-interview__topic-list mt-3">
+      {TOPICS.map((topic, index) => {
+        const complete = topicComplete(snapshot.discovery, topic.id);
+        const active = topic.id === activeTopic;
+        return <li key={topic.id}>
+          <button
+            type="button"
+            className="f-consulting-interview__topic"
+            data-state={complete ? "complete" : active ? "active" : "pending"}
+            aria-current={active ? "true" : undefined}
+            onClick={() => setEditTopic(topic.id)}
+          >
+            <span className="f-consulting-interview__topic-marker" aria-hidden="true">{complete ? "✓" : String(index + 1).padStart(2, "0")}</span>
+            <span>{topic.label}</span>
+            <span className="sr-only">{complete ? "완료" : active ? "현재 질문" : "미완료"}</span>
+          </button>
+        </li>;
+      })}
+    </ol>
+  </nav>;
+
   return <>
     <ConsultationInterviewShell
       kind="discovery"
@@ -185,10 +214,11 @@ export function DiscoveryInterview({ snapshot, mutate, saving }: {
       summaryOpen={summaryOpen}
       onSummaryOpenChange={setSummaryOpen}
       onExitRequest={() => setExitOpen(true)}
+      navigation={topicNavigation}
       summary={<div className="grid gap-5"><DefinitionRows items={[
         { label: "상담 목적", value: draft.purpose || "미응답" },
         { label: "원하는 변화", value: draft.goals.join(", ") || "미응답" },
-        { label: "현재 모발", value: `${draft.currentHair || "설명 없음"} · ${draft.hairLength} · ${draft.hairTexture}` },
+        { label: "현재 모발", value: describeCurrentHair(draft) },
         { label: "시술 범위", value: draft.allowedServices.join(", ") || "미응답" },
         { label: "관리", value: `아침 ${draft.morningMinutes}분 · ${draft.salonCycleWeeks}주 · ${draft.maintenanceLevel}` },
         { label: "회피", value: draft.avoid.join(", ") || "없음" },
