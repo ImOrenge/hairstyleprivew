@@ -196,6 +196,14 @@ async function loadDbAccount(userId: string) {
   }
 }
 
+function getClerkMiddlewareRuntimeOptions() {
+  const { publishableKey, secretKey } = getClerkConfigState();
+  return {
+    publishableKey: publishableKey ?? undefined,
+    secretKey: secretKey ?? undefined,
+  };
+}
+
 const clerkAppMiddleware = clerkMiddleware(async (auth, req) => {
       const legacyGenerationRedirect = redirectLegacyGenerationEntry(req);
       if (legacyGenerationRedirect) {
@@ -290,7 +298,7 @@ const clerkAppMiddleware = clerkMiddleware(async (auth, req) => {
       }
 
       return withMobileCors(req, NextResponse.next());
-    });
+    }, getClerkMiddlewareRuntimeOptions);
 
 async function clerkUnavailableMiddleware(req: NextRequest) {
       const legacyGenerationRedirect = redirectLegacyGenerationEntry(req);

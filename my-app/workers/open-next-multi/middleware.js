@@ -65,6 +65,16 @@ function ensureMiddlewareProcessEnv(env) {
       process.env[name] = env[name];
     }
   }
+
+  // Next.js replaces NEXT_PUBLIC_* references while compiling middleware.
+  // Mirror the runtime binding to the server-only alias so Clerk's dynamic
+  // middleware options cannot fall back to a development key baked at build time.
+  if (
+    typeof env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY === "string" &&
+    env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.length > 0
+  ) {
+    process.env.CLERK_PUBLISHABLE_KEY = env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  }
 }
 
 export default class HairFitOpenNextRouter extends WorkerEntrypoint {

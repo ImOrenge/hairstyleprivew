@@ -108,3 +108,11 @@
 - 실제 리허설에서 두 route를 서버로 복원해 `/`, `/login`, `/workspace`, `www`를 정상화한 뒤, Custom Domain은 서버에 둔 채 두 route의 script만 라우터로 바꾸는 방식으로 성공했다.
 - 운영 probe는 `/.well-known/hairfit-router`의 pinned server version과 `/.well-known/hairfit-deployment`의 source revision을 모두 `no-store` 응답으로 확인한다.
 - 카나리 비율 관찰은 서로 다른 두 요청을 결합하지 않는다. `/.well-known/hairfit-deployment` 단일 응답의 `x-hairfit-pinned-server-version` 헤더와 JSON `sourceRevision`을 한 쌍으로 판정한다.
+
+## Clerk middleware 빌드 계약
+
+- OpenNext 빌드는 HairFit 운영 `pk_live`/`sk_live`가 주입된 프로세스에서 실행한다. 로컬 개발 `.env.local`의 test 키로 운영 bundle을 만들지 않는다.
+- router wrapper는 encrypted `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` binding을 `CLERK_PUBLISHABLE_KEY` runtime alias로도 주입한다.
+- `clerkMiddleware`는 매 요청 runtime `publishableKey`와 `secretKey`를 명시적으로 받아야 한다. SDK의 빌드 상수에만 의존하지 않는다.
+- bundle 검사에는 실제 키 값을 남기지 않고 type별 실제 키 개수만 기록한다. middleware에 실제 secret key가 포함되면 배포하지 않는다.
+- Preview와 공개 smoke에 비민감 invalid `__clerk_handshake` 문서 요청을 포함한다. 응답이 `5xx`이면 router 전환을 중단하거나 직전 version pair로 롤백한다.
