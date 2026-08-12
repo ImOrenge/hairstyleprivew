@@ -233,7 +233,7 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
       {profileReady === false ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">전신 사진과 바디 프로필이 필요합니다. <Link href="/mypage" className="font-black underline">프로필 완성</Link></p> : null}
       <Button type="button" loading={working} disabled={!profileReady || Boolean(batchState.batch && ["approved", "generating", "partial", "ready"].includes(batchState.batch.state))} onClick={() => void prepareBatch(direction)}>이 방향으로 9개 룩 준비</Button>
     </Panel>
-    {batchState.batch && ["approved", "partial", "failed"].includes(batchState.batch.state) ? <Button type="button" variant="secondary" loading={working} onClick={() => void resumeIncomplete()}>미완료 슬롯 자동 재접수</Button> : null}
+    {batchState.batch && ["approved", "partial", "failed"].includes(batchState.batch.state) ? <Button type="button" variant="secondary" loading={working} onClick={() => void resumeIncomplete()}>미완료 슬롯 다시 시도</Button> : null}
     {needsPurchase ? <p className="border border-[var(--app-border)] bg-[var(--app-surface)] p-3 text-sm">인터뷰 답변은 저장되어 있습니다. <Link href="/billing" className="font-black underline">이용 상품을 선택한 뒤 이어서 진행</Link>할 수 있습니다.</p> : null}
     {error ? <p role="alert" className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}
     {completed.length >= 2 ? <SaveStageButton loading={saving || working} disabled={shortlist.length < 2 || shortlist.length > 3 || !selected.lookId || !shortlist.includes(selected.lookId)} onClick={() => void saveSelection()}>최종 패션 룩 저장</SaveStageButton> : null}

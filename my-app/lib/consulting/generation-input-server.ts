@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { validateConsultationGenerationInputV2 } from "@hairfit/shared/v2";
 import type {
   ConsultationGenerationInputSnapshotV2,
   ConsultationInputProvenanceV2,
@@ -9,6 +10,7 @@ import type {
 } from "@hairfit/shared/v2";
 import { getSupabaseAdminClient } from "../supabase";
 import { selectedStyle, type ConsultationSnapshot } from "./contracts";
+import { resolveConfirmedHairDecisionV2 } from "./generation-input-resolution";
 
 type GenerationInputSources = {
   userId: string;
@@ -141,41 +143,12 @@ export function compileConsultationGenerationInputSnapshotV2(sources: Generation
       bestColors: swatchNames(colorResult.bestColors),
       avoidColors: swatchNames(colorResult.avoidColors),
     } : null,
-    hairDecision: activeStyle ? {
-      selectionSnapshotId: sources.selection?.id ?? activeStyle.id,
-      label: activeStyle.label,
-      reason: activeStyle.reason,
-      services: activeStyle.services,
-      maintenance: activeStyle.maintenance,
-      limitations: activeStyle.limitations,
-      design: {
-        length: activeStyle.strategy.length,
-        fringe: activeStyle.strategy.fringe,
-        parting: activeStyle.strategy.parting,
-        crownVolume: activeStyle.strategy.crownVolume,
-        sideVolume: activeStyle.strategy.sideVolume,
-        texture: activeStyle.strategy.texture,
-        color: activeStyle.strategy.color,
-      },
-      selectedAt: selectionCapturedAt ?? activeStyle.selectedAt,
-    } : selectionSnapshot ? {
-      selectionSnapshotId: sources.selection?.id ?? selectionSnapshot.id,
-      label: selectionSnapshot.style.name,
-      reason: selectionSnapshot.style.recommendationReason,
-      services: strings(record(selectionSnapshot.style.design).services),
-      maintenance: text(record(selectionSnapshot.style.design).maintenance, "확인 전"),
-      limitations: strings(record(selectionSnapshot.style.design).limitations),
-      design: {
-        length: text(record(selectionSnapshot.style.design).length),
-        fringe: text(record(selectionSnapshot.style.design).fringe),
-        parting: text(record(selectionSnapshot.style.design).parting),
-        crownVolume: text(record(selectionSnapshot.style.design).crownVolume),
-        sideVolume: text(record(selectionSnapshot.style.design).sideVolume),
-        texture: text(record(selectionSnapshot.style.design).texture),
-        color: text(record(selectionSnapshot.style.color).direction),
-      },
-      selectedAt: selectionCapturedAt ?? selectionSnapshot.selectedAt,
-    } : null,
+    hairDecision: resolveConfirmedHairDecisionV2({
+      selectionSnapshot,
+      selectionId: sources.selection?.id,
+      selectionConfirmedAt: selectionCapturedAt,
+      activeStyle,
+    }),
     fashion: {
       direction: {
         situation: snapshot.fashion.directionSnapshot.situation,
@@ -211,7 +184,12 @@ export function compileConsultationGenerationInputSnapshotV2(sources: Generation
   };
   const capturedAt = latestTimestamp(payload.provenance.map((item) => item.capturedAt));
   const inputFingerprint = createHash("sha256").update(stable(payload)).digest("hex");
-  return { ...payload, capturedAt, inputFingerprint };
+  const compiled = { ...payload, capturedAt, inputFingerprint };
+  const validationErrors = validateConsultationGenerationInputV2(compiled);
+  if (validationErrors.length) {
+    throw new Error(`CONSULTATION_GENERATION_INPUT_INVALID:${validationErrors.join(",")}`);
+  }
+  return compiled;
 }
 
 export async function loadConsultationGenerationInputSnapshotV2(userId: string, consultationId: string) {

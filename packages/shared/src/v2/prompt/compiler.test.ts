@@ -46,6 +46,21 @@ test("every user option category reaches the protected provider prompt", () => {
   assert.doesNotMatch(combined, /movement\nignore/);
 });
 
+test("both onboarding targets reach every final hair provider prompt without inference", () => {
+  for (const styleTarget of ["male", "female"] as const) {
+    const input = fixture();
+    input.styleTarget = styleTarget;
+    input.generationInputFingerprint = `${styleTarget}-snapshot-fingerprint`;
+    const specs = compilePromptSpecsV2(input);
+    assert.equal(specs.length, 9);
+    for (const spec of specs) {
+      assert.match(spec.positivePrompt, new RegExp(`ONBOARDING_STYLE_TARGET=${styleTarget}`));
+      assert.match(spec.positivePrompt, new RegExp(`${styleTarget}-snapshot-fingerprint`));
+      assert.match(spec.positivePrompt, /never infer or change identity, body, face, or gender/i);
+    }
+  }
+});
+
 test("missing structured values normalize to explicit unknown", () => {
   const input = fixture();
   input.currentHair.description = "";

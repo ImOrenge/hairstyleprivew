@@ -8,7 +8,7 @@ import { isStylingAcceptanceEnabled } from "../release-rollout";
 import { dispatchStylingWorkflowOutbox } from "../styling-workflow-outbox";
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "../v2/errors";
-import { deriveFashionBatchState, deriveFashionSlotProgress, MAX_FASHION_SLOT_ATTEMPTS, summarizeFashionBatchProgress, type FashionRuntimeAttempt } from "./fashion-batch-runtime";
+import { deriveFashionBatchState, deriveFashionSlotProgress, selectDispatchableFashionSessions, summarizeFashionBatchProgress, type FashionRuntimeAttempt } from "./fashion-batch-runtime";
 
 export const CONSULTATION_FASHION_SLOT_IDS = [
   "daily-casual", "daily-minimal", "daily-athleisure",
@@ -187,6 +187,15 @@ export async function prepareFashionBatch(input: {
     styling_session_ids: uniqueIds,
     slot_state: slotState,
   }).select(BATCH_SELECT).single();
+  if (inserted.error?.code === "23505") {
+    const racedReplay = await db.from("fashion_preview_batches_v2").select(BATCH_SELECT)
+      .eq("user_id", input.userId).eq("consultation_id", input.consultationId)
+      .eq("idempotency_key", input.idempotencyKey).single();
+    if (racedReplay.error || !racedReplay.data) throw new Error(racedReplay.error?.message || inserted.error.message);
+    const racedRow = racedReplay.data as unknown as BatchRow;
+    const dispatched = await dispatchFashionBatch(input.userId, input.consultationId, racedRow.id, input.localBaseUrl);
+    return { ...dispatched, idempotentReplay: true };
+  }
   if (inserted.error) throw new Error(inserted.error.message);
   const dispatched = await dispatchFashionBatch(input.userId, input.consultationId, batchId, input.localBaseUrl);
   return { ...dispatched, idempotentReplay: false };
@@ -209,12 +218,7 @@ export async function dispatchFashionBatch(userId: string, consultationId: strin
   const sessionRows = sessions.data as unknown as StylingSessionRow[];
   const attempts = await loadStylingAttempts(row.styling_session_ids);
   const progressBeforeDispatch = deriveFashionSlotProgress(sessionRows, attempts);
-  const candidates = sessionRows.filter((session) => {
-    const progress = progressBeforeDispatch[session.fashion_slot_id];
-    if (session.status === "completed") return false;
-    if (progress?.status === "running") return false;
-    return (progress?.attemptCount ?? 0) < MAX_FASHION_SLOT_ATTEMPTS;
-  });
+  const candidates = selectDispatchableFashionSessions(sessionRows, progressBeforeDispatch);
   const outcomes = await Promise.all(candidates.map(async (session) => {
     try {
       const quote = await createPaidActionQuoteForUser({

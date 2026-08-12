@@ -564,7 +564,7 @@ test("fashion Scene confirms direction once and auto-starts an entitlement-check
   assert.match(fashion, /work-office/);
   assert.match(fashion, /statement-date/);
   assert.match(fashion, /이 방향으로 9개 룩 준비/);
-  assert.match(fashion, /미완료 슬롯 자동 재접수/);
+  assert.match(fashion, /미완료 슬롯 다시 시도/);
   assert.match(fashion, /data-fashion-batch-status/);
   assert.match(fashion, /data-fashion-slot-status/);
   assert.match(fashion, /stalledCount/);
@@ -576,6 +576,8 @@ test("fashion Scene confirms direction once and auto-starts an entitlement-check
   assert.match(batchServer, /fashion_preview_batches_v2/);
   assert.match(batchServer, /FASHION_BATCH_ENTITLEMENT_REQUIRED/);
   assert.match(batchServer, /idempotentReplay/);
+  assert.match(batchServer, /inserted\.error\?\.code === "23505"/);
+  assert.match(batchServer, /racedReplay/);
   assert.match(batchServer, /dispatchFashionBatch/);
   assert.match(batchServer, /begin_styling_execution/);
   assert.match(batchServer, /dispatchStylingWorkflowOutbox/);

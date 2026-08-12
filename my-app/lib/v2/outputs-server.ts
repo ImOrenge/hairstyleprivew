@@ -1,6 +1,6 @@
 import "server-only";
 
-import { projectConsultationGenerationInputV2 } from "@hairfit/shared/v2";
+import { projectConsultationGenerationInputV2, validateSalonBriefV2 } from "@hairfit/shared/v2";
 import type {
   AftercareProgramV2,
   FashionPreviewCandidateV2,
@@ -187,6 +187,7 @@ function normalizeStoredSalonBrief(value: unknown): SalonBriefV2 {
   const engine = record(stored.engine);
   const input = record(stored.inputSnapshot);
   const details = record(stored.details);
+  const recommendationSources = record(stored.recommendationSources);
   const services = record(details.services);
   const design = record(details.design);
   const version = Number(stored.version);
@@ -213,6 +214,16 @@ function normalizeStoredSalonBrief(value: unknown): SalonBriefV2 {
       styleTarget: input.styleTarget === "male" || input.styleTarget === "female" ? input.styleTarget : "neutral",
       capturedAt: typeof input.capturedAt === "string" ? input.capturedAt : createdAt,
       provenance: Array.isArray(input.provenance) ? input.provenance as SalonBriefV2["inputSnapshot"]["provenance"] : [],
+    },
+    recommendationSources: {
+      cut: stringArray(recommendationSources.cut).length ? stringArray(recommendationSources.cut) : ["style-selection"],
+      volumeTexture: stringArray(recommendationSources.volumeTexture).length ? stringArray(recommendationSources.volumeTexture) : ["style-selection", "photo-analysis"],
+      color: stringArray(recommendationSources.color).length ? stringArray(recommendationSources.color) : ["personal-color-analysis", "style-selection"],
+      styling: stringArray(recommendationSources.styling).length ? stringArray(recommendationSources.styling) : ["style-selection", "discovery-interview"],
+      cautions: stringArray(recommendationSources.cautions).length ? stringArray(recommendationSources.cautions) : ["discovery-interview", "style-selection"],
+      maintenance: stringArray(recommendationSources.maintenance).length ? stringArray(recommendationSources.maintenance) : ["discovery-interview", "style-selection"],
+      aftercare: stringArray(recommendationSources.aftercare).length ? stringArray(recommendationSources.aftercare) : ["actual-service"],
+      fashion: stringArray(recommendationSources.fashion).length ? stringArray(recommendationSources.fashion) : ["fashion-interview", "personal-color-analysis"],
     },
     details: {
       consultationGoals: stringArray(details.consultationGoals),
@@ -344,6 +355,16 @@ export async function createSalonBriefV2(input: {
       mode: generatedBrief ? "recycled-blueprint" : "structured-fallback",
     },
     inputSnapshot: projectConsultationGenerationInputV2(generationInput),
+    recommendationSources: {
+      cut: ["style-selection", "discovery-interview", "photo-analysis"],
+      volumeTexture: ["style-selection", "photo-analysis", "discovery-interview"],
+      color: ["personal-color-analysis", "style-selection", "discovery-interview"],
+      styling: ["style-selection", "discovery-interview"],
+      cautions: ["discovery-interview", "style-selection", "photo-analysis"],
+      maintenance: ["discovery-interview", "style-selection"],
+      aftercare: ["actual-service", "style-selection"],
+      fashion: ["fashion-interview", "personal-color-analysis", "style-selection"],
+    },
     details: {
       consultationGoals: [generationInput.goals.purpose, ...generationInput.goals.imageKeywords, ...generationInput.goals.desiredServices].filter(Boolean),
       currentHair: [
@@ -400,6 +421,10 @@ export async function createSalonBriefV2(input: {
     },
     createdAt: new Date().toISOString(),
   };
+  const briefValidationErrors = validateSalonBriefV2(brief);
+  if (briefValidationErrors.length) {
+    throw new HairfitV2Error("SALON_BRIEF_CONTRACT_INVALID", 500, `Salon Brief 계약 누락: ${briefValidationErrors.join(", ")}`);
+  }
   const insert = await db.from("salon_brief_versions_v2").insert({
     id: randomUUID(),
     consultation_id: input.consultationId,

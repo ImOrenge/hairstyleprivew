@@ -316,6 +316,23 @@ export async function runOpenAIImageGeneration(
 export async function runOpenAIOutfitGeneration(
   request: OpenAIOutfitRunRequest,
 ): Promise<OpenAIOutfitGenerationResult> {
+  const prompt = buildOpenAIOutfitPrompt(request);
+
+  const result = await runImageEdit({
+    prompt,
+    images: [
+      { dataUrl: request.bodyImageDataUrl, filename: "body-reference" },
+      { dataUrl: request.hairImageDataUrl, filename: "hair-reference" },
+    ],
+  });
+
+  return {
+    id: result.id,
+    outputUrl: result.outputUrl,
+  };
+}
+
+export function buildOpenAIOutfitPrompt(request: OpenAIOutfitRunRequest) {
   const itemList = request.recommendation.items
     .map((item) => `${item.slot}: ${item.name}, ${item.color}, ${item.fit}, ${item.material}`)
     .join("\n");
@@ -325,7 +342,7 @@ export async function runOpenAIOutfitGeneration(
   const stylingPalette = personalColor?.stylingPalette.join(", ") || request.recommendation.palette.join(", ");
   const consultationDirection = request.recommendation.consultationDirection;
 
-  const prompt = `
+  return `
 You are a fashion lookbook image-generation agent.
 Use the first image as the customer's full-body reference and the second image as the selected hairstyle reference.
 Generate a realistic full-body lookbook outfit image, not a guaranteed exact virtual fitting.
@@ -376,17 +393,4 @@ Styling notes: ${request.recommendation.stylingNotes.join("; ")}
 Items:
 ${itemList}
 `.trim();
-
-  const result = await runImageEdit({
-    prompt,
-    images: [
-      { dataUrl: request.bodyImageDataUrl, filename: "body-reference" },
-      { dataUrl: request.hairImageDataUrl, filename: "hair-reference" },
-    ],
-  });
-
-  return {
-    id: result.id,
-    outputUrl: result.outputUrl,
-  };
 }

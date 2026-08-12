@@ -41,6 +41,12 @@ test("output projection preserves the authoritative fingerprint target and prove
   });
 });
 
+test("female output projection preserves the onboarding target without inference", () => {
+  const projected = projectConsultationGenerationInputV2(fixture("female"));
+  assert.equal(projected.styleTarget, "female");
+  assert.equal(projected.provenance.find((item) => item.fieldPaths.includes("styleTarget"))?.source, "member-profile");
+});
+
 test("invalid fingerprints and missing provenance fail the snapshot contract", () => {
   const invalid = { ...fixture("female"), inputFingerprint: "short", provenance: [] };
   assert.deepEqual(validateConsultationGenerationInputV2(invalid), ["inputFingerprint", "provenance"]);

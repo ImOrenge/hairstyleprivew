@@ -18,6 +18,18 @@ export interface FashionRuntimeAttempt {
   updated_at: string | null;
 }
 
+export function selectDispatchableFashionSessions(
+  sessions: FashionRuntimeSession[],
+  progress: Record<string, FashionPreviewSlotProgress>,
+) {
+  return sessions.filter((session) => {
+    const slot = progress[session.fashion_slot_id];
+    if (session.status === "completed" || slot?.status === "completed") return false;
+    if (slot?.status === "running" || slot?.status === "retrying") return false;
+    return (slot?.attemptCount ?? 0) < MAX_FASHION_SLOT_ATTEMPTS;
+  });
+}
+
 function latestAttemptBySession(rows: FashionRuntimeAttempt[]) {
   const latest = new Map<string, FashionRuntimeAttempt>();
   for (const row of rows) if (!latest.has(row.styling_session_id)) latest.set(row.styling_session_id, row);

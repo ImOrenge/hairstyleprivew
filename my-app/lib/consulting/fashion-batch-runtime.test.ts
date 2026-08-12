@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deriveFashionBatchState, deriveFashionSlotProgress, summarizeFashionBatchProgress, type FashionRuntimeAttempt, type FashionRuntimeSession } from "./fashion-batch-runtime.ts";
+import { deriveFashionBatchState, deriveFashionSlotProgress, selectDispatchableFashionSessions, summarizeFashionBatchProgress, type FashionRuntimeAttempt, type FashionRuntimeSession } from "./fashion-batch-runtime.ts";
 
 const now = Date.parse("2026-08-12T12:00:00.000Z");
 
@@ -51,4 +51,26 @@ test("a failed slot below the retry limit stays retryable and preserves complete
   assert.equal(summary.failedCount, 0);
   assert.equal(summary.retryableCount, 1);
   assert.equal(deriveFashionBatchState("partial", 9, summary), "partial");
+});
+
+test("re-entry dispatch preserves completed output and does not duplicate a live or retrying job", () => {
+  const sessions = [
+    session("done", "completed-slot", "completed"),
+    session("live", "running-slot", "generating"),
+    session("retrying", "retrying-slot", "generating"),
+    session("queued", "queued-slot", "queued"),
+  ];
+  const progress = deriveFashionSlotProgress(sessions, [attempt("live", 1, "2026-08-12T12:20:00.000Z")], now);
+  progress["retrying-slot"] = { status: "retrying", attemptCount: 2, heartbeatAt: "2026-08-12T11:59:00.000Z", errorCode: null, errorMessage: null };
+  assert.deepEqual(selectDispatchableFashionSessions(sessions, progress).map((item) => item.id), ["queued"]);
+});
+
+test("stalled and failed slots are redispatched below the cap while capped failures are terminal", () => {
+  const sessions = [session("stale", "stale-slot", "generating"), session("failed", "failed-slot", "failed"), session("capped", "capped-slot", "failed")];
+  const progress = deriveFashionSlotProgress(sessions, [
+    attempt("stale", 1, "2026-08-12T11:59:59.000Z"),
+    attempt("failed", 2, null, "released"),
+    attempt("capped", 3, null, "released"),
+  ], now);
+  assert.deepEqual(selectDispatchableFashionSessions(sessions, progress).map((item) => item.id), ["stale", "failed"]);
 });

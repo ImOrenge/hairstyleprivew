@@ -39,6 +39,7 @@ function StructuredBriefDetails({ brief }: { brief: SalonBriefV2 }) {
       { label: "Engine", value: `${brief.engine.id} · ${brief.engine.mode}` },
       { label: "Input snapshot", value: `${brief.inputSnapshot.inputFingerprint.slice(0, 12)}…` },
       { label: "Provenance", value: `${brief.inputSnapshot.provenance.length}개 입력 출처` },
+      { label: "Recommendation sources", value: Object.entries(brief.recommendationSources).map(([section, sources]) => `${section}: ${sources.join(", ")}`).join(" · ") },
     ]} /></div>
   </SurfaceCard>;
 }

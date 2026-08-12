@@ -51,6 +51,7 @@ boundaries:
       - common-versioned-generation-input-provenance
       - automatic-salon-brief-hydration
       - legacy-blueprint-backed-structured-salon-brief
+      - salon-brief-section-level-recommendation-source-map
       - actual-service-triggered-aftercare-generation
       - rich-aftercare-ai-output
       - designer-feedback-separate-brief-revision
@@ -96,6 +97,7 @@ state:
     - blocking-actions
     - fashion-slot-progress
     - generation-input-fingerprint-and-provenance
+    - salon-brief-recommendation-sources
   client_owned:
     - stage-map-open
     - form-drafts
@@ -129,11 +131,11 @@ test_surface:
   split_canvas_scroll: all-11-scenes-serious-critical-axe-zero
   input_control_separator: shared-choice-and-text-controls-use-visible-tokenized-boundaries
   salon_brief: entry-auto-generation-without-user-save-click
-  salon_brief_detail: legacy-blueprint-fields-and-common-input-provenance-with-explicit-unresolved-values
+  salon_brief_detail: legacy-blueprint-fields-common-input-provenance-section-source-map-and-explicit-unresolved-values
   aftercare: actual-service-first-then-generated-care-editing
   brief_feedback: separate-revision-without-selected-style-mutation
   fashion_compare: two-to-three-shortlist-common-axis-matrix
-  fashion_batch_recovery: two-results-remain-partial-nine-terminal-slots-complete-with-stalled-and-retrying-state
+  fashion_batch_recovery: two-results-remain-partial-reentry-restores-results-live-jobs-are-not-duplicated-and-nine-terminal-slots-complete
   photo_crop: shared-four-by-five-transform-unit-and-browser-interaction
   photo_color_assist: separate-private-draft-used-only-for-personal-color-when-valid
   analysis_matrix: persisted-measurements-only-without-client-inference-or-centimeter-claims

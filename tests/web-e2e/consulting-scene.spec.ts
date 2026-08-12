@@ -520,6 +520,8 @@ test("Fashion Scene sends one direction request and lets the server prepare and 
   let generatedCount = 0;
   let batchPrepared = false;
   let reconcileCount = 0;
+  let allowCompletion = false;
+  let manualDispatchCount = 0;
   let legacyRecommendationRequests = 0;
 
   page.on("request", (request) => {
@@ -534,7 +536,8 @@ test("Fashion Scene sends one direction request and lets the server prepare and 
     if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(batchPrepared ? { batch: batchPayload, stylingSessionIds: sessionIds } : { batch: null, stylingSessionIds: [] }) });
     const body = route.request().postDataJSON() as { action?: string };
     if (!body.action) { batchPrepared = true; generatedCount = 2; }
-    if (body.action === "reconcile") { reconcileCount += 1; generatedCount = reconcileCount === 1 ? 5 : 9; }
+    if (body.action === "reconcile") { reconcileCount += 1; generatedCount = allowCompletion ? 9 : Math.max(generatedCount, 5); }
+    if (body.action === "dispatch") manualDispatchCount += 1;
     const nextState = generatedCount === 9 ? "ready" : generatedCount > 0 ? "partial" : "approved";
     return route.fulfill({ status: body.action ? 200 : 201, contentType: "application/json", body: JSON.stringify({
       batch: { ...batchPayload, state: nextState, completedCount: generatedCount, terminalCount: generatedCount },
@@ -556,9 +559,18 @@ test("Fashion Scene sends one direction request and lets the server prepare and 
   await expect.poll(() => generatedCount).toBe(2);
   await expect(page.locator('[data-fashion-batch-status="partial"]')).toBeVisible();
   await expect(page.getByRole("img", { name: "데일리 캐주얼 AI 패션 프리뷰" })).toBeVisible();
+  await expect.poll(() => generatedCount, { timeout: 8_000 }).toBe(5);
+  await page.reload();
+  await dismissGlobalNotices(page);
+  await expect(page.locator('[data-fashion-batch-status="partial"]')).toBeVisible();
+  await expect(page.getByRole("img", { name: "데일리 캐주얼 AI 패션 프리뷰" })).toBeVisible();
+  await page.getByRole("button", { name: "미완료 슬롯 다시 시도" }).click();
+  expect(manualDispatchCount).toBe(1);
+  allowCompletion = true;
   await expect.poll(() => generatedCount, { timeout: 12_000 }).toBe(9);
   await expect(page.locator('[data-fashion-batch-status="completed"]')).toBeVisible();
-  expect(reconcileCount).toBeGreaterThanOrEqual(2);
+  expect(reconcileCount).toBeGreaterThanOrEqual(1);
+  expect(manualDispatchCount).toBe(1);
   await expect(page.getByRole("button", { name: /견적 승인/ })).toHaveCount(0);
   await expect(page.getByRole("img", { name: "데이트 AI 패션 프리뷰" })).toBeVisible();
   expect(await page.getByText("장르 선택").count()).toBe(0);
@@ -619,6 +631,7 @@ test("Salon Brief auto-loads the durable designer brief without a user save requ
       cautions: ["실제 모질과 손상도를 현장에서 다시 확인합니다."],
       engine: { id: "legacy-designer-brief-v1", mode: "recycled-blueprint" },
       inputSnapshot: { schemaVersion: "consultation-generation-input-v1", inputFingerprint: "a".repeat(64), styleTarget: "male", capturedAt: "2026-08-10T10:00:00.000Z", provenance: [{ source: "style-selection", sourceId: "selection", capturedAt: "2026-08-10T10:00:00.000Z", fieldPaths: ["hairDecision"] }] },
+      recommendationSources: { cut: ["style-selection"], volumeTexture: ["style-selection"], color: ["personal-color-analysis"], styling: ["style-selection"], cautions: ["discovery-interview"], maintenance: ["discovery-interview"], aftercare: ["actual-service"], fashion: ["fashion-interview"] },
       details: {
         consultationGoals: ["얼굴 균형 보완"],
         currentHair: ["어깨 길이 자연 모발"],

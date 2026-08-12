@@ -29,6 +29,15 @@
 
 헤어 prompt는 전체 입력의 projection을 사용하고, Salon Brief·Fashion final set·Aftercare는 `projectConsultationGenerationInputV2`로 동일 fingerprint·styleTarget·provenance를 저장한다. 화면별로 서로 다른 임시 입력을 재조합하지 않는다. 구 레코드는 neutral target과 `legacy-*` fingerprint로 명시적으로 정규화한다.
 
+### 누락·충돌·구버전 해소 정책
+
+- `styleTarget`은 `member_profiles.style_target`의 male/female만 채택하며 누락·구버전 값은 추론하지 않고 neutral로 고정한다.
+- 헤어 결정 충돌은 confirmed `StyleSelectionSnapshotV2`가 상담 snapshot의 active style보다 우선한다. confirmed selection에 없는 세부 시술·디자인 값만 동일 상담 active style로 보완한다.
+- 얼굴형·랜드마크와 퍼스널 컬러는 서버 evidence가 화면 snapshot보다 우선하며, evidence가 없으면 화면 값을 근거로 가장하지 않고 미확인 상태를 유지한다.
+- 실제 시술은 최신 `actual_services_v2`가 우선하며, 없을 때만 상담 snapshot의 confirmed actual service를 사용한다.
+- 이전 Salon Brief·Aftercare 레코드는 읽기 adapter에서 schemaVersion, neutral target, legacy fingerprint를 명시한다. 새 생성 경로는 계약 검증을 통과하지 못하면 저장하지 않는다.
+- fingerprint는 위 우선순위를 적용한 정규화 payload 전체에서 다시 계산하므로 충돌 해소 결과가 달라지면 출력 연결 키도 달라진다.
+
 ## 3. 생성 상태 전이
 
 | 상태 | 서버 의미 | 사용자 표시 | 후속 동작 |
@@ -94,8 +103,8 @@ additive migration `20260812183000_fashion_batch_runtime_progress.sql`은 다음
 |---|---:|
 | 전체 workspace typecheck | 통과 |
 | Web ESLint | 통과 |
-| shared unit/contract | 88/88 통과 |
-| consulting contract | 85/85 통과 |
+| shared unit/contract | 92/92 통과 |
+| consulting contract | 91/91 통과 |
 | HairFit V2 contract | 15/15 통과 |
 | global CSS/component contract | 9/9 통과 |
 | migration mirror | 86개 통과 |
@@ -103,4 +112,32 @@ additive migration `20260812183000_fashion_batch_runtime_progress.sql`은 다음
 | consulting browser regression | 20/20 통과 |
 | `git diff --check` | 통과 |
 
-브라우저 fixture는 fashion 완료 수량을 2 → 5 → 9로 변화시키고 첫 2개를 즉시 표시한 뒤 polling이 9개까지 계속되는 것을 검증한다. 실제 provider 호출, 실제 entitlement 소비, 실인증, 원격 migration, canary와 배포는 실행하지 않았다.
+브라우저 fixture는 fashion 완료 수량을 2 → 5 → 9로 변화시키고 첫 결과를 즉시 표시한다. 부분 완료 상태에서 새로고침한 뒤 서버 batch와 이미지를 복원하고, 수동 dispatch와 polling으로 9개까지 계속되는 것을 검증한다. 실제 provider 호출, 실제 entitlement 소비, 실인증, 원격 migration, canary와 배포는 실행하지 않았다.
+
+## 9. 종료조건 증거 감사
+
+| 종료조건 | 권위 증거 | 로컬 판정 |
+|---|---|---|
+| 2개에서 멈추지 않음 | `fashion-batch-runtime.test.ts`의 2/9 partial 및 9/9 terminal 테스트, 브라우저의 2 → 5 → 9 진행 | 충족 |
+| 중복 없이 후속 dispatch | `selectDispatchableFashionSessions`, live/retrying 제외 테스트, `23505` 동시 요청 replay | 충족 |
+| 부분 실패·정체 복구 | 만료 lease의 stalled 전환, 실패 슬롯 재접수, 완료 슬롯 보존 테스트 | 충족 |
+| 새로고침·재진입 복원 | 서버 batch GET 이후 partial 이미지 복원과 후속 9/9 완료 브라우저 테스트 | 충족 |
+| 남녀 styleTarget 전달 | member profile → snapshot → hair prompt와 fashion context → 최종 outfit provider prompt의 male/female 실행 테스트 | 충족 |
+| neutral fallback | 누락된 구 입력을 neutral/legacy로 명시하는 실행 테스트 | 충족 |
+| 브리프 필수 내용 | `validateSalonBriefV2`가 저장 전에 필수 섹션과 recommendation source mapping을 fail-closed 검증 | 충족 |
+| 공통 snapshot 사용 | Hair prompt는 전체 snapshot, Brief/Fashion/Aftercare는 동일 fingerprint·target·provenance projection 사용 | 충족 |
+| 원격 운영 증거 | migration 적용, 실인증, 실제 AI 생성, canary와 배포 | 승인 대기 |
+
+## 10. 구 브리프 대비 누락 대조
+
+| 구 `HairDesignerBrief` 항목 | V2 대응 | 미해결 |
+|---|---|---:|
+| headline / consultationSummary | `summary`, 상담 목표, 현재 모발 | 0 |
+| cutDirection | `cut`, `details.services.cut`, 길이 | 0 |
+| volumeTextureDirection | `volumeTexture`, 볼륨·질감·앞머리·가르마 | 0 |
+| stylingDirection | `styling`, 관리 시간·난이도·유지 주기 | 0 |
+| cautionNotes | `cautions`, 회피 조건, 미확인 항목 | 0 |
+| salonKeywords | 선택 근거, 분석 근거, 퍼스널 컬러, 디자이너 메모의 구조화 필드 | 0 |
+| 구 엔진에 없던 V2 확장 | perm/color, Aftercare, 패션 연계, actual service, section별 provenance | 0 |
+
+새 브리프는 각 주요 권고에 `recommendationSources`를 저장하고 화면에서도 source map을 노출한다. 데이터가 없으면 권고를 꾸며내지 않고 `미확인` 또는 `unresolved`로 남긴다.
