@@ -44,3 +44,16 @@ Next.js는 `NEXT_PUBLIC_*` 참조를 middleware 빌드 시 치환한다. 기존 
 - deployment probe의 pinned server version과 source revision이 같은 응답에서 일치해야 한다.
 - Preview 검증 후 router/server를 단계적으로 전환하고, 문제가 재현되면 직전 router/server version pair로 즉시 되돌린다.
 
+## 운영 적용 결과
+
+- 배포 코드 source: `8dda02fb0f8c159606fe8fddf990bd7c21043d1c`
+- 최종 server version: `64704b2c-2f4d-4cfd-a94b-227b5b9005bf` 100%
+- 최종 router version: `8831c540-451e-435f-82e5-62f7582f7675` 100%
+- 직전 rollback server/router pair: `32f0a81d-304e-451f-940c-23c9a3e9f56a` / `37d268c1-e43f-4d64-91d3-0efc2149f636`
+- router 5% 표본: old/new `96/4`, source-pin mismatch `0`, HTTP error `0`
+- router 25% 표본: old/new `88/12`, source-pin mismatch `0`, HTTP error `0`
+- 100% 전환 후 새 연결 표본: source-pin `30/30` 일치
+- 최종 비민감 invalid handshake: `20/20` 정상 응답, `5xx 0`
+- 최종 source-pin 원자성: `20/20` 일치
+- 최종 공개 smoke: `/` `200`, `/login` `200`, `www` `200`, 비인증 보호 API `401`
+- `/favicon.ico` `404`는 수정 전부터 존재한 별도 정적 자산 항목으로 분리 유지
