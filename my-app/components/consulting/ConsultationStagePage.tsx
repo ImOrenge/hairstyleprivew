@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, type ComponentType } from "react";
+import { useCallback, useState, type ComponentType } from "react";
 import { resolveConsultationTransitionTask, type ConsultationSnapshot, type ConsultationStage, type ConsultationTaskKind } from "../../lib/consulting/contracts";
 import { mapPreviewBoard, previewsMatch, type PreviewBoard } from "../../lib/consulting/preview-board-client";
 import { useConsultationMutation } from "../../hooks/useConsultationMutation";
@@ -27,9 +27,11 @@ const workbenches: Record<ConsultationStage, ComponentType<WorkbenchProps>> = {
 function ConsultationStageContent({ initialSnapshot, stage, initialTransitionKind, livenessEnabled, pollingEnabled, interviewEnabled }: { initialSnapshot: ConsultationSnapshot; stage: ConsultationStage; initialTransitionKind?: ConsultationTaskKind | null; livenessEnabled: boolean; pollingEnabled: boolean; interviewEnabled: boolean }) {
   const { snapshot, isSaving, notice, mutate, refresh } = useConsultationMutation(initialSnapshot);
   const runtime = useConsultationTaskRuntime();
+  const [inspectedTaskId, setInspectedTaskId] = useState<string | null>(null);
   const Workbench = workbenches[stage];
   const persistedTask = resolveConsultationTransitionTask(snapshot, stage, initialTransitionKind);
-  const task = persistedTask ?? runtime.task;
+  const candidateTask = persistedTask ?? runtime.task;
+  const task = candidateTask?.id === inspectedTaskId ? null : candidateTask;
   const pollTask = useCallback(async () => {
     if (!task || !pollingEnabled) return { ok: true as const };
     if (task.kind === "preview-generation") {
@@ -54,7 +56,7 @@ function ConsultationStageContent({ initialSnapshot, stage, initialTransitionKin
     return await refresh({ silent: true });
   }, [mutate, pollingEnabled, refresh, snapshot.fashionBatch?.id, snapshot.previews, snapshot.sessionId, task]);
   const content = livenessEnabled && task
-    ? <ConsultationTransitionScreen snapshot={snapshot} stage={stage} task={task} onPoll={pollTask} onClear={runtime.clearTask} />
+    ? <ConsultationTransitionScreen snapshot={snapshot} stage={stage} task={task} onPoll={pollTask} onClear={runtime.clearTask} onInspectPartial={() => setInspectedTaskId(task.id)} />
     : <Workbench key={`${stage}-${snapshot.version}`} snapshot={snapshot} mutate={mutate} saving={isSaving} interviewEnabled={interviewEnabled} />;
   return <ConsultationScene snapshot={snapshot} stage={stage} notice={notice} onRefresh={() => void refresh()}>{content}</ConsultationScene>;
 }

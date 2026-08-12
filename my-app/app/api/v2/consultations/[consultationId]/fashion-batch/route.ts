@@ -52,7 +52,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const body = (await request.json().catch(() => ({}))) as { action?: unknown; batchId?: unknown };
   if (typeof body.batchId !== "string") return NextResponse.json({ error: "batchId가 필요합니다." }, { status: 400 });
   try {
-    if (body.action === "reconcile") return NextResponse.json(await reconcileFashionBatch(userId, consultationId, body.batchId));
+    if (body.action === "reconcile") return NextResponse.json(await reconcileFashionBatch(userId, consultationId, body.batchId, new URL(request.url).origin));
     if (body.action === "dispatch") return NextResponse.json(await dispatchFashionBatch(userId, consultationId, body.batchId, new URL(request.url).origin), { status: 202 });
     return NextResponse.json({ error: "지원하지 않는 배치 작업입니다." }, { status: 400 });
   } catch (error) { return v2Failure(error); }

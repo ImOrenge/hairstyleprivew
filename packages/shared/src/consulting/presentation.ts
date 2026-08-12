@@ -59,7 +59,7 @@ export function isConsultationTaskReady(snapshot: ConsultationSnapshot, kind: Co
   if (kind === "analysis") return snapshot.evidence.items.length > 0 && snapshot.strategyRecommendations.length === 8;
   if (kind === "preview-generation") return snapshot.previews.filter((item) => item.status === "accepted").length >= 2;
   if (kind === "brief") return Boolean(snapshot.salonBrief.createdAt);
-  if (kind === "fashion-generation") return Boolean(snapshot.fashionBatch && snapshot.fashionBatch.completedCount >= 2);
+  if (kind === "fashion-generation") return Boolean(snapshot.fashionBatch && snapshot.fashionBatch.terminalCount >= snapshot.fashionBatch.requestedCount);
   return Boolean(snapshot.actualService.confirmedAt && snapshot.careProgram.actualServiceId && snapshot.careProgram.today.length);
 }
 
@@ -72,7 +72,7 @@ function completedTask(snapshot: ConsultationSnapshot, kind: ConsultationTaskKin
     analysis: { id: snapshot.analysisRun?.id ?? "analysis-complete", originStage: "photo", transitionHostStage: "scan", destinationStage: "analysis", readinessKey: "analysis-evidence-ready", label: "얼굴·헤어 분석", completedUnits: 4, totalUnits: 4, partialOutputCount: snapshot.evidence.items.length },
     "preview-generation": { id: snapshot.photo.generationId ?? "preview-complete", originStage: "direction", transitionHostStage: "previews", destinationStage: "previews", readinessKey: "accepted-previews>=2", label: "헤어 프리뷰 보드", completedUnits: snapshot.previews.filter((item) => item.status === "accepted").length, totalUnits: 9, partialOutputCount: snapshot.previews.filter((item) => item.status === "accepted").length },
     brief: { id: `brief-v${snapshot.salonBrief.version}`, originStage: "decision", transitionHostStage: "salon-brief", destinationStage: "salon-brief", readinessKey: "salon-brief-version-ready", label: "Salon Brief", completedUnits: 3, totalUnits: 3, partialOutputCount: snapshot.salonBrief.createdAt ? 3 : 0 },
-    "fashion-generation": { id: snapshot.fashionBatch?.id ?? "fashion-complete", originStage: "fashion", transitionHostStage: "fashion", destinationStage: "fashion", readinessKey: "accepted-fashion-previews>=2", label: "9개 패션 룩 배치", completedUnits: snapshot.fashionBatch?.completedCount ?? 0, totalUnits: 9, partialOutputCount: snapshot.fashionBatch?.completedCount ?? 0 },
+    "fashion-generation": { id: snapshot.fashionBatch?.id ?? "fashion-complete", originStage: "fashion", transitionHostStage: "fashion", destinationStage: "fashion", readinessKey: "fashion-slots-terminal=9", label: "9개 패션 룩 배치", completedUnits: snapshot.fashionBatch?.terminalCount ?? 0, totalUnits: 9, partialOutputCount: snapshot.fashionBatch?.completedCount ?? 0 },
     "aftercare-preparation": { id: snapshot.careProgram.actualServiceId ?? "aftercare-complete", originStage: "salon-brief", transitionHostStage: "aftercare", destinationStage: "aftercare", readinessKey: "aftercare-program-ready", label: "Aftercare 프로그램", completedUnits: snapshot.careProgram.today.length + snapshot.careProgram.checkpoints.length, totalUnits: snapshot.careProgram.today.length + snapshot.careProgram.checkpoints.length, partialOutputCount: snapshot.careProgram.today.length },
   };
   const definition = definitions[kind];

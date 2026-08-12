@@ -1,4 +1,4 @@
-import type { PromptInputV2 } from "@hairfit/shared/v2";
+import type { ConsultationGenerationInputSnapshotV2, PromptInputV2 } from "@hairfit/shared/v2";
 import type { ConsultationSnapshot } from "../consulting/contracts";
 import type { RecommendationCandidate } from "../recommendation-types";
 
@@ -6,6 +6,7 @@ export type ConsultationPromptInputRow = {
   id: string;
   snapshot: ConsultationSnapshot;
   preferences: Record<string, unknown>;
+  generationInput?: ConsultationGenerationInputSnapshotV2;
 };
 
 function object(value: unknown): Record<string, unknown> {
@@ -50,6 +51,8 @@ export function buildPromptInputV2(
   return {
     schemaVersion: "prompt-input-v2",
     consultationId: row.id,
+    styleTarget: row.generationInput?.styleTarget ?? "neutral",
+    generationInputFingerprint: row.generationInput?.inputFingerprint ?? "legacy-consultation-input",
     analysisEvidence,
     personalColor,
     currentHair: {

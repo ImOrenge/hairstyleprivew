@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { isConsultationTaskReady, type ConsultationActiveTask, type ConsultationSnapshot, type ConsultationStage } from "../../../lib/consulting/contracts";
 import { emitConsultationLivenessEvent } from "../../../lib/consulting/consultation-liveness-events";
@@ -13,12 +13,13 @@ import { ConsultantSmallTalkCarousel } from "./ConsultantSmallTalkCarousel";
 import { PartialResultReveal } from "./PartialResultReveal";
 import { RecoverableTaskNotice } from "./RecoverableTaskNotice";
 
-export function ConsultationTransitionScreen({ snapshot, stage, task, onPoll, onClear }: {
+export function ConsultationTransitionScreen({ snapshot, stage, task, onPoll, onClear, onInspectPartial }: {
   snapshot: ConsultationSnapshot;
   stage: ConsultationStage;
   task: ConsultationActiveTask;
   onPoll: () => Promise<unknown>;
   onClear: () => void;
+  onInspectPartial: () => void;
 }) {
   const router = useRouter();
   const polling = useRef(false);
@@ -29,6 +30,7 @@ export function ConsultationTransitionScreen({ snapshot, stage, task, onPoll, on
   const failed = task.status === "failed" || task.status === "cancelled";
   const interrupted = failed || Boolean(pollError);
   const partialVisible = task.partialOutputCount > 0;
+  const canInspectPartial = partialVisible && !ready && ["preview-generation", "fashion-generation"].includes(task.kind);
   const previewContinues = ready
     && task.kind === "preview-generation"
     && task.completedUnits !== null
@@ -41,6 +43,12 @@ export function ConsultationTransitionScreen({ snapshot, stage, task, onPoll, on
   const firstPartialReported = useRef(false);
   const completionReported = useRef(false);
   const recoveryReported = useRef(false);
+
+  useLayoutEffect(() => {
+    const mark = "hairfit:consultant-transition-visible";
+    performance.clearMarks(mark);
+    performance.mark(mark);
+  }, [task.id]);
 
   useEffect(() => {
     document.getElementById("consultant-transition-title")?.focus();
@@ -148,6 +156,7 @@ export function ConsultationTransitionScreen({ snapshot, stage, task, onPoll, on
       </div>
       {ready ? <CompletionMoment task={task} /> : <ConsultantSmallTalkCarousel task={task} paused={paused || !visible} suppress={partialVisible} />}
       <PartialResultReveal snapshot={snapshot} task={task} />
+      {canInspectPartial ? <div className="grid justify-items-start gap-2 border-t border-[var(--app-border)] pt-4"><Button type="button" variant="secondary" onClick={onInspectPartial}>준비된 결과 먼저 보기</Button><p className="text-sm text-[var(--app-muted)]">완료된 결과를 확인하는 동안 나머지 생성과 서버 복구는 계속됩니다.</p></div> : null}
     </>}
   </section>;
 }

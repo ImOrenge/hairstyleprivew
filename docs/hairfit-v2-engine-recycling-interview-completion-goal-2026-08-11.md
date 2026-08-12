@@ -932,3 +932,7 @@ P0~P14 구현 후 P15에서 typecheck, lint, shared/consulting/V2/capability/ent
 
 사용자 승인을 받은 뒤 P16 원격 migration, 실인증 사진 분석, live AI, entitlement 기반 hair/Fashion 실제 생성·소비 복구, actual service·Aftercare, exit/resume, Web canary와 Expo smoke를 수행한다. 유료 생성 여부 확인은 사용자 흐름과 종료조건에서 제외한다. P17에서 cutover·rollback·deprecation·최종 보고서를 닫는다. 실행하지 않은 원격·인증·AI·실기기·배포 증거를 통과로 위장하지 않는다. P0~P17 모든 종료조건을 만족하고 미완료·not_run 필수 항목이 없을 때만 goal_complete로 종료한다.
 ```
+
+## 27. P25 생성 흐름 보강
+
+2026-08-12에 확인된 패션 2-result 정체, 공통 입력 provenance, onboarding `styleTarget`, 구 Salon Brief 상세 항목, 부분 결과·stalled·retrying UX와 생성 timing 계측은 [P25 구현 기록](hairfit-v2/p25-generation-flow-remediation-2026-08-12.md)을 권위 문서로 사용한다. P25의 로컬 검증과 원격 적용 경계를 P15~P17 종료조건에 추가하며, 2개 결과는 비교 가능 기준일 뿐 9-slot 배치 완료로 인정하지 않는다.

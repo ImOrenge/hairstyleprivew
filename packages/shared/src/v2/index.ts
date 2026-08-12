@@ -4,6 +4,7 @@ export * from "./catalog/contract";
 export * from "./consultation/contract";
 export * from "./entitlement/contract";
 export * from "./feature-flags";
+export * from "./generation-input/contract";
 export * from "./outputs/contract";
 export * from "./preview-board/contract";
 export * from "./prompt/compiler";

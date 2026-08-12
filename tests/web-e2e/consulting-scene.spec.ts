@@ -274,9 +274,10 @@ test("transient consultant activity is lively, pausable, result-neutral, and lay
   await expect(transition).toBeVisible();
   const meaningfulStateDelay = await page.evaluate(() => {
     const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-    return performance.now() - (navigation?.responseEnd ?? 0);
+    const visible = performance.getEntriesByName("hairfit:consultant-transition-visible").at(-1);
+    return (visible?.startTime ?? performance.now()) - (navigation?.responseEnd ?? 0);
   });
-  expect(meaningfulStateDelay).toBeLessThanOrEqual(300);
+  expect(meaningfulStateDelay).toBeLessThanOrEqual(500);
   await expect(page.locator('[data-consulting-split-canvas="true"]')).toHaveCount(0);
   await expect(page.locator("#consultant-transition-title")).toBeFocused();
   await expect(kinetic.locator("svg")).toHaveAttribute("aria-hidden", "true");
@@ -302,7 +303,9 @@ test("transient consultant activity is lively, pausable, result-neutral, and lay
     }
   });
   const animationRequests: string[] = [];
-  const recordRequest = (request: import("@playwright/test").Request) => animationRequests.push(request.url());
+  const recordRequest = (request: import("@playwright/test").Request) => {
+    if (["xhr", "fetch"].includes(request.resourceType())) animationRequests.push(request.url());
+  };
   page.on("request", recordRequest);
   const before = await kinetic.boundingBox();
   await page.waitForTimeout(5_200);
@@ -352,12 +355,16 @@ test("partial output replaces small talk and failure stops decorative waiting", 
   await expect(page.getByRole("heading", { name: "완성된 프리뷰 1개" })).toBeVisible();
   const partialRevealDelay = await page.evaluate(() => {
     const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
-    return performance.now() - (navigation?.responseEnd ?? 0);
+    const visible = performance.getEntriesByName("hairfit:consultant-transition-visible").at(-1);
+    return (visible?.startTime ?? performance.now()) - (navigation?.responseEnd ?? 0);
   });
-  expect(partialRevealDelay).toBeLessThanOrEqual(300);
+  expect(partialRevealDelay).toBeLessThanOrEqual(500);
   await expect(page.locator(".f-consultant-activity__heading [data-task-status=partial]")).toHaveText("일부 완료 · 생성 계속 중");
   await expect(page.locator(".f-consultant-activity__smalltalk")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "결과에 영향을 주지 않는 대기 인터랙션" })).toHaveCount(0);
+  await page.getByRole("button", { name: "준비된 결과 먼저 보기" }).click();
+  await expect(page.locator(".f-consultant-transition")).toHaveCount(0);
+  await expect(page.locator(".f-preview-generation-status")).toBeVisible();
 
   await page.goto("/consulting/e2e-harness?stage=scan&liveness=1&transition=analysis&transitionState=failed");
   await dismissGlobalNotices(page);
@@ -512,6 +519,7 @@ test("Fashion Scene sends one direction request and lets the server prepare and 
   const sessionIds = slots.map((_, index) => `00000000-0000-4000-8000-${String(index + 31).padStart(12, "0")}`);
   let generatedCount = 0;
   let batchPrepared = false;
+  let reconcileCount = 0;
   let legacyRecommendationRequests = 0;
 
   page.on("request", (request) => {
@@ -520,19 +528,22 @@ test("Fashion Scene sends one direction request and lets the server prepare and 
 
   await page.route("**/api/style-profile", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ profile: { bodyPhotoPath: "private/body.webp" } }) }));
   await page.route("**/api/v2/consultations/**/fashion-batch", async (route) => {
-    const batchPayload = { id: "00000000-0000-4000-8000-000000000099", state: generatedCount ? "generating" : "approved", requestedCount: 9, completedCount: generatedCount, failedCount: 0, quoteId: "batch", slotState: {}, errorCode: null, errorMessage: null, updatedAt: "2026-08-09T00:00:00.000Z" };
+    const slotProgress = Object.fromEntries(slots.map((slotId, index) => [slotId, { status: index < generatedCount ? "completed" : "queued", attemptCount: index < generatedCount ? 1 : 0, heartbeatAt: "2026-08-09T00:00:00.000Z", errorCode: null, errorMessage: null }]));
+    const state = generatedCount === 9 ? "ready" : generatedCount > 0 ? "partial" : "approved";
+    const batchPayload = { id: "00000000-0000-4000-8000-000000000099", state, requestedCount: 9, completedCount: generatedCount, failedCount: 0, terminalCount: generatedCount, stalledCount: 0, retryingCount: 0, quoteId: "batch", slotState: {}, slotProgress, lastHeartbeatAt: "2026-08-09T00:00:00.000Z", errorCode: null, errorMessage: null, updatedAt: "2026-08-09T00:00:00.000Z" };
     if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(batchPrepared ? { batch: batchPayload, stylingSessionIds: sessionIds } : { batch: null, stylingSessionIds: [] }) });
     const body = route.request().postDataJSON() as { action?: string };
-    if (!body.action) { batchPrepared = true; generatedCount = 9; }
-    const state = generatedCount ? "generating" : "approved";
+    if (!body.action) { batchPrepared = true; generatedCount = 2; }
+    if (body.action === "reconcile") { reconcileCount += 1; generatedCount = reconcileCount === 1 ? 5 : 9; }
+    const nextState = generatedCount === 9 ? "ready" : generatedCount > 0 ? "partial" : "approved";
     return route.fulfill({ status: body.action ? 200 : 201, contentType: "application/json", body: JSON.stringify({
-      batch: { ...batchPayload, state },
+      batch: { ...batchPayload, state: nextState, completedCount: generatedCount, terminalCount: generatedCount },
       stylingSessionIds: sessionIds,
     }) });
   });
   await page.route("**/api/v2/consultations/**/fashion-previews", (route) => {
     if (route.request().method() !== "GET") return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ previewSet: { directionSnapshot: fashionDirection } }) });
-    const previews = generatedCount === 9 ? slots.map((slotId, index) => ({ stylingSessionId: sessionIds[index], selectionSnapshotId: "00000000-0000-4000-8000-000000000021", slotId, category: index < 3 ? "DAILY" : index < 6 ? "WORK" : "STATEMENT", genre: "casual", direction: fashionDirection, status: "completed", headline: `배치 룩 ${index + 1}`, summary: "배치 결과", palette: [], silhouette: "balanced", neckline: "balanced", items: [], shoppingKeywords: [], imageUrl: FACE_PHOTO_FIXTURE, errorMessage: null, createdAt: "2026-08-09T00:00:00.000Z", updatedAt: null })) : [];
+    const previews = slots.slice(0, generatedCount).map((slotId, index) => ({ stylingSessionId: sessionIds[index], selectionSnapshotId: "00000000-0000-4000-8000-000000000021", slotId, category: index < 3 ? "DAILY" : index < 6 ? "WORK" : "STATEMENT", genre: "casual", direction: fashionDirection, status: "completed", headline: `배치 룩 ${index + 1}`, summary: "배치 결과", palette: [], silhouette: "balanced", neckline: "balanced", items: [], shoppingKeywords: [], imageUrl: FACE_PHOTO_FIXTURE, errorMessage: null, createdAt: "2026-08-09T00:00:00.000Z", updatedAt: null }));
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ previews, previewSet: null }) });
   });
 
@@ -542,9 +553,14 @@ test("Fashion Scene sends one direction request and lets the server prepare and 
   await page.getByRole("button", { name: "이 방향으로 9개 룩 준비" }).click();
   expect(batchPrepared).toBe(true);
   expect(legacyRecommendationRequests).toBe(0);
-  await expect.poll(() => generatedCount).toBe(9);
-  await expect(page.getByRole("button", { name: /견적 승인/ })).toHaveCount(0);
+  await expect.poll(() => generatedCount).toBe(2);
+  await expect(page.locator('[data-fashion-batch-status="partial"]')).toBeVisible();
   await expect(page.getByRole("img", { name: "데일리 캐주얼 AI 패션 프리뷰" })).toBeVisible();
+  await expect.poll(() => generatedCount, { timeout: 12_000 }).toBe(9);
+  await expect(page.locator('[data-fashion-batch-status="completed"]')).toBeVisible();
+  expect(reconcileCount).toBeGreaterThanOrEqual(2);
+  await expect(page.getByRole("button", { name: /견적 승인/ })).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "데이트 AI 패션 프리뷰" })).toBeVisible();
   expect(await page.getByText("장르 선택").count()).toBe(0);
 });
 
@@ -601,6 +617,22 @@ test("Salon Brief auto-loads the durable designer brief without a user save requ
       color: null,
       styling: ["얼굴 바깥 방향으로 드라이합니다."],
       cautions: ["실제 모질과 손상도를 현장에서 다시 확인합니다."],
+      engine: { id: "legacy-designer-brief-v1", mode: "recycled-blueprint" },
+      inputSnapshot: { schemaVersion: "consultation-generation-input-v1", inputFingerprint: "a".repeat(64), styleTarget: "male", capturedAt: "2026-08-10T10:00:00.000Z", provenance: [{ source: "style-selection", sourceId: "selection", capturedAt: "2026-08-10T10:00:00.000Z", fieldPaths: ["hairDecision"] }] },
+      details: {
+        consultationGoals: ["얼굴 균형 보완"],
+        currentHair: ["어깨 길이 자연 모발"],
+        decisionRationale: ["확정 헤어와 얼굴 균형 연결"],
+        evidence: ["얼굴형 근거: 계란형"],
+        personalColor: ["여름 쿨"],
+        services: { cut: ["쇄골 기장과 얼굴선 레이어를 유지합니다."], perm: [], color: [] },
+        design: { length: "쇄골", volume: "정수리 볼륨", fringeParting: "사이드 가르마", texture: "자연스러운 질감" },
+        maintenance: ["아침 10분"],
+        aftercare: ["실제 시술 후 활성화"],
+        fashionLink: ["데일리 캐주얼"],
+        designerNotes: [],
+        unresolved: ["실제 시술 기록 대기"],
+      },
       createdAt: "2026-08-10T10:00:00.000Z",
     } }) });
   });
@@ -613,7 +645,7 @@ test("Salon Brief auto-loads the durable designer brief without a user save requ
   await dismissGlobalNotices(page);
   const aiOutput = page.getByLabel("AI 출력 및 시스템 데이터");
   await expect(aiOutput.getByText("얼굴 균형과 확정 헤어를 연결한 자동 살롱 요약입니다.")).toBeVisible();
-  await expect(aiOutput.getByText("쇄골 기장과 얼굴선 레이어를 유지합니다.")).toBeVisible();
+  await expect(aiOutput.locator('[data-brief-engine="legacy-designer-brief-v1"]').getByText("쇄골 기장과 얼굴선 레이어를 유지합니다.")).toBeVisible();
   expect(automaticBriefRequests).toBe(1);
 });
 

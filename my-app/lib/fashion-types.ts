@@ -144,6 +144,8 @@ export interface FashionRecommendation {
   consultationDirection?: FashionDirectionSnapshot;
   neckline?: string;
   shoppingKeywords?: string[];
+  styleTarget?: "male" | "female" | "neutral";
+  generationInputFingerprint?: string;
   catalogItemId?: string | null;
   catalogCycleId?: string | null;
   sourceSummary?: FashionCatalogSourceSummary | null;
@@ -156,6 +158,8 @@ export interface FashionRecommendationInput {
   analysis: FaceAnalysisSummary | null;
   genre: FashionGenre;
   catalogItem: FashionCatalogRow;
+  styleTarget?: "male" | "female" | "neutral";
+  generationInputFingerprint?: string;
 }
 
 export const FASHION_OCCASIONS: FashionOccasion[] = ["daily", "work", "date", "formal"];

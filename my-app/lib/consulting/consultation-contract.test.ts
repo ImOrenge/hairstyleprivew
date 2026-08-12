@@ -565,6 +565,10 @@ test("fashion Scene confirms direction once and auto-starts an entitlement-check
   assert.match(fashion, /statement-date/);
   assert.match(fashion, /이 방향으로 9개 룩 준비/);
   assert.match(fashion, /미완료 슬롯 자동 재접수/);
+  assert.match(fashion, /data-fashion-batch-status/);
+  assert.match(fashion, /data-fashion-slot-status/);
+  assert.match(fashion, /stalledCount/);
+  assert.match(fashion, /retryingCount/);
   assert.doesNotMatch(fashion, /\/api\/styling\/recommend/);
   assert.match(fashion, /stylingSessionIds: shortlist/);
   assert.match(fashion, /selectedStylingSessionId: selected\.lookId/);
@@ -582,6 +586,8 @@ test("fashion Scene confirms direction once and auto-starts an entitlement-check
   assert.match(batchRoute, /prepareFashionRecommendationSessions/);
   assert.match(batchServer, /createPaidActionExecutionQuoteSnapshot/);
   assert.match(batchServer, /reconcileFashionBatch/);
+  assert.match(batchServer, /summarizeFashionBatchProgress/);
+  assert.match(batchServer, /dispatchFashionBatch\(userId, consultationId, batchId, localBaseUrl\)/);
   assert.match(batchRoute, /body\.action === "dispatch"/);
   assert.doesNotMatch(batchRoute, /approvedCostCredits|action === "approve"/);
   assert.doesNotMatch(fashion, /견적 승인|Batch quote|batchState\.quote|\/api\/paid-actions\/quote|\/api\/styling\/generate|for \(const sessionId/);
@@ -626,6 +632,8 @@ test("consultation liveness uses real task state, optional kinetic fidget, and a
   assert.match(stagePage, /mapPreviewBoard/);
   assert.match(stagePage, /action: "reconcile"/);
   assert.match(transition, /router\.replace/);
+  assert.match(transition, /준비된 결과 먼저 보기/);
+  assert.match(stagePage, /inspectedTaskId/);
   assert.match(transition, /setInterval\(\(\) => void poll\(\), 2_000\)/);
   assert.doesNotMatch(transition, />Next</i);
   assert.match(kinetic, /setTimeout\(\(\) => setFidgetReadyTaskId\(task\.id\), 5_000\)/);
@@ -657,6 +665,8 @@ test("comparison, decision, brief and aftercare use derived lifecycle data", () 
   assert.match(brief, /실제 시술 기록 후 Aftercare 열기/);
   assert.match(brief, /미용사 응답 · 별도 revision/);
   assert.match(brief, /확정 스타일 snapshot을 변경하지 않습니다/);
+  assert.match(brief, /살롱 전달용 상세 브리프/);
+  assert.match(brief, /inputSnapshot\.inputFingerprint/);
   assert.match(sharedContract, /designerFeedback\?:/);
   assert.match(fashion, /Fashion comparison/);
   for (const axis of ["Palette", "Neckline", "Silhouette", "Hair link", "Items", "Search"]) assert.match(fashion, new RegExp(axis));
@@ -664,9 +674,41 @@ test("comparison, decision, brief and aftercare use derived lifecycle data", () 
   assert.match(outputs, /generatedBrief\?\.consultationSummary/);
   assert.match(outputs, /runAftercareCapability/);
   assert.match(outputs, /generatedAftercareProgramInput/);
+  assert.match(outputs, /projectConsultationGenerationInputV2/);
   assert.doesNotMatch(outputs, /delete\(\)\.eq\("id", actualServiceId\)/);
   assert.match(aftercare, /실제 시술 확정하고 관리 프로그램 자동 생성/);
   assert.match(aftercare, /AI care output/);
+});
+
+test("generation inputs share one versioned snapshot and preserve onboarding target through every output", () => {
+  const contract = read("../../../packages/shared/src/v2/generation-input/contract.ts");
+  const compiler = read("../v2/prompt-input.ts");
+  const promptServer = read("../v2/prompt-server.ts");
+  const fashionRecommendations = read("./fashion-recommendation-batch-server.ts");
+  const fashionPrompt = read("../openai-image.ts");
+  const outputs = read("../v2/outputs-server.ts");
+  for (const field of ["schemaVersion", "inputFingerprint", "styleTarget", "provenance", "currentHair", "hairDecision", "personalColor", "fashion", "actualService"]) assert.match(contract, new RegExp(field));
+  assert.match(contract, /projectConsultationGenerationInputV2/);
+  assert.match(compiler, /generationInputFingerprint/);
+  assert.match(promptServer, /loadConsultationGenerationInputSnapshotV2/);
+  assert.match(fashionRecommendations, /styleTarget: generationInput\.styleTarget/);
+  assert.match(fashionPrompt, /Onboarding style target/);
+  assert.equal((outputs.match(/projectConsultationGenerationInputV2\(generationInput\)/g) ?? []).length, 4);
+});
+
+test("fashion runtime progress migration is additive and mirrored", () => {
+  const root = read("../../../supabase/migrations/20260812183000_fashion_batch_runtime_progress.sql");
+  const app = read("../../supabase/migrations/20260812183000_fashion_batch_runtime_progress.sql");
+  assert.equal(root, app);
+  for (const field of ["slot_progress", "last_heartbeat_at", "retry_count"]) assert.match(root, new RegExp(field));
+  assert.match(root, /add column if not exists/);
+});
+
+test("fashion generation telemetry separates queue provider persistence and polling latency", () => {
+  const execution = read("../styling-workflow-execution.ts");
+  const batch = read("./fashion-batch-server.ts");
+  for (const field of ["queueMs", "inputMs", "providerMs", "persistenceMs", "totalMs"]) assert.match(execution, new RegExp(field));
+  assert.match(batch, /pollVisibilityLagMs/);
 });
 
 test("lifecycle task migrations are additive, mirrored and service-role only", () => {

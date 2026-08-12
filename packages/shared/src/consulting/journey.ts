@@ -36,7 +36,7 @@ type JourneySource = {
   careProgram: { today: string[] };
   fashion: { selectedAt: string | null; lookId: string | null };
   analysisRun: { id: string; state: string; errorMessage: string | null } | null;
-  fashionBatch: { id: string; state: string; completedCount: number; failedCount: number } | null;
+  fashionBatch: { id: string; state: string; requestedCount: number; completedCount: number; failedCount: number; terminalCount: number; stalledCount: number; retryingCount: number } | null;
   updatedAt?: string;
 };
 
@@ -230,17 +230,17 @@ export function deriveConsultationJourney(
       originStage: "fashion",
       transitionHostStage: "fashion",
       destinationStage: "fashion",
-      readinessKey: "accepted-fashion-previews>=2",
-      status: source.fashionBatch.state === "failed" ? "failed" : source.fashionBatch.completedCount > 0 ? "partial" : "running",
-      phaseKey: source.fashionBatch.state,
+      readinessKey: "fashion-slots-terminal=9",
+      status: source.fashionBatch.state === "failed" ? "failed" : source.fashionBatch.completedCount > 0 ? "partial" : source.fashionBatch.stalledCount > 0 ? "waiting" : "running",
+      phaseKey: source.fashionBatch.retryingCount > 0 ? "retrying" : source.fashionBatch.stalledCount > 0 ? "stalled" : source.fashionBatch.state,
       phaseIndex: source.fashionBatch.completedCount > 0 ? 2 : 1,
       phaseCount: 3,
-      completedUnits: source.fashionBatch.completedCount,
-      totalUnits: 9,
+      completedUnits: source.fashionBatch.terminalCount,
+      totalUnits: source.fashionBatch.requestedCount,
       messageSetKey: source.fashionBatch.completedCount > 0 ? "fashion.quality" : "fashion.generation",
       partialOutputCount: source.fashionBatch.completedCount,
       label: "9개 패션 룩 배치",
-      detail: `${source.fashionBatch.completedCount} / 9 완료 · ${source.fashionBatch.failedCount} 실패`,
+      detail: `${source.fashionBatch.completedCount} 완료 · ${source.fashionBatch.failedCount} 종결 실패 · ${source.fashionBatch.stalledCount} 정체 · ${source.fashionBatch.retryingCount} 재시도`,
       startedAt: null,
       updatedAt: source.updatedAt ?? new Date(0).toISOString(),
       completedAt: null,

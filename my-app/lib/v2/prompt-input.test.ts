@@ -57,6 +57,10 @@ test("consultation preferences and confirmed strategy become protected provider 
   const input = buildPromptInputV2({
     id: consultationId,
     snapshot,
+    generationInput: {
+      styleTarget: "male",
+      inputFingerprint: "input-fingerprint-male",
+    } as never,
     preferences: {
       currentHair: {
         description: "어깨 아래 중간 길이의 직모이며 끝부분이 건조함",
@@ -88,6 +92,8 @@ test("consultation preferences and confirmed strategy become protected provider 
   assert.equal(input.styleGoal.desiredLength, "medium");
   assert.deepEqual(input.styleGoal.desiredServices, ["커트"]);
   assert.deepEqual(input.avoidConditions, ["매일 고데기"]);
+  assert.equal(input.styleTarget, "male");
+  assert.equal(input.generationInputFingerprint, "input-fingerprint-male");
 
   const plans = compilePromptSpecsV2(input);
   assert.equal(plans.length, 9);
@@ -102,6 +108,8 @@ test("consultation preferences and confirmed strategy become protected provider 
     "sometimes",
     "8",
     "매일 고데기",
+    "ONBOARDING_STYLE_TARGET=male",
+    "input-fingerprint-male",
   ]) {
     assert.match(combined, new RegExp(expected));
   }

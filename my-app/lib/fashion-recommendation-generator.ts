@@ -125,7 +125,7 @@ export function generateFashionRecommendation(input: FashionRecommendationInput)
   return {
     headline: `${hairLabel}에 맞춘 ${genreLabel} 코디`,
     summary:
-      `${input.catalogItem.summary} ${faceContext}, ${input.profile.heightCm ?? "미입력"}cm 체형 정보, ${fit} 선호를 함께 반영했습니다.`,
+      `${input.catalogItem.summary} ${faceContext}, ${input.profile.heightCm ?? "미입력"}cm 체형 정보, ${fit} 선호와 ${input.styleTarget ?? "neutral"} 스타일 타깃을 함께 반영했습니다.`,
     genre: input.genre,
     palette: palette.slice(0, 5),
     silhouette: input.catalogItem.silhouette,
@@ -137,6 +137,7 @@ export function generateFashionRecommendation(input: FashionRecommendationInput)
       productUrl: null,
     })),
     stylingNotes: [
+      `온보딩 스타일 타깃: ${input.styleTarget ?? "neutral"}. 신체나 성별을 추론하지 않고 사용자가 저장한 값만 적용합니다.`,
       ...(personalNote ? [personalNote] : []),
       ...input.catalogItem.stylingNotes.slice(0, 3),
       bodyShapeNote(input.profile.bodyShape),
@@ -148,6 +149,8 @@ export function generateFashionRecommendation(input: FashionRecommendationInput)
     ],
     catalogItemId: input.catalogItem.id,
     catalogCycleId: input.catalogItem.sourceCycleId,
+    styleTarget: input.styleTarget ?? "neutral",
+    generationInputFingerprint: input.generationInputFingerprint,
     sourceSummary: input.catalogItem.sourceSummary,
     generatedAt: new Date().toISOString(),
   };

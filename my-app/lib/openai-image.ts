@@ -339,6 +339,8 @@ Global constraints:
 - Render a clean editorial shopping lookbook image with the full outfit visible.
 
 Customer profile:
+- Onboarding style target: ${request.recommendation.styleTarget || "neutral"}. Use only this explicit saved value for outfit presentation; do not infer or alter sex, gender, identity, face, or body.
+- Consultation input fingerprint: ${request.recommendation.generationInputFingerprint || "legacy"}
 - Height: ${request.profile.heightCm ?? "unknown"}cm
 - Body shape: ${request.profile.bodyShape ?? "unknown"}
 - Top size: ${request.profile.topSize ?? "unknown"}

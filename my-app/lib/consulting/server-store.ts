@@ -53,6 +53,7 @@ type AnalysisRunRow = {
 type FashionBatchRow = {
   id: string; state: FashionPreviewBatch["state"]; completed_count: number; failed_count: number;
   quote_id: string | null; slot_state: Record<string, string> | null;
+  slot_progress: FashionPreviewBatch["slotProgress"] | null; last_heartbeat_at: string | null;
   error_code: string | null; error_message: string | null; updated_at: string;
 };
 
@@ -71,18 +72,25 @@ function mapAnalysisRun(row: AnalysisRunRow | null): ConsultationAnalysisRun | n
 }
 
 function mapFashionBatch(row: FashionBatchRow | null): FashionPreviewBatch | null {
-  return row ? {
+  if (!row) return null;
+  const slotProgress = row.slot_progress ?? {};
+  return {
     id: row.id,
     state: row.state,
     requestedCount: 9,
     completedCount: row.completed_count,
     failedCount: row.failed_count,
+    terminalCount: row.completed_count + row.failed_count,
+    stalledCount: Object.values(slotProgress).filter((item) => item.status === "stalled").length,
+    retryingCount: Object.values(slotProgress).filter((item) => item.status === "retrying").length,
     quoteId: row.quote_id,
     slotState: row.slot_state ?? {},
+    slotProgress,
+    lastHeartbeatAt: row.last_heartbeat_at,
     errorCode: row.error_code,
     errorMessage: row.error_message,
     updatedAt: row.updated_at,
-  } : null;
+  };
 }
 
 async function hydrateTaskState(snapshot: ConsultationSnapshot) {
@@ -93,7 +101,7 @@ async function hydrateTaskState(snapshot: ConsultationSnapshot) {
       .eq("consultation_id", snapshot.sessionId).eq("user_id", snapshot.userId)
       .order("created_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("fashion_preview_batches_v2")
-      .select("id,state,completed_count,failed_count,quote_id,slot_state,error_code,error_message,updated_at")
+      .select("id,state,completed_count,failed_count,quote_id,slot_state,slot_progress,last_heartbeat_at,error_code,error_message,updated_at")
       .eq("consultation_id", snapshot.sessionId).eq("user_id", snapshot.userId)
       .order("created_at", { ascending: false }).limit(1).maybeSingle(),
   ]);

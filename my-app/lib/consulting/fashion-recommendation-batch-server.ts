@@ -10,6 +10,7 @@ import { ensureCurrentUserProfile, isStyleProfileComplete, normalizeStyleProfile
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "../v2/errors";
 import { loadConfirmedV2StylingSource } from "../v2/styling-source-server";
+import { loadConsultationGenerationInputSnapshotV2 } from "./generation-input-server";
 
 export const CONSULTATION_FASHION_SLOTS: ReadonlyArray<{
   id: string;
@@ -118,10 +119,11 @@ export async function prepareFashionRecommendationSessions(input: {
 }) {
   const db = getSupabaseAdminClient();
   const profileClient = db as unknown as ServerSupabaseLike;
-  const [source, ensured, catalog] = await Promise.all([
+  const [source, ensured, catalog, generationInput] = await Promise.all([
     loadConfirmedV2StylingSource({ userId: input.userId, consultationId: input.consultationId }),
     ensureCurrentUserProfile(input.userId, profileClient),
     ensureFashionCatalogAvailable(),
+    loadConsultationGenerationInputSnapshotV2(input.userId, input.consultationId),
   ]);
   if (ensured.error) throw new Error(ensured.error.message);
   const profileResult = await profileClient.from("user_style_profiles").select("*").eq("user_id", input.userId).maybeSingle();
@@ -153,6 +155,8 @@ export async function prepareFashionRecommendationSessions(input: {
         analysis: source.recommendationSet.analysis,
         genre: slot.genre,
         catalogItem,
+        styleTarget: generationInput.styleTarget,
+        generationInputFingerprint: generationInput.inputFingerprint,
       },
     });
     if (capability.state !== "completed" || !capability.output) {

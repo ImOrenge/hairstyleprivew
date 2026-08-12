@@ -53,14 +53,27 @@ export interface ConsultationAnalysisRun {
 }
 
 export type FashionPreviewBatchState = "draft" | "quoted" | "approved" | "generating" | "partial" | "ready" | "failed" | "selected" | "cancelled";
+export type FashionPreviewSlotRuntimeState = "queued" | "running" | "completed" | "stalled" | "failed" | "retrying";
+export interface FashionPreviewSlotProgress {
+  status: FashionPreviewSlotRuntimeState;
+  attemptCount: number;
+  heartbeatAt: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+}
 export interface FashionPreviewBatch {
   id: string;
   state: FashionPreviewBatchState;
   requestedCount: 9;
   completedCount: number;
   failedCount: number;
+  terminalCount: number;
+  stalledCount: number;
+  retryingCount: number;
   quoteId: string | null;
   slotState: Record<string, string>;
+  slotProgress: Record<string, FashionPreviewSlotProgress>;
+  lastHeartbeatAt: string | null;
   errorCode: string | null;
   errorMessage: string | null;
   updatedAt: string;

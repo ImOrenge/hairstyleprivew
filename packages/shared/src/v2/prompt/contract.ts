@@ -29,6 +29,8 @@ export interface HairstyleCatalogPromptItemV2 { id: string; cycleId: string; nam
 export interface PromptInputV2 {
   schemaVersion: "prompt-input-v2";
   consultationId: string;
+  styleTarget: "male" | "female" | "neutral";
+  generationInputFingerprint: string;
   analysisEvidence: Pick<AnalysisEvidenceV2, "id" | "faceShape" | "quality" | "model">;
   personalColor: PersonalColorInputV2 | null;
   currentHair: CurrentHairProfileV2;

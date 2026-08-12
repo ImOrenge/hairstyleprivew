@@ -397,6 +397,8 @@ export interface FashionRecommendation {
   silhouette: string;
   items: FashionRecommendationItem[];
   stylingNotes: string[];
+  styleTarget?: MemberStyleTarget | "neutral";
+  generationInputFingerprint?: string;
   catalogItemId?: string | null;
   catalogCycleId?: string | null;
   generatedAt: string;

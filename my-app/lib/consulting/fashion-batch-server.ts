@@ -1,13 +1,14 @@
 import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
-import type { FashionDirectionSnapshot, FashionPreviewBatch } from "./contracts";
+import type { FashionDirectionSnapshot, FashionPreviewBatch, FashionPreviewSlotProgress } from "./contracts";
 import { createPaidActionExecutionQuoteSnapshot, createPaidActionQuoteForUser } from "../paid-action-quote";
 import { countUserCompletedFashionGenerations, getPlanEntitlement } from "../plan-entitlements";
 import { isStylingAcceptanceEnabled } from "../release-rollout";
 import { dispatchStylingWorkflowOutbox } from "../styling-workflow-outbox";
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "../v2/errors";
+import { deriveFashionBatchState, deriveFashionSlotProgress, MAX_FASHION_SLOT_ATTEMPTS, summarizeFashionBatchProgress, type FashionRuntimeAttempt } from "./fashion-batch-runtime";
 
 export const CONSULTATION_FASHION_SLOT_IDS = [
   "daily-casual", "daily-minimal", "daily-athleisure",
@@ -34,6 +35,8 @@ type BatchRow = {
   completed_count: number; failed_count: number; quote_id: string | null;
   quote_snapshot: FashionBatchQuoteSummary | null; styling_session_ids: string[];
   slot_state: Record<string, string>; error_code: string | null; error_message: string | null;
+  slot_progress: Record<string, FashionPreviewSlotProgress> | null;
+  last_heartbeat_at: string | null; retry_count: number;
   updated_at: string;
 };
 
@@ -43,6 +46,7 @@ type StylingSessionRow = {
   selection_snapshot_id: string;
   fashion_slot_id: string;
   status: string;
+  updated_at?: string | null;
 };
 
 type StylingBeginResult = {
@@ -54,21 +58,37 @@ type StylingBeginResult = {
 };
 
 function mapBatch(row: BatchRow): FashionPreviewBatch {
+  const slotProgress = row.slot_progress ?? {};
   return {
     id: row.id,
     state: row.state,
     requestedCount: 9,
     completedCount: row.completed_count,
     failedCount: row.failed_count,
+    terminalCount: row.completed_count + row.failed_count,
+    stalledCount: Object.values(slotProgress).filter((item) => item.status === "stalled").length,
+    retryingCount: Object.values(slotProgress).filter((item) => item.status === "retrying").length,
     quoteId: row.quote_id,
     slotState: row.slot_state ?? {},
+    slotProgress,
+    lastHeartbeatAt: row.last_heartbeat_at,
     errorCode: row.error_code,
     errorMessage: row.error_message,
     updatedAt: row.updated_at,
   };
 }
 
-const BATCH_SELECT = "id,state,requested_count,completed_count,failed_count,quote_id,quote_snapshot,styling_session_ids,slot_state,error_code,error_message,updated_at";
+const BATCH_SELECT = "id,state,requested_count,completed_count,failed_count,quote_id,quote_snapshot,styling_session_ids,slot_state,slot_progress,last_heartbeat_at,retry_count,error_code,error_message,updated_at";
+
+async function loadStylingAttempts(sessionIds: string[]) {
+  if (!sessionIds.length) return [] as FashionRuntimeAttempt[];
+  const result = await getSupabaseAdminClient().from("styling_credit_attempts")
+    .select("styling_session_id,state,attempt_count,lease_expires_at,error_message,updated_at")
+    .in("styling_session_id", sessionIds)
+    .order("created_at", { ascending: false });
+  if (result.error) throw new Error(result.error.message);
+  return result.data as unknown as FashionRuntimeAttempt[];
+}
 
 export async function readFashionBatch(userId: string, consultationId: string) {
   const result = await getSupabaseAdminClient().from("fashion_preview_batches_v2")
@@ -99,7 +119,7 @@ export async function prepareFashionBatch(input: {
     return { ...dispatched, idempotentReplay: true };
   }
   const sessions = await db.from("styling_sessions")
-    .select("id,consultation_id,selection_snapshot_id,fashion_slot_id,status")
+    .select("id,consultation_id,selection_snapshot_id,fashion_slot_id,status,updated_at")
     .eq("user_id", input.userId).eq("consultation_id", input.consultationId).in("id", uniqueIds);
   if (sessions.error) throw new Error(sessions.error.message);
   const rows = sessions.data as unknown as StylingSessionRow[];
@@ -183,11 +203,18 @@ export async function dispatchFashionBatch(userId: string, consultationId: strin
     return { batch: mapBatch(row), stylingSessionIds: row.styling_session_ids, dispatch: { accepted: 0, replayed: true } };
   }
   const sessions = await db.from("styling_sessions")
-    .select("id,consultation_id,selection_snapshot_id,fashion_slot_id,status")
+    .select("id,consultation_id,selection_snapshot_id,fashion_slot_id,status,updated_at")
     .eq("user_id", userId).eq("consultation_id", consultationId).in("id", row.styling_session_ids);
   if (sessions.error) throw new Error(sessions.error.message);
   const sessionRows = sessions.data as unknown as StylingSessionRow[];
-  const candidates = sessionRows.filter((session) => !["generating", "completed"].includes(session.status));
+  const attempts = await loadStylingAttempts(row.styling_session_ids);
+  const progressBeforeDispatch = deriveFashionSlotProgress(sessionRows, attempts);
+  const candidates = sessionRows.filter((session) => {
+    const progress = progressBeforeDispatch[session.fashion_slot_id];
+    if (session.status === "completed") return false;
+    if (progress?.status === "running") return false;
+    return (progress?.attemptCount ?? 0) < MAX_FASHION_SLOT_ATTEMPTS;
+  });
   const outcomes = await Promise.all(candidates.map(async (session) => {
     try {
       const quote = await createPaidActionQuoteForUser({
@@ -201,22 +228,46 @@ export async function dispatchFashionBatch(userId: string, consultationId: strin
       });
       if (error) throw new Error(error.message);
       const result = data as unknown as StylingBeginResult;
-      return { session, accepted: Boolean(result.canRun || result.inProgress || result.terminal), state: result.terminal ? "completed" : "generating", error: null as string | null };
+      const wasRetry = (progressBeforeDispatch[session.fashion_slot_id]?.attemptCount ?? 0) > 0;
+      return { session, accepted: Boolean(result.canRun || result.inProgress || result.terminal), state: result.terminal ? "completed" : wasRetry ? "retrying" : "generating", error: null as string | null };
     } catch (error) {
       return { session, accepted: false, state: "dispatch_failed", error: error instanceof Error ? error.message : "dispatch failed" };
     }
   }));
   const accepted = outcomes.filter((outcome) => outcome.accepted).length;
-  const failed = outcomes.length - accepted;
+  const dispatchFailed = outcomes.length - accepted;
+  const completedCount = sessionRows.filter((session) => session.status === "completed").length;
+  const failedCount = summarizeFashionBatchProgress(progressBeforeDispatch).failedCount;
   const slotState = { ...row.slot_state, ...Object.fromEntries(outcomes.map((outcome) => [outcome.session.fashion_slot_id, outcome.state])) };
-  const nextState: FashionPreviewBatch["state"] = accepted > 0 ? (failed > 0 ? "partial" : "generating") : failed > 0 ? "failed" : row.state;
+  const slotProgress = { ...progressBeforeDispatch };
+  for (const outcome of outcomes) {
+    const previous = slotProgress[outcome.session.fashion_slot_id];
+    slotProgress[outcome.session.fashion_slot_id] = {
+      status: outcome.accepted ? (outcome.state === "retrying" ? "retrying" : outcome.state === "completed" ? "completed" : "running") : "failed",
+      attemptCount: outcome.accepted
+        ? Math.max(1, (previous?.attemptCount ?? 0) + (outcome.state === "retrying" ? 1 : 0))
+        : previous?.attemptCount ?? 0,
+      heartbeatAt: new Date().toISOString(),
+      errorCode: outcome.error ? "FASHION_SLOT_DISPATCH_FAILED" : null,
+      errorMessage: outcome.error,
+    };
+  }
+  const nextState: FashionPreviewBatch["state"] = completedCount + failedCount === row.requested_count
+    ? completedCount > 0 ? "ready" : "failed"
+    : accepted > 0 ? (completedCount > 0 || failedCount > 0 || dispatchFailed > 0 ? "partial" : "generating")
+      : dispatchFailed > 0 ? "partial" : row.state;
+  const heartbeatAt = new Date().toISOString();
   const updated = await db.from("fashion_preview_batches_v2").update({
     state: nextState,
-    failed_count: failed,
+    completed_count: completedCount,
+    failed_count: failedCount,
     slot_state: slotState,
-    error_code: failed > 0 ? "FASHION_BATCH_DISPATCH_PARTIAL" : null,
-    error_message: failed > 0 ? `${failed}개 슬롯을 접수하지 못했습니다. 완료된 접수는 유지되며 재시도할 수 있습니다.` : null,
-    updated_at: new Date().toISOString(),
+    slot_progress: slotProgress,
+    last_heartbeat_at: heartbeatAt,
+    retry_count: row.retry_count + outcomes.filter((outcome) => outcome.state === "retrying").length,
+    error_code: dispatchFailed > 0 ? "FASHION_BATCH_DISPATCH_PARTIAL" : null,
+    error_message: dispatchFailed > 0 ? `${dispatchFailed}개 슬롯을 접수하지 못했습니다. 완료된 접수는 유지되며 재시도할 수 있습니다.` : null,
+    updated_at: heartbeatAt,
   }).eq("id", batchId).eq("user_id", userId).select(BATCH_SELECT).single();
   if (updated.error) throw new Error(updated.error.message);
   let workflowDispatchStatus: "started" | "deferred" = "deferred";
@@ -229,34 +280,52 @@ export async function dispatchFashionBatch(userId: string, consultationId: strin
   return {
     batch: mapBatch(updated.data as unknown as BatchRow),
     stylingSessionIds: row.styling_session_ids,
-    dispatch: { accepted, failed, workflowDispatchStatus, replayed: candidates.length === 0 },
+    dispatch: { accepted, failed: dispatchFailed, workflowDispatchStatus, replayed: candidates.length === 0 },
   };
 }
 
-export async function reconcileFashionBatch(userId: string, consultationId: string, batchId: string) {
+export async function reconcileFashionBatch(userId: string, consultationId: string, batchId: string, localBaseUrl?: string) {
   const db = getSupabaseAdminClient();
   const current = await db.from("fashion_preview_batches_v2").select(BATCH_SELECT)
     .eq("id", batchId).eq("user_id", userId).eq("consultation_id", consultationId).maybeSingle();
   if (current.error) throw new Error(current.error.message);
   if (!current.data) throw new HairfitV2Error("FASHION_BATCH_NOT_FOUND", 404, "패션 배치를 찾을 수 없습니다.");
   const row = current.data as unknown as BatchRow;
-  const sessions = await db.from("styling_sessions").select("id,fashion_slot_id,status")
+  const sessions = await db.from("styling_sessions").select("id,fashion_slot_id,status,updated_at")
     .eq("user_id", userId).in("id", row.styling_session_ids);
   if (sessions.error) throw new Error(sessions.error.message);
-  const sessionRows = sessions.data as unknown as Array<{ id: string; fashion_slot_id: string; status: string }>;
-  const completedCount = sessionRows.filter((item) => item.status === "completed").length;
-  const failedCount = sessionRows.filter((item) => item.status === "failed").length;
-  const generating = sessionRows.some((item) => item.status === "generating");
-  const state: FashionPreviewBatch["state"] = completedCount === 9 ? "ready"
-    : failedCount === 9 ? "failed"
-      : completedCount > 0 || failedCount > 0 ? "partial"
-        : generating ? "generating" : row.state;
+  const sessionRows = sessions.data as unknown as StylingSessionRow[];
+  const attempts = await loadStylingAttempts(row.styling_session_ids);
+  const slotProgress = deriveFashionSlotProgress(sessionRows, attempts);
+  const progressSummary = summarizeFashionBatchProgress(slotProgress);
+  const { completedCount, failedCount, terminalCount, stalledCount, retryableCount, generating } = progressSummary;
+  const state = deriveFashionBatchState(row.state, row.requested_count, progressSummary);
+  const heartbeatAt = new Date().toISOString();
+  const terminalVisibilityLagMs = sessionRows
+    .filter((item) => ["completed", "failed"].includes(item.status) && item.updated_at)
+    .map((item) => Math.max(0, Date.now() - Date.parse(item.updated_at as string)))
+    .filter(Number.isFinite);
+  if (completedCount !== row.completed_count || failedCount !== row.failed_count || stalledCount > 0) {
+    console.info("[fashion-batch-reconcile-timing]", {
+      completedCount,
+      failedCount,
+      stalledCount,
+      pollVisibilityLagMs: terminalVisibilityLagMs.length ? Math.max(...terminalVisibilityLagMs) : null,
+    });
+  }
   const updated = await db.from("fashion_preview_batches_v2").update({
     state, completed_count: completedCount, failed_count: failedCount,
     slot_state: Object.fromEntries(sessionRows.map((item) => [item.fashion_slot_id, item.status])),
-    ready_at: completedCount === 9 ? new Date().toISOString() : null,
-    updated_at: new Date().toISOString(),
+    slot_progress: slotProgress,
+    last_heartbeat_at: heartbeatAt,
+    error_code: stalledCount > 0 ? "FASHION_BATCH_STALLED" : failedCount > 0 ? "FASHION_BATCH_PARTIAL_FAILURE" : null,
+    error_message: stalledCount > 0 ? `${stalledCount}개 슬롯의 생성 lease가 만료되어 자동 재접수를 준비합니다.` : failedCount > 0 ? `${failedCount}개 슬롯이 실패했습니다. 완료 결과를 유지한 채 다시 시도할 수 있습니다.` : null,
+    ready_at: terminalCount === row.requested_count ? heartbeatAt : null,
+    updated_at: heartbeatAt,
   }).eq("id", batchId).eq("user_id", userId).select(BATCH_SELECT).single();
   if (updated.error) throw new Error(updated.error.message);
+  if (terminalCount < row.requested_count && (retryableCount > 0 || generating) && localBaseUrl) {
+    return dispatchFashionBatch(userId, consultationId, batchId, localBaseUrl);
+  }
   return { batch: mapBatch(updated.data as unknown as BatchRow), stylingSessionIds: row.styling_session_ids };
 }
