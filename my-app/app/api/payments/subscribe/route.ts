@@ -38,6 +38,11 @@ interface SubscribeRequestBody {
   issueId?: string;
   storeId?: string;
   channelKey?: string;
+  customer?: {
+    fullName?: unknown;
+    email?: unknown;
+    phoneNumber?: unknown;
+  };
 }
 
 interface EnsureProfileResult {
@@ -105,6 +110,30 @@ function shouldClearPreparedSubscriptionAfterConfirmationFailure(reason: string)
 
 function readOptionalText(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function readCustomerText(value: unknown, maxLength: number): string | undefined {
+  const text = readOptionalText(value);
+  return text?.slice(0, maxLength);
+}
+
+function readCustomerPhoneNumber(value: unknown): string | undefined {
+  const text = readCustomerText(value, 20);
+  if (!text) return undefined;
+  const normalized = text.replace(/[^\d+]/g, "");
+  return /^\+?\d{8,15}$/.test(normalized) ? normalized : undefined;
+}
+
+function readBillingCustomer(body: SubscribeRequestBody, userId: string) {
+  const name = readCustomerText(body.customer?.fullName, 80);
+  const email = readCustomerText(body.customer?.email, 120);
+  const phoneNumber = readCustomerPhoneNumber(body.customer?.phoneNumber);
+
+  if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !phoneNumber) {
+    return null;
+  }
+
+  return { id: userId, name, email, phoneNumber };
 }
 
 function maskPublicConfig(value: string | undefined): string | null {
@@ -209,6 +238,13 @@ export async function POST(request: Request) {
   }
   if (!billingKey) {
     return NextResponse.json({ error: "billingKey가 필요합니다" }, { status: 400 });
+  }
+  const billingCustomer = readBillingCustomer(body, userId);
+  if (!billingCustomer) {
+    return NextResponse.json(
+      { error: "결제 고객의 이름, 이메일, 전화번호를 다시 확인해 주세요." },
+      { status: 400 },
+    );
   }
 
   const amount = PLAN_AMOUNT_KRW[plan];
@@ -408,7 +444,7 @@ export async function POST(request: Request) {
       storeId: portoneConfig.storeId,
       channelKey: portoneConfig.channelKey,
       orderName,
-      customerId: userId,
+      customer: billingCustomer,
       amount,
       currency: "KRW",
     });

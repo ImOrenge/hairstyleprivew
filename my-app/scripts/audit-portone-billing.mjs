@@ -135,7 +135,8 @@ assertIncludes(portone, 'storeId:\\s*input\\.storeId\\?\\.trim\\(\\)\\s*\\|\\|\\
 assertIncludes(portone, 'process\\.env\\.NEXT_PUBLIC_PORTONE_V2_STORE_ID\\?\\.trim\\(\\)\\s*\\|\\|\\s*process\\.env\\.PORTONE_V2_STORE_ID', "browser issue and server charge must prefer the same PortOne store id source");
 assertIncludes(portone, 'process\\.env\\.NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY\\?\\.trim\\(\\)\\s*\\|\\|\\s*process\\.env\\.PORTONE_V2_BILLING_KEY_CHANNEL_KEY', "billing-key issue and recurring charge must prefer the canonical billing-key channel source");
 assertIncludes(portone, 'process\\.env\\.NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY\\?\\.trim\\(\\)\\s*\\|\\|\\s*process\\.env\\.PORTONE_V2_PAYMENT_CHANNEL_KEY', "authenticated one-time payment must prefer the canonical payment channel source");
-assertIncludes(portone, 'customer:\\s*\\{\\s*id:\\s*input\\.customerId\\s*\\}', "REST billing-key charge must use customer.id");
+assertIncludes(portone, 'buildPortoneBillingCustomer\\(input\\.customer\\)', "REST billing-key charge must normalize all required customer fields");
+assertIncludes(portone, 'customer,', "REST billing-key charge must send the normalized customer payload");
 assertIncludes(portone, 'amount:\\s*\\{\\s*total:\\s*input\\.amount\\s*\\}', "billing-key charge must use server amount");
 assertIncludes(portone, 'parsePortonePaymentResult\\(input\\.paymentId,\\s*data\\)', "billing-key charge must parse wrapped PortOne payment responses");
 assertIncludes(portone, 'confirmBillingKeyIssue', "PortOne client must support manual billing-key issue confirmation");
@@ -188,6 +189,7 @@ assertIncludes(subscribe, 'buildPortonePaymentId\\("sub",\\s*plan\\)', "web subs
 assertIncludes(subscribe, 'billingKey === PORTONE_NEEDS_CONFIRMATION', "web subscribe must handle manual billing-key issue confirmation");
 assertIncludes(subscribe, 'confirmBillingKeyIssue\\(\\{', "web subscribe must confirm manual billing-key issues before charging");
 assertIncludes(subscribe, 'chargeBillingKey\\(\\{[\\s\\S]*?storeId:\\s*portoneConfig\\.storeId[\\s\\S]*?channelKey:\\s*portoneConfig\\.channelKey', "web subscribe must charge with the same PortOne store/channel used for issue");
+assertIncludes(subscribe, 'customer:\\s*billingCustomer', "web subscribe must forward the validated billing customer to the first charge");
 assertAbsent(subscribe, 'getBillingKey\\(billingKey\\)', "web subscribe must not block first charge on a billing-key lookup preflight");
 const billingKeyPrepare = assertFile("app/api/payments/billing-key/prepare/route.ts");
 assertIncludes(billingKeyPrepare, 'buildPortoneBillingKeyIssueId\\(plan\\)', "billing-key prepare must generate INIStdPay-safe short issue IDs");

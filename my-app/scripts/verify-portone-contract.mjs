@@ -108,7 +108,8 @@ assert.match(
   portoneSource,
   /process\.env\.NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY\?\.trim\(\)\s*\|\|\s*process\.env\.PORTONE_V2_PAYMENT_CHANNEL_KEY/,
 );
-assert.match(portoneSource, /customer:\s*\{\s*id:\s*input\.customerId\s*\}/);
+assert.match(portoneSource, /buildPortoneBillingCustomer\(input\.customer\)/);
+assert.match(portoneSource, /customer,/);
 assert.match(portoneSource, /parsePortonePaymentResult\(input\.paymentId,\s*data\)/);
 assert.match(portoneSource, /formatPortoneHttpError\(response\.status,\s*data\)/);
 assert.match(portoneSource, /confirmBillingKeyIssue/);
@@ -121,6 +122,7 @@ assert.match(subscribeSource, /billingKey === PORTONE_NEEDS_CONFIRMATION/);
 assert.match(subscribeSource, /confirmBillingKeyIssue\(\{/);
 assert.match(subscribeSource, /storeId:\s*portoneConfig\.storeId/);
 assert.match(subscribeSource, /channelKey:\s*portoneConfig\.channelKey/);
+assert.match(subscribeSource, /customer:\s*billingCustomer/);
 assert.doesNotMatch(subscribeSource, /getBillingKey\(billingKey\)/);
 
 const billingPlanSource = readFileSync(resolve("lib/billing-plan.ts"), "utf8");
@@ -183,7 +185,9 @@ const cronSource = readFileSync(
   "utf8",
 );
 assert.match(cronSource, /storeId:\s*PORTONE_V2_STORE_ID/);
-assert.match(cronSource, /customer:\s*\{\s*id:\s*customerId\s*\}/);
+assert.match(cronSource, /getBillingKeyCustomer\(billingKey,\s*sub\.user_id\)/);
+assert.match(cronSource, /name:\s*\{\s*full:\s*customer\.name\s*\}/);
+assert.match(cronSource, /phoneNumber:\s*customer\.phoneNumber/);
 assert.match(cronSource, /paymentData\.pgTxId/);
 assert.match(cronSource, /const result = await getPayment\(paymentId\)/);
 assert.match(cronSource, /result\.amountTotal !== sub\.amount_krw/);

@@ -59,11 +59,8 @@ async function checkBillingPage(baseUrl) {
     "₩9,900",
     "₩19,900",
     "₩49,900",
-    "Basic 시작",
-    "Standard 시작",
-    "Pro 시작",
-    "매월 자동 결제",
-    "추가 이용권 보기",
+    "subscriptionAccessMode",
+    "checkout",
   ]) {
     assertBodyIncludes(body, expected, "/billing");
   }

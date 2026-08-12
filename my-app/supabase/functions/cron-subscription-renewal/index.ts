@@ -89,6 +89,47 @@ interface BillingKeyChargeResult {
   failureMessage: string | null;
 }
 
+interface BillingCustomer {
+  id: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+}
+
+async function getBillingKeyCustomer(
+  billingKey: string,
+  expectedCustomerId: string,
+): Promise<BillingCustomer> {
+  const url = `https://api.portone.io/billing-keys/${encodeURIComponent(billingKey)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `PortOne ${PORTONE_V2_API_SECRET}` },
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    const message = typeof data.message === "string" ? data.message : `HTTP ${res.status}`;
+    throw new Error(`PortOne billing key lookup failed: ${message}`);
+  }
+  if (data.status !== "ISSUED") {
+    throw new Error("PortOne billing key is not issued");
+  }
+
+  const rawCustomer = data.customer;
+  const customer =
+    typeof rawCustomer === "object" && rawCustomer !== null && !Array.isArray(rawCustomer)
+      ? (rawCustomer as Record<string, unknown>)
+      : null;
+  const id = typeof customer?.id === "string" ? customer.id.trim() : "";
+  const name = typeof customer?.name === "string" ? customer.name.trim() : "";
+  const email = typeof customer?.email === "string" ? customer.email.trim() : "";
+  const phoneNumber =
+    typeof customer?.phoneNumber === "string" ? customer.phoneNumber.trim() : "";
+  if (id !== expectedCustomerId || !name || !email || !phoneNumber) {
+    throw new Error("PortOne billing key customer information is incomplete or mismatched");
+  }
+
+  return { id, name, email, phoneNumber };
+}
+
 function parsePaymentResult(data: Record<string, unknown>): BillingKeyChargeResult {
   const payment = data.payment;
   const paymentData =
@@ -137,7 +178,7 @@ async function chargeBillingKey(
   paymentId: string,
   billingKey: string,
   orderName: string,
-  customerId: string,
+  customer: BillingCustomer,
   amountKrw: number,
 ): Promise<BillingKeyChargeResult> {
   if (!PORTONE_V2_STORE_ID) {
@@ -158,7 +199,12 @@ async function chargeBillingKey(
         ? { channelKey: PORTONE_V2_BILLING_KEY_CHANNEL_KEY }
         : {}),
       orderName,
-      customer: { id: customerId },
+      customer: {
+        id: customer.id,
+        name: { full: customer.name },
+        email: customer.email,
+        phoneNumber: customer.phoneNumber,
+      },
       amount: { total: amountKrw },
       currency: "KRW",
     }),
@@ -516,6 +562,7 @@ Deno.serve(async () => {
 
     try {
       const billingKey = await resolveBillingKey(sub);
+      const billingCustomer = await getBillingKeyCustomer(billingKey, sub.user_id);
 
       // 1. payment_transactions pending 기록
       const { data: txRow, error: txInsertError } = await supabase
@@ -546,7 +593,7 @@ Deno.serve(async () => {
         paymentId,
         billingKey,
         orderName,
-        sub.user_id,
+        billingCustomer,
         sub.amount_krw,
       );
       const result = await getPayment(paymentId);
