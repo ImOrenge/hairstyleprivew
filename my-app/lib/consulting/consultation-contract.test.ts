@@ -223,6 +223,7 @@ test("server-produced landmark evidence is persisted and rendered without client
 
 test("Cloudflare multi-worker deployment keeps server secrets and pins the exact downstream version", () => {
   const router = read("../../workers/open-next-multi/middleware.js");
+  const imageRoute = read("../../workers/open-next-multi/image-route.js");
   const server = read("../../workers/open-next-multi/server.js");
   const routerConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.middleware.jsonc"));
   const serverConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.server.jsonc"));
@@ -241,8 +242,14 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /const downstreamRequest = new Request\(request/);
   assert.match(router, /service\.fetch\(downstreamRequest/);
   assert.match(router, /import \{ handleImageRequest \} from "\.\.\/\.\.\/\.open-next\/cloudflare\/images\.js"/);
+  assert.match(router, /resolveLocalImageAssetUrl\(request\.url\)/);
+  assert.match(router, /this\.env\.ASSETS\.fetch\(localAssetUrl\)/);
   assert.match(router, /if \(pathname === "\/_next\/image"\)/);
   assert.match(router, /handleImageRequest\(new URL\(request\.url\), request\.headers, this\.env\)/);
+  assert.match(imageRoute, /!source\.startsWith\("\/"\) \|\| source\.startsWith\("\/\/"\)/);
+  assert.match(imageRoute, /decodedSource\.includes\("\\\\"\)/);
+  assert.match(imageRoute, /assetUrl\.origin !== optimizerUrl\.origin/);
+  assert.match(imageRoute, /assetUrl\.pathname === "\/_next\/image"/);
   assert.match(router, /\/\.well-known\/hairfit-deployment/);
   assert.match(router, /\/\.well-known\/hairfit-router/);
   assert.match(router, /pinnedServerVersion: this\.env\.WORKER_VERSION_ID/);
