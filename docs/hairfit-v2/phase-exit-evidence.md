@@ -95,3 +95,12 @@
 - 실검증에서 부분 autosave를 전체 완료로 막던 server guard와 autosave 후 조기 Photo 이동을 수정했다. 계약 `78/78`, typecheck와 lint가 통과했다.
 - 초기 단일 Cloudflare source deploy는 `3,406.17 KiB`로 3 MiB 제한에서 거부됐으나, OpenNext 멀티 워커로 분리해 server `3,049.89 KiB`, router `189.10 KiB`로 배포했다. 두 번의 독립된 0% staff canary에서 version override가 적용되지 않아 공개 비율을 올리지 않고 복구했다. 두 번째 시도는 OFF baseline 수렴 뒤 60초·12회까지 확인했다. 최종 OFF source `19b5d682088bbd71083ce273e8efc0b8a06b18c2`, server `82eabfb8-3016-4216-9dd8-7e8e24f71d42`, router `8221300d-eace-4332-9c69-4f22f43420d9`의 exact probe와 인증 경계를 확인했다. 다음 비비용 검증 경로로 production traffic과 분리된 Worker Preview URL을 명시적으로 활성화했다. 공개 canary와 실기기 parity는 미완료다.
 - 상세 증거와 재개 조건은 `p16-source-deployment-and-live-result-2026-08-11.md`, `p17-final-handoff-2026-08-11.md`를 따른다. 이 상태에서 전체 goal을 완료로 선언하지 않는다.
+
+## 2026-08-12 Preview 및 Web 카나리 후속
+
+- 최종 배포 소스는 `64829d74793ec5be77841596184406bc103f1d8f`, server는 `32f0a81d-304e-451f-940c-23c9a3e9f56a`, router는 `37d268c1-e43f-4d64-91d3-0efc2149f636`이며 각각 ON version 100%다.
+- production과 분리된 router Preview에서 동일 응답의 pinned server header와 source revision이 5/5 일치했고, 비인증 V2 API 401과 핵심 경로 상태를 확인했다.
+- 공개 5% 표본은 ON/OFF 5/95, 25% 표본은 33/67, 100% 표본은 50/0이었다. 모든 단계에서 atomic mismatch, 진단 오류, root 오류, API 경계 오류는 0이었다.
+- 관측 hostname 오류 때 router를 즉시 OFF 100%로 되돌려 기존 source와 401 경계를 확인한 뒤 재시작했으므로 rollback threshold 관찰도 닫혔다.
+- 실사용자 인증·실제 사진, 유료 Hair/Fashion 생성, 실제 시술 이후 Aftercare는 사용자 패스로 종료조건에서 제외했으며 실행·통과로 간주하지 않는다.
+- 남은 전체 Goal 종료 게이트는 Expo development build의 실제 기기 parity다. 상세 증거는 `p21-preview-and-public-canary-result-2026-08-12.md`를 따른다.

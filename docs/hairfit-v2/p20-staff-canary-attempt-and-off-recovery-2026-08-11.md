@@ -31,10 +31,9 @@ Cloudflare 공식 version override 헤더를 운영 도메인 요청에 적용�
 
 ## 남은 종료 게이트
 
-- production과 분리된 Worker Preview URL 검증 및 Web 5→25→100 canary 관찰
 - Expo 실기기 parity
 
-2026-08-12 사용자 승인으로 운영 실인증·실사진, 실제 유료 hair/Fashion generation, actual service 이후 Brief/Aftercare 실증은 종료 게이트에서 패스했다. 이는 미실행 항목을 통과로 바꾸는 것이 아니라 최종 판정 범위에서 제외하고 정적·로컬·원격 비비용 증거만 보존한다는 뜻이다. 위의 남은 두 항목이 닫히기 전 전체 Goal을 완료로 선언하지 않는다.
+2026-08-12 사용자 승인으로 운영 실인증·실사진, 실제 유료 hair/Fashion generation, actual service 이후 Brief/Aftercare 실증은 종료 게이트에서 패스했다. 이는 미실행 항목을 통과로 바꾸는 것이 아니라 최종 판정 범위에서 제외하고 정적·로컬·원격 비비용 증거만 보존한다는 뜻이다. 남은 Expo 실기기 parity가 닫히기 전 전체 Goal을 완료로 선언하지 않는다.
 
 ## 후속 안전장치
 
@@ -45,3 +44,7 @@ Cloudflare 공식 version override 헤더를 운영 도메인 요청에 적용�
 후속 verifier는 ON router가 ON server를 pin하고 source SHA도 일치하는 경우에만 PASS한다. 둘 중 하나라도 60초 동안 일치하지 않으면 fail-closed로 종료해 공개 canary를 차단한다.
 
 0% version override 대신 `workers_dev=false`와 `preview_urls=true`를 함께 사용해 새 router/server version의 고유 Preview URL을 production traffic 변경 없이 검증한다. Preview URL에서 exact server pin·source revision·비인증 경계가 통과한 뒤에만 Web canary를 검토한다.
+
+## 2026-08-12 후속 완료
+
+source `64829d74793ec5be77841596184406bc103f1d8f`, server `32f0a81d-304e-451f-940c-23c9a3e9f56a`, router `37d268c1-e43f-4d64-91d3-0efc2149f636`으로 Preview atomic 검증 5/5를 통과했다. 이어서 공개 traffic을 5→25→100%로 올렸고 각 100/100/50 표본에서 ON/OFF source와 pinned server mismatch가 0이었다. 최종 server/router는 각각 ON 100%이며 상세 결과와 fail-closed 복구 기록은 `p21-preview-and-public-canary-result-2026-08-12.md`를 따른다.
