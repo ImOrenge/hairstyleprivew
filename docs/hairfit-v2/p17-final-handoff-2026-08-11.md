@@ -28,7 +28,7 @@
 | 실제 hair 3×3·partial/retry | 사용자 패스 | 2026-08-12 사용자가 실사용 비용 게이트를 종료조건에서 제외함. 미실행 사실은 유지 |
 | 실제 Fashion 9-look·selection | 사용자 패스 | 2026-08-12 사용자가 실사용 비용 게이트를 종료조건에서 제외함. 미실행 사실은 유지 |
 | actual service→Aftercare live | 사용자 패스 | 2026-08-12 사용자가 실제 시술·관찰 게이트를 종료조건에서 제외함. 미실행 사실은 유지 |
-| Expo 실기기 parity | 미실행 | development build와 실기기 필요 |
+| Expo 실기기 parity | 부분 | Android AVD development build·keyboard·작은 화면 smoke는 통과. Android/iOS 물리 기기 필요 |
 | rollback threshold 관찰 | 통과 | 잘못된 probe hostname에서 즉시 OFF 100% 복구 후 운영 OFF source/API를 확인하고 카나리를 재시작함 |
 
 ## 재개 절차
@@ -37,6 +37,8 @@
 2. production Web을 5→25→100%로 관찰했으며 최종 server/router를 각각 ON 100%로 고정했다. 상세 표본은 `p21-preview-and-public-canary-result-2026-08-12.md`에 보존한다.
 3. 실인증·실사진, 유료 hair/Fashion generation, 실제 시술 기반 Aftercare는 2026-08-12 사용자 패스로 종료조건에서 제외했다. 실행·통과로 간주하지 않는다.
 4. Expo 실기기 증거가 통과하거나 사용자가 종료조건에서 명시적으로 제외한 뒤에만 goal을 complete 처리한다.
+
+Android AVD 중간 증거와 development client native dependency 수정은 `p22-expo-development-build-emulator-result-2026-08-12.md`를 따른다.
 
 ## 보존 규칙
 

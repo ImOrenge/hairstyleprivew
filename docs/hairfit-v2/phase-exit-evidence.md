@@ -104,3 +104,11 @@
 - 관측 hostname 오류 때 router를 즉시 OFF 100%로 되돌려 기존 source와 401 경계를 확인한 뒤 재시작했으므로 rollback threshold 관찰도 닫혔다.
 - 실사용자 인증·실제 사진, 유료 Hair/Fashion 생성, 실제 시술 이후 Aftercare는 사용자 패스로 종료조건에서 제외했으며 실행·통과로 간주하지 않는다.
 - 남은 전체 Goal 종료 게이트는 Expo development build의 실제 기기 parity다. 상세 증거는 `p21-preview-and-public-canary-result-2026-08-12.md`를 따른다.
+
+## 2026-08-12 Expo development build 후속
+
+- 검증 source `f5048b15179ed753bb94510affaf11fcf40a53a3`에서 누락된 `expo-splash-screen ~55.0.23` 직접 의존성을 추가해 development client 시작 오류를 수정했다.
+- Android API 36 x86_64 New Architecture APK 빌드·ADB 설치·부팅을 통과했고 APK SHA-256은 `7611eac7dd870651ac6fbb74f33e3504b37aafd31649697ffeeb93c93ca5e8fc`다.
+- 운영 API에 연결한 AVD에서 홈, 로그인, `hairfit://consulting` 인증 guard, keyboard, back/relaunch, 1080×2424 및 720×1280 화면을 확인했으며 치명 runtime 오류는 0이었다.
+- 실사용자 인증은 사용자 패스 범위라 우회하지 않았다. AVD 증거를 물리 기기 통과로 확대하지 않으며 Android/iOS 물리 기기 parity는 여전히 남아 있다.
+- 상세 증거는 `p22-expo-development-build-emulator-result-2026-08-12.md`를 따른다.

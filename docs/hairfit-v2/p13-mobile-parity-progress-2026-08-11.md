@@ -19,14 +19,18 @@
 
 - `npm --workspace @hairfit/api-client run typecheck`: 통과
 - `npm --workspace @hairfit/app run typecheck`: 통과
-- `npm --workspace @hairfit/app run test`: 41 suites, 175 tests 통과
+- `npm --workspace @hairfit/app run test`: 41 suites, 176 tests 통과
 - `mobile-v2-consultation.test.js`: Photo crop·자연광 보조 사진 계약을 포함해 통과
 - 대상 Expo consulting lint: 오류 0
 - `npm run mobile:bundle`: Web, Android, iOS export 통과
+- 2026-08-12 Android API 36 x86_64 development APK 빌드·설치·부팅, 로그인 guard, keyboard, back/relaunch, 1080×2424 및 720×1280 visual smoke 통과
+- 누락된 `expo-splash-screen` native module을 직접 선언하고 development client 시작 회귀 테스트 추가
 
 ## 아직 종료 증거가 아닌 항목
 
 - 실제 인증 계정·실기기에서 offline/resume와 409 conflict 상호작용은 `not_run`이다.
 - 실제 provider 생성, entitlement 소비, Fashion partial retry, Aftercare 실제 DB lifecycle은 P16 승인 게이트 전에는 `not_run`이다.
-- iOS/Android development build의 접근성·화면 크기·키보드 visual audit은 `not_run`이다.
+- Android AVD development build의 화면 크기·키보드 visual smoke는 통과했다. Android 물리 기기와 iOS 기기의 카메라·접근성·resume audit은 `not_run`이다.
 - 따라서 P13 코드는 구현됐지만 실환경 종료조건까지 완료됐다고 판정하지 않는다.
+
+상세 빌드·런타임 증거는 `p22-expo-development-build-emulator-result-2026-08-12.md`를 따른다.
