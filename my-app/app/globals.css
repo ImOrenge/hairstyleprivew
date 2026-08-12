@@ -1838,6 +1838,51 @@ textarea::placeholder {
   color: var(--app-inverse-text);
 }
 
+.f-consulting-face-shape {
+  --face-shape-oval: var(--app-accent-strong);
+  --face-shape-round: var(--app-accent);
+  --face-shape-oblong: color-mix(in srgb, var(--app-accent) 58%, var(--app-text));
+  --face-shape-square: color-mix(in srgb, var(--app-danger) 72%, var(--app-text));
+  --face-shape-triangle: color-mix(in srgb, var(--app-warning) 74%, var(--app-text));
+}
+
+.f-consulting-face-shape__chart {
+  display: grid;
+  width: min(100%, 14rem);
+  aspect-ratio: 1;
+  place-items: center;
+  margin-inline: auto;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+}
+
+.f-consulting-face-shape__chart > span {
+  display: grid;
+  width: 54%;
+  aspect-ratio: 1;
+  place-content: center;
+  border: 1px solid var(--app-border);
+  border-radius: 999px;
+  background: var(--app-surface);
+  text-align: center;
+}
+
+.f-consulting-face-shape__chart strong,
+.f-consulting-face-shape__chart small {
+  display: block;
+}
+
+.f-consulting-face-shape__chart strong {
+  font-size: 1.5rem;
+}
+
+.f-consulting-face-shape__chart small {
+  margin-top: 0.2rem;
+  color: var(--app-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
 .f-preview-generation-status {
   display: grid;
   gap: 1rem;

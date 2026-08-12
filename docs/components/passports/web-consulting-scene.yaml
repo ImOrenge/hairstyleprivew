@@ -56,6 +56,8 @@ boundaries:
       - face-aware-four-by-five-photo-crop
       - optional-private-natural-light-color-assist
       - persisted-facial-proportion-matrix
+      - persisted-gender-aware-korean-salon-face-shape-blend-chart
+      - analysis-photo-in-left-source-pane
       - transient-liveness-screen-host
       - consultation-exit-confirmation
   forbidden:
@@ -73,6 +75,7 @@ styling:
     - app-border
   runtime_inline_styles:
     - normalized-photo-crop-preview-position-and-size
+    - persisted-face-shape-conic-gradient-and-legend-swatches
   input_control_separator: one-pixel-tokenized-bottom-rule-except-last-sibling
 
 state:
@@ -107,6 +110,7 @@ a11y_contract:
   split_canvas_scroll: input-and-output-scroll-regions-keyboard-focusable-with-visible-focus-ring
   photo_crop: labelled-native-range-controls-and-explicit-framing-confirmation
   analysis_matrix: native-meter-values-with-text-equivalents-and-non-physical-unit-disclosure
+  face_shape_blend: chart-has-text-percentage-equivalent-and-non-medical-disclosure
 
 test_surface:
   structure: my-app/lib/consulting/consultation-contract.test.ts
@@ -126,6 +130,7 @@ test_surface:
   photo_crop: shared-four-by-five-transform-unit-and-browser-interaction
   photo_color_assist: separate-private-draft-used-only-for-personal-color-when-valid
   analysis_matrix: persisted-measurements-only-without-client-inference-or-centimeter-claims
+  face_shape_blend: server-derived-landmark-ratio-percentages-use-onboarding-male-female-reference-and-sum-to-one-hundred
 
 change_policy:
   current_gate: consultation-frontend-and-lifecycle-feature-flags

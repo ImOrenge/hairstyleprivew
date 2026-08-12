@@ -25,7 +25,7 @@ const LANDMARK_EVIDENCE = {
     { id: "face_length", kind: "length", normalizedValue: .59, category: "balanced", confidence: .9, geometry: [{x:.5,y:.2},{x:.5,y:.79}] },
     { id: "cheekbone_width", kind: "width", normalizedValue: .42, category: "balanced", confidence: .9, geometry: [{x:.29,y:.45},{x:.71,y:.45}] },
   ],
-  faceShape: { primary: "oval", secondary: null, blend: { oval: 1 }, summary: "fixture" },
+  faceShape: { primary: "oval", secondary: "round", blend: { "male:oval": .55, "male:round": .2, "male:long": .1, "male:rectangle": .1, "male:triangle": .05 }, summary: "fixture" },
   skinSampleRegions: [{ id: "skin_left_cheek", label: "왼쪽 볼 샘플", source: "detected", confidence: .9, points: [{x:.31,y:.48},{x:.39,y:.45},{x:.4,y:.56},{x:.32,y:.58}] }],
   excludedRegions: [{ id: "excluded_lips", label: "입술 제외", source: "detected", confidence: .9, points: [{x:.43,y:.63},{x:.5,y:.6},{x:.57,y:.63},{x:.5,y:.68}] }],
   correctionRevision: 0,
@@ -490,6 +490,15 @@ test("Analysis renders the persisted facial proportion matrix without inventing 
   await page.goto("/consulting/e2e-harness?stage=analysis");
   await dismissGlobalNotices(page);
   const matrix = page.locator('[data-analysis-proportion-matrix="ready"]');
+  const blend = page.locator('[data-analysis-face-shape-blend="ready"]');
+  const inputPane = page.getByRole("region", { name: "사용자 입력" });
+  const outputPane = page.getByRole("region", { name: "AI 출력 및 시스템 데이터" });
+  await expect(inputPane.locator('[data-photo-evidence-stage="true"]')).toBeVisible();
+  await expect(outputPane.locator('[data-photo-evidence-stage="true"]')).toHaveCount(0);
+  await expect(blend).toBeVisible();
+  await expect(blend.getByRole("img")).toHaveAttribute("aria-label", /계란형 55%/);
+  await expect(blend).toContainText("한국 성인 남성 기준");
+  await expect(blend).toContainText("의학적 두상 진단이 아닙니다");
   await expect(matrix).toBeVisible();
   await expect(matrix.getByRole("heading", { name: "사진 좌표에서 계산한 비율 근거" })).toBeVisible();
   await expect(matrix.locator("[data-analysis-measurement-id]" )).toHaveCount(2);

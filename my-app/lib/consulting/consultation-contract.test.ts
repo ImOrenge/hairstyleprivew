@@ -203,6 +203,13 @@ test("server-produced landmark evidence is persisted and rendered without client
   assert.match(overlay, /data-evidence-source/);
   assert.match(geometry, /skinSampleRegions/);
   assert.match(geometry, /excludedRegions/);
+  assert.match(read("./face-shape-blend.ts"), /deriveKoreanFaceShapeBlend/);
+  assert.match(read("./face-shape-blend.ts"), /male: \["oval", "round", "long", "rectangle", "triangle"\]/);
+  assert.match(read("./photo-analysis-server.ts"), /member_profiles/);
+  assert.match(read("./photo-analysis-server.ts"), /faceShapeReference/);
+  assert.match(analysisWorkbench, /data-analysis-face-shape-blend="ready"/);
+  assert.match(analysisWorkbench, /한국 성인 남성 두상·얼굴 형태 연구의 5개 유형/);
+  assert.ok(analysisWorkbench.indexOf("input={") < analysisWorkbench.indexOf("<ConsultationPhotoEvidence"));
   assert.match(photoEvidence, /분석 레이어/);
   assert.match(photoEvidence, /activeEvidenceId/);
   assert.match(photoEvidence, /랜드마크 좌표 보정/);

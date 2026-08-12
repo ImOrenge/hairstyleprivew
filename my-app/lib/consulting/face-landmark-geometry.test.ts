@@ -3,6 +3,7 @@ import test from "node:test";
 import { assertFaceGeometryEvidenceV2, effectiveEvidencePointV2 } from "../../../packages/shared/src/v2/analysis/contract.ts";
 import type { AnalysisEvidenceV2, NormalizedPointV2 } from "../../../packages/shared/src/v2/analysis/contract.ts";
 import { buildFaceGeometryV2 } from "../../../packages/shared/src/v2/analysis/geometry.ts";
+import { deriveKoreanFaceShapeBlend } from "./face-shape-blend.ts";
 
 function keypointFixture() {
   const points: NormalizedPointV2[] = Array.from({ length: 478 }, () => ({ x: .5, y: .5 }));
@@ -37,6 +38,14 @@ test("MediaPipe keypoints become versioned normalized contour, hairline, landmar
   for (const id of ["face_length","forehead_width","cheekbone_width","jaw_width","chin_width","vertical_symmetry_axis"]) {
     assert.ok(geometry.measurements.some((item) => item.id === id), `${id} must be persisted`);
   }
+  const blend = deriveKoreanFaceShapeBlend(geometry.measurements, "neutral");
+  assert.equal(Object.keys(blend).length, 5);
+  assert.equal(Object.entries(blend).sort((a, b) => b[1] - a[1])[0][0], "neutral:oval");
+  const maleBlend = deriveKoreanFaceShapeBlend(geometry.measurements, "male");
+  const femaleBlend = deriveKoreanFaceShapeBlend(geometry.measurements, "female");
+  assert.ok(Object.keys(maleBlend).every((key) => key.startsWith("male:")));
+  assert.ok(Object.keys(femaleBlend).every((key) => key.startsWith("female:")));
+  assert.ok(Math.abs(Object.values(blend).reduce((sum, value) => sum + value, 0) - 1) < 0.001);
 
   const evidence: AnalysisEvidenceV2 = {
     schemaVersion: "analysis-evidence-v1",

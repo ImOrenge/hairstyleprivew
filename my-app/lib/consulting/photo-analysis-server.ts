@@ -23,6 +23,7 @@ import type {
 } from "./contracts";
 import { createConsultationSnapshot } from "./defaults";
 import { extractFaceLandmarkEvidence } from "./face-landmark-server";
+import { deriveKoreanFaceShapeBlend, type KoreanFaceShapeReference } from "./face-shape-blend";
 import { inspectConsultationPhotoPreflight } from "./photo-preflight-server";
 import { createPersonalColorEvidence, mapPersonalColorProfile } from "./personal-color-mapping";
 import { readServerConsultation, updateServerConsultation } from "./server-store";
@@ -333,6 +334,9 @@ export async function analyzeConsultationPhoto(input: {
     };
   }
   await input.onProgress?.("analyzing");
+  const memberProfile = await db.from("member_profiles").select("style_target").eq("user_id", input.userId).maybeSingle();
+  const styleTarget = (memberProfile.data as { style_target?: unknown } | null)?.style_target;
+  const faceShapeReference: KoreanFaceShapeReference = styleTarget === "male" || styleTarget === "female" ? styleTarget : "neutral";
   const shouldAnalyzePersonalColor = photoSnapshot.usageScopes.includes("personalColor");
   let colorImageDataUrl = imageDataUrl;
   let colorSourceFingerprint = draft.checksum_sha256;
@@ -403,7 +407,12 @@ export async function analyzeConsultationPhoto(input: {
     contours: landmarkRun.geometry.contours,
     hairline: landmarkRun.geometry.hairline,
     measurements: landmarkRun.geometry.measurements,
-    faceShape: { primary: analysisRun.analysis.faceShape, secondary: null, blend: {}, summary: analysisRun.analysis.summary },
+    faceShape: {
+      primary: analysisRun.analysis.faceShape,
+      secondary: null,
+      blend: deriveKoreanFaceShapeBlend(landmarkRun.geometry.measurements, faceShapeReference),
+      summary: analysisRun.analysis.summary,
+    },
     skinSampleRegions: landmarkRun.geometry.skinSampleRegions,
     excludedRegions: landmarkRun.geometry.excludedRegions,
     correctionRevision: 0,
