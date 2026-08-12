@@ -226,6 +226,10 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   const server = read("../../workers/open-next-multi/server.js");
   const routerConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.middleware.jsonc"));
   const serverConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.server.jsonc"));
+  assert.equal(routerConfig.workers_dev, false);
+  assert.equal(routerConfig.preview_urls, true);
+  assert.equal(serverConfig.workers_dev, false);
+  assert.equal(serverConfig.preview_urls, true);
   const packageJson = JSON.parse(read("../../package.json"));
 
   assert.match(router, /Cloudflare-Workers-Version-Overrides/);

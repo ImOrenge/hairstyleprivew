@@ -31,6 +31,7 @@
 3. `npm run typecheck`, `npm --prefix my-app run consulting:contract:test`, `npm --prefix my-app run cf:multi:server:dry-run`, `npm --prefix my-app run cf:multi:router:dry-run`이 통과해야 한다.
 4. 스태프 전용 카나리는 `npm --prefix my-app run cf:multi:server:staff-canary -- --apply --confirm=HAIRFIT_V2_STAFF_CANARY_UPLOAD --source-revision=<40자 Git SHA>`로 새 ON server version만 업로드한다. 이어 OFF bundle을 빌드하고 `npm --prefix my-app run hairfit-v2:cloudflare:off -- --apply --confirm=HAIRFIT_V2_OFF_VERSION_UPLOAD --source-revision=<40자 Git SHA>`로 더 최신 OFF server version을 준비한 뒤에만 100/0 deployment를 만든다. 두 명령 모두 production traffic을 자동 변경하지 않는다.
    100/0 deployment가 수렴한 뒤 `npm --prefix my-app run cf:multi:staff-canary:verify -- --router-version-id=<ON_ROUTER_ID> --server-version-id=<ON_SERVER_ID> --source-revision=<40자 Git SHA>`가 exact router pin과 source revision을 모두 확인해야 한다. 기본 60초 동안 한 번도 일치하지 않으면 실패하며 공개 5% 단계로 넘어가지 않는다.
+   version override가 적용되지 않으면 `workers_dev=false`, `preview_urls=true`인 새 ON server/router version의 고유 Preview URL을 사용한다. 이는 production traffic을 변경하지 않지만 공개 URL이므로 URL을 문서·로그에 장기 보존하지 않고, live Clerk 인증과 보호 API `401`, exact server pin/source revision만 비비용으로 검증한다.
 5. 서버 flag 25개는 OFF, `PROMPT_VISION_MODEL=gpt-4o`, 필수 secret 이름은 `32/32`여야 한다.
 6. 라우터에는 인증 미들웨어 실행에 필요한 정확히 4개(`CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`)만 등록한다. provider·결제·callback/admin secret은 복제하지 않는다.
 7. 현재 production deployment ID, 두 Custom Domain의 대상 `hairstyleprivew`, 두 classic route의 대상 Worker를 증거에 기록한다.

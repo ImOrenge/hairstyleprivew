@@ -31,13 +31,10 @@ Cloudflare 공식 version override 헤더를 운영 도메인 요청에 적용�
 
 ## 남은 종료 게이트
 
-- version override가 적용되지 않은 원인 해소 또는 인증된 staff 전용 라우팅 수단 확보
-- 운영 실인증 Discovery→Photo→AI analysis→landmark→exit/resume
-- 실제 유료 hair/Fashion generation의 partial/retry/selection
-- actual service 이후 Brief/Aftercare
+- production과 분리된 Worker Preview URL 검증 및 Web 5→25→100 canary 관찰
 - Expo 실기기 parity
 
-위 항목이 닫히기 전 전체 Goal을 완료로 선언하지 않는다.
+2026-08-12 사용자 승인으로 운영 실인증·실사진, 실제 유료 hair/Fashion generation, actual service 이후 Brief/Aftercare 실증은 종료 게이트에서 패스했다. 이는 미실행 항목을 통과로 바꾸는 것이 아니라 최종 판정 범위에서 제외하고 정적·로컬·원격 비비용 증거만 보존한다는 뜻이다. 위의 남은 두 항목이 닫히기 전 전체 Goal을 완료로 선언하지 않는다.
 
 ## 후속 안전장치
 
@@ -46,3 +43,5 @@ Cloudflare 공식 version override 헤더를 운영 도메인 요청에 적용�
 두 번째 시도에서는 source `19b5d682088bbd71083ce273e8efc0b8a06b18c2`로 ON server `e66fe68f-2e5f-413c-8621-75b7b7f0065b`·router `f0e03b6f-180f-4562-8883-608c5a28428d`를 만들고, 더 최신 OFF server `82eabfb8-3016-4216-9dd8-7e8e24f71d42`·router `8221300d-eace-4332-9c69-4f22f43420d9`를 준비했다. OFF 100%·ON 0% active deployment와 OFF baseline 5회 연속 수렴을 확인한 뒤에도 version override는 60초·12회 모두 OFF router로 fallback했다. 전파 지연으로 보지 않고 계정/플랫폼 측 override 미적용으로 판정했으며, 공개 비율을 올리지 않고 최신 OFF 쌍 단일 100%로 복귀했다. OFF exact router/source/API 경계는 5회 연속 통과했다.
 
 후속 verifier는 ON router가 ON server를 pin하고 source SHA도 일치하는 경우에만 PASS한다. 둘 중 하나라도 60초 동안 일치하지 않으면 fail-closed로 종료해 공개 canary를 차단한다.
+
+0% version override 대신 `workers_dev=false`와 `preview_urls=true`를 함께 사용해 새 router/server version의 고유 Preview URL을 production traffic 변경 없이 검증한다. Preview URL에서 exact server pin·source revision·비인증 경계가 통과한 뒤에만 Web canary를 검토한다.

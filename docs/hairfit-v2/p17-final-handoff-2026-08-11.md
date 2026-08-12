@@ -25,17 +25,17 @@
 | production source deploy | 통과 | OpenNext server/router 분리, Free 한도 내 upload와 source probe 일치 |
 | OFF production smoke | 통과 | root/login/www, workspace redirect, 보호 API 401을 연속 확인 |
 | Web canary 5→25→100% | 대기 | 독립된 두 번의 0% ON 시도에서 override가 각각 OFF로 fallback했고, 두 번째는 baseline 수렴 뒤 60초·12회 재검증함 |
-| 실제 hair 3×3·partial/retry | 미실행 | 실제 사용량/비용을 소비하는 production canary 필요 |
-| 실제 Fashion 9-look·selection | 미실행 | 동일 |
-| actual service→Aftercare live | 미실행 | 승인된 테스트 시술 기록과 관찰 창 필요 |
+| 실제 hair 3×3·partial/retry | 사용자 패스 | 2026-08-12 사용자가 실사용 비용 게이트를 종료조건에서 제외함. 미실행 사실은 유지 |
+| 실제 Fashion 9-look·selection | 사용자 패스 | 2026-08-12 사용자가 실사용 비용 게이트를 종료조건에서 제외함. 미실행 사실은 유지 |
+| actual service→Aftercare live | 사용자 패스 | 2026-08-12 사용자가 실제 시술·관찰 게이트를 종료조건에서 제외함. 미실행 사실은 유지 |
 | Expo 실기기 parity | 미실행 | development build와 실기기 필요 |
 | rollback threshold 관찰 | 부분 | route/server 복원 리허설과 복구는 통과, 공개 canary 관찰 창은 미실행 |
 
 ## 재개 절차
 
 1. 현재 OFF 배포 SHA와 server/router version을 유지한 채 승인된 staff-only ON build를 별도 version으로 준비한다.
-2. build-time frontend flag와 server capability flag를 5→25→100% 기준으로 관찰하되 유료 생성은 별도 비용 승인을 받기 전 실행하지 않는다.
-3. 동일 consultation에서 실사진 분석, hair/Fashion generation, Brief/Aftercare, exit/resume를 검증한다.
+2. production과 분리된 Worker Preview URL에서 ON router/server pin과 source revision을 검증한 뒤 build-time frontend flag와 server capability flag를 5→25→100% 기준으로 관찰한다.
+3. 실인증·실사진, 유료 hair/Fashion generation, 실제 시술 기반 Aftercare는 2026-08-12 사용자 패스로 종료조건에서 제외했다. 실행·통과로 간주하지 않는다.
 4. Web 관찰 창과 Expo 실기기 증거가 모두 통과한 뒤에만 goal을 complete 처리한다.
 
 ## 보존 규칙
