@@ -240,6 +240,9 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /const downstreamHeaders = new Headers\(request\.headers\)/);
   assert.match(router, /const downstreamRequest = new Request\(request/);
   assert.match(router, /service\.fetch\(downstreamRequest/);
+  assert.match(router, /import \{ handleImageRequest \} from "\.\.\/\.\.\/\.open-next\/cloudflare\/images\.js"/);
+  assert.match(router, /if \(pathname === "\/_next\/image"\)/);
+  assert.match(router, /handleImageRequest\(new URL\(request\.url\), request\.headers, this\.env\)/);
   assert.match(router, /\/\.well-known\/hairfit-deployment/);
   assert.match(router, /\/\.well-known\/hairfit-router/);
   assert.match(router, /pinnedServerVersion: this\.env\.WORKER_VERSION_ID/);

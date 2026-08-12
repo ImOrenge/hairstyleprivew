@@ -1,5 +1,6 @@
 import { WorkerEntrypoint } from "cloudflare:workers";
 
+import { handleImageRequest } from "../../.open-next/cloudflare/images.js";
 import { runWithCloudflareRequestContext } from "../../.open-next/cloudflare/init.js";
 
 function fetchPinnedServer(service, request, versionId) {
@@ -81,6 +82,10 @@ export default class HairFitOpenNextRouter extends WorkerEntrypoint {
   async fetch(request) {
     ensureMiddlewareProcessEnv(this.env);
     const pathname = new URL(request.url).pathname;
+    if (pathname === "/_next/image") {
+      return handleImageRequest(new URL(request.url), request.headers, this.env);
+    }
+
     if (pathname === "/.well-known/hairfit-router") {
       return Response.json(
         {
