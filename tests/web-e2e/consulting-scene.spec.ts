@@ -615,6 +615,7 @@ test("Aftercare starts from actual service and renders server-generated care as 
 
 test("Salon Brief auto-loads the durable designer brief without a user save request", async ({ page }) => {
   let automaticBriefRequests = 0;
+  let briefStyleTarget: "male" | "female" = "male";
   await page.route("**/api/v2/consultations/**/salon-brief", (route) => {
     automaticBriefRequests += 1;
     return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ brief: {
@@ -630,7 +631,7 @@ test("Salon Brief auto-loads the durable designer brief without a user save requ
       styling: ["얼굴 바깥 방향으로 드라이합니다."],
       cautions: ["실제 모질과 손상도를 현장에서 다시 확인합니다."],
       engine: { id: "legacy-designer-brief-v1", mode: "recycled-blueprint" },
-      inputSnapshot: { schemaVersion: "consultation-generation-input-v1", inputFingerprint: "a".repeat(64), styleTarget: "male", capturedAt: "2026-08-10T10:00:00.000Z", provenance: [{ source: "style-selection", sourceId: "selection", capturedAt: "2026-08-10T10:00:00.000Z", fieldPaths: ["hairDecision"] }] },
+      inputSnapshot: { schemaVersion: "consultation-generation-input-v1", inputFingerprint: "a".repeat(64), styleTarget: briefStyleTarget, capturedAt: "2026-08-10T10:00:00.000Z", provenance: [{ source: "style-selection", sourceId: "selection", capturedAt: "2026-08-10T10:00:00.000Z", fieldPaths: ["hairDecision"] }] },
       recommendationSources: { cut: ["style-selection"], volumeTexture: ["style-selection"], color: ["personal-color-analysis"], styling: ["style-selection"], cautions: ["discovery-interview"], maintenance: ["discovery-interview"], aftercare: ["actual-service"], fashion: ["fashion-interview"] },
       details: {
         consultationGoals: ["얼굴 균형 보완"],
@@ -659,7 +660,13 @@ test("Salon Brief auto-loads the durable designer brief without a user save requ
   const aiOutput = page.getByLabel("AI 출력 및 시스템 데이터");
   await expect(aiOutput.getByText("얼굴 균형과 확정 헤어를 연결한 자동 살롱 요약입니다.")).toBeVisible();
   await expect(aiOutput.locator('[data-brief-engine="legacy-designer-brief-v1"]').getByText("쇄골 기장과 얼굴선 레이어를 유지합니다.")).toBeVisible();
-  expect(automaticBriefRequests).toBe(1);
+  await expect(aiOutput.getByText("male", { exact: true })).toBeVisible();
+  await expect(aiOutput.getByText(/cut: style-selection/)).toBeVisible();
+  briefStyleTarget = "female";
+  await page.reload();
+  await dismissGlobalNotices(page);
+  await expect(page.getByLabel("AI 출력 및 시스템 데이터").getByText("female", { exact: true })).toBeVisible();
+  expect(automaticBriefRequests).toBe(2);
 });
 
 for (const viewport of [{ width: 390, height: 844, colorScheme: "light" as const }, { width: 768, height: 1024, colorScheme: "dark" as const }]) {
