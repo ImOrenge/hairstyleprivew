@@ -9,6 +9,8 @@
 
 > 2026-08-12 V2 기준: 이 문서의 에디토리얼 구조·모션·이미지 계약은 유지한다. 제품 포지셔닝, 상품·가격, CTA 카피는 `docs/hairfit-v2-premium-landing-baseline-2026-08-12.md`와 프리미엄 전략 문서를 우선한다.
 
+> 2026-08-13 구현 경계: 프리미엄 리디자인의 Scene 매핑, 실제 V2 증거, 현재 billing 호환, 가격 가설 분리, 단계별 종료조건은 `docs/hairfit-v2-premium-landing-redesign-implementation-2026-08-13.md`를 따른다.
+
 ## Outcome
 
 - Hero의 외곽 카드 배경·테두리·그림자를 제거하고 4열 롤링 이미지 프레임, 라운드, 상하 투명 그라데이션은 유지했다.

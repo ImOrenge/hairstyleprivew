@@ -1,5 +1,7 @@
 # HairFit AI Consultant frontend v2 implementation
 
+> 2026-08-13 프리미엄 랜딩 연결: 랜딩은 이 문서에 구현된 Analysis Evidence, 사용자 Strategy 조정, 전략형 9개 Preview, Compare/Decision, Salon Brief, Aftercare, Fashion lifecycle만 현재 기능으로 약속한다. 통합 Style Dossier, Style Archive, 프리미엄 일회성·연간 상품은 구현 또는 운영 계약이 완료되기 전 판매 기능으로 표현하지 않는다. 랜딩 실행 계획은 [HairFit V2 프리미엄 랜딩 리디자인 구현 계획](hairfit-v2-premium-landing-redesign-implementation-2026-08-13.md)이 권위다.
+
 > 2026-08-11 통합 완수 골: 구 엔진 6개 capability 재활용과 Discovery·Fashion 인터뷰 개선을 포함한 전체 P0~P17 실행 순서와 최종 종료조건은 [HairFit V2 엔진 리사이클링·인터뷰 경험 통합 완수 골](hairfit-v2-engine-recycling-interview-completion-goal-2026-08-11.md)이 최종 권위다.
 
 > 생동감 개선 후속 계획: 비동기 작업을 접수하면 11개 정식 Scene 사이의 full-canvas 전환 대기 화면에 머물고, 실제 서버 readiness가 충족되면 자동으로 목적 Scene으로 이동한다. 대기 화면의 activity rail, 짧은 스몰토크 캐러셀, task별 kinetic animation, 결과에 영향을 주지 않는 선택형 피젯, 부분 결과 공개와 completion moment 계약은 [HairFit V2 AI 컨설팅 생동감 개선 계획](hairfit-v2-consulting-liveness-improvement-plan-2026-08-09.md)이 권위다. 이 전환 화면은 정식 단계나 추가 승인 CTA가 아니다.

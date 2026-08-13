@@ -1,14 +1,15 @@
 # HairFit V2 프리미엄 랜딩 리팩토링 기준점
 
-- date: `2026-08-12`
+- date: `2026-08-13`
 - mode: `redesign`
-- phase: `baseline-ready`
+- phase: `implementation-planned`
 - branch: `feat/2026-08-12-premium-landing-refactor`
 - worktree: `D:/HariStyle-Preview-worktrees/feat-2026-08-12-premium-landing-refactor`
 - base: `develop/2026-08-08-hairfit-v2-backend@3be4d88`
 - imported source: `feat/2026-08-04-landing-rolling-hero@c2162ed`
 - product authority: `D:/HariStyle-Preview/docs/HairFit_프리미엄_AI_스타일_컨설팅_전략_v1.0.md`
 - primary conversion: `/consulting/new`
+- implementation authority: `docs/hairfit-v2-premium-landing-redesign-implementation-2026-08-13.md`
 
 ## Goal
 
@@ -87,4 +88,4 @@
 
 ## Next action
 
-Hero부터 Trust까지 현재 카피와 증거 자산을 목표 정보 구조에 1:1 매핑한 메시지 맵을 작성하고, P0 장면부터 구현한다.
+`docs/hairfit-v2-premium-landing-redesign-implementation-2026-08-13.md`의 Phase 0에 따라 premium message, 11 Scene, 현재 billing과 전략 가격의 호환 경계를 contract test로 먼저 고정한다.
