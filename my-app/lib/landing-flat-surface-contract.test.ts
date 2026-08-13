@@ -35,6 +35,17 @@ test("scene semantics and proof-before-services order are explicit", () => {
   assert.ok(page.indexOf("<StyleDossierShowcase") < page.indexOf("<PricingPreview"));
 });
 
+test("scene titles preserve Korean phrases with layout-specific type scales", () => {
+  const css = readFileSync(join(appRoot, "app", "landing.css"), "utf8");
+  for (const layout of ["editorial-split", "sticky-stage", "typographic-index", "closing-stage"]) {
+    assert.match(css, new RegExp(`data-layout=\\"${layout}\\"[\\s\\S]*?--landing-title-size:`));
+  }
+  assert.match(css, /\.f-scene-header__title\s*\{[\s\S]*?font-size:\s*var\(--landing-title-size\)/);
+  assert.match(css, /word-break:\s*keep-all/);
+  assert.match(css, /overflow-wrap:\s*break-word/);
+  assert.match(css, /@media \(max-width: 600px\)[\s\S]*?--landing-title-size:\s*clamp\(2\.15rem, 9\.6vw, 2\.85rem\)/);
+});
+
 test("premium editorial images exist and avoid rolling-hero reuse", () => {
   const assets = [...premium.matchAll(/(?:src=|src:)\s*[`"](\/[^`"$]+\.webp)/g)].map((match) => match[1]);
   assert.doesNotMatch(premium, /\/hero\/rolling\//);

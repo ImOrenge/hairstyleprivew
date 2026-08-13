@@ -54,6 +54,9 @@ styling:
     - --landing-motion-fast
     - --landing-motion-reveal
     - --landing-motion-stagger
+    - --landing-title-size
+    - --landing-title-measure
+    - --landing-title-leading
   variants:
     - rolling-rail
     - sticky-stage
@@ -67,6 +70,7 @@ styling:
     data-motion: LandingSceneMotion
     data-reveal-item: present on section number and SceneHeader text elements
     data-reveal-order: section number 0, eyebrow 1, title 2, description 3
+    title-typography: Korean keep-all wrapping with layout-specific size, measure, and leading tokens
   allows_className: true
   inline_styles_allowed: false
 

@@ -83,6 +83,9 @@
   .f-landing-scene {
     --landing-scene-ink: var(--landing-ink);
     --landing-scene-muted: var(--landing-muted);
+    --landing-title-size: clamp(2.3rem, 4.8vw, 5rem);
+    --landing-title-measure: 17ch;
+    --landing-title-leading: 1.01;
     position: relative;
     isolation: isolate;
     scroll-margin-top: 6rem;
@@ -113,6 +116,28 @@
 
   .f-landing-scene[data-tone="quiet"]::before {
     background: color-mix(in srgb, var(--app-surface-muted) 42%, transparent);
+  }
+
+  .f-landing-scene[data-layout="editorial-split"] {
+    --landing-title-size: clamp(2.35rem, 3.55vw, 4.25rem);
+    --landing-title-measure: 12ch;
+    --landing-title-leading: 1.03;
+  }
+
+  .f-landing-scene[data-layout="sticky-stage"] {
+    --landing-title-size: clamp(2.5rem, 4.4vw, 4.8rem);
+    --landing-title-measure: 14ch;
+  }
+
+  .f-landing-scene[data-layout="typographic-index"] {
+    --landing-title-size: clamp(2.6rem, 4.8vw, 5.1rem);
+    --landing-title-measure: 15ch;
+  }
+
+  .f-landing-scene[data-layout="closing-stage"] {
+    --landing-title-size: clamp(2.4rem, 4vw, 4.6rem);
+    --landing-title-measure: 13ch;
+    --landing-title-leading: 1.02;
   }
 
   .f-landing-scene__inner {
@@ -160,13 +185,16 @@
   }
 
   .f-scene-header__title {
+    max-width: var(--landing-title-measure);
     margin: 0.9rem 0 0;
     color: var(--landing-scene-ink);
-    font-size: clamp(2.2rem, 5.5vw, 5.4rem);
+    font-size: var(--landing-title-size);
     font-weight: 950;
     letter-spacing: -0.065em;
-    line-height: 0.98;
+    line-height: var(--landing-title-leading);
+    overflow-wrap: break-word;
     text-wrap: balance;
+    word-break: keep-all;
   }
 
   .f-scene-header__description {
@@ -1658,6 +1686,12 @@
       padding-block: clamp(4.5rem, 14vw, 7rem);
     }
 
+    .f-landing-scene[data-layout] {
+      --landing-title-size: clamp(2.4rem, 7vw, 3.75rem);
+      --landing-title-measure: 13ch;
+      --landing-title-leading: 1.03;
+    }
+
     .f-workflow,
     .f-hairstyle-preview__layout,
     .f-faq,
@@ -1751,8 +1785,10 @@
       font-size: 3rem;
     }
 
-    .f-scene-header__title {
-      font-size: clamp(2.1rem, 12vw, 3.35rem);
+    .f-landing-scene[data-layout] {
+      --landing-title-size: clamp(2.15rem, 9.6vw, 2.85rem);
+      --landing-title-measure: 11.5ch;
+      --landing-title-leading: 1.04;
     }
 
     .f-workflow-step {

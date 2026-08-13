@@ -470,3 +470,32 @@ Services와 Trust는 이미 운영 상품·정책 정보가 충분하므로 추�
 - runtime title pseudo-element에서 `blur(7px) saturate(0.72)`와 radial translucent background 확인
 - 두 viewport 모두 document horizontal overflow 0, broken image 0, console error 0
 - `landing-hero:contract:test` 1/1, `landing-motion:contract:test` 3/3, `landing-flat-surface:contract:test` 4/4, `global-css:contract:test` 9/9, typecheck, lint, production build 130 pages 통과
+
+## 16. 2026-08-13 Scene 제목 타이포그래피 보정
+
+### finding
+
+- 모든 Scene H2가 데스크톱에서 동일한 79.2px 크기를 사용해, 폭 340px인 Compare 제목은 6줄까지 늘어났다.
+- 한국어 줄바꿈이 `word-break: normal`에 의존해 `시/술`, `맥/락`처럼 어절 내부 음절이 분리될 수 있었다.
+- 390px 모바일에서도 최대 3.35rem과 12vw를 사용해 제목이 본문과 산출물보다 과도하게 화면을 점유했다.
+
+### 반영 계약
+
+- 모든 Scene H2에 `word-break: keep-all`, `overflow-wrap: break-word`, `text-wrap: balance`를 함께 적용한다.
+- `editorial-split`은 좁은 컬럼을 고려한 3.55vw, `sticky-stage`는 4.4vw, `typographic-index`는 4.8vw, `closing-stage`는 4vw 기준으로 분리한다.
+- 제목 행폭과 행간을 `--landing-title-measure`, `--landing-title-leading` 토큰으로 관리한다.
+- 840px 이하에서는 stack된 레이아웃에 맞춘 공통 scale, 600px 이하에서는 `2.15rem ~ 2.85rem` 범위를 사용한다.
+
+### 종료 기준
+
+- 어절 내부의 부자연스러운 음절 분리가 없어야 한다.
+- 1440px Compare 제목은 기존 6줄보다 줄어들고, 나머지 Scene도 2~4줄 범위의 균형을 유지해야 한다.
+- 768px와 390px에서 제목 overflow·clipping·문서 horizontal overflow가 없어야 한다.
+
+### 검증 결과
+
+- 1440px: editorial 51.12px, sticky 63.36px, typographic 69.12px, closing 57.6px로 분리됐다.
+- Compare는 79.2px/6줄에서 51.12px/4줄로 감소했고 Style Dossier는 4줄에서 3줄로 감소했다.
+- 768px은 53.76px와 2~4줄, 390px은 37.44px와 3~4줄 범위로 수렴했다.
+- 모든 viewport에서 H2 `word-break: keep-all`, heading overflow 0, document horizontal overflow 0, broken image 0, console error 0을 확인했다.
+- landing flat-surface 5/5, landing motion 3/3, component registry 59/59, 전체 workspace typecheck, lint, production build 130 pages가 통과했다.
