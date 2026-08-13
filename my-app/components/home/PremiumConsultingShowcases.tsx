@@ -10,6 +10,49 @@ const strategyAxes = [
   { axis: "LIFESTYLE", label: "생활 적합성", note: "아침 10분, 8주 관리 주기 기준" },
 ] as const;
 
+const analysisLedger = [
+  ["FACE MIX", "타원형 62% · 하트형 24%", "랜드마크 측정"],
+  ["PROPORTION", "중안부 안정 · 하관선 완만", "AI 추정 + 비율선"],
+  ["PERSONAL COLOR", "저채도 · 중명도 · 뉴트럴", "사진 기반 추정"],
+  ["PHOTO QUALITY", "정면·조명·해상도 적합", "시스템 검증"],
+] as const;
+
+const directionRows = [
+  ["LENGTH", "쇄골선 유지", "얼굴 세로선은 살리고 관리 부담은 제한"],
+  ["BANGS / PART", "앞머리 없음 · 6:4", "이마 노출을 유지해 답답한 인상 방지"],
+  ["VOLUME", "정수리 + · 관자 −", "상하 균형을 보정하고 옆 폭은 절제"],
+  ["TEXTURE / COLOR", "소프트 C컬 · 뉴트럴 브라운", "아침 10분과 저채도 방향에 맞춤"],
+] as const;
+
+const compareRows = [
+  ["얼굴 균형", "좋음", "매우 좋음", "보통"],
+  ["원하는 인상", "차분함", "단정+부드러움", "선명함"],
+  ["아침 손질", "8분", "10분", "15분"],
+  ["필요 시술", "커트", "커트+C컬", "펌+컬러"],
+  ["현재 모발 적합", "높음", "높음", "중간"],
+  ["퍼스널 컬러", "적합", "매우 적합", "보정 필요"],
+  ["관리 주기", "10주", "8주", "6주"],
+  ["리스크", "볼륨 부족", "낮음", "손상·손질"],
+] as const;
+
+const salonBriefRows = [
+  ["LENGTH", "쇄골 위 2cm, 젖은 상태에서 과도하게 짧지 않게"],
+  ["BANGS / PART", "앞머리 없음, 자연스러운 6:4 가르마"],
+  ["LAYERS", "턱선 아래부터 낮은 레이어, 끝선 밀도 유지"],
+  ["VOLUME", "정수리 볼륨 확보, 관자와 옆선 부피 절제"],
+  ["TEXTURE", "자연스러운 C컬, 굵고 느슨한 흐름"],
+  ["COLOR", "저채도 뉴트럴 브라운, 얼굴 주변 과명도 금지"],
+  ["SERVICE", "커트 우선, 모발 상태 확인 후 C컬 옵션"],
+  ["AVOID", "짧은 앞머리, 강한 컬, 무거운 옆 볼륨"],
+] as const;
+
+const dossierPages = [
+  ["01", "FACE PROFILE", "얼굴 혼합형·비율·랜드마크와 분석 신뢰도"],
+  ["02", "HAIR DIRECTION", "길이·가르마·볼륨·질감의 확정 전략"],
+  ["03", "DECISION", "후보 비교와 최종 선택, 선택하지 않은 이유"],
+  ["04", "CARE PROTOCOL", "살롱 브리프·오늘의 관리·다음 방문 기준"],
+] as const;
+
 const dossierCurrent = [
   "분석 근거와 얼굴 랜드마크",
   "확정한 전략과 비교 후보",
@@ -44,7 +87,12 @@ export function AnalysisEvidenceShowcase() {
             <div><dt>HAIR CONDITION</dt><dd>중간 길이 · 직모 · 손상 낮음</dd></div>
             <div><dt>EVIDENCE STATUS</dt><dd><ShieldCheck aria-hidden="true" /> 분석 근거 연결됨</dd></div>
           </dl>
-          <p className="f-premium-proof-note" data-reveal-item data-reveal-order="5">표시 값은 실제 V2 분석 필드 구조를 설명하기 위한 개인정보 비식별 샘플입니다.</p>
+          <div className="f-premium-evidence-ledger" data-reveal-item data-reveal-order="5">
+            {analysisLedger.map(([label, value, source]) => (
+              <article key={label}><span>{label}</span><strong>{value}</strong><small>{source}</small></article>
+            ))}
+          </div>
+          <p className="f-premium-proof-note" data-reveal-item data-reveal-order="6">직접 측정·AI 추정·시스템 검증을 구분해 표시합니다. 값은 실제 V2 필드 구조를 설명하기 위한 개인정보 비식별 샘플입니다.</p>
         </div>
       </div>
     </LandingScene>
@@ -72,7 +120,11 @@ export function DirectionShowcase() {
           <p>사용자 제약을 우선하는 추천·생성 기준으로 저장</p>
         </div>
       </div>
-      <Link href="/consulting/new" className="f-landing-cta" data-reveal-item data-reveal-order="5">
+      <div className="f-premium-direction-matrix" data-reveal-item data-reveal-order="5">
+        <div className="f-premium-table-head"><span>STRATEGY FIELD</span><span>AI RECOMMENDATION</span><span>EVIDENCE & IMPACT</span></div>
+        {directionRows.map(([field, decision, reason]) => <div key={field}><span>{field}</span><strong>{decision}</strong><p>{reason}</p></div>)}
+      </div>
+      <Link href="/consulting/new" className="f-landing-cta" data-reveal-item data-reveal-order="6">
         프라이빗 컨설팅 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" />
       </Link>
     </LandingScene>
@@ -104,7 +156,7 @@ export function StrategicPreviewShowcase() {
 export function CompareDecisionShowcase() {
   return (
     <LandingScene id="compare-decision" number="05" layout="editorial-split">
-      <div className="f-premium-split f-premium-split--reverse">
+      <div className="f-premium-compare-layout">
         <div>
           <SceneHeader
             eyebrow="Compare & Decision"
@@ -117,13 +169,17 @@ export function CompareDecisionShowcase() {
             <li><LockKeyhole aria-hidden="true" /> 변경 불가 Decision 기록</li>
           </ul>
         </div>
-        <div className="f-premium-compare" data-reveal-item data-reveal-order="5">
-          {["03", "05"].map((id, index) => (
+        <div className="f-premium-compare" data-reveal-item data-reveal-order="5" role="region" aria-label="동일 구도 후보 이미지 비교" tabIndex={0}>
+          {["03", "05", "07"].map((id, index) => (
             <figure key={id}>
               <Image src={`/hero/demo/grid/female-v2-${id}.webp`} alt={`동일 구도 비교 후보 ${index + 1}`} fill sizes="(max-width: 840px) 45vw, 25vw" />
-              <figcaption>{index === 0 ? "SHORTLIST 01" : "FINAL DECISION"}</figcaption>
+              <figcaption>{index === 1 ? "FINAL DECISION" : `SHORTLIST 0${index + 1}`}</figcaption>
             </figure>
           ))}
+        </div>
+        <div className="f-premium-compare-matrix" data-reveal-item data-reveal-order="6" role="region" aria-label="후보별 8개 판단축 비교표" tabIndex={0}>
+          <div className="f-premium-compare-matrix__head"><span>DECISION AXIS</span><span>A · SOFT</span><span>B · BALANCED</span><span>C · BOLD</span></div>
+          {compareRows.map(([axis, a, b, c]) => <div key={axis}><strong>{axis}</strong><span>{a}</span><span className="is-selected">{b}</span><span>{c}</span></div>)}
         </div>
       </div>
     </LandingScene>
@@ -140,9 +196,9 @@ export function SalonBriefShowcase() {
         <div>
           <SceneHeader eyebrow="Salon Brief" title="이미지를, 시술 가능한 대화로 바꿉니다." description="최종 결정과 사용자 제약을 길이·볼륨·질감·피해야 할 요소로 정리해 디자이너와 같은 기준으로 상담할 수 있습니다." />
           <div className="f-premium-brief" data-reveal-item data-reveal-order="4">
-            <p><span>TARGET</span> 쇄골 위 2cm · 관자 볼륨 절제</p>
-            <p><span>TEXTURE</span> 자연스러운 C컬 · 과한 고정 금지</p>
-            <p><span>AVOID</span> 짧은 앞머리 · 강한 컬</p>
+            <div className="f-premium-brief__meta"><span>SALON HANDOFF / SAMPLE</span><strong>결정 B · BALANCED</strong></div>
+            {salonBriefRows.map(([label, value]) => <p key={label}><span>{label}</span>{value}</p>)}
+            <div className="f-premium-brief__check"><Check aria-hidden="true" /><span>현장 확인</span><strong>두피·모발 손상도 확인 후 펌 강도 최종 조정</strong></div>
           </div>
         </div>
       </div>
@@ -154,13 +210,17 @@ export function AftercareTimelineShowcase() {
   return (
     <LandingScene id="aftercare" number="07" layout="typographic-index" tone="quiet">
       <SceneHeader eyebrow="Aftercare" title="시술이 끝난 뒤에, 관리가 시작됩니다." description="애프터케어는 실제 시술 완료 후 열립니다. 시술 정보와 관리 주기를 기준으로 오늘 해야 할 일을 과도한 단계 없이 이어갑니다." />
+      <div className="f-premium-care-dashboard" data-reveal-item data-reveal-order="4">
+        <article><span>TODAY</span><strong>컬을 당기지 말고 뿌리부터 80% 건조</strong><p>남은 시간 약 7분 · 필요한 도구: 드라이어, 큰 롤 브러시</p></article>
+        <dl><div><dt>시술 등록</dt><dd>커트 + 소프트 C컬</dd></div><div><dt>현재 체크인</dt><dd>DAY 03 / 세정 가능</dd></div><div><dt>다음 기준</dt><dd>볼륨 유지와 끝선 건조도</dd></div></dl>
+      </div>
       <ol className="f-premium-timeline">
         {[
           ["SERVICE DAY", "시술 결과와 주의사항 기록"],
           ["DAY 03", "세정·건조 루틴 확인"],
           ["WEEK 02", "볼륨과 컬 유지 상태 점검"],
           ["WEEK 08", "다음 관리 시점 제안"],
-        ].map(([time, task], index) => <li key={time} data-reveal-item data-reveal-order={index + 4}><Clock3 aria-hidden="true" /><span>{time}</span><strong>{task}</strong></li>)}
+        ].map(([time, task], index) => <li key={time} data-reveal-item data-reveal-order={index + 5}><Clock3 aria-hidden="true" /><span>{time}</span><strong>{task}</strong><small>{index === 0 ? "완료" : index === 1 ? "오늘" : "예정"}</small></li>)}
       </ol>
     </LandingScene>
   );
@@ -173,8 +233,14 @@ export function FashionDirectionShowcase() {
         <div>
           <SceneHeader eyebrow="Fashion Direction" title="확정한 헤어의 인상을, 9개의 패션 방향으로 확장합니다." description="헤어 결정과 상황·무드·체형 입력을 하나의 배치로 연결합니다. 슬롯마다 반복 요청하는 마법사 흐름이 아닙니다." />
           <div className="f-premium-batch" data-reveal-item data-reveal-order="4"><Sparkles aria-hidden="true" /><span>9-LOOK BATCH</span><strong>Work · Weekend · Occasion</strong></div>
+          <dl className="f-premium-fashion-brief" data-reveal-item data-reveal-order="5">
+            <div><dt>PALETTE</dt><dd>뉴트럴 베이지 · 잉크 네이비 · 더스티 로즈</dd></div>
+            <div><dt>NECKLINE</dt><dd>열린 칼라와 부드러운 V선으로 얼굴선 연장</dd></div>
+            <div><dt>SILHOUETTE</dt><dd>상체는 정돈하고 하단에 자연스러운 움직임</dd></div>
+            <div><dt>AVOID</dt><dd>얼굴 가까운 고채도 오렌지 · 답답한 하이넥</dd></div>
+          </dl>
         </div>
-        <div data-reveal-item data-reveal-order="5"><FashionDirectionPreviewPanel /></div>
+        <div data-reveal-item data-reveal-order="6"><FashionDirectionPreviewPanel /></div>
       </div>
     </LandingScene>
   );
@@ -191,7 +257,11 @@ export function StyleDossierShowcase() {
         <div className="f-premium-dossier__sheet" data-reveal-item data-reveal-order="5">
           <p>HAIRFIT / PRIVATE STYLE DIRECTION</p>
           <h3>STYLE DOSSIER 01</h3>
-          <section><span className="f-premium-status f-premium-status--current">현재 제공</span><ul>{dossierCurrent.map((item) => <li key={item}>{item}</li>)}</ul></section>
+          <span className="f-premium-status f-premium-status--current">현재 제공</span>
+          <div className="f-premium-dossier__pages">
+            {dossierPages.map(([page, title, body]) => <article key={page}><span>{page}</span><strong>{title}</strong><p>{body}</p></article>)}
+          </div>
+          <section><strong>연결된 기록</strong><ul>{dossierCurrent.map((item) => <li key={item}>{item}</li>)}</ul></section>
           <section><span className="f-premium-status f-premium-status--planned">예정 기능</span><ul>{dossierPlanned.map((item) => <li key={item}>{item}</li>)}</ul></section>
         </div>
       </div>

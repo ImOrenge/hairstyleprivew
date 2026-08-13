@@ -41,6 +41,33 @@ test("proof artifacts map to current V2 vocabulary", () => {
   }
 });
 
+test("core scenes expose decision-grade consulting artifacts", () => {
+  for (const term of [
+    "FACE MIX",
+    "PHOTO QUALITY",
+    "STRATEGY FIELD",
+    "EVIDENCE & IMPACT",
+    "DECISION AXIS",
+    "현재 모발 적합",
+    "SALON HANDOFF",
+    "현장 확인",
+    "TODAY",
+    "현재 체크인",
+    "PALETTE",
+    "NECKLINE",
+    "FACE PROFILE",
+    "CARE PROTOCOL",
+  ]) assert.match(showcases, new RegExp(term, "i"));
+  assert.equal(compareRows(showcases), 8);
+  assert.match(showcases, /aria-label="동일 구도 후보 이미지 비교" tabIndex=\{0\}/);
+  assert.match(showcases, /aria-label="후보별 8개 판단축 비교표" tabIndex=\{0\}/);
+});
+
+function compareRows(source: string) {
+  const block = source.match(/const compareRows = \[([\s\S]*?)\] as const;/)?.[1] ?? "";
+  return block.match(/^\s*\[/gm)?.length ?? 0;
+}
+
 test("conversion paths and pricing boundary remain truthful", () => {
   const combined = `${page}\n${hero}\n${showcases}\n${mobileCta}\n${pricing}`;
   assert.doesNotMatch(combined, /\/workspace/);

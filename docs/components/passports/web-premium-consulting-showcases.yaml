@@ -54,6 +54,7 @@ styling:
   data_contract:
     data-landing-media: present on evidence and salon media
     model-switch: female and male preview panels rotate every 5 seconds while visible and unpaused
+    artifact-depth: analysis provenance, four-field direction matrix, eight-axis comparison, salon handoff, aftercare dashboard, fashion brief, and dossier pages use privacy-safe fixtures
   allows_className: false
   inline_styles_allowed: false
 
@@ -83,6 +84,7 @@ test_surface:
     - CTA and anchor browser verification
     - FAQ keyboard disclosure verification
     - hair and fashion gender tab keyboard and automatic switching verification
+    - horizontal comparison artifacts remain reachable on narrow viewports
   visual:
     - 1440x1000 desktop
     - 768x1024 tablet

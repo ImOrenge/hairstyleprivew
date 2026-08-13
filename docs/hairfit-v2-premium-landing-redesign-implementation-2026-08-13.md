@@ -412,3 +412,30 @@
 - 프리미엄 패키지 offering·entitlement·checkout·refund 계약과 전략 가격의 운영 출시는 이 변경에 포함하지 않는다.
 - PDF export, 연간 Style Archive, 전문가 검수는 구현하지 않았다.
 - merge, push, deploy, branch/worktree cleanup은 수행하지 않는다.
+
+## 14. 2026-08-13 섹션 콘텐츠 밀도 개선
+
+### 개선 원칙
+
+섹션의 문장 수를 늘리는 대신 `주장 → 실제 산출물 → 판단 기준 → 다음 결과`가 한 화면에서 연결되도록 구성한다. 모든 표시 값은 개인정보 비식별 샘플이며, 현재 V2 데이터 계약과 아직 제공하지 않는 기능을 혼합하지 않는다.
+
+### 반영 범위
+
+| Scene | 추가한 증거 UI | 사용자에게 전달하는 가치 |
+|---|---|---|
+| 02 Analysis | 얼굴 혼합형, 비율, 퍼스널 컬러, 사진 품질과 출처 ledger | 직접 측정·AI 추정·시스템 검증의 차이를 확인 |
+| 03 Direction | 길이·가르마·볼륨·질감/컬러 전략표 | 추천값뿐 아니라 근거와 영향을 함께 비교 |
+| 05 Compare | 후보 3개와 8개 비교축 decision matrix | 이미지 취향을 관리·시술·리스크 판단으로 확장 |
+| 06 Salon Brief | 8개 시술 필드와 현장 확인 항목 | 디자이너에게 전달 가능한 구조화된 기준 제공 |
+| 07 Aftercare | 오늘의 행동 카드, 시술/체크인 상태, 4시점 timeline | 시술 이후에도 현재 행동과 다음 점검을 즉시 파악 |
+| 08 Fashion | palette·neckline·silhouette·avoid brief | 9-look 이미지가 생성된 이유와 활용 기준을 설명 |
+| 09 Dossier | Face, Direction, Decision, Care 샘플 페이지 | 단일 생성물이 아니라 누적되는 결정 기록을 시각화 |
+
+Services와 Trust는 이미 운영 상품·정책 정보가 충분하므로 추가 카드나 마케팅 문구를 넣지 않는다. 모바일에서는 비교 이미지와 matrix를 가로 탐색할 수 있게 유지하고, 핵심 텍스트 표는 단일 열로 전환한다.
+
+### 개선 검증
+
+- `landing-premium:contract:test` 6/6, `landing-flat-surface:contract:test` 4/4, `landing-motion:contract:test` 3/3, `web-image:contract:test` 1/1, `global-css:contract:test` 9/9 통과
+- component registry 59/59, typecheck, lint, Next production build 130 pages 통과
+- 1440×1000과 390×844에서 문서 전체 horizontal overflow 0, 깨진 이미지 0, console error 0 확인
+- 모바일 Compare의 이미지 rail과 8축 matrix는 각각 내부 스크롤 영역으로 제한해 3개 후보와 전체 판단축을 생략하지 않는다.
