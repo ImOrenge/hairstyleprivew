@@ -70,9 +70,33 @@ Photorealistic three-panel studio comparison of the exact same Korean man in the
 - `hero/demo/grid/male-v2-01.webp`–`male-v2-09.webp`: one male origin identity, consistent black top and warm studio background, nine hair lengths and textures.
 - `hero/fashion-demo/*-v2.webp`: male and female short, medium, and long hairstyle selections extended into six separate full-body outfits while retaining each gender's origin identity.
 
+## Rolling Hero identity pairs — `2026-08-13`
+
+`model-09`–`model-16`은 OpenAI built-in `image_gen`으로 모델마다 하나의 3:2 딥틱을 생성했다. 각 딥틱의 왼쪽에는 헤어 클로즈업, 오른쪽에는 같은 인물의 전신 패션을 배치해 생성 호출 안에서 얼굴·연령·헤어 연속성을 고정했다. 선택 원본은 보존하고 각 패널을 3:4로 분리·중앙 크롭한 뒤 768×1024 WebP로 저장했다.
+
+공통 prompt contract:
+
+- Use case: `photorealistic-natural`
+- Scene: warm gray-beige neutral studio, soft diffused daylight
+- Composition: exact same Korean identity in two equal panels; left head-and-shoulders hair close-up, right full-body fashion portrait with shoes visible
+- Preserve: face, age, skin tone, hair length, texture, color, and facial proportions
+- Avoid: extra people, identity drift, mirrors, reflections, text, logo, watermark, cropped feet, heavy retouching, busy props
+
+| Pair | Subject and hair | Full-body fashion |
+| --- | --- | --- |
+| `model-09` | early-30s woman, chin-length blunt bob | olive tailored suit, ivory knit |
+| `model-10` | late-20s man, textured crop and low taper | charcoal overshirt and relaxed tailoring |
+| `model-11` | late-30s woman, shoulder-length soft curls | cream blouse, navy vest and trousers |
+| `model-12` | early-40s man, medium side-swept hair | taupe wool coat and tonal tailoring |
+| `model-13` | mid-20s woman, long straight layers and wispy fringe | burgundy cropped jacket and charcoal skirt |
+| `model-14` | mid-30s man, natural curls with clean taper | forest-green relaxed suit |
+| `model-15` | early-40s woman, soft textured pixie | cobalt knit and black tailored trousers |
+| `model-16` | early-30s man, ear-length wavy curtain hair | brown suede overshirt and espresso trousers |
+
 ## Validation notes
 
 - 36 newly referenced continuity assets are unique by SHA-256; duplicate count is zero.
+- Hero rolling assets are 32 unique WebP files by SHA-256: 16 identities × hair/fashion pair.
 - Editorial assets are 1536×1024, hairstyle cells are 418×418, and fashion portraits are 1024×1536.
 - Center `object-fit: cover` simulations use 3:2 for editorial and review media; portrait fashion previews retain their dedicated tall ratio. The primary face, tablet, hairstyle comparison, and full-body silhouette remain visible.
 

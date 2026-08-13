@@ -1,7 +1,7 @@
 # HairFit landing page redesign run
 
 - date: `2026-08-04`
-- updated: `2026-08-12`
+- updated: `2026-08-13`
 - mode: `redesign`
 - phase: `premium-baseline`
 - primary conversion: `/consulting/new`에서 프라이빗 AI 컨설팅 시작
@@ -19,6 +19,7 @@
 - Workflow 3장, Feature 4장, Criteria 4장, Review 3장, Pricing 1장, 동적 FAQ 4장, Salon 1장, Final CTA 1장으로 총 21개의 고유 WebP 설명 이미지를 사용했다.
 - 원본 모델 2장과 남녀 각 9장의 결과 자산을 `Origin × 3×3` 독립 프리뷰로 복구했다.
 - Hero 롤링 이미지는 Hero에만 사용하고, 원본·3×3 결과 자산은 Hairstyle/Fashion demo에서만 사용한다.
+- Hero 롤링 모델을 8명에서 16명으로 확장했다. 신규 8명도 한 생성 프레임 안에서 헤어 클로즈업과 동일 인물 전신 패션을 함께 만든 뒤 3:4 WebP 페어로 분리했으며, 레일 길이에 맞춰 duration과 phase를 두 배로 조정해 기존 체감 속도를 유지했다.
 - Fashion demo의 `stage` 래퍼를 제거해 controls, media, details를 투명한 오픈 그리드의 직접 형제 요소로 재배치했다.
 - Feature의 무드·넥라인과 Review의 패션 연결 이미지는 거울·반사·복제 인물 없이 한 명의 행동으로 다시 생성해 교체했다.
 - 섹션 진입 페이드는 1.05초로 늦추고, 제목·이미지·선택지·목록은 85ms 간격과 최대 13단계 지연으로 차례로 상승하도록 연결했다.
@@ -67,6 +68,7 @@
 - `my-app/components/home/PricingPreview.tsx`
 - `my-app/components/home/FaqShowcase.tsx`
 - `my-app/public/landing/editorial/*.webp`
+- `my-app/public/hero/rolling/model-01..16-{hair,fashion}.webp`
 - `docs/landing-page-editorial-image-prompts.md`
 - `my-app/lib/landing-flat-surface-contract.test.ts`
 - `my-app/lib/landing-motion-contract.test.ts`
@@ -96,9 +98,13 @@
 - Reviews: 거울과 다른 자세의 인쇄 사진 장면을 제거했다. 모바일 후기 레일을 끝까지 스크롤해 세 이미지가 모두 로드되고, 첫 태블릿의 세 후보와 마지막 태블릿·네이비 재킷이 모두 보이는 것을 확인했다.
 - FAQ interaction: 미용실 질문을 열면 `미용실 상담 활용`, 패션 질문을 열면 `헤어에서 패션으로` 이미지와 alt가 전환된다.
 - Accessibility interaction: Hairstyle과 Fashion 탭 모두 ArrowRight 입력 후 선택 상태와 키보드 초점이 여성 탭으로 함께 이동하고, 각 결과군의 `aria-pressed=true`는 1개다.
-- Browser semantics: duplicate ID 0, 이름 없는 button 0, h1 1개, 빈 alt 16개는 모두 `aria-hidden` 롤링 복제 프레임, Hero와 비-Hero 이미지 경로 중복 0.
+- Browser semantics: duplicate ID 0, 이름 없는 button 0, h1 1개, 빈 alt 32개는 모두 `aria-hidden` 롤링 복제 프레임, Hero와 비-Hero 이미지 경로 중복 0.
 - Browser console: 새 검증 탭의 error 0. FAQ `fill`/sticky 위치 경고는 명시적 1536×1024 크기로 교정 후 재발하지 않았다.
 - Reduced motion: 브라우저 제어 기능에는 media preference override가 없어 실제 OS 토글 대신 `landing-motion:contract:test`의 `prefers-reduced-motion` 정적 상태 계약 3/3 통과로 검증했다.
+- 2026-08-13 Hero 확장: 신규 16개 WebP는 모두 768×1024, 10KB 초과이며 동일 인물 헤어·패션 페어를 contact sheet로 검수했다. 전체 Hero 자산 32개는 SHA-256 중복 0이다.
+- 2026-08-13 validation: 대상 ESLint, typecheck, production build, Hero 1/1, Premium 6/6, Flat Surface 5/5, Motion 3/3, Web Image 1/1 통과. `HEAD` 요청으로 신규 자산 16개 모두 HTTP 200 및 `image/webp`를 확인했다.
+- 2026-08-13 browser desktop 1440×1000: 4 columns, 32 source tiles, 16 unique models, durations 40/52/46/58s, horizontal overflow 0, console error 0.
+- 2026-08-13 browser mobile 390×844: 4 columns, visible image 23/23 loaded, title overflow 0, document horizontal overflow 0.
 
 ## Known non-blocking note
 
@@ -107,4 +113,4 @@
 
 ## Next action
 
-프리미엄 전략의 메시지 맵을 11개 장면에 대응시키고, 기존 무료 생성기 카피를 컨설팅 가치·근거·결과물 중심으로 교체한다.
+검증된 변경을 로컬 커밋으로 고정하고, 별도 요청이 있을 때 기록된 `develop/2026-08-08-hairfit-v2-backend` 통합 대상으로 전달한다.

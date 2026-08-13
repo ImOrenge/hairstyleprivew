@@ -139,32 +139,164 @@ const MODEL_TILES: Record<string, [RollingTile, RollingTile]> = {
       kind: "fashion",
     },
   ],
+  model09: [
+    {
+      src: "/hero/rolling/model-09-hair.webp",
+      alt: "블런트 보브 헤어를 보여주는 여성 모델 클로즈업",
+      model: "모델 9",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-09-fashion.webp",
+      alt: "같은 블런트 보브 여성 모델의 올리브 테일러링 패션",
+      model: "모델 9",
+      kind: "fashion",
+    },
+  ],
+  model10: [
+    {
+      src: "/hero/rolling/model-10-hair.webp",
+      alt: "텍스처 크롭 헤어를 보여주는 남성 모델 클로즈업",
+      model: "모델 10",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-10-fashion.webp",
+      alt: "같은 텍스처 크롭 남성 모델의 차콜 미니멀 패션",
+      model: "모델 10",
+      kind: "fashion",
+    },
+  ],
+  model11: [
+    {
+      src: "/hero/rolling/model-11-hair.webp",
+      alt: "숄더 렝스 소프트 컬을 보여주는 여성 모델 클로즈업",
+      model: "모델 11",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-11-fashion.webp",
+      alt: "같은 소프트 컬 여성 모델의 네이비 워크 패션",
+      model: "모델 11",
+      kind: "fashion",
+    },
+  ],
+  model12: [
+    {
+      src: "/hero/rolling/model-12-hair.webp",
+      alt: "미디엄 사이드 스윕 헤어를 보여주는 남성 모델 클로즈업",
+      model: "모델 12",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-12-fashion.webp",
+      alt: "같은 사이드 스윕 남성 모델의 토프 코트 패션",
+      model: "모델 12",
+      kind: "fashion",
+    },
+  ],
+  model13: [
+    {
+      src: "/hero/rolling/model-13-hair.webp",
+      alt: "긴 스트레이트 레이어를 보여주는 여성 모델 클로즈업",
+      model: "모델 13",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-13-fashion.webp",
+      alt: "같은 롱 레이어 여성 모델의 버건디 재킷 패션",
+      model: "모델 13",
+      kind: "fashion",
+    },
+  ],
+  model14: [
+    {
+      src: "/hero/rolling/model-14-hair.webp",
+      alt: "내추럴 컬 테이퍼 헤어를 보여주는 남성 모델 클로즈업",
+      model: "모델 14",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-14-fashion.webp",
+      alt: "같은 내추럴 컬 남성 모델의 포레스트 그린 패션",
+      model: "모델 14",
+      kind: "fashion",
+    },
+  ],
+  model15: [
+    {
+      src: "/hero/rolling/model-15-hair.webp",
+      alt: "소프트 픽시 헤어를 보여주는 여성 모델 클로즈업",
+      model: "모델 15",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-15-fashion.webp",
+      alt: "같은 소프트 픽시 여성 모델의 코발트 니트 패션",
+      model: "모델 15",
+      kind: "fashion",
+    },
+  ],
+  model16: [
+    {
+      src: "/hero/rolling/model-16-hair.webp",
+      alt: "이어 렝스 웨이브 커튼 헤어를 보여주는 남성 모델 클로즈업",
+      model: "모델 16",
+      kind: "hair",
+    },
+    {
+      src: "/hero/rolling/model-16-fashion.webp",
+      alt: "같은 웨이브 커튼 헤어 남성 모델의 브라운 레이어드 패션",
+      model: "모델 16",
+      kind: "fashion",
+    },
+  ],
 };
 
 const ROLLING_COLUMNS: RollingColumnConfig[] = [
   {
-    duration: 20,
-    phase: -18,
+    duration: 40,
+    phase: -36,
     direction: "up",
-    tiles: [...MODEL_TILES.model01, ...MODEL_TILES.model05],
+    tiles: [
+      ...MODEL_TILES.model01,
+      ...MODEL_TILES.model05,
+      ...MODEL_TILES.model09,
+      ...MODEL_TILES.model14,
+    ],
   },
   {
-    duration: 26,
-    phase: -42,
+    duration: 52,
+    phase: -84,
     direction: "down",
-    tiles: [...MODEL_TILES.model02, ...MODEL_TILES.model06],
+    tiles: [
+      ...MODEL_TILES.model02,
+      ...MODEL_TILES.model06,
+      ...MODEL_TILES.model10,
+      ...MODEL_TILES.model13,
+    ],
   },
   {
-    duration: 23,
-    phase: -31,
+    duration: 46,
+    phase: -62,
     direction: "up",
-    tiles: [...MODEL_TILES.model03, ...MODEL_TILES.model07],
+    tiles: [
+      ...MODEL_TILES.model03,
+      ...MODEL_TILES.model07,
+      ...MODEL_TILES.model12,
+      ...MODEL_TILES.model16,
+    ],
   },
   {
-    duration: 29,
-    phase: -57,
+    duration: 58,
+    phase: -114,
     direction: "down",
-    tiles: [...MODEL_TILES.model04, ...MODEL_TILES.model08],
+    tiles: [
+      ...MODEL_TILES.model04,
+      ...MODEL_TILES.model08,
+      ...MODEL_TILES.model11,
+      ...MODEL_TILES.model15,
+    ],
   },
 ];
 

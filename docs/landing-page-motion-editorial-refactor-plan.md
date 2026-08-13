@@ -49,7 +49,7 @@
 
 ### 2.2 검증된 현재 상태
 
-- 히어로는 4열, 16개 논리 타일, 8개 모델의 헤어·패션 페어로 구성되어 있다.
+- 히어로는 4열, 32개 논리 타일, 16개 모델의 헤어·패션 페어로 구성되어 있다.
 - 같은 모델의 헤어 이미지와 패션 이미지가 연속되며 열마다 다른 타이밍으로 세로 롤링한다.
 - 히어로 이미지에는 테두리, 둥근 모서리, 상하단 투명 그라데이션이 적용되어 있다.
 - 브랜드 설명과 CTA는 롤링 필름 아래 화면 중앙에 배치되어 있다.
@@ -100,7 +100,7 @@
 | Job to be done | 여러 헤어 후보를 내 얼굴 기준으로 비교하고 선택한 헤어와 어울리는 패션을 확인한다 |
 | One-liner | 내 사진 한 장으로 헤어를 비교하고, 선택한 스타일에 맞는 패션까지 이어본다 |
 | Core promise | 헤어 선택을 단일 이미지 생성으로 끝내지 않고 실제 스타일 결정까지 연결한다 |
-| Product proof | 8명 모델의 헤어·패션 연속 실사, 9가지 헤어 비교, 실제 생성 워크플로 |
+| Product proof | 16명 모델의 헤어·패션 연속 실사, 9가지 헤어 비교, 실제 생성 워크플로 |
 | Primary CTA | 사진 업로드 시작 |
 | Primary target | `/workspace` |
 | Secondary conversion | 살롱 도입 문의 |
@@ -295,7 +295,7 @@ my-app/components/home/HeroSection.module.css
 구조:
 
 - 외곽 `.hero`의 border, background, shadow, 큰 radius를 제거한다.
-- 4개 세로 레일과 16개 논리 이미지 구조는 유지한다.
+- 4개 세로 레일과 32개 논리 이미지 구조를 유지한다.
 - 사진 간격은 현재처럼 밀착시키고 타일 경계만 얇게 남긴다.
 - 상하단 투명 그라데이션과 중앙 브랜드 카피를 유지한다.
 - 다음 3×3 헤어 프리뷰 장면의 일부가 첫 viewport 하단에 보이도록 높이를 조정한다.
@@ -561,7 +561,7 @@ Exit:
 
 ## 10. 실사 이미지와 자산 방향
 
-- `my-app/public/hero/rolling/model-01..08-{hair,fashion}.webp`는 Hero에만 사용한다.
+- `my-app/public/hero/rolling/model-01..16-{hair,fashion}.webp`는 Hero에만 사용한다.
 - `my-app/public/hero/demo/*-original.webp`와 `grid/*.webp`는 Origin 3×3 프리뷰와 Fashion demo의 헤어 선택 썸네일에만 사용한다.
 - Hero 밖의 메시지는 `my-app/public/landing/editorial/*.webp`에 있는 고유한 설명 이미지 18장을 사용하며 서로 재사용하지 않는다.
 - 섹션별 이미지는 한 명의 인물 또는 실제 상담에 필요한 최소 인원, 한국형 패션 에디토리얼, 중립 스튜디오, 실제 피부·모발 질감을 유지한다.
@@ -893,7 +893,7 @@ Browser evidence는 before/after 같은 viewport로 저장하며, 시각적으�
 
 ### Known Context
 
-- 4열 세로 롤링 히어로는 구현과 browser validation을 마쳤다.
+- 16명 페어를 담은 4열 세로 롤링 히어로는 구현과 browser validation을 마쳤다.
 - 사진 테두리, 라운드, 상하단 투명 그라데이션은 유지해야 한다.
 - 카드 배경, 카드 테두리, 카드 그림자는 랜딩의 모든 콘텐츠 컨테이너에서 제거해야 한다.
 - 섹션은 스크롤 진입 시 fade-in하며 실사 이미지 방향을 유지한다.
@@ -905,7 +905,7 @@ Browser evidence는 before/after 같은 viewport로 저장하며, 시각적으�
 | A-01 | 기존 제품 문구, 가격, CTA 목적지는 유지한다 | 낮음 | 아니오 |
 | A-02 | B2C `/workspace` 진입이 1차 전환이다 | 낮음 | 아니오 |
 | A-03 | Salon은 후반 secondary conversion으로 유지한다 | 중간 | 구현 전 copy 변경 시 필요 |
-| A-04 | 기존 8명 모델 페어는 Hero에 유지하고, 별도 원본·3×3 헤어 자산은 Hairstyle/Fashion demo에서만 사용한다 | 낮음 | 아니오 |
+| A-04 | 16명 모델 페어는 Hero에 유지하고, 별도 원본·3×3 헤어 자산은 Hairstyle/Fashion demo에서만 사용한다 | 낮음 | 아니오 |
 
 ### Work Queue
 
