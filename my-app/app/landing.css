@@ -180,9 +180,12 @@
   }
 
   .f-landing-hero-shell {
-    width: min(100%, 82rem);
-    margin-inline: auto;
-    padding: clamp(0.25rem, 1vw, 0.8rem) var(--landing-gutter) 0;
+    position: relative;
+    left: 50%;
+    width: calc(100% + var(--landing-gutter));
+    margin-left: 0;
+    padding: 0;
+    transform: translateX(-50%);
   }
 
   .f-landing-skeleton {
@@ -1739,7 +1742,7 @@
     }
 
     .f-landing-hero-shell {
-      padding-inline: 0.35rem;
+      padding-inline: 0;
     }
 
     .f-landing-scene__number {

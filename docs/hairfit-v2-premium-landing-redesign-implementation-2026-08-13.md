@@ -439,3 +439,34 @@ Services와 Trust는 이미 운영 상품·정책 정보가 충분하므로 추�
 - component registry 59/59, typecheck, lint, Next production build 130 pages 통과
 - 1440×1000과 390×844에서 문서 전체 horizontal overflow 0, 깨진 이미지 0, console error 0 확인
 - 모바일 Compare의 이미지 rail과 8축 matrix는 각각 내부 스크롤 영역으로 제한해 3개 후보와 전체 판단축을 생략하지 않는다.
+
+## 15. 2026-08-13 Rolling Hero 확장
+
+### 요청과 finding
+
+- 기존 rolling stage는 데스크톱 최대 22rem 높이로 제한되고 카피 아래에 분리돼, 프리미엄 비주얼보다 상단 배너처럼 보였다.
+- Hero shell의 82rem 제한과 내부 gutter 때문에 넓은 화면에서도 이미지가 viewport 끝까지 사용되지 않았다.
+
+### 반영
+
+- rolling stage를 Hero 전체 높이 `44rem ~ 59rem`의 absolute background layer로 전환했다.
+- Hero shell은 기존 container보다 landing gutter 한 칸만 넓혀 중앙 정렬하고, 4개 rolling column 최대 폭을 100rem으로 넓혔다. `100vw`는 scrollbar 폭까지 포함해 양끝이 잘릴 수 있어 사용하지 않는다.
+- 카피를 rolling stage 위 중앙에 겹치고, 카피 주변에는 54%의 완만한 translucent scrim을 적용했다.
+- 타이틀 바로 주변은 배경색 72%에서 가장자리로 투명해지는 radial mask와 7px backdrop blur를 사용해 이미지가 비치면서도 제목 대비를 유지했다.
+- 모바일 rolling columns는 내부 폭 150%로 확대해 4열이 지나치게 가늘어지지 않도록 했으며 Hero 바깥 overflow는 숨긴다.
+- reduced-motion에서는 rolling animation과 backdrop blur를 함께 제거하되 반투명 배경 대비는 유지한다.
+
+### 종료 기준
+
+- 1440×1000, 390×844에서 타이틀·CTA가 첫 viewport 안에 노출된다.
+- 문서 horizontal overflow와 깨진 이미지, console error가 모두 0이다.
+- rolling stage가 Hero 전체 높이와 안전 확장 폭을 사용하고 타이틀의 translucent mask가 runtime computed style에서 확인된다.
+
+### 검증 결과
+
+- 1440×1000에서는 실제 client width 1425px 안에서 Hero 1342px와 좌우 약 42px 안전 여백을 사용한다.
+- 390×844에서는 실제 client width 375px 안에서 Hero 373px와 좌우 약 1px 안전 여백을 사용한다.
+- 타이틀과 주 CTA의 첫 viewport 노출, Hero 전체 높이, 반투명 mask는 변경 없이 유지한다.
+- runtime title pseudo-element에서 `blur(7px) saturate(0.72)`와 radial translucent background 확인
+- 두 viewport 모두 document horizontal overflow 0, broken image 0, console error 0
+- `landing-hero:contract:test` 1/1, `landing-motion:contract:test` 3/3, `landing-flat-surface:contract:test` 4/4, `global-css:contract:test` 9/9, typecheck, lint, production build 130 pages 통과
