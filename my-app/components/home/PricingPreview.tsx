@@ -141,7 +141,7 @@ export function PricingPreview({
   };
 
   return (
-    <LandingScene id="home-pricing" number="08" layout="typographic-index">
+    <LandingScene id="services" number="10" layout="typographic-index">
       <div className="f-pricing__header">
         <SceneHeader eyebrow={t("pricing.badge")} title={t("pricing.title")} />
         <p className="f-pricing__credit-note" data-reveal-item data-reveal-order="3">

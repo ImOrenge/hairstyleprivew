@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "registry_id": "hairfit.frontend.components",
-  "updated_at": "2026-08-12",
+  "updated_at": "2026-08-13",
   "baseline": {
     "git_branch": "develop/2026-07-14-generation-completion-notifications",
     "git_head": "eb77c7f5421b9b8ac44e540e66931573f4097a41",
@@ -114,6 +114,20 @@
       "observed_usage": {
         "production_consumer_files": 1,
         "scope": "LandingScene reveal motion wrapper"
+      }
+    },
+    {
+      "id": "web.home.premium-consulting-showcases",
+      "name": "PremiumConsultingShowcases",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/home/PremiumConsultingShowcases.tsx",
+      "owner": "home-feature",
+      "passport": "docs/components/passports/web-premium-consulting-showcases.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "scope": "public premium landing route scenes 02 through 09 and 11"
       }
     },
     {

@@ -303,16 +303,16 @@
 
 다음을 모두 만족해야 프리미엄 랜딩 리디자인 완료로 판정한다.
 
-- [ ] 11개 Scene이 목표 IA로 교체됨
-- [ ] Hero·SEO·CTA가 프리미엄 AI 컨설팅 메시지로 통일됨
-- [ ] Analysis, Direction, Preview, Compare, Brief, Aftercare, Fashion 증거가 구현됨
-- [ ] Style Dossier가 현재 제공과 예정 범위를 구분함
-- [ ] 실제 billing 상품과 다른 가격을 구매 가능하게 노출하지 않음
-- [ ] `/workspace`와 무료 생성기 중심 CTA가 랜딩에서 제거됨
-- [ ] 기존 CSS·모션·반응형·접근성 계약이 유지됨
-- [ ] 정적 테스트, typecheck, lint, production build가 통과함
-- [ ] 세 viewport의 브라우저 검증과 콘솔 검증이 통과함
-- [ ] 최종 검증은 전체 구현 후 한 번의 종료 게이트로 기록됨
+- [x] 11개 Scene이 목표 IA로 교체됨
+- [x] Hero·SEO·CTA가 프리미엄 AI 컨설팅 메시지로 통일됨
+- [x] Analysis, Direction, Preview, Compare, Brief, Aftercare, Fashion 증거가 구현됨
+- [x] Style Dossier가 현재 제공과 예정 범위를 구분함
+- [x] 실제 billing 상품과 다른 가격을 구매 가능하게 노출하지 않음
+- [x] `/workspace`와 무료 생성기 중심 CTA가 랜딩에서 제거됨
+- [x] 기존 CSS·모션·반응형·접근성 계약이 유지됨
+- [x] 정적 테스트, typecheck, lint, production build가 통과함
+- [x] 세 viewport의 브라우저 검증과 콘솔 검증이 통과함
+- [x] 최종 검증은 전체 구현 후 한 번의 종료 게이트로 기록됨
 
 ## 12. Agentic Run Packet
 
@@ -343,12 +343,12 @@
 
 | Order | Work | Exit condition | Status |
 |---:|---|---|---|
-| 1 | Phase 0 계약 테스트 | Scene·message·가격 경계 고정 | pending |
-| 2 | Phase 1 Hero·SEO | 첫 viewport와 CTA 정합 | pending |
-| 3 | Phase 2 핵심 증거 | 분석·방향·전략형 9개 노출 | pending |
-| 4 | Phase 3 실행 산출물 | 결정·Brief·Aftercare·Fashion·Dossier 노출 | pending |
-| 5 | Phase 4 Trust·호환 가격 | 실제 상품·정책과 일치 | pending |
-| 6 | 종료 검증 | 모든 gate 통과 | pending |
+| 1 | Phase 0 계약 테스트 | Scene·message·가격 경계 고정 | completed |
+| 2 | Phase 1 Hero·SEO | 첫 viewport와 CTA 정합 | completed |
+| 3 | Phase 2 핵심 증거 | 분석·방향·전략형 9개 노출 | completed |
+| 4 | Phase 3 실행 산출물 | 결정·Brief·Aftercare·Fashion·Dossier 노출 | completed |
+| 5 | Phase 4 Trust·호환 가격 | 실제 상품·정책과 일치 | completed |
+| 6 | 종료 검증 | 모든 gate 통과 | completed |
 
 ### Acceptance Gates
 
@@ -361,8 +361,53 @@
 
 ### Current Status
 
-`active`
+`implemented-and-verified`
 
 ### Next Action
 
-Phase 0에서 premium message·11 Scene·가격 호환 경계를 contract test로 먼저 고정한다.
+별도 승인 전에는 merge·push·deploy를 수행하지 않는다.
+
+## 13. 2026-08-13 구현 및 종료 검증 기록
+
+### 구현 결과
+
+- 4열 rolling hero, 동일 인물의 hair/fashion pair, 상하 gradient mask, reveal 및 reduced-motion 처리를 유지했다.
+- Hero H1과 주 CTA를 PRIVATE AI STYLE DIRECTION 메시지로 교체했고 `/consulting/new`로 통일했다.
+- Scene 02~09와 11을 `PremiumConsultingShowcases`로 구현하고 Scene 10은 현재 운영 중인 billing 계약만 표시하도록 유지했다.
+- Style Dossier 샘플은 `현재 제공`과 `예정 기능`을 분리했다. PDF export, 연간 Archive, 전문가 검수는 예정 기능으로만 표시한다.
+- 가설 가격 99,000원·189,000원·649,000원은 랜딩과 checkout CTA에 노출하지 않았다.
+- 모바일 첫 화면을 포함해 rolling media 높이를 조정하여 H1, 결과 설명, 주 CTA, 다음 Evidence 힌트가 viewport 안에 들어오도록 했다.
+
+### 자동화 게이트
+
+| Gate | Result |
+|---|---|
+| `landing-premium:contract:test` | 4/4 pass |
+| `landing-hero:contract:test` | 1/1 pass |
+| `landing-flat-surface:contract:test` | 4/4 pass |
+| `landing-motion:contract:test` | 3/3 pass |
+| `web-image:contract:test` | 1/1 pass |
+| `global-css:contract:test` | 9/9 pass |
+| `component-registry:validate` | 59 components / 59 passports valid |
+| `typecheck` | pass |
+| `lint` | pass |
+| `next build --webpack` | pass, 130 pages generated |
+
+### 브라우저 게이트
+
+| Viewport | overflow | H1 | unnamed button | broken image | Hero CTA | Evidence hint |
+|---|---:|---:|---:|---:|---|---|
+| 1440×1000 | 0 | 1 | 0 | 0 | visible | visible |
+| 768×1024 | 0 | 1 | 0 | 0 | visible | visible |
+| 390×844 | 0 | 1 | 0 | 0 | visible | visible |
+
+- 11개 Scene anchor, `/consulting/new` CTA 5개, Dossier 현재/예정 라벨, `/b2b/signup`, `/b2b/contact`를 확인했다.
+- `/workspace` 랜딩 링크 0개, console error 0개를 확인했다.
+- FAQ summary가 native keyboard focus 대상임을 확인했다.
+- 런타임 stylesheet에서 `prefers-reduced-motion: reduce` 규칙 10개, Hero rolling 정지, landing reveal animation/transition 제거 규칙을 확인했다.
+
+### 비범위
+
+- 프리미엄 패키지 offering·entitlement·checkout·refund 계약과 전략 가격의 운영 출시는 이 변경에 포함하지 않는다.
+- PDF export, 연간 Style Archive, 전문가 검수는 구현하지 않았다.
+- merge, push, deploy, branch/worktree cleanup은 수행하지 않는다.

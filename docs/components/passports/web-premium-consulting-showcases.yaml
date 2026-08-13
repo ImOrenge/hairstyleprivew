@@ -1,0 +1,96 @@
+id: web.home.premium-consulting-showcases
+name: PremiumConsultingShowcases
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/home/PremiumConsultingShowcases.tsx
+owner: home-feature
+
+public_api:
+  exports:
+    - AnalysisEvidenceShowcase
+    - DirectionShowcase
+    - StrategicPreviewShowcase
+    - CompareDecisionShowcase
+    - SalonBriefShowcase
+    - AftercareTimelineShowcase
+    - FashionDirectionShowcase
+    - StyleDossierShowcase
+    - TrustAndFinalCta
+  props:
+    - TrustAndFinalCta.faqs
+  events: []
+
+dependencies:
+  internal:
+    - my-app/components/home/LandingScene.tsx
+  external:
+    - lucide-react
+    - next/image
+    - next/link
+  forbidden:
+    - api-clients
+    - feature-stores
+    - shared-card-surfaces
+
+styling:
+  strategy: feature-global-css
+  global_css:
+    file: my-app/app/landing.css
+    layer: components
+    namespace: f-premium
+  tokens:
+    - --app-bg
+    - --app-text
+    - --app-muted
+    - --app-border
+    - --app-accent-strong
+    - --landing-media-radius
+  data_contract:
+    data-landing-media: present on evidence and salon media
+  allows_className: false
+  inline_styles_allowed: false
+
+state:
+  owned: []
+  external_store: false
+side_effects: false
+
+a11y_contract:
+  role: ordered semantic landing sections
+  keyboard: links and FAQ details use native keyboard behavior
+  heading_structure: one h2 per LandingScene and nested artifact h3 headings only
+  images: every content image has a descriptive Korean alt
+  reduced_motion: landing and hero styles disable animation and transforms
+
+test_surface:
+  unit:
+    - my-app/lib/landing-premium-contract.test.ts
+    - my-app/lib/landing-flat-surface-contract.test.ts
+    - my-app/lib/web-image-contract.test.ts
+  interaction:
+    - CTA and anchor browser verification
+    - FAQ keyboard disclosure verification
+  visual:
+    - 1440x1000 desktop
+    - 768x1024 tablet
+    - 390x844 mobile
+
+observed_usage:
+  production_consumer_files: 1
+  scope: public premium landing route
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - premium-contract-test
+    - typecheck
+    - responsive-visual-verification
+  breaking_change_requires:
+    - implementation-document-update
+    - usage-search
+
+promotion_blockers:
+  - browser visual baselines are not yet stored as repository fixtures
+  - landing examples are privacy-safe static fixtures rather than live account data

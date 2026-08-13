@@ -91,6 +91,7 @@
     "auth-recovery:contract:test": "node --no-warnings --test lib/authenticated-fetch.test.ts",
     "copy-terminology:contract:test": "node --no-warnings --test lib/user-facing-copy.test.ts",
     "web-image:contract:test": "node --no-warnings --test lib/web-image-contract.test.ts",
+    "landing-premium:contract:test": "node --no-warnings --test lib/landing-premium-contract.test.ts",
     "landing-hero:contract:test": "node --no-warnings --test lib/landing-hero-contract.test.ts",
     "landing-flat-surface:contract:test": "node --no-warnings --test lib/landing-flat-surface-contract.test.ts",
     "landing-motion:contract:test": "node --no-warnings --test lib/landing-motion-contract.test.ts",

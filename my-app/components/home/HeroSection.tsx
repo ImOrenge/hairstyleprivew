@@ -260,24 +260,24 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
         <p className={styles.brand}>HAIRFIT</p>
         <p className={styles.eyebrow}>
           <Sparkles className={styles.eyebrowIcon} aria-hidden="true" />
-          AI HAIR · FASHION CONTINUITY
+          PRIVATE AI STYLE DIRECTION
         </p>
         <h1 id="landing-hero-title" className={styles.title}>
-          헤어를 고르면
-          <span>패션이 이어집니다</span>
+          당신의 스타일에는,{" "}
+          <span>생성보다 정확한 기준이 필요합니다.</span>
         </h1>
         <p className={styles.description}>
-          내 얼굴 사진 한 장으로 어울리는 헤어 9가지를 비교하고,
-          <br className={styles.desktopBreak} /> 선택한 헤어에 맞는 패션 코디까지 한 흐름으로 만나보세요.
+          분석 근거부터 전략, 비교, 살롱 브리프와 패션 방향까지.
+          <br className={styles.desktopBreak} /> 당신의 선택이 흔들리지 않도록 하나의 컨설팅 맥락으로 연결합니다.
         </p>
 
         <div className={styles.actions}>
           <Link href="/consulting/new" className={styles.primaryAction}>
-            사진으로 시작하기
+            프라이빗 컨설팅 시작
             <ArrowRight className={styles.actionIcon} aria-hidden="true" />
           </Link>
-          <Link href="#home-hairstyles" className={styles.secondaryAction}>
-            결과 예시 보기
+          <Link href="#analysis-evidence" className={styles.secondaryAction}>
+            분석 근거 보기
           </Link>
         </div>
 
@@ -300,12 +300,12 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
               </div>
             )}
             {userCount > 0 ? (
-              <span>{userCount.toLocaleString("ko-KR")}명이 HairFit으로 스타일을 비교했어요</span>
+              <span>{userCount.toLocaleString("ko-KR")}명이 HairFit에서 스타일 기준을 확인했어요</span>
             ) : null}
           </div>
         )}
 
-        <a href="#home-hairstyles" className={styles.scrollCue} aria-label="다음 섹션으로 이동">
+        <a href="#analysis-evidence" className={styles.scrollCue} aria-label="분석 근거 섹션으로 이동">
           <span>SCROLL</span>
           <ArrowDown aria-hidden="true" />
         </a>

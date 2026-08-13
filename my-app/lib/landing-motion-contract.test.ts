@@ -11,11 +11,7 @@ const sceneSource = readFileSync(join(homeRoot, "LandingScene.tsx"), "utf8");
 const landingCss = readFileSync(join(appRoot, "app", "landing.css"), "utf8");
 
 const staggeredSectionFiles = [
-  join(appRoot, "app", "page.tsx"),
-  join(homeRoot, "HairstylePreviewShowcase.tsx"),
-  join(homeRoot, "FashionDemoShowcase.tsx"),
-  join(homeRoot, "FeatureShowcase.tsx"),
-  join(homeRoot, "ReviewCarousel.tsx"),
+  join(homeRoot, "PremiumConsultingShowcases.tsx"),
   join(homeRoot, "PricingPreview.tsx"),
 ];
 
@@ -45,7 +41,7 @@ test("scene headings and landing content expose individual reveal items", () => 
     0,
   );
 
-  assert.ok(revealItemCount >= 30, `expected at least 30 stagger declarations, found ${revealItemCount}`);
+  assert.ok(revealItemCount >= 24, `expected at least 24 stagger declarations, found ${revealItemCount}`);
   assert.match(sceneSource, /data-reveal-order="0"/);
   assert.match(sceneSource, /data-reveal-order="3"/);
 
