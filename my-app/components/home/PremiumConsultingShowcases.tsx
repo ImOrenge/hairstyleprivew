@@ -2,23 +2,12 @@ import { ArrowRight, Check, Clock3, LockKeyhole, ShieldCheck, Sparkles } from "l
 import Image from "next/image";
 import Link from "next/link";
 import { LandingScene, SceneHeader } from "./LandingScene";
+import { FashionDirectionPreviewPanel, StrategicHairPreviewPanel } from "./PremiumAutoSwitchPreviewPanel";
 
 const strategyAxes = [
   { axis: "BALANCE", label: "균형 보정", note: "관자 폭과 정수리 높이를 함께 조정" },
   { axis: "IMAGE", label: "인상 설계", note: "단정함을 유지하며 선을 부드럽게" },
   { axis: "LIFESTYLE", label: "생활 적합성", note: "아침 10분, 8주 관리 주기 기준" },
-] as const;
-
-const previewCells = [
-  ["Balance", "Soft", "Daily"],
-  ["Balance", "Defined", "Daily"],
-  ["Balance", "Soft", "Statement"],
-  ["Image", "Soft", "Daily"],
-  ["Image", "Defined", "Daily"],
-  ["Image", "Soft", "Statement"],
-  ["Lifestyle", "Soft", "Daily"],
-  ["Lifestyle", "Defined", "Daily"],
-  ["Lifestyle", "Soft", "Statement"],
 ] as const;
 
 const dossierCurrent = [
@@ -106,14 +95,7 @@ export function StrategicPreviewShowcase() {
             </li>
           ))}
         </ol>
-        <div className="f-premium-strategy__grid" aria-label="전략형 9개 프리뷰 샘플" data-reveal-item data-reveal-order="7">
-          {previewCells.map(([axis, image, lifestyle], index) => (
-            <article key={`${axis}-${image}-${lifestyle}`}>
-              <Image src={`/hero/demo/grid/female-v2-${String(index + 1).padStart(2, "0")}.webp`} alt={`${axis} 전략 프리뷰 ${index + 1}`} fill sizes="(max-width: 640px) 30vw, 15vw" />
-              <span>{axis}</span>
-            </article>
-          ))}
-        </div>
+        <div data-reveal-item data-reveal-order="7"><StrategicHairPreviewPanel /></div>
       </div>
     </LandingScene>
   );
@@ -192,11 +174,7 @@ export function FashionDirectionShowcase() {
           <SceneHeader eyebrow="Fashion Direction" title="확정한 헤어의 인상을, 9개의 패션 방향으로 확장합니다." description="헤어 결정과 상황·무드·체형 입력을 하나의 배치로 연결합니다. 슬롯마다 반복 요청하는 마법사 흐름이 아닙니다." />
           <div className="f-premium-batch" data-reveal-item data-reveal-order="4"><Sparkles aria-hidden="true" /><span>9-LOOK BATCH</span><strong>Work · Weekend · Occasion</strong></div>
         </div>
-        <div className="f-premium-fashion-grid" aria-label="패션 9-look 배치 샘플" data-reveal-item data-reveal-order="5">
-          {["female-short-soft-v3.webp", "female-medium-work-v3.webp", "female-long-date-v3.webp"].map((asset, index) => (
-            <figure key={asset}><Image src={`/hero/fashion-demo/${asset}`} alt={`확정 헤어와 연결된 패션 방향 ${index + 1}`} fill sizes="(max-width: 840px) 30vw, 16vw" /></figure>
-          ))}
-        </div>
+        <div data-reveal-item data-reveal-order="5"><FashionDirectionPreviewPanel /></div>
       </div>
     </LandingScene>
   );

@@ -4,6 +4,8 @@ platform: web
 kind: feature
 status: candidate
 source: my-app/components/home/PremiumConsultingShowcases.tsx
+related_source:
+  - my-app/components/home/PremiumAutoSwitchPreviewPanel.tsx
 owner: home-feature
 
 public_api:
@@ -17,6 +19,8 @@ public_api:
     - FashionDirectionShowcase
     - StyleDossierShowcase
     - TrustAndFinalCta
+    - StrategicHairPreviewPanel
+    - FashionDirectionPreviewPanel
   props:
     - TrustAndFinalCta.faqs
   events: []
@@ -28,6 +32,7 @@ dependencies:
     - lucide-react
     - next/image
     - next/link
+    - react
   forbidden:
     - api-clients
     - feature-stores
@@ -48,17 +53,23 @@ styling:
     - --landing-media-radius
   data_contract:
     data-landing-media: present on evidence and salon media
+    model-switch: female and male preview panels rotate every 5 seconds while visible and unpaused
   allows_className: false
   inline_styles_allowed: false
 
 state:
-  owned: []
+  owned:
+    - active preview gender
+    - automatic switch timer lifecycle
+    - viewport visibility pause
+    - pointer and focus pause
+    - reduced-motion preference
   external_store: false
 side_effects: false
 
 a11y_contract:
   role: ordered semantic landing sections
-  keyboard: links and FAQ details use native keyboard behavior
+  keyboard: links and FAQ details use native keyboard behavior; preview tabs support ArrowLeft, ArrowRight, Home, and End
   heading_structure: one h2 per LandingScene and nested artifact h3 headings only
   images: every content image has a descriptive Korean alt
   reduced_motion: landing and hero styles disable animation and transforms
@@ -71,6 +82,7 @@ test_surface:
   interaction:
     - CTA and anchor browser verification
     - FAQ keyboard disclosure verification
+    - hair and fashion gender tab keyboard and automatic switching verification
   visual:
     - 1440x1000 desktop
     - 768x1024 tablet

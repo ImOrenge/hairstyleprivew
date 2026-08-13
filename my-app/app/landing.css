@@ -2066,6 +2066,20 @@
   .f-premium-strategy__grid img { object-fit: cover; }
   .f-premium-strategy__grid span { position: absolute; right: .45rem; bottom: .45rem; border-radius: 999px; padding: .3rem .5rem; background: rgba(0,0,0,.68); color: white; font-size: .58rem; font-weight: 850; }
 
+  .f-premium-auto-preview { min-width: 0; }
+  .f-premium-auto-preview__header { display: flex; margin-bottom: .75rem; align-items: center; justify-content: space-between; gap: 1rem; }
+  .f-premium-auto-preview__header > span { color: var(--app-muted); font-size: .58rem; font-weight: 900; letter-spacing: .12em; }
+  .f-premium-auto-preview__tabs { display: inline-flex; border: 1px solid var(--app-border); border-radius: 999px; padding: 3px; }
+  .f-premium-auto-preview__tabs button { min-height: 2.25rem; border: 0; border-radius: 999px; padding: .55rem .85rem; background: transparent; color: var(--app-muted); font-size: .72rem; font-weight: 850; transition: background-color var(--landing-motion-fast), color var(--landing-motion-fast); }
+  .f-premium-auto-preview__tabs button[aria-selected="true"] { background: var(--app-text); color: var(--app-bg); }
+  .f-premium-auto-preview__tabs button:focus-visible { outline: 2px solid var(--app-accent-strong); outline-offset: 2px; }
+  .f-premium-auto-preview__panel { animation: f-premium-preview-switch 520ms cubic-bezier(.22, 1, .36, 1) both; }
+
+  @keyframes f-premium-preview-switch {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+
   .f-premium-checklist { display: grid; margin: 2rem 0 0; padding: 0; list-style: none; }
   .f-premium-checklist li { display: flex; align-items: center; gap: .65rem; border-top: 1px solid var(--app-border); padding: .9rem 0; font-weight: 760; }
   .f-premium-checklist svg { width: 1rem; color: var(--app-accent-strong); }
@@ -2090,6 +2104,7 @@
   .f-premium-fashion-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
   .f-premium-fashion-grid figure { position: relative; min-height: clamp(24rem, 48vw, 42rem); margin: 0; overflow: hidden; }
   .f-premium-fashion-grid img { object-fit: cover; }
+  .f-premium-fashion-grid figcaption { position: absolute; right: .5rem; bottom: .5rem; z-index: 1; padding: .35rem .5rem; background: rgba(0,0,0,.68); color: #fff; font-size: .58rem; font-weight: 850; letter-spacing: .06em; }
 
   .f-premium-dossier { display: grid; align-items: center; grid-template-columns: minmax(0, .85fr) minmax(20rem, 1.15fr); gap: clamp(2rem, 5vw, 5rem); }
   .f-premium-dossier__sheet { border: 1px solid color-mix(in srgb, currentColor 26%, transparent); padding: clamp(1.5rem, 4vw, 3rem); background: color-mix(in srgb, currentColor 5%, transparent); }
@@ -2130,6 +2145,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .f-premium-direction > svg { transition: none; }
+    .f-premium-direction > svg, .f-premium-auto-preview__tabs button { transition: none; }
+    .f-premium-auto-preview__panel { animation: none; }
   }
 }

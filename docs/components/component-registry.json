@@ -123,6 +123,9 @@
       "kind": "feature",
       "status": "candidate",
       "source": "my-app/components/home/PremiumConsultingShowcases.tsx",
+      "related_source": [
+        "my-app/components/home/PremiumAutoSwitchPreviewPanel.tsx"
+      ],
       "owner": "home-feature",
       "passport": "docs/components/passports/web-premium-consulting-showcases.yaml",
       "observed_usage": {

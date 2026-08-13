@@ -377,6 +377,7 @@
 - Style Dossier 샘플은 `현재 제공`과 `예정 기능`을 분리했다. PDF export, 연간 Archive, 전문가 검수는 예정 기능으로만 표시한다.
 - 가설 가격 99,000원·189,000원·649,000원은 랜딩과 checkout CTA에 노출하지 않았다.
 - 모바일 첫 화면을 포함해 rolling media 높이를 조정하여 H1, 결과 설명, 주 CTA, 다음 Evidence 힌트가 viewport 안에 들어오도록 했다.
+- Strategic Preview의 헤어 3×3과 Fashion Direction 패널은 여성·남성 모델을 5초 간격으로 자동 전환한다. 수동 탭 선택, 포커스·호버·화면 밖 일시정지, reduced-motion 자동 전환 중지를 함께 적용했다.
 
 ### 자동화 게이트
 

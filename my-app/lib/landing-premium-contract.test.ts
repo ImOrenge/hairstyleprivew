@@ -11,6 +11,7 @@ const showcases = readFileSync(join(appRoot, "components", "home", "PremiumConsu
 const pricing = readFileSync(join(appRoot, "components", "home", "PricingPreview.tsx"), "utf8");
 const content = readFileSync(join(appRoot, "lib", "home-content.ts"), "utf8");
 const mobileCta = readFileSync(join(appRoot, "components", "home", "MobileStickyCtaBar.tsx"), "utf8");
+const autoSwitch = readFileSync(join(appRoot, "components", "home", "PremiumAutoSwitchPreviewPanel.tsx"), "utf8");
 
 test("premium landing keeps the rolling hero and consultant message", () => {
   assert.match(hero, /ROLLING_COLUMNS/);
@@ -48,4 +49,20 @@ test("conversion paths and pricing boundary remain truthful", () => {
   assert.ok((combined.match(/href="\/consulting\/new"/g)?.length ?? 0) >= 4);
   assert.match(showcases, /href="\/b2b\/contact"/);
   assert.match(pricing, /PricingTierKey/);
+});
+
+test("hair and fashion previews auto-switch female and male models accessibly", () => {
+  assert.match(showcases, /StrategicHairPreviewPanel/);
+  assert.match(showcases, /FashionDirectionPreviewPanel/);
+  assert.match(autoSwitch, /window\.setInterval/);
+  assert.match(autoSwitch, /5000/);
+  assert.match(autoSwitch, /prefers-reduced-motion: reduce/);
+  assert.match(autoSwitch, /IntersectionObserver/);
+  assert.match(autoSwitch, /role="tablist"/);
+  assert.match(autoSwitch, /aria-selected=\{gender === item\}/);
+  assert.match(autoSwitch, /\$\{state\.gender\}-v2-/);
+  assert.match(autoSwitch, /male-short-clean-v3\.webp/);
+  assert.match(autoSwitch, /female-short-soft-v3\.webp/);
+  assert.match(autoSwitch, /onPointerEnter/);
+  assert.match(autoSwitch, /onFocusCapture/);
 });
