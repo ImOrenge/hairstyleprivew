@@ -408,8 +408,8 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
             프라이빗 컨설팅 시작
             <ArrowRight className={styles.actionIcon} aria-hidden="true" />
           </Link>
-          <Link href="#analysis-evidence" className={styles.secondaryAction}>
-            분석 근거 보기
+          <Link href="#style-dossier" className={styles.secondaryAction}>
+            컨설팅 결과 예시 보기
           </Link>
         </div>
 
@@ -437,7 +437,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
           </div>
         )}
 
-        <a href="#analysis-evidence" className={styles.scrollCue} aria-label="분석 근거 섹션으로 이동">
+        <a href="#analysis-evidence" className={styles.scrollCue} aria-label="SCROLL — 분석 근거 섹션으로 이동">
           <span>SCROLL</span>
           <ArrowDown aria-hidden="true" />
         </a>

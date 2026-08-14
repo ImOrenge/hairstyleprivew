@@ -55,7 +55,7 @@ export const homeNavItems = [
   { href: "#salon-brief", label: "살롱 브리프", shortLabel: "06" },
   { href: "#aftercare", label: "애프터케어", shortLabel: "07" },
   { href: "#fashion-direction", label: "패션 방향", shortLabel: "08" },
-  { href: "#style-dossier", label: "스타일 도시에", shortLabel: "09" },
+  { href: "#style-dossier", label: "스타일 기록", shortLabel: "09" },
   { href: "#services", label: "현재 이용 방식", shortLabel: "10" },
   { href: "#trust", label: "신뢰와 한계", shortLabel: "11" },
 ];

@@ -46,6 +46,12 @@ const salonBriefRows = [
   ["AVOID", "짧은 앞머리, 강한 컬, 무거운 옆 볼륨"],
 ] as const;
 
+const consultationContinuityProofs = [
+  ["01", "8개 판단 기준", "균형·손질·시술·컬러·관리 주기·리스크를 같은 표에서 비교"],
+  ["02", "살롱 전달", "확정한 길이·볼륨·질감과 피해야 할 요소를 시술 언어로 정리"],
+  ["03", "시술 후 관리", "시술 기록이 등록되면 오늘 관리와 다음 방문 기준으로 연결"],
+] as const;
+
 const dossierPages = [
   ["01", "FACE PROFILE", "얼굴 혼합형·비율·랜드마크와 분석 신뢰도"],
   ["02", "HAIR DIRECTION", "길이·가르마·볼륨·질감의 확정 전략"],
@@ -161,24 +167,25 @@ export function CompareDecisionShowcase() {
           <SceneHeader
             eyebrow="Compare & Decision"
             title="같은 구도에서 비교하고, 결정의 이유까지 남깁니다."
-            description="shortlist 후보를 동일 crop으로 비교한 뒤 최종 선택을 확정합니다. 확정 기록은 이후 브리프와 패션 방향의 기준이 됩니다."
+            description="최종 후보를 같은 구도로 비교한 뒤 선택을 확정합니다. 확정 기록은 이후 브리프와 패션 방향의 기준이 됩니다."
           />
           <ul className="f-premium-checklist" data-reveal-item data-reveal-order="4">
-            <li><Check aria-hidden="true" /> 동일 crop 비교</li>
-            <li><Check aria-hidden="true" /> 후보 shortlist</li>
-            <li><LockKeyhole aria-hidden="true" /> 변경 불가 Decision 기록</li>
+            <li><Check aria-hidden="true" /> 같은 구도 비교</li>
+            <li><Check aria-hidden="true" /> 최종 후보 선정</li>
+            <li><LockKeyhole aria-hidden="true" /> 변경할 수 없는 최종 결정 기록</li>
           </ul>
         </div>
-        <div className="f-premium-compare" data-reveal-item data-reveal-order="5" role="region" aria-label="동일 구도 후보 이미지 비교" tabIndex={0}>
+        <p className="f-premium-scroll-hint" id="compare-scroll-hint">후보 이미지와 비교표를 좌우로 밀어 모든 기준을 확인하세요.</p>
+        <div className="f-premium-compare" data-reveal-item data-reveal-order="5" role="region" aria-label="동일 구도 후보 이미지 비교" aria-describedby="compare-scroll-hint" tabIndex={0}>
           {["03", "05", "07"].map((id, index) => (
             <figure key={id}>
               <Image src={`/hero/demo/grid/female-v2-${id}.webp`} alt={`동일 구도 비교 후보 ${index + 1}`} fill sizes="(max-width: 840px) 45vw, 25vw" />
-              <figcaption>{index === 1 ? "FINAL DECISION" : `SHORTLIST 0${index + 1}`}</figcaption>
+              <figcaption>{index === 1 ? "최종 선택" : `후보 0${index + 1}`}</figcaption>
             </figure>
           ))}
         </div>
-        <div className="f-premium-compare-matrix" data-reveal-item data-reveal-order="6" role="region" aria-label="후보별 8개 판단축 비교표" tabIndex={0}>
-          <div className="f-premium-compare-matrix__head"><span>DECISION AXIS</span><span>A · SOFT</span><span>B · BALANCED</span><span>C · BOLD</span></div>
+        <div className="f-premium-compare-matrix" data-reveal-item data-reveal-order="6" role="region" aria-label="후보별 8개 판단축 비교표" aria-describedby="compare-scroll-hint" tabIndex={0}>
+          <div className="f-premium-compare-matrix__head"><span>판단 기준</span><span>A · 부드러움</span><span>B · 균형</span><span>C · 선명함</span></div>
           {compareRows.map(([axis, a, b, c]) => <div key={axis}><strong>{axis}</strong><span>{a}</span><span className="is-selected">{b}</span><span>{c}</span></div>)}
         </div>
       </div>
@@ -199,6 +206,21 @@ export function SalonBriefShowcase() {
             <div className="f-premium-brief__meta"><span>SALON HANDOFF / SAMPLE</span><strong>결정 B · BALANCED</strong></div>
             {salonBriefRows.map(([label, value]) => <p key={label}><span>{label}</span>{value}</p>)}
             <div className="f-premium-brief__check"><Check aria-hidden="true" /><span>현장 확인</span><strong>두피·모발 손상도 확인 후 펌 강도 최종 조정</strong></div>
+          </div>
+          <div className="f-premium-proof-bridge" data-reveal-item data-reveal-order="5" aria-label="컨설팅 결과 연결 증거">
+            <div className="f-premium-proof-bridge__intro">
+              <span>DECISION TO ACTION</span>
+              <strong>결과는 이미지에서 끝나지 않습니다.</strong>
+              <p>아래 항목은 현재 컨설팅 화면과 데이터 계약에서 확인할 수 있는 연결 범위입니다.</p>
+            </div>
+            <ol>
+              {consultationContinuityProofs.map(([index, title, body]) => (
+                <li key={index}><span>{index}</span><strong>{title}</strong><p>{body}</p></li>
+              ))}
+            </ol>
+            <Link href="/consulting/new" className="f-landing-cta f-landing-cta--inverse">
+              내 기준으로 컨설팅 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </div>

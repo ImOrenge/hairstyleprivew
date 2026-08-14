@@ -11,13 +11,42 @@ export function MobileStickyCtaBar() {
     const hero = document.querySelector("#home-hero");
     if (!hero) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => setIsVisible(!entry.isIntersecting),
+    const closingTargets = [
+      document.querySelector(".f-premium-final"),
+      document.querySelector("footer"),
+    ].filter((target): target is Element => target !== null);
+    const visibleClosingTargets = new Set<Element>();
+    let heroIsVisible = true;
+
+    const syncVisibility = () => {
+      setIsVisible(!heroIsVisible && visibleClosingTargets.size === 0);
+    };
+
+    const heroObserver = new IntersectionObserver(
+      ([entry]) => {
+        heroIsVisible = entry.isIntersecting;
+        syncVisibility();
+      },
       { threshold: 0.05 },
     );
-    observer.observe(hero);
+    const closingObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) visibleClosingTargets.add(entry.target);
+          else visibleClosingTargets.delete(entry.target);
+        }
+        syncVisibility();
+      },
+      { threshold: 0.01 },
+    );
 
-    return () => observer.disconnect();
+    heroObserver.observe(hero);
+    for (const target of closingTargets) closingObserver.observe(target);
+
+    return () => {
+      heroObserver.disconnect();
+      closingObserver.disconnect();
+    };
   }, []);
 
   return (
@@ -27,7 +56,7 @@ export function MobileStickyCtaBar() {
       aria-hidden={!isVisible}
     >
       <Link
-      href="/consulting/new"
+        href="/consulting/new"
         tabIndex={isVisible ? undefined : -1}
         className="f-landing-sticky-cta__action"
       >

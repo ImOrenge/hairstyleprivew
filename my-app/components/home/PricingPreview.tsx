@@ -165,7 +165,8 @@ export function PricingPreview({
         />
       </div>
 
-      <div className="f-pricing__plans">
+      <p className="f-pricing__scroll-hint" id="pricing-scroll-hint">플랜 카드를 좌우로 밀어 이용 범위를 비교하세요.</p>
+      <div className="f-pricing__plans" role="region" aria-label="현재 이용 가능한 플랜 비교" aria-describedby="pricing-scroll-hint" tabIndex={0}>
         {plans.map((plan, index) => (
           <article
             className="f-pricing-plan"
@@ -205,6 +206,7 @@ export function PricingPreview({
                 planKey={plan.key as PaymentPlanKey}
                 subscriptionAccessMode={subscriptionAccessMode}
                 variant={plan.tone === "basic" ? "secondary" : "primary"}
+                data-variant={plan.tone === "basic" ? "secondary" : "primary"}
                 className="f-pricing-plan__action"
                 successRedirectPath={successRedirectPath}
               >
