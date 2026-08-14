@@ -14,6 +14,7 @@
 - P2는 이 구현을 근거로 재사용할 수 있지만 C-03/C-04 승인, 4개 discovery route, 검색 전용 Browser Gate는 아직 없다.
 - 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
 - 실행 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)의 PR-2 Pilot Experience
+- 실행 티켓: [EX-10~EX-12](./search-entry-page-execution-plan.md)
 
 ## 1. 목표와 비범위
 
@@ -121,7 +122,7 @@ interface DiscoveryHandoff {
 }
 ```
 
-민감한 referrer, 이미지 URL, prompt는 query parameter로 전달하지 않는다. `/consulting/new`가 로그인 전 first-party resume context를 보존하고 새 `ConsultationSnapshot` 생성 시 허용 ID만 소비하는지 통합 테스트한다. feature flag OFF의 `/workspace` rollback에서도 source ID를 유실하지 않는다.
+민감한 referrer, 이미지 URL, prompt는 query parameter로 전달하지 않는다. `/consulting/new`가 로그인 왕복에서 허용 ID만 보존하고 새 `ConsultationSnapshot.acquisition`에 additive하게 저장하는지 통합 테스트한다. feature flag OFF에서는 `/workspace` return boundary까지 허용 ID를 유지하되 legacy가 저장하지 못하면 `not-recorded-legacy`로 명시하고 persistence 완료로 판정하지 않는다.
 
 ### P2-W04. 내부 링크
 

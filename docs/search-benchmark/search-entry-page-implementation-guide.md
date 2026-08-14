@@ -4,6 +4,7 @@
 - 구현 상태: planned — 아래 경로와 컴포넌트는 아직 생성되지 않음
 - 구현 기준: `feat/2026-08-12-premium-landing-refactor@e86e40d`
 - 선행 문서: [아키텍처](./architecture.md), [P1 상세 계획](./implementation-plan/phase-01-search-surface-foundation.md), [P2 상세 계획](./implementation-plan/phase-02-pilot-content-sample-experience.md)
+- 실행 티켓: [검색 유입 페이지 구체 구현 실행 계획](./implementation-plan/search-entry-page-execution-plan.md)
 - 1차 공개 후보: `D-AI-SIM` / `/discover/ai-hairstyle-simulation`
 
 ## 1. 구현 결론
@@ -61,6 +62,7 @@ my-app/
       SampleComparison.tsx
       TrustSummary.tsx
       RelatedDiscoveryPages.tsx
+      DiscoveryPage.module.css
   lib/
     discovery/
       types.ts
@@ -73,6 +75,9 @@ my-app/
     discovery/
   scripts/
     audit-search-discovery.mjs
+tests/
+  web-e2e/
+    search-discovery.spec.ts
 ```
 
 기존 변경 파일:
@@ -260,10 +265,10 @@ interface DiscoveryHandoff {
 2. 서버 경계에서 registry와 allowlist로 값을 다시 검증한다.
 3. 로그인 redirect를 견디는 짧은 수명의 first-party resume context를 사용한다.
 4. 세션 생성 시 허용 ID만 attribution record 또는 snapshot의 명시 필드에 연결한다.
-5. feature flag OFF로 `/workspace`에 fallback해도 허용 ID를 잃지 않는 회귀 테스트를 둔다.
+5. feature flag OFF에서는 `/workspace` return boundary까지 허용 ID를 유지한다. legacy가 이를 저장하지 못하면 `not-recorded-legacy`로 판정하고 snapshot persistence를 주장하지 않는다.
 6. URL query 전체, referrer 전체, 검색어, prompt, 이미지 경로는 저장하지 않는다.
 
-구체적인 cookie/API/DB 저장 위치는 P3 privacy·보존 결정 전에 확정하지 않는다. PR-2는 서버 검증 계약과 로그인 왕복 통합 테스트를 먼저 고정한다.
+PR-2는 검증된 handoff를 `ConsultationSnapshot.acquisition` optional field로 additive하게 저장한다. P3의 event API·별도 DB·보존기간은 privacy 결정 뒤 확정하며, snapshot transport만으로 퍼널 계측 완료를 주장하지 않는다.
 
 ## 8. 구현 순서
 

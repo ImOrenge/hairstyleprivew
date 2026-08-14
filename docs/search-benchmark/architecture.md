@@ -164,6 +164,7 @@ my-app/
         page.tsx
         [slug]/
           page.tsx
+          not-found.tsx
   components/
     discovery/
       DiscoveryPageTemplate.tsx
@@ -171,6 +172,7 @@ my-app/
       SampleComparison.tsx
       TrustSummary.tsx
       RelatedDiscoveryPages.tsx
+      DiscoveryPage.module.css
   lib/
     discovery/
       types.ts
@@ -280,7 +282,7 @@ sample_id=sample-male-01
 cta_id=hero-primary
 ```
 
-민감 정보나 검색 원문 전체는 전달하지 않는다. 허용된 ID만 사용하며 `/consulting/new`의 로그인·세션 생성 경계에서 resume context를 소비해 `ConsultationSnapshot` 또는 별도 attribution record와 연결한다. legacy `/workspace` fallback에서도 source ID를 유실하지 않는 회귀 검사를 둔다.
+민감 정보나 검색 원문 전체는 전달하지 않는다. 허용된 ID만 사용하며 `/consulting/new`의 로그인·세션 생성 경계에서 resume context를 소비해 `ConsultationSnapshot.acquisition` optional field와 연결한다. P3에서 별도 event store를 추가하기 전까지 이 필드는 transport 정본이며 집계 완료 증거가 아니다. legacy `/workspace` fallback은 return boundary까지 ID를 유지하고, 저장하지 못하면 `not-recorded-legacy`로 명시한다.
 
 ## 7. 카탈로그와 검색 콘텐츠의 경계
 

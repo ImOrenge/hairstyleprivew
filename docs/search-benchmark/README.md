@@ -14,6 +14,7 @@
 - [아키텍처](./architecture.md): 벤치마킹 데이터, 목표 시스템 구조, 데이터 모델, 라우트와 컴포넌트 경계
 - [아티팩트 정의](./artifact-specification.md): 단계별 필수 산출물, 스키마, 책임, 검증 기준, 완료 게이트
 - [검색 유입 페이지 구현 가이드](./search-entry-page-implementation-guide.md): P1 canary와 P2 pilot의 실제 파일·코드·카피·검증 순서
+- [검색 유입 페이지 구체 실행 계획](./implementation-plan/search-entry-page-execution-plan.md): EX-00~EX-12 티켓, 변경 파일, 테스트, commit·rollback 순서
 - [Phase별 상세 구현 계획](./implementation-plan/README.md): P0~P5 독립 실행 문서, 파일·타입·API·DB·검증·롤백 계약
 - [현재 컨설팅·랜딩 구현 대조](./current-implementation-alignment-2026-08-14.md): 구현 브랜치 증거, 재사용 가능 영역, 검색 전용 미구현 gap
 
@@ -87,6 +88,7 @@
 | W-05 | plan | P0~P5를 독립 실행 문서로 상세화 | 각 Phase에 파일·계약·절차·검증·롤백·인계가 있음 | implementation-plan 7개 문서 | complete |
 | W-06 | inspect | 현재 컨설팅·프리미엄 랜딩 구현 대조 | implemented·partial·missing이 commit·path로 구분됨 | 2026-08-14 대조 보고서 | complete |
 | W-07 | plan | 검색 유입 페이지 구현 경로 구체화 | canary PR·pilot PR의 파일·카피·코드·검증·rollback 경계가 고정됨 | 검색 유입 페이지 구현 가이드 | complete |
+| W-08 | plan | 구현 작업을 실행 티켓으로 분해 | 각 티켓에 입력·파일·절차·테스트·완료 조건이 있음 | 검색 유입 페이지 구체 실행 계획 | complete |
 
 ### Acceptance Gates
 
@@ -99,8 +101,8 @@
 
 ### Current Status
 
-`implementation-ready plan — canary contract defined, discovery code still open`
+`execution-ready plan — integration base confirmation-needed, discovery code still open`
 
 ### Next Action
 
-`B-00 기준선을 생성한 뒤 PR-1의 types.ts와 D-AI-SIM fixture를 구현한다.`
+`EX-00에서 정확한 develop integration target과 D-AI-SIM sample 승인 담당자를 확정한다.`

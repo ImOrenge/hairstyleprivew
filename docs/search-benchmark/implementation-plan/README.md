@@ -5,6 +5,7 @@
 - 상태: implementation-ready — current implementation aligned
 - 상위 문서: [아키텍처](../architecture.md), [아티팩트 정의](../artifact-specification.md)
 - 구현 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)
+- 구체 실행 티켓: [검색 유입 페이지 구현 실행 계획](./search-entry-page-execution-plan.md)
 - 구현 기준 브랜치: Phase 시작 시 `git_preflight.py`로 다시 확정
 - 현재 대조 증거: [컨설팅·프리미엄 랜딩 구현 대조](../current-implementation-alignment-2026-08-14.md)
 
@@ -28,6 +29,8 @@
 | P3 | [Trust & Funnel Measurement](./phase-03-trust-funnel-measurement.md) | partial-reuse-ready | trust SSoT·이벤트 API·집계 | 개인정보·보존 승인 |
 | P4 | [Content Expansion & Operations](./phase-04-content-expansion-operations.md) | partial-reuse-ready | 7개 랜딩·운영 runbook | P2/P3 지표 확인 |
 | P5 | [Experiment & Optimization](./phase-05-experiment-optimization.md) | planned | 실험 할당·판정·주기 운영 | 최소 표본·계측 안정성 |
+
+검색 유입 페이지의 실제 코드 작업은 [EX-00~EX-12 실행 계획](./search-entry-page-execution-plan.md)을 사용한다. 이 계획은 P1·P2를 PR 단위 수직 slice로 재배열하지만 각 Phase의 Exit Gate를 낮추지 않는다.
 
 `partial-reuse-ready`는 프리미엄 랜딩·컨설팅 구현을 재사용할 수 있다는 뜻이며, 검색 route·artifact·Gate 완료를 뜻하지 않는다.
 

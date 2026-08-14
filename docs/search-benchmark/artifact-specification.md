@@ -566,7 +566,7 @@ Q-04는 매 출시마다 다음 표를 포함한다.
 - [ ] Search Console property와 기준 기간 확정
 - [ ] 샘플 자산 권리 확인
 - [ ] `/consulting/new` 로그인·세션 생성에서 source/resume context 보존
-- [ ] feature flag OFF의 `/workspace` rollback에서도 source ID 유실 없음
+- [ ] feature flag OFF의 `/workspace` return boundary까지 source ID 유지, 미저장 시 `not-recorded-legacy` 판정
 - [ ] 현재 크레딧·무료 범위 SSoT 재확인
 - [ ] 사진 원본 보존·삭제 정책의 현재 구현 검증
 - [ ] 이벤트 보존기간과 개인정보 검토

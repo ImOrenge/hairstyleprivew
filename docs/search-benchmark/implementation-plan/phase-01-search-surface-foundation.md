@@ -13,6 +13,7 @@
 - 미구현: `my-app/app/(marketing)/discover`, `my-app/lib/discovery`, `search:discovery:audit`, discovery sitemap
 - 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
 - 실행 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)의 PR-1 Foundation Canary
+- 실행 티켓: [EX-00~EX-09](./search-entry-page-execution-plan.md)
 
 ## 1. 목표와 비범위
 
@@ -49,10 +50,13 @@ flowchart LR
 | P1-W03A | `my-app/lib/discovery/json-ld.ts` | 화면 FAQ와 동일한 WebPage·FAQPage serializer |
 | P1-W04 | `my-app/app/(marketing)/discover/page.tsx` | discovery hub skeleton |
 | P1-W05 | `my-app/app/(marketing)/discover/[slug]/page.tsx` | 정적 route·404 |
+| P1-W05A | `my-app/app/(marketing)/discover/[slug]/not-found.tsx` | discovery 전용 404 |
 | P1-W06 | `my-app/components/discovery/DiscoveryPageTemplate.tsx` | 서버 컴포넌트 중심 skeleton |
+| P1-W06A | `my-app/components/discovery/DiscoveryPage.module.css` | 검색 페이지 전용 responsive style |
 | P1-W07 | `my-app/app/sitemap.ts`, `my-app/app/robots.ts` | published page 반영 |
 | P1-W08 | `my-app/scripts/audit-search-discovery.mjs` | Q-01 정적 감사 |
-| P1-W09 | `my-app/package.json` | `search:discovery:audit` script |
+| P1-W09 | `my-app/lib/discovery/*.test.ts` | registry·metadata·sample·contract test |
+| P1-W10 | `my-app/package.json`, `package.json` | audit·contract test script |
 
 ## 4. 핵심 타입 계약
 
