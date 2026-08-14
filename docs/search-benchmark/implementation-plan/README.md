@@ -4,6 +4,7 @@
 - 최근 구현 대조일: 2026-08-14
 - 상태: implementation-ready — current implementation aligned
 - 상위 문서: [아키텍처](../architecture.md), [아티팩트 정의](../artifact-specification.md)
+- 구현 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)
 - 구현 기준 브랜치: Phase 시작 시 `git_preflight.py`로 다시 확정
 - 현재 대조 증거: [컨설팅·프리미엄 랜딩 구현 대조](../current-implementation-alignment-2026-08-14.md)
 

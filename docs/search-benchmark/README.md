@@ -5,6 +5,7 @@
 - 기준 커밋: `819c675a2d9aeec996540a6e0461fc599f37cc6f`
 - 최근 구현 대조일: 2026-08-14
 - 대조 구현: `feat/2026-08-12-premium-landing-refactor@e86e40d`
+- 현재 문서 작업: `dev/2026-08-14-consulting-landing-doc-sync`
 
 ## 문서 목적
 
@@ -12,6 +13,7 @@
 
 - [아키텍처](./architecture.md): 벤치마킹 데이터, 목표 시스템 구조, 데이터 모델, 라우트와 컴포넌트 경계
 - [아티팩트 정의](./artifact-specification.md): 단계별 필수 산출물, 스키마, 책임, 검증 기준, 완료 게이트
+- [검색 유입 페이지 구현 가이드](./search-entry-page-implementation-guide.md): P1 canary와 P2 pilot의 실제 파일·코드·카피·검증 순서
 - [Phase별 상세 구현 계획](./implementation-plan/README.md): P0~P5 독립 실행 문서, 파일·타입·API·DB·검증·롤백 계약
 - [현재 컨설팅·랜딩 구현 대조](./current-implementation-alignment-2026-08-14.md): 구현 브랜치 증거, 재사용 가능 영역, 검색 전용 미구현 gap
 
@@ -59,11 +61,11 @@
 
 ### Mode
 
-`audit -> plan`
+`audit -> plan -> copy-pass`
 
 ### User Goal
 
-경쟁 서비스의 구체적인 공개 아키텍처를 벤치마킹하고, 수집한 데이터를 HairFit에 적용할 수 있는 아키텍처 문서와 아티팩트 정의 문서를 작성한다.
+경쟁 서비스의 공개 아키텍처를 HairFit에 적용할 수 있는 문서로 만들고, 현재 컨설팅·랜딩 구현과 대조한 검색 유입 페이지의 canary 구현 계약까지 구체화한다.
 
 ### Assumptions
 
@@ -84,6 +86,7 @@
 | W-04 | inspect | 문서 교차검증 | 링크·경로·ID·범위 불일치 없음 | Markdown link·fence·ID 검사 | complete |
 | W-05 | plan | P0~P5를 독립 실행 문서로 상세화 | 각 Phase에 파일·계약·절차·검증·롤백·인계가 있음 | implementation-plan 7개 문서 | complete |
 | W-06 | inspect | 현재 컨설팅·프리미엄 랜딩 구현 대조 | implemented·partial·missing이 commit·path로 구분됨 | 2026-08-14 대조 보고서 | complete |
+| W-07 | plan | 검색 유입 페이지 구현 경로 구체화 | canary PR·pilot PR의 파일·카피·코드·검증·rollback 경계가 고정됨 | 검색 유입 페이지 구현 가이드 | complete |
 
 ### Acceptance Gates
 
@@ -96,8 +99,8 @@
 
 ### Current Status
 
-`implementation-aligned plan — landing/consulting reusable, discovery phases open`
+`implementation-ready plan — canary contract defined, discovery code still open`
 
 ### Next Action
 
-`B-00 현재 검색·퍼널 기준선 패킷을 생성한다.`
+`B-00 기준선을 생성한 뒤 PR-1의 types.ts와 D-AI-SIM fixture를 구현한다.`

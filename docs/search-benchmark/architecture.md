@@ -166,28 +166,26 @@ my-app/
           page.tsx
   components/
     discovery/
+      DiscoveryPageTemplate.tsx
       DiscoveryHero.tsx
-      DiscoveryDemoBoard.tsx
-      DiscoveryEvidence.tsx
-      DiscoveryWorkflow.tsx
-      DiscoveryTrustPanel.tsx
-      DiscoveryFaq.tsx
-      DiscoveryRelatedLinks.tsx
-      DiscoveryCta.tsx
+      SampleComparison.tsx
+      TrustSummary.tsx
+      RelatedDiscoveryPages.tsx
   lib/
     discovery/
-      page-schema.ts
-      page-registry.ts
-      page-resolver.ts
+      types.ts
+      discovery-pages.ts
       metadata.ts
       json-ld.ts
-      related-pages.ts
-      sample-assets.ts
+      sample-manifests.ts
+      evidence-registry.ts
 ```
 
 `[slug]/page.tsx`는 `generateStaticParams()`로 승인된 slug만 빌드하고 `dynamicParams = false`로 미등록 경로를 404 처리한다. Next.js 공식 문서의 정적 동적 경로 패턴을 따른다: <https://nextjs.org/docs/app/api-reference/functions/generate-static-params>.
 
 각 페이지의 `generateMetadata()`는 레지스트리에서 title, description, canonical, Open Graph, robots를 생성한다: <https://nextjs.org/docs/app/api-reference/functions/generate-metadata>.
+
+구현 단위와 코드 골격은 [검색 유입 페이지 구현 가이드](./search-entry-page-implementation-guide.md)를 정본으로 사용한다. 1차 PR은 `D-AI-SIM` canary의 정적 route·metadata·sitemap·audit과 승인된 정적 9-preview까지 포함한다. 샘플 상호작용, 나머지 3개 pilot, 로그인 왕복 attribution은 2차 PR로 분리한다.
 
 ### 5.3 콘텐츠 레지스트리 계약
 
@@ -195,25 +193,22 @@ my-app/
 type DiscoveryPageType = "core" | "audience" | "style" | "use-case";
 
 interface DiscoveryPageDefinition {
-  id: string;
+  id: DiscoveryPageId;
   slug: string;
   status: "draft" | "review" | "published" | "retired";
   pageType: DiscoveryPageType;
+  intentId: string;
+  audience: "b2c" | "b2b";
   locale: "ko-KR";
-  primaryIntent: string;
-  secondaryIntents: string[];
-  title: string;
-  description: string;
-  h1: string;
-  lead: string;
-  proofPoints: Array<{ label: string; evidenceId: string }>;
-  demoProfileIds: string[];
-  sections: DiscoverySection[];
-  faq: Array<{ question: string; answer: string }>;
-  relatedPageIds: string[];
-  primaryCta: { label: string; href: "/consulting/new" };
-  trustPolicyVersion: string;
   updatedAt: string;
+  seo: DiscoverySeo;
+  message: DiscoveryMessage;
+  sections: readonly DiscoverySection[];
+  faq: readonly DiscoveryFaq[];
+  sampleManifestId: string | null;
+  evidenceIds: readonly string[];
+  relatedPageIds: readonly DiscoveryPageId[];
+  trustPolicyVersion: string | null;
   reviewer: string;
 }
 ```

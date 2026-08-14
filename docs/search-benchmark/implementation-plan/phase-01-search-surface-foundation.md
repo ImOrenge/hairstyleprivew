@@ -12,6 +12,7 @@
 - 변경된 제품 진입점: `/consulting/new`
 - 미구현: `my-app/app/(marketing)/discover`, `my-app/lib/discovery`, `search:discovery:audit`, discovery sitemap
 - 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
+- 실행 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)의 PR-1 Foundation Canary
 
 ## 1. 목표와 비범위
 
@@ -44,7 +45,8 @@ flowchart LR
 | --- | --- | --- |
 | P1-W01 | `my-app/lib/discovery/types.ts` | page, message, FAQ, CTA, status 타입 |
 | P1-W02 | `my-app/lib/discovery/discovery-pages.ts` | 승인 registry와 lookup |
-| P1-W03 | `my-app/lib/discovery/metadata.ts` | metadata·WebPage·FAQ JSON-LD builder |
+| P1-W03 | `my-app/lib/discovery/metadata.ts` | title·description·canonical·Open Graph builder |
+| P1-W03A | `my-app/lib/discovery/json-ld.ts` | 화면 FAQ와 동일한 WebPage·FAQPage serializer |
 | P1-W04 | `my-app/app/(marketing)/discover/page.tsx` | discovery hub skeleton |
 | P1-W05 | `my-app/app/(marketing)/discover/[slug]/page.tsx` | 정적 route·404 |
 | P1-W06 | `my-app/components/discovery/DiscoveryPageTemplate.tsx` | 서버 컴포넌트 중심 skeleton |
@@ -70,6 +72,7 @@ export interface DiscoveryPageDefinition {
   id: DiscoveryPageId;
   slug: string;
   status: DiscoveryStatus;
+  pageType: "core" | "audience" | "style" | "use-case";
   intentId: string;
   audience: "b2c" | "b2b";
   locale: "ko-KR";
@@ -87,11 +90,13 @@ export interface DiscoveryPageDefinition {
     primaryCta: DiscoveryCta;
     forbiddenClaims: string[];
   };
-  sections: DiscoverySection[];
-  faq: DiscoveryFaq[];
+  sections: readonly DiscoverySection[];
+  faq: readonly DiscoveryFaq[];
   sampleManifestId: string | null;
-  evidenceIds: string[];
-  relatedPageIds: DiscoveryPageId[];
+  evidenceIds: readonly string[];
+  relatedPageIds: readonly DiscoveryPageId[];
+  trustPolicyVersion: string | null;
+  reviewer: string;
 }
 ```
 
@@ -166,7 +171,7 @@ route는 auth, cookie, request header, DB query에 의존하지 않는다. 로�
 `DiscoveryPageTemplate`는 다음 순서를 기본으로 한다.
 
 1. Hero: HairFit 정체성, audience, outcome, primary CTA, 다음 섹션 힌트
-2. sample placeholder: P2 자산이 없으면 허위 결과 대신 준비 상태
+2. sample: 승인된 canary 정적 9-preview. 자산이 없으면 페이지를 `review`로 유지하고 공개하지 않음
 3. workflow
 4. benefit/proof
 5. trust summary
@@ -196,6 +201,8 @@ npm --prefix my-app run build
 ## 8. 출시와 롤백
 
 P1은 canary를 `review` 상태로 먼저 병합할 수 있다. 외부 공개 승인 시에만 `published`로 전환한다. 문제가 생기면 registry status를 `review`로 되돌려 다음 build에서 sitemap과 정적 route에서 제거한다. 이미 색인된 URL은 단순 404로 끝내지 않고 noindex 또는 redirect 결정을 별도 기록한다.
+
+PR-1은 registry·route·metadata·sitemap·audit과 `D-AI-SIM` 공개에 필요한 좁은 C-03/C-04 canary slice를 포함한다. 승인된 sample/evidence가 없으면 `D-AI-SIM`을 `review`로 유지하며, 빈 placeholder나 미완성 샘플을 검색 페이지로 공개하지 않는다. P3 event API·DB 또는 P5 experiment 코드는 PR-1에 포함하지 않는다.
 
 ## 9. Exit Gate
 

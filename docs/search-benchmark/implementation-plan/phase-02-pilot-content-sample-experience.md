@@ -13,6 +13,7 @@
 - 실제 제품은 `ConsultationSnapshot`의 BALANCE·IMAGE·LIFESTYLE 각 3개 preview를 사용한다.
 - P2는 이 구현을 근거로 재사용할 수 있지만 C-03/C-04 승인, 4개 discovery route, 검색 전용 Browser Gate는 아직 없다.
 - 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
+- 실행 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)의 PR-2 Pilot Experience
 
 ## 1. 목표와 비범위
 

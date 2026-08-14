@@ -70,10 +70,10 @@ decision_refs: []
 | A-01 | 적용 아키텍처 | `docs/search-benchmark/architecture.md` | Architecture | P0 | 구현 경로·데이터·게이트가 연결됨 |
 | A-02 | 아티팩트 정의 | `docs/search-benchmark/artifact-specification.md` | Delivery | P0 | 모든 Phase 입력·출력·DoD 정의 |
 | A-03 | Architecture Decision Records | `docs/search-benchmark/decisions/ADR-*.md` | Architecture | 전체 | 대안·결정·영향·rollback 기록 |
-| C-01 | Discovery page registry | `my-app/lib/discovery/page-registry.ts` | Content Engineering | P1 | published page만 빌드·sitemap 포함 |
+| C-01 | Discovery page registry | `my-app/lib/discovery/discovery-pages.ts` | Content Engineering | P1 | published page만 빌드·sitemap 포함 |
 | C-02 | 페이지 message map | `docs/search-benchmark/content/message-map.yaml` | Product Marketing | P1 | 문제·약속·증거·CTA가 일관됨 |
-| C-03 | 샘플 자산 manifest | `my-app/lib/discovery/sample-assets.ts` | Design/Legal | P2 | 9개 이미지·권리·alt·승인 상태 완비 |
-| C-04 | Marketing evidence registry | `my-app/lib/discovery/marketing-evidence.ts` | Product/Legal | P2 | 모든 주장에 verified source 존재 |
+| C-03 | 샘플 자산 manifest | `my-app/lib/discovery/sample-manifests.ts` | Design/Legal | P2 | 9개 이미지·권리·alt·승인 상태 완비 |
+| C-04 | Marketing evidence registry | `my-app/lib/discovery/evidence-registry.ts` | Product/Legal | P2 | 모든 주장에 verified source 존재 |
 | C-05 | Trust policy snapshot | `my-app/lib/trust/*` | Privacy/Product | P3 | 랜딩·업로드·정책 문구 버전 일치 |
 | S-01 | Discovery hub·slug routes | `my-app/app/(marketing)/discover/*` | Web | P1 | 정적 생성, 미등록 404, canonical 통과 |
 | S-02 | metadata·JSON-LD builder | `my-app/lib/discovery/metadata.ts`, `json-ld.ts` | Web/SEO | P1 | 화면과 구조화 데이터 불일치 0건 |
@@ -179,6 +179,7 @@ services:
 - ADR-001 URL namespace
 - 기존 `home-content.ts`, `HeroSection.tsx`, `PremiumConsultingShowcases.tsx`, `sitemap.ts`, `robots.ts`
 - `/consulting/new` auth·feature flag·`ConsultationSnapshot` 진입 계약
+- [검색 유입 페이지 구현 가이드](./search-entry-page-implementation-guide.md)의 PR-1 파일·카피·검증 계약
 
 ### 필수 출력
 
@@ -188,6 +189,7 @@ services:
 - S-02 metadata·JSON-LD builder
 - S-03 sitemap·robots inventory
 - Q-01 정적 audit
+- `D-AI-SIM`을 실제 공개할 경우 C-03/C-04의 canary 승인 subset
 
 ### C-02 message map 스키마
 

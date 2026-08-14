@@ -134,6 +134,7 @@ flowchart LR
 4. P3 handoff는 consultation session과 `landing_id` 연결을 명시한다.
 5. 각 Phase에 현재 구현 재사용 상태를 표시하되 검색 산출물 완료 체크는 올리지 않는다.
 6. Browser Gate는 랜딩 feature에 대해서만 검증됨으로 기록하고 discovery route에는 계속 미검증으로 남긴다.
+7. 검색 유입 구현은 [별도 구현 가이드](./search-entry-page-implementation-guide.md)에서 P1 canary PR과 P2 pilot PR로 분리한다.
 
 ## 8. 2026-08-14 로컬 재검증
 
@@ -154,4 +155,4 @@ flowchart LR
 
 ## 9. 다음 행동
 
-`P0-B00: Search Console과 제품 퍼널의 같은 28일 기준선을 생성하고, /consulting/new 진입 이후 landing_id가 현재 저장되지 않는 공백을 missing으로 기록한다.`
+`P0-B00: Search Console과 제품 퍼널의 같은 28일 기준선을 생성하고, /consulting/new 진입 이후 landing_id가 현재 저장되지 않는 공백을 missing으로 기록한다. 그 다음 PR-1의 types.ts와 D-AI-SIM fixture를 구현한다.`
