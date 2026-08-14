@@ -1,0 +1,23 @@
+schema_version: 1
+updated_at: 2026-08-14
+entries:
+  - id: D-AI-SIM
+    slug: ai-hairstyle-simulation
+    primary_query: AI 헤어스타일 시뮬레이션
+    primary_intent: 업로드 전 9개 헤어 후보와 비교 기준 확인
+    audience: b2c
+    funnel_stage: discovery
+    conversion: /consulting/new
+    overlap: none
+  - id: D-FACE
+    slug: face-shape-hairstyle
+    primary_query: 얼굴형 헤어스타일 추천
+    status: planned
+  - id: D-MEN
+    slug: mens-hairstyle-recommendation
+    primary_query: 남자 헤어스타일 추천
+    status: planned
+  - id: D-WOMEN
+    slug: womens-hairstyle-recommendation
+    primary_query: 여자 헤어스타일 추천
+    status: planned

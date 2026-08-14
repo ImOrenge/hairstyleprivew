@@ -89,20 +89,21 @@
 | W-06 | inspect | 현재 컨설팅·프리미엄 랜딩 구현 대조 | implemented·partial·missing이 commit·path로 구분됨 | 2026-08-14 대조 보고서 | complete |
 | W-07 | plan | 검색 유입 페이지 구현 경로 구체화 | canary PR·pilot PR의 파일·카피·코드·검증·rollback 경계가 고정됨 | 검색 유입 페이지 구현 가이드 | complete |
 | W-08 | plan | 구현 작업을 실행 티켓으로 분해 | 각 티켓에 입력·파일·절차·테스트·완료 조건이 있음 | 검색 유입 페이지 구체 실행 계획 | complete |
+| W-09 | produce | D-AI-SIM canary와 검색 계약 구현 | 정적 route·audit·browser·회귀 gate 통과 | 구현 run packet·release readiness | complete |
 
 ### Acceptance Gates
 
 - Agentic Operation Gate: passed — 이 Run Packet과 완료 조건을 기록함
 - Copy Gate: defined — 메시지 맵·금지 주장·CTA 계약을 구현 게이트로 정의함
 - Design Gate: defined — Hero 정체성·가치·CTA·다음 섹션 힌트를 구현 게이트로 정의함
-- Browser Gate: partial — 프리미엄 홈 랜딩은 feature 이력에서 검증됐지만 `/discover/*`는 구현 전이므로 미검증
-- Technical Gate: defined — 정적 생성, sitemap, canonical, 구조화 데이터, 이벤트 검증 기준을 정의함
-- Fix Gate: partial — 랜딩 계약 16/16 통과, 컨설팅 묶음 73/75로 제한; 검색 route·sitemap·계측 gap도 미해결
+- Browser Gate: passed — 360/390/768/1440, axe, 404, 이미지 실패, 정적 HTML, console·overlay를 검증함
+- Technical Gate: passed for PR-1 — 정적 생성, sitemap, robots, canonical, JSON-LD, audit가 통과함
+- Fix Gate: passed — 발견된 신뢰 날짜 대비 문제를 수정했고 discovery 11/11, landing 16/16, consulting 78/78을 확인함
 
 ### Current Status
 
-`execution-ready plan — integration base confirmation-needed, discovery code still open`
+`PR-1 local implementation complete — external provenance, deploy, Search Console work remains`
 
 ### Next Action
 
-`EX-00에서 정확한 develop integration target과 D-AI-SIM sample 승인 담당자를 확정한다.`
+`외부 공개 전 synthetic sample provenance·권리 문서 보관 위치를 확정하고, 승인된 통합·배포 흐름에서 canary를 배포한다.`

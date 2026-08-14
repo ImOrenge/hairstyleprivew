@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-14T12:40:15.608Z",
+  "summary": {
+    "pages": 1,
+    "published": 1,
+    "findings": 0,
+    "blocking": 0
+  },
+  "publishedSlugs": [
+    "ai-hairstyle-simulation"
+  ],
+  "findings": []
+}

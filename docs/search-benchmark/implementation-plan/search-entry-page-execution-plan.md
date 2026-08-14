@@ -1,7 +1,7 @@
 # 검색 유입 페이지 구체 구현 실행 계획
 
 - 작성일: 2026-08-14
-- 상태: planned
+- 상태: PR-1 locally implemented
 - 구현 대상: Next.js 16 App Router 기반 `/discover` 검색 유입 표면
 - 1차 canary: `D-AI-SIM` / `/discover/ai-hairstyle-simulation`
 - 기본 CTA: `/consulting/new`
@@ -47,23 +47,21 @@ flowchart LR
 | 이미지 | `public/discovery/*`와 `next/image` |
 | 검색 계측 DB | P3 전에는 구현하지 않음 |
 
-### 2.2 구현 시작 전 confirmation-needed
+### 2.2 구현 기준 확정 결과
 
-현재 premium landing 기준 커밋 `e86e40d`는 `main`이 아니라 feature branch에 있다. 실제 코드 구현 전에 다음 중 하나가 확정돼야 한다.
+2026-08-14 preflight에서 실제 통합 대상을 `develop/2026-08-08-hairfit-v2-backend@3be4d8894dd3e1249808275afd001933417883c8`로 확정했다. 문서 기준 `cfcbbda`와 구현 브랜치 `feat/2026-08-14-search-discovery-canary`는 이 target의 후손이며, primary `main@b33c33c`의 사용자 소유 변경은 건드리지 않았다.
 
-1. premium landing 결과가 포함된 `develop/*`를 검색 구현의 통합 대상으로 지정한다.
-2. premium landing이 다른 integration branch에 반영된 후 그 commit을 사용한다.
-3. 검색 구현에서 premium landing 의존을 제거하고 `main` 기준으로 다시 설계한다.
+premium landing 참조는 `feat/2026-08-12-premium-landing-refactor@e86e40d260c7cdd7c1de01e7d6aa0aa72752f8f8`로 고정했다. canary는 랜딩 CSS나 Hero를 복제하지 않고, 공개 사용 중인 synthetic sample과 상담 CTA 계약만 참조한다.
 
-권장안은 premium landing 결과를 포함한 `develop/2026-08-14-search-discovery`를 명시적으로 만든 뒤, 아래 두 feature branch를 그 브랜치에서 시작하는 것이다.
+남은 확인은 외부 공개 전 synthetic sample의 provenance·권리 문서 보관 위치다. 이는 내부 코드·브라우저 gate와 분리된 release gate다. merge, push, deploy는 이번 local prepare 범위에 포함하지 않는다.
 
-```text
-develop/2026-08-14-search-discovery
-  ├─ feat/2026-08-14-search-discovery-canary
-  └─ feat/2026-08-14-search-discovery-pilot
-```
+### 2.3 PR-1 구현 결과
 
-이 브랜치 구조는 구현 시작 시 `git_preflight.py`로 실제 ref·SHA·ancestry를 다시 확인한다. 이 문서 작성은 브랜치 생성, merge, push, 배포를 수행하지 않는다.
+- `/discover`와 `/discover/ai-hairstyle-simulation`을 정적 생성하고 미등록 slug를 404로 고정했다.
+- 레지스트리, sample manifest, evidence registry, metadata, JSON-LD, sitemap, robots가 같은 published selector를 사용한다.
+- 3전략·9-preview와 `/consulting/new` CTA를 구현했다. attribution 저장은 계획대로 PR-2 이후 범위다.
+- discovery contract 12/12, audit finding 0, browser 11/11, landing 16/16, consulting 78/78을 통과했다.
+- 응답 HTML에는 H1·비교·FAQ·CTA가 포함된다. 전역 Clerk 스트리밍 셸은 JavaScript 비활성 브라우저에서 로딩 UI를 시각적으로 교체하지 못하므로 별도 shell architecture 후속으로 남긴다.
 
 ## 3. PR과 의존성
 

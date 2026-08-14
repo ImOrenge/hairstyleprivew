@@ -2,7 +2,7 @@
 
 - 기준일: 2026-07-15
 - 최근 구현 대조일: 2026-08-14
-- 상태: implementation-ready — current implementation aligned
+- 상태: implementation-in-progress — PR-1 canary local verification complete
 - 상위 문서: [아키텍처](../architecture.md), [아티팩트 정의](../artifact-specification.md)
 - 구현 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)
 - 구체 실행 티켓: [검색 유입 페이지 구현 실행 계획](./search-entry-page-execution-plan.md)
@@ -24,8 +24,8 @@
 | Phase | 문서 | 현재 판정 | 핵심 결과 | 선행 Gate |
 | --- | --- | --- | --- | --- |
 | P0 | [Evidence Baseline](./phase-00-evidence-baseline.md) | planned | 기준선·경쟁 snapshot·intent map | 데이터 접근 범위 확인 |
-| P1 | [Search Surface Foundation](./phase-01-search-surface-foundation.md) | planned | registry·정적 route·SEO audit | P0 complete |
-| P2 | [Pilot Content & Sample Experience](./phase-02-pilot-content-sample-experience.md) | partial-reuse-ready | 4개 랜딩·9-preview 샘플·내부 링크 | P1 complete, 자산 승인 |
+| P1 | [Search Surface Foundation](./phase-01-search-surface-foundation.md) | verification-local | registry·정적 route·SEO audit | integration·deploy·live index |
+| P2 | [Pilot Content & Sample Experience](./phase-02-pilot-content-sample-experience.md) | verification-canary | D-AI-SIM·9-preview 완료, 3개 pilot 남음 | 외부 provenance·PR-2 |
 | P3 | [Trust & Funnel Measurement](./phase-03-trust-funnel-measurement.md) | partial-reuse-ready | trust SSoT·이벤트 API·집계 | 개인정보·보존 승인 |
 | P4 | [Content Expansion & Operations](./phase-04-content-expansion-operations.md) | partial-reuse-ready | 7개 랜딩·운영 runbook | P2/P3 지표 확인 |
 | P5 | [Experiment & Optimization](./phase-05-experiment-optimization.md) | planned | 실험 할당·판정·주기 운영 | 최소 표본·계측 안정성 |

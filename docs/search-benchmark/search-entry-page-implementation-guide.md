@@ -1,7 +1,7 @@
 # 검색 유입 페이지 구현 가이드
 
 - 작성일: 2026-08-14
-- 구현 상태: planned — 아래 경로와 컴포넌트는 아직 생성되지 않음
+- 구현 상태: PR-1 locally complete — D-AI-SIM 구현·검증 완료, PR-2·외부 공개 작업 미완료
 - 구현 기준: `feat/2026-08-12-premium-landing-refactor@e86e40d`
 - 선행 문서: [아키텍처](./architecture.md), [P1 상세 계획](./implementation-plan/phase-01-search-surface-foundation.md), [P2 상세 계획](./implementation-plan/phase-02-pilot-content-sample-experience.md)
 - 실행 티켓: [검색 유입 페이지 구체 구현 실행 계획](./implementation-plan/search-entry-page-execution-plan.md)
@@ -18,7 +18,7 @@
 | PR-1 Foundation Canary | registry, hub, slug route, metadata, JSON-LD, sitemap, audit, 승인된 canary sample/evidence, 정적 9-preview | `D-AI-SIM` 1개 | 유용한 정적 page·404·canonical·published-only sitemap |
 | PR-2 Pilot Experience | sample 상호작용, trust, related links, CTA source handoff | `D-FACE`, `D-MEN`, `D-WOMEN` 추가 | Browser·Performance Gate와 auth/session handoff |
 
-PR-1은 P1 기반과 P2의 canary sample/evidence만 묶는 좁은 수직 slice다. 비어 있는 SEO skeleton을 공개하지 않기 위해 `D-AI-SIM`에 필요한 C-03/C-04 승인 레코드만 먼저 만든다. P3 이벤트 API·DB와 P5 실험 할당은 위 두 PR에 섞지 않는다. 검색 페이지가 정적으로 안정된 뒤 별도 Phase에서 연결한다.
+PR-1은 P1 기반과 P2의 canary sample/evidence만 묶는 좁은 수직 slice로 로컬 구현됐다. `D-AI-SIM`의 C-03/C-04 레코드, 정적 route, SEO·browser gate를 완료했으며 P3 이벤트 API·DB와 P5 실험 할당은 섞지 않았다. PR-2와 외부 provenance·integration·deploy는 후속이다.
 
 ## 2. 요청 흐름
 

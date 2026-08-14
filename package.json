@@ -14,6 +14,8 @@
     "cf:preview": "npm --prefix my-app run cf:preview",
     "lint": "npm --prefix my-app run lint",
     "lint:all": "npm --workspaces --if-present run lint",
+    "search:discovery:contract:test": "npm --prefix my-app run search:discovery:contract:test",
+    "search:discovery:audit": "npm --prefix my-app run search:discovery:audit",
     "hairstyle:catalog:audit": "npm --prefix my-app run hairstyle:catalog:audit",
     "hairstyle:catalog:lineup:audit": "npm --prefix my-app run hairstyle:catalog:lineup:audit",
     "hairstyle:catalog:env:check": "npm --prefix my-app run hairstyle:catalog:env:check --",

@@ -126,11 +126,15 @@ test("customer entry CTAs point directly to the AI consultant while legacy remai
   const landing = read("../../app/page.tsx");
   const hero = read("../../components/home/HeroSection.tsx");
   const pricing = read("../../components/home/PricingPreview.tsx");
+  const showcases = read("../../components/home/PremiumConsultingShowcases.tsx");
+  const mobileCta = read("../../components/home/MobileStickyCtaBar.tsx");
   const customerHome = read("../../app/home/page.tsx");
-  for (const source of [landing, hero, pricing, customerHome]) {
+  for (const source of [hero, pricing, showcases, mobileCta, customerHome]) {
     assert.match(source, /\/consulting\/new/);
   }
-  assert.match(landing, /AI 헤어 컨설턴트 시작/);
+  assert.match(landing, /HeroSection/);
+  assert.match(landing, /PremiumConsultingShowcases/);
+  assert.match(`${hero}\n${showcases}`, /프라이빗[^\n]*컨설팅/);
   assert.match(customerHome, /AI 헤어 컨설턴트/);
   const photo = read("../../components/consulting/workbenches/PhotoWorkbench.tsx");
   assert.match(photo, /AI 상담 분석이 자동으로 이어집니다/);

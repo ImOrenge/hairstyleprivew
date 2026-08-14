@@ -116,8 +116,8 @@ flowchart LR
 | Phase | 기존 상태 | 대조 후 상태 | 구현된 선행 기반 | 남은 검색 전용 Exit Gate |
 | --- | --- | --- | --- | --- |
 | P0 Evidence | planned | planned | 랜딩·컨설팅 source inventory 확보 | Search Console·query·funnel 기준선 |
-| P1 Foundation | planned | planned | home metadata·JSON-LD·site URL helper | discovery registry·route·sitemap·audit |
-| P2 Pilot | planned | partial-reuse-ready | premium showcase, 9-preview contract, mobile/motion tests | 4개 intent page·sample manifest·discovery browser/perf |
+| P1 Foundation | planned | PR-1 complete locally | home metadata·JSON-LD·site URL helper | integration·deploy·live index 확인 |
+| P2 Pilot | planned | D-AI-SIM complete, expansion pending | premium showcase, 9-preview contract, mobile/motion tests | D-FACE·D-MEN·D-WOMEN과 상호작용 확장 |
 | P3 Trust & Funnel | planned | partial-reuse-ready | snapshot, evidence, privacy/share, feature-flag rollback | landing source handoff·event API·aggregate·retention |
 | P4 Expansion | planned | partial-reuse-ready | salon brief·aftercare·fashion·B2B bridge | D-BANGS/D-BOB/D-SALON·candidate ops·link graph |
 | P5 Optimization | planned | planned | landing contract tests | assignment·exposure·scorecard·decision loop |
@@ -132,8 +132,8 @@ flowchart LR
 2. legacy `/workspace`는 feature-flag rollback 경로로만 남긴다.
 3. P2의 홈 3×3 primitive 추출 작업을 프리미엄 showcase·9-preview evidence adapter 작업으로 교체한다.
 4. P3 handoff는 consultation session과 `landing_id` 연결을 명시한다.
-5. 각 Phase에 현재 구현 재사용 상태를 표시하되 검색 산출물 완료 체크는 올리지 않는다.
-6. Browser Gate는 랜딩 feature에 대해서만 검증됨으로 기록하고 discovery route에는 계속 미검증으로 남긴다.
+5. 각 Phase에 현재 구현 재사용 상태와 PR-1 canary 완료 상태를 분리해 표시한다.
+6. Browser Gate는 랜딩과 D-AI-SIM 각각의 증거로 기록한다.
 7. 검색 유입 구현은 [별도 구현 가이드](./search-entry-page-implementation-guide.md)에서 P1 canary PR과 P2 pilot PR로 분리한다.
 
 ## 8. 2026-08-14 로컬 재검증
@@ -144,15 +144,14 @@ flowchart LR
 | `landing-hero:contract:test` | 1/1 pass | 4열×8행, 16명 pair 유지 |
 | `landing-motion:contract:test` | 3/3 pass | bounded reveal·reduced-motion 유지 |
 | `landing-flat-surface:contract:test` | 5/5 pass | editorial surface·proof order 유지 |
-| `consulting:contract:test` | 73/75 pass | 전체 gate 통과로 판정하지 않음 |
+| `consulting:contract:test` | 78/78 pass | 위임된 랜딩 CTA owner component까지 검사하도록 stale contract 갱신 |
+| `search:discovery:contract:test` | 12/12 pass | registry·sample·metadata·JSON-LD·sitemap 계약 통과 |
+| `search:discovery:audit` | finding 0 | published canary blocking 0 |
+| `search-discovery.spec.ts` | 11/11 pass | viewport·axe·404·static HTML·image failure·performance 통과 |
+| `build` | pass | `/discover` static, D-AI-SIM SSG |
 
-컨설팅 실패 2건:
-
-1. `consultation-contract.test.ts`가 `app/page.tsx` 한 파일에서 `/consulting/new` 문자열을 찾는다. 현재 CTA는 `HeroSection.tsx`와 `PremiumConsultingShowcases.tsx`에 위임되어 실제 링크·premium contract는 통과하지만, 이 테스트는 새 composition 경계를 반영하지 못했다.
-2. `verify-hairfit-v2-supabase-post-apply.test.mjs`가 격리 worktree에서 `@supabase/supabase-js`를 resolve하지 못했다. 의존성 설치·workspace resolution을 확인하기 전 remote Supabase 검증 통과로 표시하지 않는다.
-
-두 finding은 검색 문서 갱신 범위를 넘어서는 코드·환경 이슈다. 후속 구현에서는 테스트가 owner component를 검사하도록 바꾸고, repository-owned dependency 설치 후 consulting gate를 재실행해야 한다.
+검색 구현 중 발견된 실제 UI finding은 신뢰 날짜 텍스트의 3.14:1 대비 한 건이었다. 색상 토큰을 수정한 뒤 axe serious·critical 0으로 재검증했다. 전역 Clerk streaming shell은 JavaScript 비활성 브라우저에서 loading shell을 시각적으로 교체하지 못하지만, 정적 HTML 응답에는 H1·비교·FAQ·CTA가 포함된다. 이를 검색 HTML 계약과 별도 shell architecture 후속으로 분리했다.
 
 ## 9. 다음 행동
 
-`P0-B00: Search Console과 제품 퍼널의 같은 28일 기준선을 생성하고, /consulting/new 진입 이후 landing_id가 현재 저장되지 않는 공백을 missing으로 기록한다. 그 다음 PR-1의 types.ts와 D-AI-SIM fixture를 구현한다.`
+`외부 provenance 문서 위치와 integration·deploy 승인을 확정한다. 배포 후 Search Console 28일 기준선과 field Core Web Vitals를 수집하고, PR-2에서 landing_id attribution을 구현한다.`

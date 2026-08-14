@@ -11,6 +11,8 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "search:discovery:contract:test": "node --no-warnings --test lib/discovery/discovery-pages.test.ts lib/discovery/sample-manifests.test.ts lib/discovery/metadata.test.ts lib/discovery/discovery-contract.test.ts",
+    "search:discovery:audit": "node --no-warnings scripts/audit-search-discovery.mjs",
     "supabase:migrations:mirror:check": "node --no-warnings scripts/check-supabase-migration-mirror.mjs",
     "supabase:migrations:fresh:check": "node --no-warnings scripts/verify-supabase-fresh-chain.mjs",
     "hairstyle:blueprints:build": "node scripts/build-hairstyle-blueprint-manifest.mjs",

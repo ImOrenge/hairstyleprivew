@@ -1,6 +1,6 @@
 # P2. Pilot Content & Sample Experience 상세 구현 계획
 
-- 상태: partial-reuse-ready — 홈 evidence·9-preview 제품 계약 구현, discovery 4페이지 미구현
+- 상태: verification-canary — D-AI-SIM 1페이지·3전략·9-preview local gate 통과, 나머지 3페이지 미구현
 - 선행조건: P1 Exit Gate, 샘플 자산 사용 권리 승인
 - 대상: D-AI-SIM, D-FACE, D-MEN, D-WOMEN
 - 출력: C-03, C-04, S-04, Q-02, Q-03, Q-04
@@ -11,7 +11,7 @@
 - `HeroSection.tsx`는 3×3 Hero가 아니라 16명 hair/fashion rolling media를 제공한다.
 - `PremiumConsultingShowcases.tsx`는 Analysis Evidence, Strategy, 9 Preview, Compare, Brief, Aftercare, Fashion의 공개 sample을 제공한다.
 - 실제 제품은 `ConsultationSnapshot`의 BALANCE·IMAGE·LIFESTYLE 각 3개 preview를 사용한다.
-- P2는 이 구현을 근거로 재사용할 수 있지만 C-03/C-04 승인, 4개 discovery route, 검색 전용 Browser Gate는 아직 없다.
+- D-AI-SIM은 C-03/C-04 registry, 정적 route, 검색 전용 Browser Gate를 구현했다. D-FACE·D-MEN·D-WOMEN과 외부 provenance archive는 아직 없다.
 - 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
 - 실행 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)의 PR-2 Pilot Experience
 - 실행 티켓: [EX-10~EX-12](./search-entry-page-execution-plan.md)

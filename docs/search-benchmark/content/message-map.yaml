@@ -1,0 +1,20 @@
+schema_version: 1
+updated_at: 2026-08-14
+pages:
+  D-AI-SIM:
+    title: AI 헤어스타일 시뮬레이션, 9가지 후보 비교 | HairFit
+    h1: AI 헤어스타일 시뮬레이션, 한 장에서 9가지 후보 비교
+    support: 세 가지 스타일 방향을 같은 기준에서 비교하고, 마음에 드는 후보를 골라 미용실 상담 자료까지 이어갑니다.
+    primary_cta: 프라이빗 AI 컨설팅 시작
+    primary_cta_href: /consulting/new
+    proof:
+      - BALANCE, IMAGE, LIFESTYLE 세 전략
+      - 아홉 개의 정적 preview 예시
+      - 최대 세 개 shortlist
+      - 최소 두 개 후보 비교
+      - Salon Brief 연결
+    forbidden_claims:
+      - 실제 시술과 동일
+      - 100% 어울림
+      - 실패 없음
+      - 정확도 보장

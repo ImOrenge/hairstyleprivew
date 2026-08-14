@@ -1,6 +1,6 @@
 # P1. Search Surface Foundation 상세 구현 계획
 
-- 상태: planned — discovery route·registry 미구현
+- 상태: verification — PR-1 local route·registry·SEO·browser gate 통과, integration·deploy·live index 미수행
 - 선행조건: P0 Exit Gate, ADR-001 accepted
 - 입력: B-02 intent map, 현재 home content·sitemap·robots
 - 출력: C-01, C-02, S-01, S-02, S-03, Q-01
@@ -10,7 +10,8 @@
 
 - 재사용 가능: `getSiteUrl`, 홈 metadata·JSON-LD, `LandingScene`, `RevealOnScroll`, premium landing token·motion 계약
 - 변경된 제품 진입점: `/consulting/new`
-- 미구현: `my-app/app/(marketing)/discover`, `my-app/lib/discovery`, `search:discovery:audit`, discovery sitemap
+- 구현됨: `my-app/app/(marketing)/discover`, `my-app/lib/discovery`, `search:discovery:audit`, discovery sitemap·robots
+- 외부 미완료: provenance 보관 위치, integration·deploy, Search Console index 확인
 - 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
 - 실행 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)의 PR-1 Foundation Canary
 - 실행 티켓: [EX-00~EX-09](./search-entry-page-execution-plan.md)
