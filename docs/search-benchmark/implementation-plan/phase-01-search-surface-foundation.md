@@ -1,10 +1,17 @@
 # P1. Search Surface Foundation 상세 구현 계획
 
-- 상태: planned
+- 상태: planned — discovery route·registry 미구현
 - 선행조건: P0 Exit Gate, ADR-001 accepted
 - 입력: B-02 intent map, 현재 home content·sitemap·robots
 - 출력: C-01, C-02, S-01, S-02, S-03, Q-01
 - 다음 Phase: [P2 Pilot Content & Sample Experience](./phase-02-pilot-content-sample-experience.md)
+
+## 현재 구현 대조
+
+- 재사용 가능: `getSiteUrl`, 홈 metadata·JSON-LD, `LandingScene`, `RevealOnScroll`, premium landing token·motion 계약
+- 변경된 제품 진입점: `/consulting/new`
+- 미구현: `my-app/app/(marketing)/discover`, `my-app/lib/discovery`, `search:discovery:audit`, discovery sitemap
+- 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
 
 ## 1. 목표와 비범위
 
@@ -122,7 +129,7 @@ export default async function DiscoveryDetailPage({ params }: PageProps) {
 }
 ```
 
-route는 auth, cookie, request header, DB query에 의존하지 않는다. 로그인 여부에 따른 redirect도 하지 않는다. CTA가 기존 `/workspace`로 이동하는 지점에서만 제품 플로우와 연결한다.
+route는 auth, cookie, request header, DB query에 의존하지 않는다. 로그인 여부에 따른 redirect도 하지 않는다. CTA가 `/consulting/new`로 이동한 뒤에만 auth·feature flag·consultation session 계약을 실행한다.
 
 ### P1-W03. metadata와 구조화 데이터
 
@@ -167,7 +174,7 @@ route는 auth, cookie, request header, DB query에 의존하지 않는다. 로�
 7. FAQ
 8. final CTA
 
-클라이언트 컴포넌트는 상호작용이 필요한 island로 제한한다. 색상·spacing·button은 기존 홈 token을 재사용하고 P1에서 새 시각 시스템을 만들지 않는다.
+클라이언트 컴포넌트는 상호작용이 필요한 island로 제한한다. 색상·spacing·button과 bounded reveal은 기존 홈의 `LandingScene`·`RevealOnScroll`·`landing.css` 계약을 재사용하고 P1에서 새 시각 시스템을 만들지 않는다.
 
 ## 7. 테스트와 명령
 
@@ -184,7 +191,7 @@ npm --prefix my-app run build
 - `/discover/not-registered`는 404
 - view-source에 H1 본문·canonical·JSON-LD가 존재
 - draft로 바꾸면 params·hub·sitemap에서 동시에 사라짐
-- 기존 home, upload, workspace route의 build 결과가 유지됨
+- 기존 home, `/consulting/new`, 11개 consultation stage와 legacy `/workspace` rollback의 build 결과가 유지됨
 
 ## 8. 출시와 롤백
 
@@ -198,5 +205,5 @@ P1은 canary를 `review` 상태로 먼저 병합할 수 있다. 외부 공개 �
 - [ ] view-source에 핵심 본문·canonical·JSON-LD가 있음
 - [ ] sitemap은 published만 포함하고 실제 `updatedAt`을 사용함
 - [ ] Q-01이 fixture 실패를 검출하고 정상 registry에서 통과함
-- [ ] home·upload·workspace 회귀가 없음
+- [ ] home·`/consulting/new`·consultation stages·legacy `/workspace` rollback 회귀가 없음
 - [ ] P2 입력용 sample/evidence placeholder ID가 확정됨

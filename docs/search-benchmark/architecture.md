@@ -1,7 +1,8 @@
 # HairFit 검색·전환 벤치마킹 적용 아키텍처
 
 - 작성일: 2026-07-15
-- 상태: Proposed
+- 최근 구현 대조일: 2026-08-14
+- 상태: Proposed — current implementation aligned
 - 적용 대상: `my-app` 공개 웹 표면과 기존 HairFit 생성 퍼널
 
 ## 1. 결정 요약
@@ -10,7 +11,7 @@ HairFit은 경쟁사의 스타일 개수 경쟁을 복제하지 않는다. 공�
 
 1. 검색 의도와 일치하는 독립 랜딩을 정적으로 제공한다.
 2. 첫 화면에서 실제 제품 형태와 같은 샘플 체험을 제공한다.
-3. 샘플 체험 뒤 기존 `/workspace` 생성 계약으로 연결한다.
+3. 샘플 체험 뒤 `/consulting/new`로 연결하고, feature flag OFF에서만 legacy `/workspace`로 rollback한다.
 4. 얼굴형·성별·스타일·살롱 사용 목적을 내부 링크 그래프로 연결한다.
 5. 사진 처리, 무료 범위, AI 결과 한계, 후기 근거를 전환 전에 공개한다.
 6. 검색 유입과 제품 퍼널을 같은 `landing_id`·`intent_id`로 계측한다.
@@ -47,7 +48,7 @@ HairFit은 경쟁사의 스타일 개수 경쟁을 복제하지 않는다. 공�
 | --- | ---: | ---: | ---: | ---: | --- |
 | 검색 의도와 일치하는 전용 URL·H1 | 2 | 2 | 1 | 2 | 홈은 강하지만 의도별 URL이 부족 |
 | 첫 화면 체험 시작점 | 2 | 1 | 2 | 1 | 샘플은 강하나 실제 시작은 별도 이동 |
-| 업로드 없이 보는 결과 예시 | 2 | 1 | 2 | 2 | 3×3 보드가 강점 |
+| 업로드 없이 보는 결과 예시 | 2 | 1 | 2 | 2 | 9개 전략 preview와 비교 evidence가 강점 |
 | 무료 범위의 즉시 설명 | 2 | 2 | 2 | 1 | 가격 섹션까지 내려가야 구체 범위를 이해 |
 | 남성·여성 세분화 | 2 | 2 | 2 | 2 | 데모 탭과 카탈로그 타깃 보유 |
 | 얼굴형 기반 추천 설명 | 2 | 2 | 2 | 2 | HairFit 핵심 기능과 일치 |
@@ -84,13 +85,18 @@ HairFit은 경쟁사의 스타일 개수 경쟁을 복제하지 않는다. 공�
 
 ### 3.2 HairFit의 현재 구조
 
+이 절의 HairFit 기준은 [2026-08-14 구현 대조 보고서](./current-implementation-alignment-2026-08-14.md)의 feature branch다. 운영 `main` 통합·배포 완료를 뜻하지 않는다.
+
 | 현재 자산 | 실제 위치 | 재사용 판단 |
 | --- | --- | --- |
 | 홈 메시지·FAQ·추천 기준 | `my-app/lib/home-content.ts` | 검색 랜딩 레지스트리의 초기 메시지 근거로 재사용 |
-| 3×3 남성·여성 데모 | `my-app/components/home/HeroSection.tsx` | 공용 `DiscoveryDemoBoard`로 추출 후보 |
+| 16명 hair/fashion rolling Hero | `my-app/components/home/HeroSection.tsx` | 검색 Hero를 복제하지 않고 승인 sample 후보·제품 정체성 근거로 사용 |
+| 컨설팅 evidence showcase | `my-app/components/home/PremiumConsultingShowcases.tsx` | Analysis·Direction·9 Preview·Compare·Brief·Aftercare·Fashion 증거를 intent별로 재구성 |
 | 홈 JSON-LD·metadata | `my-app/app/page.tsx` | 페이지별 metadata·JSON-LD 빌더로 분리 후보 |
-| 업로드·검증 | `my-app/app/upload/page.tsx`, `my-app/components/upload/*` | 공개 랜딩 안에 직접 복제하지 않고 기존 플로우로 연결 |
-| 생성 진입 | `/workspace`, `/upload`, `/generate` | 제품 런타임 SSoT 유지 |
+| 컨설팅 진입 | `my-app/app/consulting/new/page.tsx` | auth·feature flag를 보존한 단일 B2C CTA |
+| 11 Scene runtime | `my-app/components/consulting/*`, `my-app/app/consulting/[sessionId]/[stage]` | 공개 랜딩 안에 복제하지 않고 제품 플로우로 연결 |
+| 컨설팅 정본 | `packages/shared/src/consulting/contract.ts`, `my-app/lib/consulting/server-store.ts` | 서버 `ConsultationSnapshot`과 9 preview·선택·brief 계약 재사용 |
+| legacy rollback | `/workspace` | `NEXT_PUBLIC_CONSULTATION_FRONTEND_V2` OFF에서만 사용 |
 | 활성 헤어 카탈로그 | `my-app/lib/hairstyle-catalog.ts` | 검색 콘텐츠 후보와 공개 샘플 선정 신호로만 사용 |
 | 카탈로그 cycle·lineup | `hairstyle_catalog_*` 테이블과 RPC | 자동 게시 소스가 아닌 제안·감사 근거 |
 | 플랜 표시 SSoT | `my-app/lib/plan-benefit-display.ts` | 무료 범위·가격 표시에 그대로 사용 |
@@ -102,16 +108,18 @@ HairFit은 경쟁사의 스타일 개수 경쟁을 복제하지 않는다. 공�
 ```mermaid
 flowchart LR
   Search["Google, Naver, 외부 링크"] --> Discovery["정적 Discovery 페이지"]
-  Discovery --> Demo["검수된 3x3 샘플 체험"]
+  Discovery --> Demo["검수된 9-preview 샘플·evidence"]
   Discovery --> Trust["사진 처리, 무료 범위, AI 한계"]
   Discovery --> Related["얼굴형, 성별, 스타일, 살롱 내부 링크"]
   Demo --> CTA["시작 CTA + landing_id"]
   Trust --> CTA
-  CTA --> Workspace["기존 /workspace 또는 /upload"]
-  Workspace --> Generation["기존 추천·생성 파이프라인"]
-  Generation --> Result["결과 선택"]
-  Result --> Fashion["패션 코디"]
-  Result --> Salon["상담 이미지"]
+  CTA --> Entry["/consulting/new + source context"]
+  Entry --> Snapshot["서버 ConsultationSnapshot"]
+  Snapshot --> Analysis["Evidence·Strategy"]
+  Analysis --> Generation["9 Preview"]
+  Generation --> Result["Shortlist·Compare·Decision"]
+  Result --> Fashion["Fashion batch"]
+  Result --> Salon["Salon Brief·Aftercare"]
 
   Registry["검수된 Discovery Registry"] --> Discovery
   Catalog["활성 헤어 카탈로그"] --> Suggestion["콘텐츠 후보 추출"]
@@ -119,7 +127,8 @@ flowchart LR
   Review --> Registry
 
   Discovery --> Events["익명 제품 이벤트"]
-  Workspace --> Events
+  Entry --> Events
+  Snapshot --> Events
   Generation --> Events
   SearchConsole["Search Console export"] --> Benchmark["벤치마크 스냅샷"]
   Events --> Benchmark
@@ -202,7 +211,7 @@ interface DiscoveryPageDefinition {
   sections: DiscoverySection[];
   faq: Array<{ question: string; answer: string }>;
   relatedPageIds: string[];
-  primaryCta: { label: string; href: "/workspace" | "/upload" };
+  primaryCta: { label: string; href: "/consulting/new" };
   trustPolicyVersion: string;
   updatedAt: string;
   reviewer: string;
@@ -223,12 +232,12 @@ interface DiscoveryPageDefinition {
 | 영역 | 전략 | 이유 |
 | --- | --- | --- |
 | 본문·metadata·내부 링크 | 빌드 시 정적 생성 | 검색 크롤러 안정성, 빠른 LCP, DB 장애 격리 |
-| 3×3 샘플 전환 | 작은 Client Component | 성별·샘플 탭 상호작용만 필요 |
+| 9-preview 샘플 전환 | 작은 Client Component | strategy·sample 탭 상호작용만 필요 |
 | 가격 요약 | 서버 계산 snapshot | 클라이언트 env 노출 없이 현재 정책 SSoT 사용 |
 | 동적 사용자 수 | discovery 페이지에서는 기본 제외 | 정적 캐시와 검증 가능한 증거 우선 |
-| 실제 사용자 생성 | 기존 `/workspace` 이후 | 공개 페이지와 민감 이미지 런타임 분리 |
+| 실제 사용자 상담·생성 | `/consulting/new` 이후 | 공개 페이지와 민감 이미지 런타임 분리 |
 
-홈은 현재 `force-dynamic`이고 로그인 사용자를 계정 홈으로 redirect한다. 신규 discovery 페이지는 로그인 여부와 무관하게 동일한 공개 콘텐츠를 제공하고, CTA 이후에만 계정 상태를 처리한다.
+홈은 로그인 사용자를 계정 홈으로 redirect하고 동적 FAQ·가격 표시를 조합한다. 신규 discovery 페이지는 로그인 여부와 무관하게 동일한 공개 콘텐츠를 제공하고, `/consulting/new` 진입 이후에만 auth·feature flag·세션 상태를 처리한다.
 
 ## 6. 샘플 체험 아키텍처
 
@@ -237,7 +246,7 @@ interface DiscoveryPageDefinition {
 - 경쟁사의 Hero 업로드 패턴을 그대로 복제하지 않는다.
 - 첫 단계는 `검수된 샘플 전환`으로 구현해 속도와 개인정보 위험을 줄인다.
 - 실제 사진 선택은 기존 업로드 검증·WebP 변환·Zustand 저장 계약을 사용한다.
-- 샘플 보드는 실제 제품의 3×3 결과 형태와 일치해야 한다.
+- 샘플 보드는 실제 제품의 BALANCE·IMAGE·LIFESTYLE 각 3개, 총 9개 결과 구조와 일치해야 한다.
 
 ### 6.2 샘플 자산 계약
 
@@ -276,7 +285,7 @@ sample_id=sample-male-01
 cta_id=hero-primary
 ```
 
-민감 정보나 검색 원문 전체는 전달하지 않는다. 허용된 ID만 사용하며 `/workspace`에서 소스 정보를 읽어 첫 퍼널 이벤트와 연결한다.
+민감 정보나 검색 원문 전체는 전달하지 않는다. 허용된 ID만 사용하며 `/consulting/new`의 로그인·세션 생성 경계에서 resume context를 소비해 `ConsultationSnapshot` 또는 별도 attribution record와 연결한다. legacy `/workspace` fallback에서도 source ID를 유실하지 않는 회귀 검사를 둔다.
 
 ## 7. 카탈로그와 검색 콘텐츠의 경계
 
@@ -385,15 +394,17 @@ Discovery의 `proofPoints[].evidenceId`가 `verified`가 아니면 빌드 감사
 
 ```ts
 type DiscoveryEventName =
-  | "landing_view"
+  | "landing_viewed"
   | "sample_tab_selected"
-  | "sample_result_viewed"
+  | "sample_viewed"
   | "trust_detail_opened"
   | "related_page_clicked"
   | "cta_clicked"
-  | "upload_started"
-  | "upload_validated"
-  | "recommendation_board_viewed"
+  | "consultation_started"
+  | "photo_started"
+  | "photo_validated"
+  | "preview_board_viewed"
+  | "shortlist_updated"
   | "style_selected"
   | "fashion_started"
   | "signup_completed"
@@ -459,8 +470,9 @@ date + landing_id + page + query_cluster + device + country
 핵심 퍼널:
 
 ```text
-impression -> organic_click -> landing_view -> cta_clicked
--> upload_started -> recommendation_board_viewed -> style_selected
+impression -> organic_click -> landing_viewed -> cta_clicked
+-> consultation_started -> photo_started -> preview_board_viewed
+-> shortlist_updated -> style_selected
 -> fashion_started | purchase_completed
 ```
 
@@ -498,6 +510,8 @@ impression -> organic_click -> landing_view -> cta_clicked
 
 ## 12. 단계별 적용 순서
 
+현재 구현 재판정은 [2026-08-14 구현 대조 보고서](./current-implementation-alignment-2026-08-14.md)를 따른다. P2~P4의 `partial-reuse-ready`는 랜딩·컨설팅 기반을 재사용할 수 있다는 뜻이며 검색 Phase 완료를 뜻하지 않는다.
+
 | Phase | 범위 | 선행조건 | 완료 기준 |
 | --- | --- | --- | --- |
 | [P0 Evidence](./implementation-plan/phase-00-evidence-baseline.md) | 기준선, 경쟁 snapshot, 이벤트 taxonomy | Search Console 접근 확인 | 기준선 날짜·출처·누락값 기록 |
@@ -514,7 +528,7 @@ impression -> organic_click -> landing_view -> cta_clicked
 | 페이지 | `my-app/app/(marketing)/discover/*` | 정적 검색 진입점 |
 | 콘텐츠 | `my-app/lib/discovery/*` | 승인된 페이지 SSoT |
 | UI | `my-app/components/discovery/*` | 재사용 가능한 Hero·데모·신뢰·FAQ |
-| 홈 | `my-app/app/page.tsx`, `components/home/HeroSection.tsx` | 공용 데모 추출, discovery 허브 연결 |
+| 홈 | `my-app/app/page.tsx`, `components/home/HeroSection.tsx`, `PremiumConsultingShowcases.tsx` | approved evidence adapter, discovery 허브 연결 |
 | sitemap | `my-app/app/sitemap.ts` | published registry와 정확한 lastModified |
 | robots | `my-app/app/robots.ts` | 공개 discovery 허용, draft 차단 |
 | 분석 계약 | `packages/shared/src/analytics/*` | 웹·모바일 공유 가능한 이벤트 타입 |

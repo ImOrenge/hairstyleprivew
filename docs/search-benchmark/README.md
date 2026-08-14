@@ -3,6 +3,8 @@
 - 작성일: 2026-07-15
 - 기준 브랜치: `dev/2026-07-15-search-benchmark-docs`
 - 기준 커밋: `819c675a2d9aeec996540a6e0461fc599f37cc6f`
+- 최근 구현 대조일: 2026-08-14
+- 대조 구현: `feat/2026-08-12-premium-landing-refactor@e86e40d`
 
 ## 문서 목적
 
@@ -11,6 +13,17 @@
 - [아키텍처](./architecture.md): 벤치마킹 데이터, 목표 시스템 구조, 데이터 모델, 라우트와 컴포넌트 경계
 - [아티팩트 정의](./artifact-specification.md): 단계별 필수 산출물, 스키마, 책임, 검증 기준, 완료 게이트
 - [Phase별 상세 구현 계획](./implementation-plan/README.md): P0~P5 독립 실행 문서, 파일·타입·API·DB·검증·롤백 계약
+- [현재 컨설팅·랜딩 구현 대조](./current-implementation-alignment-2026-08-14.md): 구현 브랜치 증거, 재사용 가능 영역, 검색 전용 미구현 gap
+
+### 현재 구현 요약
+
+| 영역 | 현재 구현 | 검색 벤치마킹 판정 |
+| --- | --- | --- |
+| 프리미엄 랜딩 | 16명 rolling Hero, 컨설팅 evidence showcase, `/consulting/new` CTA | 재사용 가능, feature branch 상태 |
+| AI 컨설팅 | 11 Scene, 서버 snapshot, 9 preview, 비교·결정·brief·aftercare·fashion | 재사용 가능, feature branch 상태 |
+| 검색 표면 | `/discover/*` route·registry 없음 | P1 미구현 |
+| 검색 계측 | `landing_id` event API·집계 없음 | P3 미구현 |
+| 검색 실험 | discovery assignment manifest 없음 | P5 미구현 |
 
 ### Phase별 실행 문서
 
@@ -18,7 +31,7 @@
 | --- | --- | --- |
 | P0 | [Evidence Baseline](./implementation-plan/phase-00-evidence-baseline.md) | 기준선·경쟁 snapshot·intent map |
 | P1 | [Search Surface Foundation](./implementation-plan/phase-01-search-surface-foundation.md) | registry·정적 route·metadata·audit |
-| P2 | [Pilot Content & Sample Experience](./implementation-plan/phase-02-pilot-content-sample-experience.md) | 4개 pilot·3×3 sample·browser/performance |
+| P2 | [Pilot Content & Sample Experience](./implementation-plan/phase-02-pilot-content-sample-experience.md) | 4개 pilot·9-preview sample·browser/performance |
 | P3 | [Trust & Funnel Measurement](./implementation-plan/phase-03-trust-funnel-measurement.md) | trust SSoT·event API·DB·scorecard |
 | P4 | [Content Expansion & Operations](./implementation-plan/phase-04-content-expansion-operations.md) | 7개 페이지·후보 승인·retire 운영 |
 | P5 | [Experiment & Optimization](./implementation-plan/phase-05-experiment-optimization.md) | 실험 할당·판정·주기 운영 |
@@ -57,8 +70,8 @@
 | ID | 가정 | 위험 | 확인 필요 |
 | --- | --- | --- | --- |
 | AS-01 | 1차 목적은 비브랜드 검색 노출과 B2C 체험 시작률 개선이다. | B2B 우선순위가 더 높으면 페이지 순서가 달라진다. | 구현 시작 전 제품 책임자 확인 |
-| AS-02 | 홈의 3×3 데모 자산은 공개 마케팅에 사용할 권리가 확보되어 있다. | 권리 미확보 시 샘플 전체를 교체해야 한다. | 자산 매니페스트 승인 필요 |
-| AS-03 | 기존 `/workspace`가 기본 전환 목적지이며 생성·결제 계약은 유지한다. | 진입점 통합 작업과 충돌할 수 있다. | 구현 브랜치 시작 전 현재 계약 재확인 |
+| AS-02 | 현재 rolling Hero·premium showcase 자산을 검색 샘플 후보로 검토할 수 있다. | 랜딩 사용 승인이 검색 파생 자산 권리까지 자동 보장하지 않는다. | C-03 자산 매니페스트 승인 필요 |
+| AS-03 | `/consulting/new`가 기본 전환 목적지이고 flag OFF 시 `/workspace`로 rollback한다. | 검색 source handoff가 auth·세션 생성 중 유실될 수 있다. | P2에서 resume context 계약 검증 |
 | AS-04 | 초기 계측 저장소는 Supabase로 시작하고, 트래픽 증가 시 별도 분석 저장소로 교체할 수 있다. | 이벤트 증가가 운영 DB 비용에 영향을 줄 수 있다. | 보존기간·샘플링 승인 필요 |
 
 ### Work Queue
@@ -70,19 +83,20 @@
 | W-03 | plan | 구현 아티팩트와 게이트 정의 | 모든 Phase에 입력·출력·완료조건이 있음 | 아티팩트 정의서 | complete |
 | W-04 | inspect | 문서 교차검증 | 링크·경로·ID·범위 불일치 없음 | Markdown link·fence·ID 검사 | complete |
 | W-05 | plan | P0~P5를 독립 실행 문서로 상세화 | 각 Phase에 파일·계약·절차·검증·롤백·인계가 있음 | implementation-plan 7개 문서 | complete |
+| W-06 | inspect | 현재 컨설팅·프리미엄 랜딩 구현 대조 | implemented·partial·missing이 commit·path로 구분됨 | 2026-08-14 대조 보고서 | complete |
 
 ### Acceptance Gates
 
 - Agentic Operation Gate: passed — 이 Run Packet과 완료 조건을 기록함
 - Copy Gate: defined — 메시지 맵·금지 주장·CTA 계약을 구현 게이트로 정의함
 - Design Gate: defined — Hero 정체성·가치·CTA·다음 섹션 힌트를 구현 게이트로 정의함
-- Browser Gate: limited — 공개 페이지는 읽기 전용 콘텐츠로 조사했으며 구현 스크린샷 검증은 아직 대상이 아님
+- Browser Gate: partial — 프리미엄 홈 랜딩은 feature 이력에서 검증됐지만 `/discover/*`는 구현 전이므로 미검증
 - Technical Gate: defined — 정적 생성, sitemap, canonical, 구조화 데이터, 이벤트 검증 기준을 정의함
-- Fix Gate: pending implementation — 기준선과 구현 전후 증거가 생긴 뒤 판정함
+- Fix Gate: partial — 랜딩 계약 16/16 통과, 컨설팅 묶음 73/75로 제한; 검색 route·sitemap·계측 gap도 미해결
 
 ### Current Status
 
-`complete — architecture, artifacts, and phase implementation plans`
+`implementation-aligned plan — landing/consulting reusable, discovery phases open`
 
 ### Next Action
 

@@ -1,10 +1,18 @@
 # P4. Content Expansion & Operations 상세 구현 계획
 
-- 상태: planned
+- 상태: partial-reuse-ready — Salon Brief·Aftercare·Fashion proof 구현, discovery 확장 미구현
 - 선행조건: P2 공개 후보 승인, P3 계측 안정성 확인
 - 대상: D-BANGS, D-BOB, D-SALON 및 7페이지 전체
 - 출력: 확장 C-01, S-04, O-01, candidate report, 회귀 Q-02/Q-03
 - 다음 Phase: [P5 Experiment & Optimization](./phase-05-experiment-optimization.md)
+
+## 현재 구현 대조
+
+- 재사용 가능: `PremiumConsultingShowcases`의 Salon Brief·Aftercare·Fashion sample, `/b2b/contact` secondary CTA
+- 제품 계약: versioned salon brief, sanitized share, 실제 시술 기반 aftercare, 9-look fashion batch
+- 미구현: D-BANGS·D-BOB·D-SALON route, discovery link graph, catalog candidate generator, retire runbook
+- D-SALON은 현재 기능 범위를 넘어 전문가 검수·시술 보장을 약속하지 않는다.
+- 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
 
 ## 1. 목표와 비범위
 
@@ -21,8 +29,8 @@ pilot에서 검증된 구조를 앞머리, 보브, 살롱 상담 의도로 확�
 
 | Page ID | 역할 | 고유 콘텐츠 | CTA/event |
 | --- | --- | --- | --- |
-| D-BANGS | 앞머리 비교 | 앞머리 유무·형태 비교, 승인 샘플 | B2C workspace |
-| D-BOB | 보브컷 비교 | 길이·실루엣 비교, 상담 질문 | B2C workspace |
+| D-BANGS | 앞머리 비교 | 앞머리 유무·형태 비교, 승인 샘플 | B2C `/consulting/new` |
+| D-BOB | 보브컷 비교 | 길이·실루엣 비교, 상담 질문 | B2C `/consulting/new` |
 | D-SALON | 미용실 상담 이미지 | 추천 보드로 상담 준비 | B2B/B2C 상담 목적 별도 CTA |
 
 D-SALON은 살롱 파트너 제품을 가장하지 않는다. 현재 제공되는 기능이 이미지 보드 생성이라면 그 범위만 설명하고, B2B 문의가 실제로 존재할 때만 별도 CTA를 둔다.
@@ -98,7 +106,7 @@ hub와 7개 페이지의 역할을 명시한다.
 - hub는 모든 published 페이지로 crawlable link
 - 각 페이지는 primary intent가 다른 관련 페이지 2~4개
 - D-SALON 링크에는 상담 준비 맥락을 명시
-- home/upload/support에서 필요한 상위 링크만 추가
+- home/consulting/support에서 필요한 상위 링크만 추가
 - orphan 0, self-link 0, retired-link 0
 
 ### P4-W04. 운영 runbook

@@ -1,10 +1,17 @@
 # P0. Evidence Baseline 상세 구현 계획
 
-- 상태: planned
+- 상태: planned — source inventory refreshed, Search Console·funnel baseline 미생성
 - 선행조건: Search Console 및 공개 URL에 대한 읽기 권한 확인
 - 입력: 현재 서비스 URL, 공개 경쟁 서비스, 사용 가능한 퍼널 로그
 - 출력: B-00, B-01, B-02, ADR-001
 - 다음 Phase: [P1 Search Surface Foundation](./phase-01-search-surface-foundation.md)
+
+## 현재 구현 대조
+
+- 소스 inventory 기준을 `feat/2026-08-12-premium-landing-refactor@e86e40d`로 갱신한다.
+- `main@b33c33c`과 feature 구현을 분리해 운영 상태를 과장하지 않는다.
+- 현재 `landing_id` event sink가 없으므로 제품 퍼널 값은 추정하지 않고 `missing`으로 기록한다.
+- 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
 
 ## 1. 목표와 비범위
 
@@ -28,7 +35,7 @@
 
 P0 시작 전에 다음 결정을 기록한다.
 
-- OD-01: 1차 KPI는 기본적으로 B2C `upload_start / landing_view`로 제안
+- OD-01: 1차 KPI는 기본적으로 B2C `consultation_started / landing_viewed`로 제안
 - OD-04: 초기에는 수동 export, 필드가 안정화된 후 API 자동화
 - 브랜드 query: `hairfit`, `hair fit`, `헤어핏` 및 승인된 오탈자 목록
 - 비교 기간: 최근 완전한 28일과 직전 28일, Asia/Seoul 기준

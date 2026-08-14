@@ -1,10 +1,17 @@
 # P5. Experiment & Optimization 상세 구현 계획
 
-- 상태: planned
+- 상태: planned — landing contract tests 존재, discovery experiment runtime 미구현
 - 선행조건: P3 계측 안정, P4 운영 체계, minimum sample 결정
 - 입력: T-04 scorecard, 7페이지 registry, competitor snapshot
 - 출력: E-01, E-02, E-03, 월별 T-04, 분기 O-03
 - 다음 단계: 주기 운영 또는 새 P0 baseline
+
+## 현재 구현 대조
+
+- 현재 프리미엄 랜딩은 CTA·mobile·rolling Hero·motion·surface 계약 테스트를 가진다.
+- 이 테스트는 회귀 기준이며 A/B assignment·exposure·판정 시스템은 아니다.
+- `my-app/lib/experiments/discovery-experiment-manifest.ts`와 discovery exposure event는 존재하지 않는다.
+- 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
 
 ## 1. 목표와 비범위
 
@@ -97,7 +104,7 @@ EXP-DISCOVERY-001 기본안:
 - 대상: D-AI-SIM, D-MEN, D-WOMEN mobile
 - control: 현재 Hero→CTA→sample
 - treatment: Hero→sample preview→CTA
-- primary: `board_viewed / landing_viewed`
+- primary: `preview_board_viewed / landing_viewed`
 - guardrails: mobile LCP, upload validation failure, generation failure
 - maximum duration: 42일
 - stop: privacy incident, P0 render, 승인 임계치 이상의 LCP 회귀

@@ -1,9 +1,11 @@
 # 검색 벤치마킹 적용 Phase 인덱스
 
 - 기준일: 2026-07-15
-- 상태: implementation-ready
+- 최근 구현 대조일: 2026-08-14
+- 상태: implementation-ready — current implementation aligned
 - 상위 문서: [아키텍처](../architecture.md), [아티팩트 정의](../artifact-specification.md)
 - 구현 기준 브랜치: Phase 시작 시 `git_preflight.py`로 다시 확정
+- 현재 대조 증거: [컨설팅·프리미엄 랜딩 구현 대조](../current-implementation-alignment-2026-08-14.md)
 
 ## 실행 원칙
 
@@ -17,14 +19,16 @@
 
 ## Phase 맵
 
-| Phase | 문서 | 핵심 결과 | 선행 Gate | 종료 시 공개 상태 |
+| Phase | 문서 | 현재 판정 | 핵심 결과 | 선행 Gate |
 | --- | --- | --- | --- | --- |
-| P0 | [Evidence Baseline](./phase-00-evidence-baseline.md) | 기준선·경쟁 snapshot·intent map | 데이터 접근 범위 확인 | 코드 공개 없음 |
-| P1 | [Search Surface Foundation](./phase-01-search-surface-foundation.md) | registry·정적 route·SEO audit | P0 complete | canary 1개, 비노출 검증 가능 |
-| P2 | [Pilot Content & Sample Experience](./phase-02-pilot-content-sample-experience.md) | 4개 랜딩·3×3 샘플·내부 링크 | P1 complete, 자산 승인 | pilot 공개 후보 |
-| P3 | [Trust & Funnel Measurement](./phase-03-trust-funnel-measurement.md) | trust SSoT·이벤트 API·집계 | 개인정보·보존 승인 | 계측된 pilot |
-| P4 | [Content Expansion & Operations](./phase-04-content-expansion-operations.md) | 7개 랜딩·운영 runbook | P2/P3 지표 확인 | 확장 공개 후보 |
-| P5 | [Experiment & Optimization](./phase-05-experiment-optimization.md) | 실험 할당·판정·주기 운영 | 최소 표본·계측 안정성 | 지속 최적화 |
+| P0 | [Evidence Baseline](./phase-00-evidence-baseline.md) | planned | 기준선·경쟁 snapshot·intent map | 데이터 접근 범위 확인 |
+| P1 | [Search Surface Foundation](./phase-01-search-surface-foundation.md) | planned | registry·정적 route·SEO audit | P0 complete |
+| P2 | [Pilot Content & Sample Experience](./phase-02-pilot-content-sample-experience.md) | partial-reuse-ready | 4개 랜딩·9-preview 샘플·내부 링크 | P1 complete, 자산 승인 |
+| P3 | [Trust & Funnel Measurement](./phase-03-trust-funnel-measurement.md) | partial-reuse-ready | trust SSoT·이벤트 API·집계 | 개인정보·보존 승인 |
+| P4 | [Content Expansion & Operations](./phase-04-content-expansion-operations.md) | partial-reuse-ready | 7개 랜딩·운영 runbook | P2/P3 지표 확인 |
+| P5 | [Experiment & Optimization](./phase-05-experiment-optimization.md) | planned | 실험 할당·판정·주기 운영 | 최소 표본·계측 안정성 |
+
+`partial-reuse-ready`는 프리미엄 랜딩·컨설팅 구현을 재사용할 수 있다는 뜻이며, 검색 route·artifact·Gate 완료를 뜻하지 않는다.
 
 ## 공통 구현 티켓 형식
 

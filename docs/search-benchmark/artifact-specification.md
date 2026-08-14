@@ -1,8 +1,11 @@
 # HairFit 검색·전환 벤치마킹 아티팩트 정의서
 
 - 작성일: 2026-07-15
-- 상태: Proposed
+- 최근 구현 대조일: 2026-08-14
+- 상태: Proposed — current implementation aligned
 - 상위 설계: [architecture.md](./architecture.md)
+
+현재 구현의 재사용 가능 범위와 검색 전용 gap은 [컨설팅·프리미엄 랜딩 구현 대조 보고서](./current-implementation-alignment-2026-08-14.md)를 기준으로 판정한다. feature branch 구현은 검색 아티팩트의 `accepted` 상태를 자동 부여하지 않는다.
 
 ## 1. 목적
 
@@ -174,7 +177,8 @@ services:
 
 - 승인된 B-02 intent map
 - ADR-001 URL namespace
-- 기존 `home-content.ts`, `HeroSection.tsx`, `sitemap.ts`, `robots.ts`
+- 기존 `home-content.ts`, `HeroSection.tsx`, `PremiumConsultingShowcases.tsx`, `sitemap.ts`, `robots.ts`
+- `/consulting/new` auth·feature flag·`ConsultationSnapshot` 진입 계약
 
 ### 필수 출력
 
@@ -194,10 +198,10 @@ job_to_be_done: 내 사진에서 어울리는 방향을 한눈에 비교한다
 problem: 머리를 자르기 전 한 스타일만 보고 결정하기 어렵다
 core_promise: 사진 한 장으로 9개 후보를 같은 기준에서 비교한다
 proof:
-  - evidence_id: product-3x3-board-v1
+  - evidence_id: product-strategic-nine-preview-v2
 primary_cta:
-  label: 9가지 헤어 비교하기
-  href: /workspace
+  label: 프라이빗 AI 컨설팅 시작
+  href: /consulting/new
 objections:
   - id: photo-privacy
   - id: real-world-variance
@@ -218,7 +222,8 @@ forbidden_claims:
 - published orphan page 0개
 - draft/review는 sitemap에서 제외
 - `updatedAt`이 유효한 ISO date
-- CTA href가 allowlist(`/workspace`, `/upload`)에 포함
+- CTA href가 primary allowlist(`/consulting/new`)에 포함
+- legacy `/workspace`는 feature-flag rollback 경로로만 참조
 - 금지 주장 문자열 탐지
 
 ### P1 완료 기준
@@ -263,7 +268,7 @@ forbidden_claims:
 | 환경 | 필수 확인 |
 | --- | --- |
 | 360×800 | H1, CTA, 다음 섹션 힌트, sticky CTA 겹침 없음 |
-| 390×844 | 탭·3×3 보드 조작, 가로 overflow 없음 |
+| 390×844 | 전략 탭·9-preview sample 조작, 가로 overflow 없음 |
 | 768×1024 | 내부 링크·FAQ keyboard 동작 |
 | 1440×900 | Hero hierarchy, demo와 본문 연결 |
 | JS disabled 또는 hydration 실패 | 핵심 카피·링크·샘플 이미지 접근 가능 |
@@ -278,7 +283,7 @@ forbidden_claims:
 | INP | 200ms 이하 목표 |
 | Discovery client JS | 구현 전 승인한 budget 이내, 증가분 기록 |
 | Hero priority image | viewport별 1개 원칙 |
-| 3×3 image | viewport 밖 lazy load, 명시적 sizes |
+| 9-preview image | viewport 밖 lazy load, 명시적 sizes |
 
 ### P2 완료 기준
 
@@ -450,7 +455,7 @@ population:
 variants:
   control: current-order
   treatment: sample-first
-primary_metric: board_views_per_landing_view
+primary_metric: preview_board_views_per_landing_view
 guardrails:
   - upload_validation_failure_rate
   - mobile_lcp
@@ -546,7 +551,7 @@ Q-04는 매 출시마다 다음 표를 포함한다.
 | 요구사항 | Architecture | 구현 아티팩트 | 검증 아티팩트 |
 | --- | --- | --- | --- |
 | 의도별 정적 랜딩 | 5장 | C-01, S-01 | Q-01, Q-02 |
-| 3×3 샘플 체험 | 6장 | C-03, discovery components | Q-02, Q-03 |
+| 9-preview 샘플 체험 | 6장 | C-03, discovery components | Q-02, Q-03 |
 | 카탈로그 안전 활용 | 7장 | candidate report, C-01 | O-01, Q-01 |
 | metadata·sitemap | 8장 | S-02, S-03 | Q-01 |
 | 신뢰·정책 | 9장 | C-04, C-05 | Q-04 |
@@ -558,7 +563,8 @@ Q-04는 매 출시마다 다음 표를 포함한다.
 - [ ] B2C/B2B 1차 KPI 결정
 - [ ] Search Console property와 기준 기간 확정
 - [ ] 샘플 자산 권리 확인
-- [ ] `/workspace` source/resume 계약 재확인
+- [ ] `/consulting/new` 로그인·세션 생성에서 source/resume context 보존
+- [ ] feature flag OFF의 `/workspace` rollback에서도 source ID 유실 없음
 - [ ] 현재 크레딧·무료 범위 SSoT 재확인
 - [ ] 사진 원본 보존·삭제 정책의 현재 구현 검증
 - [ ] 이벤트 보존기간과 개인정보 검토

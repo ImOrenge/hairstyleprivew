@@ -1,14 +1,22 @@
 # P3. Trust & Funnel Measurement 상세 구현 계획
 
-- 상태: planned
+- 상태: partial-reuse-ready — 컨설팅 trust·snapshot 구현, discovery attribution·event sink 미구현
 - 선행조건: P2 pilot, 개인정보·보존기간·service role 사용 승인
 - 입력: C-04 evidence, CTA handoff, 현재 업로드·생성·결제 이벤트 가능 지점
 - 출력: C-05, T-01, T-02, T-03, T-04, O-02
 - 다음 Phase: [P4 Content Expansion & Operations](./phase-04-content-expansion-operations.md)
 
+## 현재 구현 대조
+
+- 재사용 가능: 서버 `ConsultationSnapshot`, Evidence→Meaning→Action, version conflict, privacy-safe share, feature-flag rollback
+- 이미 존재하는 제품 단계: `/consulting/new` → 11 Scene → 9 preview → compare·decision → brief·aftercare·fashion
+- 미구현: discovery `landing_id` handoff 저장, `/api/analytics/events`, `product_funnel_events`, daily scorecard
+- active Color Studio worktree의 미커밋 변경은 이 Phase 완료 근거로 사용하지 않는다.
+- 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
+
 ## 1. 목표와 비범위
 
-랜딩부터 CTA, 업로드, 추천 보드까지 동일한 익명 유입 ID로 측정하고, 사진·prompt·email을 수집하지 않는 최소 퍼널을 만든다. 사진 처리·결과 한계·가격 표시는 기존 제품 정책 SSoT와 같은 버전을 참조한다.
+랜딩부터 CTA, consultation session, 9-preview 보드까지 동일한 익명 유입 ID로 측정하고, 사진·prompt·email을 수집하지 않는 최소 퍼널을 만든다. 사진 처리·결과 한계·가격 표시는 기존 제품 정책 SSoT와 같은 버전을 참조한다.
 
 비범위:
 
@@ -23,14 +31,14 @@
 ```mermaid
 sequenceDiagram
   participant L as Discovery Landing
-  participant W as Workspace
+  participant C as Consultation
   participant A as POST /api/analytics/events
   participant V as Validator/Hasher
   participant D as Supabase
   participant S as Daily Scorecard
   L->>A: landing_viewed / cta_clicked
-  L->>W: landingId + intentId + ctaId
-  W->>A: upload_started / board_viewed
+  L->>C: landingId + intentId + ctaId
+  C->>A: consultation_started / preview_board_viewed
   A->>V: strict schema + rate + size
   V->>D: service-role idempotent insert
   D->>S: privacy-safe daily aggregate
@@ -46,7 +54,7 @@ sequenceDiagram
 | P3-W04 | `my-app/lib/analytics/emit-discovery-event.ts` | client beacon/fetch wrapper |
 | P3-W05 | `my-app/app/api/analytics/events/route.ts` | validate·rate limit·insert |
 | P3-W06 | `my-app/supabase/migrations/*_discovery_funnel_events.sql` | table·constraint·aggregate·purge |
-| P3-W07 | `my-app/components/discovery/*`, workspace 경계 | event trigger |
+| P3-W07 | `my-app/components/discovery/*`, `/consulting/new`·stage 경계 | event trigger |
 | P3-W08 | `docs/search-benchmark/policies/trust-policy-v1.md` | C-05 snapshot |
 | P3-W09 | `docs/search-benchmark/runbooks/analytics-operations.md` | O-02 |
 | P3-W10 | `docs/search-benchmark/scorecards/funnel-YYYY-MM-DD.md` | T-04 |
@@ -60,9 +68,10 @@ type DiscoveryEvent =
   | { eventName: "landing_viewed"; landingId: DiscoveryPageId; intentId: string }
   | { eventName: "sample_viewed"; landingId: DiscoveryPageId; sampleId: string }
   | { eventName: "cta_clicked"; landingId: DiscoveryPageId; ctaId: DiscoveryCtaId }
-  | { eventName: "upload_started"; landingId?: DiscoveryPageId }
-  | { eventName: "upload_validated"; landingId?: DiscoveryPageId }
-  | { eventName: "board_viewed"; landingId?: DiscoveryPageId }
+  | { eventName: "consultation_started"; landingId?: DiscoveryPageId }
+  | { eventName: "photo_started"; landingId?: DiscoveryPageId }
+  | { eventName: "photo_validated"; landingId?: DiscoveryPageId }
+  | { eventName: "preview_board_viewed"; landingId?: DiscoveryPageId }
   | { eventName: "checkout_started"; landingId?: DiscoveryPageId };
 
 interface DiscoveryEventEnvelope {
@@ -107,7 +116,7 @@ interface DiscoveryEventEnvelope {
 5. service role repository를 통해 idempotent insert
 6. 운영 로그에는 eventId, eventName, status만 남김
 
-클라이언트 emitter는 analytics 실패로 CTA navigation이나 upload를 차단하지 않는다. `sendBeacon` 실패 시 제한된 fetch fallback을 사용하되 무한 retry하지 않는다.
+클라이언트 emitter는 analytics 실패로 CTA navigation이나 consultation stage mutation을 차단하지 않는다. `sendBeacon` 실패 시 제한된 fetch fallback을 사용하되 무한 retry하지 않는다.
 
 ## 6. DB migration 계약
 
@@ -132,7 +141,7 @@ C-05에 다음 정책을 versioned snapshot으로 기록한다.
 - AI 결과가 실제 시술과 다를 수 있다는 한계
 - 무료/포함 크레딧 표시는 `plan-benefit-display.ts`를 따른다는 계약
 - 후기·수치의 evidence ID와 만료
-- 정책 화면, upload, discovery에서 같은 `policyVersion`을 표시
+- 정책 화면, consultation photo Scene, discovery에서 같은 `policyVersion`을 표시
 
 정책과 실제 구현이 다르면 문구만 맞추지 않는다. P1 trust finding으로 등록하고 공개를 차단한다.
 
@@ -170,8 +179,8 @@ npm --prefix my-app run search:discovery:audit
 - 잘못된 event name/field/path/payload는 4xx
 - 중복 eventId는 row·aggregate 1개
 - DB direct anonymous insert 거부
-- API 저장 실패 시 CTA와 upload 계속 동작
-- landing→CTA→upload→board에서 landing ID 보존
+- API 저장 실패 시 CTA와 consultation 계속 동작
+- landing→CTA→consultation session→preview board에서 landing ID 보존
 - purge dry-run과 실제 대상 수가 일치
 - sample payload·운영 로그에서 금지 필드 0건
 
@@ -181,7 +190,7 @@ O-02에는 누락, 중복, 지연, schema mismatch, DB quota, salt rotation, pur
 
 ## 11. Exit Gate
 
-- [ ] C-05 정책 버전이 discovery·upload·정책 화면에서 동일함
+- [ ] C-05 정책 버전이 discovery·consultation photo Scene·정책 화면에서 동일함
 - [ ] strict contract와 forbidden field test 통과
 - [ ] anonymous direct DB write가 거부됨
 - [ ] idempotency·rate·size limit 검증
