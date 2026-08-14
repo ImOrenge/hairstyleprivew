@@ -29,20 +29,26 @@ test("metadata and sitemap share the published registry selector", () => {
   assert.match(sitemap, /page\.updatedAt/);
 });
 
-test("D-AI-SIM preserves the 3 strategy, 9 preview and consulting CTA contract", () => {
-  const page = discoveryPages[0];
-  const manifest = discoverySampleManifests[0];
-  assert.equal(page.message.primaryCta.href, "/consulting/new");
-  assert.equal(manifest.strategies.length, 3);
-  assert.equal(manifest.strategies.flatMap((strategy) => strategy.assetIds).length, 9);
+test("all pages preserve the 3 strategy, 9 preview and consulting CTA contract", () => {
+  assert.equal(discoveryPages.length, 7);
+  for (const [index, page] of discoveryPages.entries()) {
+    const manifest = discoverySampleManifests[index];
+    assert.equal(page.message.primaryCta.href, "/consulting/new");
+    assert.equal(page.message.sampleCta.href, "/consulting/new");
+    assert.equal(page.message.finalCta.href, "/consulting/new");
+    assert.equal(manifest.strategies.length, 3);
+    assert.equal(manifest.strategies.flatMap((strategy) => strategy.assetIds).length, 9);
+  }
   assert.match(template, /href=\{definition\.message\.finalCta\.href\}/);
-  assert.match(sample, /href="\/consulting\/new"/);
+  assert.match(sample, /href=\{definition\.message\.sampleCta\.href\}/);
 });
 
 test("discovery rendering stays server-first and excludes forbidden claims", () => {
   const source = `${detailRoute}\n${template}\n${sample}`;
   assert.doesNotMatch(source, /["']use client["']/);
-  for (const claim of discoveryPages[0].message.forbiddenClaims) assert.doesNotMatch(source, new RegExp(claim));
+  for (const page of discoveryPages) {
+    for (const claim of page.message.forbiddenClaims) assert.doesNotMatch(source, new RegExp(claim));
+  }
 });
 
 function read(...segments: string[]) {

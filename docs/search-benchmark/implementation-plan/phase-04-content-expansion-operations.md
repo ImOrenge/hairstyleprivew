@@ -1,6 +1,6 @@
 # P4. Content Expansion & Operations 상세 구현 계획
 
-- 상태: partial-reuse-ready — Salon Brief·Aftercare·Fashion proof 구현, discovery 확장 미구현
+- 상태: verification-local-surface — D-BANGS·D-BOB·D-SALON과 7-page link graph 구현, 자동 candidate ops·배포 미구현
 - 선행조건: P2 공개 후보 승인, P3 계측 안정성 확인
 - 대상: D-BANGS, D-BOB, D-SALON 및 7페이지 전체
 - 출력: 확장 C-01, S-04, O-01, candidate report, 회귀 Q-02/Q-03
@@ -10,7 +10,8 @@
 
 - 재사용 가능: `PremiumConsultingShowcases`의 Salon Brief·Aftercare·Fashion sample, `/b2b/contact` secondary CTA
 - 제품 계약: versioned salon brief, sanitized share, 실제 시술 기반 aftercare, 9-look fashion batch
-- 미구현: D-BANGS·D-BOB·D-SALON route, discovery link graph, catalog candidate generator, retire runbook
+- 구현됨: D-BANGS·D-BOB·D-SALON route, 고유 sample/evidence/artifact, 7-page discovery link graph
+- 미구현: catalog candidate generator, 운영 retire 자동화, integration·deploy·Search Console 제출
 - D-SALON은 현재 기능 범위를 넘어 전문가 검수·시술 보장을 약속하지 않는다.
 - 증거: [2026-08-14 구현 대조 보고서](../current-implementation-alignment-2026-08-14.md)
 

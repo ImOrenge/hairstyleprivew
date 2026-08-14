@@ -1,23 +1,66 @@
-schema_version: 1
+schema_version: 2
 updated_at: 2026-08-14
 entries:
   - id: D-AI-SIM
     slug: ai-hairstyle-simulation
     primary_query: AI 헤어스타일 시뮬레이션
-    primary_intent: 업로드 전 9개 헤어 후보와 비교 기준 확인
+    primary_intent: 같은 얼굴에서 3방향 9개 후보의 비교 방식 확인
+    artifact: simulation-map
     audience: b2c
     funnel_stage: discovery
     conversion: /consulting/new
-    overlap: none
+    status: published-local
   - id: D-FACE
     slug: face-shape-hairstyle
-    primary_query: 얼굴형 헤어스타일 추천
-    status: planned
+    primary_query: 얼굴형 헤어스타일
+    primary_intent: 얼굴형 단정 없이 이마·광대·턱선·세로 흐름 관찰
+    artifact: face-observation
+    audience: b2c
+    funnel_stage: consideration
+    conversion: /consulting/new
+    status: published-local
   - id: D-MEN
-    slug: mens-hairstyle-recommendation
-    primary_query: 남자 헤어스타일 추천
-    status: planned
+    slug: men-hairstyle-simulation
+    primary_query: 남자 헤어스타일 시뮬레이션
+    primary_intent: 크롭·센터·사이드 파트와 손질 조건 비교
+    artifact: men-grooming
+    audience: b2c
+    funnel_stage: consideration
+    conversion: /consulting/new
+    status: published-local
   - id: D-WOMEN
-    slug: womens-hairstyle-recommendation
-    primary_query: 여자 헤어스타일 추천
-    status: planned
+    slug: women-hairstyle-simulation
+    primary_query: 여자 헤어스타일 시뮬레이션
+    primary_intent: 단발·미디엄·롱의 길이와 생활 변화 비교
+    artifact: women-length
+    audience: b2c
+    funnel_stage: consideration
+    conversion: /consulting/new
+    status: published-local
+  - id: D-BANGS
+    slug: bangs-preview
+    primary_query: 앞머리 미리보기
+    primary_intent: 앞머리 커트 전 모류·수축·관리·회복 리스크 확인
+    artifact: bangs-risk
+    audience: b2c
+    funnel_stage: decision
+    conversion: /consulting/new
+    status: published-local
+  - id: D-BOB
+    slug: bob-cut-preview
+    primary_query: 단발 미리보기
+    primary_intent: 길이 유지부터 턱선 보브까지 커트 변화 폭 비교
+    artifact: bob-cut-ladder
+    audience: b2c
+    funnel_stage: decision
+    conversion: /consulting/new
+    status: published-local
+  - id: D-SALON
+    slug: salon-consultation-image
+    primary_query: 미용실 상담 이미지
+    primary_intent: 후보·원하는 점·피할 점·현장 질문을 상담 자료로 정리
+    artifact: salon-brief
+    audience: b2c
+    funnel_stage: conversion
+    conversion: /consulting/new
+    status: published-local

@@ -17,6 +17,8 @@
 - [검색 유입 페이지 구체 실행 계획](./implementation-plan/search-entry-page-execution-plan.md): EX-00~EX-12 티켓, 변경 파일, 테스트, commit·rollback 순서
 - [Phase별 상세 구현 계획](./implementation-plan/README.md): P0~P5 독립 실행 문서, 파일·타입·API·DB·검증·롤백 계약
 - [현재 컨설팅·랜딩 구현 대조](./current-implementation-alignment-2026-08-14.md): 구현 브랜치 증거, 재사용 가능 영역, 검색 전용 미구현 gap
+- [전체 표면 구현 Run Packet](./evidence/full-surface-implementation-run-2026-08-14.md): 7개 페이지 구현 큐, 고유 아티팩트, 검증 게이트
+- [전체 표면 Release Readiness](./releases/release-readiness-discovery-full-surface.md): 로컬 완료 범위와 외부 공개 전 경계
 
 ### 현재 구현 요약
 
@@ -24,7 +26,7 @@
 | --- | --- | --- |
 | 프리미엄 랜딩 | 16명 rolling Hero, 컨설팅 evidence showcase, `/consulting/new` CTA | 재사용 가능, feature branch 상태 |
 | AI 컨설팅 | 11 Scene, 서버 snapshot, 9 preview, 비교·결정·brief·aftercare·fashion | 재사용 가능, feature branch 상태 |
-| 검색 표면 | `/discover/*` route·registry 없음 | P1 미구현 |
+| 검색 표면 | `/discover` hub와 7개 고유 SSG route·registry·artifact | 로컬 구현·검증 완료, 미배포 |
 | 검색 계측 | `landing_id` event API·집계 없음 | P3 미구현 |
 | 검색 실험 | discovery assignment manifest 없음 | P5 미구현 |
 
@@ -90,6 +92,7 @@
 | W-07 | plan | 검색 유입 페이지 구현 경로 구체화 | canary PR·pilot PR의 파일·카피·코드·검증·rollback 경계가 고정됨 | 검색 유입 페이지 구현 가이드 | complete |
 | W-08 | plan | 구현 작업을 실행 티켓으로 분해 | 각 티켓에 입력·파일·절차·테스트·완료 조건이 있음 | 검색 유입 페이지 구체 실행 계획 | complete |
 | W-09 | produce | D-AI-SIM canary와 검색 계약 구현 | 정적 route·audit·browser·회귀 gate 통과 | 구현 run packet·release readiness | complete |
+| W-10 | produce | 7개 검색 표면과 고유 의사결정 아티팩트 구현 | 7 SSG·39 browser·회귀·build 통과 | full-surface run packet·readiness | complete |
 
 ### Acceptance Gates
 
@@ -102,8 +105,8 @@
 
 ### Current Status
 
-`PR-1 local implementation complete — external provenance, deploy, Search Console work remains`
+`7-page local implementation complete — external provenance, integration, deploy, Search Console work remains`
 
 ### Next Action
 
-`외부 공개 전 synthetic sample provenance·권리 문서 보관 위치를 확정하고, 승인된 통합·배포 흐름에서 canary를 배포한다.`
+`외부 공개 전 synthetic sample provenance·권리 문서 보관 위치와 승인된 통합·배포 흐름을 확정한다.`

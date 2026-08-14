@@ -6,12 +6,22 @@ import { discoverySampleManifests } from "./sample-manifests.ts";
 import type { DiscoveryPageDefinition } from "./types.ts";
 import { validateDiscoveryRegistry } from "./validate-discovery.ts";
 
-test("D-AI-SIM is the only published canary and supports exact lookups", () => {
+const expectedIds = ["D-AI-SIM", "D-FACE", "D-MEN", "D-WOMEN", "D-BANGS", "D-BOB", "D-SALON"];
+const expectedSlugs = ["ai-hairstyle-simulation", "face-shape-hairstyle", "men-hairstyle-simulation", "women-hairstyle-simulation", "bangs-preview", "bob-cut-preview", "salon-consultation-image"];
+
+test("all seven discovery pages are published and support exact lookups", () => {
   assert.equal(getDiscoveryPageById("D-AI-SIM")?.slug, "ai-hairstyle-simulation");
   assert.equal(getDiscoveryPageBySlug("ai-hairstyle-simulation")?.id, "D-AI-SIM");
   assert.equal(getDiscoveryPageBySlug(" AI-HAIRSTYLE-SIMULATION "), undefined);
-  assert.deepEqual(getPublishedDiscoveryPages().map((page) => page.id), ["D-AI-SIM"]);
-  assert.deepEqual(getRelatedDiscoveryPages(discoveryPages[0]), []);
+  assert.deepEqual(getPublishedDiscoveryPages().map((page) => page.id), expectedIds);
+  assert.deepEqual(getPublishedDiscoveryPages().map((page) => page.slug), expectedSlugs);
+  assert.equal(new Set(getPublishedDiscoveryPages().map((page) => page.artifact.kind)).size, 7);
+  for (const page of discoveryPages) {
+    assert.ok(page.artifact.items.length >= 3);
+    assert.ok(getRelatedDiscoveryPages(page).length >= 2);
+    assert.ok(getRelatedDiscoveryPages(page).length <= 4);
+    assert.equal(getRelatedDiscoveryPages(page).some((related) => related.id === page.id), false);
+  }
 });
 
 test("current registry satisfies every publish invariant", () => {
@@ -48,5 +58,5 @@ test("duplicate slug, invalid canonical, CTA, related link and date fixtures fai
 test("review pages never enter the published selector", () => {
   const reviewPage = { ...structuredClone(discoveryPages[0]), id: "D-FACE", slug: "review-fixture", status: "review" } satisfies DiscoveryPageDefinition;
   assert.equal(reviewPage.status, "review");
-  assert.equal(getPublishedDiscoveryPages().some((page) => String(page.id) === reviewPage.id), false);
+  assert.equal(getPublishedDiscoveryPages().some((page) => page.slug === reviewPage.slug), false);
 });

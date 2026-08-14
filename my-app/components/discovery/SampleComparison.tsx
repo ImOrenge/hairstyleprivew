@@ -14,9 +14,9 @@ export function SampleComparison({ definition }: { definition: DiscoveryPageDefi
   return (
     <section id="sample-comparison" className={styles.sampleSection} aria-labelledby="sample-title">
       <header className={styles.sectionHeader}>
-        <p className={styles.eyebrow}>STATIC SAMPLE BOARD</p>
-        <h2 id="sample-title">세 가지 방향에서 아홉 후보를 비교하세요</h2>
-        <p>서로 다른 사람의 완성 사진을 섞지 않고, 하나의 continuity set을 세 기준으로 나눠 보여줍니다.</p>
+        <p className={styles.eyebrow}>{definition.sample.eyebrow}</p>
+        <h2 id="sample-title">{definition.sample.title}</h2>
+        <p>{definition.sample.description}</p>
       </header>
 
       <div className={styles.strategyList}>
@@ -52,9 +52,9 @@ export function SampleComparison({ definition }: { definition: DiscoveryPageDefi
       </div>
 
       <div className={styles.sampleCta}>
-        <p>예시는 방향을 이해하기 위한 자료입니다. 내 사진에 맞는 후보는 컨설팅에서 별도로 만듭니다.</p>
-        <Link className={styles.primaryCta} href="/consulting/new">
-          내 기준으로 컨설팅 시작
+        <p>{definition.sample.note}</p>
+        <Link className={styles.primaryCta} href={definition.message.sampleCta.href}>
+          {definition.message.sampleCta.label}
           <ArrowRight aria-hidden="true" />
         </Link>
       </div>

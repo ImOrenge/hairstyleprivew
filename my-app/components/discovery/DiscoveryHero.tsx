@@ -24,11 +24,11 @@ export function DiscoveryHero({ definition }: { definition: DiscoveryPageDefinit
               <ArrowRight aria-hidden="true" />
             </Link>
             <a className={styles.textLink} href="#sample-comparison">
-              9가지 예시 먼저 보기
+              {definition.sample.heroLinkLabel}
               <ArrowDown aria-hidden="true" />
             </a>
           </div>
-          <p className={styles.heroNote}>이 페이지의 이미지는 기능 설명용 고정 synthetic sample이며, 사진 업로드는 컨설팅 시작 후 진행됩니다.</p>
+          <p className={styles.heroNote}>{definition.message.heroNote}</p>
         </div>
 
         {source ? (
@@ -43,12 +43,12 @@ export function DiscoveryHero({ definition }: { definition: DiscoveryPageDefinit
             />
             <figcaption>
               <span>ORIGIN REFERENCE</span>
-              <strong>같은 인물과 구도에서 9개 후보를 비교합니다.</strong>
+              <strong>{definition.sample.heroCaption}</strong>
             </figcaption>
           </figure>
         ) : null}
       </div>
-      <a className={styles.nextSectionHint} href="#sample-comparison" aria-label="9가지 헤어 후보 비교로 이동">
+      <a className={styles.nextSectionHint} href="#sample-comparison" aria-label={`${definition.sample.title}로 이동`}>
         <span>3 STRATEGIES · 9 PREVIEWS</span>
         <ArrowDown aria-hidden="true" />
       </a>

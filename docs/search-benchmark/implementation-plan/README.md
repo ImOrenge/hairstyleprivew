@@ -2,7 +2,7 @@
 
 - 기준일: 2026-07-15
 - 최근 구현 대조일: 2026-08-14
-- 상태: implementation-in-progress — PR-1 canary local verification complete
+- 상태: full-surface-local-verification — 7개 discovery page 구현·검증 완료, 외부 공개 미수행
 - 상위 문서: [아키텍처](../architecture.md), [아티팩트 정의](../artifact-specification.md)
 - 구현 가이드: [검색 유입 페이지 구현 가이드](../search-entry-page-implementation-guide.md)
 - 구체 실행 티켓: [검색 유입 페이지 구현 실행 계획](./search-entry-page-execution-plan.md)
@@ -25,9 +25,9 @@
 | --- | --- | --- | --- | --- |
 | P0 | [Evidence Baseline](./phase-00-evidence-baseline.md) | planned | 기준선·경쟁 snapshot·intent map | 데이터 접근 범위 확인 |
 | P1 | [Search Surface Foundation](./phase-01-search-surface-foundation.md) | verification-local | registry·정적 route·SEO audit | integration·deploy·live index |
-| P2 | [Pilot Content & Sample Experience](./phase-02-pilot-content-sample-experience.md) | verification-canary | D-AI-SIM·9-preview 완료, 3개 pilot 남음 | 외부 provenance·PR-2 |
+| P2 | [Pilot Content & Sample Experience](./phase-02-pilot-content-sample-experience.md) | verification-local | 4개 pilot·9-preview·고유 artifact | 외부 provenance·integration·attribution |
 | P3 | [Trust & Funnel Measurement](./phase-03-trust-funnel-measurement.md) | partial-reuse-ready | trust SSoT·이벤트 API·집계 | 개인정보·보존 승인 |
-| P4 | [Content Expansion & Operations](./phase-04-content-expansion-operations.md) | partial-reuse-ready | 7개 랜딩·운영 runbook | P2/P3 지표 확인 |
+| P4 | [Content Expansion & Operations](./phase-04-content-expansion-operations.md) | verification-local-surface | 7개 랜딩·link graph 완료, candidate ops 남음 | 운영 승인·배포·P3 지표 |
 | P5 | [Experiment & Optimization](./phase-05-experiment-optimization.md) | planned | 실험 할당·판정·주기 운영 | 최소 표본·계측 안정성 |
 
 검색 유입 페이지의 실제 코드 작업은 [EX-00~EX-12 실행 계획](./search-entry-page-execution-plan.md)을 사용한다. 이 계획은 P1·P2를 PR 단위 수직 slice로 재배열하지만 각 Phase의 Exit Gate를 낮추지 않는다.

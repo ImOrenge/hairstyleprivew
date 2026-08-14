@@ -1,20 +1,41 @@
-schema_version: 1
+schema_version: 2
 updated_at: 2026-08-14
+shared:
+  primary_cta_href: /consulting/new
+  forbidden_claims: [실제 시술과 동일, 100% 어울림, 실패 없음, 정확도 보장]
 pages:
   D-AI-SIM:
-    title: AI 헤어스타일 시뮬레이션, 9가지 후보 비교 | HairFit
     h1: AI 헤어스타일 시뮬레이션, 한 장에서 9가지 후보 비교
-    support: 세 가지 스타일 방향을 같은 기준에서 비교하고, 마음에 드는 후보를 골라 미용실 상담 자료까지 이어갑니다.
+    promise: 같은 얼굴에서 BALANCE·IMAGE·LIFESTYLE 세 방향을 비교
+    artifact: 3방향 비교 지도
     primary_cta: 프라이빗 AI 컨설팅 시작
-    primary_cta_href: /consulting/new
-    proof:
-      - BALANCE, IMAGE, LIFESTYLE 세 전략
-      - 아홉 개의 정적 preview 예시
-      - 최대 세 개 shortlist
-      - 최소 두 개 후보 비교
-      - Salon Brief 연결
-    forbidden_claims:
-      - 실제 시술과 동일
-      - 100% 어울림
-      - 실패 없음
-      - 정확도 보장
+  D-FACE:
+    h1: 얼굴형 헤어스타일, 이름보다 얼굴선과 길이로 비교
+    promise: 얼굴형 라벨 대신 이마·광대·턱선·세로 흐름을 관찰
+    artifact: 네 가지 얼굴선 관찰 맵
+    primary_cta: 내 얼굴선 기준 상담 시작
+  D-MEN:
+    h1: 남자 헤어스타일 시뮬레이션, 가르마와 길이를 한눈에
+    promise: 크롭·센터·사이드 파트를 옆 모류와 손질 루틴까지 비교
+    artifact: 남자 가르마·관리 매트릭스
+    primary_cta: 남자 헤어 컨설팅 시작
+  D-WOMEN:
+    h1: 여자 헤어스타일 시뮬레이션, 단발부터 롱까지 비교
+    promise: 길이 선택을 묶임·건조·유지 주기 변화까지 연결
+    artifact: 단발·미디엄·롱 길이 구간표
+    primary_cta: 여자 헤어 컨설팅 시작
+  D-BANGS:
+    h1: 앞머리 미리보기, 자르기 전에 이마 노출부터 비교
+    promise: 합성 이미지보다 모류·수축·손질·회복 리스크를 먼저 확인
+    artifact: 앞머리 되돌림 리스크 체크
+    primary_cta: 앞머리 컨설팅 시작
+  D-BOB:
+    h1: 단발 미리보기, 턱선과 어깨선 사이를 구체적으로 비교
+    promise: 길이 유지부터 턱선 보브까지 커트 변화 폭을 단계화
+    artifact: 단발 커트 변화 사다리
+    primary_cta: 단발 컨설팅 시작
+  D-SALON:
+    h1: 미용실 상담 이미지, 예쁜 사진보다 비교 이유까지 준비
+    promise: 후보와 선택 이유·제약·현장 질문을 버전된 자료로 전달
+    artifact: Salon Brief 네 필드
+    primary_cta: 미용실 상담 보드 만들기

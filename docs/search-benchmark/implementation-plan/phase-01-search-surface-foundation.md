@@ -18,7 +18,7 @@
 
 ## 1. 목표와 비범위
 
-승인된 콘텐츠만 정적 검색 페이지로 만들 수 있는 최소 기반을 구축한다. `D-AI-SIM` 한 개를 canary로 사용해 route, registry, metadata, JSON-LD, sitemap, audit을 연결한다.
+승인된 콘텐츠만 정적 검색 페이지로 만들 수 있는 최소 기반을 구축한다. `D-AI-SIM` canary에서 시작한 route, registry, metadata, JSON-LD, sitemap, audit 계약은 현재 7개 공개 대상에 동일하게 적용돼 로컬 검증을 통과했다.
 
 비범위:
 

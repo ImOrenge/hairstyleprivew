@@ -18,9 +18,21 @@ export function validateDiscoveryRegistry({ pages, sampleManifests, evidence }: 
   const seenIds = new Set<string>();
   const seenSlugs = new Set<string>();
   const seenCanonicals = new Set<string>();
+  const seenIntents = new Set<string>();
+  const seenTitles = new Set<string>();
+  const seenHeadings = new Set<string>();
+  const seenDescriptions = new Set<string>();
+  const seenManifests = new Set<string>();
+  const seenArtifactKinds = new Set<string>();
   const pageById = new Map(pages.map((page) => [page.id, page]));
   const manifestById = new Map(sampleManifests.map((manifest) => [manifest.id, manifest]));
   const evidenceById = new Map(evidence.map((entry) => [entry.id, entry]));
+  const publishedEvidenceUsage = new Map<string, number>();
+  for (const page of pages.filter((candidate) => candidate.status === "published")) {
+    for (const evidenceId of new Set(page.evidenceIds)) {
+      publishedEvidenceUsage.set(evidenceId, (publishedEvidenceUsage.get(evidenceId) ?? 0) + 1);
+    }
+  }
 
   for (const page of pages) {
     for (const [kind, value, seen] of [
@@ -40,8 +52,8 @@ export function validateDiscoveryRegistry({ pages, sampleManifests, evidence }: 
     if (!Number.isFinite(Date.parse(page.updatedAt))) {
       findings.push(finding(`updated-at-${page.id}`, "P1", "seo", "updatedAt이 유효한 ISO 날짜가 아닙니다.", page.updatedAt, "검증된 콘텐츠 변경일을 ISO 형식으로 기록합니다."));
     }
-    if (page.message.primaryCta.href !== "/consulting/new" || page.message.finalCta.href !== "/consulting/new") {
-      findings.push(finding(`cta-${page.id}`, "P0", "conversion", "공개 CTA가 허용된 상담 진입 경로가 아닙니다.", `${page.message.primaryCta.href}, ${page.message.finalCta.href}`, "CTA를 /consulting/new로 연결합니다."));
+    if ([page.message.primaryCta.href, page.message.sampleCta.href, page.message.finalCta.href].some((href) => href !== "/consulting/new")) {
+      findings.push(finding(`cta-${page.id}`, "P0", "conversion", "공개 CTA가 허용된 상담 진입 경로가 아닙니다.", `${page.message.primaryCta.href}, ${page.message.sampleCta.href}, ${page.message.finalCta.href}`, "CTA를 /consulting/new로 연결합니다."));
     }
     for (const relatedId of page.relatedPageIds) {
       const related = pageById.get(relatedId);
@@ -58,9 +70,34 @@ export function validateDiscoveryRegistry({ pages, sampleManifests, evidence }: 
     }
 
     if (page.status !== "published") continue;
-    if (!page.seo.index || page.faq.length === 0 || !page.sampleManifestId || page.evidenceIds.length === 0) {
+    for (const [kind, value, seen] of [
+      ["intent", page.intentId, seenIntents],
+      ["title", normalizeCopy(page.seo.title), seenTitles],
+      ["heading", normalizeCopy(page.message.h1), seenHeadings],
+      ["description", normalizeCopy(page.seo.description), seenDescriptions],
+    ] as const) {
+      if (seen.has(value)) {
+        findings.push(finding(`doorway-${kind}-${page.id}`, "P1", "content", `published 페이지의 ${kind}가 다른 페이지와 중복됩니다.`, value, "검색 의도와 실제 내용을 고유하게 다시 작성합니다."));
+      }
+      seen.add(value);
+    }
+    if (!page.seo.index || page.faq.length < 3 || !page.sampleManifestId || page.evidenceIds.length === 0) {
       findings.push(finding(`published-required-${page.id}`, "P0", "content", "published 페이지의 필수 공개 필드가 비어 있습니다.", page.id, "index, FAQ, sample, evidence를 모두 채웁니다."));
       continue;
+    }
+    if (page.relatedPageIds.length < 2 || page.relatedPageIds.length > 4) {
+      findings.push(finding(`related-count-${page.id}`, "P1", "routing", "published 페이지는 관련 공개 페이지를 2~4개 연결해야 합니다.", String(page.relatedPageIds.length), "검색 의도가 가까운 공개 페이지 2~4개를 연결합니다."));
+    }
+    if (seenManifests.has(page.sampleManifestId)) {
+      findings.push(finding(`doorway-manifest-${page.id}`, "P1", "asset", "published 페이지가 다른 페이지와 같은 sample manifest를 사용합니다.", page.sampleManifestId, "페이지 의도에 맞는 고유 manifest를 연결합니다."));
+    }
+    seenManifests.add(page.sampleManifestId);
+    if (seenArtifactKinds.has(page.artifact.kind) || page.artifact.items.length < 3) {
+      findings.push(finding(`doorway-artifact-${page.id}`, "P1", "content", "페이지 고유 의사결정 아티팩트가 없거나 내용이 부족합니다.", `${page.artifact.kind}/${page.artifact.items.length}`, "검색 의도에 맞는 고유 artifact kind와 항목 3개 이상을 정의합니다."));
+    }
+    seenArtifactKinds.add(page.artifact.kind);
+    if (!page.evidenceIds.some((evidenceId) => publishedEvidenceUsage.get(evidenceId) === 1)) {
+      findings.push(finding(`doorway-evidence-${page.id}`, "P1", "evidence", "페이지 고유의 제품 근거가 없습니다.", page.evidenceIds.join(","), "이 검색 의도에만 대응하는 검증 근거를 최소 하나 연결합니다."));
     }
     const manifest = manifestById.get(page.sampleManifestId);
     if (!manifest || manifest.status !== "approved") {
@@ -74,6 +111,16 @@ export function validateDiscoveryRegistry({ pages, sampleManifests, evidence }: 
         findings.push(finding(`evidence-${page.id}-${evidenceId}`, "P0", "evidence", "published 페이지가 유효한 verified evidence를 참조하지 않습니다.", evidenceId, "유효한 evidence를 연결하거나 페이지를 review로 내립니다."));
       }
     }
+    const referencedSectionEvidence = page.sections.flatMap((section) => {
+      if (section.type === "proof") return section.items.map((item) => item.evidenceId);
+      if (section.type === "trust") return section.notes.map((note) => note.evidenceId);
+      return [];
+    });
+    for (const evidenceId of referencedSectionEvidence) {
+      if (!page.evidenceIds.includes(evidenceId) || evidenceById.get(evidenceId)?.status !== "verified") {
+        findings.push(finding(`section-evidence-${page.id}-${evidenceId}`, "P0", "evidence", "화면에 표시된 근거가 페이지 evidence 계약에 없습니다.", evidenceId, "verified evidence를 페이지 evidenceIds에도 연결합니다."));
+      }
+    }
   }
 
   return findings;
@@ -84,6 +131,9 @@ function validateManifest(manifest: DiscoverySampleManifest, findings: Discovery
   const previewAssets = manifest.assets.filter((asset) => asset.role === "preview");
   const ogAssets = manifest.assets.filter((asset) => asset.role === "og");
   const assetById = new Map(manifest.assets.map((asset) => [asset.id, asset]));
+  if (assetById.size !== manifest.assets.length) {
+    findings.push(finding(`manifest-asset-id-${manifest.id}`, "P0", "asset", "manifest 안의 asset ID가 중복되었습니다.", String(manifest.assets.length - assetById.size), "모든 asset ID를 고유하게 변경합니다."));
+  }
   if (sourceAssets.length !== 1 || previewAssets.length !== 9 || ogAssets.length !== 1 || manifest.strategies.length !== 3) {
     findings.push(finding(`manifest-count-${manifest.id}`, "P0", "asset", "sample은 source 1개, preview 9개, OG 1개, strategy 3개여야 합니다.", `${sourceAssets.length}/${previewAssets.length}/${ogAssets.length}/${manifest.strategies.length}`, "manifest asset 수를 계약에 맞춥니다."));
   }
@@ -100,6 +150,10 @@ function validateManifest(manifest: DiscoverySampleManifest, findings: Discovery
       findings.push(finding(`continuity-${manifest.id}-${asset.id}`, "P0", "asset", "preview와 source의 personId가 일치하지 않습니다.", `${sourceAssets[0]?.personId}/${asset.personId}`, "같은 continuity set의 asset만 사용합니다."));
     }
   }
+}
+
+function normalizeCopy(value: string) {
+  return value.toLocaleLowerCase("ko-KR").replace(/\s+/g, " ").replace(/[|,·]/g, "").trim();
 }
 
 function finding(

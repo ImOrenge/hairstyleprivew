@@ -15,7 +15,7 @@
 2. 홈의 주 증거는 Hero 내부 3×3 데모가 아니라 16명 hair/fashion rolling media와 Analysis Evidence부터 Style Dossier까지 이어지는 프리미엄 컨설팅 showcase다.
 3. 실제 제품 런타임은 11개 addressable Scene과 서버 소유 `ConsultationSnapshot`을 사용한다.
 4. 9개 preview, 2~3개 shortlist, compare, immutable decision, salon brief, aftercare, fashion 흐름은 검색 랜딩이 연결할 실제 제품 증거로 재사용할 수 있다.
-5. 반면 `/discover/*` route, discovery registry, discovery sitemap, 검색 유입 event API, 실험 manifest는 아직 없다.
+5. 후속 full-surface 브랜치에는 `/discover` hub, 7개 정적 route, registry, sitemap과 고유 decision artifact가 구현됐다. 검색 유입 event API와 실험 manifest는 아직 없다.
 
 따라서 기존 P0~P5 계획을 완료로 올리지 않는다. 구현된 랜딩·컨설팅을 `재사용 가능한 선행 기반`으로 기록하고 검색 전용 산출물은 별도 Exit Gate를 유지한다.
 
@@ -46,9 +46,9 @@
 | Aftercare·Fashion | 결과 후 확장 | 실제 시술 기반 aftercare와 9 look fashion batch | implemented product contract | 관련 콘텐츠와 내부 링크 차별점으로 반영 |
 | 랜딩 IA | 일반 Hero→demo→workflow | Hero→Evidence→Direction→Preview→Compare→Brief→Aftercare→Fashion→Dossier→Pricing→Trust | implemented on feature | discovery template는 전체 홈을 복제하지 않고 intent별 핵심 4~6 section만 재조합 |
 | 랜딩 모션·접근성 | P2 Browser Gate 예정 | bounded reveal, reduced-motion, mobile CTA, keyboard/overflow contract | implemented and locally verified in feature history | discovery가 공용 token·motion contract를 재사용 |
-| 검색 route | `/discover/[slug]` 7개 | route·lib 디렉터리 없음 | not implemented | P1 유지 |
-| 검색 registry | C-01 | `my-app/lib/discovery` 없음 | not implemented | P1 유지 |
-| sitemap | published registry 연동 | home/support/privacy/terms만 포함, `new Date()` 사용 | not implemented | P1 blocker |
+| 검색 route | `/discover/[slug]` 7개 | hub와 7개 `generateStaticParams` 경로 | implemented locally | integration·deploy·live index는 별도 |
+| 검색 registry | C-01 | 7 page·7 manifest·13 evidence·7 artifact kind | implemented locally | 외부 provenance 승인 별도 |
+| sitemap | published registry 연동 | hub와 7개 `updatedAt` 기반 discovery entry | implemented locally | 배포 후 Search Console 제출 필요 |
 | 검색 퍼널 분석 | `landing_id` event API·DB | `/api/analytics/events` 없음 | not implemented | P3 유지 |
 | 검색 실험 | `hf_exp` manifest | discovery experiment manifest 없음 | not implemented | P5 유지 |
 
@@ -117,9 +117,9 @@ flowchart LR
 | --- | --- | --- | --- | --- |
 | P0 Evidence | planned | planned | 랜딩·컨설팅 source inventory 확보 | Search Console·query·funnel 기준선 |
 | P1 Foundation | planned | PR-1 complete locally | home metadata·JSON-LD·site URL helper | integration·deploy·live index 확인 |
-| P2 Pilot | planned | D-AI-SIM complete, expansion pending | premium showcase, 9-preview contract, mobile/motion tests | D-FACE·D-MEN·D-WOMEN과 상호작용 확장 |
+| P2 Pilot | planned | 4개 core/audience page complete locally | premium showcase, 9-preview contract, 고유 artifact, browser tests | integration·deploy·attribution |
 | P3 Trust & Funnel | planned | partial-reuse-ready | snapshot, evidence, privacy/share, feature-flag rollback | landing source handoff·event API·aggregate·retention |
-| P4 Expansion | planned | partial-reuse-ready | salon brief·aftercare·fashion·B2B bridge | D-BANGS/D-BOB/D-SALON·candidate ops·link graph |
+| P4 Expansion | planned | 7-page surface complete locally | D-BANGS·D-BOB·D-SALON, candidate manifests, link graph | 운영 승인·candidate 자동화는 별도 |
 | P5 Optimization | planned | planned | landing contract tests | assignment·exposure·scorecard·decision loop |
 
 `partial-reuse-ready`는 해당 검색 Phase가 완료됐다는 뜻이 아니다.
@@ -147,11 +147,11 @@ flowchart LR
 | `consulting:contract:test` | 78/78 pass | 위임된 랜딩 CTA owner component까지 검사하도록 stale contract 갱신 |
 | `search:discovery:contract:test` | 12/12 pass | registry·sample·metadata·JSON-LD·sitemap 계약 통과 |
 | `search:discovery:audit` | finding 0 | published canary blocking 0 |
-| `search-discovery.spec.ts` | 11/11 pass | viewport·axe·404·static HTML·image failure·performance 통과 |
-| `build` | pass | `/discover` static, D-AI-SIM SSG |
+| `search-discovery.spec.ts` | 39/39 pass | 7개 경로 metadata·static HTML·axe·390/1440, 404·image failure·performance 통과 |
+| `build` | pass | `/discover` static, 7개 detail SSG |
 
 검색 구현 중 발견된 실제 UI finding은 신뢰 날짜 텍스트의 3.14:1 대비 한 건이었다. 색상 토큰을 수정한 뒤 axe serious·critical 0으로 재검증했다. 전역 Clerk streaming shell은 JavaScript 비활성 브라우저에서 loading shell을 시각적으로 교체하지 못하지만, 정적 HTML 응답에는 H1·비교·FAQ·CTA가 포함된다. 이를 검색 HTML 계약과 별도 shell architecture 후속으로 분리했다.
 
 ## 9. 다음 행동
 
-`외부 provenance 문서 위치와 integration·deploy 승인을 확정한다. 배포 후 Search Console 28일 기준선과 field Core Web Vitals를 수집하고, PR-2에서 landing_id attribution을 구현한다.`
+`외부 provenance 문서 위치와 integration·deploy 승인을 확정한다. 배포 후 Search Console 28일 기준선과 field Core Web Vitals를 수집하고, P3에서 landing_id attribution을 구현한다.`

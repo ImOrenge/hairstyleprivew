@@ -22,6 +22,19 @@ export interface DiscoveryFaq {
   answer: string;
 }
 
+export interface DiscoveryDecisionArtifact {
+  kind: "simulation-map" | "face-observation" | "men-grooming" | "women-length" | "bangs-risk" | "bob-cut-ladder" | "salon-brief";
+  eyebrow: string;
+  title: string;
+  description: string;
+  items: readonly {
+    label: string;
+    value: string;
+    body: string;
+    note: string;
+  }[];
+}
+
 export type DiscoverySection =
   | {
       type: "workflow";
@@ -72,10 +85,23 @@ export interface DiscoveryPageDefinition {
     eyebrow: string;
     h1: string;
     support: string;
+    heroNote: string;
     primaryCta: DiscoveryCta;
+    sampleCta: DiscoveryCta;
     finalCta: DiscoveryCta;
+    finalTitle: string;
+    finalSupport: string;
     forbiddenClaims: readonly string[];
   };
+  sample: {
+    eyebrow: string;
+    title: string;
+    description: string;
+    heroLinkLabel: string;
+    heroCaption: string;
+    note: string;
+  };
+  artifact: DiscoveryDecisionArtifact;
   sections: readonly DiscoverySection[];
   faq: readonly DiscoveryFaq[];
   sampleManifestId: string | null;

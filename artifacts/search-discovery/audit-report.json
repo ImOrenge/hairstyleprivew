@@ -1,14 +1,20 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-14T12:40:15.608Z",
+  "generatedAt": "2026-08-14T13:19:13.368Z",
   "summary": {
-    "pages": 1,
-    "published": 1,
+    "pages": 7,
+    "published": 7,
     "findings": 0,
     "blocking": 0
   },
   "publishedSlugs": [
-    "ai-hairstyle-simulation"
+    "ai-hairstyle-simulation",
+    "face-shape-hairstyle",
+    "men-hairstyle-simulation",
+    "women-hairstyle-simulation",
+    "bangs-preview",
+    "bob-cut-preview",
+    "salon-consultation-image"
   ],
   "findings": []
 }

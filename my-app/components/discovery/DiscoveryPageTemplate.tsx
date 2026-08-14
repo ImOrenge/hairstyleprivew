@@ -4,6 +4,7 @@ import { LandingScene, SceneHeader } from "@/components/home/LandingScene";
 import { createDiscoveryJsonLd, serializeDiscoveryJsonLd } from "@/lib/discovery/json-ld";
 import type { DiscoveryPageDefinition, DiscoverySection } from "@/lib/discovery/types";
 import { DiscoveryHero } from "./DiscoveryHero";
+import { DiscoveryDecisionArtifact } from "./DiscoveryDecisionArtifact";
 import { RelatedDiscoveryPages } from "./RelatedDiscoveryPages";
 import { SampleComparison } from "./SampleComparison";
 import { TrustSummary } from "./TrustSummary";
@@ -16,11 +17,12 @@ export function DiscoveryPageTemplate({ definition }: { definition: DiscoveryPag
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: serializeDiscoveryJsonLd(jsonLd) }} />
       <DiscoveryHero definition={definition} />
       <SampleComparison definition={definition} />
+      <DiscoveryDecisionArtifact artifact={definition.artifact} />
       {definition.sections.map((section, index) => renderSection(section, definition, index))}
       <section className={styles.finalCta} aria-labelledby="discovery-final-title">
         <p className={styles.eyebrow}>PRIVATE AI STYLE DIRECTION</p>
-        <h2 id="discovery-final-title">이제 예시가 아니라, 내 기준으로 비교하세요</h2>
-        <p>사진 확인부터 3전략·9개 후보, 비교와 Salon Brief까지 하나의 상담 흐름으로 이어집니다.</p>
+        <h2 id="discovery-final-title">{definition.message.finalTitle}</h2>
+        <p>{definition.message.finalSupport}</p>
         <Link className={styles.primaryCta} href={definition.message.finalCta.href}>
           {definition.message.finalCta.label}
           <ArrowRight aria-hidden="true" />
@@ -33,7 +35,7 @@ export function DiscoveryPageTemplate({ definition }: { definition: DiscoveryPag
 function renderSection(section: DiscoverySection, definition: DiscoveryPageDefinition, index: number) {
   if (section.type === "workflow") {
     return (
-      <LandingScene key={section.type} id="discovery-workflow" number="02" layout="editorial-split" motion="none">
+      <LandingScene key={section.type} id="discovery-workflow" number="03" layout="editorial-split" motion="none">
         <SceneHeader eyebrow={section.eyebrow} title={section.title} description={section.description} />
         <div className={styles.workflowGrid}>
           {section.steps.map((step) => <article key={step.title}><h3>{step.title}</h3><p>{step.body}</p></article>)}
@@ -43,7 +45,7 @@ function renderSection(section: DiscoverySection, definition: DiscoveryPageDefin
   }
   if (section.type === "proof") {
     return (
-      <LandingScene key={section.type} id="discovery-proof" number="03" layout="typographic-index" tone="quiet" motion="none">
+      <LandingScene key={section.type} id="discovery-proof" number="04" layout="typographic-index" tone="quiet" motion="none">
         <SceneHeader eyebrow={section.eyebrow} title={section.title} description={section.description} />
         <dl className={styles.proofGrid}>
           {section.items.map((item) => <div key={item.label}><dt>{item.label}</dt><dd>{item.value}</dd></div>)}
@@ -53,7 +55,7 @@ function renderSection(section: DiscoverySection, definition: DiscoveryPageDefin
   }
   if (section.type === "trust") {
     return (
-      <LandingScene key={section.type} id="discovery-trust" number="04" layout="editorial-split" motion="none">
+      <LandingScene key={section.type} id="discovery-trust" number="05" layout="editorial-split" motion="none">
         <SceneHeader eyebrow={section.eyebrow} title={section.title} description={section.description} />
         <TrustSummary section={section} />
       </LandingScene>
