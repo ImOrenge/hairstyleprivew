@@ -128,6 +128,9 @@ export interface DiscoverySampleAsset {
   personId: string;
   licenseRef: string;
   consentRef: string;
+  catalogStyleSlug?: string;
+  catalogNameKo?: string;
+  catalogVersion?: "catalog-v4";
 }
 
 export interface DiscoverySampleManifest {

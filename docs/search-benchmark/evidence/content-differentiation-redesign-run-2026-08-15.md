@@ -23,7 +23,7 @@
 | ID | Assumption | Risk | Confirmation Needed |
 | --- | --- | --- | --- |
 | A-01 | 주 전환은 프라이빗 AI 컨설팅 시작으로 유지한다. | 낮음 | 아니요 |
-| A-02 | 기존 승인 synthetic continuity 자산은 유지하되 배열과 읽는 방법을 의도별로 다르게 한다. | 중간 | 새 전용 이미지 제작 시 필요 |
+| A-02 | 각 페이지는 서로 다른 synthetic 기준 모델과 전용 preview 경로를 가지며, 후보는 catalog-v4 항목과 1:1로 연결한다. | 낮음 | 2026-08-15 전용 자산·계약 테스트로 확인 |
 | A-03 | 시술 가능성과 결과는 현장 전문가 판단이 필요하다는 신뢰 경계를 유지한다. | 낮음 | 아니요 |
 
 ### Baseline Findings
@@ -34,6 +34,7 @@
 | CDR-02 | P1 | product evidence | 여성·앞머리·단발 페이지가 동일한 9개 이미지를 동일한 3열 보드로 표시했다. | `femaleClassic` continuity set 공유 | length chapters, fringe baseline, cut ladder로 읽는 구조 분리 |
 | CDR-03 | P1 | conversion | 공통 PRODUCT CONTRACT 수치가 검색 질문의 실제 결정에 충분히 답하지 못했다. | 5개 proof 항목 중 4개가 전 페이지 공통 | 관찰표·그루밍 계획·길이 비용·리스크·브리프 문서로 대체 |
 | CDR-04 | P2 | information architecture | 고유 아티팩트가 한 구역에만 있어 전체 체감은 공통 템플릿에 가까웠다. | hero, sample, workflow, trust, FAQ가 동일 컴포지션 | 페이지마다 전용 경험 2개와 고유 sample layout 배치 |
+| CDR-05 | P1 | asset | 여성 6개 페이지가 두 인물을 교차 재사용하고 후보가 HairFit 카탈로그 ID와 연결되지 않았다. | `femaleV2`, `femaleClassic` 공유와 범용 후보 설명 | 6개 고유 여성 모델·남성 전용 보드·63개 catalog-v4 slug 계약으로 교체 |
 
 ### Page Message Map
 
@@ -55,6 +56,7 @@
 | W-02 | produce | 7종 고유 IA와 전용 결정 경험 구현 | 모든 페이지에 고유 experience/layout ID 존재 | `DiscoveryIntentExperience.tsx`, `discoveryLayouts` | complete |
 | W-03 | produce | 의도별 샘플 구성과 반응형 CSS 구현 | 7개 sample layout이 서로 다름 | `data-sample-layout`, CSS variants | complete |
 | W-04 | verify | 계약·타입·린트·빌드·브라우저 검증 | 모든 필수 검증 통과 | 아래 Acceptance Gates | complete |
+| W-05 | produce | 페이지별 고유 모델과 catalog-v4 후보 보드 제작 | 7개 source personId와 63개 preview 경로 고유 | `page-specific-catalog-models-2026-08-15.md` | complete |
 
 ### Acceptance Gates
 
@@ -62,8 +64,9 @@
 - Copy Gate: 7개 검색 job마다 문제, 결정 기준, 신뢰 경계와 CTA를 연결했다.
 - Design Gate: 공통 브랜드 토큰을 유지하면서 7개 고유 IA와 sample treatment를 제공한다.
 - Browser Gate: 390px·1440px 전 페이지 overflow, 360/390/768/1440 canary, 대표 데스크톱·모바일 시각 검증을 통과했다.
-- Technical Gate: 계약 13/13, 타입검사, 범위 린트, 프로덕션 빌드, Playwright 39/39를 통과했다.
+- Technical Gate: 갱신된 계약 15/15, 타입검사, 범위 린트, 프로덕션 빌드, Playwright 40/40를 통과했다.
 - Fix Gate: 단일 공통 구조에서 7개 고유 layout·experience·sample treatment 계약으로 변경했다.
+- Asset Gate: 7개 페이지가 서로 다른 기준 모델을 사용하고 63개 후보가 실제 catalog-v4 slug·한글명과 일치한다.
 
 ### Current Status
 

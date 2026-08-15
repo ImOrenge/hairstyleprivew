@@ -1,7 +1,7 @@
 # 검색 유입 페이지 구현 가이드
 
-- 작성일: 2026-08-14
-- 구현 상태: full-surface locally complete — 7개 페이지·고유 IA·decision experience·sample treatment 구현·검증 완료, attribution·외부 공개 미완료
+- 작성일: 2026-08-15
+- 구현 상태: full-surface locally complete — 7개 페이지·고유 IA·decision experience·페이지별 모델·catalog-v4 sample treatment 구현, attribution·외부 공개 미완료
 - 구현 기준: `feat/2026-08-12-premium-landing-refactor@e86e40d`
 - 선행 문서: [아키텍처](./architecture.md), [P1 상세 계획](./implementation-plan/phase-01-search-surface-foundation.md), [P2 상세 계획](./implementation-plan/phase-02-pilot-content-sample-experience.md)
 - 실행 티켓: [검색 유입 페이지 구체 구현 실행 계획](./implementation-plan/search-entry-page-execution-plan.md)
@@ -75,9 +75,12 @@ my-app/
       metadata.ts
       json-ld.ts
   public/
-    discovery/
+    discovery/models/{page-slug}/
+      source.webp
+      preview-01.webp ... preview-09.webp
   scripts/
     audit-search-discovery.mjs
+    split-discovery-boards.mjs
 tests/
   web-e2e/
     search-discovery.spec.ts
@@ -247,6 +250,18 @@ const discoveryEntries = getPublishedDiscoveryPages().map((page) => ({
 모든 페이지에 하나의 기본 섹션 순서를 강제하지 않는다. `discoveryLayouts`는 검색 job에 따라 `intent`, `artifact`, `sample`, `workflow`, `proof`, `trust`, `related`, `faq` slot을 재배열하며 모든 페이지가 서로 다른 순서를 가져야 한다. 공통되는 것은 Hero·final CTA·신뢰 경계이고, 문제 해결 순서는 페이지별 계약이다. 홈의 `LandingScene`, `RevealOnScroll`, token을 재사용할 수 있지만 `PremiumConsultingShowcases` 전체를 import하거나 홈의 16명 rolling Hero를 검색 샘플 보드로 복제하지 않는다.
 
 이미지는 `next/image`를 사용하고 크기를 명시한다. 첫 viewport의 LCP 후보 1개만 우선 로드하며, 9-preview는 viewport 밖에서 lazy load하고 실제 레이아웃에 맞는 `sizes`를 제공한다.
+
+### 6.1 페이지별 모델·카탈로그 계약
+
+- 7개 published 페이지의 source `personId`는 모두 달라야 한다.
+- 한 페이지의 source와 9개 preview만 동일 인물을 공유한다.
+- source·preview 파일 경로를 다른 페이지 manifest에서 재사용하지 않는다.
+- 모든 preview는 `catalogStyleSlug`, `catalogNameKo`, `catalogVersion: catalog-v4`를 가진다.
+- slug와 한글명은 `data/hairstyle-blueprints/v4/*.json`과 자동 대조한다.
+- 화면에는 임시 순번만 표시하지 않고 실제 catalog-v4 한글 스타일명을 함께 표시한다.
+- 모델 또는 카탈로그 항목을 바꿀 때 `source.webp`, 9개 preview, byte 계약, provenance 문서를 한 변경으로 갱신한다.
+
+상세 제작·검수 근거는 [페이지별 카탈로그 모델 자산 실행 기록](./evidence/page-specific-catalog-models-2026-08-15.md)을 따른다.
 
 ## 7. CTA와 attribution 단계
 

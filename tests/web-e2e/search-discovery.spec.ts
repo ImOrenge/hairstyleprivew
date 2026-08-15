@@ -58,6 +58,8 @@ for (const [pageIndex, definition] of discoveryPages.entries()) {
     await expect(page).toHaveTitle(definition.title);
     await expect(page.getByRole("heading", { level: 1, name: definition.h1 })).toBeVisible();
     await expect(page.locator("#sample-comparison figure img")).toHaveCount(9);
+    await expect(page.locator("#sample-comparison figcaption[data-catalog-style]")).toHaveCount(9);
+    await expect(page.locator("#sample-comparison figcaption strong")).toHaveCount(9);
     await expect(page.locator("#sample-comparison")).toHaveAttribute("data-sample-layout", definition.sampleLayout);
     await expect(page.locator("[data-intent-experience]")).toHaveAttribute("data-intent-experience", definition.experience);
     await expect(page.locator("[data-discovery-page]")).toHaveAttribute("data-discovery-page", definition.id);
@@ -96,6 +98,17 @@ for (const [pageIndex, definition] of discoveryPages.entries()) {
     });
   }
 }
+
+test("all seven pages render different source models", async ({ page }) => {
+  const personIds = new Set<string>();
+  for (const definition of discoveryPages) {
+    await page.goto(`/discover/${definition.slug}`, { waitUntil: "load" });
+    const personId = await page.locator("figure[data-source-person-id]").getAttribute("data-source-person-id");
+    expect(personId).toBeTruthy();
+    personIds.add(personId!);
+  }
+  expect(personIds.size).toBe(discoveryPages.length);
+});
 
 test("D-AI-SIM has no serious or critical accessibility violations", async ({ page }) => {
   await page.goto(canaryPath, { waitUntil: "load" });
@@ -141,7 +154,7 @@ test("preview layout and alt text survive image request failures", async ({ page
   await page.goto(canaryPath, { waitUntil: "domcontentloaded" });
   const firstPreview = page.locator("#sample-comparison figure").first();
   const image = firstPreview.locator("img");
-  await expect(image).toHaveAttribute("alt", /AI 헤어 후보/);
+  await expect(image).toHaveAttribute("alt", /HairFit 카탈로그 .* 후보/);
   const box = await firstPreview.boundingBox();
   expect(box?.width ?? 0).toBeGreaterThan(60);
   expect(box?.height ?? 0).toBeGreaterThan(60);

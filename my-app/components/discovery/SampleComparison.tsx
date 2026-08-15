@@ -47,7 +47,10 @@ export function SampleComparison({ definition }: { definition: DiscoveryPageDefi
                       height={asset.height}
                       sizes="(max-width: 560px) 30vw, (max-width: 980px) 28vw, 20vw"
                     />
-                    <figcaption>{strategy.id.slice(0, 1)}-{index + 1}</figcaption>
+                    <figcaption data-catalog-style={asset.catalogStyleSlug}>
+                      <span>{strategy.id.slice(0, 1)}-{index + 1} · CATALOG V4</span>
+                      <strong>{asset.catalogNameKo ?? asset.alt}</strong>
+                    </figcaption>
                   </figure>
                 );
               })}

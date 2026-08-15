@@ -32,7 +32,7 @@ export function DiscoveryHero({ definition }: { definition: DiscoveryPageDefinit
         </div>
 
         {source ? (
-          <figure className={styles.heroMedia}>
+          <figure className={styles.heroMedia} data-source-person-id={source.personId}>
             <Image
               src={source.path}
               alt={source.alt}

@@ -4,7 +4,12 @@ import type {
   DiscoveryStrategyId,
 } from "./types.ts";
 
-type PreviewSeed = readonly [number: string, bytes: number, description: string];
+interface PreviewSeed {
+  number: string;
+  bytes: number;
+  catalogStyleSlug: string;
+  catalogNameKo: string;
+}
 
 interface ContinuitySet {
   source: {
@@ -45,71 +50,155 @@ interface ManifestConfig {
   }[];
 }
 
-const femaleV2: ContinuitySet = {
-  source: { path: "/hero/demo/grid/female-01.webp", width: 640, height: 800, bytes: 37740 },
+const aiSimulationSet = discoveryContinuitySet({
+  slug: "ai-hairstyle-simulation",
+  source: { width: 543, height: 724, bytes: 30240 },
+  personId: "synthetic-discovery-ai-model-03",
   previews: [
-    ["01", 12506, "턱선이 또렷하게 보이는 짧은 C컬 보브"],
-    ["02", 12152, "가벼운 앞머리를 더한 짧은 보브"],
-    ["03", 13314, "층과 움직임을 강조한 짧은 레이어"],
-    ["04", 12372, "얼굴선을 감싸는 중간 길이 C컬"],
-    ["05", 14694, "차분한 볼륨의 중간 길이 레이어"],
-    ["06", 13476, "가벼운 앞머리와 중간 길이 레이어"],
-    ["07", 15034, "자연스러운 웨이브의 긴 레이어"],
-    ["08", 18198, "질감과 볼륨을 강조한 긴 웨이브"],
-    ["09", 14728, "윤곽을 길게 연결하는 차분한 롱 헤어"],
+    catalogPreview("01", 12006, "female-short-soft-pixie-wavy-curly-untreated", "여성 소프트 픽시 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("02", 13532, "female-short-tassel-bob-wavy-curly-bleached", "여성 태슬 보브 · 곱슬 웨이브 탈색 모발"),
+    catalogPreview("03", 12954, "female-short-short-hush-tight-curly-frizzy-damaged", "여성 숏 허쉬 · 강한 곱슬 손상 모발"),
+    catalogPreview("04", 12568, "female-medium-medium-layer-straight-untreated", "여성 미디엄 레이어 · 직모 일반 모발"),
+    catalogPreview("05", 17584, "female-medium-c-curl-tight-curly-frizzy-untreated", "여성 C컬 미디엄 · 강한 곱슬 일반 모발"),
+    catalogPreview("06", 15680, "female-medium-wolf-layer-wavy-curly-bleached", "여성 울프 레이어 · 곱슬 웨이브 탈색 모발"),
+    catalogPreview("07", 15314, "female-long-long-layer-straight-untreated", "여성 롱 레이어 · 직모 일반 모발"),
+    catalogPreview("08", 19256, "female-long-butterfly-long-wavy-curly-bleached", "여성 버터플라이 롱 · 곱슬 웨이브 탈색 모발"),
+    catalogPreview("09", 25758, "female-long-s-wave-long-tight-curly-frizzy-untreated", "여성 S웨이브 롱 · 강한 곱슬 일반 모발"),
   ],
-  previewPath: (number) => `/hero/demo/grid/female-v2-${number}.webp`,
-  previewWidth: 418,
-  previewHeight: 418,
-  personId: "synthetic-female-continuity-v2",
-  licenseRef: "internal-generated-content:landing-continuity-v2",
-  consentRef: "synthetic-model:no-user-upload",
-  provenanceRef: "docs/landing-page-editorial-image-prompts.md#continuity-set-v2",
-};
+});
 
-const femaleClassic: ContinuitySet = {
-  source: { path: "/hero/demo/female-original.webp", width: 1024, height: 1536, bytes: 139978 },
+const faceShapeSet = discoveryContinuitySet({
+  slug: "face-shape-hairstyle",
+  source: { width: 543, height: 724, bytes: 59188 },
+  personId: "synthetic-discovery-face-model-05",
   previews: [
-    ["01", 37740, "이마를 열고 턱선을 정리한 블런트 보브"],
-    ["02", 39920, "가벼운 시스루 앞머리와 짧은 보브"],
-    ["03", 48998, "얇은 앞머리와 목선을 잇는 샤기 레이어"],
-    ["04", 35530, "이마를 열고 바깥선을 살린 미디엄 C컬"],
-    ["05", 40808, "긴 페이스라인 레이어와 자연스러운 가르마"],
-    ["06", 52930, "가벼운 앞머리와 긴 레이어"],
-    ["07", 48688, "이마를 열고 흐르는 롱 웨이브"],
-    ["08", 79162, "짧은 컬 프린지와 풍성한 롱 컬"],
-    ["09", 39942, "이마를 열고 직선 실루엣을 살린 롱 헤어"],
+    catalogPreview("01", 15288, "female-short-rounded-bob-tight-curly-frizzy-untreated", "여성 라운드 보브 · 강한 곱슬 일반 모발"),
+    catalogPreview("02", 11874, "female-short-soft-pixie-wavy-curly-untreated", "여성 소프트 픽시 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("03", 11618, "female-short-airy-crop-straight-untreated", "여성 에어리 크롭 · 직모 일반 모발"),
+    catalogPreview("04", 17486, "female-medium-c-curl-tight-curly-frizzy-untreated", "여성 C컬 미디엄 · 강한 곱슬 일반 모발"),
+    catalogPreview("05", 14700, "female-medium-medium-hush-wavy-curly-untreated", "여성 미디엄 허쉬 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("06", 14074, "female-medium-medium-layer-straight-untreated", "여성 미디엄 레이어 · 직모 일반 모발"),
+    catalogPreview("07", 20336, "female-long-face-frame-long-tight-curly-frizzy-colored", "여성 페이스 프레임 롱 · 강한 곱슬 염색 모발"),
+    catalogPreview("08", 16356, "female-long-curtain-long-wavy-curly-untreated", "여성 커튼 롱 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("09", 15000, "female-long-long-layer-straight-untreated", "여성 롱 레이어 · 직모 일반 모발"),
   ],
-  previewPath: (number) => `/hero/demo/grid/female-${number}.webp`,
-  previewWidth: 640,
-  previewHeight: 800,
-  personId: "synthetic-female-continuity-v1",
-  licenseRef: "internal-generated-content:landing-demo-v1",
-  consentRef: "synthetic-model:no-user-upload",
-  provenanceRef: "docs/landing-page-redesign-run.md#demo-continuity-assets",
-};
+});
 
-const maleV2: ContinuitySet = {
-  source: { path: "/hero/demo/male-original.webp", width: 1024, height: 1536, bytes: 163770 },
+const menSet = discoveryContinuitySet({
+  slug: "men-hairstyle",
+  source: { width: 1024, height: 1536, bytes: 163770 },
+  personId: "synthetic-discovery-men-model-v3",
   previews: [
-    ["01", 13618, "짧은 텍스처와 앞머리를 살린 크롭"],
-    ["02", 13286, "가벼운 센터 파트의 짧은 헤어"],
-    ["03", 12046, "이마를 열고 선을 정리한 사이드 파트"],
-    ["04", 13176, "부드러운 가르마와 낮은 옆 볼륨"],
-    ["05", 13528, "귀선을 덮는 중간 길이 센터 파트"],
-    ["06", 14468, "짧은 컬과 자연스러운 앞머리"],
-    ["07", 15228, "목선을 잇는 긴 센터 파트"],
-    ["08", 15632, "중간 길이 텍스처와 가벼운 컬"],
-    ["09", 13432, "부드러운 웨이브의 중간 길이 헤어"],
+    catalogPreview("01", 12992, "male-short-textured-crop-wavy-curly-untreated", "남성 텍스처드 크롭 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("02", 13374, "male-short-comma-crop-tight-curly-frizzy-untreated", "남성 콤마 크롭 · 강한 곱슬 일반 모발"),
+    catalogPreview("03", 11160, "male-short-ivy-lift-straight-untreated", "남성 아이비 리프트 · 직모 일반 모발"),
+    catalogPreview("04", 14040, "male-medium-airy-dandy-straight-untreated", "남성 에어리 댄디 · 직모 일반 모발"),
+    catalogPreview("05", 14604, "male-medium-leaf-flow-wavy-curly-untreated", "남성 리프 플로우 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("06", 15176, "male-medium-comma-medium-tight-curly-frizzy-untreated", "남성 콤마 미디엄 · 강한 곱슬 일반 모발"),
+    catalogPreview("07", 14326, "male-long-long-layer-straight-untreated", "남성 롱 레이어 · 직모 일반 모발"),
+    catalogPreview("08", 17020, "male-long-curtain-long-wavy-curly-untreated", "남성 커튼 롱 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("09", 17176, "male-long-grace-wave-wavy-curly-untreated", "남성 그레이스 웨이브 · 곱슬 웨이브 일반 모발"),
   ],
-  previewPath: (number) => `/hero/demo/grid/male-v2-${number}.webp`,
-  previewWidth: 418,
-  previewHeight: 418,
-  personId: "synthetic-male-continuity-v2",
-  licenseRef: "internal-generated-content:landing-continuity-v2",
-  consentRef: "synthetic-model:no-user-upload",
-  provenanceRef: "docs/landing-page-editorial-image-prompts.md#continuity-set-v2",
-};
+});
+
+const womenSet = discoveryContinuitySet({
+  slug: "women-hairstyle",
+  source: { width: 512, height: 768, bytes: 30708 },
+  personId: "synthetic-discovery-women-model-07",
+  previews: [
+    catalogPreview("01", 12978, "female-short-french-bob-straight-damaged", "여성 프렌치 보브 · 직모 손상 모발"),
+    catalogPreview("02", 15472, "female-short-choppy-bob-wavy-curly-bleached", "여성 처피 보브 · 곱슬 웨이브 탈색 모발"),
+    catalogPreview("03", 16460, "female-short-cocoon-bob-tight-curly-frizzy-colored", "여성 코쿤 보브 · 강한 곱슬 염색 모발"),
+    catalogPreview("04", 14846, "female-medium-clavicle-bob-wavy-curly-damaged", "여성 쇄골 보브 · 곱슬 웨이브 손상 모발"),
+    catalogPreview("05", 16790, "female-medium-butterfly-medium-tight-curly-frizzy-bleached", "여성 버터플라이 미디엄 · 강한 곱슬 탈색 모발"),
+    catalogPreview("06", 14712, "female-medium-textured-lob-wavy-curly-untreated", "여성 텍스처드 로브 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("07", 16314, "female-long-cloud-wave-straight-untreated", "여성 클라우드 웨이브 · 직모 일반 모발"),
+    catalogPreview("08", 18232, "female-long-grace-wave-wavy-curly-untreated", "여성 그레이스 웨이브 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("09", 17538, "female-long-feather-long-wavy-curly-untreated", "여성 페더 롱 · 곱슬 웨이브 일반 모발"),
+  ],
+});
+
+const bangsSet = discoveryContinuitySet({
+  slug: "bangs-hairstyle",
+  source: { width: 768, height: 1024, bytes: 37488 },
+  personId: "synthetic-discovery-bangs-model-09",
+  previews: [
+    catalogPreview("01", 9590, "female-short-side-part-crop-straight-colored", "여성 사이드 파트 크롭 · 직모 염색 모발"),
+    catalogPreview("02", 11214, "female-short-soft-pixie-wavy-curly-untreated", "여성 소프트 픽시 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("03", 13046, "female-short-rounded-bob-tight-curly-frizzy-untreated", "여성 라운드 보브 · 강한 곱슬 일반 모발"),
+    catalogPreview("04", 11222, "female-medium-curtain-medium-straight-colored", "여성 커튼 미디엄 · 직모 염색 모발"),
+    catalogPreview("05", 13790, "female-medium-medium-hush-wavy-curly-untreated", "여성 미디엄 허쉬 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("06", 12128, "female-medium-c-curl-tight-curly-frizzy-untreated", "여성 C컬 미디엄 · 강한 곱슬 일반 모발"),
+    catalogPreview("07", 11488, "female-long-center-flow-long-straight-bleached", "여성 센터 플로우 롱 · 직모 탈색 모발"),
+    catalogPreview("08", 14418, "female-long-curtain-long-wavy-curly-untreated", "여성 커튼 롱 · 곱슬 웨이브 일반 모발"),
+    catalogPreview("09", 15168, "female-long-s-wave-long-tight-curly-frizzy-untreated", "여성 S웨이브 롱 · 강한 곱슬 일반 모발"),
+  ],
+});
+
+const bobSet = discoveryContinuitySet({
+  slug: "bob-hairstyle",
+  source: { width: 768, height: 1024, bytes: 42152 },
+  personId: "synthetic-discovery-bob-model-11",
+  previews: [
+    catalogPreview("01", 13004, "female-short-french-bob-straight-damaged", "여성 프렌치 보브 · 직모 손상 모발"),
+    catalogPreview("02", 15810, "female-short-tassel-bob-wavy-curly-bleached", "여성 태슬 보브 · 곱슬 웨이브 탈색 모발"),
+    catalogPreview("03", 17820, "female-short-rounded-bob-tight-curly-frizzy-untreated", "여성 라운드 보브 · 강한 곱슬 일반 모발"),
+    catalogPreview("04", 14540, "female-medium-s-curl-lob-straight-damaged", "여성 S컬 로브 · 직모 손상 모발"),
+    catalogPreview("05", 17414, "female-medium-clavicle-bob-wavy-curly-damaged", "여성 쇄골 보브 · 곱슬 웨이브 손상 모발"),
+    catalogPreview("06", 19260, "female-medium-volume-bob-tight-curly-frizzy-colored", "여성 볼륨 보브 · 강한 곱슬 염색 모발"),
+    catalogPreview("07", 24640, "female-long-blunt-long-tight-curly-frizzy-colored", "여성 블런트 롱 · 강한 곱슬 염색 모발"),
+    catalogPreview("08", 24520, "female-long-face-frame-long-tight-curly-frizzy-colored", "여성 페이스 프레임 롱 · 강한 곱슬 염색 모발"),
+    catalogPreview("09", 21004, "female-long-curtain-long-wavy-curly-untreated", "여성 커튼 롱 · 곱슬 웨이브 일반 모발"),
+  ],
+});
+
+const salonSet = discoveryContinuitySet({
+  slug: "salon-consultation",
+  source: { width: 768, height: 1024, bytes: 41286 },
+  personId: "synthetic-discovery-salon-model-13",
+  previews: [
+    catalogPreview("01", 14376, "female-short-french-bob-straight-damaged", "여성 프렌치 보브 · 직모 손상 모발"),
+    catalogPreview("02", 16250, "female-short-bixie-layer-wavy-curly-damaged", "여성 빅시 레이어 · 곱슬 웨이브 손상 모발"),
+    catalogPreview("03", 19998, "female-short-rounded-bob-tight-curly-frizzy-untreated", "여성 라운드 보브 · 강한 곱슬 일반 모발"),
+    catalogPreview("04", 16042, "female-medium-s-curl-lob-straight-damaged", "여성 S컬 로브 · 직모 손상 모발"),
+    catalogPreview("05", 17716, "female-medium-clavicle-bob-wavy-curly-damaged", "여성 쇄골 보브 · 곱슬 웨이브 손상 모발"),
+    catalogPreview("06", 21218, "female-medium-c-curl-tight-curly-frizzy-untreated", "여성 C컬 미디엄 · 강한 곱슬 일반 모발"),
+    catalogPreview("07", 14854, "female-long-jelly-long-straight-damaged", "여성 젤리 롱 · 직모 손상 모발"),
+    catalogPreview("08", 17204, "female-long-volume-layer-long-wavy-curly-damaged", "여성 볼륨 레이어 롱 · 곱슬 웨이브 손상 모발"),
+    catalogPreview("09", 20734, "female-long-s-wave-long-tight-curly-frizzy-untreated", "여성 S웨이브 롱 · 강한 곱슬 일반 모발"),
+  ],
+});
+
+function catalogPreview(
+  number: string,
+  bytes: number,
+  catalogStyleSlug: string,
+  catalogNameKo: string,
+): PreviewSeed {
+  return { number, bytes, catalogStyleSlug, catalogNameKo };
+}
+
+function discoveryContinuitySet(config: {
+  slug: string;
+  source: Omit<ContinuitySet["source"], "path">;
+  personId: string;
+  previews: readonly PreviewSeed[];
+}): ContinuitySet {
+  return {
+    source: {
+      path: `/discovery/models/${config.slug}/source.webp`,
+      ...config.source,
+    },
+    previews: config.previews,
+    previewPath: (number) => `/discovery/models/${config.slug}/preview-${number}.webp`,
+    previewWidth: 418,
+    previewHeight: 418,
+    personId: config.personId,
+    licenseRef: "internal-generated-content:discovery-catalog-v4-2026-08-15",
+    consentRef: "synthetic-model:no-user-upload",
+    provenanceRef: "docs/search-benchmark/evidence/page-specific-catalog-models-2026-08-15.md",
+  };
+}
 
 const previewBoardOg = {
   path: "/landing/editorial/faq-preview-board-v2.webp" as const,
@@ -123,17 +212,17 @@ const previewBoardOg = {
 
 export const discoverySampleManifests = [
   createManifest({
-    id: "SAMPLE-D-AI-SIM-FEMALE-V2",
+    id: "SAMPLE-D-AI-SIM-CATALOG-V4",
     prefix: "sample-ai-sim",
-    set: femaleV2,
+    set: aiSimulationSet,
     sourceAlt: "AI 헤어 후보 비교에 사용하는 여성 원본 모델 예시",
     og: previewBoardOg,
     strategies: standardStrategies("얼굴선과 길이의 균형", "원하는 인상", "손질 시간과 일상 활용"),
   }),
   createManifest({
-    id: "SAMPLE-D-FACE-FEMALE-V2",
+    id: "SAMPLE-D-FACE-CATALOG-V4",
     prefix: "sample-face",
-    set: femaleV2,
+    set: faceShapeSet,
     sourceAlt: "얼굴선과 헤어 실루엣 관계를 비교하는 여성 기준 모델",
     og: {
       path: "/landing/editorial/criteria-face-shape-landmark-system.webp",
@@ -145,31 +234,31 @@ export const discoverySampleManifests = [
       licenseRef: "internal-generated-content:landing-editorial-v2",
     },
     strategies: [
-      { id: "BALANCE", label: "FACE LINE", description: "턱선 주변의 길이와 옆 볼륨을 비교합니다.", numbers: ["01", "04", "07"] },
-      { id: "IMAGE", label: "FOREHEAD / PART", description: "앞머리와 가르마가 이마 노출에 주는 차이를 봅니다.", numbers: ["02", "05", "08"] },
-      { id: "LIFESTYLE", label: "TEXTURE", description: "레이어와 컬의 강도를 손질 조건과 함께 비교합니다.", numbers: ["03", "06", "09"] },
+      { id: "BALANCE", label: "JAWLINE", description: "카탈로그의 턱선 보정 초점 후보를 길이별로 비교합니다.", numbers: ["01", "04", "07"] },
+      { id: "IMAGE", label: "TEMPLE", description: "관자 보정 초점과 부드러운 프린지 후보를 비교합니다.", numbers: ["02", "05", "08"] },
+      { id: "LIFESTYLE", label: "CROWN", description: "정수리 보정 초점과 직선 질감 후보를 비교합니다.", numbers: ["03", "06", "09"] },
     ],
   }),
   createManifest({
-    id: "SAMPLE-D-MEN-MALE-V2",
+    id: "SAMPLE-D-MEN-CATALOG-V4",
     prefix: "sample-men",
-    set: maleV2,
+    set: menSet,
     sourceAlt: "남자 헤어 길이와 가르마를 비교하는 남성 원본 모델 예시",
     og: { ...previewBoardOg, alt: "남자 헤어 후보 아홉 가지를 비교하는 HairFit 예시", personId: "synthetic-editorial-men-preview-v2" },
     strategies: standardStrategies("짧은 길이와 윤곽 균형", "가르마와 앞머리 인상", "중간 길이와 손질 난이도"),
   }),
   createManifest({
-    id: "SAMPLE-D-WOMEN-FEMALE-CLASSIC",
+    id: "SAMPLE-D-WOMEN-CATALOG-V4",
     prefix: "sample-women",
-    set: femaleClassic,
+    set: womenSet,
     sourceAlt: "여자 헤어 길이와 앞머리를 비교하는 여성 원본 모델 예시",
     og: { ...previewBoardOg, alt: "여자 헤어 후보 아홉 가지를 비교하는 HairFit 예시", personId: "synthetic-editorial-women-preview-v2" },
     strategies: standardStrategies("단발과 얼굴선 균형", "미디엄 길이와 인상", "롱 헤어 질감과 관리"),
   }),
   createManifest({
-    id: "SAMPLE-D-BANGS-FEMALE-CLASSIC",
+    id: "SAMPLE-D-BANGS-CATALOG-V4",
     prefix: "sample-bangs",
-    set: femaleClassic,
+    set: bangsSet,
     sourceAlt: "앞머리 유무와 형태를 비교하는 여성 원본 모델 예시",
     og: {
       path: "/landing/editorial/feature-face-line.webp",
@@ -181,15 +270,15 @@ export const discoverySampleManifests = [
       licenseRef: "internal-generated-content:landing-editorial-v2",
     },
     strategies: [
-      { id: "BALANCE", label: "OPEN FOREHEAD", description: "앞머리 없이 이마를 여는 기준 후보를 비교합니다.", numbers: ["01", "04", "09"] },
-      { id: "IMAGE", label: "SOFT FRINGE", description: "시스루와 가벼운 앞머리가 인상에 주는 차이를 봅니다.", numbers: ["02", "03", "06"] },
-      { id: "LIFESTYLE", label: "TEXTURE / CARE", description: "길이와 컬이 다른 후보로 손질 부담까지 확인합니다.", numbers: ["05", "07", "08"] },
+      { id: "BALANCE", label: "NO FIXED BANGS", description: "카탈로그의 앞머리 고정 없음 후보를 길이별로 비교합니다.", numbers: ["01", "04", "07"] },
+      { id: "IMAGE", label: "SOFT FRINGE", description: "카탈로그의 부드러운 프린지 후보를 길이별로 비교합니다.", numbers: ["02", "05", "08"] },
+      { id: "LIFESTYLE", label: "CURTAIN FRINGE", description: "카탈로그의 커튼 프린지 후보와 컬 강도를 비교합니다.", numbers: ["03", "06", "09"] },
     ],
   }),
   createManifest({
-    id: "SAMPLE-D-BOB-FEMALE-CLASSIC",
+    id: "SAMPLE-D-BOB-CATALOG-V4",
     prefix: "sample-bob",
-    set: femaleClassic,
+    set: bobSet,
     sourceAlt: "단발과 보브컷 전환을 비교하는 여성 원본 모델 예시",
     og: { ...previewBoardOg, alt: "단발과 보브컷 후보를 비교하는 HairFit 보드 예시", personId: "synthetic-editorial-bob-preview-v2" },
     strategies: [
@@ -199,9 +288,9 @@ export const discoverySampleManifests = [
     ],
   }),
   createManifest({
-    id: "SAMPLE-D-SALON-FEMALE-V2",
+    id: "SAMPLE-D-SALON-CATALOG-V4",
     prefix: "sample-salon",
-    set: femaleV2,
+    set: salonSet,
     sourceAlt: "미용실 상담 보드에 사용할 여성 원본 모델 예시",
     og: {
       path: "/landing/editorial/faq-salon-use-v2.webp",
@@ -213,9 +302,9 @@ export const discoverySampleManifests = [
       licenseRef: "internal-generated-content:landing-editorial-v2",
     },
     strategies: [
-      { id: "BALANCE", label: "CUT DIRECTION", description: "짧음·중간·긴 길이를 한 줄에서 비교합니다.", numbers: ["01", "04", "07"] },
-      { id: "IMAGE", label: "IMAGE DIRECTION", description: "앞머리와 볼륨이 만드는 인상 차이를 정리합니다.", numbers: ["02", "05", "08"] },
-      { id: "LIFESTYLE", label: "CARE DIRECTION", description: "레이어와 질감을 관리 조건과 함께 전달합니다.", numbers: ["03", "06", "09"] },
+      { id: "BALANCE", label: "LOW CARE", description: "카탈로그의 낮은 관리 난이도 후보를 길이별로 비교합니다.", numbers: ["01", "04", "07"] },
+      { id: "IMAGE", label: "MEDIUM CARE", description: "중간 관리 난이도의 레이어와 웨이브 후보를 비교합니다.", numbers: ["02", "05", "08"] },
+      { id: "LIFESTYLE", label: "HIGH CARE", description: "높은 관리 난이도의 컬 후보와 시술 부담을 확인합니다.", numbers: ["03", "06", "09"] },
     ],
   }),
 ] satisfies readonly DiscoverySampleManifest[];
@@ -231,19 +320,22 @@ function standardStrategies(balance: string, image: string, lifestyle: string): 
 function createManifest(config: ManifestConfig): DiscoverySampleManifest {
   const sourceAssetId = `${config.prefix}-source`;
   const ogAssetId = `${config.prefix}-og`;
-  const previewAssets = config.set.previews.map(([number, bytes, description]): DiscoverySampleAsset => ({
-    id: `${config.prefix}-preview-${number}`,
-    path: config.set.previewPath(number),
+  const previewAssets = config.set.previews.map((preview): DiscoverySampleAsset => ({
+    id: `${config.prefix}-preview-${preview.number}`,
+    path: config.set.previewPath(preview.number),
     role: "preview",
     width: config.set.previewWidth,
     height: config.set.previewHeight,
-    bytes,
-    alt: `동일한 기준 모델의 ${description} AI 헤어 후보`,
+    bytes: preview.bytes,
+    alt: `동일한 기준 모델의 HairFit 카탈로그 ${preview.catalogNameKo} 후보`,
     crop: config.set.previewWidth === config.set.previewHeight ? "square" : "portrait",
     status: "approved",
     personId: config.set.personId,
     licenseRef: config.set.licenseRef,
     consentRef: config.set.consentRef,
+    catalogStyleSlug: preview.catalogStyleSlug,
+    catalogNameKo: preview.catalogNameKo,
+    catalogVersion: "catalog-v4",
   }));
 
   return {
@@ -251,7 +343,7 @@ function createManifest(config: ManifestConfig): DiscoverySampleManifest {
     status: "approved",
     sourceAssetId,
     ogAssetId,
-    reviewedAt: "2026-08-14",
+    reviewedAt: "2026-08-15",
     owner: "HairFit product design",
     provenanceRef: config.set.provenanceRef,
     assets: [
