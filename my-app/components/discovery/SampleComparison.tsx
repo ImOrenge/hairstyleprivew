@@ -12,7 +12,12 @@ export function SampleComparison({ definition }: { definition: DiscoveryPageDefi
   if (!manifest) return null;
 
   return (
-    <section id="sample-comparison" className={styles.sampleSection} aria-labelledby="sample-title">
+    <section
+      id="sample-comparison"
+      className={styles.sampleSection}
+      aria-labelledby="sample-title"
+      data-sample-layout={sampleLayouts[definition.id]}
+    >
       <header className={styles.sectionHeader}>
         <p className={styles.eyebrow}>{definition.sample.eyebrow}</p>
         <h2 id="sample-title">{definition.sample.title}</h2>
@@ -61,3 +66,13 @@ export function SampleComparison({ definition }: { definition: DiscoveryPageDefi
     </section>
   );
 }
+
+export const sampleLayouts = {
+  "D-AI-SIM": "direction-matrix",
+  "D-FACE": "observation-rails",
+  "D-MEN": "grooming-schedule",
+  "D-WOMEN": "length-chapters",
+  "D-BANGS": "fringe-baseline",
+  "D-BOB": "cut-ladder",
+  "D-SALON": "salon-shortlist",
+} as const satisfies Record<DiscoveryPageDefinition["id"], string>;

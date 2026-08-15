@@ -18,6 +18,8 @@ yarn-error.log*
 .artifacts/playwright-live/
 .artifacts/generation-notification-staging/
 .artifacts/live-auth-smoke/
+.artifacts/search-discovery-*-server.*.log
+.artifacts/search-discovery-*-mobile.png
 playwright/.clerk/
 my-app/.next-e2e/
 my-app/.next-*/

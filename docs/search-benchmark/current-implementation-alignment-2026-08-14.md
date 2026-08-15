@@ -15,7 +15,7 @@
 2. 홈의 주 증거는 Hero 내부 3×3 데모가 아니라 16명 hair/fashion rolling media와 Analysis Evidence부터 Style Dossier까지 이어지는 프리미엄 컨설팅 showcase다.
 3. 실제 제품 런타임은 11개 addressable Scene과 서버 소유 `ConsultationSnapshot`을 사용한다.
 4. 9개 preview, 2~3개 shortlist, compare, immutable decision, salon brief, aftercare, fashion 흐름은 검색 랜딩이 연결할 실제 제품 증거로 재사용할 수 있다.
-5. 후속 full-surface 브랜치에는 `/discover` hub, 7개 정적 route, registry, sitemap과 고유 decision artifact가 구현됐다. 검색 유입 event API와 실험 manifest는 아직 없다.
+5. 후속 full-surface 브랜치에는 `/discover` hub, 7개 정적 route, registry, sitemap, 고유 decision artifact와 페이지별 IA·decision experience·sample treatment가 구현됐다. 검색 유입 event API와 실험 manifest는 아직 없다.
 
 따라서 기존 P0~P5 계획을 완료로 올리지 않는다. 구현된 랜딩·컨설팅을 `재사용 가능한 선행 기반`으로 기록하고 검색 전용 산출물은 별도 Exit Gate를 유지한다.
 
@@ -44,10 +44,10 @@
 | 선택 | 결과 선택 | 최대 3 shortlist, 최소 2 compare, revisioned selection | implemented product contract | CTA·카피를 “생성”보다 “비교와 결정”에 맞춤 |
 | Salon | 상담 이미지 랜딩 계획 | versioned salon brief와 공개 share 경계 | implemented product contract | D-SALON의 proof로 사용하되 실제 share payload·사진은 공개 샘플로 재사용 금지 |
 | Aftercare·Fashion | 결과 후 확장 | 실제 시술 기반 aftercare와 9 look fashion batch | implemented product contract | 관련 콘텐츠와 내부 링크 차별점으로 반영 |
-| 랜딩 IA | 일반 Hero→demo→workflow | Hero→Evidence→Direction→Preview→Compare→Brief→Aftercare→Fashion→Dossier→Pricing→Trust | implemented on feature | discovery template는 전체 홈을 복제하지 않고 intent별 핵심 4~6 section만 재조합 |
+| 랜딩 IA | 일반 Hero→demo→workflow | Hero→Evidence→Direction→Preview→Compare→Brief→Aftercare→Fashion→Dossier→Pricing→Trust | implemented on feature | discovery는 단일 공통 순서를 쓰지 않고 7개 고유 slot order와 전용 결정 도구로 재조합 |
 | 랜딩 모션·접근성 | P2 Browser Gate 예정 | bounded reveal, reduced-motion, mobile CTA, keyboard/overflow contract | implemented and locally verified in feature history | discovery가 공용 token·motion contract를 재사용 |
 | 검색 route | `/discover/[slug]` 7개 | hub와 7개 `generateStaticParams` 경로 | implemented locally | integration·deploy·live index는 별도 |
-| 검색 registry | C-01 | 7 page·7 manifest·13 evidence·7 artifact kind | implemented locally | 외부 provenance 승인 별도 |
+| 검색 registry | C-01 | 7 page·7 manifest·13 evidence·7 artifact kind·7 layout·7 decision experience·7 sample treatment | implemented locally | 외부 provenance 승인 별도 |
 | sitemap | published registry 연동 | hub와 7개 `updatedAt` 기반 discovery entry | implemented locally | 배포 후 Search Console 제출 필요 |
 | 검색 퍼널 분석 | `landing_id` event API·DB | `/api/analytics/events` 없음 | not implemented | P3 유지 |
 | 검색 실험 | `hf_exp` manifest | discovery experiment manifest 없음 | not implemented | P5 유지 |

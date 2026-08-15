@@ -1,7 +1,7 @@
 # 검색 유입 페이지 구현 가이드
 
 - 작성일: 2026-08-14
-- 구현 상태: full-surface locally complete — 7개 페이지·고유 artifact 구현·검증 완료, attribution·외부 공개 미완료
+- 구현 상태: full-surface locally complete — 7개 페이지·고유 IA·decision experience·sample treatment 구현·검증 완료, attribution·외부 공개 미완료
 - 구현 기준: `feat/2026-08-12-premium-landing-refactor@e86e40d`
 - 선행 문서: [아키텍처](./architecture.md), [P1 상세 계획](./implementation-plan/phase-01-search-surface-foundation.md), [P2 상세 계획](./implementation-plan/phase-02-pilot-content-sample-experience.md)
 - 실행 티켓: [검색 유입 페이지 구체 구현 실행 계획](./implementation-plan/search-entry-page-execution-plan.md)
@@ -19,6 +19,8 @@
 | PR-2 Pilot Experience | sample 상호작용, trust, related links, CTA source handoff | `D-FACE`, `D-MEN`, `D-WOMEN` 추가 | Browser·Performance Gate와 auth/session handoff |
 
 PR-1 canary 뒤 full-surface 브랜치에서 7개 C-03/C-04 레코드, 정적 route, 고유 decision artifact, SEO·browser gate를 구현했다. P3 이벤트 API·DB와 P5 실험 할당은 섞지 않았으며 외부 provenance·integration·deploy는 후속이다.
+
+2026-08-15 콘텐츠 차별화 재검토에서 단일 섹션 순서와 일부 continuity 자산 공유가 사용자에게 동일한 페이지로 보이는 P1 문제로 확인됐다. 후속 재설계는 7개 고유 slot order, 7개 전용 decision experience, 7개 sample treatment를 추가했다. 상세 근거는 [콘텐츠 차별화 재설계 실행 기록](./evidence/content-differentiation-redesign-run-2026-08-15.md)에 있다.
 
 ## 2. 요청 흐름
 
@@ -58,6 +60,7 @@ my-app/
   components/
     discovery/
       DiscoveryPageTemplate.tsx
+      DiscoveryIntentExperience.tsx
       DiscoveryHero.tsx
       SampleComparison.tsx
       TrustSummary.tsx
@@ -234,13 +237,14 @@ const discoveryEntries = getPublishedDiscoveryPages().map((page) => ({
 
 | 컴포넌트 | 책임 | 금지 |
 | --- | --- | --- |
-| `DiscoveryPageTemplate` | 섹션 순서, JSON-LD, 공통 레이아웃 | 페이지별 문구 하드코딩 |
+| `DiscoveryPageTemplate` | 페이지 ID별 slot 순서 계약, JSON-LD, 공통 shell | 페이지별 본문 문구 하드코딩 |
+| `DiscoveryIntentExperience` | 얼굴선 관찰표·그루밍 계획·길이 비용·앞머리 리스크·커트 기준선·Salon Brief처럼 검색 질문에 특화된 정적 결정 도구 | 사용자 상태 저장, 진단·시술 보장 |
 | `DiscoveryHero` | 정체성, H1, support, primary CTA, 다음 섹션 힌트 | 실제 업로드·생성 시작 |
-| `SampleComparison` | 승인된 3전략·9-preview 샘플, 선택 상태 | 사용자 사진 저장, 실제 상담 상태 변경 |
+| `SampleComparison` | 승인된 3전략·9-preview 샘플과 페이지별 시각 배열 | 사용자 사진 저장, 실제 상담 상태 변경 |
 | `TrustSummary` | 결과 차이·사진 처리·과금 근거 링크 | 미검증 정책 문구 |
 | `RelatedDiscoveryPages` | published 페이지의 crawlable 링크 | client-only navigation, orphan 생성 |
 
-섹션 기본 순서는 Hero → sample → workflow → proof → trust → related → FAQ → final CTA다. 홈의 `LandingScene`, `RevealOnScroll`, token을 재사용할 수 있지만 `PremiumConsultingShowcases` 전체를 import하거나 홈의 16명 rolling Hero를 검색 샘플 보드로 복제하지 않는다.
+모든 페이지에 하나의 기본 섹션 순서를 강제하지 않는다. `discoveryLayouts`는 검색 job에 따라 `intent`, `artifact`, `sample`, `workflow`, `proof`, `trust`, `related`, `faq` slot을 재배열하며 모든 페이지가 서로 다른 순서를 가져야 한다. 공통되는 것은 Hero·final CTA·신뢰 경계이고, 문제 해결 순서는 페이지별 계약이다. 홈의 `LandingScene`, `RevealOnScroll`, token을 재사용할 수 있지만 `PremiumConsultingShowcases` 전체를 import하거나 홈의 16명 rolling Hero를 검색 샘플 보드로 복제하지 않는다.
 
 이미지는 `next/image`를 사용하고 크기를 명시한다. 첫 viewport의 LCP 후보 1개만 우선 로드하며, 9-preview는 viewport 밖에서 lazy load하고 실제 레이아웃에 맞는 `sizes`를 제공한다.
 

@@ -10,6 +10,7 @@ const appRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const detailRoute = read("app", "(marketing)", "discover", "[slug]", "page.tsx");
 const template = read("components", "discovery", "DiscoveryPageTemplate.tsx");
 const sample = read("components", "discovery", "SampleComparison.tsx");
+const intentExperience = read("components", "discovery", "DiscoveryIntentExperience.tsx");
 const metadata = read("lib", "discovery", "metadata.ts");
 const sitemap = read("app", "sitemap.ts");
 
@@ -44,11 +45,37 @@ test("all pages preserve the 3 strategy, 9 preview and consulting CTA contract",
 });
 
 test("discovery rendering stays server-first and excludes forbidden claims", () => {
-  const source = `${detailRoute}\n${template}\n${sample}`;
+  const source = `${detailRoute}\n${template}\n${sample}\n${intentExperience}`;
   assert.doesNotMatch(source, /["']use client["']/);
   for (const page of discoveryPages) {
     for (const claim of page.message.forbiddenClaims) assert.doesNotMatch(source, new RegExp(claim));
   }
+});
+
+test("every search intent owns a distinct layout, sample treatment and decision experience", () => {
+  const experienceIds = [
+    "simulation-decision-lab",
+    "face-line-field-guide",
+    "men-grooming-planner",
+    "women-length-planner",
+    "bangs-risk-planner",
+    "bob-cut-planner",
+    "salon-brief-builder",
+  ];
+  const sampleLayoutIds = [
+    "direction-matrix",
+    "observation-rails",
+    "grooming-schedule",
+    "length-chapters",
+    "fringe-baseline",
+    "cut-ladder",
+    "salon-shortlist",
+  ];
+  assert.match(template, /export const discoveryLayouts/);
+  assert.equal(new Set(experienceIds).size, discoveryPages.length);
+  assert.equal(new Set(sampleLayoutIds).size, discoveryPages.length);
+  for (const id of experienceIds) assert.match(intentExperience, new RegExp(`data-intent-experience=\\"${id}\\"`));
+  for (const id of sampleLayoutIds) assert.match(sample, new RegExp(`\\"${id}\\"`));
 });
 
 function read(...segments: string[]) {

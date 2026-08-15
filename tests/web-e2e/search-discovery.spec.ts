@@ -3,13 +3,13 @@ import { expect, type Page, test } from "@playwright/test";
 
 const canaryPath = "/discover/ai-hairstyle-simulation";
 const discoveryPages = [
-  { id: "D-AI-SIM", slug: "ai-hairstyle-simulation", title: "AI 헤어스타일 시뮬레이션, 9가지 후보 비교 | HairFit", h1: "AI 헤어스타일 시뮬레이션, 한 장에서 9가지 후보 비교", cta: "프라이빗 AI 컨설팅 시작" },
-  { id: "D-FACE", slug: "face-shape-hairstyle", title: "얼굴형에 맞는 헤어스타일, 얼굴선으로 비교하기 | HairFit", h1: "얼굴형 헤어스타일, 이름보다 얼굴선과 길이로 비교", cta: "내 얼굴선 기준 상담 시작" },
-  { id: "D-MEN", slug: "men-hairstyle-simulation", title: "남자 헤어스타일 시뮬레이션, 가르마·길이 비교 | HairFit", h1: "남자 헤어스타일 시뮬레이션, 가르마와 길이를 한눈에", cta: "남자 헤어 컨설팅 시작" },
-  { id: "D-WOMEN", slug: "women-hairstyle-simulation", title: "여자 헤어스타일 시뮬레이션, 단발·미디엄·롱 비교 | HairFit", h1: "여자 헤어스타일 시뮬레이션, 단발부터 롱까지 비교", cta: "여자 헤어 컨설팅 시작" },
-  { id: "D-BANGS", slug: "bangs-preview", title: "앞머리 미리보기, 시스루·오픈·컬 프린지 비교 | HairFit", h1: "앞머리 미리보기, 자르기 전에 이마 노출부터 비교", cta: "앞머리 컨설팅 시작" },
-  { id: "D-BOB", slug: "bob-cut-preview", title: "단발 미리보기, 보브컷 길이와 끝선 비교 | HairFit", h1: "단발 미리보기, 턱선과 어깨선 사이를 구체적으로 비교", cta: "단발 컨설팅 시작" },
-  { id: "D-SALON", slug: "salon-consultation-image", title: "미용실 상담 이미지, 후보와 요청사항 정리하기 | HairFit", h1: "미용실 상담 이미지, 예쁜 사진보다 비교 이유까지 준비", cta: "미용실 상담 보드 만들기" },
+  { id: "D-AI-SIM", slug: "ai-hairstyle-simulation", title: "AI 헤어스타일 시뮬레이션, 9가지 후보 비교 | HairFit", h1: "AI 헤어스타일 시뮬레이션, 한 장에서 9가지 후보 비교", cta: "프라이빗 AI 컨설팅 시작", experience: "simulation-decision-lab", sampleLayout: "direction-matrix" },
+  { id: "D-FACE", slug: "face-shape-hairstyle", title: "얼굴형에 맞는 헤어스타일, 얼굴선으로 비교하기 | HairFit", h1: "얼굴형 헤어스타일, 이름보다 얼굴선과 길이로 비교", cta: "내 얼굴선 기준 상담 시작", experience: "face-line-field-guide", sampleLayout: "observation-rails" },
+  { id: "D-MEN", slug: "men-hairstyle-simulation", title: "남자 헤어스타일 시뮬레이션, 가르마·길이 비교 | HairFit", h1: "남자 헤어스타일 시뮬레이션, 가르마와 길이를 한눈에", cta: "남자 헤어 컨설팅 시작", experience: "men-grooming-planner", sampleLayout: "grooming-schedule" },
+  { id: "D-WOMEN", slug: "women-hairstyle-simulation", title: "여자 헤어스타일 시뮬레이션, 단발·미디엄·롱 비교 | HairFit", h1: "여자 헤어스타일 시뮬레이션, 단발부터 롱까지 비교", cta: "여자 헤어 컨설팅 시작", experience: "women-length-planner", sampleLayout: "length-chapters" },
+  { id: "D-BANGS", slug: "bangs-preview", title: "앞머리 미리보기, 시스루·오픈·컬 프린지 비교 | HairFit", h1: "앞머리 미리보기, 자르기 전에 이마 노출부터 비교", cta: "앞머리 컨설팅 시작", experience: "bangs-risk-planner", sampleLayout: "fringe-baseline" },
+  { id: "D-BOB", slug: "bob-cut-preview", title: "단발 미리보기, 보브컷 길이와 끝선 비교 | HairFit", h1: "단발 미리보기, 턱선과 어깨선 사이를 구체적으로 비교", cta: "단발 컨설팅 시작", experience: "bob-cut-planner", sampleLayout: "cut-ladder" },
+  { id: "D-SALON", slug: "salon-consultation-image", title: "미용실 상담 이미지, 후보와 요청사항 정리하기 | HairFit", h1: "미용실 상담 이미지, 예쁜 사진보다 비교 이유까지 준비", cta: "미용실 상담 보드 만들기", experience: "salon-brief-builder", sampleLayout: "salon-shortlist" },
 ] as const;
 const artifactKinds = ["simulation-map", "face-observation", "men-grooming", "women-length", "bangs-risk", "bob-cut-ladder", "salon-brief"] as const;
 const viewports = [
@@ -58,6 +58,9 @@ for (const [pageIndex, definition] of discoveryPages.entries()) {
     await expect(page).toHaveTitle(definition.title);
     await expect(page.getByRole("heading", { level: 1, name: definition.h1 })).toBeVisible();
     await expect(page.locator("#sample-comparison figure img")).toHaveCount(9);
+    await expect(page.locator("#sample-comparison")).toHaveAttribute("data-sample-layout", definition.sampleLayout);
+    await expect(page.locator("[data-intent-experience]")).toHaveAttribute("data-intent-experience", definition.experience);
+    await expect(page.locator("[data-discovery-page]")).toHaveAttribute("data-discovery-page", definition.id);
     await expect(page.locator("#discovery-artifact [data-artifact-kind]")).toHaveAttribute("data-artifact-kind", artifactKinds[pageIndex]);
     await expect(page.locator("#discovery-artifact article")).toHaveCount(definition.id === "D-AI-SIM" || definition.id === "D-MEN" || definition.id === "D-WOMEN" ? 3 : 4);
     await expect(page.getByRole("link", { name: definition.cta })).toHaveAttribute("href", "/consulting/new");
