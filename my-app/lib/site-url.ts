@@ -20,3 +20,28 @@ export function getSiteUrl(
     return fallbackUrl;
   }
 }
+
+export function getCanonicalNavigationRedirectUrl(
+  requestUrl: string | URL,
+  method = "GET",
+) {
+  const normalizedMethod = method.toUpperCase();
+  if (normalizedMethod !== "GET" && normalizedMethod !== "HEAD") {
+    return null;
+  }
+
+  const targetUrl = new URL(requestUrl.toString());
+  if (targetUrl.pathname === "/api" || targetUrl.pathname.startsWith("/api/")) {
+    return null;
+  }
+
+  const canonicalOrigin = new URL(PRODUCTION_SITE_URL);
+  if (targetUrl.hostname.toLowerCase() !== `www.${canonicalOrigin.hostname.toLowerCase()}`) {
+    return null;
+  }
+
+  targetUrl.protocol = canonicalOrigin.protocol;
+  targetUrl.hostname = canonicalOrigin.hostname;
+  targetUrl.port = canonicalOrigin.port;
+  return targetUrl;
+}

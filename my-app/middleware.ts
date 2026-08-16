@@ -8,6 +8,7 @@ import {
 } from "./lib/canonical-generation-entry";
 import { isAuthorizedGenerationWorkflowCallback } from "./lib/generation-workflow-callback-auth";
 import { isAccountType, parseOnboardingMetadata } from "./lib/onboarding";
+import { getCanonicalNavigationRedirectUrl } from "./lib/site-url";
 import { getSubscriptionAccessMode } from "./lib/subscription-access";
 
 const isProtectedRoute = createRouteMatcher([
@@ -332,6 +333,11 @@ async function clerkUnavailableMiddleware(req: NextRequest) {
 }
 
 const proxy = (req: NextRequest, event: NextFetchEvent) => {
+  const canonicalNavigationUrl = getCanonicalNavigationRedirectUrl(req.url, req.method);
+  if (canonicalNavigationUrl) {
+    return NextResponse.redirect(canonicalNavigationUrl, 308);
+  }
+
   const { canUseClerkServer } = getClerkConfigState();
   return canUseClerkServer
     ? clerkAppMiddleware(req, event)
