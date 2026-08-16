@@ -205,7 +205,19 @@ function getClerkMiddlewareRuntimeOptions() {
   };
 }
 
+function redirectCanonicalNavigation(req: NextRequest) {
+  const canonicalNavigationUrl = getCanonicalNavigationRedirectUrl(req.url, req.method);
+  return canonicalNavigationUrl
+    ? NextResponse.redirect(canonicalNavigationUrl, 308)
+    : null;
+}
+
 const clerkAppMiddleware = clerkMiddleware(async (auth, req) => {
+      const canonicalNavigationRedirect = redirectCanonicalNavigation(req);
+      if (canonicalNavigationRedirect) {
+        return canonicalNavigationRedirect;
+      }
+
       const legacyGenerationRedirect = redirectLegacyGenerationEntry(req);
       if (legacyGenerationRedirect) {
         return legacyGenerationRedirect;
@@ -302,6 +314,11 @@ const clerkAppMiddleware = clerkMiddleware(async (auth, req) => {
     }, getClerkMiddlewareRuntimeOptions);
 
 async function clerkUnavailableMiddleware(req: NextRequest) {
+      const canonicalNavigationRedirect = redirectCanonicalNavigation(req);
+      if (canonicalNavigationRedirect) {
+        return canonicalNavigationRedirect;
+      }
+
       const legacyGenerationRedirect = redirectLegacyGenerationEntry(req);
       if (legacyGenerationRedirect) {
         return legacyGenerationRedirect;
@@ -333,9 +350,9 @@ async function clerkUnavailableMiddleware(req: NextRequest) {
 }
 
 const proxy = (req: NextRequest, event: NextFetchEvent) => {
-  const canonicalNavigationUrl = getCanonicalNavigationRedirectUrl(req.url, req.method);
-  if (canonicalNavigationUrl) {
-    return NextResponse.redirect(canonicalNavigationUrl, 308);
+  const canonicalNavigationRedirect = redirectCanonicalNavigation(req);
+  if (canonicalNavigationRedirect) {
+    return canonicalNavigationRedirect;
   }
 
   const { canUseClerkServer } = getClerkConfigState();
