@@ -19,6 +19,7 @@
     "hairstyle:profile:test": "node --no-warnings --test lib/current-hair-profile.test.ts",
     "hairstyle:catalog:audit": "node scripts/audit-hairstyle-catalog.mjs",
     "hairstyle:catalog:lineup:audit": "node scripts/audit-hairstyle-catalog-lineups.mjs",
+    "hairstyle:catalog:three-column:test": "node --no-warnings --test lib/hairstyle-catalog-three-column.test.ts",
     "hairstyle:catalog:env:check": "node scripts/check-hairstyle-catalog-runtime-env.mjs",
     "hairstyle:catalog:runtime:smoke": "node scripts/smoke-hairstyle-catalog-runtime.mjs",
     "hairstyle:catalog:remote:check": "node scripts/check-hairstyle-catalog-remote-readiness.mjs",

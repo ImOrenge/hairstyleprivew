@@ -4,7 +4,10 @@ import type { PromptInputV2 } from "@hairfit/shared/v2";
 import { compilePromptSpecsV2 } from "@hairfit/shared/v2/prompt";
 import type { ConsultationSnapshot } from "../consulting/contracts.ts";
 import type { RecommendationCandidate } from "../recommendation-types.ts";
-import { buildPromptInputV2 } from "./prompt-input.ts";
+import {
+  alignRecommendationsWithPromptSpecsV2,
+  buildPromptInputV2,
+} from "./prompt-input.ts";
 
 const consultationId = "00000000-0000-4000-8000-000000000001";
 
@@ -94,6 +97,7 @@ test("consultation preferences and confirmed strategy become protected provider 
   assert.deepEqual(input.avoidConditions, ["매일 고데기"]);
   assert.equal(input.styleTarget, "male");
   assert.equal(input.generationInputFingerprint, "input-fingerprint-male");
+  assert.ok(input.catalog.every((item) => item.lengthBucket === "medium"));
 
   const plans = compilePromptSpecsV2(input);
   assert.equal(plans.length, 9);
@@ -113,4 +117,49 @@ test("consultation preferences and confirmed strategy become protected provider 
   ]) {
     assert.match(combined, new RegExp(expected));
   }
+});
+
+test("prompt slot ordering and recommendation card ordering stay on the same catalog item", () => {
+  const candidates = recommendations();
+  const lengths = ["medium", "long", "medium", "short", "medium", "long", "medium", "medium", "medium"] as const;
+  candidates.forEach((candidate, index) => {
+    candidate.lengthBucket = lengths[index];
+  });
+  const input = {
+    schemaVersion: "prompt-input-v2",
+    consultationId,
+    styleTarget: "female",
+    generationInputFingerprint: "alignment-fingerprint",
+    analysisEvidence: {
+      id: "00000000-0000-4000-8000-000000000002",
+      model: { provider: "fixture", name: "fixture", version: "1" },
+      quality: { status: "pass", overall: 1, frontal: 1, lighting: 1, resolution: 1, blur: 1, occlusion: 1, hairlineVisibility: 1, warnings: [] },
+      faceShape: { primary: "oval", secondary: null, blend: { oval: 1 }, summary: "balanced" },
+    },
+    personalColor: null,
+    currentHair: { description: "medium", length: "medium", density: "medium", strandThickness: "medium", texture: "straight", treatmentHistory: ["unknown"], damageLevel: "low" },
+    styleGoal: { imageKeywords: ["soft"], desiredLength: "medium", changeLevel: "moderate", desiredServices: ["cut"], notes: "none" },
+    maintenance: { morningMinutes: 10, heatStyling: "sometimes", salonCycleWeeks: 8, maintenanceLevel: "medium" },
+    avoidConditions: [],
+    catalogCycleId: "catalog-v4-live",
+    catalog: candidates.map((candidate) => ({
+      id: candidate.catalogItemId ?? candidate.id,
+      cycleId: candidate.catalogCycleId ?? "unknown",
+      name: candidate.label,
+      lengthBucket: candidate.lengthBucket,
+      design: { lengthBucket: candidate.lengthBucket },
+      promptTemplateVersion: candidate.promptTemplateVersion ?? "unknown",
+    })),
+  } satisfies PromptInputV2;
+
+  const specs = compilePromptSpecsV2(input);
+  const aligned = alignRecommendationsWithPromptSpecsV2(candidates, specs);
+  assert.deepEqual(
+    aligned.map((candidate) => candidate.catalogItemId),
+    specs.map((spec) => spec.catalogItemId),
+  );
+  assert.deepEqual(
+    aligned.map((candidate) => candidate.lengthBucket),
+    specs.map((spec) => spec.requiredLengthBucket),
+  );
 });

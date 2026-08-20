@@ -17,6 +17,7 @@ import type {
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
 import { preparePreviewBoardV2 } from "../../../../lib/v2/preview-board-server";
+import { alignRecommendationsWithPromptSpecsV2 } from "../../../../lib/v2/prompt-input";
 import {
   buildGenerationPromptPlansV2,
   fingerprintPromptSourceImage,
@@ -251,11 +252,17 @@ export async function POST(request: Request) {
       throw new Error(briefCapability.failure?.message || "살롱 브리프 준비가 진행 중입니다.");
     }
     const designerBriefs = briefCapability.output;
+    const orderedRecommendations = promptPlans
+      ? alignRecommendationsWithPromptSpecsV2(
+          generated.recommendations,
+          promptPlans.map((plan) => plan.spec),
+        )
+      : generated.recommendations;
     // New durable acceptances lock their price in the reservation snapshot.
     // The environment value remains only for pre-migration generations.
     const creditsRequired = readReservedGenerationCredits(claim.options) ?? getCreditsPerStyle();
     const preparedAt = new Date().toISOString();
-    const variants: GeneratedVariant[] = generated.recommendations.map((candidate, index) => {
+    const variants: GeneratedVariant[] = orderedRecommendations.map((candidate, index) => {
       const plan = promptPlans?.[index] ?? null;
       const association = boardAssociations?.[index] ?? null;
       const protectedPrompt = plan?.providerPrompt ?? candidate.prompt;
@@ -266,6 +273,8 @@ export async function POST(request: Request) {
         negativePrompt: plan?.spec.negativePrompt ?? candidate.negativePrompt,
         strategyBucket: plan?.spec.bucket,
         slotIntent: plan?.spec.intent,
+        requiredLengthBucket: plan?.spec.requiredLengthBucket,
+        catalogFallbackReason: plan?.spec.catalogFallbackReason,
         promptPolicyVersion: plan?.spec.promptPolicyVersion,
         promptHash: plan?.promptHash,
         v2PreviewVariantId: association?.previewVariantId,

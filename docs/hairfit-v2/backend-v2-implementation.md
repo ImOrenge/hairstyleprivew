@@ -85,7 +85,7 @@ Prompt compiler는 같은 정규화 입력에 대해 다음 9개 slot을 결정�
 - 이미지 변화형(`image_change`) 3개
 - 관리 현실형(`manageability`) 3개
 
-각 attempt에는 prompt policy version `hairfit-consultation-prompt-v2`, normalized input snapshot, slot intent, SHA-256 prompt hash, provider/model version이 저장된다. 현재 확장 catalog prompt template은 `catalog-v4`이고 `catalog-v3`는 legacy 호환 상수로만 유지한다. consultation prompt policy와 catalog template version은 서로 독립적으로 기록한다.
+각 attempt에는 prompt policy version `hairfit-consultation-prompt-v2.1`, normalized input snapshot, slot intent, SHA-256 prompt hash, provider/model version이 저장된다. `v2.1`은 3열 전략별 기장 slot matrix와 명시적 catalog fallback을 포함하며, 기존 조회는 `hairfit-consultation-prompt-v2` prefix 호환을 유지한다. 현재 확장 catalog prompt template은 `catalog-v4`이고 `catalog-v3`는 legacy 호환 상수로만 유지한다. consultation prompt policy와 catalog template version은 서로 독립적으로 기록한다.
 
 실제 Gemini provider 입력에는 V2 positive/negative prompt가 전달된다. identity, style, geometry, artifact, background, hair-boundary, safety, exact/near-duplicate gate를 모두 통과한 attempt 한 개만 slot에 accepted된다. 중복 판정은 원본 바이트 SHA-256과 머리 영역 중심 256-bit dHash를 함께 저장하고, dHash Hamming distance 6 이하를 근접 중복으로 거절한다. 정확히 9개가 accepted되어야 board가 ready가 되며, timeout/부분 실패/품질 거절은 최대 3회까지 같은 slot에서 새 attempt로 재시도된다. terminal board failure는 해당 consumption을 restore한다.
 
