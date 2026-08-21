@@ -510,7 +510,20 @@ Phase 4의 `실제 billing 데이터만 가격 표시` 정책을 랜딩 전용 �
 - Total Image Direction: `189,000원 / 3개월`
 - Signature Style Membership: `649,000원 / 년`
 
-Total Image Direction은 세 플랜 중 권장안으로 표시한다. 가격 차이는 크레딧이나 이미지 수량이 아니라 헤어 결정, 토털 이미지 디렉팅, 연간 관리라는 결과 범위와 기간으로 설명한다.
+Total Image Direction은 세 플랜 중 권장안으로 표시한다. 세 플랜의 핵심 혜택은 같으며 가격 차이는 크레딧, 이미지 수량, 기능 등급이 아니라 결과를 관리하고 업데이트하는 기간으로 설명한다.
+
+공통 혜택은 다음과 같다.
+
+- 사진 품질·얼굴 구조·추정 퍼스널 컬러 분석
+- 헤어 후보 9개와 패션 방향 9개 룩
+- 후보 비교·최종 결정·Salon Brief
+- Aftercare와 Style Dossier
+
+각 플랜 행은 공통 혜택을 반복하지 않고 다음 관리 방식만 비교한다.
+
+- Private Hair Direction: `1회 완결형`
+- Total Image Direction: `3개월 관리형`
+- Signature Style Membership: `연간 관리형`
 
 ### 결제·기능 경계
 
@@ -518,11 +531,12 @@ Total Image Direction은 세 플랜 중 권장안으로 표시한다. 가격 차
 - 각 CTA는 `/consulting/new`의 상담 시작으로 연결하며 PortOne checkout을 호출하지 않는다.
 - 기존 `PricingPreview`는 `/billing`에서 현재 월 구독·사용권을 계속 제공한다.
 - 3개월 플랜의 자동갱신 여부와 제공 횟수는 확정하지 않는다.
-- 연 4회 업데이트, 이력, Before/After, Style Archive는 예정 범위로 표시하며 완료 기능으로 주장하지 않는다.
+- 연간 이력, Before/After, Style Archive는 출시 가설의 예정 산출물이며 현재 결제 가능한 완료 기능으로 주장하지 않는다.
 
 ### 회귀 방지 계약
 
 - 랜딩은 `PremiumOfferPreview`를 사용하고 `/billing`은 기존 `PricingPreview`를 사용한다.
 - 정책 상수에서 99,000원/1회, 189,000원/3개월, 649,000원/년을 고정한다.
+- 공통 혜택은 한 블록에서만 표시하고 플랜별 목록은 기간·업데이트·이력 차이만 설명한다.
 - 권장 플랜은 Total Image Direction 한 개뿐이다.
 - 랜딩 가격 장면에는 `PortoneSubscriptionButton`이 없어야 한다.

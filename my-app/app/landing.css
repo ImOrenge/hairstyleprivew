@@ -1475,10 +1475,64 @@
     line-height: 1.7;
   }
 
+  .f-premium-offers__common {
+    display: grid;
+    margin-top: clamp(3rem, 6vw, 5rem);
+    grid-template-columns: minmax(12rem, 0.42fr) minmax(0, 1fr);
+    gap: clamp(2rem, 6vw, 6rem);
+    border-top: 1px solid var(--app-border);
+    border-bottom: 1px solid var(--app-border);
+    padding: clamp(1.75rem, 3vw, 2.75rem) 0;
+  }
+
+  .f-premium-offers__common p,
+  .f-premium-offers__common h3 {
+    margin: 0;
+  }
+
+  .f-premium-offers__common p {
+    color: var(--landing-accent);
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+
+  .f-premium-offers__common h3 {
+    margin-top: 0.55rem;
+    color: var(--landing-ink);
+    font-size: clamp(1.25rem, 2vw, 1.75rem);
+    font-weight: 950;
+    letter-spacing: -0.04em;
+  }
+
+  .f-premium-offers__common ul {
+    display: grid;
+    margin: 0;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem clamp(1.5rem, 4vw, 4rem);
+    padding: 0;
+    list-style: none;
+  }
+
+  .f-premium-offers__common li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    color: var(--landing-ink);
+    font-size: 0.8rem;
+    font-weight: 750;
+    line-height: 1.55;
+  }
+
+  .f-premium-offers__common li::before {
+    content: "✓";
+    color: var(--landing-accent);
+    font-weight: 950;
+  }
+
   .f-premium-offers__list {
     display: grid;
-    margin-top: clamp(3.5rem, 7vw, 6.5rem);
-    border-top: 1px solid var(--app-border);
+    margin-top: clamp(1.5rem, 3vw, 2.5rem);
   }
 
   .f-premium-offer {
@@ -1916,6 +1970,11 @@
       grid-template-columns: 1fr;
     }
 
+    .f-premium-offers__common {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
     .f-premium-offer {
       grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.62fr);
     }
@@ -2018,6 +2077,10 @@
   }
 
   @media (max-width: 600px) {
+    .f-premium-offers__common ul {
+      grid-template-columns: 1fr;
+    }
+
     .f-premium-offer {
       grid-template-columns: 1fr;
       gap: 1.5rem;

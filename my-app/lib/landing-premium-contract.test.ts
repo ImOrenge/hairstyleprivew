@@ -85,6 +85,14 @@ test("conversion paths and pricing boundary remain truthful", () => {
   assert.match(offerPolicy, /priceLabel: "189,000원",[\s\S]*?periodLabel: "\/ 3개월"/);
   assert.equal(offerPolicy.match(/recommended: true/g)?.length, 1);
   assert.match(offerPolicy, /name: "Total Image Direction"[\s\S]*?recommended: true/);
+  for (const benefit of ["추정 퍼스널 컬러 분석", "헤어 후보 9개와 패션 방향 9개 룩", "Salon Brief", "Aftercare와 Style Dossier"]) {
+    assert.match(offerPolicy, new RegExp(benefit));
+  }
+  for (const type of ["1회 완결형", "3개월 관리형", "연간 관리형"]) assert.match(offerPolicy, new RegExp(type));
+  assert.match(offers, /모든 플랜 공통 혜택/);
+  assert.match(offers, /PREMIUM_OFFER_POLICY\.commonBenefits\.map/);
+  assert.match(offers, /offer\.management\.map/);
+  assert.doesNotMatch(offerPolicy, /프라이빗 헤어 디렉팅 전체 범위|토털 이미지 디렉팅 전체 범위/);
   assert.match(offers, /출시 예정가/);
   assert.match(offerPolicy, /새 결제 상품이 연결되기 전/);
   assert.doesNotMatch(offers, /PortoneSubscriptionButton/);

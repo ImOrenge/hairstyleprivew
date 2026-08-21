@@ -3,6 +3,12 @@ export const PREMIUM_OFFER_POLICY = {
   statusLabel: "출시 예정가",
   disclosure:
     "세 가격은 프리미엄 컨설팅의 출시 예정가입니다. 새 결제 상품이 연결되기 전에는 이 화면에서 결제되지 않습니다.",
+  commonBenefits: [
+    "사진 품질·얼굴 구조·추정 퍼스널 컬러 분석",
+    "헤어 후보 9개와 패션 방향 9개 룩",
+    "후보 비교·최종 결정·Salon Brief",
+    "Aftercare와 Style Dossier",
+  ],
   offers: [
     {
       key: "private-hair-direction",
@@ -11,16 +17,16 @@ export const PREMIUM_OFFER_POLICY = {
       priceKrw: 99_000,
       priceLabel: "99,000원",
       periodLabel: "/ 1회",
-      tagline: "머리를 바꾸기 전에, 선택의 기준부터 만듭니다.",
-      summary: "헤어 한 가지 결정을 위한 분석·비교·살롱 전달 패키지",
-      scope: [
-        "사진 품질과 얼굴 구조 분석 근거",
-        "세 방향으로 설계한 헤어 후보 9개",
-        "후보 비교·최종 스타일 1개·Salon Brief",
+      tagline: "지금 필요한 한 번의 결정을 선명하게.",
+      summary: "공통 컨설팅 혜택을 한 번에 완결하는 단회 플랜",
+      management: [
+        "현재 목표를 기준으로 컨설팅 1회 완결",
+        "결정 시점의 결과와 실행 기준 정리",
+        "새 변화가 필요하면 별도 컨설팅으로 다시 시작",
       ],
-      ctaLabel: "헤어 컨설팅 시작",
+      ctaLabel: "1회 컨설팅 시작",
       recommended: false,
-      scopeState: "current" as const,
+      planTypeLabel: "1회 완결형",
     },
     {
       key: "total-image-direction",
@@ -29,16 +35,16 @@ export const PREMIUM_OFFER_POLICY = {
       priceKrw: 189_000,
       priceLabel: "189,000원",
       periodLabel: "/ 3개월",
-      tagline: "헤어 한 가지가 아니라, 나를 표현하는 전체 이미지를 설계합니다.",
-      summary: "헤어·컬러·패션의 선택 기준을 3개월 단위로 연결하는 패키지",
-      scope: [
-        "프라이빗 헤어 디렉팅 전체 범위",
-        "추정 퍼스널 컬러와 염색 방향",
-        "패션 방향·9개 룩·상세 Style Dossier",
+      tagline: "3개월 동안, 변화에 맞춰 스타일 기준을 이어갑니다.",
+      summary: "같은 컨설팅 결과를 3개월 동안 관리하는 권장 플랜",
+      management: [
+        "첫 컨설팅 결과를 3개월 동안 유지",
+        "시술·생활 변화에 맞춰 선택 기준 업데이트",
+        "기간 내 결과와 관리 맥락을 이어서 확인",
       ],
-      ctaLabel: "토털 이미지 디렉팅 시작",
+      ctaLabel: "3개월 관리 상담 시작",
       recommended: true,
-      scopeState: "mixed" as const,
+      planTypeLabel: "3개월 관리형",
     },
     {
       key: "signature-style-membership",
@@ -47,16 +53,16 @@ export const PREMIUM_OFFER_POLICY = {
       priceKrw: 649_000,
       priceLabel: "649,000원",
       periodLabel: "/ 년",
-      tagline: "한 번의 추천이 아니라, 나만의 스타일 기준을 계속 구축합니다.",
-      summary: "계절과 실제 선택 이력을 축적하는 연간 스타일 관리 멤버십",
-      scope: [
-        "토털 이미지 디렉팅 전체 범위",
-        "연 4회 계절별 헤어·컬러·패션 업데이트",
-        "선택 이력·Before/After·Style Archive",
+      tagline: "1년 동안, 나만의 스타일 기준을 축적합니다.",
+      summary: "같은 컨설팅 결과와 변화 이력을 장기 관리하는 연간 플랜",
+      management: [
+        "연간 컨설팅 결과와 변화 이력을 연속 관리",
+        "계절 변화에 맞춘 헤어·컬러·패션 기준 업데이트",
+        "선택 이력·Before/After·Style Archive 누적",
       ],
-      ctaLabel: "시그니처 멤버십 시작",
+      ctaLabel: "연간 멤버십 상담 시작",
       recommended: false,
-      scopeState: "planned" as const,
+      planTypeLabel: "연간 관리형",
     },
   ],
 } as const;

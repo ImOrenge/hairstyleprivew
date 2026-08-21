@@ -3,20 +3,14 @@ import Link from "next/link";
 import { PREMIUM_OFFER_POLICY } from "../../lib/premium-offer-policy";
 import { LandingScene, SceneHeader } from "./LandingScene";
 
-const scopeStateLabel = {
-  current: "현재 컨설팅 흐름 기반",
-  mixed: "일부 예정 범위 포함",
-  planned: "예정 범위",
-} as const;
-
 export function PremiumOfferPreview() {
   return (
     <LandingScene id="services" number="11" layout="typographic-index" className="f-premium-offers">
       <div className="f-premium-offers__header">
         <SceneHeader
           eyebrow="Services · Pricing Hypothesis"
-          title="필요한 범위와 기간에 따라 세 가지 컨설팅을 선택하세요."
-          description="한 번의 헤어 결정부터 3개월 이미지 디렉팅, 연간 스타일 관리까지 결과의 범위로 구분했습니다."
+          title="같은 핵심 혜택, 필요한 관리 기간으로 선택하세요."
+          description="분석부터 후보 비교, Salon Brief, Aftercare와 Style Dossier까지 기본 결과는 같습니다. 차이는 컨설팅 결과를 관리하고 업데이트하는 기간입니다."
         />
         <div className="f-premium-offers__disclosure" data-reveal-item data-reveal-order="4">
           <span>{PREMIUM_OFFER_POLICY.statusLabel}</span>
@@ -24,13 +18,23 @@ export function PremiumOfferPreview() {
         </div>
       </div>
 
+      <section className="f-premium-offers__common" aria-labelledby="premium-common-benefits" data-reveal-item data-reveal-order="5">
+        <div>
+          <p>ALL PLANS</p>
+          <h3 id="premium-common-benefits">모든 플랜 공통 혜택</h3>
+        </div>
+        <ul>
+          {PREMIUM_OFFER_POLICY.commonBenefits.map((benefit) => <li key={benefit}>{benefit}</li>)}
+        </ul>
+      </section>
+
       <div className="f-premium-offers__list" aria-label="프리미엄 컨설팅 출시 예정가">
         {PREMIUM_OFFER_POLICY.offers.map((offer, index) => (
           <article
             className="f-premium-offer"
             data-recommended={offer.recommended}
             data-reveal-item
-            data-reveal-order={index + 5}
+            data-reveal-order={index + 6}
             key={offer.key}
           >
             <div className="f-premium-offer__identity">
@@ -43,11 +47,11 @@ export function PremiumOfferPreview() {
             <div className="f-premium-offer__promise">
               <p className="f-premium-offer__tagline">{offer.tagline}</p>
               <p className="f-premium-offer__summary">{offer.summary}</p>
-              <span className="f-premium-offer__state">{scopeStateLabel[offer.scopeState]}</span>
+              <span className="f-premium-offer__state">{offer.planTypeLabel}</span>
             </div>
 
             <ul className="f-premium-offer__scope">
-              {offer.scope.map((item) => <li key={item}>{item}</li>)}
+              {offer.management.map((item) => <li key={item}>{item}</li>)}
             </ul>
 
             <div className="f-premium-offer__conversion">
