@@ -392,26 +392,27 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
         <p className={styles.brand}>HAIRFIT</p>
         <p className={styles.eyebrow}>
           <Sparkles className={styles.eyebrowIcon} aria-hidden="true" />
-          PRIVATE AI STYLE DIRECTION
+          사진 한 장으로 시작하는 AI 헤어 컨설팅
         </p>
         <h1 id="landing-hero-title" className={styles.title}>
-          당신의 스타일에는,{" "}
-          <span>생성보다 정확한 기준이 필요합니다.</span>
+          사진 한 장으로,{" "}
+          <span>내게 맞는 헤어를 비교하고 결정하세요.</span>
         </h1>
         <p className={styles.description}>
-          분석 근거부터 전략, 비교, 살롱 브리프와 패션 방향까지.
-          <br className={styles.desktopBreak} /> 당신의 선택이 흔들리지 않도록 하나의 컨설팅 맥락으로 연결합니다.
+          사진을 먼저 분석한 뒤 9가지 전략형 후보를 비교합니다.
+          <br className={styles.desktopBreak} /> 선택한 스타일은 미용실 상담 브리프와 애프터케어·패션 방향까지 이어집니다.
         </p>
 
         <div className={styles.actions}>
           <Link href="/consulting/new" className={styles.primaryAction}>
-            프라이빗 컨설팅 시작
+            내 사진 분석 시작
             <ArrowRight className={styles.actionIcon} aria-hidden="true" />
           </Link>
           <Link href="#style-dossier" className={styles.secondaryAction}>
-            컨설팅 결과 예시 보기
+            9가지 결과 예시 보기
           </Link>
         </div>
+        <p className={styles.actionNote}>사진 전 필수 질문 0개 · 무료 체험 가능</p>
 
         {(userCount > 0 || visibleAvatars.length > 0) && (
           <div className={styles.proof} aria-label="HairFit 이용자 정보">

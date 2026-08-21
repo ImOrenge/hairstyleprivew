@@ -1,6 +1,8 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useT } from "../../lib/i18n/useT";
 import type { PlanDisplayBenefit } from "../../lib/plan-benefit-display";
 import type { PricingTierKey } from "../../lib/pricing-plan";
@@ -141,7 +143,7 @@ export function PricingPreview({
   };
 
   return (
-    <LandingScene id="services" number="10" layout="typographic-index">
+    <LandingScene id="services" number="11" layout="typographic-index">
       <div className="f-pricing__header">
         <SceneHeader eyebrow={t("pricing.badge")} title={t("pricing.title")} />
         <p className="f-pricing__credit-note" data-reveal-item data-reveal-order="3">
@@ -224,6 +226,14 @@ export function PricingPreview({
             )}
           </article>
         ))}
+      </div>
+      <div className="f-premium-final" data-reveal-item data-reveal-order="13">
+        <p>PHOTO-FIRST AI HAIR CONSULTING</p>
+        <h2>사진 한 장으로, 내게 맞는 스타일 기준을 시작하세요.</h2>
+        <div>
+          <Link href="/consulting/new" className="f-landing-cta">내 사진 분석 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+          <Link href="/b2b/contact" className="f-landing-ghost-cta">살롱 도입 문의</Link>
+        </div>
       </div>
     </LandingScene>
   );

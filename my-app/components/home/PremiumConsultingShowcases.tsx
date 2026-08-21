@@ -62,7 +62,7 @@ const dossierPages = [
 const dossierCurrent = [
   "분석 근거와 얼굴 랜드마크",
   "확정한 전략과 비교 후보",
-  "변경 불가 최종 결정 기록",
+  "선택 시점의 기준이 보존된 결정 기록",
   "살롱 브리프와 시술 후 애프터케어",
   "패션 9-look 방향",
 ] as const;
@@ -131,7 +131,7 @@ export function DirectionShowcase() {
         {directionRows.map(([field, decision, reason]) => <div key={field}><span>{field}</span><strong>{decision}</strong><p>{reason}</p></div>)}
       </div>
       <Link href="/consulting/new" className="f-landing-cta" data-reveal-item data-reveal-order="6">
-        프라이빗 컨설팅 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" />
+        내 얼굴 분석부터 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" />
       </Link>
     </LandingScene>
   );
@@ -172,7 +172,7 @@ export function CompareDecisionShowcase() {
           <ul className="f-premium-checklist" data-reveal-item data-reveal-order="4">
             <li><Check aria-hidden="true" /> 같은 구도 비교</li>
             <li><Check aria-hidden="true" /> 최종 후보 선정</li>
-            <li><LockKeyhole aria-hidden="true" /> 변경할 수 없는 최종 결정 기록</li>
+            <li><LockKeyhole aria-hidden="true" /> 선택 시점의 기준을 버전으로 보존</li>
           </ul>
         </div>
         <p className="f-premium-scroll-hint" id="compare-scroll-hint">후보 이미지와 비교표를 좌우로 밀어 모든 기준을 확인하세요.</p>
@@ -211,7 +211,7 @@ export function SalonBriefShowcase() {
             <div className="f-premium-proof-bridge__intro">
               <span>DECISION TO ACTION</span>
               <strong>결과는 이미지에서 끝나지 않습니다.</strong>
-              <p>아래 항목은 현재 컨설팅 화면과 데이터 계약에서 확인할 수 있는 연결 범위입니다.</p>
+              <p>선택한 이유와 제약이 브리프·관리·패션까지 같은 기준으로 이어집니다.</p>
             </div>
             <ol>
               {consultationContinuityProofs.map(([index, title, body]) => (
@@ -219,7 +219,7 @@ export function SalonBriefShowcase() {
               ))}
             </ol>
             <Link href="/consulting/new" className="f-landing-cta f-landing-cta--inverse">
-              내 기준으로 컨설팅 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              내 상담 브리프 준비 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
           </div>
         </div>
@@ -253,7 +253,7 @@ export function FashionDirectionShowcase() {
     <LandingScene id="fashion-direction" number="08" layout="editorial-split">
       <div className="f-premium-split f-premium-split--reverse">
         <div>
-          <SceneHeader eyebrow="Fashion Direction" title="확정한 헤어의 인상을, 9개의 패션 방향으로 확장합니다." description="헤어 결정과 상황·무드·체형 입력을 하나의 배치로 연결합니다. 슬롯마다 반복 요청하는 마법사 흐름이 아닙니다." />
+          <SceneHeader eyebrow="Fashion Direction" title="확정한 헤어의 인상을, 9개의 패션 방향으로 확장합니다." description="헤어 결정과 상황·무드·체형을 한 번 연결해 Work·Weekend·Occasion 9개 룩을 한 화면에서 비교합니다." />
           <div className="f-premium-batch" data-reveal-item data-reveal-order="4"><Sparkles aria-hidden="true" /><span>9-LOOK BATCH</span><strong>Work · Weekend · Occasion</strong></div>
           <dl className="f-premium-fashion-brief" data-reveal-item data-reveal-order="5">
             <div><dt>PALETTE</dt><dd>뉴트럴 베이지 · 잉크 네이비 · 더스티 로즈</dd></div>
@@ -274,7 +274,7 @@ export function StyleDossierShowcase() {
       <div className="f-premium-dossier">
         <div>
           <SceneHeader eyebrow="Style Dossier · Sample" title="한 번의 생성이 아니라, 결정의 맥락을 남깁니다." description="현재 컨설팅에서 이어지는 분석·전략·결정·브리프·관리 데이터를 하나의 샘플 Dossier로 보여드립니다." />
-          <Link href="/consulting/new" className="f-landing-cta f-landing-cta--inverse" data-reveal-item data-reveal-order="4">프라이빗 컨설팅 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+          <Link href="/consulting/new" className="f-landing-cta f-landing-cta--inverse" data-reveal-item data-reveal-order="4">내 스타일 기록 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
         </div>
         <div className="f-premium-dossier__sheet" data-reveal-item data-reveal-order="5">
           <p>HAIRFIT / PRIVATE STYLE DIRECTION</p>
@@ -291,11 +291,11 @@ export function StyleDossierShowcase() {
   );
 }
 
-export function TrustAndFinalCta({ faqs }: { faqs: Array<{ question: string; answer: string }> }) {
+export function TrustShowcase({ faqs }: { faqs: Array<{ question: string; answer: string }> }) {
   return (
-    <LandingScene id="trust" number="11" layout="closing-stage" tone="quiet">
+    <LandingScene id="trust" number="10" layout="closing-stage" tone="quiet">
       <div className="f-premium-trust">
-        <SceneHeader eyebrow="Trust & Limits" title="결제보다 먼저, 데이터와 결과의 한계를 설명합니다." description="AI 결과는 가상 시뮬레이션이며 실제 시술 결과를 보장하지 않습니다. 사진과 공유 데이터의 처리 기준을 확인한 뒤 시작하세요." />
+        <SceneHeader eyebrow="Trust & Limits" title="시작하기 전에, 데이터와 결과의 한계를 확인하세요." description="AI 결과는 가상 시뮬레이션이며 실제 시술 결과를 보장하지 않습니다. 사진의 업로드·보관·삭제와 공유 범위를 확인한 뒤 진행할 수 있습니다." />
         <ul className="f-premium-trust__rails" data-reveal-item data-reveal-order="4">
           <li><ShieldCheck aria-hidden="true" /><strong>개인정보</strong><span>업로드·보관·삭제 기준을 서비스 안에서 안내</span></li>
           <li><Clock3 aria-hidden="true" /><strong>공유 제어</strong><span>공유 링크는 만료되며 폐기 상태를 확인</span></li>
@@ -303,10 +303,6 @@ export function TrustAndFinalCta({ faqs }: { faqs: Array<{ question: string; ans
         </ul>
         <div className="f-premium-faq" data-reveal-item data-reveal-order="5">
           {faqs.slice(0, 4).map((faq) => <details key={faq.question}><summary>{faq.question}</summary><p>{faq.answer}</p></details>)}
-        </div>
-        <div className="f-premium-final" data-reveal-item data-reveal-order="6">
-          <p>PRIVATE AI STYLE DIRECTION</p><h2>당신의 다음 스타일을, 더 정확한 기준으로 시작하세요.</h2>
-          <div><Link href="/consulting/new" className="f-landing-cta">프라이빗 컨설팅 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link><Link href="/b2b/contact" className="f-landing-ghost-cta">살롱 도입 문의</Link></div>
         </div>
       </div>
     </LandingScene>

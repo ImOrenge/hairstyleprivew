@@ -1,7 +1,7 @@
 export const homeSeo = {
-  title: "프라이빗 AI 스타일 컨설팅 | 분석부터 살롱 브리프까지 - HairFit",
+  title: "사진 한 장으로 시작하는 AI 헤어 컨설팅 | HairFit",
   description:
-    "얼굴 분석 근거와 사용자 기준을 바탕으로 헤어 전략, 3×3 프리뷰, 비교 결정, 살롱 브리프, 애프터케어와 패션 방향까지 연결하는 프라이빗 AI 스타일 컨설팅입니다.",
+    "사진을 먼저 분석한 뒤 얼굴 근거와 사용자 기준으로 9가지 헤어 후보를 비교하고, 살롱 브리프·애프터케어·패션 방향까지 연결하는 AI 헤어 컨설팅입니다.",
   keywords: [
     "AI 헤어스타일 미리보기",
     "얼굴형 헤어스타일 추천",
@@ -56,8 +56,8 @@ export const homeNavItems = [
   { href: "#aftercare", label: "애프터케어", shortLabel: "07" },
   { href: "#fashion-direction", label: "패션 방향", shortLabel: "08" },
   { href: "#style-dossier", label: "스타일 기록", shortLabel: "09" },
-  { href: "#services", label: "현재 이용 방식", shortLabel: "10" },
-  { href: "#trust", label: "신뢰와 한계", shortLabel: "11" },
+  { href: "#trust", label: "신뢰와 한계", shortLabel: "10" },
+  { href: "#services", label: "현재 이용 방식", shortLabel: "11" },
 ];
 
 export const recommendationCriteria = [

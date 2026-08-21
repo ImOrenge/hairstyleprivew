@@ -13,7 +13,7 @@ import {
   SalonBriefShowcase,
   StrategicPreviewShowcase,
   StyleDossierShowcase,
-  TrustAndFinalCta,
+  TrustShowcase,
 } from "../components/home/PremiumConsultingShowcases";
 import { RevealOnScroll } from "../components/home/RevealOnScroll";
 import { AppPage } from "../components/ui/Surface";
@@ -104,8 +104,8 @@ export default async function HomePage() {
         <RevealOnScroll><AftercareTimelineShowcase /></RevealOnScroll>
         <RevealOnScroll><FashionDirectionShowcase /></RevealOnScroll>
         <RevealOnScroll><StyleDossierShowcase /></RevealOnScroll>
+        <RevealOnScroll><TrustShowcase faqs={faqs} /></RevealOnScroll>
         <RevealOnScroll><PricingPreview initialDisplayBenefits={pricingDisplayBenefits} subscriptionAccessMode={subscriptionAccessMode} /></RevealOnScroll>
-        <RevealOnScroll><TrustAndFinalCta faqs={faqs} /></RevealOnScroll>
       </AppPage>
       <MobileStickyCtaBar />
     </>

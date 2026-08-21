@@ -16,16 +16,16 @@ const autoSwitch = readFileSync(join(appRoot, "components", "home", "PremiumAuto
 test("premium landing keeps the rolling hero and consultant message", () => {
   assert.match(hero, /ROLLING_COLUMNS/);
   assert.match(hero, /data-testid="hero-rolling-stage"/);
-  assert.match(hero, /당신의 스타일에는,/);
-  assert.match(hero, /생성보다 정확한 기준이 필요합니다\./);
-  assert.match(hero, /PRIVATE AI STYLE DIRECTION/);
+  assert.match(hero, /사진 한 장으로,/);
+  assert.match(hero, /내게 맞는 헤어를 비교하고 결정하세요\./);
+  assert.match(hero, /사진 전 필수 질문 0개 · 무료 체험 가능/);
   assert.match(hero, /href="#style-dossier"/);
-  assert.match(hero, /컨설팅 결과 예시 보기/);
+  assert.match(hero, /9가지 결과 예시 보기/);
   assert.match(hero, /aria-label="SCROLL — 분석 근거 섹션으로 이동"/);
 });
 
 test("landing exposes the documented eleven scene order", () => {
-  const componentOrder = ["HeroSection", "AnalysisEvidenceShowcase", "DirectionShowcase", "StrategicPreviewShowcase", "CompareDecisionShowcase", "SalonBriefShowcase", "AftercareTimelineShowcase", "FashionDirectionShowcase", "StyleDossierShowcase", "PricingPreview", "TrustAndFinalCta"];
+  const componentOrder = ["HeroSection", "AnalysisEvidenceShowcase", "DirectionShowcase", "StrategicPreviewShowcase", "CompareDecisionShowcase", "SalonBriefShowcase", "AftercareTimelineShowcase", "FashionDirectionShowcase", "StyleDossierShowcase", "TrustShowcase", "PricingPreview"];
   let cursor = -1;
   const renderedPage = page.slice(page.indexOf("return ("));
   for (const name of componentOrder) {
@@ -82,11 +82,16 @@ test("conversion paths and pricing boundary remain truthful", () => {
   assert.doesNotMatch(combined, /무료로 내 스타일 보기/);
   assert.doesNotMatch(combined, /99,?000|189,?000|649,?000/);
   assert.ok((combined.match(/href="\/consulting\/new"/g)?.length ?? 0) >= 4);
-  assert.match(showcases, /href="\/b2b\/contact"/);
+  assert.match(pricing, /href="\/b2b\/contact"/);
   assert.match(pricing, /PricingTierKey/);
   assert.match(pricing, /aria-label="현재 이용 가능한 플랜 비교"/);
   assert.match(pricing, /id="pricing-scroll-hint"/);
   assert.match(pricing, /data-variant=\{plan\.tone === "basic" \? "secondary" : "primary"\}/);
+  assert.match(pricing, /내 사진 분석 시작/);
+  assert.ok(page.indexOf("<TrustShowcase") < page.indexOf("<PricingPreview"));
+  for (const phrase of ["변경할 수 없는 최종 결정 기록", "변경 불가 최종 결정 기록", "데이터 계약에서 확인할 수 있는 연결 범위", "슬롯마다 반복 요청하는 마법사 흐름", "생성보다 정확한 기준"]) {
+    assert.doesNotMatch(combined, new RegExp(phrase));
+  }
 });
 
 test("mobile CTA leaves the final conversion and footer unobstructed", () => {

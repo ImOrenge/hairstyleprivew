@@ -166,7 +166,7 @@ const ko = {
 
     "pricing.badge": "Services & Current Access",
     "pricing.title": "지금 실제로 이용 가능한 방식만 안내합니다",
-    "pricing.creditNote": "아래는 현재 운영 중인 Free·Basic·Standard·Pro·Salon 계약입니다. 별도의 프리미엄 패키지는 상품·결제 정책이 확정되기 전까지 판매하지 않습니다.",
+    "pricing.creditNote": "현재 이용 가능한 Free·Basic·Standard·Pro·Salon만 안내합니다. 결제 전 각 플랜의 이용 범위와 보관 기간을 확인하세요.",
     "pricing.usage.hairOnly": "헤어 {{count}}회 이용권",
     "pricing.usage.hairFashionSets": "패션 {{sets}}세트 이용권 · 헤어+패션 세트 기준",
     "pricing.usage.hairFashionSetsWithRemainder": "패션 {{sets}}세트 이용권 · 헤어+패션 세트 기준",
@@ -175,7 +175,7 @@ const ko = {
     "pricing.mostPopular": "가장 인기",
     "pricing.free.subtitle": "무료 체험",
     "pricing.free.desc": "내 얼굴에 어울리는지 먼저 가볍게 확인하고 싶은 분",
-    "pricing.free.cta": "컨설팅 시작",
+    "pricing.free.cta": "무료 사진 분석 시작",
     "pricing.free.f1": "3x3 헤어 추천 목록 무료 열람",
     "pricing.free.f2": "워터마크 포함 헤어 결과 이미지 체험",
     "pricing.free.f3": "결과 7일 보관",

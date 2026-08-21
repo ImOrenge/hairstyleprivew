@@ -60,7 +60,7 @@ export function MobileStickyCtaBar() {
         tabIndex={isVisible ? undefined : -1}
         className="f-landing-sticky-cta__action"
       >
-        프라이빗 컨설팅 시작
+        내 사진 분석 시작
         <ArrowRight className="h-4 w-4" aria-hidden="true" />
       </Link>
     </div>

@@ -1,10 +1,12 @@
-export function isConsultationFrontendEnabled() {
-  return process.env.NEXT_PUBLIC_CONSULTATION_FRONTEND_V2 === "true"
-    && isConsultationLifecycleNavigationEnabled();
+type ConsultationFeatureFlagEnv = Record<string, string | undefined>;
+
+export function isConsultationFrontendEnabled(env: ConsultationFeatureFlagEnv = process.env) {
+  return env.NEXT_PUBLIC_CONSULTATION_FRONTEND_V2 !== "false"
+    && isConsultationLifecycleNavigationEnabled(env);
 }
 
-export function isConsultationLifecycleNavigationEnabled() {
-  return process.env.CONSULTATION_LIFECYCLE_NAV_V2_ENABLED !== "false";
+export function isConsultationLifecycleNavigationEnabled(env: ConsultationFeatureFlagEnv = process.env) {
+  return env.CONSULTATION_LIFECYCLE_NAV_V2_ENABLED !== "false";
 }
 
 export function isConsultationAsyncAnalysisEnabled() {

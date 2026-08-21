@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { buildConsultationHairProfile } from "./hair-profile.ts";
+import { isConsultationFrontendEnabled } from "./feature-flag.ts";
 
 function read(relativePath: string) { return readFileSync(new URL(relativePath, import.meta.url), "utf8"); }
 
@@ -29,6 +30,19 @@ test("consulting entry derives progress from the shared journey and promises the
   assert.match(entry, /사진을 먼저 분석하고/);
   assert.match(entry, /9개 전략형 프리뷰/);
   assert.match(entry, /퍼스널 컬러·메이크업·패션/);
+});
+
+test("consulting frontend defaults on while either explicit rollback switch turns it off", () => {
+  assert.equal(isConsultationFrontendEnabled({}), true);
+  assert.equal(isConsultationFrontendEnabled({ NEXT_PUBLIC_CONSULTATION_FRONTEND_V2: "true", CONSULTATION_LIFECYCLE_NAV_V2_ENABLED: "true" }), true);
+  assert.equal(isConsultationFrontendEnabled({ NEXT_PUBLIC_CONSULTATION_FRONTEND_V2: "false" }), false);
+  assert.equal(isConsultationFrontendEnabled({ CONSULTATION_LIFECYCLE_NAV_V2_ENABLED: "false" }), false);
+
+  const example = read("../../.env.local.example");
+  for (const flag of ["NEXT_PUBLIC_CONSULTATION_FRONTEND_V2", "CONSULTATION_LIFECYCLE_NAV_V2_ENABLED", "CONSULTATION_DISCOVERY_INTERVIEW_ENABLED", "CONSULTATION_ZERO_INPUT_INTAKE_ENABLED"]) {
+    assert.match(example, new RegExp(`^${flag}=true$`, "m"));
+  }
+  assert.match(read("../../middleware.ts"), /"\/consulting\(\.\*\)"/);
 });
 
 test("consultation state is server-owned and guarded by optimistic concurrency", () => {
@@ -146,7 +160,7 @@ test("customer entry CTAs point directly to the AI consultant while legacy remai
   }
   assert.match(landing, /HeroSection/);
   assert.match(landing, /PremiumConsultingShowcases/);
-  assert.match(`${hero}\n${showcases}`, /프라이빗[^\n]*컨설팅/);
+  assert.match(`${hero}\n${showcases}`, /내 (?:사진|얼굴) 분석(?:부터)? 시작/);
   assert.match(customerHome, /AI 헤어 컨설턴트/);
   const photo = read("../../components/consulting/workbenches/PhotoWorkbench.tsx");
   assert.match(photo, /AI 상담 분석이 자동으로 이어집니다/);
