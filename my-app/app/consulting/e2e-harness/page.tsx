@@ -9,6 +9,7 @@ import { MakeupInterviewFixture } from "../../../components/consulting/makeup/Ma
 import { MakeupSimulationFixture } from "../../../components/consulting/makeup/MakeupSimulationFixture";
 import { ConsultationScene } from "../../../components/consulting/scene/ConsultationScene";
 import { projectConsultationReportV2, type ConsultationReportSourceV2 } from "../../../lib/consulting/contracts";
+import { attachConsultationResultNarrative } from "../../../lib/consulting/result-narrative-service";
 
 export const metadata = { title: "Consulting Scene E2E Harness", robots: { index: false, follow: false } };
 interface Props { searchParams: Promise<{ stage?: string; transition?: string; liveness?: string; transitionState?: string; polling?: string; interview?: string; zeroInput?: string; hairRecommendation?: string; fashionAdaptive?: string; colorLevel?: string; color?: string; diagnostics?: string; simulation?: string }> }
@@ -368,7 +369,7 @@ export default async function ConsultingSceneHarnessPage({ searchParams }: Props
       observedAt: "2026-08-08T00:05:00.000Z", expiresAt: "2026-08-09T00:05:00.000Z", sourceFingerprint: "e2e-offer-fingerprint",
     }],
   } : {};
-  const initialReport = requested === "result" ? projectConsultationReportV2(snapshot, reportSource) : null;
+  const initialReport = requested === "result" ? attachConsultationResultNarrative(projectConsultationReportV2(snapshot, reportSource), null) : null;
   if (requested === "makeup") return <ConsultationScene snapshot={snapshot} stage="makeup"><div className="pb-24 lg:h-full lg:overflow-y-auto">{query.simulation === "1" ? <MakeupSimulationFixture /> : query.interview === "1" ? <MakeupInterviewFixture /> : <MakeupDirectionFixture diagnostics={query.diagnostics === "1"} />}</div></ConsultationScene>;
   return <ConsultationStagePage initialSnapshot={snapshot} initialReport={initialReport} stage={requested} initialTransitionKind={isConsultationTaskKind(query.transition) ? query.transition : null} livenessEnabled={query.liveness === "1"} pollingEnabled={query.polling === "1"} interviewEnabled={query.interview === "1"} zeroInputIntakeEnabled={query.zeroInput !== "0"} hairRecommendationEnabled={query.hairRecommendation === "1"} />;
 }

@@ -168,6 +168,7 @@ const CAPABILITIES: ConsultationCapability[] = [
   "makeup-rationale-generation",
   "hair-trait-analysis",
   "makeup-simulation-generation",
+  "consultation-result-narrative-generation",
 ];
 
 export const CAPABILITY_TASK_FIXTURES = Object.fromEntries(CAPABILITIES.map((capability) => [capability, {

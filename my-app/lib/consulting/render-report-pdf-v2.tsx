@@ -2,6 +2,7 @@
 import path from "node:path";
 import { Document, Font, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import { consultationReportStatusLabelV2, type ConsultationReportImageV2, type ConsultationReportSectionV2, type ConsultationReportViewModelV2 } from "@hairfit/shared/consulting/report-v2";
+import type { ConsultationResultNarrativePanelV1 } from "@hairfit/shared/consulting/report-narrative";
 
 let fontRegistered = false;
 
@@ -19,6 +20,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, lineHeight: 1.2, marginBottom: 8 },
   metaRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 11 },
   meta: { borderWidth: 0.7, borderColor: "#b9b1a3", paddingHorizontal: 7, paddingVertical: 4, fontSize: 7 },
+  narrative: { borderWidth: 0.8, borderColor: "#8a6418", backgroundColor: "#fffaf0", padding: 12, marginTop: 12 },
+  narrativeTitle: { fontSize: 13, lineHeight: 1.25, marginBottom: 5 },
   group: { borderBottomWidth: 1.5, borderBottomColor: "#181713", marginTop: 18, paddingBottom: 6 },
   groupTitle: { fontSize: 17 },
   section: { borderTopWidth: 0.7, borderTopColor: "#b9b1a3", paddingTop: 12, marginTop: 12 },
@@ -36,6 +39,12 @@ const styles = StyleSheet.create({
   pageNumber: { position: "absolute", bottom: 16, right: 32, color: "#777064", fontSize: 7 },
 });
 
+function preparationLabel(state: string) {
+  if (["accepted", "completed", "selected"].includes(state)) return "준비 완료";
+  if (state === "failed") return "다시 준비 필요";
+  return "준비 중";
+}
+
 function sectionLines(section: ConsultationReportSectionV2) {
   switch (section.key) {
     case "face-hair-analysis": return [
@@ -46,8 +55,8 @@ function sectionLines(section: ConsultationReportSectionV2) {
     ];
     case "hair-direction": return section.payload.axes.map((item) => `${item.label}: ${item.value}${item.reason ? ` · ${item.reason}` : ""}`);
     case "candidate-comparison": return [
-      `전체 생성: ${section.payload.candidates.length}/${section.payload.requestedCount} · terminal ${section.payload.terminalCount} · 품질 승인 ${section.payload.acceptedCount}`,
-      ...section.payload.candidates.map((item) => `${item.rank ? `${item.rank}위` : "순위 대기"} · ${item.gridRole}: ${item.label} · ${item.generationState}${item.isPrimary ? " · AI 주 추천" : ""}${item.isConfirmed ? " · 고객 확정" : ""} · ${item.reason}`),
+      `준비된 스타일: ${section.payload.acceptedCount}개`,
+      ...section.payload.candidates.map((item) => `${item.rank ? `${item.rank}순위` : "추천 순서 확인 중"} · ${item.label} · ${preparationLabel(item.generationState)}${item.isPrimary ? " · AI 추천" : ""}${item.isConfirmed ? " · 내가 고른 스타일" : ""} · ${item.reason}`),
     ];
     case "final-hair": return [`확정 스타일: ${section.payload.label}`, `구현 가능성: ${section.payload.feasibility}`, `현재 모발과 차이: ${section.payload.currentHairGap}`, `필요 시술: ${section.payload.services.join(" · ") || "없음"}`, `관리: ${section.payload.maintenance}`];
     case "personal-color": return [
@@ -56,12 +65,12 @@ function sectionLines(section: ConsultationReportSectionV2) {
       ...section.payload.axes.map((item) => `${item.label}: ${item.value === null ? "확인 불가" : Math.round(item.value * 100)}`),
       ...Object.entries(section.payload.palettes).map(([key, colors]) => `${key}: ${colors.join(" · ") || "없음"}`),
     ];
-    case "final-color": return [`결정: ${section.payload.state}`, `컬러: ${section.payload.colorName}`, `기법: ${section.payload.technique}`, `목표 레벨: ${section.payload.targetLevel ?? "현장 확인"}`, `탈색: ${section.payload.bleachPolicy}`, `퇴색 방향: ${section.payload.fadeDirection || "확인 필요"}`];
+    case "final-color": return [`컬러: ${section.payload.colorName}`, `기법: ${section.payload.technique}`, `목표 레벨: ${section.payload.targetLevel ?? "현장 확인"}`, `탈색: ${section.payload.bleachPolicy}`, `퇴색 방향: ${section.payload.fadeDirection || "확인 필요"}`];
     case "makeup-result": return section.payload.modules.map((item) => `${item.module}: ${item.enabled ? "사용" : "제외"}${item.color ? ` · ${item.color}` : ""}${item.texture ? ` · ${item.texture}` : ""}`);
     case "fashion-result": return [
-      `전체 생성: ${section.payload.looks.length}/${section.payload.requestedCount} · terminal ${section.payload.terminalCount} · 완료 ${section.payload.completedCount}`,
-      ...section.payload.looks.flatMap((look) => [`${look.role}: ${look.label} · ${look.generationState}${look.isRecommended ? " · AI 권장" : ""}${look.isSelected ? " · 고객 확정" : ""}`, `실루엣·네크라인: ${look.silhouette} · ${look.neckline}`, `구성: ${look.items.join(" · ")}`, `팔레트: ${look.palette.join(" · ")}`]),
-      ...section.payload.products.flatMap((product) => [`실상품 snapshot: ${product.brandName} ${product.productName}`, `${product.priceAmount.toLocaleString("ko-KR")} ${product.currency} · ${product.availability} · 관측 ${product.observedAt}`]),
+      `준비된 패션 제안: ${section.payload.completedCount}개`,
+      ...section.payload.looks.flatMap((look) => [`${look.label} · ${preparationLabel(look.generationState)}${look.isRecommended ? " · AI 추천" : ""}${look.isSelected ? " · 내가 고른 스타일" : ""}`, `실루엣·네크라인: ${look.silhouette} · ${look.neckline}`, `구성: ${look.items.join(" · ")}`, `팔레트: ${look.palette.join(" · ")}`]),
+      ...section.payload.products.flatMap((product) => [`연결 상품: ${product.brandName} ${product.productName}`, `${product.priceAmount.toLocaleString("ko-KR")} ${product.currency} · ${product.availability}`]),
     ];
     case "executive-summary": return [...section.payload.outcomes.map((item) => `${item.label}: ${item.value}`), `변화 강도: ${section.payload.changeIntensity}`, `관리 난이도: ${section.payload.maintenanceDifficulty}`, `살롱 시술: ${section.payload.salonRequired ? "필요" : "선택"}`];
     case "salon-specification": return [`고객 요약: ${section.payload.customerSummary}`, `커트: ${section.payload.services.cut.join(" · ") || "없음"}`, `펌: ${section.payload.services.perm.join(" · ") || "없음"}`, `컬러: ${section.payload.services.color.join(" · ") || "없음"}`, ...section.payload.design.map((item) => `${item.label}: ${item.value}`), `스타일링: ${section.payload.styling.join(" · ") || "없음"}`, `주의: ${section.payload.cautions.join(" · ") || "없음"}`];
@@ -88,20 +97,35 @@ function Section({ section }: { section: ConsultationReportSectionV2 }) {
     <View style={styles.sectionHead}><View><Text style={styles.eyebrow}>{section.kicker}</Text><Text style={styles.sectionTitle}>{section.title}</Text></View><Text style={styles.status}>{consultationReportStatusLabelV2(section.status)}</Text></View>
     <Text style={styles.conclusion}>{section.conclusion}</Text>
     {lines.map((line, index) => <Text key={`${section.key}-line-${index}`} style={styles.line}>• {line}</Text>)}
-    {section.rationale.length ? <><Text style={styles.label}>AI 판단 근거</Text>{section.rationale.map((item, index) => <Text key={`${section.key}-rationale-${index}`} style={styles.line}>• {item}</Text>)}</> : null}
-    {section.effects.length ? <><Text style={styles.label}>고객에게 미치는 효과</Text>{section.effects.map((item, index) => <Text key={`${section.key}-effect-${index}`} style={styles.line}>• {item}</Text>)}</> : null}
+    {section.rationale.length ? <><Text style={styles.label}>이 결과가 잘 맞는 이유</Text>{section.rationale.map((item, index) => <Text key={`${section.key}-rationale-${index}`} style={styles.line}>• {item}</Text>)}</> : null}
+    {section.effects.length ? <><Text style={styles.label}>기대할 수 있는 변화</Text>{section.effects.map((item, index) => <Text key={`${section.key}-effect-${index}`} style={styles.line}>• {item}</Text>)}</> : null}
     {section.avoid.length ? <><Text style={styles.label}>피해야 할 선택</Text>{section.avoid.map((item, index) => <Text key={`${section.key}-avoid-${index}`} style={styles.line}>• {item}</Text>)}</> : null}
-    {section.cautions.length ? <><Text style={styles.label}>불확실성·주의사항</Text>{section.cautions.map((item, index) => <Text key={`${section.key}-caution-${index}`} style={styles.line}>• {item}</Text>)}</> : null}
+    {section.cautions.length ? <><Text style={styles.label}>시술 전 확인할 점</Text>{section.cautions.map((item, index) => <Text key={`${section.key}-caution-${index}`} style={styles.line}>• {item}</Text>)}</> : null}
     {images.length ? <View style={styles.imageGrid}>{images.map((image) => <View key={image.id} style={styles.imageCard}><Image src={image.src!} style={styles.image} /><Text style={styles.imageLabel}>{image.label}</Text></View>)}</View> : null}
+  </View>;
+}
+
+function Narrative({ panel, state }: { panel: ConsultationResultNarrativePanelV1; state: NonNullable<ConsultationReportViewModelV2["narrative"]>["state"] }) {
+  return <View style={styles.narrative} minPresenceAhead={70}>
+    <Text style={styles.eyebrow}>{state === "ready" ? "AI 스타일 해설" : "스타일 해설"}</Text>
+    <Text style={styles.narrativeTitle}>{panel.headline}</Text>
+    {panel.summary.map((item, index) => <Text key={`summary-${index}`} style={styles.line}>• {item.text}</Text>)}
+    <Text style={styles.label}>이 결과가 잘 맞는 이유</Text>
+    {panel.fitReasons.map((item, index) => <Text key={`reason-${index}`} style={styles.line}>• {item.text}</Text>)}
+    <Text style={styles.label}>이렇게 활용해 보세요</Text>
+    {panel.actions.map((item, index) => <Text key={`action-${index}`} style={styles.line}>• {item.text}</Text>)}
   </View>;
 }
 
 function ReportPdfDocumentV2({ report }: { report: ConsultationReportViewModelV2 }) {
   return <Document title={report.headline} author="HairFit AI Consultant" subject="HairFit consultation result report">
     <Page size="A4" wrap style={styles.page}>
-      <View style={styles.header}><Text style={styles.eyebrow}>HAIRFIT AI CONSULTANT · RESULT REPORT V2</Text><Text style={styles.title}>{report.headline}</Text><View style={styles.metaRow}><Text style={styles.meta}>상담 v{report.consultationVersion}</Text><Text style={styles.meta}>결과 v{report.resultVersion}</Text><Text style={styles.meta}>{consultationReportStatusLabelV2(report.status)}</Text><Text style={styles.meta}>Hair 전체 {report.provenance.hair?.generatedPreviewIds.length ?? 0}/9</Text><Text style={styles.meta}>Fashion 전체 {report.provenance.fashion ? `${report.provenance.fashion.generatedPreviewIds.length}/${report.provenance.fashion.requestedCount}` : "0"}</Text><Text style={styles.meta}>무결성 {report.provenance.fingerprint}</Text></View></View>
-      {report.tabs.map((tab) => <View key={tab.key}><View style={styles.group} break><Text style={styles.eyebrow}>RESULT GROUP</Text><Text style={styles.groupTitle}>{tab.label}</Text></View>{tab.sections.map((section) => <Section key={section.key} section={section} />)}</View>)}
-      <View style={styles.footer} wrap={false}><Text>원본 얼굴·After 사진은 포함하지 않습니다. 실제 시술 이후 장기 관리는 별도 Aftercare 프로그램에서 진행합니다.</Text><Text>이 PDF는 같은 report projection에서 Hair·Fashion 생성 결과 전체를 렌더링합니다.</Text><Text>AI 분석은 의료 진단이 아니며 실제 시술 전 디자이너 확인이 우선합니다. · {report.generatedAt} · {report.reportId}</Text></View>
+      <View style={styles.header}><Text style={styles.eyebrow}>HAIRFIT AI CONSULTANT · 상담 결과</Text><Text style={styles.title}>{report.headline}</Text><View style={styles.metaRow}><Text style={styles.meta}>{consultationReportStatusLabelV2(report.status)}</Text><Text style={styles.meta}>작성일 {report.generatedAt}</Text></View></View>
+      {report.tabs.map((tab) => {
+        const panel = report.narrative ? (tab.key === "final" ? report.narrative.content.overall : report.narrative.content.tabs[tab.key]) : null;
+        return <View key={tab.key}><View style={styles.group} break><Text style={styles.eyebrow}>상담 결과</Text><Text style={styles.groupTitle}>{tab.label}</Text></View>{panel ? <Narrative panel={panel} state={report.narrative!.state} /> : null}{tab.sections.map((section) => <Section key={section.key} section={section} />)}</View>;
+      })}
+      <View style={styles.footer} wrap={false}><Text>원본 얼굴·시술 후 사진은 포함하지 않습니다. 실제 시술 이후 장기 관리는 별도 케어 프로그램에서 진행합니다.</Text><Text>AI 해설은 상담에서 확인한 사실을 이해하기 쉽게 설명하며, 주의사항과 시술 명세의 의미를 바꾸지 않습니다.</Text><Text>AI 분석은 의료 진단이 아니며 실제 시술 전 디자이너 확인이 우선합니다. · 문서 확인번호 {report.integrityCode}</Text></View>
       <Text style={styles.pageNumber} fixed render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
     </Page>
   </Document>;

@@ -7,6 +7,7 @@ import type { ConsultationSnapshot, ConsultationStage, FashionPreviewBatch } fro
 import type { FashionOfferSnapshotV1 } from "./fashion-product-truth.ts";
 import type { HairRecommendationDecisionV1 } from "./hair-recommendation.ts";
 import type { HairProfileV2 } from "./hair-profile.ts";
+import type { ConsultationReportNarrativeEnvelopeV1 } from "./report-narrative.ts";
 
 export const CONSULTATION_REPORT_TAB_ORDER_V2 = ["hair", "color", "makeup", "fashion", "final"] as const;
 export type ConsultationReportTabKeyV2 = (typeof CONSULTATION_REPORT_TAB_ORDER_V2)[number];
@@ -202,7 +203,7 @@ export interface ConsultingResultProvenanceV3 {
 
 export type ExecutiveSummarySectionV2 = SectionBaseV2<"executive-summary", "final", {
   heroImage: ConsultationReportImageV2 | null;
-  outcomes: Array<{ label: "Hair" | "Color" | "Makeup" | "Fashion"; value: string }>;
+  outcomes: Array<{ label: "헤어" | "컬러" | "메이크업" | "패션"; value: string }>;
   changeIntensity: string;
   maintenanceDifficulty: string;
   salonRequired: boolean;
@@ -266,6 +267,7 @@ export interface ConsultationReportViewModelV2 {
   rawPhotoIncluded: false;
   afterPhotoIncluded: false;
   limitations: string[];
+  narrative?: ConsultationReportNarrativeEnvelopeV1;
 }
 
 const TAB_LABELS: Record<ConsultationReportTabKeyV2, string> = {
@@ -438,7 +440,7 @@ function buildInitialCare(snapshot: ConsultationSnapshot): InitialCareSectionV2 
     key: "initial-care",
     tab: "final",
     title: "초기 케어",
-    kicker: "INITIAL CARE",
+    kicker: "처음 관리할 내용",
     status: "ready",
     conclusion: "확정한 헤어와 컬러를 안정적으로 유지하기 위한 첫 7일 안내입니다.",
     rationale: [selected ? `${selected.label}의 구조와 관리 조건을 반영했습니다.` : "확정 컬러 조건을 반영했습니다.", colorApplied ? `${color.colorName}의 초기 색 유지 조건을 반영했습니다.` : "염색 전용 항목은 포함하지 않았습니다."],
@@ -476,7 +478,7 @@ export function projectConsultationReportV2(
     const hairObservations = source.hairProfile?.observed.map((item) => ({ label: item.traitId, value: `${item.value} · ${Math.round(item.confidence * 100)}%` })) ?? [];
     const hairUnknown = source.hairProfile?.unknownFieldIds ?? [];
     sections.push({
-      key: "face-hair-analysis", tab: "hair", title: "얼굴·모발 분석", kicker: "FACE / HAIR ANALYSIS",
+      key: "face-hair-analysis", tab: "hair", title: "얼굴·모발 분석", kicker: "얼굴과 모발의 균형",
       status: source.analysisEvidence && distribution.length && source.hairProfile ? "ready" : "partial",
       conclusion: source.analysisEvidence?.faceShape.summary || `${analysisPrimary ?? "확인 가능한 특징"}을 기준으로 헤어 균형을 해석했습니다.`,
       rationale: snapshot.evidence.items.slice(0, 5).map((item) => `${item.evidence} → ${item.meaning}`),
@@ -501,7 +503,7 @@ export function projectConsultationReportV2(
       ["texture", "질감", snapshot.strategy.texture], ["color", "컬러 방향", snapshot.strategy.color],
     ] as const;
     sections.push({
-      key: "hair-direction", tab: "hair", title: "헤어 디자인 방향", kicker: "HAIR BLUEPRINT", status: snapshot.strategy.confirmedAt ? "ready" : "partial",
+      key: "hair-direction", tab: "hair", title: "헤어 디자인 방향", kicker: "추천 헤어 방향", status: snapshot.strategy.confirmedAt ? "ready" : "partial",
       conclusion: "얼굴·모발 특징과 관리 조건을 8개 설계 축으로 정리했습니다.",
       rationale: snapshot.strategyRecommendations.map((item) => item.reason), effects: snapshot.strategyRecommendations.map((item) => item.impact),
       avoid: snapshot.strategyRecommendations.map((item) => item.tradeoff).filter(Boolean), cautions: [], detailHref: stageHref(snapshot.sessionId, "direction"),
@@ -537,11 +539,11 @@ export function projectConsultationReportV2(
     const terminalCount = source.hairRecommendation?.previewBatch.terminalCount
       ?? snapshot.previews.filter((item) => item.status === "accepted" || item.status === "failed").length;
     sections.push({
-      key: "candidate-comparison", tab: "hair", title: "헤어 생성 결과 전체", kicker: "ALL 9 GENERATED", status: candidates.length === 9 && terminalCount === 9 ? "ready" : "partial",
-      conclusion: `이번 recommendation revision에서 요청한 9개 생성 내용을 상태와 함께 모두 표시합니다. AI 주 추천은 ${primaryPreviewId ? "별도 표식" : "아직 계산 중"}으로 구분합니다.`,
-      rationale: source.hairRecommendation?.rankedPreviews.slice().sort((left, right) => left.rank - right.rank).map((item) => `${item.rank}위 · ${item.gridRole} · ${item.reasonCodes.join(" · ") || "구조화 점수"}`) ?? [],
-      effects: ["AI가 먼저 정해 주는 기본 흐름을 유지하면서 생성된 모든 결과를 숨김없이 확인할 수 있습니다."], avoid: [],
-      cautions: candidates.length !== 9 ? [`9개 계약 중 ${candidates.length}개만 projection에 연결됐습니다.`] : terminalCount !== 9 ? [`현재 ${terminalCount}/9개만 terminal 상태입니다.`] : [],
+      key: "candidate-comparison", tab: "hair", title: "추천 헤어 비교", kicker: "헤어 스타일 비교", status: candidates.length === 9 && terminalCount === 9 ? "ready" : "partial",
+      conclusion: "준비한 헤어 스타일을 한눈에 비교하고, AI 추천과 내가 확정한 결과를 함께 확인할 수 있습니다.",
+      rationale: source.hairRecommendation?.rankedPreviews.slice().sort((left, right) => left.rank - right.rank).map((item) => `${item.rank}순위 · ${item.reasonCodes.join(" · ") || "얼굴·모발 조건을 종합한 추천"}`) ?? [],
+      effects: ["추천 순서와 선택 이유를 함께 보며 원하는 인상을 비교할 수 있습니다."], avoid: [],
+      cautions: candidates.length !== 9 ? ["일부 스타일은 아직 준비 중입니다. 준비된 결과부터 확인할 수 있습니다."] : terminalCount !== 9 ? ["남은 스타일을 준비하고 있습니다. 현재 결과는 계속 확인할 수 있습니다."] : [],
       detailHref: stageHref(snapshot.sessionId, "previews"),
       payload: { requestedCount: 9, terminalCount, acceptedCount: accepted.length, candidates },
     });
@@ -549,7 +551,7 @@ export function projectConsultationReportV2(
 
   if (selected) {
     sections.push({
-      key: "final-hair", tab: "hair", title: "최종 헤어", kicker: "FINAL HAIR", status: selected.imageUrl ? "ready" : "partial",
+      key: "final-hair", tab: "hair", title: "최종 헤어", kicker: "확정한 헤어", status: selected.imageUrl ? "ready" : "partial",
       conclusion: selected.reason || `${selected.label}을 최종 헤어로 확정했습니다.`, rationale: [selected.feasibility, selected.currentHairGap].filter(Boolean),
       effects: [selected.maintenance].filter(Boolean), avoid: selected.limitations, cautions: selected.limitations, detailHref: stageHref(snapshot.sessionId, "decision"),
       payload: { selectionId: selected.id, label: selected.label, image: reportImage(selected.id, selected.imageUrl, `${selected.label} 확정 헤어`, "확정 헤어"), feasibility: selected.feasibility, currentHairGap: selected.currentHairGap, services: selected.services, maintenance: selected.maintenance, selectedAt: selected.selectedAt },
@@ -562,7 +564,7 @@ export function projectConsultationReportV2(
     const axes = profile ? Object.entries(profile.axes).map(([key, axis]) => ({ key, label: AXIS_LABELS[key] ?? key, value: axis.value, confidence: axis.confidence })) : Object.entries(snapshot.personalColorDiagnosis.axes).map(([key, value]) => ({ key, label: AXIS_LABELS[key] ?? key, value, confidence: snapshot.personalColorDiagnosis.qualityConfidence }));
     const ready = profile ? ["profile_ready", "confirmed", "partial_ready"].includes(profile.status) : snapshot.personalColorDiagnosis.state === "ready";
     sections.push({
-      key: "personal-color", tab: "color", title: "퍼스널 컬러", kicker: "PERSONAL COLOR", status: ready ? "ready" : snapshot.personalColorDiagnosis.state === "unavailable" ? "unavailable" : "partial",
+      key: "personal-color", tab: "color", title: "퍼스널 컬러", kicker: "어울리는 컬러", status: ready ? "ready" : snapshot.personalColorDiagnosis.state === "unavailable" ? "unavailable" : "partial",
       conclusion: profile?.displayClassification?.label || snapshot.personalColorDiagnosis.summary || snapshot.personalColorDiagnosis.primaryType || "확인 가능한 컬러 근거를 정리했습니다.",
       rationale: snapshot.personalColorDiagnosis.bestColors.slice(0, 5).map((item) => item.reason), effects: snapshot.personalColorDiagnosis.hairColorHints,
       avoid: snapshot.personalColorDiagnosis.avoidColors.slice(0, 5).map((item) => item.nameKo), cautions: snapshot.personalColorDiagnosis.warnings,
@@ -580,7 +582,7 @@ export function projectConsultationReportV2(
   if (colorTerminal || snapshot.colorDecision.state !== "not-applicable") {
     const color = snapshot.colorDecision;
     sections.push({
-      key: "final-color", tab: "color", title: "최종 컬러", kicker: "FINAL COLOR", status: colorTerminal ? "ready" : "partial",
+      key: "final-color", tab: "color", title: "최종 컬러", kicker: "확정한 컬러", status: colorTerminal ? "ready" : "partial",
       conclusion: color.state === "confirmed" ? `${color.colorName} 컬러를 확정했습니다.` : color.state === "keep-current" || color.state === "not-applicable" ? "현재 모발색을 유지합니다." : "살롱 확인이 필요한 컬러 결정입니다.",
       rationale: snapshot.personalColorDiagnosis.hairColorHints, effects: [color.maintenance, color.fadeDirection].filter(Boolean), avoid: [], cautions: color.warnings,
       detailHref: stageHref(snapshot.sessionId, "color-studio"), payload: { state: color.state, colorName: color.colorName, swatchHex: color.swatchHex, technique: color.technique, targetLevel: color.targetLevel, bleachPolicy: color.bleachPolicy, maintenance: color.maintenance, fadeDirection: color.fadeDirection, image: color.finalImageUrl ? reportImage(color.id ?? "final-color", color.finalImageUrl, `${color.colorName} 염색 결과`, "확정 컬러") : null, confirmedAt: color.confirmedAt },
@@ -592,7 +594,7 @@ export function projectConsultationReportV2(
     const modules = source.makeupDirection?.modules.map((item) => ({ module: item.module, enabled: item.state === "enabled" && item.direction.enabled, color: item.direction.colorFamily, texture: item.direction.texture, intensity: item.direction.intensity, reasons: item.direction.reasons })) ?? [];
     const makeupRationale = source.makeupDirection?.rationale;
     sections.push({
-      key: "makeup-result", tab: "makeup", title: "메이크업 결과", kicker: "MAKEUP", status: modules.length === 7 ? "ready" : makeupState === "failed_retryable" ? "unavailable" : "partial",
+      key: "makeup-result", tab: "makeup", title: "메이크업 결과", kicker: "추천 메이크업", status: modules.length === 7 ? "ready" : makeupState === "failed_retryable" ? "unavailable" : "partial",
       conclusion: makeupRationale?.acceptedMode ? `${MAKEUP_MODE_LABELS[makeupRationale.acceptedMode]} 방향을 확정했습니다.` : "퍼스널 컬러와 확정 헤어에 맞춘 메이크업 방향입니다.", rationale: makeupRationale?.evidence.map((item) => `${item.label} · ${item.finding}`) ?? modules.flatMap((item) => item.reasons).slice(0, 5), effects: ["헤어·컬러·메이크업의 온도감과 대비를 일관되게 연결합니다."],
       avoid: modules.filter((item) => !item.enabled).map((item) => `${item.module} 비활성`), cautions: makeupRationale?.limitations ?? (modules.length ? [] : ["확정 모듈 상세가 없어 상태만 표시합니다."]), detailHref: stageHref(snapshot.sessionId, "makeup"),
       payload: { moodImage: source.makeupMoodImageUrl ? reportImage("makeup-mood", source.makeupMoodImageUrl, "확정 메이크업 무드", "메이크업 무드") : null, requestedMode: makeupRationale ? MAKEUP_MODE_LABELS[makeupRationale.requestedMode] : null, acceptedMode: makeupRationale?.acceptedMode ? MAKEUP_MODE_LABELS[makeupRationale.acceptedMode] : null, adjustmentDecision: makeupRationale?.decision ?? null, rationaleRevision: makeupRationale?.revision ?? null, evidence: makeupRationale?.evidence.map(({ label, finding, impact }) => ({ label, finding, impact })) ?? [], limitations: makeupRationale?.limitations ?? [], modules, confirmedAt: source.makeupDirection?.confirmedAt ?? snapshot.makeupDirection?.confirmedAt ?? null },
@@ -651,12 +653,12 @@ export function projectConsultationReportV2(
       expiresAt: item.expiresAt,
     }));
     sections.push({
-      key: "fashion-result", tab: "fashion", title: "패션 생성 결과 전체", kicker: "ALL GENERATED FASHION",
+      key: "fashion-result", tab: "fashion", title: "추천 패션 비교", kicker: "패션 스타일 비교",
       status: looks.length === requestedCount && terminalCount === requestedCount ? "ready" : "partial",
-      conclusion: `${requestedCount}개 요청분의 생성 상태와 내용을 모두 표시하며, AI 권장안과 고객 확정안을 구분합니다.`,
-      rationale: ["확정 Hair·Color·Makeup과 실루엣·팔레트를 연결했습니다.", snapshot.fashion.direction].filter(Boolean),
+      conclusion: "헤어·컬러·메이크업과 자연스럽게 이어지는 패션 제안을 비교하고, 추천안과 내가 고른 스타일을 확인할 수 있습니다.",
+      rationale: ["확정한 헤어·컬러·메이크업과 실루엣·팔레트를 연결했습니다.", snapshot.fashion.direction].filter(Boolean),
       effects: [fashionSelected.silhouette, fashionSelected.neckline].filter(Boolean), avoid: snapshot.fashion.avoidCombinations,
-      cautions: [...(looks.length !== requestedCount ? [`요청 ${requestedCount}개 중 ${looks.length}개가 projection에 연결됐습니다.`] : []), ...(terminalCount !== requestedCount ? [`현재 ${terminalCount}/${requestedCount}개만 terminal 상태입니다.`] : []), ...(products.length ? [] : ["실상품 offer snapshot이 연결되지 않아 생성 이미지와 스타일 명세만 표시합니다."])],
+      cautions: [...(looks.length !== requestedCount ? ["일부 패션 제안은 아직 준비 중입니다. 준비된 결과부터 확인할 수 있습니다."] : []), ...(terminalCount !== requestedCount ? ["남은 패션 제안을 준비하고 있습니다. 현재 결과는 계속 확인할 수 있습니다."] : []), ...(products.length ? [] : ["연결된 상품이 없어 스타일 조합과 쇼핑 키워드만 안내합니다."])],
       detailHref: stageHref(snapshot.sessionId, "fashion"),
       payload: {
         looks,
@@ -673,14 +675,14 @@ export function projectConsultationReportV2(
 
   const heroSrc = snapshot.colorDecision.finalImageUrl || snapshot.result.heroImageUrl || selected?.imageUrl || null;
   const outcomes: ExecutiveSummarySectionV2["payload"]["outcomes"] = [
-    { label: "Hair", value: selected?.label || "확정 전" }, { label: "Color", value: snapshot.colorDecision.state === "confirmed" ? snapshot.colorDecision.colorName : "현재 컬러 유지" },
-    { label: "Makeup", value: makeupState === "not-started" ? "결과 없음" : "확정 방향 보기" }, { label: "Fashion", value: snapshot.fashion.label || "결과 없음" },
+    { label: "헤어", value: selected?.label || "확정 전" }, { label: "컬러", value: snapshot.colorDecision.state === "confirmed" ? snapshot.colorDecision.colorName : "현재 컬러 유지" },
+    { label: "메이크업", value: makeupState === "not-started" ? "결과 없음" : "확정 방향 보기" }, { label: "패션", value: snapshot.fashion.label || "결과 없음" },
   ];
   sections.push({
-    key: "executive-summary", tab: "final", title: "종합 컨설팅 결론", kicker: "FINAL SUMMARY", status: selected ? "ready" : "partial",
-    conclusion: snapshot.result.headline || (selected ? `${selected.label}을 중심으로 Hair·Color·Makeup·Fashion을 연결했습니다.` : "확인된 상담 결과를 정리했습니다."),
+    key: "executive-summary", tab: "final", title: "종합 컨설팅 결론", kicker: "한눈에 보는 결과", status: selected ? "ready" : "partial",
+    conclusion: snapshot.result.headline || (selected ? `${selected.label}을 중심으로 헤어·컬러·메이크업·패션을 연결했습니다.` : "확인된 상담 결과를 정리했습니다."),
     rationale: snapshot.result.rationale.slice(0, 3), effects: selected ? [selected.reason] : [], avoid: [], cautions: snapshot.result.limitations.slice(0, 3), detailHref: null,
-    payload: { heroImage: heroSrc ? reportImage("report-v2-hero", heroSrc, "최종 Hair와 Color 결과", "확정 Hair + Color") : null, outcomes, changeIntensity: snapshot.discovery.changeLevel, maintenanceDifficulty: snapshot.discovery.maintenanceLevel, salonRequired: Boolean(selected?.services.length || snapshot.colorDecision.state === "confirmed") },
+    payload: { heroImage: heroSrc ? reportImage("report-v2-hero", heroSrc, "최종 헤어와 컬러 결과", "확정 헤어와 컬러") : null, outcomes, changeIntensity: snapshot.discovery.changeLevel, maintenanceDifficulty: snapshot.discovery.maintenanceLevel, salonRequired: Boolean(selected?.services.length || snapshot.colorDecision.state === "confirmed") },
   });
 
   if (source.salonBrief || snapshot.salonBrief.createdAt) {
@@ -690,7 +692,7 @@ export function projectConsultationReportV2(
       ["기장", brief.details.design.length], ["볼륨", brief.details.design.volume], ["앞머리·가르마", brief.details.design.fringeParting], ["질감", brief.details.design.texture],
     ] : [["커트", snapshot.salonBrief.cut], ["볼륨·질감", snapshot.salonBrief.volumeTexture]];
     sections.push({
-      key: "salon-specification", tab: "final", title: "살롱 시술 명세", kicker: "SALON SPECIFICATION", status: brief || snapshot.salonBrief.createdAt ? "ready" : "partial",
+      key: "salon-specification", tab: "final", title: "살롱 시술 명세", kicker: "디자이너에게 보여줄 내용", status: brief || snapshot.salonBrief.createdAt ? "ready" : "partial",
       conclusion: brief?.summary || snapshot.salonBrief.summary || "확정 결과를 살롱 전달용으로 정리했습니다.", rationale: brief?.details.evidence ?? snapshot.result.rationale,
       effects: brief?.details.decisionRationale ?? [], avoid: [], cautions: brief?.cautions ?? snapshot.salonBrief.caution, detailHref: stageHref(snapshot.sessionId, "salon-brief"),
       payload: { customerSummary: brief?.summary || snapshot.salonBrief.summary, version: brief?.version ?? snapshot.salonBrief.version, services, design: design.filter((item) => item[1]?.trim()).map(([label, value]) => ({ label, value })), styling: brief?.styling ?? (snapshot.salonBrief.styling ? [snapshot.salonBrief.styling] : []), cautions: brief?.cautions ?? snapshot.salonBrief.caution, unresolved: brief?.details.unresolved ?? [] },

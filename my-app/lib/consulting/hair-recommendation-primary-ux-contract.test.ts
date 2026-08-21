@@ -24,7 +24,7 @@ test("web and native show all nine outputs without making shortlist the primary 
   const native = read(join(repositoryRoot, "apps/hairfit-app/app/consulting.tsx"));
   assert.match(web, /data-hair-generated-gallery="all-nine"/);
   assert.match(web, /recommendation\.board\?\.variants\.map/);
-  assert.match(web, /직접 shortlist할 필요는 없습니다/);
+  assert.match(web, /다른 스타일도 빠짐없이 비교/);
   assert.match(native, /AI primary · all nine results/);
   assert.match(native, /board\.variants\.map/);
   assert.match(native, /나머지 결과를[\s\S]*생성된 9개는 모두 확인/);

@@ -54,7 +54,7 @@ export function HairTraitInsightPanel({ consultationId, initialProfile, initialQ
     </SurfaceCard>;
   }
   return <SurfaceCard className="p-5" data-hair-trait-profile={profile?.state ?? "unavailable"} data-hair-trait-surface="result">
-    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="app-kicker">Hair trait observations</p><h3 className="mt-2 text-lg font-black">사진으로 확인한 모발 특성</h3></div>{profile ? <span className="text-xs font-black">profile r{profile.revision}</span> : null}</div>
+    <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="app-kicker">사진으로 확인한 내용</p><h3 className="mt-2 text-lg font-black">사진으로 확인한 모발 특성</h3></div></div>
     {!profile ? <p className="mt-4 text-sm text-[var(--app-muted)]">모질 특성 분석은 얼굴 분석과 별도로 처리됩니다. 준비되지 않아도 얼굴 분석 결과는 그대로 사용할 수 있습니다.</p> : <>
       <ul className="mt-4 grid gap-3 sm:grid-cols-2">{profile.observed.map((item) => <li key={item.id} className="border-l-2 border-[var(--app-accent)] pl-3"><p className="text-xs font-black">{TRAIT_LABELS[item.traitId] ?? item.traitId} · 관찰됨</p><p className="mt-1 text-sm">{item.value}</p><p className="mt-1 text-[11px] text-[var(--app-muted)]">신뢰도 {Math.round(item.confidence * 100)}%{item.limitations.length ? ` · ${item.limitations.join(" · ")}` : ""}</p></li>)}</ul>
       {profile.unknownFieldIds.length ? <p className="mt-4 border border-[var(--app-border)] p-3 text-xs text-[var(--app-muted)]">사진만으로 확인하지 않은 항목 {profile.unknownFieldIds.length}개는 unknown으로 유지합니다. 다공성·탄력·내부 손상·시술 안전성은 사진으로 확정하지 않습니다.</p> : null}

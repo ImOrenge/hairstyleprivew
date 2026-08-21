@@ -41,7 +41,7 @@ export function ConsultantActivityRail({ task }: { task: ConsultationActiveTask 
   const statusLabel = taskStatusLabel(task);
   return <section className="f-consultant-activity" aria-labelledby="consultant-activity-title">
     <div className="f-consultant-activity__heading">
-      <div><p className="app-kicker">Live task</p><h2 id="consultant-activity-title">{task.label}</h2></div>
+      <div><p className="app-kicker">지금 하고 있는 일</p><h2 id="consultant-activity-title">{task.label}</h2></div>
       <span data-task-status={task.status} role="status" aria-live="polite">{statusLabel}</span>
     </div>
     <ol className="f-consultant-activity__phases">

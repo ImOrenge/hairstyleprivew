@@ -70,14 +70,14 @@ function DiscoveryFormWorkbench({ snapshot, mutate, saving }: DiscoveryWorkbench
       <SaveStageButton loading={saving} disabled={!complete} onClick={() => void mutate({ discovery: value, completeStage: "discovery", currentStage: "photo" })} />
     </Panel>
   } output={<>
-    <SurfaceCard className="p-5 sm:p-6"><p className="app-kicker">Input Snapshot</p><h2 className="mt-3 text-xl font-black">생성과 살롱 브리프에 이어질 기준</h2><div className="mt-5"><DefinitionRows items={[
-      { label: "Purpose", value: value.purpose || "선택 전" },
-      { label: "Current hair", value: `${value.hairLength} · ${value.hairTexture} · 양 ${value.hairDensity} · 굵기 ${value.strandThickness} · 손상 ${value.damageLevel}` },
-      { label: "Allowed services", value: value.allowedServices.join(", ") || "선택 전" },
-      { label: "Maintenance", value: `아침 ${value.morningMinutes}분 · ${value.maintenanceLevel} · ${value.salonCycleWeeks}주 주기` },
-      { label: "Change", value: selectedLabel(value.changeLevel, { subtle: "은은하게", moderate: "적당히", bold: "과감하게" })[0] },
-      { label: "Avoid", value: value.avoid.join(", ") || "없음" },
-    ]} /></div><p className="mt-5 text-sm leading-6 text-[var(--app-muted)]">이 snapshot은 05 전략과 06 이미지 생성 프롬프트의 명시적 제약으로 저장됩니다. 충돌하면 회피·손상·관리 조건을 우선합니다.</p></SurfaceCard>
+    <SurfaceCard className="p-5 sm:p-6"><p className="app-kicker">내 상담 조건</p><h2 className="mt-3 text-xl font-black">추천에 반영할 기준</h2><div className="mt-5"><DefinitionRows items={[
+      { label: "상담 목적", value: value.purpose || "선택 전" },
+      { label: "현재 모발", value: `${value.hairLength} · ${value.hairTexture} · 양 ${value.hairDensity} · 굵기 ${value.strandThickness} · 손상 ${value.damageLevel}` },
+      { label: "가능한 시술", value: value.allowedServices.join(", ") || "선택 전" },
+      { label: "관리 조건", value: `아침 ${value.morningMinutes}분 · ${value.maintenanceLevel} · ${value.salonCycleWeeks}주 주기` },
+      { label: "원하는 변화", value: selectedLabel(value.changeLevel, { subtle: "은은하게", moderate: "적당히", bold: "과감하게" })[0] },
+      { label: "피하고 싶은 것", value: value.avoid.join(", ") || "없음" },
+    ]} /></div><p className="mt-5 text-sm leading-6 text-[var(--app-muted)]">선택한 내용은 헤어 방향과 이미지 추천, 미용실 전달 내용에 함께 반영합니다. 조건이 충돌하면 피하고 싶은 것·손상·관리 부담을 우선합니다.</p></SurfaceCard>
     <ConsultationSystemData snapshot={snapshot} items={[
       { label: "Input readiness", value: complete ? "필수 입력 완료" : "필수 입력 대기" },
       { label: "Constraint conflict", value: unavailableServices.length ? `${unavailableServices.length}건 확인 필요` : "없음" },

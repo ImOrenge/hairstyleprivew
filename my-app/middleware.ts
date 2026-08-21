@@ -58,6 +58,11 @@ const isSalonRoute = createRouteMatcher(["/salon(.*)"]);
 const isHomeRoute = createRouteMatcher(["/home(.*)"]);
 const isMyPageRoute = createRouteMatcher(["/mypage"]);
 const isWorkspaceRoute = createRouteMatcher(["/workspace(.*)"]);
+const isConsultingE2EHarnessRoute = createRouteMatcher(["/consulting/e2e-harness"]);
+
+function isEnabledConsultingE2EHarness(req: NextRequest) {
+  return process.env.E2E_UI_HARNESS_ENABLED === "true" && isConsultingE2EHarnessRoute(req);
+}
 
 function redirectLegacyGenerationEntry(req: NextRequest) {
   if (req.method !== "GET" && req.method !== "HEAD") {
@@ -221,6 +226,7 @@ const clerkAppMiddleware = clerkMiddleware(async (auth, req) => {
 
       if (
         !isProtectedRoute(req) ||
+        isEnabledConsultingE2EHarness(req) ||
         isWebhookRoute(req) ||
         isPublicWaitlistCheckoutRoute(req) ||
         (isPublicSupportApiRoute(req) && !isMutationRequest(req)) ||
@@ -317,6 +323,7 @@ async function clerkUnavailableMiddleware(req: NextRequest) {
 
       if (
         !isProtectedRoute(req) ||
+        isEnabledConsultingE2EHarness(req) ||
         isWebhookRoute(req) ||
         isPublicWaitlistCheckoutRoute(req) ||
         (isPublicSupportApiRoute(req) && !isMutationRequest(req)) ||

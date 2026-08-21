@@ -143,7 +143,7 @@ export function ConsultationTransitionScreen({ snapshot, stage, task, onPoll, on
 
   return <section className="f-consultant-transition" data-task-id={task.id} data-task-kind={task.kind} data-task-status={visibleStatus} aria-labelledby="consultant-transition-title">
     <header className="f-consultant-transition__header">
-      <div><p className="app-kicker">AI consultant is working</p><h2 id="consultant-transition-title" tabIndex={-1}>{previewContinues ? "비교 가능한 프리뷰가 준비됐어요" : ready ? `${task.label}이 준비됐어요` : task.label}</h2><p>{previewContinues ? "준비된 결과로 먼저 비교할 수 있습니다. 나머지 프리뷰는 백그라운드에서 계속 생성합니다." : ready ? "저장된 결과를 확인하고 다음 화면으로 연결합니다." : task.detail}</p></div>
+      <div><p className="app-kicker">AI 컨설턴트 진행</p><h2 id="consultant-transition-title" tabIndex={-1}>{previewContinues ? "비교 가능한 프리뷰가 준비됐어요" : ready ? `${task.label}이 준비됐어요` : task.label}</h2><p>{previewContinues ? "준비된 결과로 먼저 비교할 수 있습니다. 나머지 프리뷰도 계속 준비합니다." : ready ? "저장된 결과를 확인하고 다음 화면으로 연결합니다." : task.detail}</p></div>
       {!interrupted && !ready ? <Button type="button" variant="ghost" onClick={() => setPaused((value) => !value)} aria-pressed={paused}>{paused ? "연출 계속" : "연출 멈춤"}</Button> : null}
     </header>
     {interrupted ? <RecoverableTaskNotice sessionId={snapshot.sessionId} task={pollError ? { ...task, detail: pollError, retryable: true } : task} onRetry={() => {
@@ -156,7 +156,7 @@ export function ConsultationTransitionScreen({ snapshot, stage, task, onPoll, on
       </div>
       {ready ? <CompletionMoment task={task} /> : <ConsultantSmallTalkCarousel task={task} paused={paused || !visible} suppress={partialVisible} />}
       <PartialResultReveal snapshot={snapshot} task={task} />
-      {canInspectPartial ? <div className="grid justify-items-start gap-2 border-t border-[var(--app-border)] pt-4"><Button type="button" variant="secondary" onClick={onInspectPartial}>준비된 결과 먼저 보기</Button><p className="text-sm text-[var(--app-muted)]">완료된 결과를 확인하는 동안 나머지 생성과 서버 복구는 계속됩니다.</p></div> : null}
+      {canInspectPartial ? <div className="grid justify-items-start gap-2 border-t border-[var(--app-border)] pt-4"><Button type="button" variant="secondary" onClick={onInspectPartial}>준비된 결과 먼저 보기</Button><p className="text-sm text-[var(--app-muted)]">완료된 결과를 확인하는 동안 나머지 준비 작업은 계속됩니다.</p></div> : null}
     </>}
   </section>;
 }

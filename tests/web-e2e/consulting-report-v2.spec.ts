@@ -11,8 +11,12 @@ test("Result V2 exposes five query-backed keyboard tabs and customer-only conten
   await expect(tabs).toHaveCount(5);
   await expect(tabs).toHaveText([/헤어/, /염색/, /메이크업/, /패션/, /최종/]);
   await expect(receipt.getByRole("tab", { name: /최종/ })).toHaveAttribute("aria-selected", "true");
+  const finalPanel = receipt.getByRole("tabpanel", { name: /최종/ });
+  await expect(finalPanel.getByRole("heading", { name: "당신의 결과를 하나의 스타일로 정리했어요" })).toBeVisible();
+  await expect(finalPanel.getByText("이 결과가 잘 맞는 이유", { exact: true }).first()).toBeVisible();
   await expect(receipt.getByText("초기 케어", { exact: true })).toBeVisible();
   await expect(receipt.getByText(/고객 요청/)).toHaveCount(0);
+  await expect(receipt).not.toContainText(/revision|snapshot|terminal|projection|fingerprint|Integrity|RESULT GROUP/i);
 
   const hairTab = receipt.getByRole("tab", { name: /헤어/ });
   await hairTab.focus();
@@ -23,12 +27,12 @@ test("Result V2 exposes five query-backed keyboard tabs and customer-only conten
 
   await receipt.getByRole("tab", { name: /패션/ }).click();
   const fashionPanel = receipt.getByRole("tabpanel", { name: /패션/ });
-  await expect(fashionPanel.locator("figure img")).toHaveCount(3);
-  await expect(fashionPanel.getByAltText("딥 웜 미니멀 워크 룩 패션 최종 룩")).toBeVisible();
+  await expect(fashionPanel.locator("figure img")).toHaveCount(9);
+  await expect(fashionPanel.getByAltText("딥 웜 미니멀 워크 룩 패션 생성 결과").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "ALL STAGES" }).click();
-  const stageMap = page.getByRole("dialog", { name: "ALL STAGES" });
-  await expect(stageMap.getByRole("link", { name: /MAKEUP DIRECTION/ })).toBeVisible();
+  await page.getByRole("button", { name: "Chapters" }).click();
+  const stageMap = page.getByRole("dialog", { name: "4 CHAPTERS" });
+  await expect(stageMap.getByRole("link", { name: /FINAL REPORT/ })).toBeVisible();
 });
 
 test("Result V2 remains contained at 320px and print expands every tab panel", async ({ page }) => {

@@ -16,6 +16,7 @@ import { readLatestHairRecommendationV1 } from "./hair-recommendation-server";
 import { readFashionBatch } from "./fashion-batch-server";
 import { listFashionOfferSnapshotsV2 } from "./fashion-product-offer-server";
 import { recordConsultationReportProjectionEvent } from "../v2/observability";
+import { attachConsultationResultNarrative, readConsultationResultNarrative } from "./result-narrative-service";
 
 function analysisEvidence(row: Record<string, unknown> | null): AnalysisEvidenceV2 | null {
   if (!row) return null;
@@ -122,7 +123,7 @@ export async function readConsultationReportV2(input: {
   const selectedMakeupOutput = makeupSimulation?.selection
     ? makeupSimulation.outputs.find((item) => item.id === makeupSimulation.selection?.outputId) ?? null
     : null;
-  const report = projectConsultationReportV2(snapshot, {
+  const baseReport = projectConsultationReportV2(snapshot, {
     analysisEvidence: analysisEvidence(analysisRow),
     personalColorProfile: personalColorRow?.profile ?? null,
     salonBrief: salonBriefRow?.brief ?? null,
@@ -136,6 +137,8 @@ export async function readConsultationReportV2(input: {
     fashionOfferSnapshots: fashionOffers,
     fashionPersonalizationSnapshotId: fashionPersonalizationRow?.id ?? null,
   }, input.profile ?? "full_journey");
+  const narrativeResult = await readConsultationResultNarrative({ userId: input.userId, report: baseReport });
+  const report = attachConsultationResultNarrative(baseReport, narrativeResult);
   const receipt = projectConsultationReportReceiptV1(report, input.surface ?? "web");
   await recordConsultationReportProjectionEvent({
     consultationId: input.consultationId,

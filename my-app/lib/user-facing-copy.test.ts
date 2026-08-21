@@ -153,3 +153,21 @@ test("the written glossary records the same user-facing action boundaries", () =
   }
   assert.match(glossary, /API·webhook·base64/);
 });
+
+test("consultation journey and result copy explain customer outcomes without implementation terminology", () => {
+  const sources = [
+    read("../components/consulting/report/ReportReceiptV2.tsx"),
+    read("../components/consulting/report/ReportSectionV2.tsx"),
+    read("../components/consulting/report/ReportTabsV2.tsx"),
+    read("../components/consulting/transition/ConsultantActivityRail.tsx"),
+    read("../components/consulting/transition/ConsultationTransitionScreen.tsx"),
+    read("../components/consulting/transition/PartialResultReveal.tsx"),
+    read("../components/consulting/recovery/RecoveryNotice.tsx"),
+    read("../components/consulting/workbenches/DecisionWorkbench.tsx"),
+    read("../components/consulting/workbenches/DiscoveryWorkbench.tsx"),
+  ].join("\n");
+  assert.doesNotMatch(sources, /AI 판단 근거|RESULT GROUP|>Live task<|>First evidence<|>Brief draft<|>Fashion batch<|AI consultant is working|Consultation snapshot|서버 스냅샷|최종 snapshot|새 revision|Evidence ID|Strategy revision|Quality state/);
+  assert.match(sources, /이 결과가 잘 맞는 이유/);
+  assert.match(sources, /기대할 수 있는 변화/);
+  assert.match(sources, /시술 전 확인할 점/);
+});

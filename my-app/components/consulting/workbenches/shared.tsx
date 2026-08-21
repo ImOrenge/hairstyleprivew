@@ -1,13 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CONSULTATION_STAGE_SLUGS, type ConsultationSnapshot } from "../../../lib/consulting/contracts";
+import type { ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { Button } from "../../ui/Button";
 import { Panel, SurfaceCard } from "../../ui/Surface";
 
 export { Panel, SurfaceCard };
 
-export function WorkbenchGrid({ input, output, inputLabel = "사용자 입력", outputLabel = "AI 출력 및 시스템 데이터" }: {
+export function WorkbenchGrid({ input, output, inputLabel = "내가 알려줄 내용", outputLabel = "AI 컨설턴트가 정리한 내용" }: {
   input: ReactNode;
   output: ReactNode;
   inputLabel?: string;
@@ -15,11 +15,11 @@ export function WorkbenchGrid({ input, output, inputLabel = "사용자 입력", 
 }) {
   return <div data-consulting-split-canvas="true" className="grid gap-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-0 lg:overflow-hidden lg:border-y lg:border-[var(--app-border)]">
     <section data-consulting-pane="input" aria-label={inputLabel} tabIndex={0} className="f-consulting-scroll-pane min-w-0 lg:h-full lg:overflow-y-auto lg:overscroll-contain lg:border-r lg:border-[var(--app-border)] lg:pr-5 lg:[scrollbar-gutter:stable]">
-      <div className="border-b border-[var(--app-border)] bg-[var(--app-bg)] py-3 lg:sticky lg:top-0 lg:z-20"><p className="app-kicker">User input</p><p className="mt-1 text-xs text-[var(--app-muted)]">선택·수정·승인하는 상담 입력</p></div>
+      <div className="border-b border-[var(--app-border)] bg-[var(--app-bg)] py-3 lg:sticky lg:top-0 lg:z-20"><p className="app-kicker">내 선택</p><p className="mt-1 text-xs text-[var(--app-muted)]">원하는 방향을 선택하고 수정할 수 있어요.</p></div>
       <div className="grid gap-5 py-5 lg:pb-28">{input}</div>
     </section>
     <section data-consulting-pane="output" aria-label={outputLabel} tabIndex={0} className="f-consulting-scroll-pane min-w-0 lg:h-full lg:overflow-y-auto lg:overscroll-contain lg:pl-5 lg:[scrollbar-gutter:stable]">
-      <div className="border-b border-[var(--app-border)] bg-[var(--app-bg)] py-3 lg:sticky lg:top-0 lg:z-20"><p className="app-kicker">AI output + system data</p><p className="mt-1 text-xs text-[var(--app-muted)]">분석 결과·근거·처리 상태</p></div>
+      <div className="border-b border-[var(--app-border)] bg-[var(--app-bg)] py-3 lg:sticky lg:top-0 lg:z-20"><p className="app-kicker">AI 컨설턴트 제안</p><p className="mt-1 text-xs text-[var(--app-muted)]">확인한 내용과 추천 이유를 함께 보여드려요.</p></div>
       <div className="grid gap-5 py-5 lg:pb-28">{output}</div>
     </section>
   </div>;
@@ -32,21 +32,20 @@ export function ConsultationSystemData({ snapshot, items = [] }: {
   const qualityPassed = snapshot.photo.quality.filter((item) => item.status === "pass").length;
   const acceptedPreviews = snapshot.previews.filter((item) => item.status === "accepted").length;
   const selected = snapshot.selectedStyleHistory.at(-1);
-  return <SurfaceCard className="p-5" data-consulting-system-data="true">
-    <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="app-kicker">System snapshot</p><h2 className="mt-2 text-lg font-black">상담 처리 상태</h2></div><span className="text-xs font-black uppercase text-[var(--app-muted)]">v{snapshot.version}</span></div>
+  const stageLabels: Record<string, string> = { discovery: "상담 질문", photo: "사진 준비", scan: "사진 분석", analysis: "분석 확인", direction: "스타일 방향", previews: "헤어 비교", decision: "헤어 확정", "personal-color": "퍼스널 컬러", "color-studio": "염색 방향", makeup: "메이크업", fashion: "패션", result: "최종 결과" };
+  const activeTasks = snapshot.journey.activeTasks.map((task) => `${task.label} ${task.status === "failed" ? "확인 필요" : task.status === "complete" ? "완료" : "진행 중"}`);
+  return <SurfaceCard className="p-5" data-consulting-system-data="true" data-consulting-detail-count={items.length}>
+    <div className="flex flex-wrap items-end justify-between gap-2"><div><p className="app-kicker">상담 진행</p><h2 className="mt-2 text-lg font-black">지금 확인할 내용</h2></div></div>
     <div className="mt-5"><DefinitionRows items={[
-      { label: "Lifecycle", value: snapshot.lifecycleState },
-      { label: "Recommended task", value: snapshot.journey.recommendedStage },
-      { label: "Workspace access", value: `${snapshot.journey.allowedStages.length}개 화면 열림 · ${snapshot.completedStages.length} / ${CONSULTATION_STAGE_SLUGS.length} 완료` },
-      { label: "Active tasks", value: snapshot.journey.activeTasks.length ? snapshot.journey.activeTasks.map((task) => `${task.label}(${task.status})`).join(" · ") : "백그라운드 작업 없음" },
-      { label: "Blocked outputs", value: snapshot.journey.blockingActions.length ? `${snapshot.journey.blockingActions.length}개 · ${snapshot.journey.blockingActions.slice(0, 2).map((action) => action.reason).join(" / ")}` : "없음" },
-      { label: "Photo preflight", value: `${qualityPassed} / ${snapshot.photo.quality.length} 통과` },
-      { label: "AI evidence", value: `${snapshot.evidence.items.length}건 · ${snapshot.evidence.pipelineStatus}` },
-      { label: "Strategy", value: snapshot.strategy.confirmedAt ? `revision ${snapshot.strategy.revision} · 확정` : `revision ${snapshot.strategy.revision} · 검토 중` },
-      { label: "Preview board", value: `${acceptedPreviews} / 9 승인` },
-      { label: "Selection", value: selected?.label || "선택 전" },
-      ...items,
-      { label: "Last sync", value: `${new Date(snapshot.updatedAt).toISOString().replace("T", " ").slice(0, 16)} UTC` },
+      { label: "다음 추천 단계", value: stageLabels[snapshot.journey.recommendedStage] ?? "상담 계속하기" },
+      { label: "진행 중인 준비", value: activeTasks.length ? activeTasks.join(" · ") : "기다리는 작업 없음" },
+      { label: "확인이 필요한 항목", value: snapshot.journey.blockingActions.length ? snapshot.journey.blockingActions.slice(0, 2).map((action) => action.reason).join(" / ") : "없음" },
+      { label: "사진 준비", value: snapshot.photo.quality.length ? `${snapshot.photo.quality.length}개 기준 중 ${qualityPassed}개 확인` : "사진을 준비해 주세요" },
+      { label: "확인한 분석 근거", value: `${snapshot.evidence.items.length}개` },
+      { label: "스타일 방향", value: snapshot.strategy.confirmedAt ? "확정됨" : "검토 중" },
+      { label: "비교할 수 있는 헤어", value: `${acceptedPreviews}개` },
+      { label: "내가 고른 헤어", value: selected?.label || "선택 전" },
+      { label: "마지막 저장", value: new Date(snapshot.updatedAt).toLocaleString("ko-KR") },
     ]} /></div>
   </SurfaceCard>;
 }

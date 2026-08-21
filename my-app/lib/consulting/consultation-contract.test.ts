@@ -115,7 +115,7 @@ test("structured discovery options persist into the V2 generation prompt contrac
     assert.match(promptInput, new RegExp(`snapshot\\.discovery\\.${field}`));
   }
   assert.match(promptServer, /buildPromptInputV2/);
-  assert.match(discovery, /Input Snapshot/);
+  assert.match(discovery, /내 상담 조건/);
   assert.match(discovery, /가능한 시술 범위/);
   assert.match(discovery, /충돌/);
 });
@@ -555,8 +555,8 @@ test("AI strategy recommendations remain linked to evidence through confirmation
     assert.match(analysis, new RegExp(`axis: "${axis}"`));
   }
   assert.match(photo, /strategyRecommendations: data\.strategyRecommendations/);
-  assert.match(direction, /Evidence ID/);
-  assert.match(direction, /Trade-off/);
+  assert.match(direction, /item\.evidenceId/);
+  assert.match(direction, /함께 고려할 점/);
   assert.match(direction, /AI 추천/);
 });
 

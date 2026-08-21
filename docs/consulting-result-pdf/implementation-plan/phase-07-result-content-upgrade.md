@@ -453,7 +453,9 @@ interface AftercareProgramEntryState {
 
 `ActualService`, `AftercareProgram V2`, 알림·관찰·만족도 데이터는 Report projector의 source가 아니다. 별도 Aftercare 프로그램 화면과 API만 이를 읽는다.
 
-projector는 표시 문자열을 근거 없이 재생성하지 않는다. 원본에 값이 없으면 `partial/unavailable`과 omission reason을 사용한다. LLM으로 결과를 다시 요약하여 의미를 바꾸지 않는다.
+projector는 표시 문자열을 근거 없이 재생성하지 않는다. 원본에 값이 없으면 `partial/unavailable`과 omission reason을 사용한다. AI 해설은 리포트에서 추출한 허용 목록형 사실만 고객 언어로 설명하며, 모든 문장이 근거 ID를 참조해야 한다. 새로운 점수·순위·수치·의학적 판단·시술 명세를 만들거나 주의사항의 의미를 바꾸면 결과를 거부하고 완성된 기본 설명을 유지한다.
+
+화면과 PDF는 같은 `ConsultationResultNarrativeV1`을 사용한다. 결과 화면은 기본 설명으로 즉시 열리고 AI 해설은 비동기로 교체된다. 생성 실패와 기능 비활성화는 결과 열람을 막지 않으며, 사진·사용자 식별자·내부 처리 상태는 해설 생성 입력에 포함하지 않는다.
 
 ## 7. 저장·버전·stale 계약
 

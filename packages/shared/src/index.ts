@@ -757,6 +757,7 @@ export * from "./consulting/presentation";
 export * from "./consulting/hair-profile";
 export * from "./consulting/report";
 export * from "./consulting/report-v2";
+export * from "./consulting/report-narrative";
 export * from "./consulting/report-observability";
 export * from "./consulting/start-context";
 export * from "./consulting/photo-preflight";

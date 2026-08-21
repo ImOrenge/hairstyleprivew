@@ -63,6 +63,7 @@ export function isPersonalColorCapabilityEnabled() {
 export function isPersonalColorSceneEnabled() { return process.env.CONSULTATION_PERSONAL_COLOR_SCENE_ENABLED !== "false"; }
 export function isColorStudioEnabled() { return process.env.CONSULTATION_COLOR_STUDIO_ENABLED !== "false"; }
 export function isConsultationResultEnabled() { return process.env.CONSULTATION_RESULT_V2_ENABLED !== "false"; }
+export function isConsultationResultNarrativeAiEnabled() { return process.env.CONSULTATION_RESULT_AI_NARRATIVE_ENABLED === "true"; }
 type MakeupFeatureFlagEnv = Record<string, string | undefined>;
 export function isMakeupDenseAtlasV3Enabled(env: MakeupFeatureFlagEnv = process.env) { return env.MAKEUP_DENSE_ATLAS_V3 !== "false"; }
 export function isMakeupSemanticVisionV3Enabled(env: MakeupFeatureFlagEnv = process.env) {
@@ -122,5 +123,6 @@ export function isCapabilityDurabilityEnabled(capability: string) {
   if (capability === "makeup-rationale-generation") return isMakeupRationaleAiEnabled();
   if (capability === "makeup-simulation-generation") return isMakeupStyleSimulationEnabled();
   if (capability === "hair-trait-analysis") return isHairTraitAnalysisEnabled();
+  if (capability === "consultation-result-narrative-generation") return isConsultationResultNarrativeAiEnabled();
   return true;
 }

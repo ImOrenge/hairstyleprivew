@@ -110,7 +110,7 @@ export function DecisionWorkbench({ snapshot, mutate, saving }: { snapshot: Cons
       const salonBrief = await createAutomaticBrief();
       taskRuntime.updateTask({ phaseKey: "constraints", phaseIndex: 2, completedUnits: 2, partialOutputCount: 2, detail: "브리프 초안과 관리·회피 조건을 서버에서 받았습니다." });
       const result = await mutate({ selectedStyle: { previewId: candidate.id, label: candidate.label, reason: candidate.reason, imageUrl: candidate.imageUrl, generatedImagePath: candidate.generatedImagePath, feasibility: decision.feasibility, currentHairGap: decision.currentHairGap, services: decision.services, maintenance: decision.maintenance, limitations: decision.limitations, strategy: snapshot.strategy }, salonBrief, completeStage: "decision", currentStage: "salon-brief" }, { navigate: false }) as { ok?: boolean };
-      if (!result.ok) throw new Error("선택과 Salon Brief를 상담 snapshot에 연결하지 못했습니다.");
+      if (!result.ok) throw new Error("선택과 미용실 전달 내용을 상담에 저장하지 못했습니다.");
       taskRuntime.completeTask({ completedUnits: 3, totalUnits: 3, partialOutputCount: 3 });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "스타일 선택을 저장하지 못했습니다.";
@@ -121,7 +121,7 @@ export function DecisionWorkbench({ snapshot, mutate, saving }: { snapshot: Cons
     }
   };
   return <WorkbenchGrid input={
-    <Panel className="grid gap-5 p-5 sm:p-7"><div><p className="app-kicker">Final confirmation</p><h2 className="mt-2 text-xl font-black">AI가 입력·분석·전략에서 구성한 실행 조건</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">새 자유 입력을 요구하지 않습니다. 충돌이 있으면 앞 단계의 원본 조건을 수정하고, 여기서는 최종 snapshot만 확인합니다.</p></div><DefinitionRows items={[
+    <Panel className="grid gap-5 p-5 sm:p-7"><div><p className="app-kicker">최종 확인</p><h2 className="mt-2 text-xl font-black">이 스타일을 실제로 구현할 조건</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">현재 모발과 관리 조건을 바탕으로 시술 전 확인할 내용을 정리했습니다. 조건을 바꾸려면 앞 단계에서 수정할 수 있어요.</p></div><DefinitionRows items={[
       { label: "실현 가능성", value: decision.feasibility },
       { label: "현재 모발과의 차이", value: decision.currentHairGap },
       { label: "필요·허용 시술", value: decision.services.join(", ") || "커트·드라이 중심" },
@@ -129,11 +129,10 @@ export function DecisionWorkbench({ snapshot, mutate, saving }: { snapshot: Cons
       { label: "제약·현장 확인", value: decision.limitations.join(", ") || "사진과 현장 모질 차이 확인" },
     ]} />{locked ? <SurfaceCard className="p-4 text-sm font-bold">실제 시술이 확정되어 선택이 잠겼습니다.</SurfaceCard> : null}{error ? <p role="alert" className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}<SaveStageButton loading={saving || syncing} disabled={!candidate || locked} onClick={() => void saveDecision()}>최종 스타일 확정</SaveStageButton></Panel>
   } output={<>
-    <Panel className="overflow-hidden">{candidate?.imageUrl ? <div className="aspect-[4/5] bg-[var(--app-surface-muted)]"><img src={candidate.imageUrl} alt={candidate.label} className="h-full w-full object-cover" decoding="async" loading="eager" /></div> : <div className="flex aspect-[4/5] items-center justify-center bg-[var(--app-surface-muted)] text-sm text-[var(--app-muted)]">최종 후보 이미지 없음</div>}<div className="p-5"><p className="app-kicker">Selected AI candidate</p><h2 className="mt-2 text-2xl font-black">{candidate?.label || "후보를 먼저 선택하세요"}</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{candidate?.reason}</p>{candidate ? <div className="mt-5"><DefinitionRows items={[
-      { label: "Axis", value: candidate.axis },
-      { label: "Quality state", value: candidate.status },
-      { label: "Strategy revision", value: snapshot.strategy.revision },
-      { label: "Finalist decided", value: snapshot.finalist.decidedAt ? new Date(snapshot.finalist.decidedAt).toLocaleString("ko-KR") : "결정 시각 대기" },
+    <Panel className="overflow-hidden">{candidate?.imageUrl ? <div className="aspect-[4/5] bg-[var(--app-surface-muted)]"><img src={candidate.imageUrl} alt={candidate.label} className="h-full w-full object-cover" decoding="async" loading="eager" /></div> : <div className="flex aspect-[4/5] items-center justify-center bg-[var(--app-surface-muted)] text-sm text-[var(--app-muted)]">최종 후보 이미지 없음</div>}<div className="p-5"><p className="app-kicker">내가 고른 AI 추천</p><h2 className="mt-2 text-2xl font-black">{candidate?.label || "후보를 먼저 선택하세요"}</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{candidate?.reason}</p>{candidate ? <div className="mt-5"><DefinitionRows items={[
+      { label: "스타일 방향", value: candidate.axis },
+      { label: "준비 상태", value: candidate.status === "accepted" ? "확인 완료" : "확인 중" },
+      { label: "선택 시각", value: snapshot.finalist.decidedAt ? new Date(snapshot.finalist.decidedAt).toLocaleString("ko-KR") : "선택 전" },
     ]} /></div> : null}</div></Panel>
     <ConsultationSystemData snapshot={snapshot} items={[
       { label: "Decision lock", value: locked ? "실제 시술 확정으로 잠김" : "편집 가능" },
