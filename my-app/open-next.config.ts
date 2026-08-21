@@ -1,5 +1,55 @@
 import { defineCloudflareConfig } from "@opennextjs/cloudflare";
 
-export default defineCloudflareConfig({
-  // Add OpenNext Cloudflare overrides here if needed.
-});
+const base = defineCloudflareConfig();
+
+export default {
+  ...base,
+  functions: {
+    media: {
+      ...base.default,
+      routes: [
+        "app/api/consultations/[sessionId]/makeup/build/route",
+        "app/api/consultations/[sessionId]/makeup/confirm/route",
+        "app/api/consultations/[sessionId]/makeup/context/route",
+        "app/api/consultations/[sessionId]/makeup/interview/confirm/route",
+        "app/api/consultations/[sessionId]/makeup/interview/route",
+        "app/api/consultations/[sessionId]/makeup/modules/[module]/route",
+        "app/api/consultations/[sessionId]/makeup/recommendation/decision/route",
+        "app/api/consultations/[sessionId]/makeup/recommendation/rationale/route",
+        "app/api/consultations/[sessionId]/makeup/route",
+        "app/api/consultations/[sessionId]/makeup/semantic-map/retry/route",
+        "app/api/consultations/[sessionId]/makeup/semantic-map/route",
+        "app/api/consultations/[sessionId]/makeup/simulations/[runId]/confirm/route",
+        "app/api/consultations/[sessionId]/makeup/simulations/[runId]/retry/route",
+        "app/api/consultations/[sessionId]/makeup/simulations/route",
+        "app/api/consultations/[sessionId]/personal-color/captures/[assetId]/finalize/route",
+        "app/api/consultations/[sessionId]/personal-color/captures/[assetId]/route",
+        "app/api/consultations/[sessionId]/personal-color/captures/intents/route",
+        "app/api/consultations/[sessionId]/photo-analysis/route",
+        "app/api/generations/run/route",
+        "app/api/personal-color/analyze/route",
+        "app/api/style-profile/body-photo/route",
+        "app/api/v2/consultations/[consultationId]/aftercare-photo/route",
+        "app/api/v2/consultations/[consultationId]/analysis/route",
+        "app/api/v2/consultations/[consultationId]/color-studio/confirm/route",
+        "app/api/v2/consultations/[consultationId]/color-studio/generation/route",
+        "app/api/v2/consultations/[consultationId]/color-studio/mask/route",
+        "app/api/v2/consultations/[consultationId]/evidence/route",
+        "app/api/v2/consultations/[consultationId]/report-exports/[exportId]/download/route",
+        "app/api/v2/consultations/[consultationId]/report-exports/[exportId]/route",
+        "app/api/v2/consultations/[consultationId]/report-exports/route",
+        "app/api/v2/consultations/[consultationId]/report-narrative/route",
+        "app/api/v2/consultations/[consultationId]/report/route",
+        "app/consulting/[sessionId]/[stage]/page",
+      ],
+      patterns: [
+        "/api/consultations/*",
+        "/api/generations/run",
+        "/api/personal-color/analyze",
+        "/api/style-profile/body-photo",
+        "/api/v2/consultations/*",
+        "/consulting/*",
+      ],
+    },
+  },
+};
