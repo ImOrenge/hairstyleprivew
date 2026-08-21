@@ -1,10 +1,9 @@
 import { readdirSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { defineCloudflareConfig } from "@opennextjs/cloudflare";
 
 const base = defineCloudflareConfig();
-const appDirectory = path.join(path.dirname(fileURLToPath(import.meta.url)), "app");
+const appDirectory = path.join(process.cwd(), "app");
 
 function collectRouteHandlers(relativeDirectory: string): `app/${string}/route`[] {
   const root = path.join(appDirectory, relativeDirectory);
