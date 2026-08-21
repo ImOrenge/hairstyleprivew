@@ -14,6 +14,8 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
   const [afterPhoto, setAfterPhoto] = useState<File | null>(null);
   const [afterPhotoConsent, setAfterPhotoConsent] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState<"active" | "paused" | null>(null);
+  const [notificationSaving, setNotificationSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const selected = selectedStyle(snapshot);
   const toggle = (value: string) => setService((current) => ({ ...current, services: current.services.includes(value) ? current.services.filter((item) => item !== value) : [...current.services, value] }));
@@ -23,6 +25,7 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
       .then(async (response) => ({ response, data: await response.json().catch(() => ({})) as {
         program?: AftercareProgramV2 | null;
         actualService?: { services: string[]; serviceDate: string; designerNotes: string; confirmedAt: string } | null;
+        notification?: { status?: "active" | "paused" } | null;
         error?: string;
       } }))
       .then(({ response, data }) => {
@@ -42,10 +45,31 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
           concerns: data.program?.concerns ?? current.concerns,
           satisfaction: data.program?.satisfaction ?? current.satisfaction,
         }));
+        if (data.notification?.status) setNotificationStatus(data.notification.status);
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
   }, [snapshot.sessionId]);
+
+  const toggleNotifications = async () => {
+    if (!care.actualServiceId || !notificationStatus) return;
+    setNotificationSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/aftercare/notifications`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actualServiceId: care.actualServiceId, action: notificationStatus === "active" ? "pause" : "resume" }),
+      });
+      const payload = await response.json().catch(() => ({})) as { notification?: { status?: "active" | "paused" }; error?: string };
+      if (!response.ok || !payload.notification?.status) throw new Error(payload.error || "알림 상태를 변경하지 못했습니다.");
+      setNotificationStatus(payload.notification.status);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "알림 상태를 변경하지 못했습니다.");
+    } finally {
+      setNotificationSaving(false);
+    }
+  };
 
   const saveAftercare = async () => {
     if (!service.services.length || !service.serviceDate) return;
@@ -90,6 +114,7 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
         detail: "서버가 관리 일정과 체크포인트 새 버전을 저장했습니다.",
       });
       const actualServiceId = v2Data.program?.actualServiceId ?? care.actualServiceId;
+      if (actualServiceId && !notificationStatus) setNotificationStatus("active");
       let afterPhotoUpload = care.afterPhotoUpload ?? null;
       if (afterPhoto) {
         if (v2Disabled || !actualServiceId) {
@@ -146,6 +171,7 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
         <TextField label="디자이너가 실제로 조정한 내용" value={service.designerNotes} onChange={(designerNotes) => setService({ ...service, designerNotes })} />
       </>}
       {care.actualServiceId ? <>
+        {notificationStatus ? <SurfaceCard className="grid gap-3 p-4 text-sm" data-aftercare-email-preference="true"><div><p className="font-black">에프터케어 이메일 알림</p><p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">{notificationStatus === "active" ? "예약된 미래 관리 메일을 받고 있습니다." : "알림을 쉬는 중입니다. 재개해도 이미 지난 메일은 소급 발송하지 않습니다."}</p></div><button type="button" onClick={() => void toggleNotifications()} disabled={notificationSaving} className="min-h-11 border border-[var(--app-border)] bg-[var(--app-surface)] px-4 font-black disabled:opacity-50">{notificationSaving ? "변경 중…" : notificationStatus === "active" ? "이메일 알림 일시정지" : "미래 알림 다시 받기"}</button></SurfaceCard> : null}
         <TextField label="오늘 할 관리" value={care.today.join(", ")} onChange={(value) => setCare({ ...care, today: value.split(",").map((item) => item.trim()).filter(Boolean) })} />
         <div className="grid gap-2">{care.checkpoints.map((checkpoint, index) => <button key={checkpoint.offset} type="button" onClick={() => setCare({ ...care, checkpoints: care.checkpoints.map((item, itemIndex) => itemIndex === index ? { ...item, complete: !item.complete } : item) })} aria-pressed={checkpoint.complete} className={`flex min-h-14 items-center justify-between border px-4 text-left ${checkpoint.complete ? "border-[var(--app-success)] bg-[var(--app-success-bg)]" : "border-[var(--app-border)]"}`}><span className="font-black">{checkpoint.offset}</span><span className="text-xs text-[var(--app-muted)]">{checkpoint.action}</span></button>)}</div>
         <label className="grid gap-2 text-sm font-black">만족도 · {care.satisfaction ?? "미입력"}<input type="range" min="1" max="5" value={care.satisfaction ?? 3} onChange={(event) => setCare({ ...care, satisfaction: Number(event.target.value) })} /></label>
