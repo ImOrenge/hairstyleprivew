@@ -3,7 +3,7 @@ import type { ConsultationInterviewEventName } from "../v2/observability";
 export function trackConsultationInterviewEvent(input: {
   consultationId: string;
   event: ConsultationInterviewEventName;
-  interviewKind: "discovery" | "fashion-direction";
+  interviewKind: "discovery" | "fashion-direction" | "makeup-direction";
   topicId?: string;
   revision?: number;
   errorCode?: string;

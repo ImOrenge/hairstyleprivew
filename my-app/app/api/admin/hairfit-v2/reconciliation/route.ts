@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminApiContext } from "../../../../../lib/admin-auth";
-import { reconcileCapabilityReceiptsV2, reconcileEntitlementsV2 } from "../../../../../lib/v2/reconciliation-server";
+import { reconcileCapabilityReceiptsV2, reconcileConsultationReportProjectionsV3, reconcileEntitlementsV2, reconcilePersonalColorMakeupV2 } from "../../../../../lib/v2/reconciliation-server";
 
 export async function GET() {
   const context = await getAdminApiContext();
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (!context.ok) return context.response;
   const body = (await request.json().catch(() => ({}))) as { limit?: unknown; scope?: unknown };
   const limit = typeof body.limit === "number" ? body.limit : 100;
-  const scope = body.scope === "capability-receipts" ? "capability-receipts" : "entitlement";
-  try { return NextResponse.json(scope === "capability-receipts" ? await reconcileCapabilityReceiptsV2({ limit }) : await reconcileEntitlementsV2({ limit }), { status: 201 }); }
+  const scope = body.scope === "capability-receipts" || body.scope === "personal-color-makeup" || body.scope === "report-projection" ? body.scope : "entitlement";
+  try { return NextResponse.json(scope === "capability-receipts" ? await reconcileCapabilityReceiptsV2({ limit }) : scope === "personal-color-makeup" ? await reconcilePersonalColorMakeupV2({ limit }) : scope === "report-projection" ? await reconcileConsultationReportProjectionsV3({ limit }) : await reconcileEntitlementsV2({ limit }), { status: 201 }); }
   catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : "Reconciliation failed" }, { status: 500 }); }
 }

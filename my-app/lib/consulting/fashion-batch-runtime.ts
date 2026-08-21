@@ -2,6 +2,10 @@ import type { FashionPreviewBatch, FashionPreviewSlotProgress } from "./contract
 
 export const MAX_FASHION_SLOT_ATTEMPTS = 3;
 
+export function visibleFashionSlotIds<T extends { id: string }>(slots: readonly T[], requestedCount: 3 | 6 | 9) {
+  return slots.slice(0, requestedCount).map((slot) => slot.id);
+}
+
 export interface FashionRuntimeSession {
   id: string;
   fashion_slot_id: string;
@@ -10,6 +14,7 @@ export interface FashionRuntimeSession {
 }
 
 export interface FashionRuntimeAttempt {
+  id?: string;
   styling_session_id: string;
   state: string;
   attempt_count: number;

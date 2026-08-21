@@ -5,6 +5,7 @@ import type {
   PersonalColorResult,
   PersonalColorSwatch,
   PersonalColorTone,
+  PersonalColorType,
 } from "./fashion-types";
 
 interface OpenAIResponsesOutputContent {
@@ -25,10 +26,14 @@ interface OpenAIResponsesResponse {
   };
 }
 
-interface RawPersonalColorResult {
+export interface RawPersonalColorResult {
   detailVersion?: unknown;
   tone?: unknown;
   contrast?: unknown;
+  primaryType?: unknown;
+  secondaryType?: unknown;
+  blend?: unknown;
+  axes?: unknown;
   confidence?: unknown;
   bestColors?: unknown;
   avoidColors?: unknown;
@@ -38,7 +43,13 @@ interface RawPersonalColorResult {
 }
 
 const DEFAULT_OPENAI_VISION_MODEL = "gpt-5.4-mini";
-const PERSONAL_COLOR_DETAIL_VERSION: PersonalColorDetailVersion = "color-detail-v1";
+const PERSONAL_COLOR_DETAIL_VERSION: PersonalColorDetailVersion = "color-detail-v2";
+const PERSONAL_COLOR_TYPES: PersonalColorType[] = [
+  "spring_light", "spring_warm", "spring_bright",
+  "summer_light", "summer_cool", "summer_muted",
+  "autumn_muted", "autumn_warm", "autumn_deep",
+  "winter_bright", "winter_cool", "winter_deep",
+];
 
 export const PERSONAL_COLOR_COMPARISON_PALETTE: PersonalColorSwatch[] = [
   { nameKo: "아이보리", nameEn: "Ivory", hex: "#F6E8D7", reason: "warm light neutral" },
@@ -90,6 +101,44 @@ function isTone(value: unknown): value is PersonalColorTone {
 
 function isContrast(value: unknown): value is PersonalColorContrast {
   return value === "low" || value === "medium" || value === "high";
+}
+
+function isPersonalColorType(value: unknown): value is PersonalColorType {
+  return typeof value === "string" && PERSONAL_COLOR_TYPES.includes(value as PersonalColorType);
+}
+
+function clampAxis(value: unknown, fallback: number) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? Math.max(0, Math.min(1, value))
+    : fallback;
+}
+
+function fallbackAxes(tone: PersonalColorTone, contrast: PersonalColorContrast) {
+  return {
+    temperature: tone === "warm" ? 0.75 : tone === "cool" ? 0.25 : 0.5,
+    value: 0.5,
+    chroma: contrast === "high" ? 0.75 : contrast === "low" ? 0.3 : 0.5,
+    contrast: contrast === "high" ? 0.8 : contrast === "low" ? 0.25 : 0.5,
+  };
+}
+
+function fallbackType(tone: PersonalColorTone, contrast: PersonalColorContrast): PersonalColorType {
+  if (tone === "warm") return contrast === "high" ? "spring_bright" : contrast === "low" ? "autumn_muted" : "autumn_warm";
+  if (tone === "cool") return contrast === "high" ? "winter_bright" : contrast === "low" ? "summer_muted" : "summer_cool";
+  return contrast === "high" ? "winter_cool" : contrast === "low" ? "summer_muted" : "summer_cool";
+}
+
+function normalizeBlend(value: unknown, primaryType: PersonalColorType, secondaryType: PersonalColorType | null) {
+  const source = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  const blend = Object.fromEntries(PERSONAL_COLOR_TYPES.map((type) => [type, clampAxis(source[type], 0)])) as Partial<Record<PersonalColorType, number>>;
+  const sum = Object.values(blend).reduce((total, score) => total + (score ?? 0), 0);
+  if (sum > 0) {
+    for (const type of PERSONAL_COLOR_TYPES) blend[type] = Number(((blend[type] ?? 0) / sum).toFixed(4));
+    return blend;
+  }
+  blend[primaryType] = secondaryType ? 0.7 : 1;
+  if (secondaryType) blend[secondaryType] = 0.3;
+  return blend;
 }
 
 function clampConfidence(value: unknown) {
@@ -237,9 +286,15 @@ function swatchHasDetail(swatch: PersonalColorSwatch) {
   );
 }
 
-function normalizePersonalColor(raw: RawPersonalColorResult, model: string): PersonalColorResult {
+export function normalizePersonalColorResult(raw: RawPersonalColorResult, model: string, diagnosedAt = new Date().toISOString()): PersonalColorResult {
   const tone = isTone(raw.tone) ? raw.tone : "neutral";
   const contrast = isContrast(raw.contrast) ? raw.contrast : "medium";
+  const axesFallback = fallbackAxes(tone, contrast);
+  const axesSource = raw.axes && typeof raw.axes === "object" && !Array.isArray(raw.axes)
+    ? raw.axes as Record<string, unknown>
+    : {};
+  const primaryType = isPersonalColorType(raw.primaryType) ? raw.primaryType : fallbackType(tone, contrast);
+  const secondaryType = isPersonalColorType(raw.secondaryType) && raw.secondaryType !== primaryType ? raw.secondaryType : null;
   const fallback = fallbackSwatches(tone, contrast);
   const bestColors = normalizeSwatches(raw.bestColors, 6);
   const avoidColors = normalizeSwatches(raw.avoidColors, 6);
@@ -258,6 +313,15 @@ function normalizePersonalColor(raw: RawPersonalColorResult, model: string): Per
   const normalized: PersonalColorResult = {
     tone,
     contrast,
+    primaryType,
+    secondaryType,
+    blend: normalizeBlend(raw.blend, primaryType, secondaryType),
+    axes: {
+      temperature: clampAxis(axesSource.temperature, axesFallback.temperature),
+      value: clampAxis(axesSource.value, axesFallback.value),
+      chroma: clampAxis(axesSource.chroma, axesFallback.chroma),
+      contrast: clampAxis(axesSource.contrast, axesFallback.contrast),
+    },
     confidence: clampConfidence(raw.confidence),
     bestColors: resolvedBestColors,
     avoidColors: resolvedAvoidColors,
@@ -266,7 +330,7 @@ function normalizePersonalColor(raw: RawPersonalColorResult, model: string): Per
     summary:
       toShortString(raw.summary, 320) ||
       "Personal color guidance was saved for fashion styling recommendations.",
-    diagnosedAt: new Date().toISOString(),
+    diagnosedAt,
     model,
   };
   if (hasDetailedSwatches) {
@@ -283,6 +347,10 @@ const personalColorJsonSchema = {
     "detailVersion",
     "tone",
     "contrast",
+    "primaryType",
+    "secondaryType",
+    "blend",
+    "axes",
     "confidence",
     "bestColors",
     "avoidColors",
@@ -294,6 +362,30 @@ const personalColorJsonSchema = {
     detailVersion: { type: "string", enum: [PERSONAL_COLOR_DETAIL_VERSION] },
     tone: { type: "string", enum: ["warm", "cool", "neutral"] },
     contrast: { type: "string", enum: ["low", "medium", "high"] },
+    primaryType: { type: "string", enum: PERSONAL_COLOR_TYPES },
+    secondaryType: {
+      anyOf: [
+        { type: "string", enum: PERSONAL_COLOR_TYPES },
+        { type: "null" },
+      ],
+    },
+    blend: {
+      type: "object",
+      additionalProperties: false,
+      required: PERSONAL_COLOR_TYPES,
+      properties: Object.fromEntries(PERSONAL_COLOR_TYPES.map((type) => [type, { type: "number", minimum: 0, maximum: 1 }])),
+    },
+    axes: {
+      type: "object",
+      additionalProperties: false,
+      required: ["temperature", "value", "chroma", "contrast"],
+      properties: {
+        temperature: { type: "number", minimum: 0, maximum: 1 },
+        value: { type: "number", minimum: 0, maximum: 1 },
+        chroma: { type: "number", minimum: 0, maximum: 1 },
+        contrast: { type: "number", minimum: 0, maximum: 1 },
+      },
+    },
     confidence: { type: "number", minimum: 0, maximum: 1 },
     bestColors: {
       type: "array",
@@ -429,8 +521,10 @@ Process:
 1. Estimate warm, cool, or neutral undertone from visible face tone.
 2. Estimate low, medium, or high contrast from face, hair, and feature contrast.
 3. Compare the face against the fixed palette below and score which swatches are most harmonious.
-4. Return best colors, colors to avoid, a styling palette for outfit recommendations, hair color hints, and a concise Korean summary.
-5. For every bestColors and avoidColors swatch, provide detailed Korean styling information:
+4. Classify the closest primary and secondary types among the 12 Korean personal-color types and return a normalized blend across all 12 types.
+5. Score four continuous axes from 0 to 1: temperature (cool to warm), value (deep to light), chroma (muted to bright), and contrast (low to high).
+6. Return best colors, colors to avoid, a styling palette for outfit recommendations, hair color hints, and a concise Korean summary.
+7. For every bestColors and avoidColors swatch, provide detailed Korean styling information:
    - recommendationReason: why this color can work for the diagnosis.
    - nonRecommendationReason: when this color may look wrong or why it should be used carefully.
    - meaning: the visual/emotional meaning of the color in styling.
@@ -442,6 +536,9 @@ ${palette}
 
 Rules:
 - Return detailVersion exactly as "${PERSONAL_COLOR_DETAIL_VERSION}".
+- primaryType and secondaryType must be selected from the supplied 12-type enum; secondaryType may be null.
+- blend must contain all 12 keys, use non-negative values, and sum approximately to 1.
+- Do not infer sex, ethnicity, age, health, or attractiveness. Base the four axes only on visible color relationships and state uncertainty through confidence.
 - Choose bestColors and avoidColors only from the fixed palette.
 - stylingPalette must use hex values from the fixed palette.
 - colorCombinations hexes must use only hex values from the fixed palette.
@@ -489,5 +586,5 @@ Rules:
   }
 
   const raw = JSON.parse(outputText) as RawPersonalColorResult;
-  return normalizePersonalColor(raw, model);
+  return normalizePersonalColorResult(raw, model);
 }

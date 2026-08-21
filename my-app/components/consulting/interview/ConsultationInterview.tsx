@@ -50,7 +50,7 @@ export function InterviewSummaryDrawer({ open, onOpenChange, title, children, fo
 }
 
 export function ConsultationInterviewShell({ kind, title, description, coverage, saveState, savedAt, summaryOpen, onSummaryOpenChange, onExitRequest, children, navigation, summary, footer }: {
-  kind: "discovery" | "fashion-direction";
+  kind: "discovery" | "fashion-direction" | "makeup-direction";
   title: string;
   description: string;
   coverage: { completed: number; total: number; conflicts: number };
@@ -64,8 +64,9 @@ export function ConsultationInterviewShell({ kind, title, description, coverage,
   summary: ReactNode;
   footer?: ReactNode;
 }) {
-  const scrollLabel = kind === "discovery" ? "디스커버리 인터뷰" : "패션 방향 인터뷰";
-  return <section className="f-consulting-interview" data-kind={kind} data-save-state={saveState} aria-label={scrollLabel} tabIndex={0}>
+  const scrollLabel = kind === "discovery" ? "디스커버리 인터뷰" : kind === "fashion-direction" ? "패션 방향 인터뷰" : "메이크업 방향 인터뷰";
+  const layout = navigation ? "guided" : "standalone";
+  return <section className="f-consulting-interview" data-kind={kind} data-layout={layout} data-save-state={saveState} aria-label={scrollLabel} tabIndex={0}>
     <header className="f-consulting-interview__header">
       <div>
         <p className="app-kicker">Consultant interview</p>

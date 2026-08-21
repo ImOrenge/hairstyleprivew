@@ -23,6 +23,9 @@ test("live readiness requires explicit credentials, models, flags, link and migr
   const result = evaluateLiveReadiness({ env, mode: "canary", linked: true, migrationMirror: mirrored });
   assert.equal(result.ok, true);
   assert.equal(result.failures.length, 0);
+  assert.equal(env.MAKEUP_DENSE_ATLAS_V3, "true");
+  assert.equal(env.MAKEUP_SEMANTIC_VISION_V3, "true");
+  assert.equal(env.MAKEUP_SEMANTIC_VISION_STAFF_ONLY, "true");
 });
 
 test("readiness output names missing keys without leaking configured secret values", () => {

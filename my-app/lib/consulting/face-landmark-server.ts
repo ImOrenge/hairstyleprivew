@@ -105,6 +105,7 @@ export async function extractFaceLandmarkEvidence(
           faceCount: faces.length,
           model: LANDMARK_MODEL,
           sourceSize: { width: decoded.info.width, height: decoded.info.height },
+          normalizedPoints: null,
           geometry: null,
         } as const;
       }
@@ -123,6 +124,7 @@ export async function extractFaceLandmarkEvidence(
         faceCount: 1,
         model: LANDMARK_MODEL,
         sourceSize: { width: decoded.info.width, height: decoded.info.height },
+        normalizedPoints,
         geometry,
       } as const;
     } finally {

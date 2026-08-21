@@ -78,8 +78,7 @@ function dedupePalette(colors: string[]) {
 
 function avoidColorKeys(input: FashionRecommendationInput) {
   return new Set(
-    (input.profile.personalColor?.avoidColors || [])
-      .flatMap((color) => [color.nameKo, color.nameEn, color.hex])
+    [...(input.profile.personalColor?.avoidColors || []).flatMap((color) => [color.nameKo, color.nameEn, color.hex]), ...(input.personalColorV2?.challenge ?? [])]
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean),
   );
@@ -91,6 +90,11 @@ function isAvoidedColor(color: string, avoided: Set<string>) {
 }
 
 function personalColorNote(input: FashionRecommendationInput) {
+  if (input.personalColorV2) {
+    const best = [...input.personalColorV2.best, ...input.personalColorV2.base].slice(0, 4).join(", ");
+    const avoid = input.personalColorV2.challenge.slice(0, 4).join(", ");
+    return `Personal Color V2 ${input.personalColorV2.profileId} 기준으로 ${best || "추천 팔레트"} 계열을 얼굴 가까이에 우선하고 ${avoid || "challenge 팔레트"}는 작은 면적으로 제한합니다.`;
+  }
   const personalColor = input.profile.personalColor;
   if (!personalColor) {
     return null;
@@ -108,7 +112,7 @@ export function generateFashionRecommendation(input: FashionRecommendationInput)
   const fit = fitLabel(input.profile.fitPreference);
   const preferredColor = input.profile.colorPreference?.trim();
   const genreLabel = getFashionGenreLabelKo(input.genre);
-  const personalPalette = input.profile.personalColor?.stylingPalette || [];
+  const personalPalette = input.personalColorV2 ? [...input.personalColorV2.best, ...input.personalColorV2.base, ...input.personalColorV2.accent] : input.profile.personalColor?.stylingPalette || [];
   const avoidedColors = avoidColorKeys(input);
   const catalogPalette = input.catalogItem.palette.filter((item) => !isAvoidedColor(item, avoidedColors));
   const palette = dedupePalette(

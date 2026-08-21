@@ -51,3 +51,16 @@ test("invalid fingerprints and missing provenance fail the snapshot contract", (
   const invalid = { ...fixture("female"), inputFingerprint: "short", provenance: [] };
   assert.deepEqual(validateConsultationGenerationInputV2(invalid), ["inputFingerprint", "provenance"]);
 });
+
+test("hair trait profile revision and provenance remain attached to downstream generation input", () => {
+  const input = fixture("neutral");
+  input.currentHair.profile = {
+    id: "hair-profile-1", revision: 3, sourceFingerprint: "b".repeat(64),
+    observations: [{ traitId: "texture_pattern", value: "soft wave", confidence: 0.84 }],
+    reported: { chemical_history: { value: "염색" } }, inferred: [], unknownFieldIds: ["strand_thickness_class"], unresolvedFieldIds: [],
+  };
+  input.provenance.push({ source: "hair-trait-analysis", sourceId: "hair-profile-1", capturedAt: input.capturedAt, fieldPaths: ["currentHair.profile"] });
+  assert.deepEqual(validateConsultationGenerationInputV2(input), []);
+  assert.equal(input.currentHair.profile.revision, 3);
+  assert.equal(input.provenance.at(-1)?.source, "hair-trait-analysis");
+});

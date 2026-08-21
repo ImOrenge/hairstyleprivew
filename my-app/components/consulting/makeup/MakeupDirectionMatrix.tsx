@@ -1,0 +1,9 @@
+"use client";
+
+import type { MakeupModule, MakeupModuleDirection } from "@hairfit/shared/makeup";
+
+const LABELS: Record<MakeupModule, string> = { base: "베이스", brow: "눈썹", eyeshadow: "아이섀도", eyeliner: "아이라인", blush: "블러셔", lip: "립", lashes: "속눈썹" };
+
+export function MakeupDirectionMatrix({ modules, activeModule, onSelect }: { modules: MakeupModuleDirection[]; activeModule: MakeupModule; onSelect: (module: MakeupModule) => void }) {
+  return <div className="overflow-x-auto"><table className="w-full min-w-[70rem] border-collapse text-left text-sm"><caption className="sr-only">캔버스와 동일한 7개 메이크업 모듈의 색, 위치, 방향, 강도, 질감 데이터</caption><thead><tr className="border-b border-[var(--app-border)] text-xs uppercase text-[var(--app-muted)]"><th className="p-3">모듈</th><th className="p-3">상태·강도</th><th className="p-3">색상·질감</th><th className="p-3">위치</th><th className="p-3">방향</th><th className="p-3">테크닉</th><th className="p-3">제품 속성</th></tr></thead><tbody>{modules.map((item) => <tr key={item.module} className={`border-b border-[var(--app-border)] align-top ${activeModule === item.module ? "bg-[var(--app-surface-strong)]" : ""}`}><th className="p-0"><button type="button" onClick={() => onSelect(item.module)} className="min-h-11 w-full px-3 text-left font-black" aria-pressed={activeModule === item.module}>{LABELS[item.module]}</button></th><td className="p-3">{item.state === "enabled" ? "사용" : "사용 안 함"}<br />{Math.round(item.direction.intensity * 100)}%</td><td className="p-3">{item.direction.colorFamily ?? "현장 선택"}<br />{item.direction.technical.finish}</td><td className="p-3">{item.direction.technical.placement.join(" · ") || "사용자 선택 대기"}</td><td className="p-3">{item.direction.technical.applicationDirection.join(" · ") || "사용자 선택 대기"}</td><td className="p-3">{item.direction.technical.technique}</td><td className="p-3">{item.direction.technical.productAttributes.join(" · ") || "현장 선택"}</td></tr>)}</tbody></table></div>;
+}

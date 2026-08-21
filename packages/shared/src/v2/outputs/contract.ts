@@ -70,6 +70,8 @@ export interface FashionPreviewCandidateV2 {
 export interface FashionPreviewSetV2 extends SnapshotLinkedOutputV2 {
   schemaVersion: "fashion-preview-set-v2";
   personalColorEvidenceId: string | null;
+  personalColorProfileId?: string | null;
+  colorSelectionSnapshotId: string | null;
   selectedHairSnapshotId: string;
   stylingSessionIds: string[];
   selectedStylingSessionId: string;

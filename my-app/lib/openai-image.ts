@@ -46,6 +46,7 @@ interface OpenAIImageResponse {
 }
 
 const DEFAULT_OPENAI_IMAGE_MODEL = "gpt-image-2";
+const HAIR_COLOR_IMAGE_MODEL = "gpt-image-2";
 const DEFAULT_IMAGE_SIZE = "1024x1536";
 const IMAGE_EDIT_MAX_ATTEMPTS = 3;
 const IMAGE_EDIT_RETRY_BASE_DELAY_MS = 1200;
@@ -127,6 +128,10 @@ export function getOpenAIImageModel() {
   return sanitizeEnvValue(process.env.OPENAI_IMAGE_MODEL) || DEFAULT_OPENAI_IMAGE_MODEL;
 }
 
+export function getOpenAIHairColorImageModel() {
+  return HAIR_COLOR_IMAGE_MODEL;
+}
+
 function imageExtension(mimeType: string) {
   if (mimeType.includes("webp")) return "webp";
   if (mimeType.includes("jpeg") || mimeType.includes("jpg")) return "jpg";
@@ -184,19 +189,27 @@ function sleep(ms: number) {
 async function runImageEditOnce(input: {
   prompt: string;
   images: Array<{ dataUrl: string; filename: string }>;
+  maskDataUrl?: string;
+  quality?: "low" | "medium" | "high" | "auto";
+  model?: string;
 }) {
   const apiKey = requiredEnv("OPENAI_API_KEY");
-  const model = getOpenAIImageModel();
+  const model = input.model || getOpenAIImageModel();
   const formData = new FormData();
   formData.append("model", model);
   formData.append("prompt", input.prompt);
   formData.append("n", "1");
   formData.append("size", sanitizeEnvValue(process.env.OPENAI_IMAGE_SIZE) || DEFAULT_IMAGE_SIZE);
   formData.append("output_format", "webp");
+  if (input.quality) formData.append("quality", input.quality);
 
   for (const image of input.images) {
     const { blob, mimeType } = dataUrlToBlob(image.dataUrl);
     formData.append("image[]", blob, `${image.filename}.${imageExtension(mimeType)}`);
+  }
+  if (input.maskDataUrl) {
+    const { blob, mimeType } = dataUrlToBlob(input.maskDataUrl);
+    formData.append("mask", blob, `hair-mask.${imageExtension(mimeType)}`);
   }
 
   const response = await fetch("https://api.openai.com/v1/images/edits", {
@@ -232,6 +245,9 @@ async function runImageEditOnce(input: {
 async function runImageEdit(input: {
   prompt: string;
   images: Array<{ dataUrl: string; filename: string }>;
+  maskDataUrl?: string;
+  quality?: "low" | "medium" | "high" | "auto";
+  model?: string;
 }) {
   let lastError: unknown;
 
@@ -330,6 +346,61 @@ export async function runOpenAIOutfitGeneration(
     id: result.id,
     outputUrl: result.outputUrl,
   };
+}
+
+export async function runOpenAIHairColorChangeV2(input: {
+  imageDataUrl: string;
+  colorName: string;
+  swatchHex: string;
+  technique: string;
+  targetLevel: number | null;
+  intensity: number;
+  temperature: number;
+  saturation: number;
+  rootDepth: number;
+  quality: "low" | "medium";
+  rationale?: string[];
+  bleachPolicy?: string;
+  maintenance?: string;
+}) {
+  const liftPolicy = input.targetLevel && input.targetLevel >= 9 ? "multiple controlled bleach lifts, neutralize the exposed undertone, then tone"
+    : input.targetLevel && input.targetLevel >= 7 ? "bleach or lift the existing pigment first, neutralize orange or yellow undertone as needed, then tone"
+      : input.targetLevel && input.targetLevel >= 5 ? "gently lift or remove enough existing pigment before depositing the target tone"
+        : "preserve the current depth and deposit or neutralize pigment without visible bleaching";
+  const prompt = `Hair color preview policy: hair-color-reference-recolor-v3.
+Use the supplied portrait as the only identity and hairstyle reference. Preserve the same person, face geometry, skin tone, facial features, expression, hairstyle geometry, hair length, hairline, volume, texture, pose, camera, crop, lighting direction, background, clothing, and accessories.
+Identify the visible scalp hair from the reference image and change its pigment only. Do not recolor skin, eyebrows, eyelashes, clothing, background, or accessories. Do not redraw the haircut or retouch the face.
+Change only hair pigment to ${input.colorName} (${input.swatchHex}), technique ${input.technique}, intensity ${input.intensity} percent, temperature adjustment ${input.temperature}, saturation adjustment ${input.saturation}, root depth ${input.rootDepth}${input.targetLevel ? `, target salon level ${input.targetLevel}` : ""}.
+Process the hair color in salon order: ${liftPolicy}. The final luminance must visibly match the requested salon level instead of placing a translucent color overlay on the original dark pigment.
+Consulting rationale: ${input.rationale?.join("; ") || "personal color match"}.
+Salon implementation boundary: ${input.bleachPolicy || "confirm the current base and damage in person"}. Maintenance: ${input.maintenance || "color-safe care"}.
+Keep realistic strand detail, roots, highlights, shadows, translucency, and natural color response through both lift and tone. Avoid flat white bleaching, clipped highlights, a helmet-like solid fill, or identity drift. Return one photorealistic portrait with no text.`;
+  return runImageEdit({
+    prompt,
+    images: [{ dataUrl: input.imageDataUrl, filename: "confirmed-hair" }],
+    quality: input.quality,
+    model: getOpenAIHairColorImageModel(),
+  });
+}
+
+export async function runOpenAIMakeupStyleSimulation(input: {
+  imageDataUrl: string;
+  mode: string;
+  palette: string[];
+  modules: Array<{ module: string; color: string; intensity: number; finish: string }>;
+  exclusions: string[];
+  quality?: "low" | "medium" | "high" | "auto";
+}) {
+  const moduleLines = input.modules.map((item) => `${item.module}: color ${item.color}, intensity ${item.intensity}%, finish ${item.finish}`).join("\n");
+  const prompt = `Create one photorealistic makeup style simulation from the supplied portrait.
+Apply makeup only. Preserve the exact same person, facial geometry, eye size, nose, lips, jaw, skin tone, freckles, marks, hair, clothing, background, pose, crop, and lighting intent.
+Do not slim or reshape the face, enlarge eyes, reshape the nose, restyle hair, replace the background, whiten skin, erase natural texture, or apply beauty retouching.
+Mode: ${input.mode}.
+Personal color palette: ${input.palette.join(", ") || "use the supplied structured module colors"}.
+Structured modules:\n${moduleLines}
+Explicit exclusions: ${input.exclusions.join(", ") || "none"}.
+Keep realistic pores and product texture. Return a single portrait without text, labels, split panels, or decorative graphics.`;
+  return runImageEdit({ prompt, images: [{ dataUrl: input.imageDataUrl, filename: "makeup-source" }], quality: input.quality ?? "medium", model: DEFAULT_OPENAI_IMAGE_MODEL });
 }
 
 export function buildOpenAIOutfitPrompt(request: OpenAIOutfitRunRequest) {

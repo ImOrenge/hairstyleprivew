@@ -5,6 +5,7 @@ import {
   effectiveEvidencePointV2,
   hasEvidencePointCorrectionV2,
   type AnalysisEvidenceV2,
+  type FaceObservationBundleV2,
   type EvidenceCorrectionTargetV2,
   type FacialMeasurementV2,
   type NormalizedPointV2,
@@ -138,6 +139,7 @@ export function FaceEvidenceOverlay({
   onEvidenceSelect,
   selectedLandmarkId = null,
   onLandmarkSelect,
+  observation = null,
 }: {
   evidence: AnalysisEvidenceV2;
   visibleLayers?: readonly FaceEvidenceLayer[];
@@ -145,6 +147,7 @@ export function FaceEvidenceOverlay({
   onEvidenceSelect?: (evidenceId: string) => void;
   selectedLandmarkId?: string | null;
   onLandmarkSelect?: (landmarkId: string) => void;
+  observation?: FaceObservationBundleV2 | null;
 }) {
   const measurements = evidence.measurements.filter((item) => VISIBLE_MEASUREMENTS.has(item.id));
   const [activeMeasurementId, setActiveMeasurementId] = useState(measurements[0]?.id ?? null);
@@ -153,6 +156,8 @@ export function FaceEvidenceOverlay({
   const unit = Math.min(sourceWidth, sourceHeight);
   const visible = new Set(visibleLayers);
   const layerActive = (layer: FaceEvidenceLayer) => activeEvidenceId === layer;
+  const skinMasks = observation?.masks.filter((mask) => mask.operation === "include") ?? evidence.skinSampleRegions;
+  const excludedMasks = observation?.masks.filter((mask) => mask.operation === "exclude") ?? evidence.excludedRegions;
   return <>
     <svg
       className="absolute inset-0 h-full w-full"
@@ -161,6 +166,7 @@ export function FaceEvidenceOverlay({
       role="img"
       aria-label="AI 얼굴 분석 랜드마크"
       data-face-evidence-overlay="true"
+      data-face-observation-bundle-id={observation?.id}
     >
       <title>AI 얼굴 분석 랜드마크</title>
       <desc>서버에 저장된 정규화 좌표로 얼굴 윤곽, 핵심 기준점, 추정 헤어라인과 측정선을 표시합니다.</desc>
@@ -225,23 +231,23 @@ export function FaceEvidenceOverlay({
         strokeWidth={unit * (layerActive("hairline") || activeEvidenceId === line.id ? 0.01 : 0.006)}
         opacity={layerActive("hairline") || activeEvidenceId === line.id ? 1 : evidenceOpacity(line.confidence)}
       />) : null}
-      {visible.has("skin") ? evidence.skinSampleRegions.map((region) => <polygon
+      {visible.has("skin") ? skinMasks.map((region) => <polygon
         key={region.id}
         data-evidence-id={region.id}
         data-evidence-source={region.source}
         data-evidence-active={layerActive("skin") || activeEvidenceId === region.id}
-        points={points(correctedPoints(evidence, "skin", region.id, region.points), sourceWidth, sourceHeight)}
+        points={points(observation ? region.points : correctedPoints(evidence, "skin", region.id, region.points), sourceWidth, sourceHeight)}
         fill="var(--app-success)"
         stroke="var(--app-surface)"
         strokeWidth={unit * (layerActive("skin") || activeEvidenceId === region.id ? 0.008 : 0.004)}
         opacity={layerActive("skin") || activeEvidenceId === region.id ? 0.46 : 0.24}
       />) : null}
-      {visible.has("excluded") ? evidence.excludedRegions.map((region) => <polygon
+      {visible.has("excluded") ? excludedMasks.map((region) => <polygon
         key={region.id}
         data-evidence-id={region.id}
         data-evidence-source={region.source}
         data-evidence-active={layerActive("excluded") || activeEvidenceId === region.id}
-        points={points(correctedPoints(evidence, "excluded", region.id, region.points), sourceWidth, sourceHeight)}
+        points={points(observation ? region.points : correctedPoints(evidence, "excluded", region.id, region.points), sourceWidth, sourceHeight)}
         fill="var(--app-danger)"
         stroke="var(--app-danger)"
         strokeDasharray={`${unit * 0.012} ${unit * 0.008}`}

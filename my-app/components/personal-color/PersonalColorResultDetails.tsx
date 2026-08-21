@@ -1,7 +1,7 @@
 import type { PersonalColorResult, PersonalColorSwatch } from "../../lib/fashion-types";
 
 export function hasDetailedPersonalColorResult(result: PersonalColorResult | null | undefined) {
-  return result?.detailVersion === "color-detail-v1";
+  return result?.detailVersion === "color-detail-v1" || result?.detailVersion === "color-detail-v2";
 }
 
 function formatTone(value: PersonalColorResult["tone"]) {
@@ -145,12 +145,22 @@ function DetailedSection({ colors, title }: { colors: PersonalColorSwatch[]; tit
   );
 }
 
-export function PersonalColorResultDetails({ result }: { result: PersonalColorResult }) {
+export interface PersonalColorResultDetailsProps {
+  result: PersonalColorResult;
+  showOverview?: boolean;
+  showHairColorHints?: boolean;
+}
+
+export function PersonalColorResultDetails({
+  result,
+  showOverview = true,
+  showHairColorHints = true,
+}: PersonalColorResultDetailsProps) {
   const hasDetails = hasDetailedPersonalColorResult(result);
 
   return (
     <div className="grid gap-5">
-      <div>
+      {showOverview ? <div>
         <p className="app-kicker">퍼스널컬러 결과</p>
         <h2 className="mt-2 text-2xl font-black text-[var(--app-text)]">
           {formatTone(result.tone)} · {formatContrast(result.contrast)}
@@ -159,7 +169,7 @@ export function PersonalColorResultDetails({ result }: { result: PersonalColorRe
         <p className="mt-2 text-xs font-medium text-[var(--app-subtle)]">
           신뢰도 {Math.round(result.confidence * 100)}% · {formatDate(result.diagnosedAt)}
         </p>
-      </div>
+      </div> : null}
 
       {!hasDetails ? (
         <div className="grid gap-4">
@@ -184,7 +194,7 @@ export function PersonalColorResultDetails({ result }: { result: PersonalColorRe
         </div>
       )}
 
-      {result.hairColorHints.length ? (
+      {showHairColorHints && result.hairColorHints.length ? (
         <section>
           <h3 className="text-lg font-black text-[var(--app-text)]">헤어 컬러 힌트</h3>
           <div className="mt-3 flex flex-wrap gap-2">

@@ -20,7 +20,18 @@ export type FashionCatalogStatus = "active" | "archived";
 export type FashionCatalogCycleStatus = "running" | "succeeded" | "failed";
 export type PersonalColorTone = "warm" | "cool" | "neutral";
 export type PersonalColorContrast = "low" | "medium" | "high";
-export type PersonalColorDetailVersion = "color-detail-v1";
+export type PersonalColorDetailVersion = "color-detail-v1" | "color-detail-v2";
+export type PersonalColorType =
+  | "spring_light" | "spring_warm" | "spring_bright"
+  | "summer_light" | "summer_cool" | "summer_muted"
+  | "autumn_muted" | "autumn_warm" | "autumn_deep"
+  | "winter_bright" | "winter_cool" | "winter_deep";
+export interface PersonalColorAxes {
+  temperature: number;
+  value: number;
+  chroma: number;
+  contrast: number;
+}
 
 export interface PersonalColorCombination {
   title: string;
@@ -44,6 +55,10 @@ export interface PersonalColorResult {
   detailVersion?: PersonalColorDetailVersion;
   tone: PersonalColorTone;
   contrast: PersonalColorContrast;
+  primaryType?: PersonalColorType;
+  secondaryType?: PersonalColorType | null;
+  blend?: Partial<Record<PersonalColorType, number>>;
+  axes?: PersonalColorAxes;
   confidence: number;
   bestColors: PersonalColorSwatch[];
   avoidColors: PersonalColorSwatch[];
@@ -160,6 +175,14 @@ export interface FashionRecommendationInput {
   catalogItem: FashionCatalogRow;
   styleTarget?: "male" | "female" | "neutral";
   generationInputFingerprint?: string;
+  personalColorV2?: {
+    profileId: string;
+    best: string[];
+    base: string[];
+    accent: string[];
+    challenge: string[];
+    metals: string[];
+  } | null;
 }
 
 export const FASHION_OCCASIONS: FashionOccasion[] = ["daily", "work", "date", "formal"];

@@ -80,12 +80,13 @@ async function ensureAnalysisReady(userId: string, consultationId: string) {
   throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "상담 상태가 동시에 변경되었습니다.");
 }
 
-async function loadAssociations(consultationId: string) {
+async function loadAssociations(consultationId: string, generationId: string) {
   const db = getSupabaseAdminClient();
   const board = await db
     .from("preview_boards_v2")
     .select("id")
     .eq("consultation_id", consultationId)
+    .eq("source_generation_id", generationId)
     .order("version", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -135,16 +136,26 @@ export async function preparePreviewBoardV2(input: {
       "프리뷰 보드는 정확히 9개의 슬롯이 필요합니다.",
     );
   }
-  const existing = await loadAssociations(input.consultationId);
+  const existing = await loadAssociations(input.consultationId, input.generationId);
   if (existing) return existing;
 
   await ensureAnalysisReady(input.userId, input.consultationId);
+  const latestBoard = await getSupabaseAdminClient()
+    .from("preview_boards_v2")
+    .select("version")
+    .eq("consultation_id", input.consultationId)
+    .eq("user_id", input.userId)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (latestBoard.error) throw new Error(latestBoard.error.message);
+  const boardVersion = Number((latestBoard.data as { version?: unknown } | null)?.version ?? 0) + 1;
   const consumption = object(
     await consumeEntitlementV2({
       userId: input.userId,
       offeringKey: "hair_decision_once",
       consultationId: input.consultationId,
-      idempotencyKey: `preview-board:${input.consultationId}:v1`,
+      idempotencyKey: `preview-board:${input.consultationId}:${input.generationId}`,
     }),
   );
   const consumptionId = typeof consumption.id === "string" ? consumption.id : null;
@@ -164,7 +175,8 @@ export async function preparePreviewBoardV2(input: {
       id: boardId,
       consultation_id: input.consultationId,
       user_id: input.userId,
-      version: 1,
+      version: boardVersion,
+      source_generation_id: input.generationId,
       strategy_version: input.plans[0]?.spec.promptPolicyVersion,
       requested_count: 9,
       state: "queued",
@@ -234,6 +246,16 @@ export async function preparePreviewBoardV2(input: {
       .eq("id", input.consultationId)
       .eq("user_id", input.userId);
     if (link.error) throw new Error(link.error.message);
+    const appliedAdjustment = await db
+      .from("consultation_hair_adjustments_v2")
+      .update({ state: "applied", applied_at: new Date().toISOString() })
+      .eq("consultation_id", input.consultationId)
+      .eq("user_id", input.userId)
+      .eq("generation_draft_id", input.generationId)
+      .eq("state", "pending-direction-revision");
+    if (appliedAdjustment.error && appliedAdjustment.error.code !== "42P01") {
+      throw new Error(appliedAdjustment.error.message);
+    }
     const generating = await db
       .from("preview_boards_v2")
       .update({ state: "generating" })
@@ -252,7 +274,7 @@ export async function preparePreviewBoardV2(input: {
     consultationId: input.consultationId,
     userId: input.userId,
     eventType: "preview_board.queued",
-    payload: { boardId, slotCount: 9, generationId: input.generationId },
+    payload: { boardId, boardVersion, slotCount: 9, generationId: input.generationId },
   });
   return associations;
 }

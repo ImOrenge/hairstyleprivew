@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { deriveFashionBatchState, deriveFashionSlotProgress, selectDispatchableFashionSessions, summarizeFashionBatchProgress, type FashionRuntimeAttempt, type FashionRuntimeSession } from "./fashion-batch-runtime.ts";
+import { deriveFashionBatchState, deriveFashionSlotProgress, selectDispatchableFashionSessions, summarizeFashionBatchProgress, visibleFashionSlotIds, type FashionRuntimeAttempt, type FashionRuntimeSession } from "./fashion-batch-runtime.ts";
 
 const now = Date.parse("2026-08-12T12:00:00.000Z");
 
@@ -73,4 +73,19 @@ test("stalled and failed slots are redispatched below the cap while capped failu
     attempt("capped", 3, null, "released"),
   ], now);
   assert.deepEqual(selectDispatchableFashionSessions(sessions, progress).map((item) => item.id), ["stale", "failed"]);
+});
+
+test("dynamic 3 6 9 batches do not misread 2 5 8 terminals", () => {
+  for (const [requestedCount, terminalCount] of [[3, 2], [6, 5], [9, 8]] as const) {
+    const sessions = Array.from({ length: requestedCount }, (_, index) => session(`dynamic-${requestedCount}-${index}`, `slot-${index}`, index < terminalCount ? "completed" : "queued"));
+    const summary = summarizeFashionBatchProgress(deriveFashionSlotProgress(sessions, [], now));
+    assert.notEqual(deriveFashionBatchState("generating", requestedCount, summary), "ready");
+  }
+});
+
+test("visible slot projection keeps every requested generated slot", () => {
+  const slots = Array.from({ length: 9 }, (_, index) => ({ id: `slot-${index}` }));
+  assert.deepEqual(visibleFashionSlotIds(slots, 3), ["slot-0", "slot-1", "slot-2"]);
+  assert.equal(visibleFashionSlotIds(slots, 6).length, 6);
+  assert.equal(visibleFashionSlotIds(slots, 9).length, 9);
 });

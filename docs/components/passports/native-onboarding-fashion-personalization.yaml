@@ -1,0 +1,51 @@
+id: native.onboarding.fashion-personalization
+name: FashionPersonalizationScreen
+platform: native
+kind: form
+status: experimental
+source: apps/hairfit-app/app/fashion-personalization.tsx
+owner: onboarding-feature
+
+public_api:
+  route:
+    - /fashion-personalization
+  events:
+    - revision-save
+    - policy-confirm
+    - learning-reset
+    - router-back
+
+boundaries:
+  owns:
+    - native-persistent-fashion-policy-input
+    - explicit-learning-consent
+    - coverage-and-confirmation-state
+  forbidden:
+    - photo-inferred-size-gender-weight-or-accessibility
+    - hidden-learning
+    - consultation-context-mutation
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  global_css_changes: false
+
+a11y_contract:
+  inputs: labelled-native-text-inputs
+  toggles: labelled-switch-rows
+  feedback: polite-live-region-view
+  scrolling: AppScreen-safe-area-scroll
+
+test_surface:
+  contract: my-app/lib/consulting/fashion-personalization-contract.test.ts
+  typecheck: npm --workspace @hairfit/app run typecheck
+  lint: npm --workspace @hairfit/app run lint
+
+change_policy:
+  current_gate: behavioral-compatible
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+    - component-registry-validation
+
+promotion_blockers:
+  - physical-device-keyboard-and-screen-reader-audit-not-run

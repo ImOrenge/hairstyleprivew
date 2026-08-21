@@ -1,8 +1,10 @@
 import "server-only";
 
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { getSupabaseAdminClient } from "../supabase";
 import { resolveOfferingV2 } from "./payment-entitlement-adapter";
+import { projectConsultationReportReceiptV1 } from "@hairfit/shared/consulting/report-observability";
+import type { ConsultationReportViewModelV2 } from "@hairfit/shared/consulting/report-v2";
 
 export async function reconcileEntitlementsV2(options: { limit?: number } = {}) {
   const db = getSupabaseAdminClient();
@@ -122,4 +124,89 @@ export async function reconcileCapabilityReceiptsV2(options: { limit?: number } 
   }).eq("id", runId);
   if (update.error) throw new Error(update.error.message);
   return { runId, checkedCount: rows.length, mismatchCount: mismatches.length, mismatches: mismatches.slice(0, 20), finishedAt };
+}
+
+function safeEntityFingerprint(value: string) {
+  return createHash("sha256").update(value).digest("hex").slice(0, 16);
+}
+
+export async function reconcilePersonalColorMakeupV2(options: { limit?: number } = {}) {
+  const db = getSupabaseAdminClient();
+  const runId = randomUUID();
+  const limit = Math.min(500, Math.max(1, options.limit ?? 100));
+  const inserted = await db.from("hairfit_v2_reconciliation_runs").insert({ id: runId, scope: "output_snapshot", status: "running" });
+  if (inserted.error) throw new Error(inserted.error.message);
+  const [directions, routines, briefs, hairSelections, fashionSets] = await Promise.all([
+    db.from("makeup_direction_snapshots").select("id,consultation_id,status,personal_color_profile_id,selected_style_snapshot_id,snapshot").in("status", ["confirmed", "routine_ready", "brief_ready"]).order("created_at", { ascending: false }).limit(limit),
+    db.from("makeup_routines").select("makeup_direction_snapshot_id,personal_color_profile_id,selected_style_snapshot_id").order("created_at", { ascending: false }).limit(limit * 2),
+    db.from("makeup_artist_briefs").select("makeup_direction_snapshot_id,personal_color_profile_id,selected_style_snapshot_id,source_photo_included").order("created_at", { ascending: false }).limit(limit * 2),
+    db.from("color_selection_snapshots_v2").select("consultation_id,personal_color_profile_id").order("created_at", { ascending: false }).limit(limit * 2),
+    db.from("fashion_preview_sets_v2").select("consultation_id,personal_color_profile_id").order("created_at", { ascending: false }).limit(limit * 2),
+  ]);
+  for (const result of [directions, routines, briefs, hairSelections, fashionSets]) if (result.error) throw new Error(result.error.message);
+  const routineByDirection = new Map((routines.data ?? []).map((row) => [String(row.makeup_direction_snapshot_id), row]));
+  const briefByDirection = new Map((briefs.data ?? []).map((row) => [String(row.makeup_direction_snapshot_id), row]));
+  const hairProfileByConsultation = new Map((hairSelections.data ?? []).filter((row) => row.personal_color_profile_id).map((row) => [String(row.consultation_id), String(row.personal_color_profile_id)]));
+  const fashionProfileByConsultation = new Map((fashionSets.data ?? []).filter((row) => row.personal_color_profile_id).map((row) => [String(row.consultation_id), String(row.personal_color_profile_id)]));
+  const mismatches: Array<{ entity: string; reason: string }> = [];
+  for (const row of directions.data ?? []) {
+    const id = String(row.id); const consultationId = String(row.consultation_id); const profileId = String(row.personal_color_profile_id); const styleId = String(row.selected_style_snapshot_id);
+    const snapshot = row.snapshot && typeof row.snapshot === "object" ? row.snapshot as { modules?: unknown[]; source?: { personalColorProfileId?: string; selectedStyleId?: string } } : {};
+    const add = (reason: string) => mismatches.push({ entity: safeEntityFingerprint(id), reason });
+    if (snapshot.modules?.length !== 7) add("makeup_module_count_mismatch");
+    if (snapshot.source?.personalColorProfileId !== profileId || snapshot.source?.selectedStyleId !== styleId) add("makeup_source_projection_mismatch");
+    const routine = routineByDirection.get(id); const brief = briefByDirection.get(id);
+    if (!routine || !brief) add("execution_artifact_missing");
+    if (routine && (String(routine.personal_color_profile_id) !== profileId || String(routine.selected_style_snapshot_id) !== styleId)) add("routine_source_mismatch");
+    if (brief && (String(brief.personal_color_profile_id) !== profileId || String(brief.selected_style_snapshot_id) !== styleId || brief.source_photo_included === true)) add("brief_source_or_privacy_mismatch");
+    const hairProfile = hairProfileByConsultation.get(consultationId); const fashionProfile = fashionProfileByConsultation.get(consultationId);
+    if ((hairProfile && hairProfile !== profileId) || (fashionProfile && fashionProfile !== profileId)) add("cross_domain_profile_mismatch");
+  }
+  const finishedAt = new Date().toISOString();
+  const update = await db.from("hairfit_v2_reconciliation_runs").update({ status: mismatches.length ? "failed" : "passed", checked_count: directions.data?.length ?? 0, mismatch_count: mismatches.length, mismatch_sample: mismatches.slice(0, 20), finished_at: finishedAt }).eq("id", runId);
+  if (update.error) throw new Error(update.error.message);
+  return { runId, checkedCount: directions.data?.length ?? 0, mismatchCount: mismatches.length, mismatches: mismatches.slice(0, 20), allowedStructuralMismatchCount: 0, canaryStatus: (directions.data?.length ?? 0) === 0 ? "insufficient_data" : mismatches.length ? "fail" : "pass", finishedAt };
+}
+
+export async function reconcileConsultationReportProjectionsV3(options: { limit?: number } = {}) {
+  const db = getSupabaseAdminClient();
+  const runId = randomUUID();
+  const limit = Math.min(500, Math.max(1, options.limit ?? 100));
+  const inserted = await db.from("hairfit_v2_reconciliation_runs").insert({ id: runId, scope: "output_snapshot", status: "running" });
+  if (inserted.error) throw new Error(inserted.error.message);
+  const snapshots = await db.from("consultation_report_snapshots_v2")
+    .select("id,view_model,source_fingerprint")
+    .eq("view_model_version", 2)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (snapshots.error) throw new Error(snapshots.error.message);
+  const mismatches: Array<{ entity: string; reason: string }> = [];
+  for (const row of snapshots.data ?? []) {
+    const report = row.view_model as unknown as ConsultationReportViewModelV2;
+    const add = (reason: string) => mismatches.push({ entity: safeEntityFingerprint(String(row.id)), reason });
+    if (report?.schemaVersion !== "consultation-report-view-model-v2" || report.provenance?.schemaVersion !== "consulting-result-provenance-v3") {
+      add("report_provenance_v3_missing");
+      continue;
+    }
+    const receipt = projectConsultationReportReceiptV1(report, "web");
+    if (receipt.mismatch) add("report_generated_content_mismatch");
+    if (String(row.source_fingerprint) !== report.provenance.fingerprint) add("report_fingerprint_mismatch");
+  }
+  const finishedAt = new Date().toISOString();
+  const update = await db.from("hairfit_v2_reconciliation_runs").update({
+    status: mismatches.length ? "failed" : "passed",
+    checked_count: snapshots.data?.length ?? 0,
+    mismatch_count: mismatches.length,
+    mismatch_sample: mismatches.slice(0, 20),
+    finished_at: finishedAt,
+  }).eq("id", runId);
+  if (update.error) throw new Error(update.error.message);
+  return {
+    runId,
+    checkedCount: snapshots.data?.length ?? 0,
+    mismatchCount: mismatches.length,
+    mismatches: mismatches.slice(0, 20),
+    canaryStatus: (snapshots.data?.length ?? 0) === 0 ? "insufficient_data" : mismatches.length ? "fail" : "pass",
+    finishedAt,
+  };
 }

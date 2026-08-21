@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import type { ConsultationSnapshot } from "../../../lib/consulting/contracts";
+import { CONSULTATION_STAGE_SLUGS, type ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { Button } from "../../ui/Button";
 import { Panel, SurfaceCard } from "../../ui/Surface";
 
@@ -37,7 +37,7 @@ export function ConsultationSystemData({ snapshot, items = [] }: {
     <div className="mt-5"><DefinitionRows items={[
       { label: "Lifecycle", value: snapshot.lifecycleState },
       { label: "Recommended task", value: snapshot.journey.recommendedStage },
-      { label: "Workspace access", value: `${snapshot.journey.allowedStages.length}개 화면 열림 · ${snapshot.completedStages.length} / 11 완료` },
+      { label: "Workspace access", value: `${snapshot.journey.allowedStages.length}개 화면 열림 · ${snapshot.completedStages.length} / ${CONSULTATION_STAGE_SLUGS.length} 완료` },
       { label: "Active tasks", value: snapshot.journey.activeTasks.length ? snapshot.journey.activeTasks.map((task) => `${task.label}(${task.status})`).join(" · ") : "백그라운드 작업 없음" },
       { label: "Blocked outputs", value: snapshot.journey.blockingActions.length ? `${snapshot.journey.blockingActions.length}개 · ${snapshot.journey.blockingActions.slice(0, 2).map((action) => action.reason).join(" / ")}` : "없음" },
       { label: "Photo preflight", value: `${qualityPassed} / ${snapshot.photo.quality.length} 통과` },

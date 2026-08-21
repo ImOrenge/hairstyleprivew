@@ -2,9 +2,11 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { EvidenceCorrectionTargetV2, NormalizedPointV2 } from "@hairfit/shared/v2";
 import { createGenerationImageSignedUrl } from "../../../../../../lib/generation-image-storage";
+import { getFaceObservationBundleV2 } from "../../../../../../lib/personal-color-observation";
 import { getSupabaseAdminClient } from "../../../../../../lib/supabase";
 import { applyAnalysisEvidenceCorrectionV2, getAnalysisEvidenceV2 } from "../../../../../../lib/v2/analysis-server";
 import { v2Disabled, v2Failure } from "../../../../../../lib/v2/http";
+import { isHairfitV2Enabled } from "../../../../../../lib/v2/feature-flags";
 
 interface Params { params: Promise<{ consultationId: string }> }
 export async function GET(_request: Request, { params }: Params) {
@@ -60,8 +62,12 @@ export async function GET(_request: Request, { params }: Params) {
       }
     }
     const sourceImageUrl = await createGenerationImageSignedUrl(db, originalImagePath, 60 * 10);
+    const observation = isHairfitV2Enabled("PERSONAL_COLOR_V2_READ")
+      ? await getFaceObservationBundleV2(userId, consultationId)
+      : null;
     return NextResponse.json({
       evidence,
+      observation,
       sourceImageUrl,
       overlayEnabled: process.env.FACE_TRUST_OVERLAY_V2_ENABLED !== "false",
     });

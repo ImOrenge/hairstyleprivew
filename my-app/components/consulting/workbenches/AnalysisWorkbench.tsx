@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AnalysisEvidenceV2, FacialMeasurementV2 } from "@hairfit/shared/v2";
 import type { ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { ConsultationPhotoEvidence } from "../photo/ConsultationPhotoEvidence";
+import { HairTraitInsightPanel } from "../analysis/HairTraitInsightPanel";
 import { ConsultationSystemData, DefinitionRows, Panel, SurfaceCard, WorkbenchGrid } from "./shared";
 
 const MEASUREMENT_LABELS: Record<string, string> = {
@@ -153,9 +154,10 @@ function FacialProportionMatrix({ evidence }: { evidence: AnalysisEvidenceV2 | n
   </SurfaceCard>;
 }
 
-export function AnalysisWorkbench({ snapshot }: {
+export function AnalysisWorkbench({ snapshot, refresh }: {
   snapshot: ConsultationSnapshot;
   mutate: (patch: Omit<ConsultationPatch, "expectedVersion">) => Promise<unknown>;
+  refresh?: (options?: { silent?: boolean }) => Promise<unknown>;
   saving: boolean;
 }) {
   const personalColorConsent = snapshot.photo.usageScopes.includes("personalColor");
@@ -195,10 +197,22 @@ export function AnalysisWorkbench({ snapshot }: {
   // Personal color is optional supporting evidence and must not block analysis rendering.
   }, [hasSnapshotColor, loadColor, personalColorConsent]);
 
+  const visibleQuestions = (snapshot.diagnosticQuestions ?? []).filter((item) => item.state === "visible");
+  if (visibleQuestions.length) return <section className="mx-auto grid max-w-4xl gap-4" data-consulting-surface="clarification">
+    <HairTraitInsightPanel
+      consultationId={snapshot.sessionId}
+      initialProfile={snapshot.hairProfile}
+      initialQuestions={snapshot.diagnosticQuestions}
+      mode="clarification"
+      onQuestionsResolved={() => void refresh?.()}
+    />
+  </section>;
+
   return <WorkbenchGrid output={<>
     <div className="grid gap-4">
       <FaceShapeBlendChart evidence={geometryEvidence} />
       <FacialProportionMatrix evidence={geometryEvidence} />
+      <HairTraitInsightPanel consultationId={snapshot.sessionId} initialProfile={snapshot.hairProfile} initialQuestions={snapshot.diagnosticQuestions} mode="result" />
       <SurfaceCard className="p-5">
         <p className="app-kicker">Evidence ledger</p>
         <div className="mt-4 grid gap-3" aria-label="분석 근거 목록">

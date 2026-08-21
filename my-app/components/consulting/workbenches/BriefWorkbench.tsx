@@ -159,7 +159,11 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
           summary: brief.summary,
           cut: { instruction: brief.cut },
           volumeTexture: { instruction: brief.volumeTexture },
-          color: snapshot.strategy.color ? { instruction: snapshot.strategy.color } : null,
+          color: snapshot.colorDecision.state === "confirmed"
+            ? { instruction: `${snapshot.colorDecision.colorName} ${snapshot.colorDecision.swatchHex} · ${snapshot.colorDecision.technique} · 강도 ${snapshot.colorDecision.intensity}%`, provenance: snapshot.colorDecision.id }
+            : snapshot.colorDecision.state === "keep-current"
+              ? { instruction: "현재 모발 색상 유지", provenance: snapshot.colorDecision.id }
+              : snapshot.strategy.color ? { instruction: snapshot.strategy.color } : null,
           styling: [brief.styling],
           cautions: brief.caution,
         } }),

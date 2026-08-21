@@ -2,15 +2,21 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { isConsultationPhotoCrop, type PhotoFaceDetectionEvidence } from "@hairfit/shared";
-import { assertFaceGeometryEvidenceV2, type AnalysisEvidenceV2 } from "@hairfit/shared/v2";
+import { assertFaceGeometryEvidenceV2, type AnalysisEvidenceV2, type PersonalColorEvidenceV2 } from "@hairfit/shared/v2";
 import { runFaceAnalysisCapability } from "../capabilities/hair-blueprint-service";
+import { runHairTraitCapability } from "../capabilities/hair-trait-service";
 import { runPersonalColorCapability } from "../capabilities/personal-color-service";
 import { recordV2Event } from "../v2/observability";
 import { downloadGenerationOriginalImageDataUrl } from "../generation-image-storage";
+import { downloadOwnedPersonalColorCapture } from "../personal-color-capture";
+import { createOrReuseFaceObservationBundleV2 } from "../personal-color-observation";
+import { createOrReusePersonalColorProfileV2 } from "../personal-color-profile-v2";
+import type { PersonalColorCaptureModeV2 } from "@hairfit/shared/personal-color-v2";
 import type { FaceAnalysisSummary } from "../recommendation-types";
 import { getSupabaseAdminClient } from "../supabase";
 import { saveAnalysisEvidenceV2, savePersonalColorEvidenceV2 } from "../v2/analysis-server";
 import { HairfitV2Error } from "../v2/errors";
+import { isHairfitV2Enabled } from "../v2/feature-flags";
 import type {
   AnalysisEvidenceDraft,
   ConsultationAnalysisRun,
@@ -25,8 +31,10 @@ import { createConsultationSnapshot } from "./defaults";
 import { extractFaceLandmarkEvidence } from "./face-landmark-server";
 import { deriveKoreanFaceShapeBlend, type KoreanFaceShapeReference } from "./face-shape-blend";
 import { inspectConsultationPhotoPreflight } from "./photo-preflight-server";
-import { createPersonalColorEvidence, mapPersonalColorProfile } from "./personal-color-mapping";
+import { createPersonalColorEvidence, mapPersonalColorDiagnosis, mapPersonalColorProfile } from "./personal-color-mapping";
 import { readServerConsultation, updateServerConsultation } from "./server-store";
+import { persistHairTraitCapabilityResult } from "./hair-profile-server";
+import { isHairTraitAnalysisEnabled } from "./feature-flag";
 
 type DraftRow = {
   id: string;
@@ -147,6 +155,7 @@ export async function processConsultationPhotoAnalysis(input: {
       evidence: result.evidence,
       faceAnalysis: result.faceAnalysis,
       ...(result.personalColor ? { personalColor: result.personalColor } : {}),
+      personalColorDiagnosis: result.personalColorDiagnosis,
       strategyRecommendations: result.strategyRecommendations,
       strategy,
       completeStage: "photo",
@@ -342,7 +351,23 @@ export async function analyzeConsultationPhoto(input: {
   let colorSourceFingerprint = draft.checksum_sha256;
   let colorSourceDraftId = input.draftId;
   let colorPhotoQuality = preflight.quality;
-  if (shouldAnalyzePersonalColor && photoSnapshot.colorAssistDraftId) {
+  let colorCaptureMode: PersonalColorCaptureModeV2 = "legacy_unknown";
+  const captureAssetId = photoSnapshot.colorAssistCaptureAssetId ?? photoSnapshot.colorPrimaryCaptureAssetId ?? null;
+  if (shouldAnalyzePersonalColor && captureAssetId) {
+    const capture = await downloadOwnedPersonalColorCapture({
+      userId: input.userId,
+      consultationId: input.consultationId,
+      assetId: captureAssetId,
+    });
+    if (capture.asset.status === "quality_ready") {
+      colorCaptureMode = capture.asset.captureMode;
+      const capturePreflight = await inspectConsultationPhotoPreflight(capture.imageDataUrl, { status: "unsupported", count: null, box: null });
+      colorImageDataUrl = capture.imageDataUrl;
+      colorSourceFingerprint = capture.asset.checksumSha256;
+      colorSourceDraftId = capture.asset.id;
+      colorPhotoQuality = capturePreflight.quality;
+    }
+  } else if (shouldAnalyzePersonalColor && photoSnapshot.colorAssistDraftId) {
     const assistResult = await db
       .from("generation_upload_drafts")
       .select("id,user_id,state,original_image_path,checksum_sha256,expires_at")
@@ -362,7 +387,11 @@ export async function analyzeConsultationPhoto(input: {
       }
     }
   }
-  const [faceAnalysisRun, personalColorRun] = await Promise.all([
+  let colorLandmarkRun: Awaited<ReturnType<typeof extractFaceLandmarkEvidence>> = landmarkRun;
+  if (shouldAnalyzePersonalColor && colorSourceFingerprint !== draft.checksum_sha256) {
+    colorLandmarkRun = await extractFaceLandmarkEvidence(colorImageDataUrl, colorPhotoQuality);
+  }
+  const [faceAnalysisRun, personalColorRun, hairTraitRun] = await Promise.all([
     runFaceAnalysisCapability({
       userId: input.userId,
       consultationId: input.consultationId,
@@ -379,11 +408,27 @@ export async function analyzeConsultationPhoto(input: {
         sourceImageFingerprint: colorSourceFingerprint,
       })
       : Promise.resolve(null),
+    isHairTraitAnalysisEnabled() ? runHairTraitCapability({
+      userId: input.userId,
+      consultationId: input.consultationId,
+      idempotencyKey: `${input.consultationId}:${input.draftId}:hair-trait-analysis`,
+      referenceImageDataUrl: imageDataUrl,
+      sourceImageFingerprint: draft.checksum_sha256,
+    }).catch(() => null) : Promise.resolve(null),
   ]);
   if (faceAnalysisRun.state !== "completed" || !faceAnalysisRun.output) {
     throw new HairfitV2Error("FACE_ANALYSIS_PROVIDER_FAILED", 503, faceAnalysisRun.failure?.message || "얼굴 분석을 완료하지 못했습니다.");
   }
   const analysisRun = faceAnalysisRun.output;
+  if (hairTraitRun) {
+    await persistHairTraitCapabilityResult({
+      userId: input.userId,
+      consultationId: input.consultationId,
+      sourceAssetId: input.draftId,
+      sourceFingerprint: draft.checksum_sha256,
+      result: hairTraitRun,
+    }).catch(() => null);
+  }
   const now = new Date().toISOString();
   const evidence: AnalysisEvidenceV2 = {
     schemaVersion: "analysis-evidence-v1",
@@ -422,23 +467,99 @@ export async function analyzeConsultationPhoto(input: {
   };
   assertFaceGeometryEvidenceV2(evidence);
   const evidenceId = await saveAnalysisEvidenceV2(input.userId, evidence, input.expectedVersion);
+  const observation = isHairfitV2Enabled("PERSONAL_COLOR_V2_WRITE")
+    && shouldAnalyzePersonalColor
+    && colorLandmarkRun.faceCount === 1
+    && colorLandmarkRun.geometry
+    && colorLandmarkRun.normalizedPoints
+    ? await createOrReuseFaceObservationBundleV2({
+        userId: input.userId,
+        consultationId: input.consultationId,
+        sourceAnalysisEvidenceId: evidenceId,
+        sourceAssetId: colorSourceDraftId,
+        sourceCaptureAssetId: captureAssetId,
+        sourceFingerprint: colorSourceFingerprint,
+        imageDataUrl: colorImageDataUrl,
+        normalizedLandmarks: colorLandmarkRun.normalizedPoints,
+        geometry: colorLandmarkRun.geometry,
+        photoQuality: colorPhotoQuality,
+      })
+    : null;
   await recordV2Event({
     consultationId: input.consultationId,
     userId: input.userId,
     eventType: "analysis.evidence_ready",
-    payload: { engineVersion: evidence.model.version, provider: evidence.model.provider, model: evidence.model.name },
+    payload: {
+      engineVersion: evidence.model.version,
+      provider: evidence.model.provider,
+      model: evidence.model.name,
+      faceObservationBundleId: observation?.bundle?.id ?? null,
+      faceObservationReused: observation?.reused ?? false,
+    },
   });
   const personalColorResult = personalColorRun?.state === "completed" ? personalColorRun.output : null;
-  if (personalColorResult) {
-    await savePersonalColorEvidenceV2(input.userId, createPersonalColorEvidence({
+  const v2Profile = observation?.bundle
+    ? await createOrReusePersonalColorProfileV2({
+        userId: input.userId,
+        consultationId: input.consultationId,
+        observation: observation.bundle,
+        captureMode: colorCaptureMode,
+        legacySource: personalColorResult,
+        createdAt: now,
+      })
+    : null;
+  if (v2Profile) {
+    await recordV2Event({
+      consultationId: input.consultationId,
+      userId: input.userId,
+      eventType: "personal_color.profile_reconciled",
+      payload: {
+        profileId: v2Profile.profile.id,
+        profileVersion: v2Profile.profile.version,
+        legacyProjectionHash: v2Profile.comparison?.legacyProjectionHash ?? null,
+        v2ProjectionHash: v2Profile.profile.legacyProjectionHash,
+        matched: v2Profile.comparison?.matched ?? null,
+        reused: v2Profile.reused,
+      },
+    });
+  }
+  const effectivePersonalColorResult = isHairfitV2Enabled("PERSONAL_COLOR_V2_READ")
+    ? v2Profile?.projection ?? personalColorResult
+    : personalColorResult;
+  let personalColorEvidence: PersonalColorEvidenceV2 | null = null;
+  if (effectivePersonalColorResult) {
+    personalColorEvidence = createPersonalColorEvidence({
       id: randomUUID(),
       consultationId: input.consultationId,
       sourceAnalysisEvidenceId: evidenceId,
-      result: personalColorResult,
+      result: effectivePersonalColorResult,
       photoQuality: colorPhotoQuality,
       createdAt: now,
-    }));
+    });
+    await savePersonalColorEvidenceV2(input.userId, personalColorEvidence);
+    if (v2Profile) {
+      const linkedProfile = await db.from("personal_color_evidence_v2")
+        .update({ personal_color_profile_id: v2Profile.profile.id })
+        .eq("consultation_id", input.consultationId)
+        .eq("user_id", input.userId);
+      if (linkedProfile.error) throw new Error(linkedProfile.error.message);
+    }
   }
+  const personalColorDiagnosis = personalColorEvidence
+    ? mapPersonalColorDiagnosis(personalColorEvidence)
+    : shouldAnalyzePersonalColor
+      ? {
+          ...createConsultationSnapshot({ sessionId: input.consultationId, userId: input.userId, now }).personalColorDiagnosis,
+          state: "retry-required" as const,
+          startedAt: now,
+          errorCode: personalColorRun?.failure?.code || "PERSONAL_COLOR_PROVIDER_FAILED",
+          errorMessage: personalColorRun?.failure?.message || "퍼스널 컬러 진단을 완료하지 못했습니다.",
+        }
+      : {
+          ...createConsultationSnapshot({ sessionId: input.consultationId, userId: input.userId, now }).personalColorDiagnosis,
+          state: "deferred" as const,
+          completedAt: now,
+        };
   const consultationVersion = await linkPhotoDraftAndAdvanceAnalysis({
     userId: input.userId,
     consultationId: input.consultationId,
@@ -452,7 +573,8 @@ export async function analyzeConsultationPhoto(input: {
     evidenceId,
     evidence: evidenceDraft(analysisRun.analysis, analysisRun.model),
     faceAnalysis: faceAnalysis(analysisRun.analysis, analysisRun.model),
-    personalColor: personalColorResult ? mapPersonalColorProfile(personalColorResult) : null,
+    personalColor: effectivePersonalColorResult ? mapPersonalColorProfile(effectivePersonalColorResult) : null,
+    personalColorDiagnosis,
     strategyRecommendations: recommendations,
     quality: preflight.diagnostics,
     analyzedAt: now,

@@ -5,6 +5,10 @@ export const CONSULTATION_CAPABILITIES = [
   "salon-brief-generation",
   "aftercare-program-generation",
   "fashion-recommendation-generation",
+  "makeup-semantic-map",
+  "makeup-rationale-generation",
+  "hair-trait-analysis",
+  "makeup-simulation-generation",
 ] as const;
 
 export type ConsultationCapability = (typeof CONSULTATION_CAPABILITIES)[number];

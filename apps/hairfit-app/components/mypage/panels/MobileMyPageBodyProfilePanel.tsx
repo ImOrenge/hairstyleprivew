@@ -71,6 +71,9 @@ export function MobileMyPageBodyProfilePanel() {
             <Button onPress={() => router.push("/mypage?tab=personal-color")}>
               퍼스널컬러 탭 보기
             </Button>
+            <Button variant="secondary" onPress={() => router.push("/fashion-personalization")}>
+              패션 개인화 기준 설정
+            </Button>
           </Stack>
         </Card>
       </Stack>

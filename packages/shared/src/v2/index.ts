@@ -10,3 +10,7 @@ export * from "./preview-board/contract";
 export * from "./prompt/compiler";
 export * from "./prompt/contract";
 export * from "./selection/contract";
+export * from "../personal-color-v2";
+export * from "../makeup";
+export * from "../quality/personal-color-makeup-validation";
+export * from "./personal-color-makeup-openapi";

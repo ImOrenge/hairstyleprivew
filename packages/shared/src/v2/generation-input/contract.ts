@@ -4,9 +4,11 @@ export type ConsultationInputProvenanceSourceV2 =
   | "member-profile"
   | "discovery-interview"
   | "photo-analysis"
+  | "hair-trait-analysis"
   | "personal-color-analysis"
   | "strategy-confirmation"
   | "style-selection"
+  | "hair-color-selection"
   | "fashion-interview"
   | "body-profile"
   | "actual-service";
@@ -33,6 +35,16 @@ export interface ConsultationGenerationInputSnapshotV2 {
     texture: string;
     treatmentHistory: string[];
     damageLevel: string;
+    profile?: {
+      id: string;
+      revision: number;
+      sourceFingerprint: string;
+      observations: Array<{ traitId: string; value: string; confidence: number }>;
+      reported: Record<string, unknown>;
+      inferred: Array<{ traitId: string; value: string; confidence: number }>;
+      unknownFieldIds: string[];
+      unresolvedFieldIds: string[];
+    } | null;
   };
   goals: {
     purpose: string;
@@ -56,6 +68,12 @@ export interface ConsultationGenerationInputSnapshotV2 {
   };
   personalColor: {
     evidenceId: string | null;
+    profileV2?: {
+      id: string;
+      version: number;
+      axes: Record<string, { value: number; confidence: number }>;
+      harmonyPalette: { best: string[]; base: string[]; accent: string[]; challenge: string[]; metals: string[] };
+    };
     season: string;
     undertone: string;
     confidence: number | null;
@@ -79,6 +97,16 @@ export interface ConsultationGenerationInputSnapshotV2 {
       color: string;
     };
     selectedAt: string;
+  } | null;
+  hairColorDecision?: {
+    colorSelectionSnapshotId: string;
+    state: string;
+    colorName: string;
+    swatchHex: string;
+    technique: string;
+    targetLevel: number | null;
+    finalImagePath: string | null;
+    confirmedAt: string;
   } | null;
   fashion: {
     direction: {
@@ -137,5 +165,7 @@ export function validateConsultationGenerationInputV2(snapshot: ConsultationGene
   for (const [index, item] of snapshot.provenance.entries()) {
     if (!item.source || !item.sourceId || !Number.isFinite(Date.parse(item.capturedAt)) || !item.fieldPaths.length) errors.push(`provenance[${index}]`);
   }
+  if (snapshot.personalColor?.profileV2 && (!snapshot.personalColor.profileV2.id || snapshot.personalColor.profileV2.version < 1)) errors.push("personalColor.profileV2");
+  if (snapshot.currentHair.profile && (!snapshot.currentHair.profile.id || snapshot.currentHair.profile.revision < 1 || !snapshot.currentHair.profile.sourceFingerprint)) errors.push("currentHair.profile");
   return errors;
 }

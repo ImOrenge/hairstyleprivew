@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { FashionCategory, FashionDirectionSnapshot } from "@hairfit/shared";
+import type { FashionCategory, FashionDirectionSnapshot, FashionLookRoleV2, FashionRequestedCountV2 } from "@hairfit/shared";
 import { runFashionRecommendationCapability } from "../capabilities/fashion-service";
 import { ensureFashionCatalogAvailable, selectFashionCatalogItem } from "../fashion-catalog";
 import { isFashionGenre } from "../fashion-recommendation-generator";
@@ -16,17 +16,22 @@ export const CONSULTATION_FASHION_SLOTS: ReadonlyArray<{
   id: string;
   category: FashionCategory;
   genre: FashionGenre;
+  role: FashionLookRoleV2;
 }> = [
-  { id: "daily-casual", category: "DAILY", genre: "casual" },
-  { id: "daily-minimal", category: "DAILY", genre: "minimal" },
-  { id: "daily-athleisure", category: "DAILY", genre: "athleisure" },
-  { id: "work-office", category: "WORK", genre: "office" },
-  { id: "work-classic", category: "WORK", genre: "classic" },
-  { id: "work-smart", category: "WORK", genre: "minimal" },
-  { id: "statement-street", category: "STATEMENT", genre: "street" },
-  { id: "statement-formal", category: "STATEMENT", genre: "formal" },
-  { id: "statement-date", category: "STATEMENT", genre: "date" },
+  { id: "daily-casual", category: "DAILY", genre: "casual", role: "hero" },
+  { id: "daily-minimal", category: "DAILY", genre: "minimal", role: "practical" },
+  { id: "daily-athleisure", category: "DAILY", genre: "athleisure", role: "variation" },
+  { id: "work-office", category: "WORK", genre: "office", role: "extension-hero" },
+  { id: "work-classic", category: "WORK", genre: "classic", role: "extension-practical" },
+  { id: "work-smart", category: "WORK", genre: "minimal", role: "extension-variation" },
+  { id: "statement-street", category: "STATEMENT", genre: "street", role: "extension-hero" },
+  { id: "statement-formal", category: "STATEMENT", genre: "formal", role: "extension-practical" },
+  { id: "statement-date", category: "STATEMENT", genre: "date", role: "extension-variation" },
 ] as const;
+
+export function fashionSlotsForRequestedCount(requestedCount: FashionRequestedCountV2) {
+  return CONSULTATION_FASHION_SLOTS.slice(0, requestedCount);
+}
 
 export function normalizeFashionBatchDirection(raw: unknown): FashionDirectionSnapshot {
   const value = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
@@ -90,6 +95,7 @@ function enrichRecommendation(
     shoppingKeywords: recommendation.items.map((item) => `${item.color} ${item.name}`).slice(0, 8),
     stylingNotes: [
       ...recommendation.stylingNotes,
+      `생성 역할 ${slot.role}`,
       `상황 ${direction.situation}, 계절 ${direction.season}, 핏 ${direction.fit}, 노출 ${direction.exposure}`,
       direction.budget ? `예산 범위 ${direction.budget}` : "",
       direction.avoidItems.length ? `회피 아이템 ${direction.avoidItems.join(", ")}` : "",
@@ -97,12 +103,13 @@ function enrichRecommendation(
   };
 }
 
-async function findExistingSession(userId: string, selectionSnapshotId: string, slotId: string) {
+async function findExistingSession(userId: string, selectionSnapshotId: string, slotId: string, generationInputFingerprint: string) {
   const result = await getSupabaseAdminClient().from("styling_sessions")
     .select("id,status,recommendation")
     .eq("user_id", userId)
     .eq("selection_snapshot_id", selectionSnapshotId)
     .eq("fashion_slot_id", slotId)
+    .eq("generation_input_fingerprint", generationInputFingerprint)
     .eq("source_mode", "v2_selection")
     .in("status", ["recommended", "failed", "generating", "completed"])
     .order("created_at", { ascending: false })
@@ -116,6 +123,8 @@ export async function prepareFashionRecommendationSessions(input: {
   userId: string;
   consultationId: string;
   direction: FashionDirectionSnapshot;
+  requestedCount?: FashionRequestedCountV2;
+  adaptive?: boolean;
 }) {
   const db = getSupabaseAdminClient();
   const profileClient = db as unknown as ServerSupabaseLike;
@@ -133,11 +142,13 @@ export async function prepareFashionRecommendationSessions(input: {
     throw new HairfitV2Error("FASHION_BODY_PROFILE_REQUIRED", 409, "전신 사진과 바디 프로필을 먼저 등록해 주세요.");
   }
 
-  const sessions = await Promise.all(CONSULTATION_FASHION_SLOTS.map(async (slot) => {
-    const existing = await findExistingSession(input.userId, source.selectionSnapshotId, slot.id);
+  const requestedCount = input.requestedCount ?? 9;
+  const requestedSlots = fashionSlotsForRequestedCount(requestedCount);
+  const sessions = await Promise.all(requestedSlots.map(async (slot) => {
+    const existing = await findExistingSession(input.userId, source.selectionSnapshotId, slot.id, generationInput.inputFingerprint);
     if (typeof existing?.id === "string") return existing.id;
 
-    const direction = slotDirection(input.direction, slot);
+    const direction = input.adaptive ? input.direction : slotDirection(input.direction, slot);
     const catalogItem = selectFashionCatalogItem({
       rows: catalog.rows,
       genre: slot.genre,
@@ -148,7 +159,7 @@ export async function prepareFashionRecommendationSessions(input: {
     const capability = await runFashionRecommendationCapability({
       userId: input.userId,
       consultationId: input.consultationId,
-      idempotencyKey: `${input.consultationId}:fashion-recommendation:${source.selectionSnapshotId}:${slot.id}`,
+      idempotencyKey: `${input.consultationId}:fashion-recommendation:${source.selectionSnapshotId}:${generationInput.inputFingerprint}:${slot.id}`,
       recommendationInput: {
         profile,
         hairVariant: source.selectedVariant,
@@ -157,6 +168,10 @@ export async function prepareFashionRecommendationSessions(input: {
         catalogItem,
         styleTarget: generationInput.styleTarget,
         generationInputFingerprint: generationInput.inputFingerprint,
+        personalColorV2: generationInput.personalColor?.profileV2 ? {
+          profileId: generationInput.personalColor.profileV2.id,
+          ...generationInput.personalColor.profileV2.harmonyPalette,
+        } : null,
       },
     });
     if (capability.state !== "completed" || !capability.output) {
@@ -180,19 +195,27 @@ export async function prepareFashionRecommendationSessions(input: {
       source_mode: "v2_selection",
       fashion_slot_id: slot.id,
       fashion_direction: direction,
+      generation_input_fingerprint: generationInput.inputFingerprint,
+      personal_color_profile_id: generationInput.personalColor?.profileV2?.id ?? null,
     }).select("id").single();
     if (!inserted.error && typeof (inserted.data as { id?: unknown } | null)?.id === "string") {
       return (inserted.data as { id: string }).id;
     }
     if (inserted.error?.code === "23505") {
-      const replay = await findExistingSession(input.userId, source.selectionSnapshotId, slot.id);
+      const replay = await findExistingSession(input.userId, source.selectionSnapshotId, slot.id, generationInput.inputFingerprint);
       if (typeof replay?.id === "string") return replay.id;
     }
     throw new Error(inserted.error?.message || "패션 추천 세션을 저장하지 못했습니다.");
   }));
 
-  if (new Set(sessions).size !== CONSULTATION_FASHION_SLOTS.length) {
-    throw new HairfitV2Error("FASHION_BATCH_SESSIONS_INVALID", 409, "서로 다른 9개 패션 추천 슬롯이 필요합니다.");
+  if (new Set(sessions).size !== requestedSlots.length) {
+    throw new HairfitV2Error("FASHION_BATCH_SESSIONS_INVALID", 409, `서로 다른 ${requestedCount}개 패션 추천 슬롯이 필요합니다.`);
   }
-  return sessions;
+  return {
+    stylingSessionIds: sessions,
+    generationInputFingerprint: generationInput.inputFingerprint,
+    colorSelectionSnapshotId: generationInput.hairColorDecision?.colorSelectionSnapshotId ?? null,
+    personalColorProfileId: generationInput.personalColor?.profileV2?.id ?? null,
+    requestedCount,
+  };
 }

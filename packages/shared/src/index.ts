@@ -325,7 +325,18 @@ export type ServiceType = "perm" | "color" | "cut" | "bleach" | "treatment" | "o
 export type AftercareSectionKey = "dry" | "treatment" | "iron" | "styling";
 export type PersonalColorTone = "warm" | "cool" | "neutral";
 export type PersonalColorContrast = "low" | "medium" | "high";
-export type PersonalColorDetailVersion = "color-detail-v1";
+export type PersonalColorDetailVersion = "color-detail-v1" | "color-detail-v2";
+export type PersonalColorType =
+  | "spring_light" | "spring_warm" | "spring_bright"
+  | "summer_light" | "summer_cool" | "summer_muted"
+  | "autumn_muted" | "autumn_warm" | "autumn_deep"
+  | "winter_bright" | "winter_cool" | "winter_deep";
+export interface PersonalColorAxes {
+  temperature: number;
+  value: number;
+  chroma: number;
+  contrast: number;
+}
 
 export interface PersonalColorCombination {
   title: string;
@@ -349,6 +360,10 @@ export interface PersonalColorResult {
   detailVersion?: PersonalColorDetailVersion;
   tone: PersonalColorTone;
   contrast: PersonalColorContrast;
+  primaryType?: PersonalColorType;
+  secondaryType?: PersonalColorType | null;
+  blend?: Partial<Record<PersonalColorType, number>>;
+  axes?: PersonalColorAxes;
   confidence: number;
   bestColors: PersonalColorSwatch[];
   avoidColors: PersonalColorSwatch[];
@@ -731,9 +746,20 @@ export const initialMobileRoutePorts: MobileRoutePort[] = [
 export * from "./account-deletion";
 export * from "./consulting/contract";
 export * from "./consulting/capability";
+export * from "./consulting/fashion-generation";
+export * from "./consulting/fashion-personalization";
+export * from "./consulting/fashion-product-truth";
+export * from "./consulting/hair-recommendation";
 export * from "./consulting/interview";
 export * from "./consulting/journey";
 export * from "./consulting/presentation";
+export * from "./consulting/hair-profile";
+export * from "./consulting/report";
+export * from "./consulting/report-v2";
+export * from "./consulting/report-observability";
+export * from "./consulting/start-context";
 export * from "./consulting/photo-preflight";
 export * from "./consulting/photo-crop";
+export * from "./quality/personal-color-makeup-validation";
+export * from "./v2/personal-color-makeup-openapi";
 export * from "./v2/index";

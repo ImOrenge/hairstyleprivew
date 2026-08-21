@@ -1,0 +1,90 @@
+id: web.personal-color.result-details
+name: PersonalColorResultDetails
+platform: web
+kind: data-display
+status: candidate
+source: my-app/components/personal-color/PersonalColorResultDetails.tsx
+owner: personal-color-feature
+
+public_api:
+  exports:
+    - PersonalColorResultDetails
+    - hasDetailedPersonalColorResult
+  props:
+    - result: PersonalColorResult
+    - showOverview: boolean optional default true
+    - showHairColorHints: boolean optional default true
+  events: []
+
+dependencies:
+  internal:
+    - my-app/lib/fashion-types.ts#PersonalColorResult
+  external:
+    - react
+  consumers:
+    - personal-color-diagnosis
+    - mypage-personal-color
+    - consulting-personal-color
+
+styling:
+  strategy: tailwind-plus-application-tokens
+  global_css_changes: false
+  tokens:
+    - app-text
+    - app-muted
+    - app-border
+    - app-surface
+    - app-surface-muted
+    - app-radius-control
+  inline_styles:
+    allowed:
+      - user-result-swatch-background-color
+    forbidden:
+      - structural-layout-values
+
+state:
+  owned: []
+  derived:
+    - detailed-result-availability
+  external_store: false
+side_effects: []
+
+a11y_contract:
+  color_information:
+    color_only: false
+    text_labels:
+      - korean-name
+      - english-name
+      - hex
+  headings:
+    preserve-logical-section-order: true
+  empty_state:
+    legacy-result-falls-back-to-simple-labelled-swatches: true
+
+test_surface:
+  source_contract:
+    present: my-app/lib/consulting/color-studio-contract.test.ts
+  mapping_contract:
+    present: my-app/lib/consulting/personal-color-mapping.test.ts
+  typecheck: required
+  observed_usage:
+    production_consumer_files: 3
+    representative_consumers:
+      - my-app/components/personal-color/PersonalColorDiagnosisPageClient.tsx
+      - my-app/components/mypage/panels/MyPagePersonalColorPanel.tsx
+      - my-app/components/consulting/workbenches/PersonalColorWorkbench.tsx
+
+change_policy:
+  current_gate: compatible
+  compatible_change_requires:
+    - passport-update
+    - consumer-usage-search
+    - mapping-contract-test
+    - web-typecheck
+  breaking_change_requires:
+    - all-consumer-update
+    - migration-note
+
+promotion_blockers:
+  - no-authenticated-consulting-visual-evidence
+  - legacy-evidence-fallback-needs-browser-verification

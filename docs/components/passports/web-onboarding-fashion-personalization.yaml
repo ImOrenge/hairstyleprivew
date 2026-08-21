@@ -1,0 +1,70 @@
+id: web.onboarding.fashion-personalization
+name: FashionPersonalizationForm
+platform: web
+kind: form
+status: experimental
+source: my-app/components/onboarding/FashionPersonalizationForm.tsx
+related_source:
+  - my-app/app/onboarding/fashion-personalization/page.tsx
+  - my-app/lib/consulting/fashion-personalization-server.ts
+owner: onboarding-feature
+
+public_api:
+  props:
+    - returnTo
+  events:
+    - revision-save
+    - policy-confirm
+    - learning-reset
+    - return-to-consultation
+
+boundaries:
+  owns:
+    - persistent-fashion-size-fit-budget-preference-input
+    - avoid-material-accessibility-confirmation
+    - explicit-learning-consent-and-reset
+    - coverage-presentation
+  forbidden:
+    - image-derived-size-gender-weight-or-accessibility
+    - consultation-only-occasion-storage
+    - implicit-behavior-learning
+    - arbitrary-external-return-url
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+  inline_styles_allowed: false
+
+state:
+  server_owned:
+    - revision
+    - confirmed-revision
+    - coverage
+    - learning-reset-at
+  local:
+    - unsaved-form-values
+    - request-status
+    - user-facing-message
+
+a11y_contract:
+  controls: native-input-checkbox-and-button-semantics
+  coverage: text-and-symbol-not-color-only
+  status: polite-live-region
+  responsive: one-column-at-390-and-two-column-desktop-without-horizontal-overflow
+
+test_surface:
+  contract: my-app/lib/consulting/fashion-personalization-contract.test.ts
+  typecheck: npm --prefix my-app run typecheck
+  visual: 390-768-desktop-overflow
+
+change_policy:
+  current_gate: behavioral-compatible
+  compatible_change_requires:
+    - passport-update
+    - web-typecheck
+    - component-registry-validation
+  behavioral_change_requires:
+    - revision-conflict-and-returnTo-regression
+
+promotion_blockers:
+  - authenticated-Clerk-browser-flow-not-run

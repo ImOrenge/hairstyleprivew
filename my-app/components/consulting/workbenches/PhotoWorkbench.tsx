@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createConsultationPhotoCrop, createPendingPhotoDiagnostics, moveConsultationPhotoCrop } from "@hairfit/shared";
 import type { PhotoCropTransform, PhotoFaceDetectionEvidence } from "@hairfit/shared";
+import type { PersonalColorAssetCaptureModeV2, PersonalColorCaptureQualityV2 } from "@hairfit/shared/personal-color-v2";
 import type {
   AnalysisEvidenceDraft,
   ConsultationPatch,
@@ -16,6 +17,7 @@ import type {
   StrategySnapshot,
 } from "../../../lib/consulting/contracts";
 import { convertImageFileToWebp, cropImageFileToWebp } from "../../../lib/webp-client";
+import { uploadPersonalColorCapture } from "../../../lib/personal-color-capture-client";
 import { useUpload } from "../../../hooks/useUpload";
 import { Button } from "../../ui/Button";
 import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
@@ -63,6 +65,8 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [assistPreviewUrl, setAssistPreviewUrl] = useState<string | null>(null);
   const [faceEvidence, setFaceEvidence] = useState<PhotoFaceDetectionEvidence | null>(null);
+  const [captureMode, setCaptureMode] = useState<PersonalColorAssetCaptureModeV2>("quick");
+  const [colorQuality, setColorQuality] = useState<PersonalColorCaptureQualityV2 | null>(null);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { status, message, details, validateImage, resetValidation } = useUpload();
@@ -77,6 +81,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
     setError(null);
     setFile(null);
     setFaceEvidence(null);
+    setColorQuality(null);
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(null);
     setPhoto((current) => ({
@@ -86,6 +91,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
       clientRequestId: null,
       uploadedAt: null,
       expiresAt: null,
+      colorPrimaryCaptureAssetId: null,
       quality: createPendingPhotoDiagnostics("사진 사전검사 중"),
     }));
     try {
@@ -134,15 +140,16 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
     setWorking(true);
     setError(null);
     try {
-      const converted = await convertImageFileToWebp(selected);
       if (assistPreviewUrl) URL.revokeObjectURL(assistPreviewUrl);
-      setAssistFile(converted);
-      setAssistPreviewUrl(URL.createObjectURL(converted));
+      setAssistFile(selected);
+      setAssistPreviewUrl(URL.createObjectURL(selected));
+      setColorQuality(null);
       setPhoto((current) => ({
         ...current,
         colorAssistDraftId: null,
         colorAssistUploadedAt: null,
         colorAssistExpiresAt: null,
+        colorAssistCaptureAssetId: null,
       }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "자연광 보조 사진을 준비하지 못했습니다.");
@@ -196,10 +203,23 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
     try {
       if (!sourcePhoto.crop && sourceFile) throw new Error("분석에 사용할 사진 프레이밍을 확인해 주세요.");
       const preparedFile = sourceFile && sourcePhoto.crop ? await cropImageFileToWebp(sourceFile, sourcePhoto.crop) : sourceFile;
-      const [receipt, assistReceipt] = await Promise.all([
-        uploadDraft(preparedFile, sourcePhoto, "primary"),
-        sourceAssistFile || sourcePhoto.colorAssistDraftId ? uploadDraft(sourceAssistFile, sourcePhoto, "assist") : Promise.resolve(null),
-      ]);
+      const receipt = await uploadDraft(preparedFile, sourcePhoto, "primary");
+      const colorFile = sourceAssistFile ?? preparedFile;
+      if (sourcePhoto.usageScopes.includes("personalColor") && !colorFile) throw new Error("컬러 진단 사진을 먼저 선택해 주세요.");
+      const colorCapture = sourcePhoto.usageScopes.includes("personalColor") && colorFile
+        ? await uploadPersonalColorCapture({
+          consultationId: snapshot.sessionId,
+          file: colorFile,
+          role: sourceAssistFile ? "color_secondary" : "color_primary",
+          captureMode,
+          face: sourceAssistFile ? null : sourceFaceEvidence,
+          clientTransform: sourceAssistFile ? "none" : "crop",
+        })
+        : null;
+      if (colorCapture?.asset.quality) setColorQuality(colorCapture.asset.quality);
+      if (colorCapture?.asset.quality?.blockers.length) {
+        throw new Error(colorCapture.asset.quality.blockers.map((item) => item.message).join(" "));
+      }
       const uploadedPhoto: PhotoSnapshot = {
         ...sourcePhoto,
         generationId: null,
@@ -207,9 +227,11 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
         clientRequestId: receipt.clientRequestId,
         uploadedAt: receipt.uploadedAt,
         expiresAt: receipt.expiresAt,
-        colorAssistDraftId: assistReceipt?.draftId ?? null,
-        colorAssistUploadedAt: assistReceipt?.uploadedAt ?? null,
-        colorAssistExpiresAt: assistReceipt?.expiresAt ?? null,
+        colorAssistDraftId: sourcePhoto.colorAssistDraftId ?? null,
+        colorAssistUploadedAt: sourcePhoto.colorAssistUploadedAt ?? null,
+        colorAssistExpiresAt: sourcePhoto.colorAssistExpiresAt ?? null,
+        colorPrimaryCaptureAssetId: colorCapture?.asset.role === "color_primary" ? colorCapture.asset.id : sourcePhoto.colorPrimaryCaptureAssetId ?? null,
+        colorAssistCaptureAssetId: colorCapture?.asset.role === "color_secondary" ? colorCapture.asset.id : sourcePhoto.colorAssistCaptureAssetId ?? null,
       };
       setPhoto(uploadedPhoto);
       const response = await fetch(`/api/consultations/${encodeURIComponent(snapshot.sessionId)}/photo-analysis`, {
@@ -265,6 +287,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
     setFile(null);
     setAssistFile(null);
     setFaceEvidence(null);
+    setColorQuality(null);
     setPhoto({
       ...snapshot.photo,
       draftId: null,
@@ -274,6 +297,8 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
       colorAssistDraftId: null,
       colorAssistUploadedAt: null,
       colorAssistExpiresAt: null,
+      colorPrimaryCaptureAssetId: null,
+      colorAssistCaptureAssetId: null,
       crop: null,
       quality: createPendingPhotoDiagnostics(),
     });
@@ -298,6 +323,9 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
         <p className="mt-1 text-sm text-[var(--app-muted)]">사용 범위와 사진 프레이밍을 확인하면 시스템 사전검사, private Storage 업로드와 AI 상담 분석이 자동으로 이어집니다. 구 마법사로 이동하지 않습니다.</p>
       </div>
       <fieldset><legend className="text-sm font-black">사진 사용 범위</legend><div className="mt-2 flex flex-wrap gap-2">{[["analysis","얼굴 분석"],["preview","헤어 프리뷰"],["personalColor","컬러 진단"]].map(([scope,label]) => <button type="button" key={scope} onClick={() => setPhoto({ ...photo, usageScopes: photo.usageScopes.includes(scope) ? photo.usageScopes.filter((item) => item !== scope) : [...photo.usageScopes, scope] })} aria-pressed={photo.usageScopes.includes(scope)} className={`min-h-11 border px-4 text-sm font-black ${photo.usageScopes.includes(scope) ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{label}</button>)}</div></fieldset>
+      {photo.usageScopes.includes("personalColor") ? <fieldset className="border-l-2 border-[var(--app-accent)] pl-4"><legend className="text-sm font-black">컬러 촬영 모드</legend><div className="mt-2 flex flex-wrap gap-2">{([[
+        "quick", "Quick · 한 장으로 빠르게",
+      ], ["precision", "Precision · 원본과 보조 사진 우선"]] as const).map(([mode, label]) => <button type="button" key={mode} onClick={() => setCaptureMode(mode)} aria-pressed={captureMode === mode} className={`min-h-11 border px-4 text-sm font-black ${captureMode === mode ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{label}</button>)}</div><p className="mt-2 text-xs text-[var(--app-muted)]">Precision에서는 자연광 보조 사진을 색상 재인코딩 없이 private asset으로 보존합니다.</p></fieldset> : null}
       <div className="grid gap-3">
         <div><p className="text-sm font-black">자연광 컬러 보조 사진 <span className="font-normal text-[var(--app-muted)]">선택</span></p><p className="mt-1 text-xs text-[var(--app-muted)]">필터 없는 자연광 얼굴 사진이 있으면 퍼스널 컬러 진단에만 사용합니다. 얼굴·헤어 분석과 프리뷰 원본은 아래 정면 사진입니다.</p></div>
         <label className="grid cursor-pointer gap-2 border border-dashed border-[var(--app-border-strong)] bg-[var(--app-surface)] p-4 text-center">
@@ -326,6 +354,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
       <div className="flex flex-wrap gap-2">{error ? <SaveStageButton loading={working || saving} disabled={!file && !photo.draftId} onClick={() => void analyze()}>자동 분석 재시도</SaveStageButton> : null}<Button type="button" variant="ghost" disabled={working || saving} onClick={reset}>다시 선택</Button></div>
     </Panel>
   } output={<>
+    {colorQuality ? <SurfaceCard className="p-5"><p className="app-kicker">Personal color quality gate</p><h2 className="mt-3 text-xl font-black">컬러 축별 사용 가능 범위</h2><div className="mt-4 grid gap-2 sm:grid-cols-2">{Object.entries(colorQuality.usableAxes).map(([axis, usable]) => <div key={axis} className={`border p-3 ${usable ? "border-[var(--app-success)] bg-[var(--app-success-bg)]" : "border-[var(--app-warning)] bg-[var(--app-warning-bg)]"}`}><p className="text-sm font-black">{axis}</p><p className="mt-1 text-xs text-[var(--app-muted)]">{usable ? "현재 사진으로 분석 가능" : "낮은 신뢰도 · 정밀 촬영 권장"}</p></div>)}</div>{colorQuality.blockers.length ? <div className="mt-4" role="alert"><p className="text-sm font-black text-[var(--app-danger)]">다시 촬영이 필요한 항목</p><ul className="mt-2 grid gap-2 text-sm">{colorQuality.blockers.map((item) => <li key={item.code}>{item.message}</li>)}</ul></div> : null}{colorQuality.warnings.length ? <div className="mt-4"><p className="text-sm font-black">주의 항목</p><ul className="mt-2 grid gap-2 text-sm text-[var(--app-muted)]">{colorQuality.warnings.map((item) => <li key={item.code}>{item.message}</li>)}</ul></div> : null}</SurfaceCard> : null}
     <SurfaceCard className="p-5"><p className="app-kicker">System photo preflight</p><h2 className="mt-3 text-xl font-black">AI 분석 전 사진 적합성 검사</h2><div className="mt-5 grid gap-2 sm:grid-cols-2">{photo.quality.map((item) => <div key={item.id} className={`grid min-h-20 gap-1 border p-3 text-left ${item.status === "pass" ? "border-[var(--app-success)] bg-[var(--app-success-bg)]" : item.status === "warning" ? "border-[var(--app-warning)] bg-[var(--app-warning-bg)]" : "border-[var(--app-border)] bg-[var(--app-surface)]"}`}><span className="text-sm font-black">{item.label}</span><span className="text-xs text-[var(--app-muted)]">{item.message}</span></div>)}</div><div className="mt-5"><DefinitionRows items={[
       { label: "File", value: file?.name || (photo.draftId ? "서버 임시 사진 준비됨" : "선택 전") },
       { label: "Resolution", value: details.width && details.height ? `${details.width}×${details.height}px` : "검사 대기" },

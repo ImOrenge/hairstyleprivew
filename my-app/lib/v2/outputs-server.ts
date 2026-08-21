@@ -371,6 +371,10 @@ export async function createSalonBriefV2(input: {
         `현재 모발: ${generationInput.currentHair.description}`,
         `기장 ${generationInput.currentHair.length} · 모량 ${generationInput.currentHair.density} · 굵기 ${generationInput.currentHair.strandThickness} · 질감 ${generationInput.currentHair.texture}`,
         `손상 ${generationInput.currentHair.damageLevel} · 이력 ${generationInput.currentHair.treatmentHistory.join(", ") || "미확인"}`,
+        ...(generationInput.currentHair.profile ? [
+          `AI 관찰 ${generationInput.currentHair.profile.observations.map((item) => `${item.traitId} ${item.value}(${Math.round(item.confidence * 100)}%)`).join(" · ") || "없음"}`,
+          `사진 미확인 ${generationInput.currentHair.profile.unknownFieldIds.join(", ") || "없음"}`,
+        ] : []),
       ],
       decisionRationale: generationInput.hairDecision ? [
         `${generationInput.hairDecision.label}: ${generationInput.hairDecision.reason}`,
@@ -379,6 +383,7 @@ export async function createSalonBriefV2(input: {
       evidence: [
         `얼굴형 근거: ${generationInput.analysis.faceShape}`,
         generationInput.analysis.summary,
+        ...(generationInput.currentHair.profile ? [`모질 프로필 revision ${generationInput.currentHair.profile.revision} · ${generationInput.currentHair.profile.sourceFingerprint.slice(0, 12)}`] : []),
       ],
       personalColor: generationInput.personalColor ? [
         `${generationInput.personalColor.season} · ${generationInput.personalColor.undertone}`,
@@ -701,8 +706,8 @@ export async function createFashionPreviewSetV2(input: {
 }) {
   validateIdempotencyKey(input.idempotencyKey);
   const stylingSessionIds = [...new Set(input.stylingSessionIds.map((item) => item.trim()).filter(Boolean))];
-  if (stylingSessionIds.length < 2 || stylingSessionIds.length > 3) {
-    throw new HairfitV2Error("FASHION_SHORTLIST_SIZE_INVALID", 400, "완료된 패션 프리뷰를 2~3개 선택해 주세요.");
+  if (stylingSessionIds.length < 1 || stylingSessionIds.length > 3) {
+    throw new HairfitV2Error("FASHION_SHORTLIST_SIZE_INVALID", 400, "완료된 패션 프리뷰를 1~3개 선택해 주세요.");
   }
   if (!stylingSessionIds.includes(input.selectedStylingSessionId)) {
     throw new HairfitV2Error("FASHION_SELECTION_INVALID", 400, "최종 룩은 shortlist 안에서 선택해 주세요.");
@@ -722,7 +727,7 @@ export async function createFashionPreviewSetV2(input: {
   ]);
   const sessions = await db
     .from("styling_sessions")
-    .select("id,selection_snapshot_id,status,generated_image_path,genre,recommendation,fashion_slot_id,fashion_direction")
+    .select("id,selection_snapshot_id,status,generated_image_path,genre,recommendation,fashion_slot_id,fashion_direction,generation_input_fingerprint,personal_color_profile_id")
     .in("id", stylingSessionIds)
     .eq("user_id", input.userId)
     .eq("consultation_id", input.consultationId)
@@ -739,10 +744,14 @@ export async function createFashionPreviewSetV2(input: {
     recommendation: Record<string, unknown>;
     fashion_slot_id: string | null;
     fashion_direction: Record<string, unknown>;
+    generation_input_fingerprint: string;
+    personal_color_profile_id: string | null;
   }>;
   if (
     completedSessions.length !== stylingSessionIds.length
     || completedSessions.some((session) => !session.generated_image_path)
+    || completedSessions.some((session) => session.generation_input_fingerprint !== generationInput.inputFingerprint)
+    || completedSessions.some((session) => session.personal_color_profile_id !== (generationInput.personalColor?.profileV2?.id ?? null))
   ) {
     throw new HairfitV2Error(
       "FASHION_PREVIEW_NOT_COMPLETED",
@@ -774,6 +783,8 @@ export async function createFashionPreviewSetV2(input: {
     consultationId: input.consultationId,
     selectionSnapshotId: selection.id,
     personalColorEvidenceId: input.personalColorEvidenceId ?? null,
+    personalColorProfileId: generationInput.personalColor?.profileV2?.id ?? null,
+    colorSelectionSnapshotId: generationInput.hairColorDecision?.colorSelectionSnapshotId ?? null,
     selectedHairSnapshotId: selection.id,
     stylingSessionIds,
     selectedStylingSessionId: input.selectedStylingSessionId,
@@ -798,6 +809,9 @@ export async function createFashionPreviewSetV2(input: {
     consultation_id: input.consultationId,
     selection_snapshot_id: selection.id,
     personal_color_evidence_id: input.personalColorEvidenceId ?? null,
+    personal_color_profile_id: generationInput.personalColor?.profileV2?.id ?? null,
+    color_selection_snapshot_id: generationInput.hairColorDecision?.colorSelectionSnapshotId ?? null,
+    generation_input_fingerprint: generationInput.inputFingerprint,
     user_id: input.userId,
     idempotency_key: input.idempotencyKey,
     version,
@@ -811,6 +825,7 @@ export async function createFashionPreviewSetV2(input: {
 export async function getFashionPreviewStateV2(userId: string, consultationId: string) {
   const db = getSupabaseAdminClient();
   const selection = await confirmedSelection(userId, consultationId);
+  const generationInput = await loadConsultationGenerationInputSnapshotV2(userId, consultationId);
   const [sessions, latestSet] = await Promise.all([
     db
       .from("styling_sessions")
@@ -819,6 +834,7 @@ export async function getFashionPreviewStateV2(userId: string, consultationId: s
       .eq("consultation_id", consultationId)
       .eq("selection_snapshot_id", selection.id)
       .eq("source_mode", "v2_selection")
+      .eq("generation_input_fingerprint", generationInput.inputFingerprint)
       .order("created_at", { ascending: false }),
     db
       .from("fashion_preview_sets_v2")
@@ -826,6 +842,7 @@ export async function getFashionPreviewStateV2(userId: string, consultationId: s
       .eq("user_id", userId)
       .eq("consultation_id", consultationId)
       .eq("selection_snapshot_id", selection.id)
+      .eq("generation_input_fingerprint", generationInput.inputFingerprint)
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle(),

@@ -1,36 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { getSupabaseAdminClient } from "../supabase";
+import { sanitizeV2EventPayload } from "./observability-payload";
 
-const ALLOWED_PAYLOAD_KEYS = new Set([
-  "attempt", "boardId", "capability", "catalogCycleId", "completedUnits", "conflictCount",
-  "coverageCount", "durationMs", "engineVersion", "errorCode", "fallbackMode", "generationId",
-  "interviewKind", "latencyMs", "legacyAllowed", "matched", "model", "offeringVersion",
-  "promptPolicyVersion", "provider", "providerCostMinor", "readyCount", "reason", "receiptState",
-  "rejectionCode", "rejectionCodes", "revision", "skipCount", "slotCount", "snapshotId",
-  "snapshotVersion", "source", "sourceRevision", "state", "taskId", "topicId", "totalUnits",
-  "units", "v2Allowed", "v2Reason", "variantId",
-]);
-const SAFE_STRING = /^[a-zA-Z0-9_.:@/+\-]{1,160}$/;
-
-export function sanitizeV2EventPayload(payload: Record<string, unknown>) {
-  const safe: Record<string, string | number | boolean | null | string[]> = {};
-  for (const [key, value] of Object.entries(payload)) {
-    if (!ALLOWED_PAYLOAD_KEYS.has(key)) continue;
-    if (value === null || typeof value === "boolean" || (typeof value === "number" && Number.isFinite(value))) {
-      safe[key] = value;
-      continue;
-    }
-    if (typeof value === "string" && SAFE_STRING.test(value)) {
-      safe[key] = value;
-      continue;
-    }
-    if (Array.isArray(value) && value.length <= 20 && value.every((item) => typeof item === "string" && SAFE_STRING.test(item))) {
-      safe[key] = value;
-    }
-  }
-  return safe;
-}
+export { sanitizeV2EventPayload } from "./observability-payload";
 
 export async function recordV2Event(input: { correlationId?: string; consultationId?: string | null; userId?: string | null; eventType: string; payload?: Record<string, unknown> }) {
   const correlationId = input.correlationId ?? randomUUID();
@@ -46,7 +19,7 @@ export async function recordConsultationInterviewEvent(input: {
   consultationId: string;
   userId: string;
   event: ConsultationInterviewEventName;
-  interviewKind: "discovery" | "fashion-direction";
+  interviewKind: "discovery" | "fashion-direction" | "makeup-direction";
   topicId?: string;
   revision?: number;
   errorCode?: string;
@@ -60,6 +33,33 @@ export async function recordConsultationInterviewEvent(input: {
       topicId: input.topicId,
       revision: input.revision,
       errorCode: input.errorCode,
+    },
+  });
+}
+
+export async function recordConsultationReportProjectionEvent(input: {
+  consultationId: string;
+  userId: string;
+  surface: "web" | "native" | "pdf";
+  reportRevision: number;
+  reportFingerprint: string;
+  hairGeneratedCount: number;
+  fashionGeneratedCount: number;
+  fashionRequestedCount: 0 | 3 | 6 | 9;
+  mismatch: boolean;
+}) {
+  return recordV2Event({
+    consultationId: input.consultationId,
+    userId: input.userId,
+    eventType: "consultation.report_projection",
+    payload: {
+      surface: input.surface,
+      reportRevision: input.reportRevision,
+      reportFingerprint: input.reportFingerprint,
+      hairGeneratedCount: input.hairGeneratedCount,
+      fashionGeneratedCount: input.fashionGeneratedCount,
+      fashionRequestedCount: input.fashionRequestedCount,
+      mismatch: input.mismatch,
     },
   });
 }

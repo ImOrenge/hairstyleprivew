@@ -6,9 +6,9 @@ declare
   table_name text;
   function_signature text;
   index_name text;
-  expected_versions constant text[] := array['20260809111554','20260811052530','20260811154500'];
+  expected_versions constant text[] := array['20260809111554','20260811052530','20260811154500','20260814125326','20260815021548','20260815023212','20260815024219','20260815031542','20260815040117','20260815044500'];
 begin
-  if (select count(*) from supabase_migrations.schema_migrations) <> 85 then
+  if (select count(*) from supabase_migrations.schema_migrations) <> 95 then
     raise exception 'unexpected remote migration count';
   end if;
   if exists (
@@ -28,7 +28,25 @@ begin
     'consultation_capability_tasks_v2',
     'consultation_capability_attempts_v2',
     'consultation_capability_results_v2',
-    'consultation_interview_drafts_v2'
+    'consultation_interview_drafts_v2',
+    'personal_color_capture_assets',
+    'personal_color_capture_cleanup_outbox',
+    'personal_color_capture_deletion_receipts',
+    'face_observation_bundles',
+    'face_observation_region_samples',
+    'face_observation_jobs',
+    'face_observation_outbox',
+    'face_observation_corrections',
+    'personal_color_profiles_v2',
+    'personal_color_projection_reconciliations',
+    'personal_color_drape_sessions',
+    'personal_color_drape_responses',
+    'makeup_direction_snapshots',
+    'makeup_direction_patches',
+    'makeup_routines',
+    'makeup_artist_briefs',
+    'makeup_brief_shares',
+    'personal_color_training_consent_events'
   ] loop
     if to_regclass(format('public.%I', table_name)) is null then
       raise exception 'required table is missing: %', table_name;
@@ -52,8 +70,8 @@ begin
     end if;
     if not has_table_privilege('service_role', format('public.%I', table_name), 'SELECT')
        or not has_table_privilege('service_role', format('public.%I', table_name), 'INSERT')
-       or not has_table_privilege('service_role', format('public.%I', table_name), 'UPDATE')
-       or not has_table_privilege('service_role', format('public.%I', table_name), 'DELETE') then
+       or (table_name <> 'personal_color_training_consent_events' and not has_table_privilege('service_role', format('public.%I', table_name), 'UPDATE'))
+       or (table_name <> 'personal_color_training_consent_events' and not has_table_privilege('service_role', format('public.%I', table_name), 'DELETE')) then
       raise exception 'service role table privilege is incomplete: %', table_name;
     end if;
   end loop;

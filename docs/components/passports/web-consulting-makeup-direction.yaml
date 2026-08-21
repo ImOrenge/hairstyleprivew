@@ -1,0 +1,213 @@
+id: web.consulting.makeup-direction
+name: MakeupDirectionStage
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/consulting/makeup/MakeupDirectionStage.tsx
+related_source:
+  - my-app/components/consulting/makeup/MakeupContextForm.tsx
+  - my-app/components/consulting/makeup/MakeupDirectionInterview.tsx
+  - my-app/components/consulting/makeup/MakeupRecommendationReview.tsx
+  - my-app/components/consulting/makeup/MakeupDirectionCanvas.tsx
+  - my-app/components/consulting/makeup/MakeupDirectionPaths.tsx
+  - my-app/components/consulting/makeup/MakeupColorCallouts.tsx
+  - my-app/components/consulting/makeup/MakeupDirectionMatrix.tsx
+  - my-app/components/consulting/makeup/MakeupZoneDetail.tsx
+  - my-app/components/consulting/makeup/MakeupAdjustmentControls.tsx
+  - my-app/components/consulting/makeup/MakeupDirectionFixture.tsx
+  - my-app/components/consulting/makeup/MakeupInterviewFixture.tsx
+  - my-app/components/consulting/makeup/MakeupOutputs.tsx
+  - my-app/components/consulting/makeup/MakeupSimulationWorkspace.tsx
+  - my-app/lib/makeup/makeup-simulation-server.ts
+  - my-app/lib/capabilities/makeup-simulation-service.ts
+  - my-app/lib/makeup/makeup-semantic-provider.ts
+  - my-app/lib/capabilities/makeup-semantic-map-service.ts
+  - my-app/lib/capabilities/makeup-rationale-service.ts
+owner: consulting-feature
+
+public_api:
+  exports:
+    - MakeupDirectionStage
+    - MakeupContextForm
+    - MakeupDirectionInterview
+    - MakeupRecommendationReview
+    - MakeupDirectionCanvas
+    - MakeupDirectionMatrix
+    - MakeupZoneDetail
+    - MakeupAdjustmentControls
+    - MakeupOutputs
+  props:
+    - consultation-server-snapshot
+    - optional-confirmation-refresh
+    - one-shared-seven-module-direction-snapshot
+    - optional-server-authored-dense-topology-v2-projection
+    - optional-server-authored-dense-atlas-v3
+    - optional-durable-semantic-projection-v3
+  events:
+    - interview-topic-autosave
+    - interview-confirm
+    - recommendation-adjustment-decision
+    - nonblocking-rationale-dispatch-and-retry
+    - context-save-and-build
+    - module-select
+    - color-callout-hover-focus-select
+    - module-patch
+    - snapshot-confirm
+    - automatic-semantic-dispatch-and-reconcile
+    - terminal-semantic-retry
+    - automatic-simulation-queue
+    - simulation-retry
+    - immutable-simulation-confirmation
+
+boundaries:
+  feature:
+    owns:
+      - context-input
+      - standalone-seven-topic-makeup-interview
+      - deterministic-five-axis-recommendation-rationale
+      - explicit-user-owned-adjustment-decision
+      - rationale-revision-propagation
+      - source-aligned-svg-overlay
+      - source-aligned-complexion-highlight-and-shadow-guides
+      - nine-unique-left-right-color-callouts-with-separated-eyeshadow-eyeliner-and-lashes
+      - diagnostic-only-color-information-panel
+      - source-aligned-callout-connectors
+      - persistent-all-zone-overview-with-active-emphasis
+      - dense-ordered-face-landmark-paths
+      - line-only-landmark-ticks-without-point-circles
+      - open-landmark-derived-module-and-complexion-lines
+      - repeated-short-brush-direction-strokes
+      - explicit-degraded-sparse-fallback
+      - forty-six-open-line-dense-atlas-v3
+      - customer-facing-fixed-application-infographic-mode
+      - fourteen-line-primary-structure-hierarchy
+      - all-nine-source-aligned-leader-line-presentation
+      - all-nine-callout-connector-infographic-presentation
+      - localized-eyeliner-and-lash-line-guides-without-full-face-landmarks
+      - full-bleed-four-by-five-source-photo-stage-with-overlay-rails
+      - precision-atlas-v3-derived-callout-connector-anchors
+      - application-mode-without-on-face-landmark-or-semantic-lines
+      - outer-face-active-color-information-card-with-readable-technical-fields
+      - exact-polyline-atlas-rendering-with-duplicate-segment-suppression
+      - precision-diagnostic-only-semantic-line-presentation
+      - strict-vision-semantic-anchor-refinement
+      - source-fingerprint-read-time-composition
+      - protected-region-zone-fallback
+      - customer-callout-only-presentation-without-technical-detail-panel
+      - interaction-gated-color-info-card-with-desktop-overlay-and-mobile-below-canvas-presentation
+      - diagnostic-and-handoff-only-semantic-direction-matrix
+      - bounded-anchor-adjustment
+      - bounded-vector-adjustment
+      - seven-zone-technical-direction
+      - facial-hair-exclusion-presentation
+      - self-makeup-routine
+      - artist-brief-and-share-permission
+      - product-search-guide
+      - direction-confirmed-makeup-style-simulation
+      - waiting-message-carousel-and-server-resume
+      - before-after-review
+      - result-report-simulation-image-projection
+  forbidden:
+    - face-pixel-filter
+    - face-morphing
+    - skin-smoothing
+    - gender-based-module-gating
+    - synthetic-filled-face-zone-shapes
+    - circle-ellipse-polygon-landmark-primitives
+    - filled-arrow-markers
+    - unversioned-client-geometry-outside-bounded-legacy-display-fallback
+    - confirmed-snapshot-mutation
+    - provider-authored-svg-or-raster-overlay
+    - semantic-result-writeback-to-editable-snapshot
+    - ui-interaction-triggered-provider-call
+
+styling:
+  strategy: existing-app-tokens-utility-classes-and-feature-global-css
+  global_css: my-app/app/globals.css
+  namespace: makeup-direction-map-makeup-topology-makeup-zone-layer-and-makeup-color-chip
+  dynamic_inline_styles:
+    - server-derived-color-chip-value
+    - fixed-callout-rail-position
+  responsive_contract:
+    desktop_tablet: overlay-callout-rails-and-outer-face-information-card
+    mobile: full-width-four-by-five-canvas-and-information-card-below-canvas
+    intrinsic_width: zero-minimum-grid-track-and-contained-full-width-map
+  tokens:
+    - app-bg
+    - app-surface
+    - app-surface-strong
+    - app-border
+    - app-border-strong
+    - app-text
+    - app-muted
+
+state:
+  server_owned:
+    - context
+    - interview-profile-and-coverage
+    - structured-rationale-and-decision
+    - durable-rationale-narrative-result
+    - modules
+    - geometry
+    - topology-projection
+    - revision
+    - confirmation
+    - source-fingerprint
+    - dense-atlas-v3
+    - durable-semantic-capability-result
+    - durable-simulation-run-output-and-immutable-selection
+  component_owned:
+    - active-module
+    - active-interview-topic
+    - interview-summary-and-exit-dialog
+    - selected-color-callout
+    - hovered-color-callout
+    - focused-color-callout
+    - overview-detail-mode
+    - request-feedback
+    - diagnostic-atlas-display-mode-in-test-fixture-only
+
+a11y_contract:
+  canvas: decorative-geometry-backed-by-callout-button-accessible-names
+  toolbar: native-buttons-with-aria-pressed
+  color_callouts: native-buttons-with-hover-focus-touch-parity-and-visible-text
+  adjustments: native-range-and-buttons-with-text-labels
+  color: family-name-and-text-always-present
+  reduced_motion: no-required-animation
+  target_size: controls-minimum-44px
+
+test_surface:
+  contract: my-app/lib/personal-color-makeup-phase-05.test.ts
+  interview_rationale_contract: packages/shared/src/makeup/contract.test.ts
+  zone_contract: my-app/lib/personal-color-makeup-phase-06.test.ts
+  artifacts_contract: my-app/lib/personal-color-makeup-phase-07.test.ts
+  shared: packages/shared/src/makeup/contract.test.ts
+  interaction_visual: tests/web-e2e/makeup-direction.spec.ts
+  responsive_accessibility: tests/web-e2e/personal-color-makeup-quality.spec.ts
+  visual_review: docs/hairfit-v2/evidence/p39-makeup-reference-visual-review-2026-08-16.md
+  semantic_contract: my-app/lib/makeup/makeup-semantic-contract.test.ts
+  fixture_manifest: packages/shared/src/makeup/fixtures-v3.ts
+  migration: supabase/migrations/20260815031542_makeup_direction_foundation.sql
+  interview_migration: supabase/migrations/20260816112511_extend_makeup_interview_rationale.sql
+  simulation_contract: packages/shared/src/makeup/simulation.test.ts
+  simulation_migration: supabase/migrations/20260820144500_makeup_style_simulation.sql
+
+change_policy:
+  compatible_change_requires:
+    - passport-update
+    - phase-05-and-phase-06-contract-tests
+    - color-callout-uniqueness-test
+    - web-typecheck
+  behavioral_change_requires:
+    - source-alignment-review
+    - keyboard-and-matrix-parity-review
+    - application-guide-line-budget-review
+    - nine-callout-connector-and-non-overlap-review
+    - precision-atlas-geometry-source-review
+  style_contract_change_requires:
+    - desktop-visual-screenshot-review
+    - mobile-and-tablet-overflow-review
+
+promotion_blockers:
+  - remote-migration-not-applied
+  - live-authenticated-owner-flow-not-verified

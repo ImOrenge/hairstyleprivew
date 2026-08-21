@@ -13,8 +13,13 @@ related_source:
   - my-app/components/consulting/photo/ConsultationPhotoEvidence.tsx
   - my-app/components/consulting/photo/FaceEvidenceOverlay.tsx
   - my-app/components/consulting/transition/ConsultationTransitionScreen.tsx
+  - my-app/components/consulting/interview/ConsultantIntentInterview.tsx
+  - my-app/components/consulting/analysis/HairTraitInsightPanel.tsx
+  - my-app/components/consulting/hair/HairRecommendationWorkbench.tsx
   - my-app/components/consulting/workbenches/BriefWorkbench.tsx
+  - my-app/components/consulting/workbenches/PersonalColorWorkbench.tsx
   - my-app/components/consulting/workbenches/AftercareWorkbench.tsx
+  - my-app/components/consulting/workbenches/FashionBatchWorkbench.tsx
 owner: consulting-feature
 
 public_api:
@@ -25,6 +30,7 @@ public_api:
     - stage
     - notice
     - onRefresh
+    - surface
   events:
     - open-stage-map
     - open-recommended-task
@@ -40,14 +46,25 @@ boundaries:
       - floating-navigation
       - stage-map-overlay
       - persisted-analysis-evidence-overlay
+      - persisted-face-observation-sample-and-exclusion-overlay
+      - versioned-personal-color-axes-posterior-and-technical-details
+      - same-photo-pairwise-drape-validation-with-separated-preference
       - semantic-user-input-and-ai-output-panes
       - desktop-independent-pane-scrolling
       - stage-specific-ai-and-system-data-rail
       - compact-desktop-scene-identity
       - lifecycle-capability-navigation
+      - four-customer-chapter-projection-over-fifteen-internal-stages
+      - adaptive-hair-trait-observation-and-two-question-clarification
+      - chapter-local-input-waiting-result-revision-attention-surface
+      - result-read-only-input-snapshot-reference
       - durable-analysis-task-status
       - fashion-batch-status
       - fashion-slot-runtime-progress-and-stalled-retry-recovery
+      - adaptive-fashion-three-six-nine-generation
+      - all-requested-fashion-generated-outputs-visible-including-nonterminal-states
+      - ai-recommended-fashion-primary-with-customer-override
+      - ai-led-hair-primary-with-all-nine-generated-results-visible
       - common-versioned-generation-input-provenance
       - automatic-salon-brief-hydration
       - legacy-blueprint-backed-structured-salon-brief
@@ -55,7 +72,6 @@ boundaries:
       - actual-service-triggered-aftercare-generation
       - rich-aftercare-ai-output
       - designer-feedback-separate-brief-revision
-      - fashion-shortlist-comparison-matrix
       - hairstyle-blueprint-user-profile-handoff
       - face-aware-four-by-five-photo-crop
       - optional-private-natural-light-color-assist
@@ -87,6 +103,10 @@ state:
     - consultation-snapshot
     - analysis-evidence-v2
     - analysis-evidence-correction-revision
+    - face-observation-bundle-v2
+    - face-observation-region-lab-statistics
+    - personal-color-profile-v2-history-and-active-projection
+    - append-only-drape-response-revisions-and-source-profile-invalidation
     - append-only-manual-coordinate-corrections
     - version
     - lifecycle-state
@@ -96,8 +116,13 @@ state:
     - active-tasks
     - blocking-actions
     - fashion-slot-progress
+    - fashion-requested-count-expansion-revision-and-recommended-preview
     - generation-input-fingerprint-and-provenance
     - salon-brief-recommendation-sources
+    - hair-profile-revision-and-source-fingerprint
+    - makeup-simulation-run-and-selection
+    - hair-recommendation-decision-revision-and-primary
+    - consultation-start-context-and-effective-intent-provenance
   client_owned:
     - stage-map-open
     - form-drafts
@@ -105,7 +130,9 @@ state:
     - visible-evidence-layers
     - selected-landmark-id
     - independent-pane-scroll-position
+    - fashion-customer-override-before-confirmation
     - consultation-exit-dialog-open
+    - active-chapter-surface-rendering-only
 
 a11y_contract:
   stage_map: dialog-with-escape-and-focus-return
@@ -125,17 +152,23 @@ test_surface:
   visual: required
   hairstyle_blueprint: discovery-hair-inputs-normalized-before-generation-acceptance
   evidence_overlay: persisted-normalized-coordinates-only
+  color_observation_overlay: server-bundle-normalized-coordinates-only-and-source-asset-matched
+  personal_color_profile: unavailable-axis-disclosure-posterior-text-equivalent-and-separate-capture-profile-confidence
+  drape: explicit-left-right-no-difference-unsure-controls-original-toggle-and-color-independent-labels
   evidence_correction: server-revision-locked-user-adjustment-with-model-original-preserved
   evidence_linkage: photo-overlay-ledger-direction-matrix-share-active-evidence-id
-  split_canvas: all-11-scenes-desktop-independent-scroll-and-mobile-stacking
-  split_canvas_scroll: all-11-scenes-serious-critical-axe-zero
+  makeup_direction: seven-module-source-aligned-svg-map-semantic-matrix-gender-invariant-and-confirmed-snapshot-immutable
+  makeup_harness_navigation: fixture-remains-inside-consultation-scene-with-stage-map-and-recommended-fashion-handoff
+  split_canvas: all-15-scenes-desktop-independent-scroll-and-mobile-stacking
+  split_canvas_scroll: all-15-scenes-serious-critical-axe-zero
   input_control_separator: shared-choice-and-text-controls-use-visible-tokenized-boundaries
   salon_brief: entry-auto-generation-without-user-save-click
   salon_brief_detail: legacy-blueprint-fields-common-input-provenance-section-source-map-and-explicit-unresolved-values
   aftercare: actual-service-first-then-generated-care-editing
   brief_feedback: separate-revision-without-selected-style-mutation
-  fashion_compare: two-to-three-shortlist-common-axis-matrix
-  fashion_batch_recovery: two-results-remain-partial-reentry-restores-results-live-jobs-are-not-duplicated-and-nine-terminal-slots-complete
+  fashion_visibility: every-requested-slot-remains-visible-at-three-six-and-nine-with-complete-running-stalled-and-failed-copy
+  fashion_batch_recovery: two-of-three-five-of-six-and-eight-of-nine-remain-partial-reentry-restores-results-and-live-jobs-are-not-duplicated
+  hair_recommendation: all-nine-visible-primary-requires-nine-no-shortlist-and-adjustment-creates-new-board-revision
   photo_crop: shared-four-by-five-transform-unit-and-browser-interaction
   photo_color_assist: separate-private-draft-used-only-for-personal-color-when-valid
   analysis_matrix: persisted-measurements-only-without-client-inference-or-centimeter-claims
@@ -148,7 +181,9 @@ change_policy:
     - consulting-contract-test
     - web-typecheck
   behavioral_change_requires:
-    - 11-stage-browser-regression
+    - 15-stage-browser-regression
+    - phase-43-45-contract-test
+    - p54-zero-input-intake-contract-test
 
 promotion_blockers:
   - remote-lifecycle-migration-not-applied

@@ -2,7 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { dispatchFashionBatch, prepareFashionBatch, readFashionBatch, reconcileFashionBatch } from "../../../../../../lib/consulting/fashion-batch-server";
 import { normalizeFashionBatchDirection, prepareFashionRecommendationSessions } from "../../../../../../lib/consulting/fashion-recommendation-batch-server";
-import { isFashionBatchEnabled } from "../../../../../../lib/consulting/feature-flag";
+import { isFashionAdaptiveBatchEnabled, isFashionBatchEnabled } from "../../../../../../lib/consulting/feature-flag";
 import { v2Disabled, v2Failure } from "../../../../../../lib/v2/http";
 
 interface Params { params: Promise<{ consultationId: string }> }
@@ -18,7 +18,7 @@ export async function GET(_request: Request, { params }: Params) {
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   const gate = disabled(); if (gate) return gate;
   const { consultationId } = await params;
-  try { return NextResponse.json(await readFashionBatch(userId, consultationId)); }
+  try { return NextResponse.json({ ...(await readFashionBatch(userId, consultationId)), adaptiveEnabled: isFashionAdaptiveBatchEnabled() }); }
   catch (error) { return v2Failure(error); }
 }
 
@@ -34,10 +34,16 @@ export async function POST(request: Request, { params }: Params) {
   }
   try {
     const direction = normalizeFashionBatchDirection(body.direction);
-    const stylingSessionIds = await prepareFashionRecommendationSessions({ userId, consultationId, direction });
+    const adaptive = isFashionAdaptiveBatchEnabled();
+    const requestedCount = adaptive ? 3 : 9;
+    const prepared = await prepareFashionRecommendationSessions({ userId, consultationId, direction, requestedCount, adaptive });
     return NextResponse.json(await prepareFashionBatch({
       userId, consultationId, idempotencyKey,
-      stylingSessionIds,
+      stylingSessionIds: prepared.stylingSessionIds,
+      generationInputFingerprint: prepared.generationInputFingerprint,
+      colorSelectionSnapshotId: prepared.colorSelectionSnapshotId,
+      personalColorProfileId: prepared.personalColorProfileId,
+      requestedCount,
       direction,
       localBaseUrl: new URL(request.url).origin,
     }), { status: 201 });

@@ -6,6 +6,8 @@ status: candidate
 source: my-app/components/consulting/interview/ConsultationInterview.tsx
 related_source:
   - my-app/components/consulting/interview/DiscoveryInterview.tsx
+  - my-app/components/consulting/interview/ConsultantIntentInterview.tsx
+  - my-app/components/consulting/interview/ZeroInputConsultationStart.tsx
   - my-app/components/consulting/interview/FashionDirectionInterview.tsx
   - my-app/lib/consulting/interview-observability-client.ts
 owner: consulting-feature
@@ -23,6 +25,7 @@ public_api:
     - externally-owned-save-state
     - externally-owned-summary-state
     - optional-topic-navigation
+    - navigation-derived-guided-or-standalone-layout
     - exit-request
   events:
     - answer-change
@@ -35,11 +38,19 @@ boundaries:
   feature:
     owns:
       - standalone-interview-layout
+      - compact-zero-input-start-layout
+      - compact-opening-intent-disclosure
+      - guided-layout-only-when-topic-navigation-exists
       - bounded-discovery-scroll-region
+      - zero-required-answer-photo-first-consultant-intake
+      - optional-single-opening-intent
+      - three-decision-progressive-consultant-intake-flag-off-fallback
       - bounded-fashion-scroll-region
       - discovery-topic-navigation-with-completion-state
       - fashion-topic-navigation-with-completion-state
       - fashion-interview-before-generation-gate
+      - fashion-consultation-context-only-four-topic-interview
+      - persistent-policy-onboarding-return-and-resume
       - question-focus
       - radio-checkbox-text-range-compound-rendering
       - coverage-presentation
@@ -51,8 +62,11 @@ boundaries:
     - arbitrary-observability-payload
     - lifecycle-navigation
     - current-step-state
+    - required-current-hair-text-before-photo-analysis
+    - required-pre-photo-preference-answer
     - question-index-locking
     - paid-generation-confirmation
+    - repeated-size-fit-avoid-accessibility-questioning-in-fashion-consultation
 
 styling:
   strategy: scoped-global-feature-css-with-existing-app-tokens
@@ -60,6 +74,10 @@ styling:
     file: my-app/app/globals.css
     namespaces:
       - f-consulting-interview
+      - f-consulting-opening-intent
+    variants:
+      - data-layout-guided
+      - data-layout-standalone
   tokens:
     - app-bg
     - app-surface
@@ -89,6 +107,7 @@ a11y_contract:
   summary: focus-trapped-dialog-with-return-focus
   discovery_scroll: keyboard-focusable-contained-region-on-desktop
   fashion_scroll: keyboard-focusable-contained-region-on-desktop
+  standalone_start: natural-height-single-column-at-all-breakpoints
   topic_navigation: aria-current-topic-and-screen-reader-completion-state
   save_failure: polite-or-alert-status
   reduced_motion: no-question-transition-animation
@@ -96,7 +115,7 @@ a11y_contract:
 
 test_surface:
   contract: my-app/lib/consulting/consultation-contract.test.ts
-  component: my-app/components/consulting/interview/ConsultationInterview.test.tsx
+  zero_input_contract: my-app/lib/consulting/p54-zero-input-intake-contract.test.ts
   browser: tests/web-e2e/consulting-interview.spec.ts
   visual: 390px-768px-desktop-light-dark-reduced-motion
 
@@ -111,6 +130,7 @@ change_policy:
     - keyboard-focus-summary-exit-regression
     - discovery-wheel-and-keyboard-scroll-regression
     - fashion-generation-boundary-regression
+    - fashion-onboarding-returnTo-and-context-snapshot-regression
 
 promotion_blockers:
   - authenticated-interview-browser-regression-not-yet-run

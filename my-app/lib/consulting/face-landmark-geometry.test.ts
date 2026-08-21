@@ -25,12 +25,22 @@ test("MediaPipe keypoints become versioned normalized contour, hairline, landmar
   assert.equal(geometry.hairline?.lines[0].source, "inferred");
   assert.ok((geometry.hairline?.lines[0].points[2].y ?? 1) < keypointFixture()[10].y);
   assert.deepEqual(geometry.skinSampleRegions.map((item) => item.id), [
+    "observation_forehead",
+    "observation_left_cheek_upper",
+    "observation_left_cheek_lower",
+    "observation_right_cheek_upper",
+    "observation_right_cheek_lower",
+    "observation_jaw",
     "skin_forehead",
     "skin_left_cheek",
     "skin_right_cheek",
     "skin_chin",
   ]);
   assert.deepEqual(geometry.excludedRegions.map((item) => item.id), [
+    "excluded_left_brow",
+    "excluded_right_brow",
+    "excluded_nostrils",
+    "excluded_facial_hair",
     "excluded_left_eye",
     "excluded_right_eye",
     "excluded_lips",

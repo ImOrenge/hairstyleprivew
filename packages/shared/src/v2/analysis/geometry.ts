@@ -176,12 +176,22 @@ export function buildFaceGeometryV2(
   // or explicitly exclude. The source remains auditable and the browser does
   // not reconstruct polygons from raw keypoints.
   const skinSampleRegions: EvidencePolygonV2[] = [
+    polygon("observation_forehead", "Forehead observation", [109,10,338,151], keypoints, confidence),
+    polygon("observation_left_cheek_upper", "Left upper cheek observation", [50,117,123,101], keypoints, confidence),
+    polygon("observation_left_cheek_lower", "Left lower cheek observation", [118,119,100,205], keypoints, confidence),
+    polygon("observation_right_cheek_upper", "Right upper cheek observation", [280,346,352,330], keypoints, confidence),
+    polygon("observation_right_cheek_lower", "Right lower cheek observation", [347,348,329,425], keypoints, confidence),
+    polygon("observation_jaw", "Jaw observation", [172,136,152,365,397], keypoints, confidence),
     polygon("skin_forehead", "이마 샘플", [109,10,338,151], keypoints, confidence),
     polygon("skin_left_cheek", "왼쪽 볼 샘플", [50,117,123,101], keypoints, confidence),
     polygon("skin_right_cheek", "오른쪽 볼 샘플", [280,346,352,330], keypoints, confidence),
     polygon("skin_chin", "턱 샘플", [175,152,400,377], keypoints, confidence),
   ];
   const excludedRegions: EvidencePolygonV2[] = [
+    polygon("excluded_left_brow", "Left brow exclusion", [70,63,105,66,107,55], keypoints, confidence),
+    polygon("excluded_right_brow", "Right brow exclusion", [336,296,334,293,300,285], keypoints, confidence),
+    polygon("excluded_nostrils", "Nostril exclusion", [98,97,2,326,327,168], keypoints, confidence),
+    polygon("excluded_facial_hair", "Facial-hair-prone area", [205,203,98,97,2,326,327,423,425,436,400,152,176,216], keypoints, confidence * 0.72),
     polygon("excluded_left_eye", "왼쪽 눈 제외", [33,160,158,133,153,144], keypoints, confidence),
     polygon("excluded_right_eye", "오른쪽 눈 제외", [362,385,387,263,373,380], keypoints, confidence),
     polygon("excluded_lips", "입술 제외", [61,37,0,267,291,314,17,84], keypoints, confidence),

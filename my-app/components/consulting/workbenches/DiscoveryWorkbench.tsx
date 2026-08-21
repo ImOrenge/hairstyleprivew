@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { ConsultationInputProfile, ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
+import { ConsultantIntentInterview } from "../interview/ConsultantIntentInterview";
+import { ZeroInputConsultationStart } from "../interview/ZeroInputConsultationStart";
 import { DiscoveryInterview } from "../interview/DiscoveryInterview";
 import { ChoiceGroup, ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
 
@@ -14,9 +16,11 @@ function selectedLabel<T extends string>(value: T, labels: Record<T, string>) {
   return [labels[value]];
 }
 
-type DiscoveryWorkbenchProps = { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">, options?: { navigate?: boolean }) => Promise<unknown>; saving: boolean; interviewEnabled?: boolean };
+type DiscoveryWorkbenchProps = { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">, options?: { navigate?: boolean }) => Promise<unknown>; saving: boolean; interviewEnabled?: boolean; progressiveInterviewEnabled?: boolean; zeroInputIntakeEnabled?: boolean };
 
 export function DiscoveryWorkbench(props: DiscoveryWorkbenchProps) {
+  if (props.zeroInputIntakeEnabled) return <ZeroInputConsultationStart {...props} />;
+  if (props.progressiveInterviewEnabled) return <ConsultantIntentInterview {...props} />;
   return props.interviewEnabled ? <DiscoveryInterview {...props} /> : <DiscoveryFormWorkbench {...props} />;
 }
 

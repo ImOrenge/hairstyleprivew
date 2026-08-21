@@ -1,0 +1,111 @@
+id: web.consulting.photo-workbench
+name: PhotoWorkbench
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/consulting/workbenches/PhotoWorkbench.tsx
+owner: consulting-feature
+
+public_api:
+  exports:
+    - PhotoWorkbench
+  props:
+    - snapshot: ConsultationSnapshot
+    - mutate: ConsultationPatch mutation
+    - saving: boolean
+  events:
+    - photo-selection
+    - crop-confirmation
+    - signed-color-capture-upload
+    - automatic-analysis-handoff
+
+dependencies:
+  internal:
+    - my-app/lib/personal-color-capture-client.ts
+    - my-app/lib/consulting/photo-preflight-server.ts
+    - my-app/components/consulting/workbenches/shared.tsx
+  external:
+    - react
+    - next/navigation
+    - '@hairfit/shared'
+  consumers:
+    - consultation-stage-page
+    - consulting-e2e-harness
+
+styling:
+  strategy: tailwind-plus-application-tokens
+  global_css_changes: false
+  tokens:
+    - app-text
+    - app-muted
+    - app-border
+    - app-border-strong
+    - app-surface
+    - app-warning
+    - app-success
+    - app-danger
+  inline_styles:
+    allowed:
+      - crop-preview-transform
+    forbidden:
+      - hard-coded-color-theme
+
+state:
+  owned:
+    - selected-primary-file
+    - selected-color-assist-file
+    - crop-position
+    - quick-or-precision-mode
+    - color-quality-projection
+    - transient-error
+  derived:
+    - selected-usage-scopes
+    - color-capture-role
+    - five-axis-usability
+  external_store: false
+
+side_effects:
+  - uploads-generation-draft-for-existing-hair-pipeline
+  - uploads-personal-color-file-through-signed-private-storage-token
+  - finalizes-checksum-and-metadata
+  - automatically-hands-off-to-analysis
+
+a11y_contract:
+  controls:
+    native-buttons: true
+    pressed-state: required
+    minimum-target: 44px
+  quality:
+    color-only: false
+    blocker-role-alert: true
+    text-status: required
+  failure:
+    selected-file-preserved: true
+    crop-preserved: true
+  motion:
+    no-new-motion: true
+
+test_surface:
+  phase_contract:
+    present: my-app/lib/personal-color-v2-phase-01.test.ts
+  shared_contract:
+    present: packages/shared/src/personal-color-v2/capture.test.ts
+  e2e_harness:
+    route: /consulting/e2e-harness?stage=photo
+    evidence: docs/hairfit-v2/evidence/p29-phase-01-photo-capture-modes.png
+  typecheck: required
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - phase-contract-test
+    - web-typecheck
+    - browser-verification
+  breaking_change_requires:
+    - capture-route-contract-update
+    - migration-note
+
+promotion_blockers:
+  - authenticated-live-storage-upload-not-verified
+  - remote-migration-not-applied

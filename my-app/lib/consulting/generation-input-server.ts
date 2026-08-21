@@ -21,9 +21,12 @@ type GenerationInputSources = {
   memberProfile: Record<string, unknown> | null;
   analysisEvidence: Record<string, unknown> | null;
   personalColorEvidence: Record<string, unknown> | null;
+  personalColorProfileV2?: Record<string, unknown> | null;
+  hairProfile?: Record<string, unknown> | null;
   selection: { id: string; snapshot: StyleSelectionSnapshotV2; confirmed_at: string | null } | null;
   bodyProfile: Record<string, unknown> | null;
   actualServiceRow: Record<string, unknown> | null;
+  colorSelection: Record<string, unknown> | null;
 };
 
 function record(value: unknown): Record<string, unknown> {
@@ -77,6 +80,10 @@ export function compileConsultationGenerationInputSnapshotV2(sources: Generation
   const analysis = sources.analysisEvidence ?? {};
   const faceShape = record(analysis.face_shape);
   const colorResult = record(sources.personalColorEvidence?.result);
+  const personalColorProfile = record(sources.personalColorProfileV2?.profile);
+  const hairProfile = sources.hairProfile;
+  const hairObservations = Array.isArray(hairProfile?.observed) ? hairProfile.observed.map(record) : [];
+  const observedValue = (traitId: string) => hairObservations.find((item) => item.traitId === traitId)?.value;
   const activeStyle = selectedStyle(snapshot);
   const selectionSnapshot = sources.selection?.snapshot;
   const body = sources.bodyProfile;
@@ -89,6 +96,9 @@ export function compileConsultationGenerationInputSnapshotV2(sources: Generation
   const selectionCapturedAt = sources.selection?.confirmed_at ?? selectionSnapshot?.confirmedAt ?? activeStyle?.selectedAt ?? null;
   const bodyUpdatedAt = text(body?.updated_at, sources.consultationUpdatedAt);
   const actualRow = sources.actualServiceRow;
+  const colorSelection = sources.colorSelection;
+  const colorSnapshot = record(colorSelection?.snapshot);
+  const color = record(colorSnapshot.color);
   const actualService = actualRow ? {
     services: strings(actualRow.services),
     serviceDate: typeof actualRow.service_date === "string" ? actualRow.service_date : null,
@@ -109,11 +119,18 @@ export function compileConsultationGenerationInputSnapshotV2(sources: Generation
     currentHair: {
       description: text(snapshot.discovery.currentHair),
       length: text(snapshot.discovery.hairLength),
-      density: text(snapshot.discovery.hairDensity),
-      strandThickness: text(snapshot.discovery.strandThickness),
-      texture: text(snapshot.discovery.hairTexture),
+      density: text(observedValue("apparent_density") ?? snapshot.discovery.hairDensity),
+      strandThickness: text(observedValue("strand_thickness_class") ?? snapshot.discovery.strandThickness),
+      texture: text(observedValue("texture_pattern") ?? snapshot.discovery.hairTexture),
       treatmentHistory: snapshot.discovery.treatmentHistory,
       damageLevel: text(snapshot.discovery.damageLevel),
+      profile: hairProfile ? {
+        id: text(hairProfile.id), revision: Number(hairProfile.revision), sourceFingerprint: text(hairProfile.source_fingerprint),
+        observations: hairObservations.flatMap((item) => typeof item.traitId === "string" && typeof item.value === "string" ? [{ traitId: item.traitId, value: item.value, confidence: numberOrNull(item.confidence) ?? 0 }] : []),
+        reported: record(hairProfile.reported),
+        inferred: Object.values(record(hairProfile.inferred)).map(record).flatMap((item) => typeof item.traitId === "string" && typeof item.value === "string" ? [{ traitId: item.traitId, value: item.value, confidence: numberOrNull(item.confidence) ?? 0 }] : []),
+        unknownFieldIds: strings(hairProfile.unknown_field_ids), unresolvedFieldIds: strings(hairProfile.unresolved_field_ids),
+      } : null,
     },
     goals: {
       purpose: text(snapshot.discovery.purpose),
@@ -135,8 +152,19 @@ export function compileConsultationGenerationInputSnapshotV2(sources: Generation
       faceShapeBlend: Object.fromEntries(Object.entries(record(faceShape.blend)).filter((entry): entry is [string, number] => typeof entry[1] === "number")),
       summary: text(faceShape.summary ?? snapshot.faceAnalysis.balance, "분석 근거 확인 전"),
     },
-    personalColor: sources.personalColorEvidence || snapshot.personalColor.season !== "확인 전" ? {
+    personalColor: sources.personalColorProfileV2 || sources.personalColorEvidence || snapshot.personalColor.season !== "확인 전" ? {
       evidenceId: typeof sources.personalColorEvidence?.id === "string" ? sources.personalColorEvidence.id : null,
+      ...(sources.personalColorProfileV2 ? { profileV2: {
+        id: text(sources.personalColorProfileV2.id),
+        version: Number(sources.personalColorProfileV2.profile_version),
+        axes: Object.fromEntries(Object.entries(record(personalColorProfile.axes)).flatMap(([axis, raw]) => {
+          const value = record(raw); return typeof value.value === "number" && typeof value.confidence === "number" ? [[axis, { value: value.value, confidence: value.confidence }]] : [];
+        })),
+        harmonyPalette: {
+          best: strings(record(personalColorProfile.harmonyPalette).best), base: strings(record(personalColorProfile.harmonyPalette).base),
+          accent: strings(record(personalColorProfile.harmonyPalette).accent), challenge: strings(record(personalColorProfile.harmonyPalette).challenge), metals: strings(record(personalColorProfile.harmonyPalette).metals),
+        },
+      } } : {}),
       season: text(colorResult.season ?? snapshot.personalColor.season, "확인 전"),
       undertone: text(colorResult.undertone ?? snapshot.personalColor.undertone, "확인 전"),
       confidence: numberOrNull(colorResult.confidence),
@@ -149,6 +177,16 @@ export function compileConsultationGenerationInputSnapshotV2(sources: Generation
       selectionConfirmedAt: selectionCapturedAt,
       activeStyle,
     }),
+    hairColorDecision: colorSelection ? {
+      colorSelectionSnapshotId: text(colorSelection.id),
+      state: text(colorSelection.status),
+      colorName: text(color.colorName),
+      swatchHex: text(color.swatchHex),
+      technique: text(color.technique),
+      targetLevel: numberOrNull(color.targetLevel),
+      finalImagePath: typeof record(colorSnapshot.output).path === "string" ? String(record(colorSnapshot.output).path) : null,
+      confirmedAt: text(colorSelection.confirmed_at, sources.consultationUpdatedAt),
+    } : null,
     fashion: {
       direction: {
         situation: snapshot.fashion.directionSnapshot.situation,
@@ -174,9 +212,11 @@ export function compileConsultationGenerationInputSnapshotV2(sources: Generation
       provenance("member-profile", sources.userId, profileUpdatedAt, ["styleTarget"]),
       provenance("discovery-interview", sources.consultationId, sources.consultationUpdatedAt, ["currentHair", "goals", "maintenance", "avoidConditions"]),
       ...(sources.analysisEvidence ? [provenance("photo-analysis", text(analysis.id, sources.consultationId), analysisCapturedAt, ["analysis"])] : []),
-      ...(sources.personalColorEvidence ? [provenance("personal-color-analysis", text(sources.personalColorEvidence.id, sources.consultationId), colorCapturedAt, ["personalColor"])] : []),
+      ...(hairProfile ? [provenance("hair-trait-analysis", text(hairProfile.id, sources.consultationId), text(hairProfile.updated_at, sources.consultationUpdatedAt), ["currentHair.profile", "currentHair.density", "currentHair.strandThickness", "currentHair.texture"])] : []),
+      ...(sources.personalColorProfileV2 ? [provenance("personal-color-analysis", text(sources.personalColorProfileV2.id, sources.consultationId), text(sources.personalColorProfileV2.created_at, colorCapturedAt), ["personalColor.profileV2"])] : sources.personalColorEvidence ? [provenance("personal-color-analysis", text(sources.personalColorEvidence.id, sources.consultationId), colorCapturedAt, ["personalColor"])] : []),
       ...(snapshot.strategy.confirmedAt ? [provenance("strategy-confirmation", sources.consultationId, snapshot.strategy.confirmedAt, ["goals", "maintenance"])] : []),
       ...(selectionCapturedAt ? [provenance("style-selection", sources.selection?.id ?? activeStyle?.id ?? sources.consultationId, selectionCapturedAt, ["hairDecision"])] : []),
+      ...(colorSelection ? [provenance("hair-color-selection", text(colorSelection.id, sources.consultationId), text(colorSelection.confirmed_at, sources.consultationUpdatedAt), ["hairColorDecision"])] : []),
       provenance("fashion-interview", sources.consultationId, sources.consultationUpdatedAt, ["fashion.direction"]),
       ...(body ? [provenance("body-profile", sources.consultationId, bodyUpdatedAt, ["fashion.bodyProfile"])] : []),
       ...(actualService ? [provenance("actual-service", text(actualRow?.id, sources.consultationId), actualService.confirmedAt, ["actualService"])] : []),
@@ -194,21 +234,27 @@ export function compileConsultationGenerationInputSnapshotV2(sources: Generation
 
 export async function loadConsultationGenerationInputSnapshotV2(userId: string, consultationId: string) {
   const db = getSupabaseAdminClient();
-  const [consultation, memberProfile, analysisEvidence, personalColorEvidence, selection, bodyProfile, actualService] = await Promise.all([
+  const [consultation, memberProfile, analysisEvidence, personalColorEvidence, activePersonalColor, selection, bodyProfile, actualService, colorSelection, hairProfile] = await Promise.all([
     db.from("consultation_sessions").select("id,version,snapshot,updated_at").eq("id", consultationId).eq("user_id", userId).maybeSingle(),
     db.from("member_profiles").select("style_target,updated_at").eq("user_id", userId).maybeSingle(),
     db.from("analysis_evidence_v2").select("id,face_shape,created_at").eq("consultation_id", consultationId).eq("user_id", userId).maybeSingle(),
     db.from("personal_color_evidence_v2").select("id,result,created_at").eq("consultation_id", consultationId).eq("user_id", userId).maybeSingle(),
+    db.from("active_personal_color_profiles_v2").select("profile_id").eq("consultation_id", consultationId).eq("user_id", userId).maybeSingle(),
     db.from("style_selection_snapshots_v2").select("id,snapshot,confirmed_at").eq("consultation_id", consultationId).eq("user_id", userId).eq("status", "confirmed").maybeSingle(),
     db.from("user_style_profiles").select("height_cm,body_shape,top_size,bottom_size,fit_preference,exposure_preference,avoid_items,updated_at").eq("user_id", userId).maybeSingle(),
     db.from("actual_services_v2").select("id,services,service_date,designer_notes,created_at").eq("consultation_id", consultationId).eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    db.from("color_selection_snapshots_v2").select("id,status,snapshot,confirmed_at").eq("consultation_id", consultationId).eq("user_id", userId).order("confirmed_at", { ascending: false }).limit(1).maybeSingle(),
+    db.from("hair_profiles_v2").select("id,revision,source_fingerprint,observed,reported,inferred,unknown_field_ids,unresolved_field_ids,updated_at").eq("consultation_id", consultationId).eq("user_id", userId).order("revision", { ascending: false }).limit(1).maybeSingle(),
   ]);
   if (consultation.error) throw new Error(consultation.error.message);
   if (!consultation.data) throw new Error("CONSULTATION_NOT_FOUND");
-  for (const result of [memberProfile, analysisEvidence, personalColorEvidence, selection, bodyProfile, actualService]) {
-    if (result.error) throw new Error(result.error.message);
+  for (const result of [memberProfile, analysisEvidence, personalColorEvidence, activePersonalColor, selection, bodyProfile, actualService, colorSelection, hairProfile]) {
+    if (result.error && !((result === colorSelection || result === hairProfile) && ["42P01", "PGRST205"].includes(result.error.code || ""))) throw new Error(result.error.message);
   }
   const row = consultation.data as unknown as { id: string; version: number; snapshot: ConsultationSnapshot; updated_at: string };
+  const activeProfileId = (activePersonalColor.data as { profile_id?: string } | null)?.profile_id;
+  const profileV2 = activeProfileId ? await db.from("personal_color_profiles_v2").select("id,profile_version,profile,created_at").eq("id", activeProfileId).eq("user_id", userId).eq("consultation_id", consultationId).maybeSingle() : { data: null, error: null };
+  if (profileV2.error) throw new Error(profileV2.error.message);
   return compileConsultationGenerationInputSnapshotV2({
     userId,
     consultationId: row.id,
@@ -218,8 +264,11 @@ export async function loadConsultationGenerationInputSnapshotV2(userId: string, 
     memberProfile: memberProfile.data as Record<string, unknown> | null,
     analysisEvidence: analysisEvidence.data as Record<string, unknown> | null,
     personalColorEvidence: personalColorEvidence.data as Record<string, unknown> | null,
+    personalColorProfileV2: profileV2.data as Record<string, unknown> | null,
+    hairProfile: hairProfile.error ? null : hairProfile.data as Record<string, unknown> | null,
     selection: selection.data as unknown as GenerationInputSources["selection"],
     bodyProfile: bodyProfile.data as Record<string, unknown> | null,
     actualServiceRow: actualService.data as Record<string, unknown> | null,
+    colorSelection: colorSelection.error ? null : colorSelection.data as Record<string, unknown> | null,
   });
 }
