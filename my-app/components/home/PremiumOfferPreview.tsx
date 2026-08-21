@@ -9,8 +9,8 @@ export function PremiumOfferPreview() {
       <div className="f-premium-offers__header">
         <SceneHeader
           eyebrow="Services · Pricing Hypothesis"
-          title="같은 핵심 혜택, 필요한 관리 기간으로 선택하세요."
-          description="분석부터 후보 비교, Salon Brief, Aftercare와 Style Dossier까지 기본 결과는 같습니다. 차이는 컨설팅 결과를 관리하고 업데이트하는 기간입니다."
+          title="같은 공동 혜택 계약, 필요한 이용 기간으로 선택하세요."
+          description="분석부터 후보 비교, Salon Brief, Aftercare와 Style Dossier까지 제공 기준은 같습니다. 차이는 계약 기간과 결과 이력을 이어 보는 범위입니다."
         />
         <div className="f-premium-offers__disclosure" data-reveal-item data-reveal-order="4">
           <span>{PREMIUM_OFFER_POLICY.statusLabel}</span>
@@ -20,8 +20,8 @@ export function PremiumOfferPreview() {
 
       <section className="f-premium-offers__common" aria-labelledby="premium-common-benefits" data-reveal-item data-reveal-order="5">
         <div>
-          <p>ALL PLANS</p>
-          <h3 id="premium-common-benefits">모든 플랜 공통 혜택</h3>
+          <p>COMMON CONTRACT</p>
+          <h3 id="premium-common-benefits">모든 플랜 공동 혜택 계약</h3>
         </div>
         <ul>
           {PREMIUM_OFFER_POLICY.commonBenefits.map((benefit) => <li key={benefit}>{benefit}</li>)}

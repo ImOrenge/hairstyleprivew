@@ -89,10 +89,12 @@ test("conversion paths and pricing boundary remain truthful", () => {
     assert.match(offerPolicy, new RegExp(benefit));
   }
   for (const type of ["1회 완결형", "3개월 관리형", "연간 관리형"]) assert.match(offerPolicy, new RegExp(type));
-  assert.match(offers, /모든 플랜 공통 혜택/);
+  assert.match(offers, /모든 플랜 공동 혜택 계약/);
+  assert.match(offerPolicy, /세 플랜은 같은 공동 혜택 계약을 사용합니다/);
   assert.match(offers, /PREMIUM_OFFER_POLICY\.commonBenefits\.map/);
   assert.match(offers, /offer\.management\.map/);
   assert.doesNotMatch(offerPolicy, /프라이빗 헤어 디렉팅 전체 범위|토털 이미지 디렉팅 전체 범위/);
+  assert.doesNotMatch(`${offers}\n${offerPolicy}`, /계절별 관리|계절 변화|분기별|seasonal|quarterly/i);
   assert.match(offers, /출시 예정가/);
   assert.match(offerPolicy, /새 결제 상품이 연결되기 전/);
   assert.doesNotMatch(offers, /PortoneSubscriptionButton/);
