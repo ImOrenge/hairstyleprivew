@@ -12,7 +12,7 @@ import { buildServerVersionPayload, buildStaffCanaryPayload } from "./upload-hai
 
 test("OFF payload contains every explicit server flag and only false values", () => {
   const payload = buildOffPayload();
-  assert.equal(SERVER_ROLLOUT_FLAGS.length, 38);
+  assert.equal(SERVER_ROLLOUT_FLAGS.length, 39);
   assert.equal(Object.keys(payload).length, SERVER_ROLLOUT_FLAGS.length);
   assert.equal(Object.values(payload).every((value) => value === "false"), true);
   assert.equal(Object.keys(payload).some((name) => name.startsWith("NEXT_PUBLIC_")), false);
@@ -43,6 +43,7 @@ test("staff canary enables V2 server flags but keeps the legacy entitlement brid
   assert.equal(payload.MAKEUP_DENSE_ATLAS_V3, "true");
   assert.equal(payload.MAKEUP_SEMANTIC_VISION_V3, "true");
   assert.equal(payload.MAKEUP_SEMANTIC_VISION_STAFF_ONLY, "true");
+  assert.equal(payload.CONSULTATION_RESULT_AI_NARRATIVE_ENABLED, "true");
   assert.equal(Object.entries(payload).every(([name, value]) => (
     name === "ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED" ? value === "false" : value === "true"
   )), true);

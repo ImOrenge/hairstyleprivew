@@ -26,6 +26,7 @@ test("live readiness requires explicit credentials, models, flags, link and migr
   assert.equal(env.MAKEUP_DENSE_ATLAS_V3, "true");
   assert.equal(env.MAKEUP_SEMANTIC_VISION_V3, "true");
   assert.equal(env.MAKEUP_SEMANTIC_VISION_STAFF_ONLY, "true");
+  assert.equal(env.CONSULTATION_RESULT_AI_NARRATIVE_ENABLED, "true");
 });
 
 test("readiness output names missing keys without leaking configured secret values", () => {
