@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("makeup opens a standalone resumable interview before recommendation", async ({ page }) => {
-  await page.goto("/consulting/e2e-harness?stage=makeup&interview=1");
+  await page.goto("/e2e-harness/makeup-interview");
   await expect(page.getByRole("region", { name: "메이크업 방향 인터뷰" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "메이크업 방향 인터뷰 목록" }).getByRole("listitem")).toHaveCount(7);
   await expect(page.getByRole("radio")).toHaveCount(6);
@@ -16,6 +16,23 @@ test("makeup opens a standalone resumable interview before recommendation", asyn
     const responsiveOverflow = await page.locator(".f-consulting-interview").evaluate((element) => ({ scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }));
     expect(responsiveOverflow.scrollWidth).toBeLessThanOrEqual(responsiveOverflow.clientWidth + 1);
   }
+});
+
+test("makeup keeps the latest rapid selection while autosaves are serialized", async ({ page }) => {
+  await page.goto("/e2e-harness/makeup-interview?saveDelay=1");
+  const fixture = page.getByTestId("makeup-interview-fixture");
+
+  await page.getByRole("radio", { name: "풀 메이크업" }).check();
+  await page.waitForTimeout(250);
+  await page.getByRole("radio", { name: "패션 에디토리얼" }).check();
+  await page.waitForTimeout(450);
+
+  await expect(page.getByRole("radio", { name: "패션 에디토리얼" })).toBeChecked();
+  await expect(page.getByText("답변 저장 중")).toBeVisible();
+  await expect(page.getByText(/저장됨/)).toBeVisible();
+  await expect(fixture).toHaveAttribute("data-saved-mode", "fashion_editorial");
+  await expect(fixture).toHaveAttribute("data-save-count", "2");
+  await expect(page.getByText(/오프라인|다른 화면의 변경/)).toHaveCount(0);
 });
 
 test("makeup stays inside the consultation journey with stage selection and a recommended handoff", async ({ page }) => {

@@ -19,10 +19,17 @@ type Payload = { snapshot: MakeupDirectionSnapshot | null; revision: number | nu
 const STALE_LABELS: Record<MakeupSourceStaleReason, string> = { face_observation_changed: "얼굴 관측", personal_color_changed: "퍼스널 컬러", selected_style_changed: "확정 헤어", input_profile_changed: "입력 프로필" };
 const SEMANTIC_WAITING_MESSAGES = ["컬러칩을 실제 메이크업 부위에 연결하고 있어요.", "아이라인과 속눈썹의 눈매 기준을 확인하고 있어요.", "부위별 컬러와 적용 정보를 정리하고 있어요."];
 
+class JsonRequestError extends Error {
+  constructor(message: string, readonly status: number, readonly code?: string) { super(message); this.name = "JsonRequestError"; }
+}
+
 async function jsonRequest(url: string, init?: RequestInit) {
   const response = await fetch(url, { ...init, headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) }, cache: "no-store" });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error((data as { error?: string }).error ?? "요청을 처리하지 못했습니다.");
+  if (!response.ok) {
+    const failure = data as { error?: string; code?: string };
+    throw new JsonRequestError(failure.error ?? "요청을 처리하지 못했습니다.", response.status, failure.code);
+  }
   return data as Record<string, unknown>;
 }
 
@@ -46,8 +53,10 @@ export function MakeupDirectionStage({ consultation, onConfirmed }: { consultati
   const [semanticLocalState, setSemanticLocalState] = useState<CapabilityTaskState | "idle">("idle");
   const [semanticMessageIndex, setSemanticMessageIndex] = useState(0);
   const semanticDispatchKeyRef = useRef<string | null>(null);
+  const interviewRevisionRef = useRef<number | null>(null);
 
   const applyLoadedData = ({ data, sourceImageUrl }: Awaited<ReturnType<typeof fetchMakeupStageData>>) => {
+    interviewRevisionRef.current = data.interview?.profile.revision ?? null;
     setPayload(data);
     setContext(data.snapshot?.context ?? data.defaultContext);
     if (sourceImageUrl) setSourcePhotoUrl(sourceImageUrl);
@@ -58,6 +67,7 @@ export function MakeupDirectionStage({ consultation, onConfirmed }: { consultati
     let cancelled = false;
     void fetchMakeupStageData(baseUrl, consultation.sessionId).then((result) => {
       if (!cancelled) {
+        interviewRevisionRef.current = result.data.interview?.profile.revision ?? null;
         setPayload(result.data);
         setContext(result.data.snapshot?.context ?? result.data.defaultContext);
         if (result.sourceImageUrl) setSourcePhotoUrl(result.sourceImageUrl);
@@ -135,7 +145,9 @@ export function MakeupDirectionStage({ consultation, onConfirmed }: { consultati
 
   const saveInterview = async (topic: MakeupInterviewTopic, profile: MakeupInterviewProfileV2, skip?: boolean) => {
     if (!payload?.interview) throw new Error("인터뷰를 불러오지 못했습니다.");
-    const result = await jsonRequest(`${baseUrl}/interview`, { method: "PATCH", body: JSON.stringify({ expectedRevision: payload.interview.profile.revision, topic, profile, skip }) }) as unknown as InterviewPayload;
+    const expectedRevision = interviewRevisionRef.current ?? payload.interview.profile.revision;
+    const result = await jsonRequest(`${baseUrl}/interview`, { method: "PATCH", body: JSON.stringify({ expectedRevision, topic, profile, skip }) }) as unknown as InterviewPayload;
+    interviewRevisionRef.current = result.profile.revision;
     setPayload((current) => current ? { ...current, interview: result } : current);
     return result.profile;
   };

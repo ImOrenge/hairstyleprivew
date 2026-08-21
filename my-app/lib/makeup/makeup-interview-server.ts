@@ -17,6 +17,7 @@ import { HairfitV2Error } from "../v2/errors";
 import { recordV2Event } from "../v2/observability";
 import { buildMakeupDirection, defaultMakeupContext, readMakeupRationaleSources, saveMakeupContext } from "./makeup-direction-server";
 import { readMakeupRationaleCapability, retryMakeupRationaleCapability, runMakeupRationaleCapability } from "../capabilities/makeup-rationale-service";
+import { mergeMakeupInterviewTopic } from "./makeup-interview-topic";
 
 type InterviewRow = { revision: number; answers: { profile?: MakeupInterviewProfileV2 }; confirmed_revision: number | null; created_at: string; updated_at: string };
 type DirectionRow = { id: string; revision: number; snapshot: { interviewProfile?: MakeupInterviewProfileV2; rationale?: MakeupRecommendationRationaleV1; [key: string]: unknown }; status: string };
@@ -64,11 +65,14 @@ export async function saveMakeupInterviewTopic(input: { userId: string; consulta
   const existing = await row(input.userId, input.consultationId);
   const currentRevision = existing?.revision ?? 0;
   if (currentRevision !== input.expectedRevision) throw new HairfitV2Error("MAKEUP_INTERVIEW_REVISION_CONFLICT", 409, "다른 화면에서 답변이 변경되었습니다. 다시 불러와 주세요.");
-  const completed = new Set(input.profile.completedTopics);
-  const skipped = new Set(input.profile.skippedTopics);
+  assertMakeupInterviewProfileV2(input.profile);
+  const persistedProfile = existing?.answers.profile ?? defaultMakeupInterviewProfile(await defaultMakeupContext(input.userId));
+  const topicProfile = mergeMakeupInterviewTopic(persistedProfile, input.profile, input.topic);
+  const completed = new Set(persistedProfile.completedTopics);
+  const skipped = new Set(persistedProfile.skippedTopics);
   if (input.skip) { skipped.add(input.topic); completed.delete(input.topic); }
   else { completed.add(input.topic); skipped.delete(input.topic); }
-  const next: MakeupInterviewProfileV2 = { ...input.profile, revision: currentRevision + 1, confirmedRevision: null, completedTopics: [...completed], skippedTopics: [...skipped] };
+  const next: MakeupInterviewProfileV2 = { ...topicProfile, revision: currentRevision + 1, confirmedRevision: null, completedTopics: [...completed], skippedTopics: [...skipped] };
   assertMakeupInterviewProfileV2(next);
   const now = new Date().toISOString();
   const values = { answers: { profile: next }, coverage: coverage(next), skips: [...skipped].map((topic) => ({ questionId: topic, reason: "not_applicable", skippedAt: now })), confirmed_revision: null, revision: next.revision, updated_at: now };
@@ -78,6 +82,7 @@ export async function saveMakeupInterviewTopic(input: { userId: string; consulta
     if (!updated.data) throw new HairfitV2Error("MAKEUP_INTERVIEW_REVISION_CONFLICT", 409, "다른 화면에서 답변이 변경되었습니다. 다시 불러와 주세요.");
   } else {
     const inserted = await getSupabaseAdminClient().from("consultation_interview_drafts_v2").insert({ consultation_id: input.consultationId, user_id: input.userId, interview_kind: "makeup-direction", ...values });
+    if (inserted.error?.code === "23505") throw new HairfitV2Error("MAKEUP_INTERVIEW_REVISION_CONFLICT", 409, "다른 화면에서 답변이 변경되었습니다. 다시 불러와 주세요.");
     if (inserted.error) throw new Error(inserted.error.message);
   }
   await recordV2Event({ consultationId: input.consultationId, userId: input.userId, eventType: "consultation.interview.topic_confirmed", payload: { interviewKind: "makeup-direction", topicId: input.topic, revision: next.revision, skipped: Boolean(input.skip) } });
