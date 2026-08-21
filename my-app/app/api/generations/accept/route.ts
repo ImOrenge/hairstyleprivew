@@ -21,7 +21,7 @@ import {
 } from "../../../../lib/paid-action-quote";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
-import { quoteEntitlementV2 } from "../../../../lib/v2/entitlement-server";
+import { quoteEntitlementV2, quoteFullStyleConsultationAccessV2 } from "../../../../lib/v2/entitlement-server";
 import { recordV2Event } from "../../../../lib/v2/observability";
 import {
   buildAccountSetupRedirectUrl,
@@ -103,6 +103,7 @@ export async function POST(request: Request) {
 
   try {
     let executionQuote: PaidActionQuote | null = null;
+    let fullStyleAccess: Awaited<ReturnType<typeof quoteFullStyleConsultationAccessV2>> | null = null;
     const consultationId =
       requestedConsultationId && isHairfitV2Enabled("CONSULTATION_SESSION_V2_ENABLED")
         ? requestedConsultationId
@@ -117,6 +118,9 @@ export async function POST(request: Request) {
       if (consultation.error) throw new Error(consultation.error.message);
       if (!consultation.data) {
         return NextResponse.json({ error: "상담을 찾을 수 없습니다." }, { status: 404 });
+      }
+      if (isHairfitV2Enabled("FREE_HAIR_DEMO_ENABLED") || isHairfitV2Enabled("FULL_STYLE_CATALOG_ENABLED")) {
+        fullStyleAccess=await quoteFullStyleConsultationAccessV2(userId,consultationId);
       }
     }
     const { data: draftContext, error: draftContextError } = await supabase
@@ -148,6 +152,7 @@ export async function POST(request: Request) {
         action: "hair_generation",
         subjectId: draftId,
         billingScope: "customer",
+        hairGenerationEntitled:fullStyleAccess?.allowed===true,
       });
       if (!quoteId && arePaidActionQuotesRequired()) {
         throw new PaidActionQuoteError({
@@ -170,8 +175,12 @@ export async function POST(request: Request) {
       supabase as unknown as Parameters<typeof getPlanEntitlement>[0],
       userId,
     );
-    const generatedAssetsExpiresAt = getGeneratedAssetsExpiresAt(entitlement);
+    const fullStyleRetentionDays=Number(fullStyleAccess?.capabilities?.generatedAssetRetentionDays??0);
+    const generatedAssetsExpiresAt = fullStyleRetentionDays>0
+      ? new Date(Date.now()+fullStyleRetentionDays*24*60*60*1000).toISOString()
+      : getGeneratedAssetsExpiresAt(entitlement);
     const creditsRequired = HAIRSTYLE_GENERATION_CREDITS;
+    const creditsToReserve=fullStyleAccess?.allowed===true?0:creditsRequired;
     const durableClient = supabase as unknown as AcceptGenerationClient;
     const { data: acceptData, error: acceptError } = await durableClient.rpc(
       "accept_generation_upload_draft",
@@ -205,7 +214,7 @@ export async function POST(request: Request) {
               }
             : {}),
         },
-        p_credits_used: creditsRequired,
+        p_credits_used: creditsToReserve,
         p_generated_assets_expires_at: generatedAssetsExpiresAt,
       },
     );

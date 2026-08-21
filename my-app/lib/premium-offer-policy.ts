@@ -1,70 +1,101 @@
+export const FULL_STYLE_COMMON_BENEFITS = [
+  "얼굴·모발 분석과 정밀 퍼스널 컬러 진단",
+  "AI 주도 방향 설정과 실제 헤어 3×3 생성",
+  "2~3개 후보 비교 후 최종 헤어 1개 확정",
+  "염색·메이크업·패션 기본 3개와 최대 6개 추가 생성",
+  "Salon Brief·AI 결과 해설·PDF·애프터케어",
+] as const;
+
 export const PREMIUM_OFFER_POLICY = {
-  version: "2026-08-21",
-  statusLabel: "출시 예정가",
+  version: "2026-08-21-v2",
+  priceVersion: 1,
+  statusLabel: "가격 확정",
   disclosure:
-    "세 플랜은 같은 공동 혜택 계약을 사용합니다. 표시된 가격은 출시 예정가이며, 새 결제 상품이 연결되기 전에는 이 화면에서 결제되지 않습니다.",
-  commonBenefits: [
-    "사진 품질·얼굴 구조·추정 퍼스널 컬러 분석",
-    "헤어 후보 9개와 패션 방향 9개 룩",
-    "후보 비교·최종 결정·Salon Brief",
-    "Aftercare와 Style Dossier",
-  ],
+    "표시 금액은 부가세를 포함한 실제 승인 총액입니다. 정기 상품은 미사용 회차가 이월되지 않으며, 다음 결제 전에 언제든 기간말 해지를 신청할 수 있습니다.",
+  commonBenefits: FULL_STYLE_COMMON_BENEFITS,
+  freeDemo: {
+    key: "free_hair_demo",
+    koreanName: "무료 헤어 데모",
+    priceKrw: 0,
+    priceLabel: "0원",
+    periodLabel: "/ 계정당 1회",
+    summary: "간이 퍼스널 컬러 진단과 워터마크 헤어 3×3을 실제로 확인",
+    management: ["로그인 후 계정당 1회", "비교 직전 유료 전환", "완료 후 7일 보관"],
+    ctaLabel: "무료 3×3 생성 시작",
+    retentionDays: 7,
+  },
   offers: [
     {
-      key: "private-hair-direction",
-      name: "Private Hair Direction",
-      koreanName: "프라이빗 헤어 디렉팅",
-      priceKrw: 99_000,
-      priceLabel: "99,000원",
+      key: "full_style_once",
+      name: "Full Style Once",
+      koreanName: "풀 스타일 1회",
+      priceKrw: 59_000,
+      priceLabel: "59,000원",
       periodLabel: "/ 1회",
-      tagline: "지금 필요한 한 번의 결정을 선명하게.",
-      summary: "공동 혜택 계약을 한 번에 완결하는 단회 플랜",
-      management: [
-        "공동 혜택 계약으로 컨설팅 1회 완결",
-        "결정 시점의 결과와 실행 기준 정리",
-        "새 변화가 필요하면 별도 컨설팅으로 다시 시작",
-      ],
-      ctaLabel: "1회 컨설팅 시작",
+      billingInterval: null,
+      sessions: 1,
+      tagline: "한 번의 스타일 결정을 완결합니다.",
+      summary: "풀코스 1회와 새 3×3을 포함한 사용자 재시작 1회",
+      management: ["풀 스타일 컨설팅 1회", "상담 중 사용자 재시작 1회", "완료 후 60일 보관"],
+      ctaLabel: "1회 컨설팅 선택",
       recommended: false,
       planTypeLabel: "1회 완결형",
+      retentionDays: 60,
+      autoRenew: false,
     },
     {
-      key: "total-image-direction",
-      name: "Total Image Direction",
-      koreanName: "토털 이미지 디렉팅",
-      priceKrw: 189_000,
-      priceLabel: "189,000원",
+      key: "full_style_quarterly",
+      name: "Full Style Quarterly",
+      koreanName: "3개월 정기",
+      priceKrw: 89_000,
+      priceLabel: "89,000원",
       periodLabel: "/ 3개월",
-      tagline: "3개월 동안, 같은 스타일 기준과 결과 맥락을 이어갑니다.",
-      summary: "공동 혜택 계약을 3개월 동안 유지하는 권장 플랜",
-      management: [
-        "공동 혜택 계약을 3개월 동안 유지",
-        "시술·생활 변화 기록을 같은 결과에 연결",
-        "기간 내 결과와 결정 맥락을 이어서 확인",
-      ],
-      ctaLabel: "3개월 관리 상담 시작",
+      billingInterval: "quarter",
+      sessions: 1,
+      tagline: "한 계절의 변화와 관리를 한 기준으로 이어갑니다.",
+      summary: "3개월마다 풀코스 1회와 상담 완료 후 30·60·90일 체크인",
+      management: ["3개월 안에 풀코스 1회", "완료 후 30·60·90일 체크인", "회차별 결과 완료 후 90일 보관"],
+      ctaLabel: "3개월 정기 선택",
       recommended: true,
-      planTypeLabel: "3개월 관리형",
+      planTypeLabel: "3개월 정기형",
+      retentionDays: 90,
+      autoRenew: true,
     },
     {
-      key: "signature-style-membership",
-      name: "Signature Style Membership",
-      koreanName: "시그니처 스타일 멤버십",
-      priceKrw: 649_000,
-      priceLabel: "649,000원",
+      key: "full_style_annual",
+      name: "Full Style Annual",
+      koreanName: "연간",
+      priceKrw: 299_000,
+      priceLabel: "299,000원",
       periodLabel: "/ 년",
-      tagline: "1년 동안, 나만의 스타일 기준과 선택 이력을 축적합니다.",
-      summary: "공동 혜택 계약과 변화 이력을 1년 동안 유지하는 연간 플랜",
-      management: [
-        "공동 혜택 계약을 1년 동안 유지",
-        "시술·생활 변화 기록을 같은 기준에 누적",
-        "선택 이력·Before/After·Style Archive 누적",
-      ],
-      ctaLabel: "연간 멤버십 상담 시작",
+      billingInterval: "year",
+      sessions: 4,
+      tagline: "한 해의 변화를 네 번의 결정으로 축적합니다.",
+      summary: "연 4회와 회차마다 30·60·90일 체크인, 연간 스타일 아카이브",
+      management: ["연 4회 자유 사용", "매 회차 완료 후 30·60·90일 체크인", "회차별 전후 비교·연간 종합 리포트", "회차별 결과 완료 후 365일 보관"],
+      ctaLabel: "연간 플랜 선택",
       recommended: false,
       planTypeLabel: "연간 관리형",
+      retentionDays: 365,
+      autoRenew: true,
     },
   ],
+  policies: {
+    vatIncluded: true,
+    rollover: false,
+    cancellation: "기간말 해지 또는 즉시 종료·환불 견적 요청",
+    refund: "완전 미사용 계약만 자동 환불하며, 사용 이력이 있으면 검토 후 안내",
+  },
 } as const;
 
-export type PremiumOffer = (typeof PREMIUM_OFFER_POLICY.offers)[number];
+export type FullStyleOffer = (typeof PREMIUM_OFFER_POLICY.offers)[number];
+export type FullStyleOfferingKey = FullStyleOffer["key"];
+export type PremiumOffer = FullStyleOffer;
+
+export function isFullStyleOfferingKey(value: string): value is FullStyleOfferingKey {
+  return PREMIUM_OFFER_POLICY.offers.some((offer) => offer.key === value);
+}
+
+export function getFullStyleOffer(key: string): FullStyleOffer | null {
+  return PREMIUM_OFFER_POLICY.offers.find((offer) => offer.key === key) ?? null;
+}

@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PortoneCheckoutForm } from "../../../components/payments/PortoneCheckoutForm";
+import { FullStyleCheckoutForm } from "../../../components/payments/FullStyleCheckoutForm";
 import { SubscriptionPolicyDisclosure } from "../../../components/billing/SubscriptionPolicyDisclosure";
 import { SubscriptionWaitlistForm } from "../../../components/payments/SubscriptionWaitlistForm";
 import { AppPage, Panel, SurfaceCard } from "../../../components/ui/Surface";
@@ -12,6 +13,9 @@ import { normalizeBillingReturnTarget } from "../../../lib/billing-return-target
 import { buildSignInRedirectUrl } from "../../../lib/clerk";
 import { getSelfServePlanDisplayBenefit, type PlanDisplayBenefit } from "../../../lib/plan-benefit-display";
 import { getSubscriptionAccessMode } from "../../../lib/subscription-access";
+import { getFullStyleOffer, isFullStyleOfferingKey, PREMIUM_OFFER_POLICY } from "../../../lib/premium-offer-policy";
+import { isHairfitV2Enabled } from "../../../lib/v2/feature-flags";
+import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../lib/supabase";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -43,15 +47,38 @@ function buildCheckoutReturnPath(planKey: SelfServeBillingPlanKey, returnTo: str
 
 export default async function BillingCheckoutPage({ searchParams }: BillingCheckoutPageProps) {
   const params = (await searchParams) ?? {};
+  const offeringParam = readSearchParam(params, "offering").trim();
+  if (isFullStyleOfferingKey(offeringParam)) {
+    if (!isHairfitV2Enabled("FULL_STYLE_CATALOG_ENABLED") || !isHairfitV2Enabled("FULL_STYLE_CHECKOUT_ENABLED")) redirect("/consulting/plans");
+    const { userId } = await auth();
+    const consultationId = readSearchParam(params,"consultationId").trim();
+    const priceVersion = Number(readSearchParam(params,"priceVersion"));
+    const returnPath = `/billing/checkout?offering=${encodeURIComponent(offeringParam)}&priceVersion=${Number.isInteger(priceVersion)?priceVersion:PREMIUM_OFFER_POLICY.priceVersion}${consultationId?`&consultationId=${encodeURIComponent(consultationId)}`:""}`;
+    if (!userId) redirect(buildSignInRedirectUrl(returnPath));
+    const user = await currentUser();
+    const offer = getFullStyleOffer(offeringParam)!;
+    return <AppPage className="grid gap-5 pb-16">
+      <Panel as="section" className="p-5 sm:p-6"><p className="app-kicker">주문 확인</p><h1 className="mt-2 text-3xl font-black">{offer.koreanName} 결제</h1><p className="mt-2 text-sm text-[var(--app-muted)]">서버 카탈로그의 상품·가격 버전을 다시 확인한 뒤 PortOne 결제를 시작합니다.</p></Panel>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <Panel as="section" className="p-5 sm:p-6"><FullStyleCheckoutForm offeringKey={offeringParam} priceVersion={Number.isInteger(priceVersion)?priceVersion:PREMIUM_OFFER_POLICY.priceVersion} consultationId={consultationId||undefined} initialBuyerName={user?.fullName||user?.firstName||""} initialBuyerEmail={user?.primaryEmailAddress?.emailAddress||""} initialBuyerPhone={user?.primaryPhoneNumber?.phoneNumber||""} /></Panel>
+        <SurfaceCard as="aside" className="h-fit p-5"><p className="app-kicker">선택 상품</p><h2 className="mt-2 text-2xl font-black">{offer.koreanName}</h2><p className="mt-4"><strong className="text-3xl font-black">{offer.priceLabel}</strong><span className="text-sm text-[var(--app-muted)]"> {offer.periodLabel}</span></p><p className="mt-1 text-xs font-bold text-[var(--app-muted)]">부가세 포함 실제 승인 총액</p><ul className="mt-5 grid gap-2 text-sm leading-6">{PREMIUM_OFFER_POLICY.commonBenefits.map((benefit)=><li key={benefit}>· {benefit}</li>)}<li>· 상담 중 새 3×3을 포함한 재시작 1회</li><li>· 결과 {offer.retentionDays}일 보관</li><li>· 미사용 회차 이월 없음</li>{offer.autoRenew?<li>· {offer.periodLabel.replace("/ ","")} 단위 자동갱신</li>:null}</ul><p className="mt-5 border-t border-[var(--app-border)] pt-4 text-xs leading-5 text-[var(--app-muted)]">기간말 해지와 즉시 종료·환불 견적 요청을 제공합니다. 완전 미사용 계약만 자동 환불하며 사용 이력이 있으면 검토 후 안내합니다.</p></SurfaceCard>
+      </div>
+    </AppPage>;
+  }
   const planParam = readSearchParam(params, "plan").trim();
   if (!isSelfServeBillingPlanKey(planParam)) {
     redirect("/billing");
   }
 
   const planKey = planParam as SelfServeBillingPlanKey;
+  const { userId } = await auth();
+  if (!userId) redirect(buildSignInRedirectUrl(buildCheckoutReturnPath(planKey, normalizeBillingReturnTarget(params.returnTo))));
+  if (!isSupabaseConfigured()) redirect("/consulting/plans");
+  const legacyContract = await getSupabaseAdminClient().from("user_subscriptions").select("id")
+    .eq("user_id",userId).in("status",["active","trialing","past_due"]).maybeSingle();
+  if (legacyContract.error || !legacyContract.data) redirect("/consulting/plans");
   const plan = getSelfServePlanDisplayBenefit(planKey);
   const returnTo = normalizeBillingReturnTarget(params.returnTo);
-  const { userId } = await auth();
   const subscriptionAccessMode = getSubscriptionAccessMode();
   if (subscriptionAccessMode === "checkout" && !userId) {
     redirect(buildSignInRedirectUrl(buildCheckoutReturnPath(planKey, returnTo)));

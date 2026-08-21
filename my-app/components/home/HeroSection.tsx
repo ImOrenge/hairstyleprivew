@@ -392,27 +392,27 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
         <p className={styles.brand}>HAIRFIT</p>
         <p className={styles.eyebrow}>
           <Sparkles className={styles.eyebrowIcon} aria-hidden="true" />
-          사진 한 장으로 시작하는 AI 헤어 컨설팅
+          간이 퍼스널 컬러부터 시작하는 AI 풀 스타일 컨설팅
         </p>
         <h1 id="landing-hero-title" className={styles.title}>
-          사진 한 장으로,{" "}
-          <span>내게 맞는 헤어를 비교하고 결정하세요.</span>
+          사진 한 장으로 퍼스널 컬러를 찾고,{" "}
+          <span>내게 맞는 헤어를 실제로 만들어 보세요.</span>
         </h1>
         <p className={styles.description}>
-          사진을 먼저 분석한 뒤 9가지 전략형 후보를 비교합니다.
-          <br className={styles.desktopBreak} /> 선택한 스타일은 미용실 상담 브리프와 애프터케어·패션 방향까지 이어집니다.
+          사진 기반 간이 퍼스널 컬러와 워터마크 헤어 3×3을 무료로 확인합니다.
+          <br className={styles.desktopBreak} /> 유료 풀코스에서는 정밀 진단·최종 헤어 1개·염색·메이크업·패션·Salon Brief까지 이어집니다.
         </p>
 
         <div className={styles.actions}>
           <Link href="/consulting/new" className={styles.primaryAction}>
-            내 사진 분석 시작
+            무료 퍼스널 컬러·3×3 시작
             <ArrowRight className={styles.actionIcon} aria-hidden="true" />
           </Link>
           <Link href="#style-dossier" className={styles.secondaryAction}>
             9가지 결과 예시 보기
           </Link>
         </div>
-        <p className={styles.actionNote}>사진 전 필수 질문 0개 · 무료 체험 가능</p>
+        <p className={styles.actionNote}>로그인 후 계정당 1회 · 실제 헤어 9개 생성 · 비교 직전 유료 전환</p>
 
         {(userCount > 0 || visibleAvatars.length > 0) && (
           <div className={styles.proof} aria-label="HairFit 이용자 정보">

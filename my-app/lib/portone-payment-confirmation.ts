@@ -236,6 +236,14 @@ export async function markPortonePaymentFailed({
       source: "portone",
       sourceTransactionId: transaction.id,
     }).catch(() => undefined);
+    await supabase.from("full_style_contracts_v2").update({
+      status: "refunded",
+      cancel_at_period_end: true,
+      cancelled_at: new Date().toISOString(),
+      next_billing_at: null,
+      renewal_claimed_until: null,
+      updated_at: new Date().toISOString(),
+    }).eq("latest_payment_transaction_id", transaction.id);
   }
 
   return { ok: true as const, transaction };
