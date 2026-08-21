@@ -37,6 +37,9 @@ test("all pages preserve the 3 strategy, 9 preview and consulting CTA contract",
     assert.equal(page.message.primaryCta.href, "/consulting/new");
     assert.equal(page.message.sampleCta.href, "/consulting/new");
     assert.equal(page.message.finalCta.href, "/consulting/new");
+    assert.match(page.message.sampleCta.label, /분석부터 시작/);
+    assert.match(page.message.finalCta.label, /^분석 후 /);
+    assert.match(page.message.finalSupport, /사진 분석에서 시작해 퍼스널 컬러·메이크업·패션 방향까지/);
     assert.equal(manifest.strategies.length, 3);
     assert.equal(manifest.strategies.flatMap((strategy) => strategy.assetIds).length, 9);
   }

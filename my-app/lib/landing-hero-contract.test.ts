@@ -29,6 +29,8 @@ test("rolling hero keeps a four-column by eight-row paired asset contract", () =
   assert.equal(new Set(assetRefs.map((match) => match[1])).size, 32, "hero assets must be unique");
   assert.equal(columnGroups.length, 4, "hero must define exactly four rolling columns");
   assert.deepEqual(durations, [40, 52, 46, 58], "double-length rails must preserve the prior roll speed");
+  assert.match(component, /priority=\{loopIndex === 0 && tileIndex === 0\}/);
+  assert.doesNotMatch(component, /priority=\{[^}]*index < 2/);
   assert.match(css, /grid-template-columns:\s*repeat\(4,/);
   assert.match(css, /\.visualStage\s*\{[\s\S]*?position:\s*absolute;[\s\S]*?height:\s*100%;/);
   assert.match(css, /\.copyBlock\s*\{[\s\S]*?min-height:\s*clamp\(44rem,/);

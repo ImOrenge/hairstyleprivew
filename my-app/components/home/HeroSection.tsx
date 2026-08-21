@@ -328,7 +328,7 @@ function RollingColumn({ config, index }: { config: RollingColumnConfig; index: 
                   fill
                   className={styles.tileImage}
                   sizes="(max-width: 640px) 25vw, (max-width: 1280px) 24vw, 272px"
-                  priority={loopIndex === 0 && index < 2 && tileIndex === 0}
+                  priority={loopIndex === 0 && tileIndex === 0}
                 />
                 <span className="sr-only">
                   {tile.model} {tile.kind === "hair" ? "헤어" : "패션"}

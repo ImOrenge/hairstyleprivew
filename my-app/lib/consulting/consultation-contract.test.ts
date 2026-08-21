@@ -19,6 +19,18 @@ test("consulting routes define the complete 15-stage lifecycle journey", () => {
   assert.doesNotMatch(routes, /requested <= current/);
 });
 
+test("consulting entry derives progress from the shared journey and promises the photo-first flow", () => {
+  const entry = read("../../components/consulting/ConsultingEntry.tsx");
+  const page = read("../../app/consulting/new/page.tsx");
+  for (const source of [entry, page]) {
+    assert.match(source, /CONSULTATION_STAGE_SLUGS\.length/);
+    assert.doesNotMatch(source, /11단계|\/11/);
+  }
+  assert.match(entry, /사진을 먼저 분석하고/);
+  assert.match(entry, /9개 전략형 프리뷰/);
+  assert.match(entry, /퍼스널 컬러·메이크업·패션/);
+});
+
 test("consultation state is server-owned and guarded by optimistic concurrency", () => {
   const store = read("./server-store.ts");
   const route = read("../../app/api/consultations/[sessionId]/route.ts");
