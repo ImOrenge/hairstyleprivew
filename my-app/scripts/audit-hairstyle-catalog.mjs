@@ -107,15 +107,20 @@ const runtimeEnvScript = read("scripts/check-hairstyle-catalog-runtime-env.mjs")
 const runtimeSmokeScript = read("scripts/smoke-hairstyle-catalog-runtime.mjs");
 const cloudflareSecretsScript = read("scripts/check-hairstyle-catalog-cloudflare-secrets.mjs");
 const trendMailDeployScript = read("scripts/deploy-hairstyle-catalog-trend-mail-function.mjs");
+const rssProxyDeployScript = read("scripts/deploy-hairstyle-rss-proxy-function.mjs");
 const launchReadinessScript = read("scripts/check-hairstyle-catalog-launch-readiness.mjs");
 const launchSummaryScript = read("scripts/check-hairstyle-catalog-launch-summary.mjs");
 const trendMailFunction = read("supabase/functions/cron-trend-emails/index.ts");
+const rssProxyFunction = read("supabase/functions/hairstyle-rss-proxy/index.ts");
+const wranglerConfig = read("wrangler.jsonc");
 
 assert(trendResearch.includes("PRIMARY_RESEARCH_LOOKBACK_DAYS = 60"), "missing 60 day primary lookback");
 assert(trendResearch.includes("FALLBACK_RESEARCH_LOOKBACK_DAYS = 120"), "missing 120 day fallback lookback");
 assert(!trendResearch.includes("RESEARCH_LOOKBACK_DAYS = 240"), "hair trend research still uses 240 day lookback");
 assert(trendResearch.includes("buildSeededFallbackTrendSignals"), "trend research must fallback to curated blueprints when RSS is unavailable");
 assert(trendResearch.includes('freshnessStatus: "seeded"'), "RSS-unavailable fallback must mark the source summary as seeded");
+assert(trendResearch.includes("HAIRSTYLE_RSS_PROXY_URL"), "trend research must support the Worker-safe RSS proxy transport");
+assert(trendResearch.includes('kind: "supabase-edge"'), "trend research must identify Supabase Edge transport evidence");
 assert(catalog.includes("export async function ensureCatalogAvailable()"), "missing active catalog availability function");
 const ensureBody = catalog.match(/export async function ensureCatalogAvailable\(\)[\s\S]*?function filterRowsForStyleTarget/);
 assert(ensureBody && !ensureBody[0].includes("rebuildWeeklyHairstyleCatalog("), "user recommendation path still triggers rebuild");
@@ -154,8 +159,10 @@ assert(catalog.includes("buildCatalogLineupsForCycle"), "missing catalog lineup 
 assert(catalog.includes('from "./hairstyle-catalog-lineup"'), "lineup builder must live in the pure lineup module");
 assert(catalog.includes("attachDryRunCatalogRowIds"), "dry-run rebuild must attach stable temporary ids for lineup validation");
 assert(catalog.includes("buildLineupBackedRecommendations"), "missing lineup-backed recommendation builder");
-const topNineBody = catalogRecommendation.match(/export function selectLineupBackedCatalogRows\([\s\S]*$/);
-assert(topNineBody && topNineBody[0].includes("selected.length >= 9") && topNineBody[0].includes("selected.slice(0, 9)"), "lineup fallback builder must enforce recommendation limit");
+assert(catalog.includes("selectLineupBackedCatalogRows"), "runtime recommendation builder must use the pure catalog selector");
+assert(packageJson.includes("lib/hairstyle-catalog-recommendation.test.ts"), "recommendation contract test must be wired into the package script");
+const topRowsBody = catalogRecommendation.match(/function selectTopRows\([\s\S]*?export function selectLineupBackedCatalogRows/);
+assert(topRowsBody && topRowsBody[0].includes("if (limit <= 0)") && topRowsBody[0].includes("selected.length >= limit"), "lineup fallback builder must enforce recommendation limit");
 assert(catalog.includes("computeLineupOverlap"), "missing lineup overlap calculation");
 assert(catalog.includes("overlap_warning"), "missing lineup overlap warning event");
 const generateBody = catalog.match(/export async function generateCatalogBackedRecommendationSet\([\s\S]*?return \{[\s\S]*?selectionContext,[\s\S]*?\};\r?\n\}/);
@@ -204,6 +211,7 @@ assert(packageJson.includes("\"hairstyle:catalog:env:check\""), "my-app package 
 assert(packageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "my-app package is missing hairstyle runtime smoke script");
 assert(packageJson.includes("\"hairstyle:catalog:cloudflare:secrets\""), "my-app package is missing hairstyle Cloudflare secret check script");
 assert(packageJson.includes("\"hairstyle:catalog:trend-mail:deploy\""), "my-app package is missing hairstyle trend mail deploy script");
+assert(packageJson.includes("\"hairstyle:catalog:rss-proxy:deploy\""), "my-app package is missing hairstyle RSS proxy deploy script");
 assert(packageJson.includes("\"hairstyle:catalog:launch:check\""), "my-app package is missing hairstyle launch readiness script");
 assert(packageJson.includes("\"hairstyle:catalog:launch:summary:check\""), "my-app package is missing hairstyle launch summary check script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:remote:check\""), "root package is missing hairstyle remote readiness script");
@@ -212,6 +220,7 @@ assert(rootPackageJson.includes("\"hairstyle:catalog:env:check\""), "root packag
 assert(rootPackageJson.includes("\"hairstyle:catalog:runtime:smoke\""), "root package is missing hairstyle runtime smoke script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:cloudflare:secrets\""), "root package is missing hairstyle Cloudflare secret check script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:trend-mail:deploy\""), "root package is missing hairstyle trend mail deploy script");
+assert(rootPackageJson.includes("\"hairstyle:catalog:rss-proxy:deploy\""), "root package is missing hairstyle RSS proxy deploy script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:launch:check\""), "root package is missing hairstyle launch readiness script");
 assert(rootPackageJson.includes("\"hairstyle:catalog:launch:summary:check\""), "root package is missing hairstyle launch summary check script");
 assert(architectureDoc.includes("check-hairstyle-catalog-launch-summary.mjs"), "architecture doc missing launch summary check script impact");
@@ -238,6 +247,8 @@ assert(remoteReadinessScript.includes("20260704050000_hairstyle_catalog_cron_reg
 assert(runtimeEnvScript.includes("mode=admin-api"), "runtime env check must expose admin-api mode");
 assert(runtimeEnvScript.includes("mode=cron-registration"), "runtime env check must expose cron-registration mode");
 assert(runtimeEnvScript.includes("mode=trend-mail-function"), "runtime env check must expose trend-mail-function mode");
+assert(runtimeEnvScript.includes("mode=rss-proxy"), "runtime env check must expose RSS proxy mode");
+assert(runtimeEnvScript.includes("HAIRSTYLE_RSS_PROXY_URL"), "runtime env check must validate RSS proxy configuration");
 assert(runtimeEnvScript.includes("INTERNAL_API_SECRET"), "runtime env check must require admin secret");
 assert(runtimeEnvScript.includes("admin API service-role fallback"), "runtime env check must accept service-role admin fallback");
 assert(runtimeEnvScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime env check must require Supabase service role key");
@@ -255,10 +266,12 @@ assert(runtimeSmokeScript.includes("mode=cron-db"), "runtime smoke runner must e
 assert(runtimeSmokeScript.includes("mode=active-db"), "runtime smoke runner must expose active DB mode");
 assert(runtimeSmokeScript.includes("mode=alert-idempotency"), "runtime smoke runner must expose alert idempotency mode");
 assert(runtimeSmokeScript.includes("mode=trend-mail-function"), "runtime smoke runner must expose trend mail function mode");
+assert(runtimeSmokeScript.includes("mode=rss-proxy"), "runtime smoke runner must expose RSS proxy mode");
 assert(runtimeSmokeScript.includes("requireWriteConfirmation"), "runtime smoke runner must guard mutating calls");
 assert(runtimeSmokeScript.includes("adminAuthHeaders"), "runtime smoke runner must support service-role admin fallback");
 assert(runtimeSmokeScript.includes("HAIRSTYLE_CATALOG_RUNTIME_SMOKE_CONFIRM_APP_URL"), "runtime smoke runner must support target confirmation env");
 assert(runtimeSmokeScript.includes("beforeActiveCycleId === afterActiveCycleId"), "runtime smoke dry-run must verify active cycle is unchanged");
+assert(runtimeSmokeScript.includes("expectedRssTransport"), "runtime smoke dry-run must support RSS transport evidence");
 assert(runtimeSmokeScript.includes("SUPABASE_SERVICE_ROLE_KEY"), "runtime smoke alert query must use service role env");
 assert(runtimeSmokeScript.includes(".env.assets"), "runtime smoke runner must load asset/runtime env file copied from the main worktree");
 assert(runtimeSmokeScript.includes("readLinkedProjectRef"), "runtime smoke runner must derive Supabase URL from linked project ref");
@@ -273,8 +286,16 @@ assert(runtimeSmokeScript.includes("validateTrendMailProcessedAlerts"), "runtime
 assert(runtimeSmokeScript.includes("catalogRotationProcessed"), "runtime trend mail smoke must verify catalog rotation processing count");
 assert(runtimeSmokeScript.includes("alertType === \"catalog_rotation\""), "runtime trend mail smoke must verify catalog_rotation alerts were processed");
 assert(runtimeSmokeScript.includes("get_active_hairstyle_catalog"), "runtime active DB smoke must call the active catalog RPC");
-assert(runtimeSmokeScript.includes("blueprintV4Enabled ? 182 : 32"), "runtime active DB smoke must enforce v4 and rollback pool sizes");
-assert(runtimeSmokeScript.includes("blueprintV4Enabled ? 93 : 18"), "runtime active DB smoke must enforce v4 and rollback target sizes");
+assert(
+  runtimeSmokeScript.includes('"expansion-c": { itemCount: 182, targetCount: 93 }') &&
+    runtimeSmokeScript.includes("blueprintV4Enabled ? rolloutExpectation.itemCount : 32"),
+  "runtime active DB smoke must enforce staged v4 and rollback pool sizes",
+);
+assert(runtimeSmokeScript.includes("LEGACY_HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION"), "runtime active DB smoke must validate the legacy prompt version while v4 is off");
+assert(
+  runtimeSmokeScript.includes("blueprintV4Enabled ? rolloutExpectation.targetCount : 18"),
+  "runtime active DB smoke must enforce staged v4 and rollback target sizes",
+);
 assert(runtimeSmokeScript.includes("maleCandidateCount >= minimumTargetCount"), "runtime active DB smoke must enforce male candidate pool size");
 assert(runtimeSmokeScript.includes("femaleCandidateCount >= minimumTargetCount"), "runtime active DB smoke must enforce female candidate pool size");
 assert(runtimeSmokeScript.includes("validateLineupShape"), "runtime active DB smoke must validate active lineup shape");
@@ -314,10 +335,24 @@ assert(trendMailDeployScript.includes("verify_jwt=false"), "trend mail deploy he
 assert(trendMailDeployScript.includes("isAuthorizedCronRequest"), "trend mail deploy helper must enforce in-function auth guard");
 assert(trendMailDeployScript.includes("HAIRSTYLE_CATALOG_SUPABASE_SERVICE_ROLE_KEY"), "trend mail deploy helper must enforce function-scoped service role secret support");
 assert(trendMailDeployScript.includes("HAIRSTYLE_CATALOG_CRON_SECRET"), "trend mail deploy helper must enforce function-scoped cron secret support");
+assert(supabaseConfig.includes("[functions.hairstyle-rss-proxy]"), "RSS proxy must have explicit function config");
+assert(rssProxyFunction.includes("isAuthorizedRequest"), "RSS proxy must enforce service-key authentication");
+assert(rssProxyFunction.includes('GOOGLE_NEWS_HOST = "news.google.com"'), "RSS proxy must allowlist the Google News host");
+assert(rssProxyFunction.includes('GOOGLE_NEWS_PATH = "/rss/search"'), "RSS proxy must allowlist the RSS search path");
+assert(rssProxyFunction.includes("ALLOWED_QUERY_PARAMETERS"), "RSS proxy must restrict upstream query parameters");
+assert(rssProxyFunction.includes("MAX_RESPONSE_BYTES"), "RSS proxy must cap response size");
+assert(rssProxyDeployScript.includes("dry-run only"), "RSS proxy deploy helper must default to dry-run");
+assert(rssProxyDeployScript.includes("HAIRSTYLE_RSS_PROXY_DEPLOY_ALLOW_WRITE"), "RSS proxy deploy helper must guard writes");
+assert(rssProxyDeployScript.includes("HAIRSTYLE_RSS_PROXY_DEPLOY_CONFIRM_PROJECT_REF"), "RSS proxy deploy helper must confirm the target project");
+assert(rssProxyDeployScript.includes("--no-verify-jwt"), "RSS proxy deploy helper must explicitly disable platform JWT verification");
+assert(rssProxyDeployScript.includes('"deno", ["check", "--no-lock", functionPath]'), "RSS proxy deploy helper must run Deno check");
+assert(wranglerConfig.includes("HAIRSTYLE_RSS_PROXY_URL"), "Cloudflare Worker config must bind the RSS proxy URL");
 assert(launchReadinessScript.includes("hairstyle:catalog:remote:check"), "launch readiness must run remote migration readiness");
 assert(launchReadinessScript.includes("hairstyle:catalog:env:check"), "launch readiness must run runtime env preflight");
 assert(launchReadinessScript.includes("hairstyle:catalog:cloudflare:secrets"), "launch readiness must check Cloudflare secret names");
 assert(launchReadinessScript.includes("hairstyle:catalog:trend-mail:deploy"), "launch readiness must run trend mail deploy dry-run");
+assert(launchReadinessScript.includes("hairstyle:catalog:rss-proxy:deploy"), "launch readiness must run RSS proxy deploy dry-run");
+assert(launchReadinessScript.includes("runRssProxySmoke"), "launch readiness must expose RSS proxy smoke evidence");
 assert(launchReadinessScript.includes("allowMissingExternal"), "launch readiness must support external blocker reporting without failure");
 assert(launchReadinessScript.includes("runReadOnlyRuntimeSmoke"), "launch readiness must expose read-only runtime smoke execution");
 assert(launchReadinessScript.includes("runAdminDryRunSmoke"), "launch readiness must separate admin dry-run POST smoke from read-only smoke");
@@ -386,6 +421,8 @@ console.log(JSON.stringify({
     "trend mail catalog processing evidence",
     "trend mail service-key auth guard",
     "trend mail deploy guard",
+    "RSS proxy transport guard",
+    "RSS proxy deploy guard",
     "launch readiness guard",
     "launch summary schema guard",
     "launch summary secret-free guard",

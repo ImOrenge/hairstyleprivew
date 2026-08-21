@@ -13,6 +13,10 @@ import {
   parsePortonePaymentResult,
   type PortOnePaymentResult,
 } from "./portone-payment-result";
+import {
+  buildPortoneBillingCustomer,
+  type PortOneBillingCustomer,
+} from "./portone-billing-customer";
 
 export type {
   PortOnePaymentResult,
@@ -34,7 +38,7 @@ export interface PortOneBillingKeyChargeInput {
   storeId?: string;
   channelKey?: string;
   orderName: string;
-  customerId: string;
+  customer: PortOneBillingCustomer;
   /** 결제 금액 (KRW 정수) */
   amount: number;
   currency?: string;
@@ -91,17 +95,22 @@ export function readPortoneStoreId(): string {
   return v;
 }
 
-export function readPortoneChannelKey(): string | undefined {
+/** Billing-key issuance and recurring charges must use the subscription channel. */
+export function readPortoneBillingKeyChannelKey(): string | undefined {
   return (
+    process.env.NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY?.trim() ||
+    process.env.PORTONE_V2_BILLING_KEY_CHANNEL_KEY?.trim() ||
     process.env.NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY?.trim() ||
     process.env.PORTONE_V2_CHANNEL_KEY?.trim() ||
     undefined
   );
 }
 
-/** One-time usage packs use their own V2 channel so recurring/mobile routing stays unchanged. */
-export function readPortoneUsagePackChannelKey(): string | undefined {
+/** Authenticated one-time payments use a channel distinct from billing-key payments. */
+export function readPortonePaymentChannelKey(): string | undefined {
   return (
+    process.env.NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY?.trim() ||
+    process.env.PORTONE_V2_PAYMENT_CHANNEL_KEY?.trim() ||
     process.env.NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY?.trim() ||
     process.env.PORTONE_V2_USAGE_PACK_CHANNEL_KEY?.trim() ||
     undefined
@@ -181,8 +190,10 @@ function formatPortoneHttpError(
 export async function chargeBillingKey(
   input: PortOneBillingKeyChargeInput,
 ): Promise<PortOnePaymentResult> {
+  const customer = buildPortoneBillingCustomer(input.customer);
+
   const url = `${PORTONE_API_BASE}/payments/${encodeURIComponent(input.paymentId)}/billing-key`;
-  const channelKey = input.channelKey?.trim() || readPortoneChannelKey();
+  const channelKey = input.channelKey?.trim() || readPortoneBillingKeyChannelKey();
   const response = await fetch(url, {
     method: "POST",
     headers: {
@@ -194,7 +205,7 @@ export async function chargeBillingKey(
       billingKey: input.billingKey,
       ...(channelKey ? { channelKey } : {}),
       orderName: input.orderName,
-      customer: { id: input.customerId },
+      customer,
       amount: { total: input.amount },
       currency: input.currency ?? "KRW",
     }),

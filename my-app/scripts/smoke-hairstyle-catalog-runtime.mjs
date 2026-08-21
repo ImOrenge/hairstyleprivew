@@ -65,8 +65,10 @@ Usage:
   npm run hairstyle:catalog:runtime:smoke -- --mode=force-rebuild --write --allowForceRebuild --confirmAppUrl=https://hairfit.beauty
   npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db
   npm run hairstyle:catalog:runtime:smoke -- --mode=active-db
+  npm run hairstyle:catalog:runtime:smoke -- --mode=personalization-metrics --cycleId=<catalog-cycle-id> --requireSamples=10
   npm run hairstyle:catalog:runtime:smoke -- --mode=alert-idempotency --expectAlert
   npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function
+  npm run hairstyle:catalog:runtime:smoke -- --mode=rss-proxy
   npm run hairstyle:catalog:runtime:smoke -- --mode=trend-mail-function --allowPendingAlerts --expectPendingCatalogAlert
 
 Modes:
@@ -77,8 +79,10 @@ Modes:
   force-rebuild      POST force rebuild. Requires --write, --allowForceRebuild, and confirmation.
   cron-db            Validate registered pg_cron jobs through the database helper RPC.
   active-db          Validate active catalog RPC, row pool, lineup shape, and alert/delivery uniqueness.
+  personalization-metrics Aggregate secret-free rollout evidence from generation option snapshots.
   alert-idempotency  Query trend_alerts and verify catalog_rotation alert count is <= 1.
   trend-mail-function Invoke cron-trend-emails only when no due alerts exist, unless explicitly allowed.
+  rss-proxy          Fetch one allowlisted Google News feed through the internal Edge Function.
 
 Env or args:
   NEXT_PUBLIC_APP_URL / NEXT_PUBLIC_SITE_URL / APP_URL / SITE_URL
@@ -89,8 +93,15 @@ Env or args:
   --appUrl=https://hairfit.beauty
   --confirmAppUrl=https://hairfit.beauty
   --cycleId=<catalog-cycle-id>
+  --since=<ISO timestamp> (defaults to 24 hours ago for personalization-metrics)
+  --requireSamples=<count>
+  --expectedMode=shadow|live
+  --expectedRolloutPercentage=0|10|50|100
+  --expectReason=shadow|internal_allowlist|percentage_canary|percentage_control
+  --expectedRssTransport=direct|supabase-edge
   --market=kr
   --functionUrl=https://<project-ref>.functions.supabase.co/cron-trend-emails
+  --rssProxyUrl=https://<project-ref>.supabase.co/functions/v1/hairstyle-rss-proxy
   --allowPendingAlerts
   --expectPendingCatalogAlert
   --allowNoActive
@@ -156,6 +167,13 @@ function readTrendMailFunctionUrl() {
   const explicit = getArg("functionUrl") || readEnv("SUPABASE_TREND_MAIL_FUNCTION_URL") || readEnv("TREND_MAIL_FUNCTION_URL");
   if (explicit) return parseUrl(explicit, "trend mail function URL").toString();
   return `${deriveEdgeFunctionBaseUrl().replace(/\/$/, "")}/cron-trend-emails`;
+}
+
+function readRssProxyFunctionUrl() {
+  const explicit = getArg("rssProxyUrl") || readEnv("HAIRSTYLE_RSS_PROXY_URL");
+  if (explicit) return parseUrl(explicit, "hairstyle RSS proxy URL").toString();
+  const supabaseUrl = parseUrl(readSupabaseUrl(), "Supabase URL");
+  return `${supabaseUrl.origin}/functions/v1/hairstyle-rss-proxy`;
 }
 
 function readTimeoutMs() {
@@ -301,11 +319,14 @@ function supabaseRestUrl(path) {
   return new URL(`${supabaseUrl}/rest/v1/${path}`);
 }
 
-function readExpectedPromptTemplateVersion() {
+function readExpectedPromptTemplateVersion(blueprintV4Enabled) {
   const source = readFileSync(resolve(appDir, "lib", "hairstyle-catalog-seed.ts"), "utf8");
-  const match = source.match(/HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION\s*=\s*"([^"]+)"/);
+  const constantName = blueprintV4Enabled
+    ? "HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION"
+    : "LEGACY_HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION";
+  const match = source.match(new RegExp(`${constantName}\\s*=\\s*"([^"]+)"`));
   if (!match) {
-    throw new Error("Cannot read HAIRSTYLE_CATALOG_PROMPT_TEMPLATE_VERSION");
+    throw new Error(`Cannot read ${constantName}`);
   }
   return match[1];
 }
@@ -419,6 +440,14 @@ async function runDryRunSmoke() {
   assert(result.dryRun === true, "dry-run response must set dryRun=true");
   assert(result.activated === false, "dry-run must not activate a catalog cycle");
   assert(!result.trendAlertId, "dry-run must not enqueue a trend alert");
+  const expectedRssTransport = getArg("expectedRssTransport");
+  if (expectedRssTransport) {
+    assert(isObject(result.sourceSummary), "dry-run response missing sourceSummary");
+    assert(
+      result.sourceSummary.rssTransport === expectedRssTransport,
+      `dry-run RSS transport mismatch: expected=${expectedRssTransport}, got=${result.sourceSummary.rssTransport}`,
+    );
+  }
 
   const after = await adminRequest("/api/admin/hairstyles/cycles/latest");
   validateStatus(after);
@@ -435,6 +464,16 @@ async function runDryRunSmoke() {
     status: result.status,
     validation: result.validation,
     lineupCounts: result.lineupCounts,
+    rss: isObject(result.sourceSummary)
+      ? {
+          transport: result.sourceSummary.rssTransport ?? null,
+          queryCount: result.sourceSummary.queryCount ?? null,
+          querySuccessCount: result.sourceSummary.querySuccessCount ?? null,
+          queryFailureCount: result.sourceSummary.queryFailureCount ?? null,
+          documentsUsed: result.sourceSummary.documentsUsed ?? null,
+          qualityGateStatus: result.sourceSummary.qualityGateStatus ?? null,
+        }
+      : null,
   }, null, 2));
 }
 
@@ -620,7 +659,16 @@ function validateLineupShape(lineups, itemsById, styleTarget) {
 
 async function runActiveDbSmoke() {
   const market = getArg("market", "kr");
-  const expectedPromptTemplateVersion = readExpectedPromptTemplateVersion();
+  const configuredBlueprintBatch = process.env.HAIRSTYLE_BLUEPRINT_V4_BATCH?.trim().toLowerCase() || "expansion-c";
+  const rolloutExpectations = {
+    "expansion-a": { itemCount: 82, targetCount: 43 },
+    "expansion-b": { itemCount: 132, targetCount: 68 },
+    "expansion-c": { itemCount: 182, targetCount: 93 },
+  };
+  const rolloutExpectation = rolloutExpectations[configuredBlueprintBatch];
+  const blueprintV4Enabled = process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true" &&
+    Boolean(rolloutExpectation);
+  const expectedPromptTemplateVersion = readExpectedPromptTemplateVersion(blueprintV4Enabled);
   const url = supabaseRestUrl("rpc/get_active_hairstyle_catalog");
   const active = await fetchJson(url.toString(), {
     method: "POST",
@@ -663,9 +711,8 @@ async function runActiveDbSmoke() {
   assert(Number.isFinite(expiresAt), "active catalog missing valid expiresAt");
   assert(expiresAt > activatedAt, "active catalog expiresAt must be after activatedAt");
 
-  const blueprintV4Enabled = process.env.HAIRSTYLE_BLUEPRINT_V4_ENABLED?.trim().toLowerCase() === "true";
-  const minimumItemCount = blueprintV4Enabled ? 182 : 32;
-  const minimumTargetCount = blueprintV4Enabled ? 93 : 18;
+  const minimumItemCount = blueprintV4Enabled ? rolloutExpectation.itemCount : 32;
+  const minimumTargetCount = blueprintV4Enabled ? rolloutExpectation.targetCount : 18;
   assert(items.length >= minimumItemCount, `active catalog item count must be at least ${minimumItemCount}, got ${items.length}`);
 
   const slugs = items.map((item) => (typeof item.slug === "string" ? item.slug : ""));
@@ -677,6 +724,7 @@ async function runActiveDbSmoke() {
   let maleCandidateCount = 0;
   let femaleCandidateCount = 0;
   let promptMismatchCount = 0;
+  const promptVersionCounts = new Map();
 
   for (const item of items) {
     assert(typeof item.id === "string", "active catalog item missing id");
@@ -687,12 +735,17 @@ async function runActiveDbSmoke() {
     const targets = normalizeStyleTargets(item.style_targets);
     if (targets.includes("male")) maleCandidateCount += 1;
     if (targets.includes("female")) femaleCandidateCount += 1;
-    if (item.prompt_template_version !== expectedPromptTemplateVersion) promptMismatchCount += 1;
+    const promptVersion = typeof item.prompt_template_version === "string" ? item.prompt_template_version : "missing";
+    promptVersionCounts.set(promptVersion, (promptVersionCounts.get(promptVersion) || 0) + 1);
+    if (promptVersion !== expectedPromptTemplateVersion) promptMismatchCount += 1;
   }
 
   assert(maleCandidateCount >= minimumTargetCount, `male active catalog candidate count must be at least ${minimumTargetCount}, got ${maleCandidateCount}`);
   assert(femaleCandidateCount >= minimumTargetCount, `female active catalog candidate count must be at least ${minimumTargetCount}, got ${femaleCandidateCount}`);
-  assert(promptMismatchCount === 0, `active catalog has ${promptMismatchCount} prompt template version mismatches`);
+  assert(
+    promptMismatchCount === 0,
+    `active catalog has ${promptMismatchCount} prompt template version mismatches; expected=${expectedPromptTemplateVersion}, observed=${JSON.stringify(Object.fromEntries(promptVersionCounts))}`,
+  );
 
   validateLineupShape(lineups, itemsById, "male");
   validateLineupShape(lineups, itemsById, "female");
@@ -706,6 +759,7 @@ async function runActiveDbSmoke() {
     ok: true,
     mode: "active-db",
     market,
+    blueprintBatch: blueprintV4Enabled ? configuredBlueprintBatch : "legacy-32",
     activeCycleId,
     expiresAt: active.expiresAt,
     itemCount: items.length,
@@ -717,6 +771,121 @@ async function runActiveDbSmoke() {
     },
     catalogRotationAlertCount: catalogRotationAlerts.length,
     deliveryRows: deliveryRows.length,
+  }, null, 2));
+}
+
+function readNonNegativeIntegerArg(name, fallback = 0) {
+  const raw = getArg(name, String(fallback));
+  if (!/^\d+$/.test(raw)) throw new Error(`--${name} must be a non-negative integer`);
+  return Number(raw);
+}
+
+function readMetricsSince() {
+  const fallback = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const value = getArg("since", fallback);
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) throw new Error("--since must be a valid ISO timestamp");
+  return new Date(parsed).toISOString();
+}
+
+function incrementCount(counts, key) {
+  counts[key] = (counts[key] || 0) + 1;
+}
+
+async function runPersonalizationMetricsSmoke() {
+  const cycleId = getArg("cycleId");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(cycleId)) {
+    throw new Error("personalization-metrics requires --cycleId=<uuid>");
+  }
+  const since = readMetricsSince();
+  const requireSamples = readNonNegativeIntegerArg("requireSamples", 0);
+  const expectedMode = getArg("expectedMode");
+  const expectedRolloutPercentageText = getArg("expectedRolloutPercentage");
+  const expectedRolloutPercentage = expectedRolloutPercentageText
+    ? readNonNegativeIntegerArg("expectedRolloutPercentage")
+    : null;
+  const expectReason = getArg("expectReason");
+
+  if (expectedMode && !new Set(["shadow", "live"]).has(expectedMode)) {
+    throw new Error("--expectedMode must be shadow or live");
+  }
+  if (expectedRolloutPercentage !== null && expectedRolloutPercentage > 100) {
+    throw new Error("--expectedRolloutPercentage must be from 0 to 100");
+  }
+
+  const url = supabaseRestUrl("generations");
+  url.searchParams.set("select", "created_at,selected_variant_id,options");
+  url.searchParams.set("created_at", `gte.${since}`);
+  url.searchParams.set("options->>catalogCycleId", `eq.${cycleId}`);
+  url.searchParams.set("order", "created_at.asc");
+  url.searchParams.set("limit", "1000");
+  const rows = await fetchJson(url.toString(), { headers: supabaseRestHeaders() });
+  assert(Array.isArray(rows), "personalization metrics query must return an array");
+
+  const modeCounts = {};
+  const reasonCounts = {};
+  const percentageCounts = {};
+  let evaluatedCount = 0;
+  let hardConflictGenerationCount = 0;
+  let compatiblePassCount = 0;
+  let fallbackCount = 0;
+  let selectedCount = 0;
+
+  for (const row of rows) {
+    const options = isObject(row?.options) ? row.options : {};
+    const rollout = isObject(options.hairProfileRollout) ? options.hairProfileRollout : null;
+    const evaluation = isObject(options.hairProfileEvaluation) ? options.hairProfileEvaluation : null;
+    if (rollout) {
+      incrementCount(modeCounts, typeof rollout.mode === "string" ? rollout.mode : "unknown");
+      incrementCount(reasonCounts, typeof rollout.reason === "string" ? rollout.reason : "unknown");
+      incrementCount(
+        percentageCounts,
+        Number.isFinite(rollout.rolloutPercentage) ? String(rollout.rolloutPercentage) : "unknown",
+      );
+    }
+    if (evaluation) {
+      evaluatedCount += 1;
+      if (Number(evaluation.hardConflictCandidateCount) > 0) hardConflictGenerationCount += 1;
+      if (Number(evaluation.profileCompatibleResultCount) >= 6) compatiblePassCount += 1;
+      if (evaluation.profileFallbackUsed === true) fallbackCount += 1;
+    }
+    if (typeof row?.selected_variant_id === "string" && row.selected_variant_id.trim()) selectedCount += 1;
+  }
+
+  assert(evaluatedCount >= requireSamples, `personalization metrics require ${requireSamples} evaluated samples, got ${evaluatedCount}`);
+  assert(hardConflictGenerationCount === 0, `personalization metrics found ${hardConflictGenerationCount} generations with hard conflicts`);
+  if (evaluatedCount > 0) {
+    assert(fallbackCount / evaluatedCount <= 0.1, `profile fallback ratio exceeds 0.1: ${fallbackCount}/${evaluatedCount}`);
+    assert(compatiblePassCount === evaluatedCount, `profile compatibility below 6 results for ${evaluatedCount - compatiblePassCount} generations`);
+  }
+  if (expectedMode) {
+    assert((modeCounts[expectedMode] || 0) >= requireSamples, `expected mode ${expectedMode} has fewer than ${requireSamples} samples`);
+  }
+  if (expectedRolloutPercentage !== null) {
+    assert(
+      (percentageCounts[String(expectedRolloutPercentage)] || 0) >= requireSamples,
+      `expected rollout percentage ${expectedRolloutPercentage} has fewer than ${requireSamples} samples`,
+    );
+  }
+  if (expectReason) {
+    assert((reasonCounts[expectReason] || 0) > 0, `expected rollout reason ${expectReason} was not observed`);
+  }
+
+  console.log(JSON.stringify({
+    ok: true,
+    mode: "personalization-metrics",
+    cycleId,
+    since,
+    generationCount: rows.length,
+    evaluatedCount,
+    selectedCount,
+    selectionRatio: rows.length > 0 ? selectedCount / rows.length : 0,
+    hardConflictGenerationCount,
+    compatiblePassCount,
+    profileFallbackRatio: evaluatedCount > 0 ? fallbackCount / evaluatedCount : 0,
+    modeCounts,
+    reasonCounts,
+    percentageCounts,
   }, null, 2));
 }
 
@@ -867,6 +1036,48 @@ async function runTrendMailFunctionSmoke() {
   }, null, 2));
 }
 
+async function runRssProxySmoke() {
+  const functionUrl = readRssProxyFunctionUrl();
+  const serviceRoleKey = requireSecret("SUPABASE_SERVICE_ROLE_KEY");
+  const googleUrl = new URL("https://news.google.com/rss/search");
+  googleUrl.search = new URLSearchParams({
+    q: "2026 한국 헤어스타일 트렌드",
+    hl: "ko",
+    gl: "KR",
+    ceid: "KR:ko",
+  }).toString();
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), readTimeoutMs());
+  try {
+    const response = await fetch(functionUrl, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        apikey: serviceRoleKey,
+        authorization: `Bearer ${serviceRoleKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ url: googleUrl.toString() }),
+    });
+    const xml = await response.text();
+    assert(response.ok, `RSS proxy returned status ${response.status}`);
+    const itemCount = (xml.match(/<item>/gi) || []).length;
+    const sourceCount = (xml.match(/<source(?:\s|>)/gi) || []).length;
+    assert(itemCount > 0, "RSS proxy response contained no item elements");
+    assert(sourceCount > 0, "RSS proxy response contained no source elements");
+    console.log(JSON.stringify({
+      ok: true,
+      mode: "rss-proxy",
+      functionUrl,
+      itemCount,
+      sourceCount,
+    }, null, 2));
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function main() {
   if (hasFlag("--help") || hasFlag("-h")) {
     showHelp();
@@ -905,6 +1116,10 @@ async function main() {
     await runActiveDbSmoke();
     return;
   }
+  if (mode === "personalization-metrics") {
+    await runPersonalizationMetricsSmoke();
+    return;
+  }
   if (mode === "alert-idempotency") {
     await runAlertIdempotencySmoke();
     return;
@@ -913,9 +1128,13 @@ async function main() {
     await runTrendMailFunctionSmoke();
     return;
   }
+  if (mode === "rss-proxy") {
+    await runRssProxySmoke();
+    return;
+  }
 
   throw new Error(
-    "Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, cron-db, active-db, alert-idempotency, or trend-mail-function.",
+    "Unknown --mode. Expected status, dry-run, readonly, rotation-check, force-rebuild, cron-db, active-db, personalization-metrics, alert-idempotency, trend-mail-function, or rss-proxy.",
   );
 }
 

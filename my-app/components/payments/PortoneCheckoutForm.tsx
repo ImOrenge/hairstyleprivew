@@ -196,6 +196,7 @@ export function PortoneCheckoutForm({
           issueId: prepared.issueId,
           storeId: prepared.storeId,
           channelKey: prepared.channelKey,
+          customer: prepared.customer,
         }),
       });
 

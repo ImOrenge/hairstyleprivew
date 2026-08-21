@@ -34,8 +34,8 @@ Optional:
 - `AFTERCARE_LLM_MODEL` (default: `gemini-3.5-flash`, aftercare guide and scheduled care copy)
 - `GEMINI_IMAGE_MODEL` (default: `gemini-3-pro-image`, Nano Banana Pro GA line)
 - `NEXT_PUBLIC_PORTONE_V2_STORE_ID` or `PORTONE_V2_STORE_ID` (required for PortOne billing key issuance)
-- `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY` or `PORTONE_V2_CHANNEL_KEY` (optional PortOne channel key)
-- `NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY` or `PORTONE_V2_USAGE_PACK_CHANNEL_KEY` (required for one-time usage-pack checkout)
+- `NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY` or `PORTONE_V2_BILLING_KEY_CHANNEL_KEY` (billing-key issuance and recurring charges)
+- `NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY` or `PORTONE_V2_PAYMENT_CHANNEL_KEY` (authenticated one-time payments)
 - `PORTONE_V2_API_SECRET` (required for PortOne billing key charges)
 - `PORTONE_V2_WEBHOOK_SECRET` (required for PortOne payment webhooks)
 - `BILLING_KEY_ENCRYPTION_SECRET` (required for encrypted PortOne billing key storage and renewals)
@@ -117,8 +117,8 @@ Set these in Cloudflare Workers/Pages project settings or Wrangler secrets:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `GOOGLE_API_KEY`
 - `NEXT_PUBLIC_PORTONE_V2_STORE_ID` or `PORTONE_V2_STORE_ID`
-- `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY` or `PORTONE_V2_CHANNEL_KEY`
-- `NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY` or `PORTONE_V2_USAGE_PACK_CHANNEL_KEY`
+- `NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY` or `PORTONE_V2_BILLING_KEY_CHANNEL_KEY`
+- `NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY` or `PORTONE_V2_PAYMENT_CHANNEL_KEY`
 - `PORTONE_V2_API_SECRET`
 - `PORTONE_V2_WEBHOOK_SECRET`
 - `BILLING_KEY_ENCRYPTION_SECRET`
@@ -280,9 +280,9 @@ The Worker posts parsed messages to `POST /api/email/inbound/cloudflare`. Emails
 
 ## PortOne V2 usage-pack setup
 
-Recurring and mobile V2 payments keep `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY`. One-time usage packs use the separate `NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY`; the browser never falls back to the recurring channel for this flow.
+Recurring and mobile V2 billing-key payments use `NEXT_PUBLIC_PORTONE_V2_BILLING_KEY_CHANNEL_KEY`. Authenticated one-time payments use `NEXT_PUBLIC_PORTONE_V2_PAYMENT_CHANNEL_KEY`; the browser never falls back to the billing-key channel for this flow. The former `NEXT_PUBLIC_PORTONE_V2_CHANNEL_KEY` and `NEXT_PUBLIC_PORTONE_V2_USAGE_PACK_CHANNEL_KEY` names remain runtime-only migration fallbacks and should not be used for new configuration.
 
-1. Set the usage-pack V2 channel key and sync the Worker secret names with `npm run portone:cloudflare:secrets -- --write --verifyAfterWrite` after confirming `PORTONE_CLOUDFLARE_SECRET_SYNC_CONFIRM=hairstyleprivew`.
+1. Set both canonical V2 channel keys and sync the Worker secret names with `npm run portone:cloudflare:secrets -- --write --verifyAfterWrite` after confirming `PORTONE_CLOUDFLARE_SECRET_SYNC_CONFIRM=hairstyleprivew`.
 2. Register the shared V2 webhook endpoint `https://hairfit.beauty/api/payments/webhook` in the PortOne console.
 3. Run `npm run portone:contract:test`, `npm run portone:env:check -- --mode=v2-usage-pack`, and the existing PortOne confirmation/webhook checks.
 4. After a test payment, compare the PortOne V2 `paymentId`, the `payment_transactions` row, and the `credit_ledger` row. Usage-pack transactions keep `provider=portone` and record `metadata.portone_version=v2`.

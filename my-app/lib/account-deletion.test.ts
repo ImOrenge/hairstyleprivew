@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const migrationName = "20260718061201_account_deletion_privacy_cleanup.sql";
+const emailConflictRestoreMigrationName = "20260812102505_restore_ensure_user_profile_email_conflict.sql";
 
 function read(relativeUrl: string) {
   return readFileSync(new URL(relativeUrl, import.meta.url), "utf8");
@@ -24,6 +25,21 @@ test("account deletion migration stays mirrored, private, resumable, and Storage
   assert.match(rootMigration, /cron-account-deletion-tombstone-prune/);
   assert.match(rootMigration, /revoke all on function public\.request_account_deletion\(text\)[\s\S]*from public, anon, authenticated/);
   assert.doesNotMatch(rootMigration, /delete\s+from\s+storage\.objects/i);
+});
+
+test("latest profile sync keeps deletion fencing and tolerates reused Clerk emails", () => {
+  const rootMigration = read(`../../supabase/migrations/${emailConflictRestoreMigrationName}`);
+  const appMigration = read(`../supabase/migrations/${emailConflictRestoreMigrationName}`);
+
+  assert.equal(appMigration, rootMigration);
+  assert.match(rootMigration, /account_deletion_tombstones/);
+  assert.match(rootMigration, /account_deletion_requested/);
+  assert.match(rootMigration, /pg_advisory_xact_lock/);
+  assert.match(rootMigration, /id <> p_user_id/);
+  assert.match(rootMigration, /p_user_id \|\| '@placeholder\.local'/);
+  assert.match(rootMigration, /on conflict \(id\)/);
+  assert.match(rootMigration, /grant execute on function public\.ensure_user_profile\(text, text, text\) to service_role/);
+  assert.doesNotMatch(rootMigration, /to authenticated/);
 });
 
 test("server deletion contract removes application data and photos before Clerk identity", () => {

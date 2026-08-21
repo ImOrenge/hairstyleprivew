@@ -22,6 +22,9 @@ export function UsagePackCatalog() {
                 <p className="mt-1 text-xs text-[var(--app-muted)]">
                   {formatServicePassCountsKo(item.servicePasses)}
                 </p>
+                <p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">
+                  서비스 제공기간: {item.servicePeriodLabelKo}
+                </p>
               </div>
               <p className="text-sm font-black text-[var(--app-text)]">
                 ₩{item.priceKrw.toLocaleString("ko-KR")}

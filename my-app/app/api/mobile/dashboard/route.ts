@@ -339,6 +339,7 @@ export async function GET(request: Request) {
             label: pack.label,
             credits: pack.credits,
             priceKrw: pack.priceKrw,
+            servicePeriodLabelKo: pack.servicePeriodLabelKo,
             hairOnlyCount: pack.servicePasses.hairCount,
             hairFashionSetCount: pack.servicePasses.fashionSetCount,
             aftercareProgramCount: pack.servicePasses.careCount,

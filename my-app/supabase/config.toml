@@ -365,6 +365,9 @@ deno_version = 2
 [functions.cron-trend-emails]
 verify_jwt = false
 
+[functions.hairstyle-rss-proxy]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327

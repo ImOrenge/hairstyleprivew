@@ -1,9 +1,9 @@
 # Google News RSS 기반 헤어스타일 블루프린트 150개 확장 계획
 
 작성일: 2026-08-08
-상태: 로컬 구현·정적 검증 완료, DB 적용·shadow rollout·운영 smoke 대기
+상태: 원격 migration·A/B/C 카탈로그·RSS proxy·rollback drill 완료, 개인화 실사용 표본 기반 10%→50%→100% 전환 대기
 대상 시장: `kr`
-기준 브랜치: `main@9138ece`
+기준 브랜치: `main@6fe19e6`, RSS proxy 코드 `develop/2026-08-08-hairstyle-blueprint-expansion@d7095b4`
 연계 문서: [헤어스타일 카탈로그 순환 아키텍처](hairstyle-catalog-rotation-architecture.md)
 
 ## 1. 결정 요약
@@ -18,7 +18,7 @@
 | RSS 역할 | Google News RSS는 스타일 발견과 트렌드 점수 근거로 사용한다. 기사 제목만으로 블루프린트를 자동 게시하거나 화학 시술 안전성을 판단하지 않는다. |
 | 추천 방식 | 활성 cycle과 기존 lineup을 유지하되, 전체 활성 풀에서 현재 모발 호환 후보를 먼저 뽑고 lineup의 트렌드·회전 후보를 혼합해 9개를 만든다. |
 | 출시 방식 | 50개씩 3개 배치로 추가하고, 각 배치마다 정적 감사·프롬프트 샘플·shadow 추천을 통과한 뒤 다음 배치로 진행한다. |
-| 운영 경계 | 150개 데이터, DB migration, web/mobile/salon UI, 추천 로직과 rollback flag는 로컬 구현됐다. 원격 DB 적용, 배포, active cycle 교체와 단계적 rollout은 별도 승인 전까지 수행하지 않는다. |
+| 운영 경계 | 150개 데이터와 DB migration, web/mobile/salon 전달, 추천 로직, A/B/C active cycle, RSS proxy, rollback flag는 운영에 반영됐다. 개인화는 실사용 표본이 0건이므로 `shadow/0%`를 유지하며, 10%→50%→100% live 전환은 표본 게이트를 통과한 뒤 수행한다. |
 
 ## 2. 현재 기준선과 해결할 문제
 
@@ -419,7 +419,9 @@ active cycle rows 182개
 | 곱슬 | 일반, 손상, 탈색, 염색 |
 | 강한 곱슬·부스스함 | 일반, 손상, 탈색, 염색 |
 
-총 24개 기본 fixture에 길이 고정/미고정, `unknown`, 고손상 hard exclusion을 추가한다. 각 결과는 9개 수량, 길이 규칙, family 중복, hard conflict 0, 호환 후보 최소 6개를 검사한다.
+실행형 계약 테스트는 여성·남성 × 희망 단·중·장 × texture 3종 × 가는·보통·굵은 모발 × 일반·손상·탈색·염색 4종에 고손상 `탈색+손상` 조합을 더한 총 270개 profile을 순회한다. 운영 추천과 같은 순수 selector를 실행해 각 결과의 9개 수량, 중복 없음, 길이 규칙, family 최대 2개, hard conflict 0, texture·굵기 호환 후보 최소 6개를 검사한다.
+
+같은 테스트에서 v4 flag를 끄고 기존 32개·`catalog-v3` rollback pool이 남녀 각각 9개, 단·중·장 각 3개, family 최대 2개인 lineup-first 결과를 유지하는지도 실행 검증한다.
 
 ### 10.3 RSS fixture
 
@@ -434,8 +436,11 @@ active cycle rows 182개
 ```text
 npm run hairstyle:blueprints:audit
 npm run hairstyle:blueprints:coverage
+npm run hairstyle:blueprints:db:smoke -- --databaseUrl <local-postgres-url>
 npm run hairstyle:catalog:recommendation:test
 npm run hairstyle:catalog:rss:fixture:test
+npm run hairstyle:catalog:env:check -- --mode=blueprint-v4-rollout
+npm run hairstyle:catalog:runtime:smoke -- --mode=personalization-metrics --cycleId <active-cycle-id> --requireSamples <count>
 npm run hairstyle:catalog:audit
 npm run hairstyle:catalog:lineup:audit
 npm run supabase:migrations:mirror:check
@@ -452,20 +457,25 @@ remote DB write, function deploy, active cycle 강제 rebuild는 로컬 구현 �
 | flag | off | on |
 | --- | --- | --- |
 | `HAIRSTYLE_BLUEPRINT_V4_ENABLED` | 기존 32 loader | 182 manifest loader |
+| `HAIRSTYLE_BLUEPRINT_V4_BATCH` | v4 off 시 무시 | `expansion-a` 신규 50개, `expansion-b` 누적 100개, `expansion-c` 누적 150개 |
 | `HAIR_PROFILE_MATCHING_V2_ENABLED` | 기존 lineup-first 추천 | 모발 호환 6 + lineup 3 |
 | `HAIRSTYLE_RSS_FACETS_V2_ENABLED` | 기존 11 query | 구조화 60 query |
+
+개인화 master flag가 켜진 뒤에는 `HAIR_PROFILE_MATCHING_V2_MODE=shadow|live`, `HAIR_PROFILE_MATCHING_V2_INTERNAL_USER_IDS`, `HAIR_PROFILE_MATCHING_V2_ROLLOUT_PERCENT=0|10|50|100`을 함께 사용한다. `shadow`는 얼굴 분석을 중복 실행하지 않고 baseline과 개인화 후보를 같은 catalog snapshot에서 계산해 overlap, hard conflict, 호환 결과 수, fallback 여부를 저장하되 baseline 결과를 제공한다. `live`의 비허용 사용자는 안정적 user-ID bucket에 따라 shadow control에 남는다.
 
 flag는 web UI만 숨기는 용도가 아니다. 서버 loader, scoring, rebuild가 각각 안전하게 구버전 경로로 돌아갈 수 있어야 한다.
 
 ### 11.2 Rollout 순서
 
 1. schema와 code를 배포하되 세 flag는 off로 둔다.
-2. 신규 50개로 dry-run cycle을 만들고 DB에는 활성화하지 않는다.
-3. 배치 A/B/C 누적 cycle을 shadow 생성해 coverage와 prompt 표본을 검토한다.
+2. `HAIRSTYLE_BLUEPRINT_V4_BATCH=expansion-a`로 기존 32+신규 50개의 dry-run cycle을 만들고 DB에는 활성화하지 않는다.
+3. `expansion-a` → `expansion-b` → `expansion-c` 순서로 82→132→182개 누적 shadow cycle을 생성해 coverage와 prompt 표본을 검토한다. 잘못된 batch 값은 기존 32개·`catalog-v3`로 fail-closed 한다.
 4. RSS facet만 켜 source summary와 실패율을 한 cycle 관찰한다.
 5. blueprint v4를 내부 계정에만 활성화한다.
 6. 개인화 scoring을 10% canary로 켜 fallback·hard conflict·선택률을 비교한다.
 7. 50% 후 100%로 확대한다. 각 단계는 최소 한 active cycle을 관찰한다.
+
+각 단계의 운영 증거는 `personalization-metrics` read-only smoke로 집계한다. 이 명령은 사용자 ID나 모발 프로필을 출력하지 않고 cycle별 표본 수, shadow/live·사유·bucket 비율, hard conflict, 6개 이상 호환 결과, fallback 및 선택률만 출력한다. `--requireSamples`, `--expectedMode`, `--expectedRolloutPercentage`, `--expectReason`으로 단계별 최소 증거를 fail-closed 검증한다.
 
 ### 11.3 운영 지표
 
@@ -513,12 +523,52 @@ rollback drill은 `이전 active cycle 유지`, `9개 추천 반환`, `기존 32
 - [x] 여성·남성의 단·중·장 각 25개 묶음이 가는/보통/굵은 모발 `8/9/8`을 만족한다.
 - [x] RSS 60개 query가 metadata와 함께 수집되고 실패 시 기존 active cycle이 유지된다.
 - [x] 현재 모발 프로필이 web/mobile/salon generation 경로에서 동일하게 전달된다.
-- [x] known profile의 9개 결과에는 hard condition·굵기 conflict가 없고 최소 6개가 texture·굵기 호환이다.
+ - [x] known profile의 9개 결과에는 hard condition·굵기 conflict가 없고 최소 6개가 texture·굵기 호환이다. 운영 selector를 공유하는 270개 profile 실행형 테스트로 증명한다.
 - [x] 기본 비교 모드는 단/중/장 각 3개, 동일 family 최대 2개를 보장한다.
 - [x] 기존 active lineup, seeded fallback, previous cycle rollback과 `32개/11 query/lineup-first` flag fallback이 유지된다.
 - [x] migration mirror, catalog audit, recommendation fixture, profile unit test, lint, web/mobile typecheck와 production build가 통과한다.
-- [ ] 임시 Postgres fresh-chain과 원격 Supabase runtime smoke를 통과한다. 현재 로컬 DB URL과 원격 적용 승인이 없어 미실행이다.
-- [ ] shadow → 내부 → 10% → 50% → 100% rollout과 rollback drill 증거가 남는다.
-- [ ] 실제 구현·배포·운영 smoke가 끝나기 전에는 이 문서를 완료 구현으로 표시하지 않는다.
+- [x] 임시 Supabase Postgres에서 76개 migration fresh-chain과 v4 컬럼·제약·권한·RLS-backed RPC 반환 smoke를 통과한다.
+- [x] shadow → 내부 → 10% → 50% → 100%의 안정적 user bucket 판정과 master flag 즉시 rollback이 결정적 단위 테스트로 증명된다.
+- [x] 원격 pre-deploy dry-run과 migration list가 v4 미적용 상태를 식별하고, 현재 32개 rollback active cycle의 `32 rows / 남녀 18 candidates / 남녀 lineup 9` DB·앱 status smoke가 통과한다.
+- [x] 선행 `20260722120000_google_play_billing.sql`과 `20260808090000_extend_hairstyle_blueprint_v4.sql`을 원격 적용하고 migration 정합성·v4 RPC runtime smoke를 통과한다.
+- [x] 배포된 코드에서 A/B/C active cycle shadow와 master-off/기존 32개 포인터 rollback drill 및 C 복구 증거가 남는다.
+- [ ] 개인화 실사용 표본을 확보해 내부 allowlist → 10% → 50% → 100%의 `personalization-metrics` 게이트를 통과한다. 현재 표본은 0건이며 `shadow/0%`다.
+- [x] Cloudflare Worker의 Google News RSS egress를 service-role 인증 Supabase Edge proxy로 분리하고 자동 rotation과 같은 production dry-run 경로를 다시 검증한다. 60개 중 45개 query가 성공하고 근거 3건을 사용해 182-row validation을 통과했으며 기존 active C 포인터는 유지됐다.
+- [ ] 개인화 실사용 운영 관측이 끝나기 전에는 전체 개인화 rollout을 완료로 표시하지 않는다.
 
 로컬 UI 검증은 `/e2e-harness/hair-profile`의 HTTP 200과 길이·형태·굵기·상태 필드 SSR 출력을 확인했다. 자동 브라우저 런타임은 로컬 경로 오류로 연결되지 않아 스크린샷·클릭 상호작용 검증은 배포 전 잔여 항목으로 둔다.
+
+### 14.1 2026-08-09 원격 pre-deploy 기준선
+
+- 연결 프로젝트: `dpzdhxlqnogfpubpslbf`
+- `supabase db push --dry-run`: 원격 쓰기 없이 실행, `readyForWrite=false`
+- 미적용 migration: `20260722120000_google_play_billing.sql`, `20260808090000_extend_hairstyle_blueprint_v4.sql`
+- 현재 active cycle: `992846d6-32be-4ab0-9ff2-6f7c22d23aa1`, 만료 `2026-08-12T00:20:14.095Z`
+- rollback 기준선: catalog 32개, 남성 후보 18개, 여성 후보 18개, 남녀 lineup 각 9개, catalog rotation alert 0개, delivery 0개
+- 배포 앱 `GET /api/admin/hairstyles/cycles/latest`: 같은 active cycle과 lineup 각 9개, warning 0개
+- v4 flag off에서는 기존 active row의 `catalog-v3` prompt version을 검증하고, v4 flag on에서만 `catalog-v4`를 요구한다.
+
+### 14.2 2026-08-09 원격 rollout 증거
+
+- Git: 최신 `main@6fe19e6`을 통합한 `develop/2026-08-08-hairstyle-blueprint-expansion@0dc5fd5`를 원격 게시했다.
+- Supabase: `20260722120000_google_play_billing.sql`, `20260808090000_extend_hairstyle_blueprint_v4.sql` 적용 후 `supabase db push --dry-run`이 up-to-date를 반환했다.
+- 코드 배포: Worker `322dfe87-aa69-42e4-bff9-bc4c9d461e91`을 flag-off 상태로 10% canary 후 100% 승격했다. canary에서 공개 페이지 30/30, 관리자 상태 API 30/30, 새 버전 preview API가 정상 응답했다.
+- A cycle: `d2b06f66-39a3-49c9-8dfd-094ce4d41191`, 82 rows, 남녀 후보 각 43, lineup 각 9.
+- B cycle: `941e14a2-f69d-434e-8eb6-f227695f7cfc`, 132 rows, 남녀 후보 각 68, lineup 각 9.
+- C cycle: `d95d2899-a6e6-420d-9561-a8e9e4260ed9`, 182 rows, 남녀 후보 각 93, lineup 각 9.
+- 구조화 RSS: 60/60 query 성공, 사용 근거 1건, 빈 facet 23개로 `qualityGateStatus=warn`을 기록했다. 안전·호환성은 RSS가 아니라 curated blueprint 제약과 activation validation이 담당한다.
+- 최종 Worker: `08e7e3bb-d518-4ac6-bf57-b70fc97f6e50` 100%, `expansion-c`, RSS facet on, 개인화 `shadow/0%`.
+- rollback drill: master-off Worker와 기존 cycle `992846d6-32be-4ab0-9ff2-6f7c22d23aa1`로 원자 복귀해 32 rows, 남녀 후보 각 18, lineup 각 9, 공개 페이지 5/5를 확인한 뒤 C cycle과 최종 Worker를 복구했다.
+- 복구 후 smoke: 182 rows, 남녀 후보 각 93, lineup 각 9, warning 0, 공개 페이지 10/10 정상.
+- 운영 편차: Cloudflare preview의 직접 Google News RSS 수집은 유효 근거 0건으로 fail-closed 됐다. A의 첫 제어 호출은 Windows `curl` JSON 인용 문제로 기본 활성화 요청으로 해석됐지만 82-row activation validation을 통과했고, 이후 B/C는 Node `fetch`의 명시적 `dryRun` 응답을 확인한 뒤 활성화했다.
+- 개인화 증거: 최종 C cycle의 generation/evaluated/selected 표본은 모두 0건이다. 따라서 내부·10%·50%·100% live 전환은 수행하지 않고 shadow를 유지한다.
+
+### 14.3 2026-08-09 RSS egress 복구와 최종 운영 증거
+
+- Supabase Edge Function: `hairstyle-rss-proxy`를 `dpzdhxlqnogfpubpslbf`에 배포했다. `verify_jwt=false` 대신 함수 내부에서 service role `apikey`/Bearer를 검증하고, `https://news.google.com/rss/search` 및 `q/hl/gl/ceid`만 허용한다.
+- 프록시 smoke: 정상 feed는 item/source 각 80개, 무인증 요청 401, 허용되지 않은 upstream 400, 잘못된 method 405를 반환했다.
+- Worker: `fba6c1fd-170d-4717-8bd8-53f432464912`를 기존 `08e7e3bb-d518-4ac6-bf57-b70fc97f6e50` 90%/신규 10% canary로 배포한 뒤 공개 페이지 30/30과 관리자 상태 30/30을 확인하고 신규 버전을 100%로 승격했다.
+- production 자동 경로 dry-run: `rssTransport=supabase-edge`, query 60개 중 성공 45·실패 15, 사용 근거 3건, `qualityGateStatus=warn`, 182 rows, 남녀 후보 각 93, lineup 각 9, prompt mismatch 0으로 통과했다. dry-run 전후 active cycle은 `d95d2899-a6e6-420d-9561-a8e9e4260ed9`로 동일하다.
+- 최종 DB: active C 182 rows, 남녀 후보 각 93, lineup 각 9, catalog rotation alert 0, delivery 0이다.
+- post-merge migration list에서 헤어 v4 `20260808090000`은 local/remote가 일치한다. 다만 다른 작업에서 적용된 원격 전용 `202608080001`, `202608080002`가 현재 main migration 폴더에 없어 전체 `db push --dry-run`은 history drift로 차단된다. 이 작업에서는 무관한 migration history를 repair하거나 되돌리지 않았다.
+ - 개인화 표본은 generation/evaluated/selected 모두 0건이다. 따라서 안전한 운영값인 `shadow/0%`를 유지하고 실제 표본 없이 내부·10%·50%·100%를 강제하지 않는다.

@@ -154,6 +154,7 @@ function assertRequestedEvidence(value) {
     "runReadOnlyRuntimeSmoke",
     "runAdminDryRunSmoke",
     "runTrendMailSmoke",
+    "runRssProxySmoke",
     "forceRuntimeSmoke",
   ]) {
     assertBoolean(value[key], `requestedEvidence.${key}`);
@@ -168,6 +169,7 @@ function assertChecks(value) {
     "envPreflight",
     "cloudflareLocalSecretNames",
     "trendMailDeployDryRun",
+    "rssProxyDeployDryRun",
   ]) {
     assertBoolean(value[key], `checks.${key}`);
   }

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { buildUsagePackPaymentId } from "../../../../../lib/portone-payment-id";
 import {
   readPortoneStoreId,
-  readPortoneUsagePackChannelKey,
+  readPortonePaymentChannelKey,
 } from "../../../../../lib/portone";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../../lib/supabase";
 import { getUsagePackEligibility } from "../../../../../lib/usage-pack-eligibility";
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
   let channelKey: string | undefined;
   try {
     storeId = readPortoneStoreId();
-    channelKey = readPortoneUsagePackChannelKey();
+    channelKey = readPortonePaymentChannelKey();
   } catch {
     return NextResponse.json({ error: "PortOne 결제 설정이 필요합니다." }, { status: 503 });
   }

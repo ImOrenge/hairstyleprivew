@@ -10,8 +10,11 @@ export interface UsagePack {
   credits: number;
   priceKrw: number;
   orderName: string;
+  servicePeriodLabelKo: string;
   servicePasses: ServicePassCounts;
 }
+
+export const USAGE_PACK_SERVICE_PERIOD_KO = "결제 완료일로부터 1개월";
 
 function createUsagePack(input: {
   key: UsagePackKey;
@@ -28,6 +31,7 @@ function createUsagePack(input: {
     credits: input.credits,
     priceKrw: input.priceKrw,
     orderName: `HairFit 추가 이용권 ${input.size} - ${serviceLabel}`,
+    servicePeriodLabelKo: USAGE_PACK_SERVICE_PERIOD_KO,
     servicePasses,
   };
 }

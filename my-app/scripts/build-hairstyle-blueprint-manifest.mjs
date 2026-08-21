@@ -299,6 +299,10 @@ function stableJson(value) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
+function normalizeLineEndings(value) {
+  return value.replace(/\r\n?/g, "\n");
+}
+
 mkdirSync(outputDirectory, { recursive: true });
 
 const results = [];
@@ -311,7 +315,7 @@ for (const group of GROUPS) {
 
     if (checkOnly) {
       const actual = readFileSync(filePath, "utf8");
-      if (actual !== expected) {
+      if (normalizeLineEndings(actual) !== expected) {
         throw new Error(`${fileName} is stale; run npm run hairstyle:blueprints:build`);
       }
     } else {

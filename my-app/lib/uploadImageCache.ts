@@ -2,6 +2,7 @@ const DB_NAME = "hairfit-local-cache";
 const STORE_NAME = "uploads";
 const LEGACY_ORIGINAL_IMAGE_KEY = "original-image";
 const ORIGINAL_IMAGE_KEY_PREFIX = "original-image.v2.";
+const CACHE_OPERATION_TIMEOUT_MS = 2_000;
 
 interface CachedOriginalImageRecord {
   version: 2;
@@ -47,6 +48,18 @@ function openDatabase(): Promise<IDBDatabase | null> {
 
   return new Promise((resolve) => {
     const request = window.indexedDB.open(DB_NAME, 1);
+    let settled = false;
+    const finish = (database: IDBDatabase | null) => {
+      if (settled) {
+        database?.close();
+        return;
+      }
+
+      settled = true;
+      window.clearTimeout(timeout);
+      resolve(database);
+    };
+    const timeout = window.setTimeout(() => finish(null), CACHE_OPERATION_TIMEOUT_MS);
 
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -55,8 +68,9 @@ function openDatabase(): Promise<IDBDatabase | null> {
       }
     };
 
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => resolve(null);
+    request.onsuccess = () => finish(request.result);
+    request.onerror = () => finish(null);
+    request.onblocked = () => finish(null);
   });
 }
 
@@ -112,29 +126,39 @@ export async function readOriginalImageFromCache(ownerId: string): Promise<File 
     const transaction = db.transaction(STORE_NAME, "readwrite");
     const store = transaction.objectStore(STORE_NAME);
     const request = store.get(getOriginalImageCacheKey(normalizedOwnerId));
+    let settled = false;
+    const finish = (file: File | null) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      window.clearTimeout(timeout);
+      db.close();
+      resolve(file);
+    };
+    const timeout = window.setTimeout(() => finish(null), CACHE_OPERATION_TIMEOUT_MS);
     store.delete(LEGACY_ORIGINAL_IMAGE_KEY);
 
     request.onsuccess = () => {
       const result = readOwnedOriginalImageRecord(request.result, normalizedOwnerId);
-      db.close();
 
       if (typeof File !== "undefined" && result instanceof File) {
-        resolve(result);
+        finish(result);
         return;
       }
 
       if (result instanceof Blob) {
-        resolve(new File([result], "uploaded-image", { type: result.type || "image/jpeg" }));
+        finish(new File([result], "uploaded-image", { type: result.type || "image/jpeg" }));
         return;
       }
 
-      resolve(null);
+      finish(null);
     };
 
-    request.onerror = () => {
-      db.close();
-      resolve(null);
-    };
+    request.onerror = () => finish(null);
+    transaction.onerror = () => finish(null);
+    transaction.onabort = () => finish(null);
   });
 }
 

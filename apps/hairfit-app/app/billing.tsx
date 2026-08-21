@@ -393,6 +393,7 @@ function PortoneBillingScreen() {
                   <BodyText>
                     헤어 {pack.hairOnlyCount.toLocaleString("ko-KR")}회 · 패션 {pack.hairFashionSetCount.toLocaleString("ko-KR")}세트 · 케어 {pack.aftercareProgramCount.toLocaleString("ko-KR")}회
                   </BodyText>
+                  <BodyText>서비스 제공기간: {pack.servicePeriodLabelKo}</BodyText>
                   <Button
                     variant="secondary"
                     onPress={() => void Linking.openURL(`${getHairfitApiBaseUrl()}/billing/usage?pack=${encodeURIComponent(pack.key)}`)}

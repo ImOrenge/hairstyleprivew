@@ -413,11 +413,12 @@
 | 파일 | 변경 |
 | --- | --- |
 | `my-app/lib/hairstyle-catalog.ts` | active pointer 조회, cycle-scoped insert, validation, activation flow 추가 |
-| `my-app/lib/hairstyle-trend-research.ts` | 240일 단일 lookback 제거, 60일 primary/120일 fallback과 freshness metadata 추가 |
+| `my-app/lib/hairstyle-trend-research.ts` | 240일 단일 lookback 제거, 60일 primary/120일 fallback, freshness metadata, Supabase Edge RSS transport 추가 |
 | `my-app/lib/recommendation-generator.ts` | active catalog 기반 추천 export 유지 |
 | `my-app/app/api/admin/hairstyles/rebuild/route.ts` | `force`, `activate`, `dryRun`, `reason` 지원 |
 | `my-app/app/api/admin/hairstyles/cycles/latest/route.ts` | active 상태와 next rotation 응답 추가 |
 | `my-app/supabase/functions/cron-trend-emails/index.ts` | `catalog_rotation` alert 재시도와 cycle metadata 치환 지원 |
+| `my-app/supabase/functions/hairstyle-rss-proxy/index.ts` | Worker 전용 Google News RSS egress, service-key auth, strict upstream allowlist와 응답 상한 |
 | `my-app/supabase/migrations/*_hairstyle_catalog_rotation.sql` | active pointer, lineup, RPC, cron 등록 |
 | `my-app/scripts/audit-hairstyle-catalog.mjs` | TTL, cron, DB schema, 코드 경로 정적 점검 |
 | `my-app/scripts/smoke-hairstyle-catalog-runtime.mjs` | active DB, cron DB, admin/API, mail delivery runtime smoke |
@@ -461,6 +462,8 @@
 | Edge Function header | post-rotation mail cron이 `Authorization: Bearer <service-role-key>`와 `apikey: <service-role-key>`를 함께 전송 |
 | Edge Function auth | `cron-trend-emails`는 `verify_jwt=false`로 배포하고 함수 내부에서 service role key header를 검증 |
 | Edge Function deploy guard | `npm run hairstyle:catalog:trend-mail:deploy` dry-run 통과 후 확인 env와 `--write`로 배포 |
+| RSS proxy deploy guard | `npm run hairstyle:catalog:rss-proxy:deploy` dry-run 통과 후 확인 env와 `--write`로 배포 |
+| RSS proxy smoke | `--mode=rss-proxy`와 production `--mode=dry-run --expectedRssTransport=supabase-edge` 통과, active pointer 불변 |
 | Launch readiness guard | `npm run hairstyle:catalog:launch:check`는 외부 증거가 빠지면 실패하고, `--allowMissingExternal`에서는 blocker 목록만 보고. Runtime smoke는 non-mutating smoke와 admin dry-run POST를 분리하며, prerequisite 실패 시 known-blocked smoke를 skip. `--cycleId`, `--market`, `--expectAlert`, live mail smoke flags는 하위 runtime smoke로 전달하고, `--summaryJson`은 자동화용 blocker summary를 생성 |
 | Launch summary schema guard | `npm run hairstyle:catalog:launch:summary:check`가 생성된 readiness summary JSON의 schema, blocker, fatal summary, secret-free 계약을 검증 |
 | cron DB smoke | `npm run hairstyle:catalog:runtime:smoke -- --mode=cron-db` 통과 |

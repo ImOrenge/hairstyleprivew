@@ -1,10 +1,8 @@
 import { NextResponse } from "next/server";
 import { runHairBlueprintCapability } from "../../../../lib/capabilities/hair-blueprint-service";
 import { runSalonBriefCapability } from "../../../../lib/capabilities/salon-brief-service";
-import {
-  isHairProfilePersonalizationEnabled,
-  normalizeCurrentHairProfile,
-} from "../../../../lib/current-hair-profile";
+import { normalizeCurrentHairProfile } from "../../../../lib/current-hair-profile";
+import { buildHairProfileRolloutDecision } from "../../../../lib/hair-profile-rollout";
 import { downloadGenerationOriginalImageDataUrl } from "../../../../lib/generation-image-storage";
 import { isAuthorizedGenerationWorkflowCallback } from "../../../../lib/generation-workflow-callback-auth";
 import { isMemberStyleTarget } from "../../../../lib/onboarding";
@@ -187,9 +185,8 @@ export async function POST(request: Request) {
       supabase,
       claim.originalImagePath,
     );
-    const hairProfile = isHairProfilePersonalizationEnabled()
-      ? normalizeCurrentHairProfile(claim.options.hairProfile)
-      : null;
+    const hairProfile = normalizeCurrentHairProfile(claim.options.hairProfile);
+    const hairProfileRollout = buildHairProfileRolloutDecision(claim.userId, hairProfile);
     const generationLink = isHairfitV2Enabled("PROMPT_POLICY_V2_ENABLED")
       ? await supabase
           .from("generations")
@@ -212,6 +209,7 @@ export async function POST(request: Request) {
       sourceImageFingerprint: fingerprintPromptSourceImage(referenceImageDataUrl),
       styleTarget: styleTargetValue,
       hairProfile,
+      personalizationMode: hairProfileRollout.mode,
     });
     if (blueprint.state !== "completed" || !blueprint.output) {
       throw new Error(blueprint.failure?.message || "헤어 블루프린트 준비가 진행 중입니다.");
@@ -307,7 +305,9 @@ export async function POST(request: Request) {
       selectedVariantId: null,
       styleTarget: styleTargetValue,
       hairProfile,
-      hairProfilePersonalizationEnabled: isHairProfilePersonalizationEnabled(),
+      hairProfilePersonalizationEnabled: hairProfileRollout.mode === "live",
+      hairProfileRollout,
+      hairProfileEvaluation: generated.personalizationEvaluation,
       catalogCycleId: generated.catalogCycleId,
       creditChargedAt: null,
       creditChargeAmount: creditsRequired,
@@ -322,6 +322,8 @@ export async function POST(request: Request) {
       promptSource: promptPlans ? "hairfit-v2-consultation-compiler" : "durable-workflow-preparation",
       consultationId,
       styleTarget: styleTargetValue,
+      hairProfileRollout,
+      hairProfileEvaluation: generated.personalizationEvaluation,
     };
     const { data: finishData, error: finishError } = await supabase.rpc(
       "finish_generation_preparation",

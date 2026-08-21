@@ -9,7 +9,20 @@ export async function authenticatedFetchWithRetry(
   dependencies: AuthenticatedFetchDependencies,
 ) {
   const fetchImpl = dependencies.fetchImpl ?? fetch;
-  let response = await fetchImpl(input, init);
+  let initialRequest = init;
+
+  try {
+    const sessionToken = await dependencies.getToken();
+    if (sessionToken) {
+      const headers = new Headers(init?.headers);
+      headers.set("Authorization", `Bearer ${sessionToken}`);
+      initialRequest = { ...init, headers };
+    }
+  } catch {
+    // Fall back to the same-origin Clerk cookie before attempting a forced refresh.
+  }
+
+  let response = await fetchImpl(input, initialRequest);
   if (response.status !== 401) return response;
 
   try {

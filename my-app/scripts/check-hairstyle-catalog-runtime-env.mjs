@@ -62,12 +62,16 @@ Usage:
   npm run hairstyle:catalog:env:check -- --mode=admin-api
   npm run hairstyle:catalog:env:check -- --mode=cron-registration
   npm run hairstyle:catalog:env:check -- --mode=trend-mail-function
+  npm run hairstyle:catalog:env:check -- --mode=rss-proxy
+  npm run hairstyle:catalog:env:check -- --mode=blueprint-v4-rollout
 
 Modes:
   all                 Check every hairstyle catalog runtime surface. Default.
   admin-api           Deployed admin rebuild/status API smoke prerequisites.
   cron-registration   pg_cron helper registration prerequisites.
   trend-mail-function Supabase cron-trend-emails function prerequisites.
+  rss-proxy          Internal Supabase Google News RSS proxy prerequisites.
+  blueprint-v4-rollout Blueprint/RSS/profile rollout flag consistency.
 
 Optional args:
   --appUrl=https://hairfit.beauty
@@ -225,6 +229,30 @@ function deriveEdgeFunctionBaseUrl() {
   return `https://${projectRef}.functions.supabase.co`;
 }
 
+function readRssProxyUrl() {
+  const explicit = getArg("rssProxyUrl") || readEnv("HAIRSTYLE_RSS_PROXY_URL");
+  if (explicit) return explicit;
+  const supabaseUrl = parseUrl(readSupabaseUrl());
+  return supabaseUrl ? `${supabaseUrl.origin}/functions/v1/hairstyle-rss-proxy` : "";
+}
+
+function checkRssProxyCredential(group) {
+  const scopedSecret = readEnv("HAIRSTYLE_RSS_PROXY_SECRET");
+  if (scopedSecret && !isPlaceholder(scopedSecret) && scopedSecret.length >= MIN_SECRET_LENGTH) {
+    console.log(`[ok] ${group}: function-scoped RSS proxy secret (HAIRSTYLE_RSS_PROXY_SECRET)`);
+    return [];
+  }
+  return checkSecret(group, "SUPABASE_SERVICE_ROLE_KEY", "RSS proxy service role key");
+}
+
+function checkRssProxy(group) {
+  const allowLocal = hasFlag("--allowLocal");
+  return [
+    ...checkHttpsUrl(group, "hairstyle RSS proxy URL", readRssProxyUrl(), { allowLocal }),
+    ...checkRssProxyCredential(group),
+  ];
+}
+
 function checkAdminApi(group) {
   const allowLocal = hasFlag("--allowLocal");
   return [
@@ -261,10 +289,88 @@ function checkTrendMailFunction(group) {
   ];
 }
 
+function checkBooleanFlag(group, name) {
+  const value = readEnv(name).toLowerCase();
+  if (value !== "true" && value !== "false") {
+    const message = `${group}: ${name} must be explicitly true or false`;
+    console.log(`[missing] ${message}`);
+    return { value: false, failures: [message] };
+  }
+  console.log(`[ok] ${group}: ${name}=${value}`);
+  return { value: value === "true", failures: [] };
+}
+
+function checkBlueprintV4Rollout(group) {
+  const failures = [];
+  const blueprint = checkBooleanFlag(group, "HAIRSTYLE_BLUEPRINT_V4_ENABLED");
+  const rss = checkBooleanFlag(group, "HAIRSTYLE_RSS_FACETS_V2_ENABLED");
+  const profile = checkBooleanFlag(group, "HAIR_PROFILE_MATCHING_V2_ENABLED");
+  failures.push(...blueprint.failures, ...rss.failures, ...profile.failures);
+  if (rss.value) failures.push(...checkRssProxy(group));
+
+  const blueprintBatch = readEnv("HAIRSTYLE_BLUEPRINT_V4_BATCH").toLowerCase();
+  const validBlueprintBatches = new Set(["expansion-a", "expansion-b", "expansion-c"]);
+  if (blueprint.value && !validBlueprintBatches.has(blueprintBatch)) {
+    const message = `${group}: enabled blueprint v4 requires HAIRSTYLE_BLUEPRINT_V4_BATCH=expansion-a, expansion-b, or expansion-c`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  } else if (blueprintBatch && !validBlueprintBatches.has(blueprintBatch)) {
+    const message = `${group}: HAIRSTYLE_BLUEPRINT_V4_BATCH has an invalid value`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  } else {
+    console.log(`[ok] ${group}: HAIRSTYLE_BLUEPRINT_V4_BATCH=${blueprintBatch || "unset (inactive)"}`);
+  }
+
+  const mode = readEnv("HAIR_PROFILE_MATCHING_V2_MODE").toLowerCase();
+  if (!new Set(["off", "shadow", "live"]).has(mode)) {
+    const message = `${group}: HAIR_PROFILE_MATCHING_V2_MODE must be off, shadow, or live`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  } else {
+    console.log(`[ok] ${group}: HAIR_PROFILE_MATCHING_V2_MODE=${mode}`);
+  }
+
+  const percentageText = readEnv("HAIR_PROFILE_MATCHING_V2_ROLLOUT_PERCENT");
+  const percentage = Number(percentageText);
+  if (!/^\d+$/.test(percentageText) || !Number.isInteger(percentage) || percentage < 0 || percentage > 100) {
+    const message = `${group}: HAIR_PROFILE_MATCHING_V2_ROLLOUT_PERCENT must be an integer from 0 to 100`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  } else {
+    console.log(`[ok] ${group}: HAIR_PROFILE_MATCHING_V2_ROLLOUT_PERCENT=${percentage}`);
+  }
+
+  if (profile.value && !blueprint.value) {
+    const message = `${group}: profile matching requires HAIRSTYLE_BLUEPRINT_V4_ENABLED=true`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  }
+  if (profile.value && mode === "off") {
+    const message = `${group}: enabled profile matching requires shadow or live mode`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  }
+  if (!profile.value && (mode !== "off" || percentage !== 0)) {
+    const message = `${group}: disabled profile matching requires mode=off and rollout percent=0`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  }
+  if (profile.value && mode === "live" && percentage === 0 && !readEnv("HAIR_PROFILE_MATCHING_V2_INTERNAL_USER_IDS")) {
+    const message = `${group}: live 0 percent internal stage requires HAIR_PROFILE_MATCHING_V2_INTERNAL_USER_IDS`;
+    console.log(`[missing] ${message}`);
+    failures.push(message);
+  }
+
+  return failures;
+}
+
 const groups = {
   "admin-api": [checkAdminApi, checkSupabaseAdmin],
   "cron-registration": [checkCronRegistration],
   "trend-mail-function": [checkTrendMailFunction],
+  "rss-proxy": [checkRssProxy],
+  "blueprint-v4-rollout": [checkBlueprintV4Rollout],
 };
 
 function selectedGroups(mode) {

@@ -82,6 +82,8 @@ test("production Clerk config prefers the runtime server alias over a baked publ
 test("Clerk middleware passes runtime keys explicitly instead of SDK build constants", () => {
   const middleware = readFileSync(new URL("../middleware.ts", import.meta.url), "utf8");
 
+  assert.doesNotMatch(middleware, /const \{ canUseClerkServer: hasClerkConfig \} = getClerkConfigState\(\)/);
+  assert.match(middleware, /const \{ canUseClerkServer \} = getClerkConfigState\(\)/);
   assert.match(middleware, /function getClerkMiddlewareRuntimeOptions\(\)/);
   assert.match(middleware, /publishableKey: publishableKey \?\? undefined/);
   assert.match(middleware, /secretKey: secretKey \?\? undefined/);

@@ -40,7 +40,6 @@ type ColorAssistUpload = {
   uri: string;
   receipt: GenerationDraftResponse;
 };
-
 export default function UploadScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ consultationId?: string | string[] }>();
