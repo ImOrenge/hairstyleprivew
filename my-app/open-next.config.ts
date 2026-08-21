@@ -1,37 +1,89 @@
-import { readdirSync } from "node:fs";
-import path from "node:path";
 import { defineCloudflareConfig } from "@opennextjs/cloudflare";
 
 const base = defineCloudflareConfig();
-const appDirectory = path.join(process.cwd(), "app");
-
-function collectRouteHandlers(relativeDirectory: string): `app/${string}/route`[] {
-  const root = path.join(appDirectory, relativeDirectory);
-  const routes: `app/${string}/route`[] = [];
-  const visit = (directory: string) => {
-    for (const entry of readdirSync(directory, { withFileTypes: true })) {
-      const candidate = path.join(directory, entry.name);
-      if (entry.isDirectory()) visit(candidate);
-      if (entry.isFile() && /^route\.(?:ts|tsx|js|jsx)$/.test(entry.name)) {
-        const routeDirectory = path.relative(appDirectory, directory).replaceAll("\\", "/");
-        routes.push(`app/${routeDirectory}/route`);
-      }
-    }
-  };
-  visit(root);
-  return routes.sort();
-}
-
-const consultationWorkerRoutes = Array.from(new Set([
-  ...collectRouteHandlers("api/consultations"),
-  ...collectRouteHandlers("api/v2/consultations"),
-  "app/api/generations/run/route" as const,
-  "app/api/personal-color/analyze/route" as const,
-  "app/api/style-profile/body-photo/route" as const,
-  "app/consulting/[sessionId]/[stage]/page" as const,
-  "app/consulting/new/page" as const,
-  "app/consulting/share/[token]/page" as const,
-]));
+const consultationWorkerRoutes = [
+  "app/api/consultations/[sessionId]/events/route",
+  "app/api/consultations/[sessionId]/hair-profile/route",
+  "app/api/consultations/[sessionId]/makeup/brief/route",
+  "app/api/consultations/[sessionId]/makeup/build/route",
+  "app/api/consultations/[sessionId]/makeup/confirm/route",
+  "app/api/consultations/[sessionId]/makeup/context/route",
+  "app/api/consultations/[sessionId]/makeup/interview/confirm/route",
+  "app/api/consultations/[sessionId]/makeup/interview/route",
+  "app/api/consultations/[sessionId]/makeup/modules/[module]/route",
+  "app/api/consultations/[sessionId]/makeup/recommendation/decision/route",
+  "app/api/consultations/[sessionId]/makeup/recommendation/rationale/route",
+  "app/api/consultations/[sessionId]/makeup/route",
+  "app/api/consultations/[sessionId]/makeup/routine/route",
+  "app/api/consultations/[sessionId]/makeup/semantic-map/retry/route",
+  "app/api/consultations/[sessionId]/makeup/semantic-map/route",
+  "app/api/consultations/[sessionId]/makeup/share/[token]/route",
+  "app/api/consultations/[sessionId]/makeup/share/route",
+  "app/api/consultations/[sessionId]/makeup/simulations/[runId]/confirm/route",
+  "app/api/consultations/[sessionId]/makeup/simulations/[runId]/retry/route",
+  "app/api/consultations/[sessionId]/makeup/simulations/route",
+  "app/api/consultations/[sessionId]/personal-color/captures/[assetId]/finalize/route",
+  "app/api/consultations/[sessionId]/personal-color/captures/[assetId]/route",
+  "app/api/consultations/[sessionId]/personal-color/captures/intents/route",
+  "app/api/consultations/[sessionId]/personal-color/drapes/[drapeId]/complete/route",
+  "app/api/consultations/[sessionId]/personal-color/drapes/[drapeId]/responses/route",
+  "app/api/consultations/[sessionId]/personal-color/drapes/route",
+  "app/api/consultations/[sessionId]/personal-color/training-consent/route",
+  "app/api/consultations/[sessionId]/photo-analysis/route",
+  "app/api/consultations/[sessionId]/photo-assets/route",
+  "app/api/consultations/[sessionId]/refresh-assets/route",
+  "app/api/consultations/[sessionId]/route",
+  "app/api/consultations/[sessionId]/share/route",
+  "app/api/consultations/route",
+  "app/api/v2/consultations/[consultationId]/aftercare-photo/route",
+  "app/api/v2/consultations/[consultationId]/aftercare/notifications/route",
+  "app/api/v2/consultations/[consultationId]/aftercare/route",
+  "app/api/v2/consultations/[consultationId]/analysis/route",
+  "app/api/v2/consultations/[consultationId]/color-studio/confirm/route",
+  "app/api/v2/consultations/[consultationId]/color-studio/generation/route",
+  "app/api/v2/consultations/[consultationId]/color-studio/mask/route",
+  "app/api/v2/consultations/[consultationId]/confirm/route",
+  "app/api/v2/consultations/[consultationId]/evidence/route",
+  "app/api/v2/consultations/[consultationId]/fashion-batch/expand/route",
+  "app/api/v2/consultations/[consultationId]/fashion-batch/retry/route",
+  "app/api/v2/consultations/[consultationId]/fashion-batch/route",
+  "app/api/v2/consultations/[consultationId]/fashion-batch/select/route",
+  "app/api/v2/consultations/[consultationId]/fashion-previews/route",
+  "app/api/v2/consultations/[consultationId]/fashion/context/confirm/route",
+  "app/api/v2/consultations/[consultationId]/fashion/context/route",
+  "app/api/v2/consultations/[consultationId]/fashion/feedback/route",
+  "app/api/v2/consultations/[consultationId]/fashion/offers/[snapshotId]/replace/route",
+  "app/api/v2/consultations/[consultationId]/fashion/offers/revalidate/route",
+  "app/api/v2/consultations/[consultationId]/fashion/offers/route",
+  "app/api/v2/consultations/[consultationId]/fashion/personalization-snapshot/route",
+  "app/api/v2/consultations/[consultationId]/hair-recommendation/adjust/route",
+  "app/api/v2/consultations/[consultationId]/hair-recommendation/clarification/route",
+  "app/api/v2/consultations/[consultationId]/hair-recommendation/confirm/route",
+  "app/api/v2/consultations/[consultationId]/hair-recommendation/evaluate/route",
+  "app/api/v2/consultations/[consultationId]/hair-recommendation/route",
+  "app/api/v2/consultations/[consultationId]/hair-recommendation/start/route",
+  "app/api/v2/consultations/[consultationId]/personal-color/profile/route",
+  "app/api/v2/consultations/[consultationId]/personal-color/route",
+  "app/api/v2/consultations/[consultationId]/photo/route",
+  "app/api/v2/consultations/[consultationId]/preview-board/route",
+  "app/api/v2/consultations/[consultationId]/report-exports/[exportId]/download/route",
+  "app/api/v2/consultations/[consultationId]/report-exports/[exportId]/route",
+  "app/api/v2/consultations/[consultationId]/report-exports/route",
+  "app/api/v2/consultations/[consultationId]/report-narrative/route",
+  "app/api/v2/consultations/[consultationId]/report/route",
+  "app/api/v2/consultations/[consultationId]/route",
+  "app/api/v2/consultations/[consultationId]/salon-brief/route",
+  "app/api/v2/consultations/[consultationId]/selection/route",
+  "app/api/v2/consultations/[consultationId]/shortlist/route",
+  "app/api/v2/consultations/[consultationId]/start-context/route",
+  "app/api/v2/consultations/route",
+  "app/api/generations/run/route",
+  "app/api/personal-color/analyze/route",
+  "app/api/style-profile/body-photo/route",
+  "app/consulting/[sessionId]/[stage]/page",
+  "app/consulting/new/page",
+  "app/consulting/share/[token]/page",
+] as const;
 
 export default {
   ...base,
