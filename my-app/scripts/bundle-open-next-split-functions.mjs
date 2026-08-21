@@ -1,6 +1,7 @@
-import { existsSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { getPackagePath } from "../../node_modules/@opennextjs/aws/dist/build/helper.js";
 import { bundleServer } from "../../node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js";
 import {
   getNormalizedOptions,
@@ -17,6 +18,26 @@ const { config } = await retrieveCompiledConfig();
 const options = getNormalizedOptions(config);
 const functionsRoot = path.resolve(options.outputDir, "server-functions");
 const defaultDirectory = path.join(functionsRoot, "default");
+const packagePath = getPackagePath(options);
+
+function appPathsManifest(functionDirectory) {
+  return path.join(functionDirectory, packagePath, ".next", "server", "app-paths-manifest.json");
+}
+
+function readManifest(functionDirectory) {
+  return JSON.parse(readFileSync(appPathsManifest(functionDirectory), "utf8"));
+}
+
+function existingManifestEntries(functionDirectory) {
+  const serverRoot = path.dirname(appPathsManifest(functionDirectory));
+  return Object.fromEntries(Object.entries(readManifest(functionDirectory)).filter(([, relativePath]) => (
+    typeof relativePath === "string" && existsSync(path.join(serverRoot, relativePath))
+  )));
+}
+
+function writeManifest(functionDirectory, manifest) {
+  writeFileSync(appPathsManifest(functionDirectory), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+}
 
 function assertInsideFunctionsRoot(candidate) {
   const relative = path.relative(functionsRoot, path.resolve(candidate));
@@ -24,6 +45,21 @@ function assertInsideFunctionsRoot(candidate) {
     throw new Error("INVALID_OPEN_NEXT_FUNCTION_PATH");
   }
 }
+
+const splitRoutes = new Set();
+for (const functionName of functionNames) {
+  const functionDirectory = path.join(functionsRoot, functionName);
+  for (const route of Object.keys(existingManifestEntries(functionDirectory))) splitRoutes.add(route);
+}
+const defaultManifest = existingManifestEntries(defaultDirectory);
+for (const route of splitRoutes) delete defaultManifest[route];
+writeManifest(defaultDirectory, defaultManifest);
+for (const functionName of functionNames) {
+  const functionDirectory = path.join(functionsRoot, functionName);
+  writeManifest(functionDirectory, existingManifestEntries(functionDirectory));
+}
+
+await bundleServer(options, { minify: true });
 
 for (const functionName of functionNames) {
   if (!/^[a-z][a-z0-9-]*$/.test(functionName) || functionName === "default") {
