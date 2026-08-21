@@ -1,47 +1,45 @@
+import { readdirSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineCloudflareConfig } from "@opennextjs/cloudflare";
 
 const base = defineCloudflareConfig();
+const appDirectory = path.join(path.dirname(fileURLToPath(import.meta.url)), "app");
+
+function collectRouteHandlers(relativeDirectory: string): `app/${string}/route`[] {
+  const root = path.join(appDirectory, relativeDirectory);
+  const routes: `app/${string}/route`[] = [];
+  const visit = (directory: string) => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const candidate = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(candidate);
+      if (entry.isFile() && /^route\.(?:ts|tsx|js|jsx)$/.test(entry.name)) {
+        const routeDirectory = path.relative(appDirectory, directory).replaceAll("\\", "/");
+        routes.push(`app/${routeDirectory}/route`);
+      }
+    }
+  };
+  visit(root);
+  return routes.sort();
+}
+
+const consultationWorkerRoutes = Array.from(new Set([
+  ...collectRouteHandlers("api/consultations"),
+  ...collectRouteHandlers("api/v2/consultations"),
+  "app/api/generations/run/route" as const,
+  "app/api/personal-color/analyze/route" as const,
+  "app/api/style-profile/body-photo/route" as const,
+  "app/consulting/[sessionId]/[stage]/page" as const,
+  "app/consulting/new/page" as const,
+  "app/consulting/share/[token]/page" as const,
+]));
 
 export default {
   ...base,
   functions: {
     media: {
       ...base.default,
-      routes: [
-        "app/api/consultations/[sessionId]/makeup/build/route",
-        "app/api/consultations/[sessionId]/makeup/confirm/route",
-        "app/api/consultations/[sessionId]/makeup/context/route",
-        "app/api/consultations/[sessionId]/makeup/interview/confirm/route",
-        "app/api/consultations/[sessionId]/makeup/interview/route",
-        "app/api/consultations/[sessionId]/makeup/modules/[module]/route",
-        "app/api/consultations/[sessionId]/makeup/recommendation/decision/route",
-        "app/api/consultations/[sessionId]/makeup/recommendation/rationale/route",
-        "app/api/consultations/[sessionId]/makeup/route",
-        "app/api/consultations/[sessionId]/makeup/semantic-map/retry/route",
-        "app/api/consultations/[sessionId]/makeup/semantic-map/route",
-        "app/api/consultations/[sessionId]/makeup/simulations/[runId]/confirm/route",
-        "app/api/consultations/[sessionId]/makeup/simulations/[runId]/retry/route",
-        "app/api/consultations/[sessionId]/makeup/simulations/route",
-        "app/api/consultations/[sessionId]/personal-color/captures/[assetId]/finalize/route",
-        "app/api/consultations/[sessionId]/personal-color/captures/[assetId]/route",
-        "app/api/consultations/[sessionId]/personal-color/captures/intents/route",
-        "app/api/consultations/[sessionId]/photo-analysis/route",
-        "app/api/generations/run/route",
-        "app/api/personal-color/analyze/route",
-        "app/api/style-profile/body-photo/route",
-        "app/api/v2/consultations/[consultationId]/aftercare-photo/route",
-        "app/api/v2/consultations/[consultationId]/analysis/route",
-        "app/api/v2/consultations/[consultationId]/color-studio/confirm/route",
-        "app/api/v2/consultations/[consultationId]/color-studio/generation/route",
-        "app/api/v2/consultations/[consultationId]/color-studio/mask/route",
-        "app/api/v2/consultations/[consultationId]/evidence/route",
-        "app/api/v2/consultations/[consultationId]/report-exports/[exportId]/download/route",
-        "app/api/v2/consultations/[consultationId]/report-exports/[exportId]/route",
-        "app/api/v2/consultations/[consultationId]/report-exports/route",
-        "app/api/v2/consultations/[consultationId]/report-narrative/route",
-        "app/api/v2/consultations/[consultationId]/report/route",
-        "app/consulting/[sessionId]/[stage]/page",
-      ],
+      routes: consultationWorkerRoutes,
       patterns: [
         "/api/consultations/*",
         "/api/generations/run",
