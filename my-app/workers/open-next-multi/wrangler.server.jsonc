@@ -33,6 +33,10 @@
     {
       "binding": "WORKER_SELF_REFERENCE",
       "service": "hairstyleprivew-router"
+    },
+    {
+      "binding": "REPORT_PDF_WORKER",
+      "service": "hairfit-report-pdf"
     }
   ],
   "observability": {

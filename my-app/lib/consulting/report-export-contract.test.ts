@@ -21,7 +21,8 @@ test("report export API is authenticated, owner-scoped, idempotent, expiring, an
   assert.match(service, /secureReportImagesV2/);
   assert.match(service, /view_model_version/);
   assert.match(service, /renderer_version/);
-  assert.match(service, /renderConsultationReportPdfV2/);
+  assert.match(service, /renderConsultationReportPdfWithWorker/);
+  assert.doesNotMatch(service, /render-report-pdf/);
   assert.match(createRoute, /viewModelVersion/);
   assert.match(downloadRoute, /Cache-Control": "private, no-store/);
   assert.match(downloadRoute, /"Content-Type": "application\/pdf"/);

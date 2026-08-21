@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const read = (path: string) => readFileSync(join(root, path), "utf8");
-const migration = read("supabase/migrations/20260821121037_aftercare_email_delivery_v2.sql");
+const migration = read("supabase/migrations/20260821123702_aftercare_email_delivery_v2.sql");
 const dispatcher = read("supabase/functions/cron-care-emails/index.ts");
 const webhook = read("app/api/email/resend/route.ts");
 const outputs = read("lib/v2/outputs-server.ts");

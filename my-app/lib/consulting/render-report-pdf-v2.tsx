@@ -1,17 +1,8 @@
 /* eslint-disable jsx-a11y/alt-text -- @react-pdf/renderer Image has no DOM alt prop. */
-import path from "node:path";
-import { Document, Font, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Image, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import { consultationReportStatusLabelV2, type ConsultationReportImageV2, type ConsultationReportSectionV2, type ConsultationReportViewModelV2 } from "@hairfit/shared/consulting/report-v2";
 import type { ConsultationResultNarrativePanelV1 } from "@hairfit/shared/consulting/report-narrative";
-
-let fontRegistered = false;
-
-function registerReportFont() {
-  if (fontRegistered) return;
-  Font.register({ family: "NanumGothic", src: path.join(process.cwd(), "assets", "fonts", "NanumGothic-Regular.ttf") });
-  Font.registerHyphenationCallback((word) => [word]);
-  fontRegistered = true;
-}
+import { registerReportPdfFont } from "./report-pdf-font";
 
 const styles = StyleSheet.create({
   page: { fontFamily: "NanumGothic", fontSize: 8.5, lineHeight: 1.55, color: "#181713", backgroundColor: "#f7f4ec", padding: 32 },
@@ -132,6 +123,6 @@ function ReportPdfDocumentV2({ report }: { report: ConsultationReportViewModelV2
 }
 
 export async function renderConsultationReportPdfV2(report: ConsultationReportViewModelV2) {
-  registerReportFont();
+  registerReportPdfFont();
   return renderToBuffer(<ReportPdfDocumentV2 report={report} />);
 }

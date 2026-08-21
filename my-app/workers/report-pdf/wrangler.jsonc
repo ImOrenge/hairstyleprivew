@@ -1,0 +1,20 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "hairfit-report-pdf",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-21",
+  "compatibility_flags": ["nodejs_compat"],
+  "minify": true,
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "../../assets/fonts",
+    "binding": "REPORT_PDF_ASSETS"
+  },
+  "define": {
+    "REPORT_PDF_SOURCE_REVISION": "\"unversioned\""
+  },
+  "observability": {
+    "enabled": true
+  }
+}

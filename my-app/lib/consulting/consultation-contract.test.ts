@@ -322,7 +322,21 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.equal(serverConfig.vars.HAIRFIT_SOURCE_REVISION, "unversioned");
   assert.deepEqual(serverConfig.services, [
     { binding: "WORKER_SELF_REFERENCE", service: "hairstyleprivew-router" },
+    { binding: "REPORT_PDF_WORKER", service: "hairfit-report-pdf" },
   ]);
+
+  const reportPdfConfig = JSON.parse(read("../../workers/report-pdf/wrangler.jsonc")) as {
+    name?: string;
+    workers_dev?: boolean;
+    preview_urls?: boolean;
+    routes?: unknown[];
+    assets?: { binding?: string };
+  };
+  assert.equal(reportPdfConfig.name, "hairfit-report-pdf");
+  assert.equal(reportPdfConfig.workers_dev, false);
+  assert.equal(reportPdfConfig.preview_urls, false);
+  assert.equal(reportPdfConfig.routes, undefined);
+  assert.equal(reportPdfConfig.assets?.binding, "REPORT_PDF_ASSETS");
   assert.match(server, /\/\.well-known\/hairfit-deployment/);
   assert.match(server, /sourceRevision: env\.HAIRFIT_SOURCE_REVISION/);
   assert.match(server, /"cache-control": "no-store, max-age=0"/);

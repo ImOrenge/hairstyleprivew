@@ -1,7 +1,5 @@
-import path from "node:path";
 import {
   Document,
-  Font,
   Image,
   Page,
   StyleSheet,
@@ -11,18 +9,7 @@ import {
 } from "@react-pdf/renderer";
 import type { ConsultationReportViewModelV1 } from "@hairfit/shared/consulting/report";
 import { consultationReportStatusLabel } from "@hairfit/shared/consulting/report";
-
-let fontRegistered = false;
-
-function registerReportFont() {
-  if (fontRegistered) return;
-  Font.register({
-    family: "NanumGothic",
-    src: path.join(process.cwd(), "assets", "fonts", "NanumGothic-Regular.ttf"),
-  });
-  Font.registerHyphenationCallback((word) => [word]);
-  fontRegistered = true;
-}
+import { registerReportPdfFont } from "./report-pdf-font";
 
 const styles = StyleSheet.create({
   page: { fontFamily: "NanumGothic", fontSize: 8.5, lineHeight: 1.55, color: "#181713", backgroundColor: "#f7f4ec", padding: 32 },
@@ -109,6 +96,6 @@ function ReportPdfDocument({ report }: { report: ConsultationReportViewModelV1 }
 }
 
 export async function renderConsultationReportPdf(report: ConsultationReportViewModelV1) {
-  registerReportFont();
+  registerReportPdfFont();
   return renderToBuffer(<ReportPdfDocument report={report} />);
 }
