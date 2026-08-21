@@ -9,8 +9,8 @@
   "workers_dev": false,
   "preview_urls": false,
   "alias": {
-    "critters": "./workers/open-next-multi/critters-stub.js",
-    "@opentelemetry/api": "../node_modules/next/dist/compiled/@opentelemetry/api/index.js"
+    "critters": "./critters-stub.js",
+    "@opentelemetry/api": "../../../node_modules/next/dist/compiled/@opentelemetry/api/index.js"
   },
   "vars": {
     "HAIRFIT_SOURCE_REVISION": "unversioned"
