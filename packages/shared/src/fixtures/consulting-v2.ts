@@ -59,13 +59,17 @@ export const CONSULTATION_STAGE_FIXTURES: ReadonlyArray<{ stage: ConsultationSta
   { stage: "photo", route: "/consulting/:sessionId/photo" },
   { stage: "scan", route: "/consulting/:sessionId/scan" },
   { stage: "analysis", route: "/consulting/:sessionId/analysis" },
+  { stage: "personal-color", route: "/consulting/:sessionId/personal-color" },
   { stage: "direction", route: "/consulting/:sessionId/direction" },
   { stage: "previews", route: "/consulting/:sessionId/previews" },
   { stage: "compare", route: "/consulting/:sessionId/compare" },
   { stage: "decision", route: "/consulting/:sessionId/decision" },
+  { stage: "color-studio", route: "/consulting/:sessionId/color-studio" },
   { stage: "salon-brief", route: "/consulting/:sessionId/salon-brief" },
-  { stage: "aftercare", route: "/consulting/:sessionId/aftercare" },
+  { stage: "makeup", route: "/consulting/:sessionId/makeup" },
   { stage: "fashion", route: "/consulting/:sessionId/fashion" },
+  { stage: "result", route: "/consulting/:sessionId/result" },
+  { stage: "aftercare", route: "/consulting/:sessionId/aftercare" },
 ];
 
 const PASSING_PHOTO_SIGNALS: ConsultationPhotoPreflightSignals = {
@@ -160,6 +164,10 @@ const CAPABILITIES: ConsultationCapability[] = [
   "salon-brief-generation",
   "aftercare-program-generation",
   "fashion-recommendation-generation",
+  "makeup-semantic-map",
+  "makeup-rationale-generation",
+  "hair-trait-analysis",
+  "makeup-simulation-generation",
 ];
 
 export const CAPABILITY_TASK_FIXTURES = Object.fromEntries(CAPABILITIES.map((capability) => [capability, {

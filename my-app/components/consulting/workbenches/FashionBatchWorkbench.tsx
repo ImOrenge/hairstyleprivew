@@ -8,7 +8,7 @@ import { createClientConsultationTask, selectedStyle, type ConsultationPatch, ty
 import { Button } from "../../ui/Button";
 import { FashionDirectionInterview } from "../interview/FashionDirectionInterview";
 import { useConsultationTaskRuntime } from "../transition/ConsultationTaskRuntime";
-import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
+import { ConsultationSystemData, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
 
 const SLOTS: Array<{ id: string; category: FashionCategory; genre: string; label: string }> = [
   { id: "daily-casual", category: "DAILY", genre: "casual", label: "데일리 캐주얼" },
@@ -22,10 +22,55 @@ const SLOTS: Array<{ id: string; category: FashionCategory; genre: string; label
   { id: "statement-date", category: "STATEMENT", genre: "date", label: "데이트" },
 ];
 
-type BatchState = { batch: FashionPreviewBatch | null; stylingSessionIds: string[] };
+type BatchState = { batch: FashionPreviewBatch | null; stylingSessionIds: string[]; adaptiveEnabled?: boolean };
 
 function directionSummary(direction: FashionDirectionSnapshot) {
   return [direction.situation, direction.genre, direction.season, direction.fit, direction.exposure, direction.budget].filter(Boolean).join(" · ");
+}
+
+function stableUtcTime(value: string) {
+  const date = new Date(value);
+  return `${String(date.getUTCHours()).padStart(2, "0")}:${String(date.getUTCMinutes()).padStart(2, "0")} UTC`;
+}
+
+function selectedLookFromPreview(preview: FashionPreviewCandidateV2, sourceColorSelectionId: string | null): SelectedFashionLook {
+  return {
+    direction: directionSummary(preview.direction), directionSnapshot: preview.direction,
+    shortlistIds: [preview.stylingSessionId], lookId: preview.stylingSessionId, category: preview.category,
+    label: preview.headline, items: preview.items, palette: preview.palette,
+    neckline: preview.neckline, silhouette: preview.silhouette,
+    avoidCombinations: preview.direction.avoidItems, shoppingKeywords: preview.shoppingKeywords,
+    selectedAt: new Date().toISOString(), sourceColorSelectionId, staleReason: null,
+  };
+}
+
+function batchStatusCopy(batch: FashionPreviewBatch | null) {
+  if (!batch) return { key: "idle", title: "패션 배치 준비 전", detail: "인터뷰 방향을 확정하면 AI 권장 룩 3개부터 준비합니다." };
+  if (batch.state === "ready") return {
+    key: "completed", title: "패션 배치가 종결됐어요",
+    detail: `${batch.completedCount}개 완료 · ${batch.failedCount}개 명시적 실패`,
+  };
+  if (batch.stalledCount > 0) return {
+    key: "stalled", title: "정체 슬롯을 감지해 복구하고 있어요",
+    detail: `${batch.stalledCount}개 정체 · 완료된 ${batch.completedCount}개 결과는 그대로 유지합니다.`,
+  };
+  if (batch.retryingCount > 0) return {
+    key: "retrying", title: "실패 슬롯만 다시 접수했어요",
+    detail: `${batch.retryingCount}개 재시도 · ${batch.completedCount}/${batch.requestedCount}개 결과 준비`,
+  };
+  if (batch.completedCount > 0) return {
+    key: "partial", title: "준비된 룩부터 확인할 수 있어요",
+    detail: `${batch.completedCount}/${batch.requestedCount}개 완료 · 나머지는 백그라운드에서 계속 생성합니다.`,
+  };
+  if (batch.state === "failed") return {
+    key: "failed", title: "배치가 중단됐어요",
+    detail: "완료된 결과를 보존한 채 미완료 슬롯만 다시 접수할 수 있습니다.",
+  };
+  return {
+    key: batch.state === "approved" ? "queued" : "running",
+    title: batch.state === "approved" ? `${batch.requestedCount}개 슬롯을 생성 큐에 연결하고 있어요` : "패션 룩을 생성하고 있어요",
+    detail: `${batch.completedCount}/${batch.requestedCount}개 완료 · 서버 상태를 기준으로 자동 갱신합니다.`,
+  };
 }
 
 export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabled = false }: {
@@ -37,14 +82,16 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
   const taskRuntime = useConsultationTaskRuntime();
   const style = selectedStyle(snapshot);
   const [direction, setDirection] = useState(snapshot.fashion.directionSnapshot);
-  const [profileReady, setProfileReady] = useState<boolean | null>(null);
+  const [profileReady, setProfileReady] = useState<boolean | null>(snapshot.userId === "e2e-consulting" ? true : null);
+  const [personalizationRequired, setPersonalizationRequired] = useState(false);
   const [previews, setPreviews] = useState<FashionPreviewCandidateV2[]>([]);
-  const [batchState, setBatchState] = useState<BatchState>({ batch: snapshot.fashionBatch, stylingSessionIds: [] });
-  const [shortlist, setShortlist] = useState(snapshot.fashion.shortlistIds);
+  const [batchState, setBatchState] = useState<BatchState>({ batch: snapshot.fashionBatch, stylingSessionIds: [], adaptiveEnabled: snapshot.fashionBatch?.schemaVersion === "fashion-preview-batch-v2" ? true : undefined });
+  const [, setShortlist] = useState(snapshot.fashion.shortlistIds);
   const [selected, setSelected] = useState<SelectedFashionLook>(snapshot.fashion);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [needsPurchase, setNeedsPurchase] = useState(false);
+  const fashionIsStale = Boolean(snapshot.fashion.lookId && snapshot.colorDecision.id && snapshot.fashion.sourceColorSelectionId !== snapshot.colorDecision.id);
 
   const refresh = useCallback(async () => {
     const [previewResponse, batchResponse] = await Promise.all([
@@ -60,13 +107,24 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
   }, [snapshot.sessionId]);
 
   useEffect(() => {
+    if (snapshot.userId === "e2e-consulting") return;
     let cancelled = false;
-    const timer = window.setTimeout(() => void Promise.all([fetch("/api/style-profile", { cache: "no-store" }), refresh()]).then(async ([profileResponse]) => {
+    const timer = window.setTimeout(() => void Promise.all([
+      fetch("/api/style-profile", { cache: "no-store" }),
+      refresh(),
+      fetch("/api/v2/me/onboarding/fashion-personalization", { cache: "no-store" }),
+    ]).then(async ([profileResponse, , personalizationResponse]) => {
       const data = (await profileResponse.json().catch(() => ({}))) as { profile?: { bodyPhotoPath?: string | null } };
-      if (!cancelled) setProfileReady(Boolean(profileResponse.ok && data.profile?.bodyPhotoPath));
+      const personalizationData = await personalizationResponse.json().catch(() => ({})) as { coverage?: { complete?: boolean }; policy?: { confirmedRevision?: number; revision?: number } };
+      const legacy = personalizationResponse.status === 404;
+      const personalizationReady = legacy || Boolean(personalizationResponse.ok && personalizationData.coverage?.complete && personalizationData.policy?.confirmedRevision === personalizationData.policy?.revision);
+      if (!cancelled) {
+        setPersonalizationRequired(!personalizationReady);
+        setProfileReady(Boolean(profileResponse.ok && data.profile?.bodyPhotoPath && personalizationReady));
+      }
     }).catch((cause) => { if (!cancelled) setError(cause instanceof Error ? cause.message : "패션 준비 상태를 확인하지 못했습니다."); }), 0);
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [refresh]);
+  }, [refresh, snapshot.userId]);
 
   useEffect(() => {
     if (!batchState.batch || !["approved", "generating", "partial"].includes(batchState.batch.state)) return;
@@ -85,13 +143,13 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
     try {
       const response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/fashion-batch`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Idempotency-Key": `${snapshot.sessionId}:fashion-batch:${snapshot.version}:${directionSummary(requestedDirection)}` },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": `${snapshot.sessionId}:fashion-batch:${snapshot.colorDecision.inputFingerprint || "no-color"}:${directionSummary(requestedDirection)}` },
         body: JSON.stringify({ direction: requestedDirection }),
       });
       const data = (await response.json().catch(() => ({}))) as BatchState & { error?: string };
       if (!response.ok || !data.batch) {
         if (response.status === 409) setNeedsPurchase(true);
-        throw new Error(data.error || "9개 패션 룩 생성 권한을 확인하지 못했습니다.");
+        throw new Error(data.error || "패션 룩 생성 권한을 확인하지 못했습니다.");
       }
       setBatchState(data);
       setDirection(requestedDirection);
@@ -102,10 +160,10 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
         originStage: "fashion",
         destinationStage: "fashion",
         phaseKey: "generation",
-        label: "9개 패션 룩 배치",
-        detail: "확정한 방향과 이용 권한을 연결해 DAILY·WORK·STATEMENT 결과를 생성합니다.",
+        label: `${data.batch.requestedCount}개 패션 룩 배치`,
+        detail: "확정한 헤어 한 개와 개인화 기준으로 모든 요청 슬롯을 생성합니다.",
         completedUnits: data.batch.completedCount,
-        totalUnits: 9,
+        totalUnits: data.batch.requestedCount,
       }));
       await refresh();
     } catch (cause) {
@@ -136,44 +194,70 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
     } finally { setWorking(false); }
   };
 
-  const toggleShortlist = (preview: FashionPreviewCandidateV2) => {
-    if (preview.status !== "completed" || !preview.imageUrl) return;
-    setShortlist((current) => current.includes(preview.stylingSessionId)
-      ? current.filter((id) => id !== preview.stylingSessionId)
-      : current.length < 3 ? [...current, preview.stylingSessionId] : current);
+  const expandBatch = async () => {
+    const batch = batchState.batch;
+    if (!batch || batch.requestedCount >= 9 || batch.terminalCount !== batch.requestedCount || working) return;
+    const targetRequestedCount = batch.requestedCount === 3 ? 6 : 9;
+    setWorking(true); setError(null);
+    try {
+      const response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/fashion-batch/expand`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": `fashion:${snapshot.sessionId}:${batch.generationInputFingerprint}:${targetRequestedCount}` },
+        body: JSON.stringify({ batchId: batch.id, expectedRequestedCount: batch.requestedCount, targetRequestedCount }),
+      });
+      const data = await response.json().catch(() => ({})) as BatchState & { error?: string };
+      if (!response.ok || !data.batch) throw new Error(data.error || "패션 룩 3개를 추가하지 못했습니다.");
+      setBatchState((current) => ({ ...data, adaptiveEnabled: current.adaptiveEnabled }));
+      taskRuntime.startTask(createClientConsultationTask({
+        id: data.batch.id, kind: "fashion-generation", stage: "fashion", originStage: "fashion", destinationStage: "fashion",
+        phaseKey: "expansion", label: `${targetRequestedCount}개까지 패션 룩 확장`, detail: "기존 생성 결과를 보존하고 새 슬롯 3개만 생성합니다.",
+        completedUnits: data.batch.completedCount, totalUnits: targetRequestedCount,
+      }));
+      await refresh();
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "패션 룩을 추가하지 못했습니다."); }
+    finally { setWorking(false); }
   };
 
   const selectFinal = (preview: FashionPreviewCandidateV2) => {
-    if (!shortlist.includes(preview.stylingSessionId)) return;
-    setSelected({
-      direction: directionSummary(preview.direction), directionSnapshot: preview.direction,
-      shortlistIds: shortlist, lookId: preview.stylingSessionId, category: preview.category,
-      label: preview.headline, items: preview.items, palette: preview.palette,
-      neckline: preview.neckline, silhouette: preview.silhouette,
-      avoidCombinations: preview.direction.avoidItems, shoppingKeywords: preview.shoppingKeywords,
-      selectedAt: new Date().toISOString(),
-    });
+    if (preview.status !== "completed" || !preview.imageUrl) return;
+    setShortlist([preview.stylingSessionId]);
+    setSelected(selectedLookFromPreview(preview, snapshot.colorDecision.id));
   };
 
   const saveSelection = async () => {
-    if (!selected.lookId || shortlist.length < 2 || shortlist.length > 3) return;
+    if (!batchState.batch) return;
+    const chosenId = selected.lookId ?? batchState.batch.recommendedPreviewId;
+    const chosenPreview = previews.find((preview) => preview.stylingSessionId === chosenId && preview.status === "completed" && preview.imageUrl);
+    if (!chosenId || !chosenPreview) return;
+    const chosen = selected.lookId === chosenId ? selected : selectedLookFromPreview(chosenPreview, snapshot.colorDecision.id);
     setWorking(true); setError(null);
     try {
+      const decision = chosenId === batchState.batch.recommendedPreviewId ? "accept_recommended" : "customer_override";
+      const selectionResponse = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/fashion-batch/select`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batchId: batchState.batch.id, previewId: chosenId, decision, expectedRevision: batchState.batch.revision }),
+      });
+      const selectionData = await selectionResponse.json().catch(() => ({})) as BatchState & { error?: string };
+      if (!selectionResponse.ok || !selectionData.batch) throw new Error(selectionData.error || "AI 권장안 선택을 저장하지 못했습니다.");
+      setBatchState((current) => ({ ...selectionData, adaptiveEnabled: current.adaptiveEnabled }));
       const response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/fashion-previews`, {
-        method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": `fashion:${snapshot.sessionId}:${snapshot.version}:${selected.lookId}` },
-        body: JSON.stringify({ stylingSessionIds: shortlist, selectedStylingSessionId: selected.lookId }),
+        method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": `fashion:${snapshot.sessionId}:${snapshot.version}:${chosenId}` },
+        body: JSON.stringify({ stylingSessionIds: [chosenId], selectedStylingSessionId: chosenId }),
       });
       const data = (await response.json().catch(() => ({}))) as { previewSet?: FashionPreviewSetV2; error?: string };
       if (!response.ok || !data.previewSet) throw new Error(data.error || "최종 패션 룩을 저장하지 못했습니다.");
-      await mutate({ fashion: { ...selected, shortlistIds: shortlist, directionSnapshot: data.previewSet.directionSnapshot, selectedAt: selected.selectedAt || new Date().toISOString() }, completeStage: "fashion", currentStage: "fashion" });
+      await mutate({ fashion: { ...chosen, shortlistIds: [chosenId], directionSnapshot: data.previewSet.directionSnapshot, selectedAt: chosen.selectedAt || new Date().toISOString(), sourceColorSelectionId: snapshot.colorDecision.id, staleReason: null }, completeStage: "fashion", currentStage: "fashion" });
     } catch (cause) { setError(cause instanceof Error ? cause.message : "최종 패션 룩을 저장하지 못했습니다."); }
     finally { setWorking(false); }
   };
 
   const completed = previews.filter((preview) => preview.status === "completed" && preview.imageUrl);
-  const shortlistPreviews = shortlist.map((id) => previews.find((preview) => preview.stylingSessionId === id)).filter(Boolean) as FashionPreviewCandidateV2[];
-  return <WorkbenchGrid input={<div className="grid gap-5">
-    {interviewEnabled && !batchState.batch ? <FashionDirectionInterview
+  const visibleBatchStatus = batchStatusCopy(batchState.batch);
+  const visibleSlotCount = batchState.batch?.requestedCount ?? (batchState.adaptiveEnabled === false ? 9 : 3);
+  const visibleSlots = SLOTS.slice(0, visibleSlotCount);
+
+  if (interviewEnabled && !batchState.batch && !fashionIsStale) {
+    return <FashionDirectionInterview
       consultationId={snapshot.sessionId}
       direction={direction}
       selectedHair={style?.label || "확정한 헤어"}
@@ -186,8 +270,13 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
         return await mutate({ fashion: { ...snapshot.fashion, directionSnapshot: nextDirection }, currentStage: "fashion" }, { navigate: false }) as { ok?: boolean; conflict?: boolean };
       }}
       onConfirm={prepareBatch}
-    /> : <Panel className="grid gap-5 p-5 sm:p-7">
-      <div><p className="app-kicker">One direction · nine outputs</p><h2 className="mt-2 text-xl font-black">{style?.label || "확정한 헤어"}에서 9개 룩을 한 번에 준비합니다</h2><p className="mt-2 text-sm text-[var(--app-muted)]">상황·계절·핏·노출·예산·회피 조건을 한 번 정하면 DAILY·WORK·STATEMENT 9개 슬롯 전체에 반영됩니다.</p></div>
+    />;
+  }
+
+  return <WorkbenchGrid input={<div className="grid gap-5">
+    {fashionIsStale ? <Panel className="grid gap-3 border-[var(--app-warning)] p-5" role="status"><strong>확정 헤어 컬러가 변경되어 기존 패션 결과는 이전 컬러 기준입니다.</strong><p className="text-sm text-[var(--app-muted)]">기존 결과는 보존됩니다. 새 컬러를 반영한 기본 3개 룩부터 새 배치로 생성합니다.</p><Button type="button" variant="secondary" loading={working} onClick={() => { setBatchState({ batch: null, stylingSessionIds: [], adaptiveEnabled: batchState.adaptiveEnabled }); setPreviews([]); setShortlist([]); setSelected({ ...snapshot.fashion, lookId: null, shortlistIds: [], selectedAt: null, staleReason: "color-selection-changed" }); void prepareBatch(direction); }}>새 컬러로 패션 다시 생성</Button></Panel> : null}
+    <Panel className="grid gap-5 p-5 sm:p-7">
+      <div><p className="app-kicker">One confirmed hair · adaptive outputs</p><h2 className="mt-2 text-xl font-black">{style?.label || "확정한 헤어"}에서 AI 권장 룩부터 준비합니다</h2><p className="mt-2 text-sm text-[var(--app-muted)]">기본 3개를 먼저 생성하고 원하면 6개·9개까지 확장합니다. 이미 생성된 결과는 하나도 숨기거나 교체하지 않습니다.</p></div>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="grid gap-2 text-sm font-black">계절<select value={direction.season} onChange={(event) => setDirection({ ...direction, season: event.target.value as FashionDirectionSnapshot["season"] })} className="app-input min-h-11 px-3"><option value="spring">spring</option><option value="summer">summer</option><option value="autumn">autumn</option><option value="winter">winter</option><option value="all-season">all-season</option></select></label>
         <label className="grid gap-2 text-sm font-black">핏<select value={direction.fit} onChange={(event) => setDirection({ ...direction, fit: event.target.value as FashionDirectionSnapshot["fit"] })} className="app-input min-h-11 px-3"><option value="slim">slim</option><option value="regular">regular</option><option value="relaxed">relaxed</option><option value="oversized">oversized</option></select></label>
@@ -195,32 +284,33 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
         <label className="grid gap-2 text-sm font-black">예산<input value={direction.budget} onChange={(event) => setDirection({ ...direction, budget: event.target.value })} className="app-input min-h-11 px-3 font-normal" /></label>
       </div>
       <label className="grid gap-2 text-sm font-black">회피 아이템<input value={direction.avoidItems.join(", ")} onChange={(event) => setDirection({ ...direction, avoidItems: event.target.value.split(",").map((item) => item.trim()).filter(Boolean) })} className="app-input min-h-11 px-3 font-normal" /></label>
-      {profileReady === false ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">전신 사진과 바디 프로필이 필요합니다. <Link href="/mypage" className="font-black underline">프로필 완성</Link></p> : null}
-      <Button type="button" loading={working} disabled={!profileReady || Boolean(batchState.batch && ["approved", "generating", "partial", "ready"].includes(batchState.batch.state))} onClick={() => void prepareBatch(direction)}>이 방향으로 9개 룩 준비</Button>
-    </Panel>}
-    {batchState.batch && ["approved", "partial", "failed"].includes(batchState.batch.state) ? <Button type="button" variant="secondary" loading={working} onClick={() => void resumeIncomplete()}>미완료 슬롯 자동 재접수</Button> : null}
+      {profileReady === false ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{personalizationRequired ? "지속 패션 개인화 기준을 먼저 확정해 주세요." : "전신 사진과 바디 프로필이 필요합니다."} <Link href={personalizationRequired ? `/onboarding/fashion-personalization?returnTo=${encodeURIComponent(`/consulting/${snapshot.sessionId}/fashion`)}` : "/mypage"} className="font-black underline">{personalizationRequired ? "개인화 기준 완성" : "프로필 완성"}</Link></p> : null}
+      <Button type="button" loading={working} disabled={!profileReady || Boolean(batchState.batch && ["approved", "generating", "partial", "ready"].includes(batchState.batch.state))} onClick={() => void prepareBatch(direction)}>{batchState.adaptiveEnabled === false ? "이 방향으로 9개 룩 준비" : "AI 권장 3개 룩 준비"}</Button>
+    </Panel>
+    {batchState.batch && ["approved", "partial", "failed"].includes(batchState.batch.state) ? <Button type="button" variant="secondary" loading={working} onClick={() => void resumeIncomplete()}>미완료 슬롯 다시 시도</Button> : null}
     {needsPurchase ? <p className="border border-[var(--app-border)] bg-[var(--app-surface)] p-3 text-sm">인터뷰 답변은 저장되어 있습니다. <Link href="/billing" className="font-black underline">이용 상품을 선택한 뒤 이어서 진행</Link>할 수 있습니다.</p> : null}
     {error ? <p role="alert" className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}
-    {completed.length >= 2 ? <SaveStageButton loading={saving || working} disabled={shortlist.length < 2 || shortlist.length > 3 || !selected.lookId || !shortlist.includes(selected.lookId)} onClick={() => void saveSelection()}>최종 패션 룩 저장</SaveStageButton> : null}
+    {completed.length >= 1 ? <SaveStageButton loading={saving || working} disabled={!selected.lookId && !batchState.batch?.recommendedPreviewId} onClick={() => void saveSelection()}>{!selected.lookId || selected.lookId === batchState.batch?.recommendedPreviewId ? "AI 권장 룩 확정" : "선택한 패션 룩 확정"}</SaveStageButton> : null}
   </div>} output={<>
-    {shortlistPreviews.length >= 2 ? <SurfaceCard className="p-5"><p className="app-kicker">Fashion comparison</p><h2 className="mt-2 text-xl font-black">후보 {shortlistPreviews.length}개를 같은 축으로 비교합니다</h2><div className={`mt-5 grid gap-4 ${shortlistPreviews.length === 3 ? "xl:grid-cols-3" : "sm:grid-cols-2"}`}>{shortlistPreviews.map((preview) => <section key={preview.stylingSessionId} aria-label={`${preview.headline} 비교`} className="border-t border-[var(--app-border-strong)] pt-4"><h3 className="font-black">{preview.headline}</h3><div className="mt-3"><DefinitionRows items={[
-      { label: "Category", value: preview.category },
-      { label: "Palette", value: preview.palette.join(" · ") || "기본 팔레트" },
-      { label: "Neckline", value: preview.neckline || "기본" },
-      { label: "Silhouette", value: preview.silhouette || preview.direction.fit },
-      { label: "Hair link", value: preview.summary },
-      { label: "Items", value: preview.items.map((item) => item.name).join(" · ") || "구성 대기" },
-      { label: "Search", value: preview.shoppingKeywords.join(" · ") || "검색어 대기" },
-    ]} /></div></section>)}</div></SurfaceCard> : null}
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-fashion-board-size="9">{SLOTS.map((slot) => {
+    <SurfaceCard className="p-5" data-fashion-batch-status={visibleBatchStatus.key} aria-live="polite">
+      <p className="app-kicker">Generation status</p>
+      <h2 className="mt-2 text-xl font-black">{visibleBatchStatus.title}</h2>
+      <p className="mt-2 text-sm text-[var(--app-muted)]">{visibleBatchStatus.detail}</p>
+      {batchState.batch?.lastHeartbeatAt ? <p className="mt-3 text-xs text-[var(--app-muted)]">최근 서버 확인 · {stableUtcTime(batchState.batch.lastHeartbeatAt)}</p> : null}
+      {batchState.adaptiveEnabled !== false && batchState.batch && batchState.batch.terminalCount === batchState.batch.requestedCount && batchState.batch.requestedCount < 9 ? <Button type="button" variant="secondary" loading={working} onClick={() => void expandBatch()} className="mt-4">3개 더 생성해서 모두 보기</Button> : null}
+    </SurfaceCard>
+    <SurfaceCard className="p-5"><p className="app-kicker">All generated outputs</p><h2 className="mt-2 text-xl font-black">요청한 {visibleSlotCount}개 생성 내용을 모두 표시합니다</h2><p className="mt-2 text-sm text-[var(--app-muted)]">완료·생성 중·정체·실패 상태를 포함해 어떤 슬롯도 숨기지 않습니다.</p></SurfaceCard>
+    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-fashion-generated-gallery="all-generated" data-fashion-board-size={visibleSlotCount}>{visibleSlots.map((slot) => {
       const preview = previews.find((item) => item.slotId === slot.id);
-      const shortlisted = Boolean(preview && shortlist.includes(preview.stylingSessionId));
       const final = Boolean(preview && selected.lookId === preview.stylingSessionId);
-      return <SurfaceCard key={slot.id} className="overflow-hidden p-0" data-fashion-slot-id={slot.id}><div className="aspect-[3/4] bg-[var(--app-surface-muted)]">{preview?.imageUrl ? <img src={preview.imageUrl} alt={`${slot.label} AI 패션 프리뷰`} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="grid h-full place-items-center p-5 text-center text-sm font-black text-[var(--app-muted)]">{preview?.status ?? "배치 준비 전"}</div>}</div><div className="grid gap-3 p-4"><div><p className="app-kicker">{slot.category}</p><h3 className="mt-1 font-black">{preview?.headline || slot.label}</h3><p className="mt-1 text-xs text-[var(--app-muted)]">{preview?.summary || "헤어·컬러·바디 조건을 연결해 생성합니다."}</p></div>{preview?.status === "completed" ? <div className="flex gap-2"><Button type="button" variant={shortlisted ? "primary" : "secondary"} onClick={() => toggleShortlist(preview)}>{shortlisted ? "후보 해제" : "후보 선택"}</Button><Button type="button" variant={final ? "primary" : "ghost"} disabled={!shortlisted} onClick={() => selectFinal(preview)}>{final ? "최종 룩" : "최종 지정"}</Button></div> : null}{preview?.errorMessage ? <p className="text-xs text-[var(--app-danger)]">{preview.errorMessage}</p> : null}</div></SurfaceCard>;
+      const recommended = Boolean(preview && batchState.batch?.recommendedPreviewId === preview.stylingSessionId);
+      const runtime = batchState.batch?.slotProgress[slot.id];
+      const slotStatus = preview?.status ?? runtime?.status ?? "배치 준비 전";
+      return <SurfaceCard key={slot.id} className="overflow-hidden p-0" data-fashion-slot-id={slot.id} data-fashion-slot-role={batchState.batch?.slotRoles[slot.id] ?? "legacy"} data-fashion-slot-status={runtime?.status ?? preview?.status ?? "idle"}><div className="aspect-[3/4] bg-[var(--app-surface-muted)]">{preview?.imageUrl ? <img src={preview.imageUrl} alt={`${slot.label} AI 패션 프리뷰`} className="h-full w-full object-cover" loading="lazy" decoding="async" /> : <div className="grid h-full place-items-center p-5 text-center text-sm font-black text-[var(--app-muted)]">{slotStatus}</div>}</div><div className="grid gap-3 p-4"><div className="flex items-start justify-between gap-2"><div><p className="app-kicker">{slot.category} · {batchState.batch?.slotRoles[slot.id] ?? "look"}</p><h3 className="mt-1 font-black">{preview?.headline || slot.label}</h3></div>{recommended ? <span className="border border-[var(--app-accent)] px-2 py-1 text-xs font-black">AI 권장</span> : null}</div><div><p className="text-xs text-[var(--app-muted)]">{preview?.summary || "헤어·컬러·바디 조건을 연결해 생성합니다."}</p>{runtime ? <p className="mt-2 text-xs text-[var(--app-muted)]">{runtime.status} · 시도 {runtime.attemptCount}회{runtime.errorMessage ? ` · ${runtime.errorMessage}` : ""}</p> : null}</div>{preview?.status === "completed" ? <Button type="button" variant={final ? "primary" : "secondary"} onClick={() => selectFinal(preview)}>{final ? (recommended ? "AI 권장안 선택됨" : "선택됨") : "이 룩으로 변경"}</Button> : null}{preview?.errorMessage ? <p className="text-xs text-[var(--app-danger)]">{preview.errorMessage}</p> : null}</div></SurfaceCard>;
     })}</div>
     <ConsultationSystemData snapshot={snapshot} items={[
-      { label: "Fashion batch", value: batchState.batch ? `${batchState.batch.state} · ${batchState.batch.completedCount}/9 완료 · ${batchState.batch.failedCount} 실패` : "준비 전" },
-      { label: "Shortlist", value: `${shortlist.length} / 3` },
+      { label: "Fashion batch", value: batchState.batch ? `${batchState.batch.state} · ${batchState.batch.completedCount}/${batchState.batch.requestedCount} 완료 · ${batchState.batch.failedCount} 실패` : "준비 전" },
+      { label: "Generated visibility", value: `${visibleSlotCount}개 슬롯 전체 표시` },
       { label: "Final look", value: selected.label || "선택 전" },
     ]} />
   </>} />;

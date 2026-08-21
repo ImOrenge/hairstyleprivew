@@ -313,6 +313,21 @@ active cycle rows 182개
 
 모발 프로필이 알려진 경우 최종 9개 중 최소 6개는 texture와 모발 굵기가 완전 일치 또는 명시적 호환이어야 하고, 9개 모두 hard condition 또는 굵기 conflict가 없어야 한다.
 
+9개를 먼저 점수순으로 뽑아 `BALANCE → IMAGE → LIFESTYLE`에 배열 순서대로 끼우지 않는다. 다음 slot matrix를 먼저 만들고, 각 슬롯의 필수 기장을 만족하는 카탈로그 후보를 기존 개인화 점수순으로 소비한다.
+
+| 3열 | 기본 비교 | 목표 길이 고정 |
+| --- | --- | --- |
+| `BALANCE` / `face_balance` | 단기장, 중기장, 장기장 | 목표, 목표, 인접 |
+| `IMAGE` / `image_change` | 단기장, 중기장, 장기장 | 목표, 목표, 탐색 |
+| `LIFESTYLE` / `manageability` | 단기장, 중기장, 장기장 | 목표, 목표, 인접 |
+
+- 목표가 `short`이면 인접은 `medium`, 탐색은 `long`이다.
+- 목표가 `long`이면 인접은 `medium`, 탐색은 `short`이다.
+- 목표가 `medium`이면 기존 quota 계약과 동일하게 인접은 `long`, 탐색은 `short`이다.
+- PromptSpec은 `requiredLengthBucket`, 실제 `catalogLengthBucket`, `catalogFallbackReason`을 기록한다.
+- V4 확장 카탈로그에서는 9개 모든 슬롯이 필수 기장을 충족해야 한다. 구 카탈로그 rollback 경로에서만 후보 부족을 명시적 `required_length_unavailable` fallback으로 남기며 같은 후보를 두 슬롯에 재사용하지 않는다.
+- 카드 라벨·살롱 브리프·생성 프롬프트는 PromptSpec의 `catalogItemId`로 다시 결합해 한 슬롯에서 동일한 카탈로그 항목을 가리켜야 한다.
+
 ### 7.5 Prompt와 살롱 브리프
 
 - 이미지 생성 prompt에는 목표 외형과 현재 모발 상태를 구분해 쓴다.

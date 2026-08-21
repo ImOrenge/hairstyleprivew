@@ -1,4 +1,5 @@
 import { isConsultationPhotoCrop } from "@hairfit/shared";
+import { isConsultationStartContextReady } from "@hairfit/shared/consulting/start-context";
 import type { ConsultationPatch, ConsultationSnapshot } from "./contracts";
 
 function fail(message: string): never { throw new Error(`INVALID_PATCH:${message}`); }
@@ -6,7 +7,13 @@ function fail(message: string): never { throw new Error(`INVALID_PATCH:${message
 export function validateConsultationPatch(snapshot: ConsultationSnapshot, patch: ConsultationPatch) {
   if (patch.completeStage === "discovery") {
     const discovery = patch.discovery ?? snapshot.discovery;
-    if (
+    const startContextReady = isConsultationStartContextReady(patch.startContext ?? snapshot.startContext);
+    const intentComplete = discovery.intent?.schemaVersion === "consultation-intent-v2"
+      && Boolean(discovery.intent.scope)
+      && Boolean(discovery.intent.changeLevel)
+      && discovery.intent.exclusionsConfirmed
+      && Boolean(discovery.intent.confirmedAt);
+    if (!startContextReady && !intentComplete && (
       !discovery.purpose.trim()
       || !discovery.goals.length
       || !discovery.currentHair.trim()
@@ -16,7 +23,7 @@ export function validateConsultationPatch(snapshot: ConsultationSnapshot, patch:
       || !discovery.hairTexture
       || !discovery.damageLevel
       || !discovery.allowedServices.length
-    ) fail("상담 목적, 현재 모발, 가능한 시술 범위와 목표가 필요합니다.");
+    )) fail("상담 목표 세 가지 또는 기존 상세 상담 항목을 완료해야 합니다.");
     const unavailable = discovery.desiredServices.filter((service) => service !== "아직 모름" && !discovery.allowedServices.includes(service));
     if (unavailable.length) fail(`고려 중인 시술이 가능한 범위와 충돌합니다: ${unavailable.join(", ")}`);
   }
@@ -43,6 +50,12 @@ export function validateConsultationPatch(snapshot: ConsultationSnapshot, patch:
   }
   if (patch.finalist?.finalistPreviewId && !snapshot.shortlist.previewIds.includes(patch.finalist.finalistPreviewId)) fail("shortlist 후보만 최종 선택할 수 있습니다.");
   if (patch.selectedStyle && patch.selectedStyle.previewId !== snapshot.finalist.finalistPreviewId) fail("비교에서 정한 최종 후보와 선택이 일치해야 합니다.");
+  if (snapshot.colorDecision.state === "confirmed" && patch.colorDecision && JSON.stringify(patch.colorDecision) !== JSON.stringify(snapshot.colorDecision)) fail("확정된 컬러 스냅샷은 변경할 수 없습니다. 새 컬러 revision을 생성해 주세요.");
+  if (patch.colorDecision?.state === "confirmed") {
+    const activeStyle = snapshot.selectedStyleHistory.at(-1);
+    if (!activeStyle || !patch.colorDecision.selectionSnapshotId || patch.colorDecision.selectionSnapshotId !== activeStyle.id) fail("현재 확정 헤어와 연결된 컬러 선택만 확정할 수 있습니다.");
+    if (!patch.colorDecision.swatchHex || !patch.colorDecision.inputFingerprint || !patch.colorDecision.finalImagePath) fail("컬러, 입력 fingerprint와 고품질 생성 결과가 필요합니다.");
+  }
   if (patch.salonBrief && patch.salonBrief.rawFaceIncluded !== false) fail("원본 얼굴 사진은 기본 공유 범위에 포함할 수 없습니다.");
   const activeStyle = snapshot.selectedStyleHistory.find((style) => style.strategy.revision === snapshot.strategy.revision);
   if ((patch.salonBrief?.createdAt || patch.actualService?.confirmedAt || patch.fashion?.selectedAt) && !activeStyle && !patch.selectedStyle) fail("현재 전략에서 선택한 스타일이 필요합니다.");

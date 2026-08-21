@@ -1,5 +1,6 @@
 import "server-only";
 
+import { projectConsultationGenerationInputV2, validateSalonBriefV2 } from "@hairfit/shared/v2";
 import type {
   AftercareProgramV2,
   FashionPreviewCandidateV2,
@@ -19,6 +20,7 @@ import {
 } from "../style-profile-server";
 import { HairfitV2Error } from "./errors";
 import { loadConfirmedV2StylingSource } from "./styling-source-server";
+import { loadConsultationGenerationInputSnapshotV2 } from "../consulting/generation-input-server";
 
 type ConfirmedSelection = {
   id: string;
@@ -160,6 +162,8 @@ function normalizeStoredAftercareProgram(value: unknown): AftercareProgramV2 {
     satisfaction: stored.satisfaction,
   });
   const version = Number(stored.version);
+  const storedInput = record(stored.inputSnapshot);
+  const createdAt = typeof stored.createdAt === "string" ? stored.createdAt : new Date(0).toISOString();
   return {
     schemaVersion: "aftercare-program-v2",
     consultationId: typeof stored.consultationId === "string" ? stored.consultationId : "",
@@ -167,7 +171,80 @@ function normalizeStoredAftercareProgram(value: unknown): AftercareProgramV2 {
     actualServiceId: typeof stored.actualServiceId === "string" ? stored.actualServiceId : "",
     version: Number.isInteger(version) && version > 0 ? version : 1,
     ...normalized,
-    createdAt: typeof stored.createdAt === "string" ? stored.createdAt : new Date(0).toISOString(),
+    inputSnapshot: {
+      schemaVersion: "consultation-generation-input-v1",
+      inputFingerprint: typeof storedInput.inputFingerprint === "string" ? storedInput.inputFingerprint : "legacy-aftercare-input",
+      styleTarget: storedInput.styleTarget === "male" || storedInput.styleTarget === "female" ? storedInput.styleTarget : "neutral",
+      capturedAt: typeof storedInput.capturedAt === "string" ? storedInput.capturedAt : createdAt,
+      provenance: Array.isArray(storedInput.provenance) ? storedInput.provenance as AftercareProgramV2["inputSnapshot"]["provenance"] : [],
+    },
+    createdAt,
+  };
+}
+
+function normalizeStoredSalonBrief(value: unknown): SalonBriefV2 {
+  const stored = record(value);
+  const engine = record(stored.engine);
+  const input = record(stored.inputSnapshot);
+  const details = record(stored.details);
+  const recommendationSources = record(stored.recommendationSources);
+  const services = record(details.services);
+  const design = record(details.design);
+  const version = Number(stored.version);
+  const createdAt = typeof stored.createdAt === "string" ? stored.createdAt : new Date(0).toISOString();
+  return {
+    schemaVersion: "salon-brief-v2",
+    consultationId: typeof stored.consultationId === "string" ? stored.consultationId : "",
+    selectionSnapshotId: typeof stored.selectionSnapshotId === "string" ? stored.selectionSnapshotId : "",
+    version: Number.isInteger(version) && version > 0 ? version : 1,
+    audience: stored.audience === "designer" ? "designer" : "customer",
+    summary: typeof stored.summary === "string" ? stored.summary : "",
+    cut: record(stored.cut),
+    volumeTexture: record(stored.volumeTexture),
+    color: stored.color === null ? null : record(stored.color),
+    styling: stringArray(stored.styling),
+    cautions: stringArray(stored.cautions),
+    engine: {
+      id: "legacy-designer-brief-v1",
+      mode: engine.mode === "recycled-blueprint" ? "recycled-blueprint" : "structured-fallback",
+    },
+    inputSnapshot: {
+      schemaVersion: "consultation-generation-input-v1",
+      inputFingerprint: typeof input.inputFingerprint === "string" ? input.inputFingerprint : "legacy-salon-brief-input",
+      styleTarget: input.styleTarget === "male" || input.styleTarget === "female" ? input.styleTarget : "neutral",
+      capturedAt: typeof input.capturedAt === "string" ? input.capturedAt : createdAt,
+      provenance: Array.isArray(input.provenance) ? input.provenance as SalonBriefV2["inputSnapshot"]["provenance"] : [],
+    },
+    recommendationSources: {
+      cut: stringArray(recommendationSources.cut).length ? stringArray(recommendationSources.cut) : ["style-selection"],
+      volumeTexture: stringArray(recommendationSources.volumeTexture).length ? stringArray(recommendationSources.volumeTexture) : ["style-selection", "photo-analysis"],
+      color: stringArray(recommendationSources.color).length ? stringArray(recommendationSources.color) : ["personal-color-analysis", "style-selection"],
+      styling: stringArray(recommendationSources.styling).length ? stringArray(recommendationSources.styling) : ["style-selection", "discovery-interview"],
+      cautions: stringArray(recommendationSources.cautions).length ? stringArray(recommendationSources.cautions) : ["discovery-interview", "style-selection"],
+      maintenance: stringArray(recommendationSources.maintenance).length ? stringArray(recommendationSources.maintenance) : ["discovery-interview", "style-selection"],
+      aftercare: stringArray(recommendationSources.aftercare).length ? stringArray(recommendationSources.aftercare) : ["actual-service"],
+      fashion: stringArray(recommendationSources.fashion).length ? stringArray(recommendationSources.fashion) : ["fashion-interview", "personal-color-analysis"],
+    },
+    details: {
+      consultationGoals: stringArray(details.consultationGoals),
+      currentHair: stringArray(details.currentHair),
+      decisionRationale: stringArray(details.decisionRationale),
+      evidence: stringArray(details.evidence),
+      personalColor: stringArray(details.personalColor),
+      services: { cut: stringArray(services.cut), perm: stringArray(services.perm), color: stringArray(services.color) },
+      design: {
+        length: typeof design.length === "string" ? design.length : "미확인",
+        volume: typeof design.volume === "string" ? design.volume : "미확인",
+        fringeParting: typeof design.fringeParting === "string" ? design.fringeParting : "미확인",
+        texture: typeof design.texture === "string" ? design.texture : "미확인",
+      },
+      maintenance: stringArray(details.maintenance),
+      aftercare: stringArray(details.aftercare),
+      fashionLink: stringArray(details.fashionLink),
+      designerNotes: stringArray(details.designerNotes),
+      unresolved: stringArray(details.unresolved),
+    },
+    createdAt,
   };
 }
 
@@ -237,9 +314,12 @@ export async function createSalonBriefV2(input: {
     .eq("idempotency_key", input.idempotencyKey)
     .maybeSingle();
   if (replay.error) throw new Error(replay.error.message);
-  if (replay.data) return (replay.data as unknown as { brief: SalonBriefV2 }).brief;
-  const selection = await confirmedSelection(input.userId, input.consultationId);
-  const stylingSource = await loadConfirmedV2StylingSource({ userId: input.userId, consultationId: input.consultationId });
+  if (replay.data) return normalizeStoredSalonBrief((replay.data as unknown as { brief: unknown }).brief);
+  const [selection, stylingSource, generationInput] = await Promise.all([
+    confirmedSelection(input.userId, input.consultationId),
+    loadConfirmedV2StylingSource({ userId: input.userId, consultationId: input.consultationId }),
+    loadConsultationGenerationInputSnapshotV2(input.userId, input.consultationId),
+  ]);
   const generatedBrief = stylingSource.selectedVariant.designerBrief;
   const version = await nextVersion("salon_brief_versions_v2", "consultation_id", input.consultationId);
   const style = selection.snapshot.style;
@@ -270,8 +350,86 @@ export async function createSalonBriefV2(input: {
     color: input.brief ? requestedColor : style.color,
     styling: requestedStyling.length ? requestedStyling : generatedBrief ? [generatedBrief.stylingDirection] : ["선택 이미지와 현재 모발 차이를 디자이너와 먼저 확인합니다."],
     cautions: requestedCautions.length ? requestedCautions : generatedBrief?.cautionNotes?.length ? generatedBrief.cautionNotes : ["신원 보존 프리뷰는 시술 결과 보장이 아니며 모질·손상도에 따라 조정해야 합니다."],
+    engine: {
+      id: "legacy-designer-brief-v1",
+      mode: generatedBrief ? "recycled-blueprint" : "structured-fallback",
+    },
+    inputSnapshot: projectConsultationGenerationInputV2(generationInput),
+    recommendationSources: {
+      cut: ["style-selection", "discovery-interview", "photo-analysis"],
+      volumeTexture: ["style-selection", "photo-analysis", "discovery-interview"],
+      color: ["personal-color-analysis", "style-selection", "discovery-interview"],
+      styling: ["style-selection", "discovery-interview"],
+      cautions: ["discovery-interview", "style-selection", "photo-analysis"],
+      maintenance: ["discovery-interview", "style-selection"],
+      aftercare: ["actual-service", "style-selection"],
+      fashion: ["fashion-interview", "personal-color-analysis", "style-selection"],
+    },
+    details: {
+      consultationGoals: [generationInput.goals.purpose, ...generationInput.goals.imageKeywords, ...generationInput.goals.desiredServices].filter(Boolean),
+      currentHair: [
+        `현재 모발: ${generationInput.currentHair.description}`,
+        `기장 ${generationInput.currentHair.length} · 모량 ${generationInput.currentHair.density} · 굵기 ${generationInput.currentHair.strandThickness} · 질감 ${generationInput.currentHair.texture}`,
+        `손상 ${generationInput.currentHair.damageLevel} · 이력 ${generationInput.currentHair.treatmentHistory.join(", ") || "미확인"}`,
+        ...(generationInput.currentHair.profile ? [
+          `AI 관찰 ${generationInput.currentHair.profile.observations.map((item) => `${item.traitId} ${item.value}(${Math.round(item.confidence * 100)}%)`).join(" · ") || "없음"}`,
+          `사진 미확인 ${generationInput.currentHair.profile.unknownFieldIds.join(", ") || "없음"}`,
+        ] : []),
+      ],
+      decisionRationale: generationInput.hairDecision ? [
+        `${generationInput.hairDecision.label}: ${generationInput.hairDecision.reason}`,
+        `시술 가능 범위: ${generationInput.hairDecision.services.join(", ") || "현장 확인"}`,
+      ] : [],
+      evidence: [
+        `얼굴형 근거: ${generationInput.analysis.faceShape}`,
+        generationInput.analysis.summary,
+        ...(generationInput.currentHair.profile ? [`모질 프로필 revision ${generationInput.currentHair.profile.revision} · ${generationInput.currentHair.profile.sourceFingerprint.slice(0, 12)}`] : []),
+      ],
+      personalColor: generationInput.personalColor ? [
+        `${generationInput.personalColor.season} · ${generationInput.personalColor.undertone}`,
+        `권장 ${generationInput.personalColor.bestColors.join(", ") || "미확인"}`,
+        `회피 ${generationInput.personalColor.avoidColors.join(", ") || "미확인"}`,
+      ] : [],
+      services: {
+        cut: generatedBrief?.cutDirection ? [generatedBrief.cutDirection] : [typeof requestedCut.direction === "string" ? requestedCut.direction : "커트 방향 현장 확인"],
+        perm: generationInput.hairDecision?.services.some((service) => /펌|perm/i.test(service))
+          ? [generatedBrief?.volumeTextureDirection || "컬·볼륨 강도는 모질과 손상도를 확인해 조정"] : [],
+        color: generationInput.hairDecision?.services.some((service) => /염색|컬러|color/i.test(service))
+          ? [generationInput.hairDecision.design.color] : [],
+      },
+      design: {
+        length: generationInput.hairDecision?.design.length ?? "미확인",
+        volume: generationInput.hairDecision ? `정수리 ${generationInput.hairDecision.design.crownVolume} · 사이드 ${generationInput.hairDecision.design.sideVolume}` : "미확인",
+        fringeParting: generationInput.hairDecision ? `앞머리 ${generationInput.hairDecision.design.fringe} · 가르마 ${generationInput.hairDecision.design.parting}` : "미확인",
+        texture: generationInput.hairDecision?.design.texture ?? "미확인",
+      },
+      maintenance: [
+        `아침 ${generationInput.maintenance.morningMinutes ?? "미확인"}분 · 열기구 ${generationInput.maintenance.heatStyling} · 난이도 ${generationInput.maintenance.maintenanceLevel}`,
+        `살롱 주기 ${generationInput.maintenance.salonCycleWeeks ?? "미확인"}주`,
+        generationInput.hairDecision?.maintenance ?? "확정 스타일 관리법 미확인",
+      ],
+      aftercare: generationInput.actualService ? [
+        `${generationInput.actualService.serviceDate ?? "날짜 미확인"} ${generationInput.actualService.services.join(", ")}`,
+        "실제 시술 기록을 기준으로 Aftercare 프로그램을 별도 생성",
+      ] : ["실제 시술 후 시술 항목과 날짜를 기록하면 Aftercare 프로그램이 활성화됩니다."],
+      fashionLink: [
+        `${generationInput.fashion.direction.situation} · ${generationInput.fashion.direction.season} · ${generationInput.fashion.direction.fit}`,
+        `노출 ${generationInput.fashion.direction.exposure} · 회피 ${generationInput.fashion.direction.avoidItems.join(", ") || "없음"}`,
+      ],
+      designerNotes: generationInput.actualService?.designerNotes ? [generationInput.actualService.designerNotes] : [],
+      unresolved: [
+        ...(!generationInput.personalColor ? ["퍼스널 컬러 근거 미연결"] : []),
+        ...(!generationInput.hairDecision ? ["확정 헤어 결정 미연결"] : []),
+        ...(!generationInput.fashion.bodyProfile ? ["패션 바디 프로필 미연결"] : []),
+        ...(!generationInput.actualService ? ["실제 시술 기록 대기"] : []),
+      ],
+    },
     createdAt: new Date().toISOString(),
   };
+  const briefValidationErrors = validateSalonBriefV2(brief);
+  if (briefValidationErrors.length) {
+    throw new HairfitV2Error("SALON_BRIEF_CONTRACT_INVALID", 500, `Salon Brief 계약 누락: ${briefValidationErrors.join(", ")}`);
+  }
   const insert = await db.from("salon_brief_versions_v2").insert({
     id: randomUUID(),
     consultation_id: input.consultationId,
@@ -288,11 +446,23 @@ export async function createSalonBriefV2(input: {
       throw new Error(racedBrief.error?.message || insert.error.message);
     }
     await transitionOutputState(input.userId, input.consultationId, "salon_brief_ready");
-    return (racedBrief.data as unknown as { brief: SalonBriefV2 }).brief;
+    return normalizeStoredSalonBrief((racedBrief.data as unknown as { brief: unknown }).brief);
   }
   if (insert.error) throw new Error(insert.error.message);
   await transitionOutputState(input.userId, input.consultationId, "salon_brief_ready");
   return brief;
+}
+
+export async function getLatestSalonBriefV2(userId: string, consultationId: string) {
+  const result = await getSupabaseAdminClient().from("salon_brief_versions_v2")
+    .select("brief")
+    .eq("user_id", userId)
+    .eq("consultation_id", consultationId)
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  return result.data ? normalizeStoredSalonBrief((result.data as unknown as { brief: unknown }).brief) : null;
 }
 
 export async function recordActualServiceAndAftercareV2(input: {
@@ -351,7 +521,10 @@ export async function recordActualServiceAndAftercareV2(input: {
       throw new Error(actual.error.message);
     }
   }
-  const stylingSource = await loadConfirmedV2StylingSource({ userId: input.userId, consultationId: input.consultationId });
+  const [stylingSource, generationInput] = await Promise.all([
+    loadConfirmedV2StylingSource({ userId: input.userId, consultationId: input.consultationId }),
+    loadConsultationGenerationInputSnapshotV2(input.userId, input.consultationId),
+  ]);
   const guideCapability = await runAftercareCapability({
     userId: input.userId,
     consultationId: input.consultationId,
@@ -377,6 +550,7 @@ export async function recordActualServiceAndAftercareV2(input: {
     actualServiceId,
     version,
     ...care,
+    inputSnapshot: projectConsultationGenerationInputV2(generationInput),
     createdAt: new Date().toISOString(),
   };
   const aftercare = await db.from("aftercare_programs_v2").insert({
@@ -479,14 +653,16 @@ export async function updateAftercareProgramV2(input: {
     .maybeSingle();
   if (actual.error) throw new Error(actual.error.message);
   if (!actual.data) throw new HairfitV2Error("ACTUAL_SERVICE_NOT_FOUND", 404, "실제 시술 기록을 찾을 수 없습니다.");
-  const latest = await db
-    .from("aftercare_programs_v2")
-    .select("version")
-    .eq("actual_service_id", input.actualServiceId)
-    .eq("user_id", input.userId)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const [latest, generationInput] = await Promise.all([
+    db.from("aftercare_programs_v2")
+      .select("version")
+      .eq("actual_service_id", input.actualServiceId)
+      .eq("user_id", input.userId)
+      .order("version", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    loadConsultationGenerationInputSnapshotV2(input.userId, input.consultationId),
+  ]);
   if (latest.error) throw new Error(latest.error.message);
   const currentVersion = Number((latest.data as { version?: number } | null)?.version ?? 0);
   if (currentVersion !== input.expectedVersion) {
@@ -500,6 +676,7 @@ export async function updateAftercareProgramV2(input: {
     actualServiceId: input.actualServiceId,
     version,
     ...care,
+    inputSnapshot: projectConsultationGenerationInputV2(generationInput),
     createdAt: new Date().toISOString(),
   };
   const insert = await db.from("aftercare_programs_v2").insert({
@@ -529,8 +706,8 @@ export async function createFashionPreviewSetV2(input: {
 }) {
   validateIdempotencyKey(input.idempotencyKey);
   const stylingSessionIds = [...new Set(input.stylingSessionIds.map((item) => item.trim()).filter(Boolean))];
-  if (stylingSessionIds.length < 2 || stylingSessionIds.length > 3) {
-    throw new HairfitV2Error("FASHION_SHORTLIST_SIZE_INVALID", 400, "완료된 패션 프리뷰를 2~3개 선택해 주세요.");
+  if (stylingSessionIds.length < 1 || stylingSessionIds.length > 3) {
+    throw new HairfitV2Error("FASHION_SHORTLIST_SIZE_INVALID", 400, "완료된 패션 프리뷰를 1~3개 선택해 주세요.");
   }
   if (!stylingSessionIds.includes(input.selectedStylingSessionId)) {
     throw new HairfitV2Error("FASHION_SELECTION_INVALID", 400, "최종 룩은 shortlist 안에서 선택해 주세요.");
@@ -544,10 +721,13 @@ export async function createFashionPreviewSetV2(input: {
     .maybeSingle();
   if (replay.error) throw new Error(replay.error.message);
   if (replay.data) return (replay.data as unknown as { preview_set: FashionPreviewSetV2 }).preview_set;
-  const selection = await confirmedSelection(input.userId, input.consultationId);
+  const [selection, generationInput] = await Promise.all([
+    confirmedSelection(input.userId, input.consultationId),
+    loadConsultationGenerationInputSnapshotV2(input.userId, input.consultationId),
+  ]);
   const sessions = await db
     .from("styling_sessions")
-    .select("id,selection_snapshot_id,status,generated_image_path,genre,recommendation,fashion_slot_id,fashion_direction")
+    .select("id,selection_snapshot_id,status,generated_image_path,genre,recommendation,fashion_slot_id,fashion_direction,generation_input_fingerprint,personal_color_profile_id")
     .in("id", stylingSessionIds)
     .eq("user_id", input.userId)
     .eq("consultation_id", input.consultationId)
@@ -564,10 +744,14 @@ export async function createFashionPreviewSetV2(input: {
     recommendation: Record<string, unknown>;
     fashion_slot_id: string | null;
     fashion_direction: Record<string, unknown>;
+    generation_input_fingerprint: string;
+    personal_color_profile_id: string | null;
   }>;
   if (
     completedSessions.length !== stylingSessionIds.length
     || completedSessions.some((session) => !session.generated_image_path)
+    || completedSessions.some((session) => session.generation_input_fingerprint !== generationInput.inputFingerprint)
+    || completedSessions.some((session) => session.personal_color_profile_id !== (generationInput.personalColor?.profileV2?.id ?? null))
   ) {
     throw new HairfitV2Error(
       "FASHION_PREVIEW_NOT_COMPLETED",
@@ -599,10 +783,13 @@ export async function createFashionPreviewSetV2(input: {
     consultationId: input.consultationId,
     selectionSnapshotId: selection.id,
     personalColorEvidenceId: input.personalColorEvidenceId ?? null,
+    personalColorProfileId: generationInput.personalColor?.profileV2?.id ?? null,
+    colorSelectionSnapshotId: generationInput.hairColorDecision?.colorSelectionSnapshotId ?? null,
     selectedHairSnapshotId: selection.id,
     stylingSessionIds,
     selectedStylingSessionId: input.selectedStylingSessionId,
     directionSnapshot: selectedDirection,
+    inputSnapshot: projectConsultationGenerationInputV2(generationInput),
     selectedLook: {
       slotId: selectedSession.fashion_slot_id,
       category: selectedCategory,
@@ -622,6 +809,9 @@ export async function createFashionPreviewSetV2(input: {
     consultation_id: input.consultationId,
     selection_snapshot_id: selection.id,
     personal_color_evidence_id: input.personalColorEvidenceId ?? null,
+    personal_color_profile_id: generationInput.personalColor?.profileV2?.id ?? null,
+    color_selection_snapshot_id: generationInput.hairColorDecision?.colorSelectionSnapshotId ?? null,
+    generation_input_fingerprint: generationInput.inputFingerprint,
     user_id: input.userId,
     idempotency_key: input.idempotencyKey,
     version,
@@ -635,6 +825,7 @@ export async function createFashionPreviewSetV2(input: {
 export async function getFashionPreviewStateV2(userId: string, consultationId: string) {
   const db = getSupabaseAdminClient();
   const selection = await confirmedSelection(userId, consultationId);
+  const generationInput = await loadConsultationGenerationInputSnapshotV2(userId, consultationId);
   const [sessions, latestSet] = await Promise.all([
     db
       .from("styling_sessions")
@@ -643,6 +834,7 @@ export async function getFashionPreviewStateV2(userId: string, consultationId: s
       .eq("consultation_id", consultationId)
       .eq("selection_snapshot_id", selection.id)
       .eq("source_mode", "v2_selection")
+      .eq("generation_input_fingerprint", generationInput.inputFingerprint)
       .order("created_at", { ascending: false }),
     db
       .from("fashion_preview_sets_v2")
@@ -650,6 +842,7 @@ export async function getFashionPreviewStateV2(userId: string, consultationId: s
       .eq("user_id", userId)
       .eq("consultation_id", consultationId)
       .eq("selection_snapshot_id", selection.id)
+      .eq("generation_input_fingerprint", generationInput.inputFingerprint)
       .order("version", { ascending: false })
       .limit(1)
       .maybeSingle(),

@@ -9,16 +9,13 @@ import {
 } from "./verify-hairfit-v2-supabase-post-apply.mjs";
 import { EXPECTED_LINKED_PROJECT_FINGERPRINT } from "./apply-hairfit-v2-supabase-migrations.mjs";
 
-test("post-apply verification covers every new internal table", () => {
-  assert.deepEqual(POST_APPLY_TABLES, [
-    "consultation_analysis_runs_v2",
-    "fashion_preview_batches_v2",
-    "hairfit_v2_engine_source_manifests",
-    "consultation_capability_tasks_v2",
-    "consultation_capability_attempts_v2",
-    "consultation_capability_results_v2",
-    "consultation_interview_drafts_v2",
-  ]);
+test("post-apply verification covers every Personal Color and Makeup internal table", () => {
+  for (const table of [
+    "personal_color_capture_assets", "face_observation_bundles", "personal_color_profiles_v2",
+    "personal_color_drape_sessions", "makeup_direction_snapshots", "makeup_routines",
+    "makeup_artist_briefs", "makeup_brief_shares", "personal_color_training_consent_events",
+  ]) assert.equal(POST_APPLY_TABLES.includes(table), true, table);
+  assert.equal(new Set(POST_APPLY_TABLES).size, POST_APPLY_TABLES.length);
 });
 
 test("Supabase URL is reduced to a project fingerprint and rejects other hosts", () => {

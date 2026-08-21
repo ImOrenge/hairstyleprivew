@@ -15,6 +15,7 @@ import type {
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "./errors";
 import { buildPromptInputV2 } from "./prompt-input";
+import { loadConsultationGenerationInputSnapshotV2 } from "../consulting/generation-input-server";
 
 type ConsultationPromptRow = {
   id: string;
@@ -191,8 +192,11 @@ export async function buildGenerationPromptPlansV2(input: {
     input.model,
     input.sourceImageFingerprint,
   );
-  const personalColor = await loadPersonalColor(row.id, row.snapshot);
-  const promptInput = buildPromptInputV2(row, analysisEvidence, personalColor, input.recommendations);
+  const [personalColor, generationInput] = await Promise.all([
+    loadPersonalColor(row.id, row.snapshot),
+    loadConsultationGenerationInputSnapshotV2(input.userId, input.consultationId),
+  ]);
+  const promptInput = buildPromptInputV2({ ...row, generationInput }, analysisEvidence, personalColor, input.recommendations);
 
   return compilePromptSpecsV2(promptInput).map((spec) => ({
     spec,

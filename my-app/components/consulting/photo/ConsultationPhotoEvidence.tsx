@@ -2,13 +2,14 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { effectiveEvidencePointV2, type AnalysisEvidenceV2, type NormalizedPointV2 } from "@hairfit/shared/v2";
+import { effectiveEvidencePointV2, type AnalysisEvidenceV2, type FaceObservationBundleV2, type NormalizedPointV2 } from "@hairfit/shared/v2";
 import { Button } from "../../ui/Button";
 import { SurfaceCard } from "../../ui/Surface";
 import { FaceEvidenceOverlay, type FaceEvidenceLayer } from "./FaceEvidenceOverlay";
 
 interface EvidenceResponse {
   evidence?: AnalysisEvidenceV2;
+  observation?: FaceObservationBundleV2 | null;
   overlayEnabled?: boolean;
   error?: string;
 }
@@ -30,6 +31,7 @@ export function ConsultationPhotoEvidence({
 }) {
   const [url, setUrl] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<AnalysisEvidenceV2 | null>(null);
+  const [observation, setObservation] = useState<FaceObservationBundleV2 | null>(null);
   const [message, setMessage] = useState(enabled
     ? "사진과 분석 좌표를 자동으로 불러오고 있습니다."
     : "사진 분석 사용 범위가 선택되지 않았습니다.");
@@ -42,6 +44,7 @@ export function ConsultationPhotoEvidence({
     "measurement",
   ]);
   const automaticRefreshes = useRef(0);
+  const overlayObservation = observation?.sourceAssets[0]?.role === "consultation_photo" ? observation : null;
 
   const toggleLayer = (layer: FaceEvidenceLayer) => setVisibleLayers((current) => current.includes(layer)
     ? current.filter((item) => item !== layer)
@@ -71,6 +74,7 @@ export function ConsultationPhotoEvidence({
         + (nextEvidence?.measurements.length ?? 0);
       const renderEvidence = geometryCount > 0 ? nextEvidence : null;
       setEvidence(renderEvidence);
+      setObservation(evidenceResponse.ok ? evidenceData.observation ?? null : null);
       setSelectedLandmarkId((current) => current && renderEvidence?.landmarks.some((item) => item.id === current)
         ? current
         : renderEvidence?.landmarks[0]?.id ?? null);
@@ -83,6 +87,7 @@ export function ConsultationPhotoEvidence({
     } catch (error) {
       setUrl(null);
       setEvidence(null);
+      setObservation(null);
       onEvidenceLoad?.(null);
       setMessage(error instanceof Error ? error.message : "사진을 불러오지 못했습니다.");
     } finally {
@@ -99,6 +104,7 @@ export function ConsultationPhotoEvidence({
   const recoverExpiredAsset = () => {
     setUrl(null);
     setEvidence(null);
+    setObservation(null);
     onEvidenceLoad?.(null);
     if (automaticRefreshes.current < 1) {
       automaticRefreshes.current += 1;
@@ -170,6 +176,7 @@ export function ConsultationPhotoEvidence({
         onEvidenceSelect={onEvidenceSelect}
         selectedLandmarkId={allowCorrections ? selectedLandmarkId : null}
         onLandmarkSelect={allowCorrections ? setSelectedLandmarkId : undefined}
+        observation={overlayObservation}
       /> : null}
     </div> : <div className="flex aspect-[4/5] items-center justify-center p-5 text-center text-sm text-[var(--app-muted)]">{message}</div>}
     <div className="grid gap-3 p-4">
@@ -191,6 +198,14 @@ export function ConsultationPhotoEvidence({
           >{label}</button>)}
         </div>
       </fieldset> : null}
+      {observation ? <div className="border border-[var(--app-border)] p-3 text-xs" data-face-observation-summary="true">
+        <p className="font-black">컬러 관찰 번들 · {observation.regionSamples.length}개 영역</p>
+        <p className="mt-1 text-[var(--app-muted)]">
+          유효 피부 픽셀 {Math.round(observation.quality.validSkinPixelRatio * 100)}%
+          {observation.quality.crossRegionMaxDeltaE === null ? "" : ` · 영역 차이 ΔE ${observation.quality.crossRegionMaxDeltaE.toFixed(1)}`}
+        </p>
+        {observation.quality.warnings.map((warning) => <p key={warning.code} className="mt-1 font-bold text-[var(--app-warning)]">{warning.message}</p>)}
+      </div> : null}
       {evidence && allowCorrections ? <fieldset className="border border-[var(--app-border)] p-3" disabled={correctionSaving}>
         <legend className="px-1 text-xs font-black">랜드마크 좌표 보정</legend>
         <label className="grid gap-1 text-xs font-bold">

@@ -1,0 +1,13 @@
+/* eslint-disable @next/next/no-img-element -- the optional owner-approved private asset uses a short-lived runtime URL */
+import { notFound } from "next/navigation";
+import { readPublicMakeupBriefShare } from "../../../../lib/makeup/makeup-artifacts-server";
+import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
+
+interface Props { params: Promise<{ token: string }> }
+const LABELS = { base: "베이스", brow: "눈썹", eyeshadow: "아이섀도", eyeliner: "아이라인", blush: "블러셔", lip: "립", lashes: "속눈썹" } as const;
+
+export default async function MakeupArtistBriefSharePage({ params }: Props) {
+  if (!isHairfitV2Enabled("MAKEUP_DIRECTION_V1")) notFound();
+  const { token } = await params; const shared = await readPublicMakeupBriefShare(token); if (!shared) notFound();
+  return <main id="main-content" className="app-page min-h-screen py-12"><article className="mx-auto grid max-w-5xl gap-6 px-5"><header className="border-b border-[var(--app-border)] pb-6"><p className="app-kicker">HairFit artist handoff</p><h1 className="mt-2 text-3xl font-black">메이크업 아티스트 브리프</h1><p className="mt-3 text-sm text-[var(--app-muted)]">만료: {new Date(shared.expiresAt).toLocaleString("ko-KR")}</p></header>{shared.sourcePhotoIncluded && shared.sourcePhotoUrl ? <img src={shared.sourcePhotoUrl} alt="사용자가 명시적으로 공유한 메이크업 기준 원본" className="mx-auto aspect-[4/5] max-h-[42rem] border border-[var(--app-border)] object-contain" /> : <div className="border border-[var(--app-border)] p-4 text-sm"><strong>원본 사진 미포함</strong><p className="mt-1 text-[var(--app-muted)]">공유 기본값에 따라 구조화된 방향만 전달합니다.</p></div>}<section className="grid gap-4 sm:grid-cols-2">{shared.brief.moduleSummaries.map((item) => <article key={item.module} className="border border-[var(--app-border)] p-5"><div className="flex justify-between gap-3"><h2 className="font-black">{LABELS[item.module]}</h2><span className="text-xs font-black">{item.enabled ? `${Math.round(item.intensity * 100)}%` : "OFF"}</span></div><dl className="mt-4 grid gap-3 text-sm"><div><dt className="text-[var(--app-muted)]">색상·마감</dt><dd className="font-bold">{item.colorFamily ?? "현장 선택"} · {item.finish}</dd></div><div><dt className="text-[var(--app-muted)]">위치</dt><dd className="font-bold">{item.placement.join(" · ")}</dd></div><div><dt className="text-[var(--app-muted)]">방향</dt><dd className="font-bold">{item.applicationDirection.join(" · ")}</dd></div><div><dt className="text-[var(--app-muted)]">테크닉</dt><dd className="font-bold">{item.technique}</dd></div></dl></article>)}</section><footer className="border-t border-[var(--app-border)] pt-5 text-xs text-[var(--app-muted)]">사진 좌표를 실제 mm로 오해하지 말고 얼굴 기준선과 비율로 현장에서 재확인하세요.</footer></article></main>;
+}

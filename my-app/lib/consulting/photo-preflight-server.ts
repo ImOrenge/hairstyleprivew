@@ -53,7 +53,14 @@ export async function inspectConsultationPhotoPreflight(
   imageDataUrl: string,
   face: PhotoFaceDetectionEvidence,
 ): Promise<ConsultationPhotoPreflightAssessment> {
-  const normalizedBuffer = await sharp(dataUrlBuffer(imageDataUrl), { failOn: "warning" }).rotate().toBuffer();
+  return inspectConsultationPhotoPreflightBuffer(dataUrlBuffer(imageDataUrl), face);
+}
+
+export async function inspectConsultationPhotoPreflightBuffer(
+  sourceBuffer: Buffer,
+  face: PhotoFaceDetectionEvidence,
+): Promise<ConsultationPhotoPreflightAssessment> {
+  const normalizedBuffer = await sharp(sourceBuffer, { failOn: "warning" }).rotate().toBuffer();
   const normalizedImage = sharp(normalizedBuffer, { failOn: "warning" });
   const metadata = await normalizedImage.metadata();
   if (!metadata.width || !metadata.height) throw new Error("PHOTO_PREFLIGHT_DIMENSIONS_MISSING");

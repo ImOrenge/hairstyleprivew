@@ -7,10 +7,11 @@ import {
   type ServerSupabaseLike,
 } from "../../../../lib/style-profile-server";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
-
-interface PersonalColorAnalyzeRequest {
-  referenceImageDataUrl?: string;
-}
+import { buildLegacyPersonalColorSuccessResponse, validateLegacyPersonalColorAnalyzeRequest } from "../../../../lib/personal-color-legacy-contract";
+import { comparePersonalColorProjectionHashes } from "../../../../lib/personal-color-projection";
+import { materializeLegacyPersonalColorCapture } from "../../../../lib/personal-color-capture";
+import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
+import { recordV2Event } from "../../../../lib/v2/observability";
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -18,14 +19,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as PersonalColorAnalyzeRequest;
-  const referenceImageDataUrl = body.referenceImageDataUrl?.trim() || "";
-  if (!referenceImageDataUrl) {
-    return NextResponse.json({ error: "referenceImageDataUrl is required" }, { status: 400 });
-  }
-  if (referenceImageDataUrl.length > 12_000_000) {
-    return NextResponse.json({ error: "referenceImageDataUrl is too large" }, { status: 400 });
-  }
+  const validation = validateLegacyPersonalColorAnalyzeRequest(await request.json().catch(() => ({})));
+  if (!validation.ok) return NextResponse.json({ error: validation.error }, { status: 400 });
+  const { referenceImageDataUrl } = validation;
 
   const supabase = getSupabaseAdminClient() as unknown as ServerSupabaseLike;
   const ensured = await ensureCurrentUserProfile(userId, supabase);
@@ -35,6 +31,19 @@ export async function POST(request: Request) {
 
   try {
     const sourceImageFingerprint = createHash("sha256").update(referenceImageDataUrl).digest("hex");
+    if (isHairfitV2Enabled("PERSONAL_COLOR_V2_WRITE")) {
+      const materialized = await materializeLegacyPersonalColorCapture(userId, referenceImageDataUrl);
+      await recordV2Event({
+        userId,
+        eventType: "personal_color.legacy_capture_materialized",
+        payload: {
+          state: materialized.asset.status,
+          receiptState: materialized.idempotentReplay ? "replayed" : "created",
+          coverageCount: Object.values(materialized.asset.quality?.usableAxes ?? {}).filter(Boolean).length,
+          rejectionCodes: materialized.asset.quality?.blockers.map((item) => item.code) ?? [],
+        },
+      });
+    }
     const capability = await runPersonalColorCapability({
       consultationId: `legacy-personal-color:${userId}`,
       idempotencyKey: request.headers.get("Idempotency-Key")?.trim() || `personal-color:${userId}:${sourceImageFingerprint}`,
@@ -65,11 +74,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ personalColor, capability: {
-      taskId: capability.taskId,
-      state: capability.state,
-      provenance: capability.provenance,
-    } }, { status: 200 });
+    if (isHairfitV2Enabled("PERSONAL_COLOR_V2_WRITE")) {
+      const comparison = comparePersonalColorProjectionHashes(personalColor, null);
+      await recordV2Event({
+        userId,
+        eventType: "personal_color.legacy_projection_recorded",
+        payload: { ...comparison, projectionHash: comparison.legacyProjectionHash, schemaVersion: "legacy-personal-color-v1" },
+      });
+    }
+
+    return NextResponse.json(buildLegacyPersonalColorSuccessResponse(personalColor, capability), { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Personal color analysis failed";
     return NextResponse.json({ error: message }, { status: 500 });

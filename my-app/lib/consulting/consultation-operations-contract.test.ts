@@ -6,10 +6,11 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 
 test("consultation observations use an allow-list and never persist arbitrary payloads", () => {
   const source = read("../v2/observability.ts");
-  assert.match(source, /ALLOWED_PAYLOAD_KEYS/);
-  assert.match(source, /SAFE_STRING/);
+  const sanitizer = read("../v2/observability-payload.ts");
+  assert.match(sanitizer, /ALLOWED_PAYLOAD_KEYS/);
+  assert.match(sanitizer, /SAFE_STRING/);
   assert.match(source, /sanitizeV2EventPayload/);
-  assert.doesNotMatch(source, /Object\.fromEntries\(Object\.entries\(payload\)/);
+  assert.doesNotMatch(sanitizer, /Object\.fromEntries\(Object\.entries\(payload\)/);
   for (const event of ["opened", "resumed", "topic_confirmed", "confirmed", "exited", "save_failed"]) assert.match(source, new RegExp(`"${event}"`));
 });
 
@@ -56,12 +57,15 @@ test("remote post-apply SQL is read-only and covers migration history, RLS, gran
   const contract = read("../../../supabase/tests/hairfit_v2_remote_post_apply_contract.sql");
   assert.match(contract, /set transaction read only/i);
   assert.match(contract, /supabase_migrations\.schema_migrations/);
-  assert.match(contract, /<> 85/);
-  for (const version of ["20260809111554", "20260811052530", "20260811154500"]) assert.match(contract, new RegExp(version));
+  assert.match(contract, /<> 95/);
+  for (const version of ["20260809111554", "20260811052530", "20260811154500", "20260814125326", "20260815021548", "20260815023212", "20260815024219", "20260815031542", "20260815040117", "20260815044500"]) assert.match(contract, new RegExp(version));
   for (const table of [
     "consultation_analysis_runs_v2", "fashion_preview_batches_v2", "hairfit_v2_engine_source_manifests",
     "consultation_capability_tasks_v2", "consultation_capability_attempts_v2",
     "consultation_capability_results_v2", "consultation_interview_drafts_v2",
+    "personal_color_capture_assets", "face_observation_bundles", "personal_color_profiles_v2",
+    "personal_color_drape_sessions", "makeup_direction_snapshots", "makeup_routines",
+    "makeup_artist_briefs", "makeup_brief_shares", "personal_color_training_consent_events",
   ]) assert.match(contract, new RegExp(table));
   assert.match(contract, /relrowsecurity and relation\.relforcerowsecurity/);
   assert.match(contract, /has_table_privilege\('anon'/);

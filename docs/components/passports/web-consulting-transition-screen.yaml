@@ -12,6 +12,7 @@ related_source:
   - my-app/components/consulting/transition/PartialResultReveal.tsx
   - my-app/components/consulting/transition/CompletionMoment.tsx
   - my-app/components/consulting/transition/RecoverableTaskNotice.tsx
+  - my-app/components/consulting/workbenches/PreviewsWorkbench.tsx
 owner: consulting-feature
 
 public_api:
@@ -23,12 +24,14 @@ public_api:
     - task
     - onPoll
     - onClear
+    - onInspectPartial
   events:
     - poll-real-task
     - pause-presentation
     - resume-presentation
     - readiness-auto-replace
     - recover-failed-task
+    - inspect-ready-partial-results-with-background-work-continuing
 
 boundaries:
   feature:
@@ -39,8 +42,10 @@ boundaries:
       - task-specific-kinetic-visual
       - result-neutral-optional-fidget
       - partial-result-priority
+      - explicit-partial-result-workbench-handoff
       - completion-moment
       - recoverable-failure
+      - explicit-preview-generating-partial-compare-ready-and-complete-status
   forbidden:
     - consultation-input-mutation
     - prompt-payload-mutation
@@ -84,9 +89,11 @@ state:
     - carousel-index
     - fidget-visible-after-five-seconds
     - result-neutral-fidget-pulse
+    - inspected-task-id-for-current-page-only
 
 a11y_contract:
   semantic_status: activity-rail-and-live-milestones
+  preview_status: localized-live-region-with-quality-approved-count
   decorative_svg: aria-hidden
   carousel: aria-live-off
   milestone_announcements: polite
@@ -94,6 +101,7 @@ a11y_contract:
   pause_control: native-button-with-aria-pressed
   reduced_motion: static-kinetic-illustration-and-no-fidget
   focus: transition-heading-then-destination-scene-heading
+  partial_handoff: native-button-reveals-workbench-without-marking-task-complete
 
 test_surface:
   contract: packages/shared/src/consulting/presentation.test.ts
@@ -111,6 +119,7 @@ change_policy:
   behavioral_change_requires:
     - browser-interaction-regression
     - readiness-and-recovery-regression
+    - partial-result-handoff-regression
 
 promotion_blockers:
   - authenticated-live-ai-and-paid-generation-smoke-not-yet-run

@@ -9,6 +9,41 @@ import { Button } from "../../ui/Button";
 import { useConsultationTaskRuntime } from "../transition/ConsultationTaskRuntime";
 import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
 
+function StructuredBriefDetails({ brief }: { brief: SalonBriefV2 }) {
+  const detailRows = [
+    { label: "상담 목표", value: brief.details.consultationGoals.join(" · ") || "미확인" },
+    { label: "현재 모발", value: brief.details.currentHair.join(" · ") || "미확인" },
+    { label: "선택 근거", value: brief.details.decisionRationale.join(" · ") || "미확인" },
+    { label: "얼굴·분석 근거", value: brief.details.evidence.join(" · ") || "미확인" },
+    { label: "퍼스널 컬러", value: brief.details.personalColor.join(" · ") || "미확인" },
+    { label: "커트", value: brief.details.services.cut.join(" · ") || "미확인" },
+    { label: "펌", value: brief.details.services.perm.join(" · ") || "미확인" },
+    { label: "컬러", value: brief.details.services.color.join(" · ") || "미확인" },
+    { label: "길이·볼륨", value: [brief.details.design.length, brief.details.design.volume].filter(Boolean).join(" · ") || "미확인" },
+    { label: "앞머리·가르마", value: brief.details.design.fringeParting || "미확인" },
+    { label: "질감", value: brief.details.design.texture || "미확인" },
+    { label: "관리·유지", value: brief.details.maintenance.join(" · ") || "미확인" },
+    { label: "홈케어·Aftercare", value: brief.details.aftercare.join(" · ") || "미확인" },
+    { label: "패션 연계", value: brief.details.fashionLink.join(" · ") || "미확인" },
+    { label: "디자이너 메모", value: brief.details.designerNotes.join(" · ") || "미확인" },
+    { label: "추가 확인", value: brief.details.unresolved.join(" · ") || "없음" },
+  ];
+
+  return <SurfaceCard className="p-5" data-brief-engine={brief.engine.id}>
+    <p className="app-kicker">Salon blueprint · provenance linked</p>
+    <h2 className="mt-2 text-xl font-black">살롱 전달용 상세 브리프</h2>
+    <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">구 블루프린트 엔진의 시술 항목을 현재 상담 입력 스냅샷과 연결했습니다. 확인되지 않은 내용은 추측하지 않고 표시합니다.</p>
+    <div className="mt-5"><DefinitionRows items={detailRows} /></div>
+    <div className="mt-5 border-t border-[var(--app-border)] pt-4"><DefinitionRows items={[
+      { label: "Style target", value: brief.inputSnapshot.styleTarget },
+      { label: "Engine", value: `${brief.engine.id} · ${brief.engine.mode}` },
+      { label: "Input snapshot", value: `${brief.inputSnapshot.inputFingerprint.slice(0, 12)}…` },
+      { label: "Provenance", value: `${brief.inputSnapshot.provenance.length}개 입력 출처` },
+      { label: "Recommendation sources", value: Object.entries(brief.recommendationSources).map(([section, sources]) => `${section}: ${sources.join(", ")}`).join(" · ") },
+    ]} /></div>
+  </SurfaceCard>;
+}
+
 export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: ConsultationSnapshot; mutate: (patch: Omit<ConsultationPatch, "expectedVersion">, options?: { navigate?: boolean }) => Promise<unknown>; saving: boolean }) {
   const taskRuntime = useConsultationTaskRuntime();
   const style = selectedStyle(snapshot);
@@ -21,6 +56,7 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
     caution: style?.limitations || [],
   }, [snapshot.salonBrief, snapshot.strategy, style]);
   const [brief, setBrief] = useState(initial);
+  const [structuredBrief, setStructuredBrief] = useState<SalonBriefV2 | null>(null);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareLoading, setShareLoading] = useState(false);
@@ -30,6 +66,19 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
   const [serviceNotes, setServiceNotes] = useState(snapshot.actualService.designerNotes);
   const [registeringService, setRegisteringService] = useState(false);
   const autoBriefAttempted = useRef(false);
+
+  useEffect(() => {
+    if (!snapshot.salonBrief.createdAt) return;
+    let cancelled = false;
+    void fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/salon-brief`, { cache: "no-store" })
+      .then(async (response) => {
+        const data = await response.json().catch(() => ({})) as { brief?: SalonBriefV2 | null; error?: string };
+        if (!response.ok) throw new Error(data.error || "상세 Salon Brief를 불러오지 못했습니다.");
+        if (!cancelled) setStructuredBrief(data.brief ?? null);
+      })
+      .catch((cause) => { if (!cancelled) setShareError(cause instanceof Error ? cause.message : "상세 Salon Brief를 불러오지 못했습니다."); });
+    return () => { cancelled = true; };
+  }, [snapshot.salonBrief.createdAt, snapshot.sessionId]);
 
   useEffect(() => {
     if (snapshot.salonBrief.createdAt || autoBriefAttempted.current) return;
@@ -44,6 +93,7 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
       const data = await response.json().catch(() => ({})) as { brief?: SalonBriefV2; error?: string };
       if (!response.ok || !data.brief) throw new Error(data.error || "Salon Brief를 자동 생성하지 못했습니다.");
       const generated = data.brief;
+      setStructuredBrief(generated);
       const fieldText = (value: Record<string, unknown>) => {
         const candidate = value.instruction ?? value.direction;
         return typeof candidate === "string" ? candidate : JSON.stringify(value);
@@ -109,16 +159,21 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
           summary: brief.summary,
           cut: { instruction: brief.cut },
           volumeTexture: { instruction: brief.volumeTexture },
-          color: snapshot.strategy.color ? { instruction: snapshot.strategy.color } : null,
+          color: snapshot.colorDecision.state === "confirmed"
+            ? { instruction: `${snapshot.colorDecision.colorName} ${snapshot.colorDecision.swatchHex} · ${snapshot.colorDecision.technique} · 강도 ${snapshot.colorDecision.intensity}%`, provenance: snapshot.colorDecision.id }
+            : snapshot.colorDecision.state === "keep-current"
+              ? { instruction: "현재 모발 색상 유지", provenance: snapshot.colorDecision.id }
+              : snapshot.strategy.color ? { instruction: snapshot.strategy.color } : null,
           styling: [brief.styling],
           cautions: brief.caution,
         } }),
       });
-      const v2Error = (await v2Response.json().catch(() => ({}))) as { error?: string };
+      const v2Error = (await v2Response.json().catch(() => ({}))) as { brief?: SalonBriefV2; error?: string };
       const v2Disabled = v2Response.status === 404 && v2Error.error === "HairFit V2 feature is disabled.";
       if (!v2Disabled && !v2Response.ok) {
         throw new Error(v2Error.error || "V2 살롱 브리프를 저장하지 못했습니다.");
       }
+      if (v2Error.brief) setStructuredBrief(v2Error.brief);
       taskRuntime.updateTask({ phaseKey: "constraints", phaseIndex: 2, completedUnits: 2, partialOutputCount: 2, detail: "서버가 브리프 내용과 제약 조건을 저장했습니다." });
       const result = await mutate({ salonBrief: { ...brief, version, rawFaceIncluded: false, createdAt: new Date().toISOString() }, completeStage: "salon-brief", currentStage: "salon-brief" }, { navigate: false }) as { ok?: boolean };
       if (!result.ok) throw new Error("Salon Brief 버전을 상담 snapshot에 연결하지 못했습니다.");
@@ -201,6 +256,7 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
       </SurfaceCard>
     </Panel>
   } output={<div className="grid gap-4">
+      {structuredBrief ? <StructuredBriefDetails brief={structuredBrief} /> : null}
       <SurfaceCard className="p-5"><p className="app-kicker">SalonBriefVersion</p><h2 className="mt-3 text-xl font-black">{style?.label || "선택 대기"}</h2><p className="mt-3 text-sm leading-6">{brief.summary}</p><div className="mt-5"><DefinitionRows items={[
         { label: "Audience", value: brief.mode },
         { label: "Cut", value: brief.cut || "입력 대기" },

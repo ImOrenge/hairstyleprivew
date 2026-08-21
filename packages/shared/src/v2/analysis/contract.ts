@@ -69,14 +69,49 @@ export interface AnalysisEvidenceV2 {
   createdAt: string;
 }
 
+export interface PersonalColorCombinationV2 {
+  title: string;
+  hexes: string[];
+  reason: string;
+}
+
+export interface PersonalColorSwatchV2 {
+  nameKo: string;
+  nameEn: string;
+  hex: string;
+  reason: string;
+  recommendationReason?: string;
+  nonRecommendationReason?: string;
+  meaning?: string;
+  stylingTip?: string;
+  colorCombinations?: PersonalColorCombinationV2[];
+}
+
 export interface PersonalColorEvidenceV2 {
-  schemaVersion: "personal-color-evidence-v1";
+  schemaVersion: "personal-color-evidence-v1" | "personal-color-evidence-v2";
   id: string;
   consultationId: string;
   sourceAnalysisEvidenceId: string;
   model: { provider: string; name: string; version: string };
   quality: { status: "usable" | "warning" | "unusable"; confidence: number; warnings: string[] };
-  result: { season: string; undertone: string; palette: string[]; confidence: number };
+  result: {
+    season: string;
+    undertone: string;
+    palette: string[];
+    confidence: number;
+    primaryType?: string;
+    secondaryType?: string | null;
+    blend?: Record<string, number>;
+    axes?: { temperature: number; value: number; chroma: number; contrast: number };
+    avoidPalette?: string[];
+    detailVersion?: "color-detail-v1" | "color-detail-v2";
+    bestColors?: PersonalColorSwatchV2[];
+    avoidColors?: PersonalColorSwatchV2[];
+    stylingPalette?: string[];
+    hairColorHints?: string[];
+    hairColorDirections?: Array<{ id: string; name: string; reason: string; targetLevel: number | null; bleachPolicy: string; maintenance: string }>;
+    summary?: string;
+  };
   createdAt: string;
 }
 

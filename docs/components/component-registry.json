@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "registry_id": "hairfit.frontend.components",
-  "updated_at": "2026-08-13",
+  "updated_at": "2026-08-21",
   "baseline": {
     "git_branch": "develop/2026-07-14-generation-completion-notifications",
     "git_head": "eb77c7f5421b9b8ac44e540e66931573f4097a41",
@@ -356,6 +356,34 @@
       }
     },
     {
+      "id": "native.consulting.personal-color-profile-v2",
+      "name": "NativePersonalColorProfileV2",
+      "platform": "native",
+      "kind": "data-display",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/consulting/NativePersonalColorProfileV2.tsx",
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/native-consulting-personal-color-profile-v2.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit Expo AI consultant Personal Color workspace"
+      }
+    },
+    {
+      "id": "native.consulting.makeup-direction-v1",
+      "name": "NativeMakeupDirectionV1",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/consulting/NativeMakeupDirectionV1.tsx",
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/native-consulting-makeup-direction-v1.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit Expo AI consultant Makeup workspace"
+      }
+    },
+    {
       "id": "native.mypage.screen",
       "name": "MyPageScreen",
       "platform": "native",
@@ -593,6 +621,64 @@
       }
     },
     {
+      "id": "web.consulting.report-tabs-v2",
+      "name": "ReportTabsV2",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/consulting/report/ReportTabsV2.tsx",
+      "owner": "consulting-result-feature",
+      "passport": "docs/components/passports/web-consulting-report-tabs-v2.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "scope": "HairFit consultation Result V2 receipt"
+      }
+    },
+    {
+      "id": "web.personal-color.result-details",
+      "name": "PersonalColorResultDetails",
+      "platform": "web",
+      "kind": "data-display",
+      "status": "candidate",
+      "source": "my-app/components/personal-color/PersonalColorResultDetails.tsx",
+      "owner": "personal-color-feature",
+      "passport": "docs/components/passports/web-personal-color-result-details.yaml",
+      "observed_usage": {
+        "production_consumer_files": 3,
+        "scope": "personal color diagnosis, MyPage personal color, and HairFit V2 consulting personal color result"
+      }
+    },
+    {
+      "id": "web.consulting.photo-workbench",
+      "name": "PhotoWorkbench",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/consulting/workbenches/PhotoWorkbench.tsx",
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/web-consulting-photo-workbench.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "harness_consumer_files": 1,
+        "scope": "HairFit V2 consulting stage loader and fail-closed E2E harness"
+      }
+    },
+    {
+      "id": "web.consulting.color-studio-workbench",
+      "name": "ColorStudioWorkbench",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/consulting/workbenches/ColorStudioWorkbench.tsx",
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/web-consulting-color-studio-workbench.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "harness_consumer_files": 1,
+        "scope": "HairFit V2 consulting stage loader and fail-closed E2E harness"
+      }
+    },
+    {
       "id": "native.ui.button",
       "name": "Button",
       "platform": "native",
@@ -745,13 +831,62 @@
       "status": "candidate",
       "source": "my-app/components/consulting/scene/ConsultationScene.tsx",
       "related_source": [
-        "my-app/components/consulting/workbenches/shared.tsx"
+        "my-app/components/consulting/workbenches/shared.tsx",
+        "my-app/components/consulting/interview/ConsultantIntentInterview.tsx",
+        "my-app/components/consulting/analysis/HairTraitInsightPanel.tsx"
       ],
       "owner": "consulting-feature",
       "passport": "docs/components/passports/web-consulting-scene.yaml",
       "observed_usage": {
-        "consumer_files": 11,
-        "scope": "11-stage HairFit AI consulting workbenches with semantic split canvas"
+        "consumer_files": 15,
+        "scope": "Four customer chapters over 15 internal HairFit workbenches with progressive intake and adaptive hair observation"
+      }
+    },
+    {
+      "id": "web.consulting.hair-recommendation",
+      "name": "HairRecommendationWorkbench",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/consulting/hair/HairRecommendationWorkbench.tsx",
+      "related_source": [
+        "my-app/hooks/useHairRecommendation.ts",
+        "my-app/lib/consulting/hair-recommendation-view.ts",
+        "my-app/lib/consulting/hair-recommendation-server.ts"
+      ],
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/web-consulting-hair-recommendation.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "AI-led Hair primary recommendation with all nine generated outputs visible and no required shortlist"
+      }
+    },
+    {
+      "id": "web.consulting.makeup-direction",
+      "name": "MakeupDirectionStage",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/consulting/makeup/MakeupDirectionStage.tsx",
+      "related_source": [
+        "my-app/components/consulting/makeup/MakeupContextForm.tsx",
+        "my-app/components/consulting/makeup/MakeupDirectionInterview.tsx",
+        "my-app/components/consulting/makeup/MakeupRecommendationReview.tsx",
+        "my-app/components/consulting/makeup/MakeupDirectionCanvas.tsx",
+        "my-app/components/consulting/makeup/MakeupDirectionMatrix.tsx",
+        "my-app/components/consulting/makeup/MakeupZoneDetail.tsx",
+        "my-app/components/consulting/makeup/MakeupAdjustmentControls.tsx",
+        "my-app/components/consulting/makeup/MakeupDirectionFixture.tsx",
+        "my-app/components/consulting/makeup/MakeupInterviewFixture.tsx",
+        "my-app/components/consulting/makeup/MakeupOutputs.tsx",
+        "my-app/components/consulting/makeup/MakeupSimulationWorkspace.tsx",
+        "my-app/app/globals.css"
+      ],
+      "owner": "consulting-feature",
+      "passport": "docs/components/passports/web-consulting-makeup-direction.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit makeup interview, grounded direction, durable style simulation, immutable confirmation, and report handoff"
       }
     },
     {
@@ -763,14 +898,17 @@
       "source": "my-app/components/consulting/interview/ConsultationInterview.tsx",
       "related_source": [
         "my-app/components/consulting/interview/DiscoveryInterview.tsx",
+        "my-app/components/consulting/interview/ConsultantIntentInterview.tsx",
+        "my-app/components/consulting/interview/ZeroInputConsultationStart.tsx",
         "my-app/components/consulting/interview/FashionDirectionInterview.tsx",
+        "my-app/components/consulting/makeup/MakeupDirectionInterview.tsx",
         "my-app/lib/consulting/interview-observability-client.ts"
       ],
       "owner": "consulting-feature",
       "passport": "docs/components/passports/web-consulting-interview.yaml",
       "observed_usage": {
-        "consumer_files": 2,
-        "scope": "HairFit Discovery and Fashion direction interviews with allow-listed server observation"
+        "consumer_files": 3,
+        "scope": "HairFit zero-input photo-first consultant intake plus flag-off Discovery, Makeup, and Fashion interviews with allow-listed observation"
       }
     },
     {
@@ -953,6 +1091,34 @@
       "observed_usage": {
         "consumer_files": 1,
         "scope": "HairFit app mypage payment history"
+      }
+    },
+    {
+      "id": "web.onboarding.fashion-personalization",
+      "name": "FashionPersonalizationForm",
+      "platform": "web",
+      "kind": "form",
+      "status": "experimental",
+      "source": "my-app/components/onboarding/FashionPersonalizationForm.tsx",
+      "owner": "onboarding-feature",
+      "passport": "docs/components/passports/web-onboarding-fashion-personalization.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "authenticated fashion personalization onboarding route"
+      }
+    },
+    {
+      "id": "native.onboarding.fashion-personalization",
+      "name": "FashionPersonalizationScreen",
+      "platform": "native",
+      "kind": "form",
+      "status": "experimental",
+      "source": "apps/hairfit-app/app/fashion-personalization.tsx",
+      "owner": "onboarding-feature",
+      "passport": "docs/components/passports/native-onboarding-fashion-personalization.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "HairFit app fashion personalization route"
       }
     }
   ]

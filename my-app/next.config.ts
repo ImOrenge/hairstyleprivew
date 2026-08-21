@@ -9,6 +9,11 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_U
 const nextConfig: NextConfig = {
     distDir: process.env.NEXT_DIST_DIR?.trim() || ".next",
     outputFileTracingRoot: workspaceRoot,
+    outputFileTracingIncludes: {
+        "/api/v2/consultations/*/report-exports": ["./assets/fonts/NanumGothic-Regular.ttf"],
+        "/api/v2/consultations/*/report-exports/*": ["./assets/fonts/NanumGothic-Regular.ttf"],
+        "/api/v2/consultations/*/report-exports/*/download": ["./assets/fonts/NanumGothic-Regular.ttf"],
+    },
     images: {
         formats: ["image/avif", "image/webp"],
         remotePatterns: [

@@ -140,6 +140,7 @@ function assertCurrentReservedAttempt(
 export async function runStylingWorkflowAttempt(
   input: StylingWorkflowExecutionInput,
 ) {
+  const workflowStartedAt = Date.now();
   const supabase = getSupabaseAdminClient() as unknown as SupabaseClient;
   const initial = await readAttemptAndSession(supabase, input);
   const state = assertCurrentReservedAttempt(initial.attempt, input);
@@ -220,6 +221,7 @@ export async function runStylingWorkflowAttempt(
     throw new StylingWorkflowTerminalError("The selected hairstyle image could not be loaded");
   }
 
+  const providerStartedAt = Date.now();
   const generated = await runOpenAIOutfitGeneration({
     bodyImageDataUrl,
     hairImageDataUrl,
@@ -227,6 +229,7 @@ export async function runStylingWorkflowAttempt(
     profile,
     hairVariant: selectedVariant,
   });
+  const providerCompletedAt = Date.now();
   const parsed = dataUrlToBuffer(generated.outputUrl);
   const outputObjectPath = `${userId}/${input.sessionId}/${input.attemptId}-${input.leaseToken}.${extensionFromMime(parsed.mimeType)}`;
   const { error: uploadError } = await supabase.storage
@@ -271,6 +274,16 @@ export async function runStylingWorkflowAttempt(
       p_user_id: userId,
     }).then((result) => result.data);
   }
+  const persistedAt = Date.now();
+  const attemptCreatedAt = Date.parse(stringValue(initial.attempt.created_at) || "");
+  console.info("[styling-workflow-timing]", {
+    slot: stringValue(initial.session.fashion_slot_id) || "legacy",
+    queueMs: Number.isFinite(attemptCreatedAt) ? Math.max(0, workflowStartedAt - attemptCreatedAt) : null,
+    inputMs: providerStartedAt - workflowStartedAt,
+    providerMs: providerCompletedAt - providerStartedAt,
+    persistenceMs: persistedAt - providerCompletedAt,
+    totalMs: persistedAt - workflowStartedAt,
+  });
 
   const previousImagePath = stringValue(initial.session.generated_image_path);
   if (previousImagePath && previousImagePath !== outputObjectPath) {

@@ -1,0 +1,92 @@
+id: web.consulting.hair-recommendation
+name: HairRecommendationWorkbench
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/consulting/hair/HairRecommendationWorkbench.tsx
+related_source:
+  - my-app/hooks/useHairRecommendation.ts
+  - my-app/lib/consulting/hair-recommendation-view.ts
+  - my-app/lib/consulting/hair-recommendation-server.ts
+owner: consulting-feature
+
+public_api:
+  props:
+    - snapshot
+    - mutate
+    - saving
+    - pollingEnabled
+  events:
+    - automatic-nine-preview-start
+    - clarification-answer
+    - primary-confirm
+    - adjustment-request
+    - downstream-handoff
+
+boundaries:
+  owns:
+    - nine-slot-progress-and-recovery-presentation
+    - one-primary-recommendation-review
+    - all-nine-generated-output-gallery
+    - adjustment-capture
+    - isolated-clarification-surface
+    - isolated-adjustment-revision-surface
+  forbidden:
+    - customer-required-shortlist
+    - client-authored-rank-or-score
+    - primary-confirm-before-nine-accepted
+    - common-next-control
+    - simultaneous-edit-form-and-result-gallery
+
+styling:
+  strategy: existing-tailwind-utilities-with-global-app-tokens
+  global_css_changes: false
+  namespace: data-hair-recommendation-workbench
+  tokens:
+    - app-border
+    - app-border-strong
+    - app-surface
+    - app-surface-muted
+    - app-muted
+    - app-inverse
+    - app-inverse-text
+  inline_styles_allowed: false
+
+state:
+  server_owned:
+    - preview-board-and-nine-slot-attempts
+    - recommendation-decision-and-revision
+    - primary-preview-id
+    - pending-adjustment
+  local:
+    - selected-adjustment-aspect
+    - unsaved-adjustment-text
+    - action-in-flight
+  polling: server-snapshot-only
+
+a11y_contract:
+  progress: native-progress-with-text-equivalent-and-polite-live-region
+  gallery: all-nine-images-have-slot-and-primary-labels
+  controls: native-buttons-with-disabled-state
+  errors: role-alert
+  keyboard: DOM-order-primary-before-evidence-gallery
+
+test_surface:
+  unit: hair-recommendation-view-and-policy
+  contract: phase-49-hair-primary-ux-contract
+  interaction: clarification-confirm-adjust-and-resume
+  visual: 390-768-desktop-all-nine-overflow
+
+change_policy:
+  current_gate: behavioral-compatible
+  compatible_change_requires:
+    - passport-update
+    - web-typecheck
+    - component-registry-validation
+  behavioral_change_requires:
+    - interaction-test
+    - flag-on-off-regression
+
+promotion_blockers:
+  - authenticated-nine-image-provider-smoke-not-run
+  - device-accessibility-audit-not-run

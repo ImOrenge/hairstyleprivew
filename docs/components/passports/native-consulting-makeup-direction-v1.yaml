@@ -1,0 +1,71 @@
+id: native.consulting.makeup-direction-v1
+name: NativeMakeupDirectionV1
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/components/consulting/NativeMakeupDirectionV1.tsx
+owner: consulting-feature
+
+public_api:
+  exports:
+    - NativeMakeupDirectionV1
+  props:
+    - "snapshot: MakeupDirectionSnapshot | null"
+    - "defaultContext: MakeupContextProfile"
+    - "revision: number | null"
+    - "routine: MakeupRoutine | null"
+    - "brief: MakeupArtistBrief | null"
+    - "onPrepare: (context: MakeupContextProfile) => void"
+    - "onToggleModule: (module: MakeupModule, enabled: boolean) => void"
+    - "onConfirm: () => void"
+    - "future-semantic-result: CapabilityResult<MakeupSemanticProjectionV3> | null"
+  outputs:
+    - normalized-four-by-five-zone-map
+    - seven-module-direction-matrix
+    - non-drag-module-toggle
+    - routine-and-artist-brief
+
+boundaries:
+  authoritative_state: server-versioned-makeup-direction-snapshot
+  projections:
+    - MakeupRoutine
+    - MakeupArtistBrief
+  forbidden:
+    - raster-face-mutation
+    - face-morphing-or-smoothing
+    - product-shade-number-certainty
+    - gender-gated-modules
+    - local-authoritative-revision
+    - native-facemesh-recalculation
+    - provider-authored-raster-overlay
+    - closed-or-filled-face-guide-primitives
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  stylesheet: apps/hairfit-app/components/consulting/NativeMakeupDirectionV1.tsx#styles
+  css_contract_change: none
+
+a11y_contract:
+  map: decorative-geometry-with-text-matrix-equivalent
+  controls: labelled-native-buttons
+  selection: accessibilityState-selected
+  drag_alternative: module-on-off-buttons
+
+test_surface:
+  unit: apps/hairfit-app/__tests__/personal-color-makeup-v2.test.tsx
+  typecheck: npm --prefix apps/hairfit-app run typecheck
+  web-parity: tests/web-e2e/personal-color-makeup-quality.spec.ts
+  p38-handoff: docs/hairfit-v2/p38-makeup-semantic-native-handoff-2026-08-15.md
+
+change_policy:
+  current_gate: behavioral-compatible
+  compatible_change_requires:
+    - shared-contract-test
+    - native-component-test
+    - native-typecheck
+    - component-registry-validation
+
+promotion_blockers:
+  - authenticated-physical-device-screen-reader-audit-not-run
+  - p38-react-native-svg-renderer-not-implemented
+  - p38-web-native-projection-fingerprint-parity-not-run

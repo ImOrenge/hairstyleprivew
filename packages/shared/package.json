@@ -14,9 +14,20 @@
     "./billing/subscription-policy": "./src/billing/subscription-policy.ts",
     "./consulting/contract": "./src/consulting/contract.ts",
     "./consulting/capability": "./src/consulting/capability.ts",
+    "./consulting/fashion-generation": "./src/consulting/fashion-generation.ts",
+    "./consulting/fashion-personalization": "./src/consulting/fashion-personalization.ts",
+    "./consulting/fashion-product-truth": "./src/consulting/fashion-product-truth.ts",
+    "./consulting/hair-recommendation": "./src/consulting/hair-recommendation.ts",
     "./consulting/interview": "./src/consulting/interview.ts",
+    "./consulting/hair-profile": "./src/consulting/hair-profile.ts",
     "./consulting/journey": "./src/consulting/journey.ts",
     "./consulting/presentation": "./src/consulting/presentation.ts",
+    "./consulting/report": "./src/consulting/report.ts",
+    "./consulting/report-v2": "./src/consulting/report-v2.ts",
+    "./consulting/report-observability": "./src/consulting/report-observability.ts",
+    "./consulting/start-context": "./src/consulting/start-context.ts",
+    "./personal-color-v2": "./src/personal-color-v2/index.ts",
+    "./makeup": "./src/makeup/index.ts",
     "./v2": "./src/v2/index.ts",
     "./v2/prompt": "./src/v2/prompt/compiler.ts",
     "./fixtures/generation-notification": "./src/fixtures/generation-notification.ts",
@@ -29,10 +40,11 @@
     "./salon/connection-consent": "./src/salon/connection-consent.ts"
   },
   "scripts": {
-    "test": "node --test src/auth/resume-target.test.ts src/auth/generation-entry.test.ts src/billing/generation-credit.test.ts src/billing/google-play.test.ts src/billing/paid-action.test.ts src/billing/subscription-policy.test.ts src/consulting/capability.test.ts src/consulting/interview.test.ts src/consulting/photo-preflight.test.ts src/consulting/photo-crop.test.ts src/consulting/journey.test.ts src/consulting/presentation.test.ts src/fixtures/consulting-v2.test.ts src/generation/contract.test.ts src/generation/funnel.test.ts src/generation/notification.test.ts src/generation/notification-retention-policy.test.ts src/generation/original-retention-policy.test.ts src/generation/upload-validation.test.ts src/mobile/app-version.test.ts src/result/korean-display-copy.test.ts src/salon/connection-consent.test.ts src/v2/consultation/contract.test.ts src/v2/preview-board/contract.test.ts src/v2/prompt/compiler.test.ts",
+    "test": "node --test src/auth/resume-target.test.ts src/auth/generation-entry.test.ts src/billing/generation-credit.test.ts src/billing/google-play.test.ts src/billing/paid-action.test.ts src/billing/subscription-policy.test.ts src/consulting/capability.test.ts src/consulting/fashion-generation.test.ts src/consulting/fashion-personalization.test.ts src/consulting/fashion-product-truth.test.ts src/consulting/hair-profile.test.ts src/consulting/hair-recommendation.test.ts src/consulting/interview.test.ts src/consulting/start-context.test.ts src/consulting/photo-preflight.test.ts src/consulting/photo-crop.test.ts src/consulting/journey.test.ts src/consulting/presentation.test.ts src/fixtures/consulting-v2.test.ts src/generation/contract.test.ts src/generation/funnel.test.ts src/generation/notification.test.ts src/generation/notification-retention-policy.test.ts src/generation/original-retention-policy.test.ts src/generation/upload-validation.test.ts src/makeup/contract.test.ts src/makeup/simulation.test.ts src/mobile/app-version.test.ts src/personal-color-v2/capture.test.ts src/personal-color-v2/contract.test.ts src/personal-color-v2/observation.test.ts src/personal-color-v2/profile.test.ts src/quality/personal-color-makeup-validation.test.ts src/result/korean-display-copy.test.ts src/salon/connection-consent.test.ts src/v2/consultation/contract.test.ts src/v2/generation-input/contract.test.ts src/v2/outputs/contract.test.ts src/v2/preview-board/contract.test.ts src/v2/prompt/compiler.test.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "ajv": "^8.17.1",
     "typescript": "^5"
   }
 }

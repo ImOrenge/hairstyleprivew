@@ -1,0 +1,68 @@
+id: web.consulting.report-tabs-v2
+name: ReportTabsV2
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/consulting/report/ReportTabsV2.tsx
+related_source:
+  - my-app/components/consulting/report/ReportSectionV2.tsx
+  - my-app/components/consulting/report/ReportReceiptV2.tsx
+  - my-app/lib/consulting/render-report-pdf-v2.tsx
+  - packages/shared/src/consulting/report-v2.ts
+owner: consulting-result-feature
+public_api:
+  props:
+    - tabs
+    - defaultTab
+  events:
+    - query-string-tab-change
+dependencies:
+  internal:
+    - ReportSectionV2
+    - ConsultationReportViewModelV2
+    - ConsultingResultProvenanceV3
+  external:
+    - next/navigation
+styling:
+  global_css:
+    file: my-app/app/globals.css
+    namespace: f-consulting-report-v2
+  variants:
+    - active
+  inline_styles_allowed:
+    - data-driven-chart-and-color-values
+state:
+  local: true
+  url_search_param: tab
+  external_store: false
+side_effects:
+  - replace-current-result-tab-query
+a11y_contract:
+  roles:
+    - tablist
+    - tab
+    - tabpanel
+  keyboard:
+    - ArrowLeft
+    - ArrowRight
+    - Home
+    - End
+  focus:
+    - roving-tabindex
+test_surface:
+  contract: required
+  interaction: required
+  print: required
+  visual: required
+change_policy:
+  gate: behavioral-style-contract
+  breaking_change_requires: migration-note-and-e2e
+notes:
+  - screen-order-hair-color-makeup-fashion-final
+  - default-tab-final
+  - print-expands-all-tab-panels
+  - hair-generation-gallery-renders-all-nine-items
+  - fashion-generation-gallery-renders-all-requested-three-six-or-nine-items
+  - screen-and-pdf-share-one-provenance-fingerprint
+  - generated-content-is-never-shortlisted-away-from-the-report
+  - aftercare-program-state-is-not-a-report-section

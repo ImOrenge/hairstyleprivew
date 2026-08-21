@@ -6,6 +6,8 @@ status: experimental
 source: apps/hairfit-app/app/consulting.tsx
 related_source:
   - apps/hairfit-app/components/consulting/NativeFaceEvidenceOverlay.tsx
+  - apps/hairfit-app/components/consulting/NativePersonalColorProfileV2.tsx
+  - apps/hairfit-app/components/consulting/NativeMakeupDirectionV1.tsx
   - apps/hairfit-app/lib/v2-consultation-resume.ts
   - packages/api-client/src/index.ts
   - packages/shared/src/consulting/contract.ts
@@ -18,13 +20,23 @@ public_api:
     - active-consultation-id-from-secure-store
     - shared-ConsultationSnapshot
   outputs:
-    - discovery-interview
+    - zero-required-answer-photo-first-intake
+    - optional-single-opening-intent
+    - adaptive-hair-trait-observations-and-questions
     - photo-analysis-entry
     - native-landmark-evidence
-    - hair-preview-comparison-and-decision
+    - ai-primary-hair-recommendation-and-all-nine-generated-results
+    - legacy-hair-preview-comparison-and-decision-when-flag-off
     - automatic-salon-brief
+    - personal-color-v2-and-independent-training-consent
+    - makeup-direction-routine-and-artist-brief
+    - makeup-simulation-state-and-preview
+    - fashion-interview-and-adaptive-three-six-nine-batch
+    - all-requested-fashion-generated-results-and-runtime-states
+    - ai-recommended-fashion-primary-with-customer-override
+    - post-fashion-result-synthesis
+    - report-v3-provenance-and-all-hair-fashion-generated-results
     - actual-service-aftercare
-    - fashion-interview-and-nine-slot-batch
 
 boundaries:
   authoritative_state: server-consultation-snapshot
@@ -32,11 +44,14 @@ boundaries:
     - v2-analysis-evidence
     - v2-preview-board
     - v2-selection
+    - hair-recommendation-decision-and-revision
     - v2-output-tables
+    - consultation-report-view-model-v2-with-provenance-v3
   local_state:
     - unsaved-current-control-value
-    - shortlist-selection-before-save
+    - fashion-customer-override-before-save
     - selected-landmark
+    - unsaved-hair-adjustment
   forbidden:
     - wizard-current-step
     - common-next-control
@@ -57,11 +72,16 @@ styling:
 state:
   server_owned:
     - ConsultationSnapshot.version
+    - ConsultationSnapshot.startContext
     - journey.recommendedStage
     - lifecycle-state
     - capability-results
     - actual-service
     - fashion-batch
+    - fashion-requested-count-expansion-revision-and-recommended-preview
+    - hair-profile-revision
+    - makeup-simulation-selection
+    - report-provenance-fingerprint-and-generated-result-counts
   durable_resume: SecureStore-holds-only-consultation-id
   concurrency: optimistic-version-and-idempotency-key
 
@@ -72,6 +92,7 @@ a11y_contract:
   dynamic_errors: assertive-live-region-alert
   images: accessibility-label-required
   screen_reader_order: input-before-generated-output
+  canonical_closing_order: fashion-result-aftercare
 
 test_surface:
   contract: apps/hairfit-app/__tests__/mobile-v2-consultation.test.js
@@ -85,6 +106,8 @@ change_policy:
   compatible_change_requires:
     - native-typecheck
     - mobile-v2-consultation-contract
+    - phase-43-45-contract-test
+    - p54-zero-input-intake-contract-test
     - web-android-ios-bundle
     - component-registry-validation
   promotion_blockers:

@@ -10,6 +10,7 @@ import {
 } from "@hairfit/shared/v2";
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "./errors";
+import { deriveKoreanFaceShapeBlend, type KoreanFaceShapeReference } from "../consulting/face-shape-blend";
 export async function saveAnalysisEvidenceV2(userId:string,evidence:AnalysisEvidenceV2,expectedVersion:number){
   try{assertAnalysisEvidenceV2(evidence);}catch(error){throw new HairfitV2Error("ANALYSIS_EVIDENCE_INVALID",400,error instanceof Error?error.message:"분석 근거 형식이 올바르지 않습니다.");}
   const db=getSupabaseAdminClient();const session=await db.from("consultation_sessions").select("id,lifecycle_state,version").eq("id",evidence.consultationId).eq("user_id",userId).maybeSingle();if(session.error)throw new Error(session.error.message);if(!session.data)throw new HairfitV2Error("CONSULTATION_NOT_FOUND",404,"상담을 찾을 수 없습니다.");
@@ -29,7 +30,26 @@ export async function saveAnalysisEvidenceV2(userId:string,evidence:AnalysisEvid
   const linked=await db.from("consultation_sessions").update({analysis_evidence_id:id}).eq("id",evidence.consultationId).eq("user_id",userId);if(linked.error)throw new Error(linked.error.message);
   return id;
 }
-export async function getAnalysisEvidenceV2(userId:string,consultationId:string){const{data,error}=await getSupabaseAdminClient().from("analysis_evidence_v2").select("id,consultation_id,source_image_fingerprint,source_transform,model_provider,model_name,model_version,quality,landmarks,contours,hairline,measurements,face_shape,skin_sample_regions,excluded_regions,correction_revision,manual_corrections,corrected_at,created_at").eq("consultation_id",consultationId).eq("user_id",userId).maybeSingle();if(error)throw new Error(error.message);if(!data)return null;const row=data as unknown as Record<string,unknown>;return{schemaVersion:"analysis-evidence-v1",id:String(row.id),consultationId:String(row.consultation_id),sourceImageFingerprint:String(row.source_image_fingerprint),sourceTransform:row.source_transform,model:{provider:String(row.model_provider),name:String(row.model_name),version:String(row.model_version)},quality:row.quality,landmarks:Array.isArray(row.landmarks)?row.landmarks:[],contours:row.contours,hairline:row.hairline,measurements:row.measurements,faceShape:row.face_shape,skinSampleRegions:row.skin_sample_regions,excludedRegions:row.excluded_regions,correctionRevision:typeof row.correction_revision==="number"?row.correction_revision:0,manualCorrections:Array.isArray(row.manual_corrections)?row.manual_corrections:[],correctedAt:typeof row.corrected_at==="string"?row.corrected_at:null,createdAt:String(row.created_at)} as AnalysisEvidenceV2;}
+export async function getAnalysisEvidenceV2(userId:string,consultationId:string){
+  const db=getSupabaseAdminClient();
+  const[evidenceResult,profileResult]=await Promise.all([
+    db.from("analysis_evidence_v2").select("id,consultation_id,source_image_fingerprint,source_transform,model_provider,model_name,model_version,quality,landmarks,contours,hairline,measurements,face_shape,skin_sample_regions,excluded_regions,correction_revision,manual_corrections,corrected_at,created_at").eq("consultation_id",consultationId).eq("user_id",userId).maybeSingle(),
+    db.from("member_profiles").select("style_target").eq("user_id",userId).maybeSingle(),
+  ]);
+  const{data,error}=evidenceResult;
+  if(error)throw new Error(error.message);if(!data)return null;
+  const row=data as unknown as Record<string,unknown>;
+  const measurements=Array.isArray(row.measurements)?row.measurements as AnalysisEvidenceV2["measurements"]:[];
+  const storedFaceShape=row.face_shape&&typeof row.face_shape==="object"&&!Array.isArray(row.face_shape)?row.face_shape as AnalysisEvidenceV2["faceShape"]:null;
+  const styleTarget=(profileResult.data as{style_target?:unknown}|null)?.style_target;
+  const reference:KoreanFaceShapeReference=styleTarget==="male"||styleTarget==="female"?styleTarget:"neutral";
+  const storedBlend=storedFaceShape?.blend??{};
+  const hasReferenceBlend=Object.keys(storedBlend).some((key)=>key.startsWith(`${reference}:`));
+  const derivedBlend=deriveKoreanFaceShapeBlend(measurements,reference);
+  const blend=hasReferenceBlend||!Object.keys(derivedBlend).length?storedBlend:derivedBlend;
+  const faceShape={primary:storedFaceShape?.primary||"확인 전",secondary:storedFaceShape?.secondary??null,blend,summary:storedFaceShape?.summary||"랜드마크 비율 근거"};
+  return{schemaVersion:"analysis-evidence-v1",id:String(row.id),consultationId:String(row.consultation_id),sourceImageFingerprint:String(row.source_image_fingerprint),sourceTransform:row.source_transform,model:{provider:String(row.model_provider),name:String(row.model_name),version:String(row.model_version)},quality:row.quality,landmarks:Array.isArray(row.landmarks)?row.landmarks:[],contours:row.contours,hairline:row.hairline,measurements,faceShape,skinSampleRegions:row.skin_sample_regions,excludedRegions:row.excluded_regions,correctionRevision:typeof row.correction_revision==="number"?row.correction_revision:0,manualCorrections:Array.isArray(row.manual_corrections)?row.manual_corrections:[],correctedAt:typeof row.corrected_at==="string"?row.corrected_at:null,createdAt:String(row.created_at)} as AnalysisEvidenceV2;
+}
 
 export async function applyAnalysisEvidenceCorrectionV2(input: {
   userId: string;
@@ -74,4 +94,4 @@ export async function savePersonalColorEvidenceV2(userId:string,evidence:Persona
   if(result.error)throw new Error(result.error.message);return result.data;
 }
 
-export async function getPersonalColorEvidenceV2(userId:string,consultationId:string){const{data,error}=await getSupabaseAdminClient().from("personal_color_evidence_v2").select("id,consultation_id,source_analysis_evidence_id,model,quality,result,created_at").eq("consultation_id",consultationId).eq("user_id",userId).maybeSingle();if(error)throw new Error(error.message);if(!data)return null;const row=data as unknown as Record<string,unknown>;return{schemaVersion:"personal-color-evidence-v1",id:String(row.id),consultationId:String(row.consultation_id),sourceAnalysisEvidenceId:String(row.source_analysis_evidence_id),model:row.model,quality:row.quality,result:row.result,createdAt:String(row.created_at)} as PersonalColorEvidenceV2;}
+export async function getPersonalColorEvidenceV2(userId:string,consultationId:string){const{data,error}=await getSupabaseAdminClient().from("personal_color_evidence_v2").select("id,consultation_id,source_analysis_evidence_id,model,quality,result,created_at").eq("consultation_id",consultationId).eq("user_id",userId).maybeSingle();if(error)throw new Error(error.message);if(!data)return null;const row=data as unknown as Record<string,unknown>;const result=row.result as Record<string,unknown>|null;return{schemaVersion:result?.axes?"personal-color-evidence-v2":"personal-color-evidence-v1",id:String(row.id),consultationId:String(row.consultation_id),sourceAnalysisEvidenceId:String(row.source_analysis_evidence_id),model:row.model,quality:row.quality,result:row.result,createdAt:String(row.created_at)} as PersonalColorEvidenceV2;}

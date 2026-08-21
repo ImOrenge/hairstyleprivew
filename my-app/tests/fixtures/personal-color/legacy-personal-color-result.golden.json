@@ -1,0 +1,45 @@
+{
+  "raw": {
+    "tone": "cool",
+    "contrast": "high",
+    "primaryType": "winter_cool",
+    "secondaryType": "winter_bright",
+    "blend": { "winter_cool": 7, "winter_bright": 3 },
+    "axes": { "temperature": 0.2, "value": 0.4, "chroma": 0.9, "contrast": 1.4 },
+    "confidence": 0.82,
+    "bestColors": [{ "nameKo": "코발트 블루", "nameEn": "Cobalt Blue", "hex": "#2e5aac", "reason": "cool clear blue" }],
+    "avoidColors": [{ "nameKo": "카멜", "nameEn": "Camel", "hex": "#b98248", "reason": "warm medium neutral" }],
+    "stylingPalette": ["#2e5aac", "#f8f8f5"],
+    "hairColorHints": ["블루 블랙", "쿨 다크 브라운"],
+    "summary": "쿨하고 선명한 대비를 우선합니다."
+  },
+  "expected": {
+    "tone": "cool",
+    "contrast": "high",
+    "primaryType": "winter_cool",
+    "secondaryType": "winter_bright",
+    "blend": {
+      "spring_light": 0,
+      "spring_warm": 0,
+      "spring_bright": 0,
+      "summer_light": 0,
+      "summer_cool": 0,
+      "summer_muted": 0,
+      "autumn_muted": 0,
+      "autumn_warm": 0,
+      "autumn_deep": 0,
+      "winter_bright": 0.5,
+      "winter_cool": 0.5,
+      "winter_deep": 0
+    },
+    "axes": { "temperature": 0.2, "value": 0.4, "chroma": 0.9, "contrast": 1 },
+    "confidence": 0.82,
+    "bestColors": [{ "nameKo": "코발트 블루", "nameEn": "Cobalt Blue", "hex": "#2E5AAC", "reason": "cool clear blue" }],
+    "avoidColors": [{ "nameKo": "카멜", "nameEn": "Camel", "hex": "#B98248", "reason": "warm medium neutral" }],
+    "stylingPalette": ["#2E5AAC", "#F8F8F5"],
+    "hairColorHints": ["블루 블랙", "쿨 다크 브라운"],
+    "summary": "쿨하고 선명한 대비를 우선합니다.",
+    "diagnosedAt": "2026-08-14T00:00:00.000Z",
+    "model": "golden-model"
+  }
+}

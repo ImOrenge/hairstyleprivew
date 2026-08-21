@@ -1,0 +1,106 @@
+id: web.consulting.color-studio-workbench
+name: ColorStudioWorkbench
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/consulting/workbenches/ColorStudioWorkbench.tsx
+owner: consulting-feature
+
+public_api:
+  exports:
+    - ColorStudioWorkbench
+  props:
+    - snapshot: ConsultationSnapshot
+    - mutate: ConsultationPatch mutation
+    - saving: boolean
+    - pollingEnabled: boolean optional default true
+  events:
+    - automatic-exploration-generation
+    - final-candidate-selection
+    - terminal-color-decision
+
+dependencies:
+  internal:
+    - my-app/lib/consulting/color-preview-candidates.ts
+    - my-app/lib/consulting/routes.ts
+    - my-app/components/consulting/workbenches/shared.tsx
+  external:
+    - next/image
+    - next/navigation
+    - react
+  consumers:
+    - consultation-stage-page
+
+styling:
+  strategy: tailwind-plus-application-tokens
+  global_css_changes: false
+  tokens:
+    - app-text
+    - app-muted
+    - app-border
+    - app-border-strong
+    - app-surface
+    - app-surface-muted
+  inline_styles:
+    allowed:
+      - personal-color-swatch-background-color
+    forbidden:
+      - structural-layout-values
+
+state:
+  owned:
+    - hydrated-generation-runs
+    - selected-candidate-key
+    - transient-generation-error
+  derived:
+    - three-server-owned-personal-color-candidates
+    - completed-and-active-counts
+    - final-generation-state
+  external_store: false
+
+side_effects:
+  - automatically-starts-missing-low-quality-candidates
+  - polls-active-generation-runs
+  - starts-medium-final-on-user-candidate-selection
+  - confirms-completed-final-and-navigates-to-salon-brief
+
+a11y_contract:
+  async_state:
+    aria-live: polite
+    aria-busy: required
+    text-status: required
+  candidate_choice:
+    native-button: true
+    disabled-until-completed: true
+  color_information:
+    color_only: false
+    labelled-swatch: required
+  reduced_motion:
+    spinner-stops: true
+
+test_surface:
+  source_contract:
+    present: my-app/lib/consulting/color-studio-contract.test.ts
+  candidate_contract:
+    present: my-app/lib/consulting/color-preview-candidates.test.ts
+  runtime_quality:
+    present: my-app/lib/consulting/color-preview-quality.test.ts
+  e2e_harness:
+    route: /consulting/e2e-harness?stage=color-studio
+  typecheck: required
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - consumer-usage-search
+    - consulting-contract-test
+    - web-typecheck
+    - browser-verification
+  breaking_change_requires:
+    - route-and-server-contract-update
+    - migration-note
+
+promotion_blockers:
+  - authenticated-live-provider-generation-not-verified
+  - full-face-landmark-identity-drift-gate-not-yet-implemented

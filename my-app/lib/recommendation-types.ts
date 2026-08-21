@@ -223,6 +223,8 @@ export interface RecommendationCandidate {
   styleTarget?: MemberStyleTarget;
   strategyBucket?: "face_balance" | "image_change" | "manageability";
   slotIntent?: string;
+  requiredLengthBucket?: RecommendationLengthBucket;
+  catalogFallbackReason?: "required_length_unavailable" | "catalog_exhausted" | null;
   promptPolicyVersion?: string;
   promptHash?: string;
   v2PreviewVariantId?: string;

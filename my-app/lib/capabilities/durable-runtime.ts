@@ -108,6 +108,38 @@ async function readTask(userId: string, idempotencyKey: string) {
   return { task: result.data as unknown as TaskRow | null, error: result.error };
 }
 
+export async function readDurableCapabilityResult<TInput, TOutput>(
+  adapter: CapabilityEngineAdapter<TInput, TOutput>,
+  input: { userId: string; idempotencyKey: string },
+): Promise<CapabilityResult<TOutput> | null> {
+  if (!isCapabilityDurabilityEnabled(adapter.capability)) return null;
+  const existing = await readTask(input.userId, input.idempotencyKey);
+  if (existing.error) {
+    if (isMissingOptionalTableError(existing.error)) return null;
+    throw new Error(existing.error.message);
+  }
+  if (!existing.task) return null;
+  return existing.task.state === "completed" ? replayResult(adapter, existing.task) : pendingResult(adapter, existing.task);
+}
+
+export async function requestDurableCapabilityRetry(input: { userId: string; idempotencyKey: string }) {
+  const now = new Date().toISOString();
+  const updated = await getSupabaseAdminClient().from("consultation_capability_tasks_v2").update({
+    state: "retry_required",
+    error_code: null,
+    error_message: null,
+    retryable: true,
+    lease_owner: null,
+    lease_expires_at: null,
+    updated_at: now,
+  }).eq("user_id", input.userId).eq("idempotency_key", input.idempotencyKey).in("state", ["failed", "retry_required"]).select("id").maybeSingle();
+  if (updated.error) {
+    if (isMissingOptionalTableError(updated.error)) return false;
+    throw new Error(updated.error.message);
+  }
+  return Boolean(updated.data);
+}
+
 async function executeClaimedTask<TInput, TOutput>(
   adapter: CapabilityEngineAdapter<TInput, TOutput>,
   execution: InlineCapabilityExecution<TInput> & { userId: string },

@@ -24,11 +24,21 @@ export interface MaintenanceConstraintsV2 {
   maintenanceLevel: "low" | "medium" | "high" | "unknown";
 }
 export interface PersonalColorInputV2 { season: string; undertone: string; confidence: number }
-export interface HairstyleCatalogPromptItemV2 { id: string; cycleId: string; name: string; design: Record<string, unknown>; promptTemplateVersion: string }
+export type RecommendationLengthBucketV2 = "short" | "medium" | "long";
+export interface HairstyleCatalogPromptItemV2 {
+  id: string;
+  cycleId: string;
+  name: string;
+  lengthBucket: RecommendationLengthBucketV2 | null;
+  design: Record<string, unknown>;
+  promptTemplateVersion: string;
+}
 
 export interface PromptInputV2 {
   schemaVersion: "prompt-input-v2";
   consultationId: string;
+  styleTarget: "male" | "female" | "neutral";
+  generationInputFingerprint: string;
   analysisEvidence: Pick<AnalysisEvidenceV2, "id" | "faceShape" | "quality" | "model">;
   personalColor: PersonalColorInputV2 | null;
   currentHair: CurrentHairProfileV2;
@@ -40,11 +50,18 @@ export interface PromptInputV2 {
 }
 
 export type PreviewStrategyBucketV2 = "face_balance" | "image_change" | "manageability";
+export type CatalogSlotFallbackReasonV2 =
+  | "required_length_unavailable"
+  | "catalog_exhausted"
+  | null;
 export interface PromptSpecV2 {
   schemaVersion: "prompt-spec-v2";
   slot: number;
   bucket: PreviewStrategyBucketV2;
   intent: string;
+  requiredLengthBucket: RecommendationLengthBucketV2;
+  catalogLengthBucket: RecommendationLengthBucketV2 | null;
+  catalogFallbackReason: CatalogSlotFallbackReasonV2;
   catalogItemId: string | null;
   catalogCycleId: string;
   promptPolicyVersion: string;
@@ -54,4 +71,4 @@ export interface PromptSpecV2 {
   hashSource: string;
 }
 
-export const PROMPT_POLICY_VERSION_V2 = "hairfit-consultation-prompt-v2";
+export const PROMPT_POLICY_VERSION_V2 = "hairfit-consultation-prompt-v2.1";

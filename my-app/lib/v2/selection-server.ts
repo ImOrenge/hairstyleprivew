@@ -3,6 +3,8 @@ import "server-only";
 import type { StyleSelectionSnapshotV2 } from "@hairfit/shared/v2";
 import { randomUUID } from "node:crypto";
 import { getSupabaseAdminClient } from "../supabase";
+import { isAiLedHairDecisionEnabled, isHairRankerShadowEnabled } from "../consulting/feature-flag";
+import { recordHairRecommendationSelectionComparisonV1 } from "../consulting/hair-recommendation-server";
 import { HairfitV2Error } from "./errors";
 import { recordV2Event } from "./observability";
 
@@ -274,6 +276,18 @@ export async function selectStyleV2(input: {
     eventType: "selection.drafted",
     payload: { snapshotId, snapshotVersion, previewVariantId: input.previewVariantId },
   });
+  if (isHairRankerShadowEnabled() || isAiLedHairDecisionEnabled()) {
+    await recordHairRecommendationSelectionComparisonV1({
+      userId: input.userId,
+      consultationId: input.consultationId,
+      selectedPreviewId: input.previewVariantId,
+    }).catch((error) => {
+      console.warn("[hair-recommendation] selection comparison failed", {
+        consultationId: input.consultationId,
+        message: error instanceof Error ? error.message : "unknown",
+      });
+    });
+  }
   return {
     snapshot,
     consultationVersion: Number((drafted.data as { version?: unknown } | null)?.version ?? session.version + 1),

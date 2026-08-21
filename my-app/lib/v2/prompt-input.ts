@@ -1,4 +1,8 @@
-import type { PromptInputV2 } from "@hairfit/shared/v2";
+import type {
+  ConsultationGenerationInputSnapshotV2,
+  PromptInputV2,
+  PromptSpecV2,
+} from "@hairfit/shared/v2";
 import type { ConsultationSnapshot } from "../consulting/contracts";
 import type { RecommendationCandidate } from "../recommendation-types";
 
@@ -6,6 +10,7 @@ export type ConsultationPromptInputRow = {
   id: string;
   snapshot: ConsultationSnapshot;
   preferences: Record<string, unknown>;
+  generationInput?: ConsultationGenerationInputSnapshotV2;
 };
 
 function object(value: unknown): Record<string, unknown> {
@@ -50,6 +55,8 @@ export function buildPromptInputV2(
   return {
     schemaVersion: "prompt-input-v2",
     consultationId: row.id,
+    styleTarget: row.generationInput?.styleTarget ?? "neutral",
+    generationInputFingerprint: row.generationInput?.inputFingerprint ?? "legacy-consultation-input",
     analysisEvidence,
     personalColor,
     currentHair: {
@@ -94,6 +101,7 @@ export function buildPromptInputV2(
       id: candidate.catalogItemId ?? candidate.id,
       cycleId: candidate.catalogCycleId ?? "unknown",
       name: candidate.label,
+      lengthBucket: candidate.lengthBucket,
       promptTemplateVersion: candidate.promptTemplateVersion ?? "unknown",
       design: {
         providerPrompt: candidate.prompt,
@@ -105,4 +113,29 @@ export function buildPromptInputV2(
       },
     })),
   };
+}
+
+export function alignRecommendationsWithPromptSpecsV2(
+  recommendations: RecommendationCandidate[],
+  specs: PromptSpecV2[],
+) {
+  const byCatalogItemId = new Map<string, RecommendationCandidate>();
+  for (const candidate of recommendations) {
+    const catalogItemId = candidate.catalogItemId ?? candidate.id;
+    if (byCatalogItemId.has(catalogItemId)) {
+      throw new Error(`Duplicate recommendation catalog item: ${catalogItemId}`);
+    }
+    byCatalogItemId.set(catalogItemId, candidate);
+  }
+
+  const used = new Set<string>();
+  return specs.map((spec) => {
+    const catalogItemId = spec.catalogItemId;
+    const candidate = catalogItemId ? byCatalogItemId.get(catalogItemId) : null;
+    if (!catalogItemId || !candidate || used.has(catalogItemId)) {
+      throw new Error(`Prompt slot ${spec.slot} is not aligned to a unique recommendation`);
+    }
+    used.add(catalogItemId);
+    return candidate;
+  });
 }

@@ -1,0 +1,56 @@
+id: native.consulting.personal-color-profile-v2
+name: NativePersonalColorProfileV2
+platform: native
+kind: data-display
+status: experimental
+source: apps/hairfit-app/components/consulting/NativePersonalColorProfileV2.tsx
+owner: consulting-feature
+
+public_api:
+  exports:
+    - NativePersonalColorProfileV2
+  props:
+    - "profile: PersonalColorProfileV2"
+    - "trainingConsent: boolean"
+    - "onTrainingConsentChange: (granted: boolean) => void"
+  outputs:
+    - five-axis-confidence-and-unavailable-state
+    - normalized-12-type-posterior
+    - calibration-and-region-evidence
+    - harmony-palette
+    - separate-training-consent
+
+boundaries:
+  authoritative_state: server-versioned-personal-color-profile
+  consent: separate-append-only-training-consent
+  forbidden:
+    - client-side-season-reclassification
+    - unavailable-axis-zero-fill
+    - gender-gated-content
+    - implicit-training-consent
+
+styling:
+  strategy: ui-native-primitives-and-local-StyleSheet
+  stylesheet: apps/hairfit-app/components/consulting/NativePersonalColorProfileV2.tsx#styles
+  css_contract_change: none
+
+a11y_contract:
+  reading_order: classification-before-evidence-before-consent
+  controls: native-labelled-switch
+  unavailable: explicit-text-not-color-only
+
+test_surface:
+  unit: apps/hairfit-app/__tests__/personal-color-makeup-v2.test.tsx
+  typecheck: npm --prefix apps/hairfit-app run typecheck
+  parity: packages/shared/src/quality/personal-color-makeup-validation.test.ts
+
+change_policy:
+  current_gate: behavioral-compatible
+  compatible_change_requires:
+    - shared-contract-test
+    - native-component-test
+    - native-typecheck
+    - component-registry-validation
+
+promotion_blockers:
+  - authenticated-physical-device-screen-reader-audit-not-run

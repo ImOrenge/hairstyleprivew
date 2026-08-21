@@ -51,7 +51,7 @@ export interface InterviewSkip {
 
 export interface ConsultationInterviewDraft {
   schemaVersion: "consultation-interview-draft-v1";
-  interviewId: "discovery" | "fashion-direction";
+  interviewId: "discovery" | "fashion-direction" | "makeup-direction";
   consultationId: string;
   revision: number;
   answers: Record<string, InterviewAnswer>;

@@ -1,4 +1,5 @@
 import { getFashionGenreLabelKo } from "./fashion-catalog";
+import { resolveFashionGenerationContext } from "./fashion-generation-context";
 import type {
   FashionGenre,
   FashionMood,
@@ -77,8 +78,7 @@ function dedupePalette(colors: string[]) {
 
 function avoidColorKeys(input: FashionRecommendationInput) {
   return new Set(
-    (input.profile.personalColor?.avoidColors || [])
-      .flatMap((color) => [color.nameKo, color.nameEn, color.hex])
+    [...(input.profile.personalColor?.avoidColors || []).flatMap((color) => [color.nameKo, color.nameEn, color.hex]), ...(input.personalColorV2?.challenge ?? [])]
       .map((value) => value.trim().toLowerCase())
       .filter(Boolean),
   );
@@ -90,6 +90,11 @@ function isAvoidedColor(color: string, avoided: Set<string>) {
 }
 
 function personalColorNote(input: FashionRecommendationInput) {
+  if (input.personalColorV2) {
+    const best = [...input.personalColorV2.best, ...input.personalColorV2.base].slice(0, 4).join(", ");
+    const avoid = input.personalColorV2.challenge.slice(0, 4).join(", ");
+    return `Personal Color V2 ${input.personalColorV2.profileId} 기준으로 ${best || "추천 팔레트"} 계열을 얼굴 가까이에 우선하고 ${avoid || "challenge 팔레트"}는 작은 면적으로 제한합니다.`;
+  }
   const personalColor = input.profile.personalColor;
   if (!personalColor) {
     return null;
@@ -101,12 +106,13 @@ function personalColorNote(input: FashionRecommendationInput) {
 }
 
 export function generateFashionRecommendation(input: FashionRecommendationInput): FashionRecommendation {
+  const generationContext = resolveFashionGenerationContext(input.styleTarget, input.generationInputFingerprint);
   const hairLabel = input.hairVariant.label || "선택한 헤어스타일";
   const faceContext = input.analysis?.faceShape ? `${input.analysis.faceShape} 얼굴 균형` : "현재 얼굴 균형";
   const fit = fitLabel(input.profile.fitPreference);
   const preferredColor = input.profile.colorPreference?.trim();
   const genreLabel = getFashionGenreLabelKo(input.genre);
-  const personalPalette = input.profile.personalColor?.stylingPalette || [];
+  const personalPalette = input.personalColorV2 ? [...input.personalColorV2.best, ...input.personalColorV2.base, ...input.personalColorV2.accent] : input.profile.personalColor?.stylingPalette || [];
   const avoidedColors = avoidColorKeys(input);
   const catalogPalette = input.catalogItem.palette.filter((item) => !isAvoidedColor(item, avoidedColors));
   const palette = dedupePalette(
@@ -125,7 +131,7 @@ export function generateFashionRecommendation(input: FashionRecommendationInput)
   return {
     headline: `${hairLabel}에 맞춘 ${genreLabel} 코디`,
     summary:
-      `${input.catalogItem.summary} ${faceContext}, ${input.profile.heightCm ?? "미입력"}cm 체형 정보, ${fit} 선호를 함께 반영했습니다.`,
+      `${input.catalogItem.summary} ${faceContext}, ${input.profile.heightCm ?? "미입력"}cm 체형 정보, ${fit} 선호와 ${generationContext.styleTarget} 스타일 타깃을 함께 반영했습니다.`,
     genre: input.genre,
     palette: palette.slice(0, 5),
     silhouette: input.catalogItem.silhouette,
@@ -137,6 +143,7 @@ export function generateFashionRecommendation(input: FashionRecommendationInput)
       productUrl: null,
     })),
     stylingNotes: [
+      `온보딩 스타일 타깃: ${generationContext.styleTarget}. 신체나 성별을 추론하지 않고 사용자가 저장한 값만 적용합니다.`,
       ...(personalNote ? [personalNote] : []),
       ...input.catalogItem.stylingNotes.slice(0, 3),
       bodyShapeNote(input.profile.bodyShape),
@@ -148,6 +155,8 @@ export function generateFashionRecommendation(input: FashionRecommendationInput)
     ],
     catalogItemId: input.catalogItem.id,
     catalogCycleId: input.catalogItem.sourceCycleId,
+    styleTarget: generationContext.styleTarget,
+    generationInputFingerprint: generationContext.generationInputFingerprint,
     sourceSummary: input.catalogItem.sourceSummary,
     generatedAt: new Date().toISOString(),
   };

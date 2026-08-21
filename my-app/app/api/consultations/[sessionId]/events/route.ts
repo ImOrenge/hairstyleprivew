@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: Params) {
   const errorCode = typeof body?.errorCode === "string" && SAFE_ERROR_CODE.test(body.errorCode) ? body.errorCode : undefined;
   const revision = Number.isInteger(body?.revision) && Number(body?.revision) >= 0 ? Number(body?.revision) : undefined;
   if (!CONSULTATION_INTERVIEW_EVENT_NAMES.includes(event as ConsultationInterviewEventName)
-      || !["discovery", "fashion-direction"].includes(String(interviewKind))) {
+      || !["discovery", "fashion-direction", "makeup-direction"].includes(String(interviewKind))) {
     return NextResponse.json({ error: "허용되지 않은 상담 이벤트입니다." }, { status: 400 });
   }
   const snapshot = await readServerConsultation(userId, sessionId);
@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: Params) {
     consultationId: sessionId,
     userId,
     event: event as ConsultationInterviewEventName,
-    interviewKind: interviewKind as "discovery" | "fashion-direction",
+    interviewKind: interviewKind as "discovery" | "fashion-direction" | "makeup-direction",
     topicId,
     revision,
     errorCode,
