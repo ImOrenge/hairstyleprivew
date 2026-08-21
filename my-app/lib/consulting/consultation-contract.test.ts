@@ -368,6 +368,10 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(packageJson.scripts["cf:multi:server:staff-canary"], /upload-hairfit-v2-staff-canary\.mjs --mode=canary/);
   assert.equal(packageJson.scripts["cf:multi:staff-canary:verify"], "node scripts/verify-hairfit-v2-version-override.mjs");
   const routerAuthSync = read("../../scripts/sync-hairfit-router-auth-secrets.mjs");
+  assert.match(routerAuthSync, /MEDIA_WORKER_VERSION_ID:\$\{versionIds\.media\}/);
+  assert.match(routerAuthSync, /ADMIN_WORKER_VERSION_ID:\$\{versionIds\.admin\}/);
+  assert.match(routerAuthSync, /--media-version-id/);
+  assert.match(routerAuthSync, /--admin-version-id/);
   assert.match(routerAuthSync, /createClerkClient/);
   assert.match(routerAuthSync, /getUserList\(\{ limit: 1 \}\)/);
   assert.match(routerAuthSync, /Production Clerk API rejected the supplied router credential/);

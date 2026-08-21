@@ -128,6 +128,8 @@
     "cf:multi:server:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.server.jsonc",
     "cf:multi:media:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.media.jsonc",
     "cf:multi:admin:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.admin.jsonc",
+    "cf:multi:split:upload": "node scripts/upload-open-next-split-worker.mjs",
+    "cf:multi:contract:test": "node --no-warnings --test scripts/upload-open-next-split-worker.test.mjs lib/consulting/consultation-contract.test.ts",
     "cf:multi:router:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.middleware.jsonc",
     "cf:multi:router:bootstrap": "wrangler deploy --config workers/open-next-multi/wrangler.middleware.bootstrap.jsonc",
     "cf:multi:router:auth-sync": "node scripts/sync-hairfit-router-auth-secrets.mjs",
