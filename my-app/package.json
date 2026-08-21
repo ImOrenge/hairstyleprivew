@@ -124,7 +124,7 @@
     "landing-motion:contract:test": "node --no-warnings --test lib/landing-motion-contract.test.ts",
     "aftercare:model:smoke": "node --no-warnings scripts/smoke-aftercare-model.mjs",
     "cf:build": "opennextjs-cloudflare build",
-    "cf:multi:build": "opennextjs-cloudflare build",
+    "cf:multi:build": "opennextjs-cloudflare build && node scripts/bundle-open-next-split-functions.mjs media",
     "cf:multi:server:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.server.jsonc",
     "cf:multi:media:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.media.jsonc",
     "cf:multi:router:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.middleware.jsonc",

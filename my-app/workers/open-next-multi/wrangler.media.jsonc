@@ -8,10 +8,6 @@
   "keep_vars": true,
   "workers_dev": false,
   "preview_urls": false,
-  "alias": {
-    "critters": "./critters-stub.js",
-    "@opentelemetry/api": "../../../node_modules/next/dist/compiled/@opentelemetry/api/index.js"
-  },
   "vars": {
     "HAIRFIT_SOURCE_REVISION": "unversioned"
   },
