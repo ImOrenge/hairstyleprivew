@@ -126,6 +126,7 @@
     "cf:build": "opennextjs-cloudflare build",
     "cf:multi:build": "opennextjs-cloudflare build",
     "cf:multi:server:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.server.jsonc",
+    "cf:multi:media:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.media.jsonc",
     "cf:multi:router:dry-run": "wrangler versions upload --dry-run --config workers/open-next-multi/wrangler.middleware.jsonc",
     "cf:multi:router:bootstrap": "wrangler deploy --config workers/open-next-multi/wrangler.middleware.bootstrap.jsonc",
     "cf:multi:router:auth-sync": "node scripts/sync-hairfit-router-auth-secrets.mjs",
