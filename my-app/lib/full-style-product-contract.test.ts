@@ -8,6 +8,8 @@ const read=(path:string)=>readFileSync(join(root,path),"utf8");
 const policy=read("lib/premium-offer-policy.ts");
 const migration=read("../supabase/migrations/202608210004_full_style_catalog_demo_checkout.sql");
 const mirrored=read("supabase/migrations/202608210004_full_style_catalog_demo_checkout.sql");
+const benefitMigration=read("../supabase/migrations/20260821103000_full_style_benefit_limits.sql");
+const benefitMirrored=read("supabase/migrations/20260821103000_full_style_benefit_limits.sql");
 const start=read("components/consulting/interview/ZeroInputConsultationStart.tsx");
 const compare=read("components/consulting/workbenches/CompareWorkbench.tsx");
 const previews=read("components/consulting/workbenches/PreviewsWorkbench.tsx");
@@ -24,7 +26,7 @@ test("approved total prices, sessions, periods and shared capabilities are one c
   for(const value of ["59,000원","89,000원","299,000원","full_style_once","full_style_quarterly","full_style_annual"])assert.match(policy,new RegExp(value));
   for(const amount of ["59000","89000","299000"])assert.match(migration,new RegExp(amount));
   assert.match(policy,/sessions: 4/); assert.match(policy,/미사용 회차가 이월되지 않으며/);
-  assert.equal((migration.match(/"hairRestartCount":1/g)||[]).length,3);
+  for(const benefit of ['"hairRestartCount":1','"hairRestartCount":2','"hairRestartCount":5','"aftercareConsultationCount":1','"aftercareConsultationCount":3'])assert.match(benefitMigration,new RegExp(benefit));
   assert.equal((migration.match(/"finalHairSelectionCount":1/g)||[]).length,3);
   assert.equal((migration.match(/"fashionPreviews":3,"fashionAdditionalPreviews":6/g)||[]).length,3);
   assert.match(migration,/"beforeAfterComparison":true,"annualSummary":true/);
@@ -60,6 +62,7 @@ test("checkout trusts server catalog snapshots and preserves idempotent grant ma
 
 test("restart, RLS and retention cleanup remain server-owned and migrations mirror",()=>{
   assert.equal(migration,mirrored);
+  assert.equal(benefitMigration,benefitMirrored);
   assert.match(migration,/consultation_restarts_v2/); assert.match(migration,/counts_toward_limit/);
   assert.match(migration,/quality_recovery/); assert.match(migration,/force row level security/);
   assert.match(migration,/queue_and_scrub_expired_consultation_results_v2/);
@@ -68,4 +71,18 @@ test("restart, RLS and retention cleanup remain server-owned and migrations mirr
   assert.match(migration,/"annualArchive":true/);
   assert.match(archive,/연간 스타일 아카이브/);
   assert.match(archive,/entitlement_grant_id/);
+});
+
+test("V2 benefit limits are atomic, per consultation and server-only",()=>{
+  assert.match(benefitMigration,/claim_consultation_restart_v2/);
+  assert.match(benefitMigration,/for update/);
+  assert.match(benefitMigration,/user_restart_count>=v_session\.user_restart_limit/);
+  assert.match(benefitMigration,/link_consultation_restart_board_v2/);
+  assert.match(benefitMigration,/aftercare_checkins_v2/);
+  assert.match(benefitMigration,/photo_uploaded_at timestamptz/);
+  assert.match(benefitMigration,/jsonb_build_object\('claimed',false/);
+  assert.match(benefitMigration,/D\+30|offset_days/);
+  assert.match(benefitMigration,/force row level security/);
+  assert.match(benefitMigration,/grant execute on function public\.claim_aftercare_checkin_v2[\s\S]*to service_role/);
+  assert.doesNotMatch(benefitMigration,/grant execute on function public\.claim_aftercare_checkin_v2[\s\S]*to authenticated/);
 });

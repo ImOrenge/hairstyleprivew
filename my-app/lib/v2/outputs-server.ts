@@ -21,6 +21,7 @@ import {
 import { HairfitV2Error } from "./errors";
 import { loadConfirmedV2StylingSource } from "./styling-source-server";
 import { loadConsultationGenerationInputSnapshotV2 } from "../consulting/generation-input-server";
+import { ensureAftercareCheckinsV2 } from "./aftercare-checkin-server";
 
 type ConfirmedSelection = {
   id: string;
@@ -490,7 +491,10 @@ export async function recordActualServiceAndAftercareV2(input: {
     .eq("idempotency_key", input.idempotencyKey)
     .maybeSingle();
   if (replay.error) throw new Error(replay.error.message);
-  if (replay.data) return normalizeStoredAftercareProgram((replay.data as unknown as { program: unknown }).program);
+  if (replay.data) {
+    await ensureAftercareCheckinsV2(input.userId,input.consultationId);
+    return normalizeStoredAftercareProgram((replay.data as unknown as { program: unknown }).program);
+  }
   const selection = await confirmedSelection(input.userId, input.consultationId);
   const serviceIdempotencyKey = `${input.idempotencyKey}:service`;
   const existingActual = await db.from("actual_services_v2").select("id")
@@ -570,12 +574,14 @@ export async function recordActualServiceAndAftercareV2(input: {
       throw new Error(racedProgram.error?.message || aftercare.error.message);
     }
     await transitionOutputState(input.userId, input.consultationId, "aftercare_ready");
+    await ensureAftercareCheckinsV2(input.userId,input.consultationId);
     return normalizeStoredAftercareProgram((racedProgram.data as { program: unknown }).program);
   }
   if (aftercare.error) {
     throw new Error(aftercare.error.message);
   }
   await transitionOutputState(input.userId, input.consultationId, "aftercare_ready");
+  await ensureAftercareCheckinsV2(input.userId,input.consultationId);
   return program;
 }
 

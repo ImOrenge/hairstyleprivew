@@ -8,7 +8,7 @@ import { isHairfitV2Enabled, isLegacyEntitlementBridgeEnabled } from "./feature-
 type GrantRow = { id:string; user_id:string; offering_key:string; offering_version:number; capability_snapshot:OfferingCapabilities; quantity_granted:number; quantity_consumed:number; status:EntitlementGrantV2["status"]; source:EntitlementGrantV2["source"]; source_transaction_id:string|null; valid_from:string; expires_at:string|null };
 const EMPTY_CAPABILITIES: OfferingCapabilities = {
   acceptedHairPreviews:9,watermarkGeneratedAssets:false,hairRestartCount:0,finalHairSelectionCount:1,salonBrief:true,
-  aftercare:true,checkInDays:[],personalColor:false,personalColorMode:"quick_photo",hairColor:false,makeup:false,
+  aftercare:true,aftercareConsultationCount:1,checkInDays:[30],personalColor:false,personalColorMode:"quick_photo",hairColor:false,makeup:false,
   aiNarrative:false,pdf:false,fashionPreviews:0,fashionAdditionalPreviews:0,
   beforeAfterComparison:false,annualSummary:false,annualArchive:false,generatedAssetRetentionDays:7,
 };

@@ -251,10 +251,10 @@ export async function preparePreviewBoardV2(input: {
       .eq("id", input.consultationId)
       .eq("user_id", input.userId);
     if (link.error) throw new Error(link.error.message);
-    const restartLink=await db.from("consultation_restarts_v2").update({replacement_preview_board_id:boardId})
-      .eq("consultation_id",input.consultationId).eq("user_id",input.userId)
-      .eq("counts_toward_limit",true).is("replacement_preview_board_id",null);
-    if(restartLink.error&&restartLink.error.code!=="42P01") throw new Error(restartLink.error.message);
+    const restartLink=await db.rpc("link_consultation_restart_board_v2",{
+      p_user_id:input.userId,p_consultation_id:input.consultationId,p_preview_board_id:boardId,
+    });
+    if(restartLink.error&&restartLink.error.code!=="42883") throw new Error(restartLink.error.message);
     const appliedAdjustment = await db
       .from("consultation_hair_adjustments_v2")
       .update({ state: "applied", applied_at: new Date().toISOString() })

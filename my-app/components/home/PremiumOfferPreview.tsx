@@ -41,7 +41,7 @@ export function PremiumOfferPreview() {
       </div>
 
       <div className="f-premium-offers__billing-note" data-reveal-item data-reveal-order="7">
-        <p>유료 플랜은 모두 같은 풀 스타일 컨설팅을 제공합니다. 차이는 회차·보관기간·관리 깊이입니다.</p>
+        <p>풀코스는 같고 전체 재시작·AI 사후상담은 1회 1/1, 3개월 2/3, 연간은 각 상담 5/3입니다.</p>
         <Link href="/billing">내 계약 관리 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
       </div>
     </LandingScene>

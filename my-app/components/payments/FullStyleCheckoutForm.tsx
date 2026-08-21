@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FullStyleOfferingKey } from "../../lib/premium-offer-policy";
+import { getFullStyleOffer,type FullStyleOfferingKey } from "../../lib/premium-offer-policy";
 import { Button } from "../ui/Button";
 
 type Prepared = { checkoutAttemptId:string;paymentId:string;purchaseMode:"one_time"|"recurring";storeId:string;channelKey?:string;issueId:string;issueName:string;amountKrw:number;currency:"KRW";orderName:string;customer:{customerId:string;fullName:string;email:string;phoneNumber:string};error?:string };
@@ -9,6 +9,7 @@ type Prepared = { checkoutAttemptId:string;paymentId:string;purchaseMode:"one_ti
 export function FullStyleCheckoutForm({ offeringKey,priceVersion,consultationId,initialBuyerName="",initialBuyerEmail="",initialBuyerPhone="" }:{
   offeringKey:FullStyleOfferingKey;priceVersion:number;consultationId?:string;initialBuyerName?:string;initialBuyerEmail?:string;initialBuyerPhone?:string;
 }) {
+  const offer=getFullStyleOffer(offeringKey)!;
   const [buyerName,setBuyerName]=useState(initialBuyerName); const [buyerEmail,setBuyerEmail]=useState(initialBuyerEmail); const [buyerPhone,setBuyerPhone]=useState(initialBuyerPhone);
   const [agreed,setAgreed]=useState(false); const [pending,setPending]=useState(false); const [error,setError]=useState<string|null>(null);
   const finish=(result:{paymentId?:string})=>{const target=consultationId?`/consulting/${encodeURIComponent(consultationId)}/previews?upgraded=1`:"/billing?purchase=success";const url=new URL(target,window.location.origin);if(result.paymentId)url.searchParams.set("payment_id",result.paymentId);window.location.assign(`${url.pathname}${url.search}`);};
@@ -34,7 +35,7 @@ export function FullStyleCheckoutForm({ offeringKey,priceVersion,consultationId,
       <label className="grid gap-1 text-xs font-bold">이메일<input required type="email" value={buyerEmail} onChange={(event)=>setBuyerEmail(event.target.value)} className="h-11 border border-[var(--app-border)] bg-[var(--app-bg)] px-3 text-sm" /></label>
       <label className="grid gap-1 text-xs font-bold">전화번호<input required type="tel" value={buyerPhone} onChange={(event)=>setBuyerPhone(event.target.value)} className="h-11 border border-[var(--app-border)] bg-[var(--app-bg)] px-3 text-sm" /></label>
     </div>
-    <label className="flex gap-3 border border-[var(--app-border)] p-4 text-sm leading-6"><input type="checkbox" checked={agreed} onChange={(event)=>setAgreed(event.target.checked)} className="mt-1" /><span>부가세 포함 총액, 회차와 재시작 1회, 결과 보관기간, 미사용 회차 무이월, 자동갱신일, 기간말 해지 및 환불 검토 정책을 확인했습니다.</span></label>
+    <label className="flex gap-3 border border-[var(--app-border)] p-4 text-sm leading-6"><input type="checkbox" checked={agreed} onChange={(event)=>setAgreed(event.target.checked)} className="mt-1" /><span>부가세 포함 총액, {offer.sessions}회 상담, 상담당 전체 재시작 {offer.restartCount}회와 AI 사후상담 {offer.aftercareConsultationCount}회, 결과 보관기간, 미사용 회차 무이월, 자동갱신일, 기간말 해지 및 환불 검토 정책을 확인했습니다.</span></label>
     {error?<p role="alert" className="border border-[var(--app-danger)] p-3 text-sm text-[var(--app-danger)]">{error}</p>:null}
     <Button type="submit" disabled={pending||!agreed} loading={pending}>주문 확인 후 결제하기</Button>
   </form>;

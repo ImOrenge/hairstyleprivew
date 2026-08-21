@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getConsultationV2 } from "../../../../../../lib/v2/consultation-server";
 import { quoteFullStyleConsultationAccessV2 } from "../../../../../../lib/v2/entitlement-server";
 import { v2Failure } from "../../../../../../lib/v2/http";
+import { getSupabaseAdminClient } from "../../../../../../lib/supabase";
 
 export async function GET(_: Request, context: { params: Promise<{ consultationId:string }> }) {
   const { userId } = await auth();
@@ -12,6 +13,11 @@ export async function GET(_: Request, context: { params: Promise<{ consultationI
     const consultation = await getConsultationV2(userId, consultationId);
     if (!consultation) return NextResponse.json({ error:"상담을 찾을 수 없습니다." }, { status:404 });
     const decision = await quoteFullStyleConsultationAccessV2(userId,consultationId);
+    const restart=await getSupabaseAdminClient().from("consultation_sessions")
+      .select("user_restart_count,user_restart_limit,lifecycle_state")
+      .eq("id",consultationId).eq("user_id",userId).single();
+    if(restart.error)throw new Error(restart.error.message);
+    const restartRow=restart.data as {user_restart_count:number;user_restart_limit:number;lifecycle_state:string};
     return NextResponse.json({
       access:decision.access,
       offeringKey:decision.offeringKey,
@@ -19,6 +25,12 @@ export async function GET(_: Request, context: { params: Promise<{ consultationI
       canCompare:decision.access === "paid",
       remainingSessions:decision.remainingSessions,
       capabilities:decision.capabilities,
+      restart:{
+        used:restartRow.user_restart_count,
+        limit:restartRow.user_restart_limit,
+        remaining:Math.max(0,restartRow.user_restart_limit-restartRow.user_restart_count),
+        availableBeforeFinal:!["selection_confirmed","salon_brief_ready","color_ready","makeup_ready","fashion_ready","aftercare_ready","complete"].includes(restartRow.lifecycle_state),
+      },
     });
   } catch (error) { return v2Failure(error); }
 }

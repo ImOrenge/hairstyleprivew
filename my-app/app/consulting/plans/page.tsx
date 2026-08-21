@@ -19,8 +19,8 @@ export default async function ConsultingPlansPage({ searchParams }: { searchPara
     <AppPage className="grid gap-6 pb-16">
       <Panel as="header" className="p-5 sm:p-8">
         <p className="app-kicker">HairFit Full Style</p>
-        <h1 className="mt-2 max-w-4xl text-3xl font-black tracking-tight sm:text-5xl">혜택은 같게, 필요한 이용 기간만 선택하세요.</h1>
-        <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">모든 유료 플랜은 얼굴·모발 분석, 정밀 퍼스널 컬러, 헤어 9개와 최종 1개, 염색·메이크업·패션, Salon Brief, AI 결과·PDF, 애프터케어를 동일하게 제공합니다.</p>
+        <h1 className="mt-2 max-w-4xl text-3xl font-black tracking-tight sm:text-5xl">풀코스는 같고, 재시작과 사후관리 깊이는 다릅니다.</h1>
+        <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">모든 유료 플랜은 얼굴·모발 분석, 정밀 퍼스널 컬러, 헤어 9개와 최종 1개, 염색·메이크업·패션, Salon Brief, AI 결과·PDF를 제공합니다. 1회는 재시작/사후상담 1/1, 3개월은 2/3, 연간은 상담마다 5/3입니다.</p>
         <div className="mt-5 flex flex-wrap gap-3"><Link href="/consulting/new" className="f-landing-cta">무료 데모 먼저 보기</Link>{consultationId ? <span className="self-center text-xs font-bold text-[var(--app-muted)]">현재 무료 결과를 결제 후 그대로 이어갑니다.</span> : null}</div>
       </Panel>
       <FullStylePlanCards checkoutEnabled={checkoutEnabled} consultationId={consultationId} />

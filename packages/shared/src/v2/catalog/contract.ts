@@ -19,6 +19,7 @@ export interface OfferingCapabilities {
   finalHairSelectionCount: number;
   salonBrief: boolean;
   aftercare: boolean;
+  aftercareConsultationCount: number;
   checkInDays: number[];
   personalColor: boolean;
   personalColorMode: "quick_photo" | "precision";

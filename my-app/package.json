@@ -93,6 +93,7 @@
     "paid-action:contract:test": "node --no-warnings --test lib/paid-action-quote.test.ts lib/paid-action-atomic-execution.test.ts lib/paid-action-quote-card-stability.test.ts",
     "billing-content:contract:test": "node --no-warnings --test lib/billing-content-contract.test.ts lib/service-pass-counts.test.ts lib/subscription-policy-disclosure-stability.test.ts lib/subscription-waitlist-form-stability.test.ts",
     "aftercare:contract:test": "node --no-warnings --test lib/aftercare-model.test.ts lib/confirmed-style-list.test.ts",
+    "aftercare-checkin:contract:test": "tsx --test lib/aftercare-checkin-contract.test.ts",
     "personal-color:contract:test": "node --no-warnings --test lib/personal-color-progress.test.ts",
     "personal-color-v2:phase-00:test": "node --no-warnings --test lib/personal-color-v2-baseline.test.ts",
     "personal-color-v2:phase-01:test": "node --no-warnings --test lib/personal-color-v2-phase-01.test.ts",

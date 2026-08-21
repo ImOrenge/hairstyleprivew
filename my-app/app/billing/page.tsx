@@ -9,9 +9,10 @@ import { AppPage, Panel } from "../../components/ui/Surface";
 import { getPlanDisplayBenefits } from "../../lib/plan-benefit-display";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 import { getSubscriptionAccessMode } from "../../lib/subscription-access";
+import { getFullStyleOffer } from "../../lib/premium-offer-policy";
 
 type LegacySubscription = { plan_key:string; status:string; current_period_end:string|null; cancel_at_period_end:boolean };
-type FullStyleContract = { id:string; offering_key:string; status:string; billing_interval:string|null; period_ends_at:string|null; next_billing_at:string|null; cancel_at_period_end:boolean; latest_payment_transaction_id:string|null; quantity_granted:number; quantity_consumed:number };
+type FullStyleContract = { id:string; offering_key:string; status:string; billing_interval:string|null; period_ends_at:string|null; next_billing_at:string|null; cancel_at_period_end:boolean; latest_payment_transaction_id:string|null; quantity_granted:number; quantity_consumed:number; restart_count:number; aftercare_count:number };
 
 async function readLegacySubscription(userId:string|null):Promise<LegacySubscription|null> {
   if (!userId || !isSupabaseConfigured()) return null;
@@ -29,19 +30,21 @@ async function readFullStyleContract(userId:string|null):Promise<FullStyleContra
     .eq("user_id",userId).in("status",["active","cancel_at_period_end","refund_review"])
     .order("created_at",{ascending:false}).limit(1).maybeSingle();
   if (error || !data) return null;
-  const contract = data as Omit<FullStyleContract,"quantity_granted"|"quantity_consumed">;
-  let quantityGranted=0; let quantityConsumed=0;
+  const contract = data as Omit<FullStyleContract,"quantity_granted"|"quantity_consumed"|"restart_count"|"aftercare_count">;
+  let quantityGranted=0; let quantityConsumed=0;let restartCount=0;let aftercareCount=0;
   if (contract.latest_payment_transaction_id) {
     const grant = await db.from("customer_entitlement_grants_v2")
-      .select("quantity_granted,quantity_consumed")
+      .select("quantity_granted,quantity_consumed,capability_snapshot")
       .eq("source","portone").eq("source_transaction_id",contract.latest_payment_transaction_id)
       .eq("offering_key",contract.offering_key).maybeSingle();
     if (grant.data) {
       quantityGranted=Number((grant.data as {quantity_granted:number}).quantity_granted||0);
       quantityConsumed=Number((grant.data as {quantity_consumed:number}).quantity_consumed||0);
+      const capabilities=(grant.data as {capability_snapshot?:{hairRestartCount?:number;aftercareConsultationCount?:number}}).capability_snapshot;
+      restartCount=Number(capabilities?.hairRestartCount??0);aftercareCount=Number(capabilities?.aftercareConsultationCount??0);
     }
   }
-  return {...contract,quantity_granted:quantityGranted,quantity_consumed:quantityConsumed};
+  return {...contract,quantity_granted:quantityGranted,quantity_consumed:quantityConsumed,restart_count:restartCount,aftercare_count:aftercareCount};
 }
 
 function fullStyleLabel(key:string) {
@@ -62,7 +65,7 @@ export default async function BillingPage() {
 
       {fullStyle ? <Panel as="section" className="grid gap-4 p-5 sm:p-6">
         <div><p className="app-kicker">현재 계약</p><h2 className="mt-2 text-xl font-black">{fullStyleLabel(fullStyle.offering_key)}</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">남은 회차와 다음 결제일을 확인하고 자동갱신을 관리할 수 있습니다.</p></div>
-        <dl className="grid gap-3 text-sm sm:grid-cols-3"><div><dt className="font-bold">남은 회차</dt><dd>{Math.max(0,fullStyle.quantity_granted-fullStyle.quantity_consumed)}회</dd></div><div><dt className="font-bold">다음 결제일</dt><dd>{fullStyle.next_billing_at?new Date(fullStyle.next_billing_at).toLocaleDateString("ko-KR"):"추가 결제 없음"}</dd></div><div><dt className="font-bold">계약 상태</dt><dd>{fullStyle.cancel_at_period_end?"기간말 해지 예약됨":"이용 중"}</dd></div></dl>
+        <dl className="grid gap-3 text-sm sm:grid-cols-4"><div><dt className="font-bold">남은 회차</dt><dd>{Math.max(0,fullStyle.quantity_granted-fullStyle.quantity_consumed)}회</dd></div><div><dt className="font-bold">상담별 관리 혜택</dt><dd>전체 재시작 {fullStyle.restart_count||getFullStyleOffer(fullStyle.offering_key)?.restartCount||0}회 · AI 사후상담 {fullStyle.aftercare_count||getFullStyleOffer(fullStyle.offering_key)?.aftercareConsultationCount||0}회</dd></div><div><dt className="font-bold">다음 결제일</dt><dd>{fullStyle.next_billing_at?new Date(fullStyle.next_billing_at).toLocaleDateString("ko-KR"):"추가 결제 없음"}</dd></div><div><dt className="font-bold">계약 상태</dt><dd>{fullStyle.cancel_at_period_end?"기간말 해지 예약됨":"이용 중"}</dd></div></dl>
         <div className="flex flex-wrap gap-3">{fullStyle.billing_interval?<FullStyleContractActions contractId={fullStyle.id} cancelAtPeriodEnd={fullStyle.cancel_at_period_end}/>:null}{fullStyle.offering_key==="full_style_annual"?<Link href="/consulting/archive" className="f-landing-ghost-cta">연간 스타일 아카이브</Link>:null}</div>
         {fullStyle.latest_payment_transaction_id?<div className="border-t border-[var(--app-border)] pt-4"><h3 className="text-sm font-black">즉시 종료·환불 견적</h3><p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">완전 미사용이면 자동 환불, 사용 이력이 있으면 검토 절차로 연결됩니다.</p><div className="mt-3"><RefundInterviewFlow paymentTransactionId={fullStyle.latest_payment_transaction_id}/></div></div>:null}
       </Panel> : null}

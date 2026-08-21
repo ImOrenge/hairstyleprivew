@@ -24,6 +24,7 @@ type Quote = {
 };
 
 type PreviewGenerationVisualState = "waiting" | "generating" | "partial" | "complete" | "failed";
+type RestartAccess = { used:number; limit:number; remaining:number; availableBeforeFinal:boolean };
 
 function initialPreviewBoardState(previews: ConsultationSnapshot["previews"], generationId: string | null) {
   const accepted = previews.filter((item) => item.status === "accepted").length;
@@ -87,13 +88,14 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
   const [error, setError] = useState<string | null>(null);
   const [needsPurchase, setNeedsPurchase] = useState(false);
   const [demoWatermark, setDemoWatermark] = useState(false);
+  const [restartAccess,setRestartAccess]=useState<RestartAccess>({used:0,limit:0,remaining:0,availableBeforeFinal:true});
   const persistedBoardId = useRef<string | null>(null);
   const autoStartAttempted = useRef(false);
 
   useEffect(() => {
     void fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/access`,{cache:"no-store"})
-      .then(async(response)=>response.ok?await response.json() as {access?:string;capabilities?:{watermarkGeneratedAssets?:boolean}}:null)
-      .then((access)=>setDemoWatermark(access?.access==="demo"||access?.capabilities?.watermarkGeneratedAssets===true))
+      .then(async(response)=>response.ok?await response.json() as {access?:string;capabilities?:{watermarkGeneratedAssets?:boolean};restart?:RestartAccess}:null)
+      .then((access)=>{setDemoWatermark(access?.access==="demo"||access?.capabilities?.watermarkGeneratedAssets===true);if(access?.restart)setRestartAccess(access.restart);})
       .catch(()=>undefined);
   },[snapshot.sessionId]);
 
@@ -241,10 +243,12 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
   };
 
   const restartWithNewBoard = async () => {
+    if(!window.confirm(`현재 후보와 확정 전 결과를 보관 기록으로 남기고 새 3×3을 만듭니다. 남은 전체 재시작 ${restartAccess.remaining}회 중 1회를 사용할까요?`))return;
     setLoading(true); setError(null);
     try {
       const response=await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/restart`,{method:"POST"});
-      const data=await response.json().catch(()=>({})) as {error?:string}; if(!response.ok)throw new Error(data.error||"재시작하지 못했습니다.");
+      const data=await response.json().catch(()=>({})) as {error?:string;restartCount?:number;restartLimit?:number;remaining?:number}; if(!response.ok)throw new Error(data.error||"재시작하지 못했습니다.");
+      setRestartAccess((current)=>({...current,used:data.restartCount??current.used+1,limit:data.restartLimit??current.limit,remaining:data.remaining??Math.max(0,current.remaining-1)}));
       const cleared=snapshot.previews.map((preview)=>({...preview,status:"pending" as const,imageUrl:null,generatedImagePath:null}));
       await mutate({photo:{...snapshot.photo,generationId:null},previews:cleared,shortlist:{previewIds:[],updatedAt:new Date().toISOString()},finalist:{finalistPreviewId:null,backupPreviewId:null,decidedAt:null},currentStage:"previews"});
       window.location.reload();
@@ -267,7 +271,7 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
       { label: "Compare readiness", value: canCompare ? "비교 가능" : "승인 결과 2개 이상 필요" },
       { label: "Generation status", value: generationStatus.title },
       { label: "Accepted outputs", value: `${acceptedCount} / 9` },
-    ]} /><div className="grid gap-2"><SaveStageButton loading={saving || loading} disabled={!canCompare} onClick={() => void saveShortlist()}>선택한 후보 비교하기</SaveStageButton>{boardState==="ready"?<Button type="button" variant="secondary" disabled={loading} onClick={()=>void restartWithNewBoard()}>새 3×3으로 상담 재시작</Button>:null}<p className="text-xs leading-5 text-[var(--app-muted)]">유료 상담당 사용자 재시작은 1회이며, 품질 실패 자동 재처리는 이 횟수에 포함되지 않습니다.</p></div></Panel>
+    ]} /><div className="grid gap-2"><SaveStageButton loading={saving || loading} disabled={!canCompare} onClick={() => void saveShortlist()}>선택한 후보 비교하기</SaveStageButton>{boardState==="ready"&&restartAccess.limit>0?<Button type="button" variant="secondary" disabled={loading||restartAccess.remaining<=0||!restartAccess.availableBeforeFinal} onClick={()=>void restartWithNewBoard()}>새 3×3으로 전체 재시작 · 남은 {restartAccess.remaining}회</Button>:null}<p className="text-xs leading-5 text-[var(--app-muted)]">전체 재시작은 최종 헤어 확정 전 새 결과 9개를 만드는 권리입니다. 품질 실패 자동 재처리는 차감하지 않습니다.</p></div></Panel>
   </div>} output={<>
     <div className="grid gap-5 lg:grid-cols-3">{(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => <Panel key={axis} className="p-4"><p className="app-kicker">{axis}</p><div className="mt-4 grid gap-3">{previews.filter((item) => item.axis === axis).map((preview) => <button key={preview.id} type="button" disabled={preview.status !== "accepted"} onClick={() => toggle(preview.id)} aria-pressed={selected.includes(preview.id)} className={`overflow-hidden border text-left ${selected.includes(preview.id) ? "border-[var(--app-border-strong)] ring-2 ring-[var(--app-ring)]" : "border-[var(--app-border)]"} disabled:opacity-55`}><div className="relative aspect-[4/5] bg-[var(--app-surface-muted)]">{preview.imageUrl ? <><img src={preview.imageUrl} alt={preview.label} className="h-full w-full object-cover" decoding="async" loading="lazy" />{demoWatermark?<span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/10 text-lg font-black tracking-[0.2em] text-white/80 [text-shadow:0_1px_3px_rgb(0_0_0/0.7)]">HAIRFIT DEMO</span>:null}</> : <div className="flex h-full items-center justify-center p-4 text-center text-xs text-[var(--app-muted)]">{preview.status === "failed" ? "품질 검사 실패" : preview.status === "generating" ? "AI 생성 및 품질 검사 중" : "결과 대기 중"}</div>}</div><div className="p-3"><p className="font-black">{preview.label}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--app-muted)]">{preview.reason}</p></div></button>)}</div></Panel>)}</div>
     <SurfaceCard className="p-5"><p className="app-kicker">Board telemetry</p><h2 className="mt-2 text-xl font-black">AI 생성·품질 승인 분포</h2><div className="mt-5"><DefinitionRows items={(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => {
