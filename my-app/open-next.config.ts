@@ -4,14 +4,9 @@ const base = defineCloudflareConfig();
 
 export default {
   ...base,
-  default: {
-    ...base.default,
-    experimentalBundledNextServer: true,
-  },
   functions: {
     media: {
       ...base.default,
-      experimentalBundledNextServer: true,
       routes: [
         "app/api/consultations/[sessionId]/makeup/build/route",
         "app/api/consultations/[sessionId]/makeup/confirm/route",

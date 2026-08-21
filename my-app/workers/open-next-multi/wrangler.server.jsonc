@@ -8,6 +8,10 @@
   "keep_vars": true,
   "workers_dev": false,
   "preview_urls": true,
+  "alias": {
+    "critters": "./workers/open-next-multi/critters-stub.js",
+    "@opentelemetry/api": "../node_modules/next/dist/compiled/@opentelemetry/api/index.js"
+  },
   "routes": [
     {
       "pattern": "hairfit.beauty",
