@@ -89,3 +89,19 @@
 ## Next action
 
 `docs/hairfit-v2-premium-landing-redesign-implementation-2026-08-13.md`의 Phase 0에 따라 premium message, 11 Scene, 현재 billing과 전략 가격의 호환 경계를 contract test로 먼저 고정한다.
+
+## 2026-08-21 가격 가설 노출 결정
+
+기존 기준점의 `운영 가격으로 확정하지 않는다`는 경계는 유지하되, 고객이 컨설팅 범위와 기간을 비교할 수 있도록 세 가격 가설을 랜딩에 `출시 예정가`로 노출한다.
+
+| 상품 | 출시 예정가 | 기간 단위 | 랜딩 역할 |
+|---|---:|---|---|
+| Private Hair Direction | 99,000원 | 1회 | 단일 헤어 결정을 위한 기본 컨설팅 |
+| Total Image Direction | 189,000원 | 3개월 | 헤어·컬러·패션을 연결하는 권장 패키지 |
+| Signature Style Membership | 649,000원 | 1년 | 계절별 업데이트와 선택 이력을 위한 예정 멤버십 |
+
+- 세 CTA는 모두 `/consulting/new`로 연결하며 결제를 시작하지 않는다.
+- `189,000원`은 3개월 단위라는 사용자 정책 결정을 따른다. 자동갱신 여부나 제공 횟수는 별도 운영 계약 전까지 단정하지 않는다.
+- 연간 상담, Style Archive 등 미구현 범위는 `예정 범위`로 표시한다.
+- `/billing`의 기존 월 구독·사용권과 PortOne 결제 계약은 변경하지 않는다.
+- 결제 상품, entitlement, 환불, DB migration, 운영 활성화는 후속 상품화 범위다.

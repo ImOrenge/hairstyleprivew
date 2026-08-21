@@ -151,11 +151,11 @@ test("main hairstyle blueprint selection receives normalized consultation hair i
 test("customer entry CTAs point directly to the AI consultant while legacy remains an explicit bridge", () => {
   const landing = read("../../app/page.tsx");
   const hero = read("../../components/home/HeroSection.tsx");
-  const pricing = read("../../components/home/PricingPreview.tsx");
+  const premiumOffers = read("../../components/home/PremiumOfferPreview.tsx");
   const showcases = read("../../components/home/PremiumConsultingShowcases.tsx");
   const mobileCta = read("../../components/home/MobileStickyCtaBar.tsx");
   const customerHome = read("../../app/home/page.tsx");
-  for (const source of [hero, pricing, showcases, mobileCta, customerHome]) {
+  for (const source of [hero, premiumOffers, showcases, mobileCta, customerHome]) {
     assert.match(source, /\/consulting\/new/);
   }
   assert.match(landing, /HeroSection/);

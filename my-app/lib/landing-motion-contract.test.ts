@@ -12,7 +12,7 @@ const landingCss = readFileSync(join(appRoot, "app", "landing.css"), "utf8");
 
 const staggeredSectionFiles = [
   join(homeRoot, "PremiumConsultingShowcases.tsx"),
-  join(homeRoot, "PricingPreview.tsx"),
+  join(homeRoot, "PremiumOfferPreview.tsx"),
 ];
 
 test("section reveal is deliberately slow, one-shot, and focus safe", () => {

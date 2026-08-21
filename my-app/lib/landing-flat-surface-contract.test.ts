@@ -12,7 +12,7 @@ const premium = readFileSync(join(homeRoot, "PremiumConsultingShowcases.tsx"), "
 
 test("landing content does not depend on shared card surfaces", () => {
   const forbidden = /import\s*\{[^}]*(?:Panel|SurfaceCard|InverseSection|InverseCard)[^}]*\}\s*from\s*["'][^"']*\/Surface["']/;
-  for (const file of [join(appRoot, "app", "page.tsx"), join(homeRoot, "PremiumConsultingShowcases.tsx"), join(homeRoot, "PricingPreview.tsx")]) {
+  for (const file of [join(appRoot, "app", "page.tsx"), join(homeRoot, "PremiumConsultingShowcases.tsx"), join(homeRoot, "PremiumOfferPreview.tsx")]) {
     assert.doesNotMatch(readFileSync(file, "utf8"), forbidden);
   }
 });
@@ -31,8 +31,8 @@ test("scene semantics and proof-before-services order are explicit", () => {
   assert.match(scene, /data-layout=\{layout\}/);
   assert.match(scene, /data-motion=\{motion\}/);
   assert.match(passport, /namespace:\s*f-landing-scene/);
-  assert.ok(page.indexOf("<AnalysisEvidenceShowcase") < page.indexOf("<PricingPreview"));
-  assert.ok(page.indexOf("<StyleDossierShowcase") < page.indexOf("<PricingPreview"));
+  assert.ok(page.indexOf("<AnalysisEvidenceShowcase") < page.indexOf("<PremiumOfferPreview"));
+  assert.ok(page.indexOf("<StyleDossierShowcase") < page.indexOf("<PremiumOfferPreview"));
 });
 
 test("scene titles preserve Korean phrases with layout-specific type scales", () => {

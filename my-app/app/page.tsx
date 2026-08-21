@@ -1,9 +1,9 @@
 import { auth } from "@clerk/nextjs/server";
 import type { Metadata } from "next";
-import nextDynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { HeroSection } from "../components/home/HeroSection";
 import { MobileStickyCtaBar } from "../components/home/MobileStickyCtaBar";
+import { PremiumOfferPreview } from "../components/home/PremiumOfferPreview";
 import {
   AftercareTimelineShowcase,
   AnalysisEvidenceShowcase,
@@ -20,16 +20,9 @@ import { AppPage } from "../components/ui/Surface";
 import { resolveSignedInAccountHomeHref } from "../lib/account-home-server";
 import { getClerkConfigState } from "../lib/clerk";
 import { homeNavItems, homeSeo, structuredDataName } from "../lib/home-content";
-import { getPlanDisplayBenefits } from "../lib/plan-benefit-display";
 import { getSiteUrl } from "../lib/site-url";
-import { getSubscriptionAccessMode } from "../lib/subscription-access";
 import { loadPublishedSupportFaqs } from "../lib/support-server";
 import Link from "next/link";
-
-const PricingPreview = nextDynamic(
-  () => import("../components/home/PricingPreview").then((mod) => mod.PricingPreview),
-  { loading: () => <div className="f-landing-skeleton h-96 animate-pulse" /> },
-);
 
 const siteUrl = getSiteUrl();
 export const dynamic = "force-dynamic";
@@ -87,8 +80,6 @@ export default async function HomePage() {
 
   const faqs = await loadPublishedSupportFaqs();
   const jsonLd = buildHomeJsonLd(faqs);
-  const pricingDisplayBenefits = getPlanDisplayBenefits();
-  const subscriptionAccessMode = getSubscriptionAccessMode();
 
   return (
     <>
@@ -105,7 +96,7 @@ export default async function HomePage() {
         <RevealOnScroll><FashionDirectionShowcase /></RevealOnScroll>
         <RevealOnScroll><StyleDossierShowcase /></RevealOnScroll>
         <RevealOnScroll><TrustShowcase faqs={faqs} /></RevealOnScroll>
-        <RevealOnScroll><PricingPreview initialDisplayBenefits={pricingDisplayBenefits} subscriptionAccessMode={subscriptionAccessMode} /></RevealOnScroll>
+        <RevealOnScroll><PremiumOfferPreview /></RevealOnScroll>
       </AppPage>
       <MobileStickyCtaBar />
     </>

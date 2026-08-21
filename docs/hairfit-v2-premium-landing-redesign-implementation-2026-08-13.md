@@ -499,3 +499,30 @@ Services와 Trust는 이미 운영 상품·정책 정보가 충분하므로 추�
 - 768px은 53.76px와 2~4줄, 390px은 37.44px와 3~4줄 범위로 수렴했다.
 - 모든 viewport에서 H2 `word-break: keep-all`, heading overflow 0, document horizontal overflow 0, broken image 0, console error 0을 확인했다.
 - landing flat-surface 5/5, landing motion 3/3, component registry 59/59, 전체 workspace typecheck, lint, production build 130 pages가 통과했다.
+
+## 17. 2026-08-21 프리미엄 가격 가설 3단 노출
+
+### 변경된 제품 결정
+
+Phase 4의 `실제 billing 데이터만 가격 표시` 정책을 랜딩 전용 가격 가설 미리보기로 대체한다. 이는 운영 결제 상품 변경이 아니라 고객 검증을 위한 메시지 정책 변경이다.
+
+- Private Hair Direction: `99,000원 / 1회`
+- Total Image Direction: `189,000원 / 3개월`
+- Signature Style Membership: `649,000원 / 년`
+
+Total Image Direction은 세 플랜 중 권장안으로 표시한다. 가격 차이는 크레딧이나 이미지 수량이 아니라 헤어 결정, 토털 이미지 디렉팅, 연간 관리라는 결과 범위와 기간으로 설명한다.
+
+### 결제·기능 경계
+
+- 세 가격에는 `출시 예정가` 라벨과 새 결제 상품 미연결 고지를 함께 표시한다.
+- 각 CTA는 `/consulting/new`의 상담 시작으로 연결하며 PortOne checkout을 호출하지 않는다.
+- 기존 `PricingPreview`는 `/billing`에서 현재 월 구독·사용권을 계속 제공한다.
+- 3개월 플랜의 자동갱신 여부와 제공 횟수는 확정하지 않는다.
+- 연 4회 업데이트, 이력, Before/After, Style Archive는 예정 범위로 표시하며 완료 기능으로 주장하지 않는다.
+
+### 회귀 방지 계약
+
+- 랜딩은 `PremiumOfferPreview`를 사용하고 `/billing`은 기존 `PricingPreview`를 사용한다.
+- 정책 상수에서 99,000원/1회, 189,000원/3개월, 649,000원/년을 고정한다.
+- 권장 플랜은 Total Image Direction 한 개뿐이다.
+- 랜딩 가격 장면에는 `PortoneSubscriptionButton`이 없어야 한다.

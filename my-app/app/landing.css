@@ -1448,6 +1448,215 @@
     color: var(--app-inverse-text) !important;
   }
 
+  .f-premium-offers__header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(17rem, 0.42fr);
+    gap: clamp(2rem, 6vw, 6rem);
+    align-items: end;
+  }
+
+  .f-premium-offers__disclosure {
+    border-top: 1px solid var(--app-border);
+    padding-top: 1rem;
+  }
+
+  .f-premium-offers__disclosure span,
+  .f-premium-offer__state {
+    color: var(--landing-accent);
+    font-size: 0.68rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+  }
+
+  .f-premium-offers__disclosure p {
+    margin: 0.65rem 0 0;
+    color: var(--landing-muted);
+    font-size: 0.8rem;
+    line-height: 1.7;
+  }
+
+  .f-premium-offers__list {
+    display: grid;
+    margin-top: clamp(3.5rem, 7vw, 6.5rem);
+    border-top: 1px solid var(--app-border);
+  }
+
+  .f-premium-offer {
+    display: grid;
+    grid-template-columns: minmax(12rem, 0.76fr) minmax(15rem, 1fr) minmax(15rem, 0.9fr) minmax(12rem, 0.64fr);
+    gap: clamp(1.5rem, 3vw, 3.5rem);
+    align-items: start;
+    border-bottom: 1px solid var(--app-border);
+    padding: clamp(2rem, 4vw, 3.5rem) 0;
+  }
+
+  .f-premium-offer[data-recommended="true"] {
+    border-color: color-mix(in srgb, var(--landing-accent) 45%, var(--app-border));
+  }
+
+  .f-premium-offer__index,
+  .f-premium-offer__korean-name,
+  .f-premium-offer__tagline,
+  .f-premium-offer__summary {
+    margin: 0;
+  }
+
+  .f-premium-offer__index {
+    color: var(--landing-muted);
+    font-size: 0.66rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+  }
+
+  .f-premium-offer__korean-name {
+    margin-top: 1.1rem;
+    color: var(--landing-muted);
+    font-size: 0.7rem;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+  }
+
+  .f-premium-offer__identity h3 {
+    max-width: 16rem;
+    margin: 0.45rem 0 0;
+    color: var(--landing-ink);
+    font-size: clamp(1.35rem, 2vw, 2rem);
+    font-weight: 950;
+    letter-spacing: -0.045em;
+    line-height: 1.05;
+  }
+
+  .f-premium-offer[data-recommended="true"] .f-premium-offer__identity h3 {
+    color: var(--landing-accent);
+  }
+
+  .f-premium-offer__recommended {
+    display: inline-flex;
+    margin-top: 1rem;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--landing-accent);
+    font-size: 0.68rem;
+    font-weight: 900;
+  }
+
+  .f-premium-offer__recommended::before {
+    content: "";
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .f-premium-offer__tagline {
+    color: var(--landing-ink);
+    font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+    font-weight: 850;
+    letter-spacing: -0.03em;
+    line-height: 1.45;
+    word-break: keep-all;
+  }
+
+  .f-premium-offer__summary {
+    margin-top: 0.8rem;
+    color: var(--landing-muted);
+    font-size: 0.76rem;
+    line-height: 1.65;
+  }
+
+  .f-premium-offer__state {
+    display: block;
+    margin-top: 1.15rem;
+    letter-spacing: 0.04em;
+  }
+
+  .f-premium-offer__scope {
+    display: grid;
+    margin: 0;
+    padding: 0;
+    gap: 0.75rem;
+    list-style: none;
+  }
+
+  .f-premium-offer__scope li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    color: var(--landing-muted);
+    font-size: 0.76rem;
+    line-height: 1.55;
+  }
+
+  .f-premium-offer__scope li::before {
+    content: "—";
+    color: var(--landing-accent);
+    font-weight: 900;
+  }
+
+  .f-premium-offer__conversion {
+    display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    text-align: right;
+  }
+
+  .f-premium-offer__price {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  .f-premium-offer__price strong {
+    color: var(--landing-ink);
+    font-size: clamp(1.55rem, 2.4vw, 2.45rem);
+    font-weight: 950;
+    letter-spacing: -0.06em;
+  }
+
+  .f-premium-offer__price span {
+    color: var(--landing-muted);
+    font-size: 0.72rem;
+  }
+
+  .f-premium-offer__cta,
+  .f-premium-offers__billing-note a {
+    display: inline-flex;
+    margin-top: 1.4rem;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--landing-ink);
+    font-size: 0.76rem;
+    font-weight: 900;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+    text-underline-offset: 0.35rem;
+  }
+
+  .f-premium-offer[data-recommended="true"] .f-premium-offer__cta {
+    color: var(--landing-accent);
+  }
+
+  .f-premium-offers__billing-note {
+    display: flex;
+    margin-top: 1.25rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .f-premium-offers__billing-note p {
+    margin: 0;
+    color: var(--landing-muted);
+    font-size: 0.72rem;
+    line-height: 1.6;
+  }
+
+  .f-premium-offers__billing-note a {
+    margin-top: 0;
+    flex: 0 0 auto;
+  }
+
   .f-faq {
     display: grid;
     margin-top: clamp(3rem, 7vw, 6rem);
@@ -1652,6 +1861,19 @@
   }
 
   @media (max-width: 1120px) {
+    .f-premium-offer {
+      grid-template-columns: minmax(12rem, 0.7fr) minmax(0, 1fr) minmax(12rem, 0.68fr);
+    }
+
+    .f-premium-offer__scope {
+      grid-column: 2;
+    }
+
+    .f-premium-offer__conversion {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+    }
+
     .f-pricing__plans {
       grid-template-columns: repeat(3, minmax(0, 1fr));
       row-gap: 4rem;
@@ -1690,6 +1912,24 @@
   }
 
   @media (max-width: 840px) {
+    .f-premium-offers__header {
+      grid-template-columns: 1fr;
+    }
+
+    .f-premium-offer {
+      grid-template-columns: minmax(0, 1fr) minmax(11rem, 0.62fr);
+    }
+
+    .f-premium-offer__promise,
+    .f-premium-offer__scope {
+      grid-column: 1;
+    }
+
+    .f-premium-offer__conversion {
+      grid-column: 2;
+      grid-row: 1 / span 3;
+    }
+
     .f-landing-scene {
       padding-block: clamp(4.5rem, 14vw, 7rem);
     }
@@ -1778,6 +2018,29 @@
   }
 
   @media (max-width: 600px) {
+    .f-premium-offer {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .f-premium-offer__identity,
+    .f-premium-offer__promise,
+    .f-premium-offer__scope,
+    .f-premium-offer__conversion {
+      grid-column: 1;
+      grid-row: auto;
+    }
+
+    .f-premium-offer__conversion {
+      align-items: flex-start;
+      text-align: left;
+    }
+
+    .f-premium-offers__billing-note {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+
     .f-landing {
       --landing-gutter: 0.9rem;
       padding-bottom: 6.5rem;

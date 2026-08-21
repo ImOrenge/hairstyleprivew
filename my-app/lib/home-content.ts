@@ -57,7 +57,7 @@ export const homeNavItems = [
   { href: "#fashion-direction", label: "패션 방향", shortLabel: "08" },
   { href: "#style-dossier", label: "스타일 기록", shortLabel: "09" },
   { href: "#trust", label: "신뢰와 한계", shortLabel: "10" },
-  { href: "#services", label: "현재 이용 방식", shortLabel: "11" },
+  { href: "#services", label: "컨설팅 가격", shortLabel: "11" },
 ];
 
 export const recommendationCriteria = [

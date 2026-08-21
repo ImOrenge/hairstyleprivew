@@ -8,7 +8,8 @@ const appRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const page = readFileSync(join(appRoot, "app", "page.tsx"), "utf8");
 const hero = readFileSync(join(appRoot, "components", "home", "HeroSection.tsx"), "utf8");
 const showcases = readFileSync(join(appRoot, "components", "home", "PremiumConsultingShowcases.tsx"), "utf8");
-const pricing = readFileSync(join(appRoot, "components", "home", "PricingPreview.tsx"), "utf8");
+const offers = readFileSync(join(appRoot, "components", "home", "PremiumOfferPreview.tsx"), "utf8");
+const offerPolicy = readFileSync(join(appRoot, "lib", "premium-offer-policy.ts"), "utf8");
 const content = readFileSync(join(appRoot, "lib", "home-content.ts"), "utf8");
 const mobileCta = readFileSync(join(appRoot, "components", "home", "MobileStickyCtaBar.tsx"), "utf8");
 const autoSwitch = readFileSync(join(appRoot, "components", "home", "PremiumAutoSwitchPreviewPanel.tsx"), "utf8");
@@ -25,7 +26,7 @@ test("premium landing keeps the rolling hero and consultant message", () => {
 });
 
 test("landing exposes the documented eleven scene order", () => {
-  const componentOrder = ["HeroSection", "AnalysisEvidenceShowcase", "DirectionShowcase", "StrategicPreviewShowcase", "CompareDecisionShowcase", "SalonBriefShowcase", "AftercareTimelineShowcase", "FashionDirectionShowcase", "StyleDossierShowcase", "TrustShowcase", "PricingPreview"];
+  const componentOrder = ["HeroSection", "AnalysisEvidenceShowcase", "DirectionShowcase", "StrategicPreviewShowcase", "CompareDecisionShowcase", "SalonBriefShowcase", "AftercareTimelineShowcase", "FashionDirectionShowcase", "StyleDossierShowcase", "TrustShowcase", "PremiumOfferPreview"];
   let cursor = -1;
   const renderedPage = page.slice(page.indexOf("return ("));
   for (const name of componentOrder) {
@@ -34,7 +35,7 @@ test("landing exposes the documented eleven scene order", () => {
     cursor = index;
   }
   for (const id of ["analysis-evidence", "user-direction", "strategic-preview", "compare-decision", "salon-brief", "aftercare", "fashion-direction", "style-dossier", "trust"]) assert.match(showcases, new RegExp(`id=\\"${id}\\"`));
-  assert.match(pricing, /id="services"/);
+  assert.match(offers, /id="services"/);
   assert.equal(content.match(/shortLabel: "(?:0[1-9]|1[01])"/g)?.length, 11);
 });
 
@@ -77,18 +78,24 @@ function compareRows(source: string) {
 }
 
 test("conversion paths and pricing boundary remain truthful", () => {
-  const combined = `${page}\n${hero}\n${showcases}\n${mobileCta}\n${pricing}`;
+  const combined = `${page}\n${hero}\n${showcases}\n${mobileCta}\n${offers}\n${offerPolicy}`;
   assert.doesNotMatch(combined, /\/workspace/);
   assert.doesNotMatch(combined, /무료로 내 스타일 보기/);
-  assert.doesNotMatch(combined, /99,?000|189,?000|649,?000/);
+  for (const price of ["99,000원", "189,000원", "649,000원"]) assert.match(offerPolicy, new RegExp(price));
+  assert.match(offerPolicy, /priceLabel: "189,000원",[\s\S]*?periodLabel: "\/ 3개월"/);
+  assert.equal(offerPolicy.match(/recommended: true/g)?.length, 1);
+  assert.match(offerPolicy, /name: "Total Image Direction"[\s\S]*?recommended: true/);
+  assert.match(offers, /출시 예정가/);
+  assert.match(offerPolicy, /새 결제 상품이 연결되기 전/);
+  assert.doesNotMatch(offers, /PortoneSubscriptionButton/);
+  assert.equal(offerPolicy.match(/\n\s+key: /g)?.length, 3);
+  assert.match(offers, /PREMIUM_OFFER_POLICY\.offers\.map/);
+  assert.equal(offers.match(/href="\/consulting\/new"/g)?.length, 2);
   assert.ok((combined.match(/href="\/consulting\/new"/g)?.length ?? 0) >= 4);
-  assert.match(pricing, /href="\/b2b\/contact"/);
-  assert.match(pricing, /PricingTierKey/);
-  assert.match(pricing, /aria-label="현재 이용 가능한 플랜 비교"/);
-  assert.match(pricing, /id="pricing-scroll-hint"/);
-  assert.match(pricing, /data-variant=\{plan\.tone === "basic" \? "secondary" : "primary"\}/);
-  assert.match(pricing, /내 사진 분석 시작/);
-  assert.ok(page.indexOf("<TrustShowcase") < page.indexOf("<PricingPreview"));
+  assert.match(offers, /href="\/b2b\/contact"/);
+  assert.match(offers, /href="\/billing"/);
+  assert.match(offers, /내 사진 분석 시작/);
+  assert.ok(page.indexOf("<TrustShowcase") < page.indexOf("<PremiumOfferPreview"));
   for (const phrase of ["변경할 수 없는 최종 결정 기록", "변경 불가 최종 결정 기록", "데이터 계약에서 확인할 수 있는 연결 범위", "슬롯마다 반복 요청하는 마법사 흐름", "생성보다 정확한 기준"]) {
     assert.doesNotMatch(combined, new RegExp(phrase));
   }
