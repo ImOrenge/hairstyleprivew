@@ -48,7 +48,7 @@ test.describe("public web accessibility", () => {
   }
 });
 
-test("homepage keyboard flow preserves skip-link, tablist, and FAQ behavior", async ({ page }) => {
+test("public keyboard flow preserves skip-link, tablist, and FAQ behavior", async ({ page }) => {
   await page.goto("/");
 
   const automaticNotice = page.getByRole("dialog");
@@ -64,26 +64,83 @@ test("homepage keyboard flow preserves skip-link, tablist, and FAQ behavior", as
   await page.keyboard.press("Enter");
   await expect(page.locator("#main-content")).toBeFocused();
 
-  const maleTab = page.getByRole("tab", { name: "남성" });
-  const femaleTab = page.getByRole("tab", { name: "여성" });
+  const hairPreviewTabs = page.getByRole("tablist", { name: "헤어 프리뷰 모델 선택" });
+  const maleTab = hairPreviewTabs.getByRole("tab", { name: "남성" });
+  const femaleTab = hairPreviewTabs.getByRole("tab", { name: "여성" });
   await maleTab.focus();
   await page.keyboard.press("ArrowRight");
   await expect(femaleTab).toBeFocused();
   await expect(femaleTab).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Home");
-  await expect(maleTab).toBeFocused();
-  await expect(maleTab).toHaveAttribute("aria-selected", "true");
-  await page.keyboard.press("End");
   await expect(femaleTab).toBeFocused();
   await expect(femaleTab).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("End");
+  await expect(maleTab).toBeFocused();
+  await expect(maleTab).toHaveAttribute("aria-selected", "true");
 
-  const faqSummary = page.locator("summary").filter({
-    hasText: "AI 헤어스타일 미리보기에는 어떤 사진이 가장 좋나요?",
-  });
-  await expect(faqSummary).toHaveCount(1);
+  await page.goto("/discover/personal-color-makeup", { waitUntil: "load" });
+  await dismissAutomaticNotice(page);
+  const faqSummary = page.locator("#discovery-faq summary").first();
+  await expect(faqSummary).toBeVisible();
   await faqSummary.focus();
   await page.keyboard.press("Enter");
   await expect(faqSummary.locator("..")).toHaveAttribute("open", "");
+});
+
+test("homepage renders the ordered 00 through 11 journey with makeup and current aftercare", async ({ page }) => {
+  await page.goto("/", { waitUntil: "load" });
+  await dismissAutomaticNotice(page);
+
+  const sceneIds = [
+    "home-hero",
+    "analysis-evidence",
+    "user-direction",
+    "strategic-preview",
+    "compare-decision",
+    "salon-brief",
+    "makeup-direction",
+    "fashion-direction",
+    "style-dossier",
+    "aftercare",
+    "trust",
+    "services",
+  ] as const;
+  const tops = await page.locator(sceneIds.map((id) => `#${id}`).join(", ")).evaluateAll((nodes) =>
+    nodes.map((node) => ({ id: node.id, top: node.getBoundingClientRect().top + window.scrollY })),
+  );
+  expect(tops.map(({ id }) => id)).toEqual(sceneIds);
+  expect(tops.map(({ top }) => top)).toEqual([...tops.map(({ top }) => top)].sort((a, b) => a - b));
+
+  await expect(page.locator("#home-hero").getByText("00", { exact: true })).toBeVisible();
+  for (const [index, id] of sceneIds.slice(1).entries()) {
+    await expect(page.locator(`#${id} .f-landing-scene__number`)).toHaveText(String(index + 1).padStart(2, "0"));
+  }
+  await expect(page.getByRole("heading", { name: "퍼스널 컬러를 메이크업 방향으로 연결합니다" })).toBeVisible();
+  await expect(page.locator('#makeup-direction a[href="/discover/personal-color-makeup"]')).toBeVisible();
+  for (const schedule of ["D+1", "D+3", "D+7", "D+30", "D+45", "D+90"]) {
+    await expect(page.locator("#aftercare").getByText(schedule, { exact: true })).toBeVisible();
+  }
+  await expect(page.locator('header a[href="/discover"]')).toContainText("스타일 가이드");
+});
+
+test("homepage and makeup discovery keep a 320px viewport free of horizontal overflow", async ({ page }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => consoleErrors.push(error.message));
+  await page.setViewportSize({ width: 320, height: 800 });
+  for (const path of ["/", "/discover/personal-color-makeup"] as const) {
+    await page.goto(path, { waitUntil: "load" });
+    await dismissAutomaticNotice(page);
+    const overflow = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+    expect(await page.locator("[data-nextjs-dialog]").count()).toBe(0);
+  }
+  expect(consoleErrors).toEqual([]);
 });
 
 test.describe("homepage viewport baselines", () => {

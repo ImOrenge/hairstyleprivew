@@ -103,6 +103,9 @@ export function validateDiscoveryRegistry({ pages, sampleManifests, evidence }: 
     if (!manifest || manifest.status !== "approved") {
       findings.push(finding(`manifest-${page.id}`, "P0", "asset", "published 페이지가 승인 sample manifest를 참조하지 않습니다.", page.sampleManifestId, "approved manifest를 연결합니다."));
     } else {
+      if (manifest.sampleKind !== page.sampleKind) {
+        findings.push(finding(`manifest-kind-${page.id}`, "P0", "asset", "페이지와 sample manifest 유형이 일치하지 않습니다.", `${page.sampleKind}/${manifest.sampleKind}`, "같은 sampleKind의 manifest를 연결합니다."));
+      }
       validateManifest(manifest, findings);
     }
     for (const evidenceId of page.evidenceIds) {
@@ -134,12 +137,21 @@ function validateManifest(manifest: DiscoverySampleManifest, findings: Discovery
   if (assetById.size !== manifest.assets.length) {
     findings.push(finding(`manifest-asset-id-${manifest.id}`, "P0", "asset", "manifest 안의 asset ID가 중복되었습니다.", String(manifest.assets.length - assetById.size), "모든 asset ID를 고유하게 변경합니다."));
   }
-  if (sourceAssets.length !== 1 || previewAssets.length !== 9 || ogAssets.length !== 1 || manifest.strategies.length !== 3) {
-    findings.push(finding(`manifest-count-${manifest.id}`, "P0", "asset", "sample은 source 1개, preview 9개, OG 1개, strategy 3개여야 합니다.", `${sourceAssets.length}/${previewAssets.length}/${ogAssets.length}/${manifest.strategies.length}`, "manifest asset 수를 계약에 맞춥니다."));
-  }
-  for (const strategy of manifest.strategies) {
-    if (strategy.assetIds.length !== 3 || strategy.assetIds.some((assetId) => assetById.get(assetId)?.role !== "preview")) {
-      findings.push(finding(`strategy-${manifest.id}-${strategy.id}`, "P0", "asset", "각 strategy는 정확히 세 preview를 참조해야 합니다.", strategy.assetIds.join(","), "preview asset ID 세 개를 연결합니다."));
+  if (manifest.sampleKind === "hair-grid") {
+    if (sourceAssets.length !== 1 || previewAssets.length !== 9 || ogAssets.length !== 1 || manifest.strategies.length !== 3) {
+      findings.push(finding(`manifest-count-${manifest.id}`, "P0", "asset", "hair-grid sample은 source 1개, preview 9개, OG 1개, strategy 3개여야 합니다.", `${sourceAssets.length}/${previewAssets.length}/${ogAssets.length}/${manifest.strategies.length}`, "manifest asset 수를 hair-grid 계약에 맞춥니다."));
+    }
+    for (const strategy of manifest.strategies) {
+      if (strategy.assetIds.length !== 3 || strategy.assetIds.some((assetId) => assetById.get(assetId)?.role !== "preview")) {
+        findings.push(finding(`strategy-${manifest.id}-${strategy.id}`, "P0", "asset", "각 hair-grid strategy는 정확히 세 preview를 참조해야 합니다.", strategy.assetIds.join(","), "preview asset ID 세 개를 연결합니다."));
+      }
+    }
+  } else {
+    if (sourceAssets.length !== 1 || previewAssets.length !== 0 || ogAssets.length !== 1) {
+      findings.push(finding(`manifest-count-${manifest.id}`, "P0", "asset", "makeup-direction sample은 source 1개와 OG 1개만 사용하고 전후 preview를 만들지 않습니다.", `${sourceAssets.length}/${previewAssets.length}/${ogAssets.length}`, "manifest asset 수를 makeup-direction 계약에 맞춥니다."));
+    }
+    if (manifest.direction.palettes.length !== 2 || manifest.direction.zones.length < 3 || manifest.direction.routine.length < 3 || !manifest.direction.report.headline || !manifest.direction.report.artistBrief) {
+      findings.push(finding(`makeup-direction-${manifest.id}`, "P0", "content", "메이크업 sample의 팔레트·부위·루틴·전문 리포트가 부족합니다.", manifest.id, "구조화된 메이크업 방향 필드를 모두 채웁니다."));
     }
   }
   for (const asset of manifest.assets) {

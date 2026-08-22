@@ -6,8 +6,10 @@ export type DiscoveryPageId =
   | "D-MEN"
   | "D-WOMEN"
   | "D-BANGS"
-  | "D-BOB"
+  | "D-MAKEUP"
   | "D-SALON";
+
+export type DiscoverySampleKind = "hair-grid" | "makeup-direction";
 
 export type DiscoveryCtaId = "hero-primary" | "sample-primary" | "final-primary";
 
@@ -23,7 +25,7 @@ export interface DiscoveryFaq {
 }
 
 export interface DiscoveryDecisionArtifact {
-  kind: "simulation-map" | "face-observation" | "men-grooming" | "women-length" | "bangs-risk" | "bob-cut-ladder" | "salon-brief";
+  kind: "simulation-map" | "face-observation" | "men-grooming" | "women-length" | "bangs-risk" | "makeup-direction-map" | "salon-brief";
   eyebrow: string;
   title: string;
   description: string;
@@ -101,6 +103,7 @@ export interface DiscoveryPageDefinition {
     heroCaption: string;
     note: string;
   };
+  sampleKind: DiscoverySampleKind;
   artifact: DiscoveryDecisionArtifact;
   sections: readonly DiscoverySection[];
   faq: readonly DiscoveryFaq[];
@@ -133,7 +136,7 @@ export interface DiscoverySampleAsset {
   catalogVersion?: "catalog-v4";
 }
 
-export interface DiscoverySampleManifest {
+interface DiscoverySampleManifestBase {
   id: string;
   status: "approved" | "review" | "revoked";
   sourceAssetId: string;
@@ -142,6 +145,10 @@ export interface DiscoverySampleManifest {
   owner: string;
   provenanceRef: string;
   assets: readonly DiscoverySampleAsset[];
+}
+
+export interface DiscoveryHairSampleManifest extends DiscoverySampleManifestBase {
+  sampleKind: "hair-grid";
   strategies: readonly {
     id: DiscoveryStrategyId;
     label: string;
@@ -149,6 +156,22 @@ export interface DiscoverySampleManifest {
     assetIds: readonly [string, string, string];
   }[];
 }
+
+export interface DiscoveryMakeupSampleManifest extends DiscoverySampleManifestBase {
+  sampleKind: "makeup-direction";
+  direction: {
+    palettes: readonly {
+      group: "recommended" | "avoid";
+      label: string;
+      colors: readonly { token: string; label: string; note: string }[];
+    }[];
+    zones: readonly { area: string; direction: string; reason: string }[];
+    routine: readonly { step: string; title: string; body: string }[];
+    report: { headline: string; summary: string; artistBrief: string };
+  };
+}
+
+export type DiscoverySampleManifest = DiscoveryHairSampleManifest | DiscoveryMakeupSampleManifest;
 
 export interface DiscoveryEvidenceEntry {
   id: string;

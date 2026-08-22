@@ -5,7 +5,8 @@
 - 구현 기준: `feat/2026-08-12-premium-landing-refactor@e86e40d`
 - 선행 문서: [아키텍처](./architecture.md), [P1 상세 계획](./implementation-plan/phase-01-search-surface-foundation.md), [P2 상세 계획](./implementation-plan/phase-02-pilot-content-sample-experience.md)
 - 실행 티켓: [검색 유입 페이지 구체 구현 실행 계획](./implementation-plan/search-entry-page-execution-plan.md)
-- 로컬 공개 대상: `D-AI-SIM`, `D-FACE`, `D-MEN`, `D-WOMEN`, `D-BANGS`, `D-BOB`, `D-SALON`
+- 로컬 공개 대상: `D-AI-SIM`, `D-FACE`, `D-MEN`, `D-WOMEN`, `D-BANGS`, `D-MAKEUP`, `D-SALON`
+- 2026-08-22 업데이트: `D-BOB`은 판매 종료 검색 의도로 분리해 여자 헤어 가이드로 301 전환하고, `D-MAKEUP`을 제품 작성형 메이크업 방향 문서로 발행한다.
 
 ## 1. 구현 결론
 
@@ -108,7 +109,7 @@ export type DiscoveryPageId =
   | "D-MEN"
   | "D-WOMEN"
   | "D-BANGS"
-  | "D-BOB"
+  | "D-MAKEUP"
   | "D-SALON";
 
 export interface DiscoveryPageDefinition {

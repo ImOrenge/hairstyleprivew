@@ -10,6 +10,7 @@ import {
   CompareDecisionShowcase,
   DirectionShowcase,
   FashionDirectionShowcase,
+  MakeupDirectionShowcase,
   SalonBriefShowcase,
   StrategicPreviewShowcase,
   StyleDossierShowcase,
@@ -92,9 +93,10 @@ export default async function HomePage() {
         <RevealOnScroll><StrategicPreviewShowcase /></RevealOnScroll>
         <RevealOnScroll><CompareDecisionShowcase /></RevealOnScroll>
         <RevealOnScroll><SalonBriefShowcase /></RevealOnScroll>
-        <RevealOnScroll><AftercareTimelineShowcase /></RevealOnScroll>
+        <RevealOnScroll><MakeupDirectionShowcase /></RevealOnScroll>
         <RevealOnScroll><FashionDirectionShowcase /></RevealOnScroll>
         <RevealOnScroll><StyleDossierShowcase /></RevealOnScroll>
+        <RevealOnScroll><AftercareTimelineShowcase /></RevealOnScroll>
         <RevealOnScroll><TrustShowcase faqs={faqs} /></RevealOnScroll>
         <RevealOnScroll><PremiumOfferPreview /></RevealOnScroll>
       </AppPage>

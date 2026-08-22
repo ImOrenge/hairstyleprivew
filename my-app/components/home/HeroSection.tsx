@@ -373,6 +373,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
 
   return (
     <section ref={heroRef} className={styles.hero} aria-labelledby="landing-hero-title">
+      <span className={styles.sceneNumber} aria-hidden="true">00</span>
       <div
         className={styles.visualStage}
         aria-label="헤어와 패션이 이어지는 네 줄 세로 롤링 갤러리"

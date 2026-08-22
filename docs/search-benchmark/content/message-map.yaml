@@ -29,13 +29,13 @@ pages:
     promise: 합성 이미지보다 모류·수축·손질·회복 리스크를 먼저 확인
     artifact: 앞머리 되돌림 리스크 체크
     primary_cta: 앞머리 컨설팅 시작
-  D-BOB:
-    h1: 단발 미리보기, 턱선과 어깨선 사이를 구체적으로 비교
-    promise: 길이 유지부터 턱선 보브까지 커트 변화 폭을 단계화
-    artifact: 단발 커트 변화 사다리
-    primary_cta: 단발 컨설팅 시작
+  D-MAKEUP:
+    h1: 퍼스널 컬러에 맞는 메이크업 방향 찾기
+    promise: 사진 기반 컬러 근거를 추천·회피 팔레트와 눈·볼·입술 방향, 셀프 루틴으로 연결
+    artifact: 퍼스널 컬러 메이크업 방향 리포트
+    primary_cta: 내 퍼스널 컬러와 메이크업 방향 확인하기
   D-SALON:
     h1: 미용실 상담 이미지, 예쁜 사진보다 비교 이유까지 준비
     promise: 후보와 선택 이유·제약·현장 질문을 버전된 자료로 전달
     artifact: Salon Brief 네 필드
-    primary_cta: 미용실 상담 보드 만들기
+    primary_cta: 미용실 상담 준비 시작

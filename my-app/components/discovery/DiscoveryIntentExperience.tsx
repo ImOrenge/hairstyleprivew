@@ -13,8 +13,8 @@ export function DiscoveryIntentExperience({ definition }: { definition: Discover
       return <WomenLengthPlanner />;
     case "D-BANGS":
       return <BangsRiskPlanner />;
-    case "D-BOB":
-      return <BobCutPlanner />;
+    case "D-MAKEUP":
+      return <MakeupDirectionPlanner />;
     case "D-SALON":
       return <SalonBriefBuilder />;
   }
@@ -178,25 +178,25 @@ function BangsRiskPlanner() {
   );
 }
 
-function BobCutPlanner() {
+function MakeupDirectionPlanner() {
   return (
-    <div className={styles.intentExperience} data-intent-experience="bob-cut-planner">
-      <section className={styles.intentSection} aria-labelledby="bob-ruler-title">
-        <IntentHeader eyebrow="CUT LINE RULER" title="단발은 이름이 아니라 끝나는 선으로 주문합니다" description="턱선 보브와 어깨선 단발 사이에는 묶임, 뻗침과 목선 노출이 크게 달라지는 구간이 있습니다." />
-        <div className={styles.cutRuler}>
-          <article><span>01</span><div><strong>턱선</strong><h3>선명한 보브</h3><p>목선 노출 큼 · 묶임 어려움</p></div></article>
-          <article><span>02</span><div><strong>턱 아래 2–4cm</strong><h3>소프트 보브</h3><p>윤곽을 감쌈 · 끝선 관리 필요</p></div></article>
-          <article><span>03</span><div><strong>어깨 위</strong><h3>롱 보브</h3><p>짧게 묶을 가능성 · 목선 마찰 확인</p></div></article>
-          <article><span>04</span><div><strong>쇄골</strong><h3>미디엄 대안</h3><p>묶임 유지 · 커트 변화 폭 낮음</p></div></article>
+    <div className={styles.intentExperience} data-intent-experience="personal-color-makeup-planner">
+      <section className={styles.intentSection} aria-labelledby="makeup-zone-title">
+        <IntentHeader eyebrow="COLOR TO ZONE" title="퍼스널 컬러를 부위별 메이크업 질문으로 바꿉니다" description="계절 이름을 붙이는 데서 끝내지 않고 추천 팔레트가 눈·볼·입술의 색과 마감에 어떤 영향을 주는지 확인합니다." />
+        <div className={styles.axisLedger}>
+          <div className={styles.axisLedgerHead}><span>부위</span><span>추천 방향</span><span>실제 활용</span><span>확인할 한계</span></div>
+          <div className={styles.axisLedgerRow}><strong>눈</strong><span>코코아 브라운</span><span>경계를 진하게 닫지 않는 음영</span><small>눈매 특징을 새로 판정하지 않음</small></div>
+          <div className={styles.axisLedgerRow}><strong>볼</strong><span>뮤트 로즈</span><span>바깥쪽으로 얇게 연결</span><small>사진 발색과 실제 피부 차이</small></div>
+          <div className={styles.axisLedgerRow}><strong>입술</strong><span>로즈 베이지</span><span>중심만 한 단계 선명하게</span><small>제품 제형과 본래 입술색 영향</small></div>
         </div>
       </section>
-      <section className={`${styles.intentSection} ${styles.intentSectionQuiet}`} aria-labelledby="bob-grow-title">
-        <IntentHeader eyebrow="GROW-OUT PLAN" title="자를 때부터 기르는 중간 구간을 계획하세요" description="단발의 만족도는 첫날뿐 아니라 어깨에 닿는 시기의 뻗침과 다듬기 계획까지 포함합니다." />
-        <div className={styles.growPlan}>
-          <div><span>첫 커트</span><h3>마른 상태의 최종 끝선 확인</h3><p>곱슬과 수축이 있다면 목표선보다 여유를 둡니다.</p></div>
-          <div><span>유지</span><h3>끝선 또는 레이어 중 하나를 선택</h3><p>선명한 보브는 끝선, 기를 계획이면 연결 레이어를 우선합니다.</p></div>
-          <div><span>전환</span><h3>어깨 마찰 구간의 대안 준비</h3><p>묶기, C컬 또는 추가 커트 중 가능한 경로를 상담합니다.</p></div>
-        </div>
+      <section className={`${styles.intentSection} ${styles.intentSectionQuiet}`} aria-labelledby="makeup-report-boundary-title">
+        <IntentHeader eyebrow="REPORT BOUNDARY" title="고객 해설과 현장 명세는 같은 결과 안에서 역할을 나눕니다" description="AI는 왜 어울리는지와 활용법을 설명하고, 정확한 컬러·마감·강도·위치와 주의사항은 확정된 전문가 명세를 그대로 보여줍니다." />
+        <ol className={styles.decisionSteps}>
+          <li><span>01</span><div><h3>고객용 총평</h3><p>퍼스널 컬러와 확정 헤어가 메이크업 방향에 연결되는 이유를 설명합니다.</p></div></li>
+          <li><span>02</span><div><h3>셀프 루틴</h3><p>준비 시간과 숙련도에 맞춘 실제 적용 순서를 확인합니다.</p></div></li>
+          <li><span>03</span><div><h3>아티스트 브리프</h3><p>부위별 수치와 주의사항은 AI가 바꾸지 않고 권위 데이터를 전달합니다.</p></div></li>
+        </ol>
       </section>
     </div>
   );

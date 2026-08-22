@@ -383,7 +383,7 @@ DB 게이트:
 ### 대상 페이지
 
 - D-BANGS
-- D-BOB
+- D-MAKEUP
 - D-SALON
 
 ### 필수 출력

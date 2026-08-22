@@ -1,7 +1,7 @@
 export const homeSeo = {
-  title: "사진 한 장으로 시작하는 AI 헤어 컨설팅 | HairFit",
+  title: "퍼스널 컬러부터 헤어·메이크업까지 AI 스타일 컨설팅 | HairFit",
   description:
-    "사진을 먼저 분석한 뒤 얼굴 근거와 사용자 기준으로 9가지 헤어 후보를 비교하고, 살롱 브리프·애프터케어·패션 방향까지 연결하는 AI 헤어 컨설팅입니다.",
+    "사진 기반 퍼스널 컬러에서 시작해 9가지 헤어 후보, 살롱 브리프, 메이크업 전문 리포트, 패션과 시술 후 애프터케어까지 연결하는 AI 풀 스타일 컨설팅입니다.",
   keywords: [
     "AI 헤어스타일 미리보기",
     "얼굴형 헤어스타일 추천",
@@ -25,6 +25,8 @@ export const homeSeo = {
     "온라인 헤어스타일 테스트",
     "헤어에 맞춘 패션 코디",
     "AI 패션 코디 추천",
+    "퍼스널 컬러 메이크업 추천",
+    "AI 메이크업 디렉팅",
   ],
 };
 
@@ -47,15 +49,16 @@ export const homeWorkflow = [
 ];
 
 export const homeNavItems = [
-  { href: "#home-hero", label: "프리미엄 컨설팅", shortLabel: "01" },
-  { href: "#analysis-evidence", label: "분석 근거", shortLabel: "02" },
-  { href: "#user-direction", label: "사용자 기준", shortLabel: "03" },
-  { href: "#strategic-preview", label: "전략 프리뷰", shortLabel: "04" },
-  { href: "#compare-decision", label: "비교와 결정", shortLabel: "05" },
-  { href: "#salon-brief", label: "살롱 브리프", shortLabel: "06" },
-  { href: "#aftercare", label: "애프터케어", shortLabel: "07" },
-  { href: "#fashion-direction", label: "패션 방향", shortLabel: "08" },
-  { href: "#style-dossier", label: "스타일 기록", shortLabel: "09" },
+  { href: "#home-hero", label: "프리미엄 컨설팅", shortLabel: "00" },
+  { href: "#analysis-evidence", label: "분석 근거", shortLabel: "01" },
+  { href: "#user-direction", label: "사용자 기준", shortLabel: "02" },
+  { href: "#strategic-preview", label: "전략 프리뷰", shortLabel: "03" },
+  { href: "#compare-decision", label: "비교와 결정", shortLabel: "04" },
+  { href: "#salon-brief", label: "살롱 브리프", shortLabel: "05" },
+  { href: "#makeup-direction", label: "메이크업", shortLabel: "06" },
+  { href: "#fashion-direction", label: "패션 방향", shortLabel: "07" },
+  { href: "#style-dossier", label: "스타일 기록", shortLabel: "08" },
+  { href: "#aftercare", label: "애프터케어", shortLabel: "09" },
   { href: "#trust", label: "신뢰와 한계", shortLabel: "10" },
   { href: "#services", label: "컨설팅 가격", shortLabel: "11" },
 ];

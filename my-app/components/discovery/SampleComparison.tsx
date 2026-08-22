@@ -11,12 +11,71 @@ export function SampleComparison({ definition }: { definition: DiscoveryPageDefi
     : undefined;
   if (!manifest) return null;
 
+  if (manifest.sampleKind === "makeup-direction") {
+    const source = getDiscoverySampleAsset(manifest, manifest.sourceAssetId);
+    return (
+      <section
+        id="sample-comparison"
+        className={styles.sampleSection}
+        aria-labelledby="sample-title"
+        data-sample-layout={sampleLayouts[definition.id]}
+        data-sample-kind={manifest.sampleKind}
+      >
+        <header className={styles.sectionHeader}>
+          <p className={styles.eyebrow}>{definition.sample.eyebrow}</p>
+          <h2 id="sample-title">{definition.sample.title}</h2>
+          <p>{definition.sample.description}</p>
+        </header>
+        <div className={styles.makeupSample}>
+          {source ? (
+            <figure className={styles.makeupSampleVisual}>
+              <Image src={source.path} alt={source.alt} width={source.width} height={source.height} sizes="(max-width: 760px) 78vw, 34vw" />
+              <figcaption>제품 작성 예시 · 실제 고객 전후 사진 아님</figcaption>
+            </figure>
+          ) : null}
+          <div className={styles.makeupSampleBoard}>
+            <div className={styles.makeupPaletteGroups}>
+              {manifest.direction.palettes.map((palette) => (
+                <section key={palette.group} aria-labelledby={`makeup-palette-${palette.group}`}>
+                  <h3 id={`makeup-palette-${palette.group}`}>{palette.label}</h3>
+                  <ul className={styles.makeupPalette}>
+                    {palette.colors.map((color) => <li key={color.token}><span data-makeup-swatch={color.token} aria-hidden="true" /><strong>{color.label}</strong><small>{color.note}</small></li>)}
+                  </ul>
+                </section>
+              ))}
+            </div>
+            <dl className={styles.makeupZones}>
+              {manifest.direction.zones.map((zone) => <div key={zone.area}><dt>{zone.area}</dt><dd><strong>{zone.direction}</strong><span>{zone.reason}</span></dd></div>)}
+            </dl>
+            <ol className={styles.makeupRoutine} aria-label="셀프 메이크업 적용 순서">
+              {manifest.direction.routine.map((item) => <li key={item.step}><span>{item.step}</span><div><strong>{item.title}</strong><p>{item.body}</p></div></li>)}
+            </ol>
+            <article className={styles.makeupReport}>
+              <span>AI 메이크업 디렉터 리포트 · 예시</span>
+              <h3>{manifest.direction.report.headline}</h3>
+              <p>{manifest.direction.report.summary}</p>
+              <footer><strong>ARTIST BRIEF</strong>{manifest.direction.report.artistBrief}</footer>
+            </article>
+          </div>
+        </div>
+        <div className={styles.sampleCta}>
+          <p>{definition.sample.note}</p>
+          <Link className={styles.primaryCta} href={definition.message.sampleCta.href}>
+            {definition.message.sampleCta.label}
+            <ArrowRight aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       id="sample-comparison"
       className={styles.sampleSection}
       aria-labelledby="sample-title"
       data-sample-layout={sampleLayouts[definition.id]}
+      data-sample-kind={manifest.sampleKind}
     >
       <header className={styles.sectionHeader}>
         <p className={styles.eyebrow}>{definition.sample.eyebrow}</p>
@@ -76,6 +135,6 @@ export const sampleLayouts = {
   "D-MEN": "grooming-schedule",
   "D-WOMEN": "length-chapters",
   "D-BANGS": "fringe-baseline",
-  "D-BOB": "cut-ladder",
+  "D-MAKEUP": "makeup-direction-report",
   "D-SALON": "salon-shortlist",
 } as const satisfies Record<DiscoveryPageDefinition["id"], string>;
