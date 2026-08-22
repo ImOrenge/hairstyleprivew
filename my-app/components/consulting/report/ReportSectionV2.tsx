@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, Check, CircleAlert, EyeOff } from "lucide-react";
 import type { ReactNode } from "react";
 import { consultationReportStatusLabelV2, type ConsultationReportImageV2, type ConsultationReportSectionV2, type ConsultationReportStatusV2 } from "../../../lib/consulting/contracts";
+import { MakeupProfessionalReport } from "../makeup/MakeupProfessionalReport";
 
 const PIE_COLORS = ["#d7a84b", "#8164b8", "#4f8f85", "#b65f6a", "#557ea8", "#8d784e"];
 
@@ -59,7 +60,7 @@ function generationStateLabel(value: string) {
   return "확인 중";
 }
 
-function SectionPayload({ section }: { section: ConsultationReportSectionV2 }) {
+function SectionPayload({ section, onRetryMakeupReport }: { section: ConsultationReportSectionV2; onRetryMakeupReport?: () => void }) {
   switch (section.key) {
     case "face-hair-analysis":
       return <><FaceShapePie distribution={section.payload.distribution} /><DefinitionGrid rows={[
@@ -94,6 +95,7 @@ function SectionPayload({ section }: { section: ConsultationReportSectionV2 }) {
         { label: "결정", value: section.payload.state }, { label: "컬러", value: <span className="inline-flex items-center gap-2"><span className="h-5 w-5 border border-black/20" style={{ backgroundColor: safeColor(section.payload.swatchHex) }} />{section.payload.colorName}</span> }, { label: "기법", value: section.payload.technique }, { label: "목표 레벨", value: section.payload.targetLevel ?? "현장 확인" }, { label: "탈색", value: section.payload.bleachPolicy }, { label: "퇴색 방향", value: section.payload.fadeDirection || "확인 필요" },
       ]} /></div>;
     case "makeup-result":
+      if (section.payload.professionalReport && section.payload.routine && section.payload.artistBrief) return <div className="mt-6 grid gap-5">{section.payload.moodImage ? <ReportImage image={section.payload.moodImage} className="max-w-sm" /> : null}<MakeupProfessionalReport report={section.payload.professionalReport} routine={section.payload.routine} brief={section.payload.artistBrief} onRetry={onRetryMakeupReport} /></div>;
       return <>{section.payload.moodImage ? <ReportImage image={section.payload.moodImage} className="mt-6 max-w-sm" /> : null}<DefinitionGrid rows={[{ label: "원한 분위기", value: section.payload.requestedMode ?? "기존 방식" }, { label: "확정한 분위기", value: section.payload.acceptedMode ?? "확인 불가" }, { label: "추천 반영", value: section.payload.adjustmentDecision === "accept_adjustment" ? "AI 제안 반영" : section.payload.adjustmentDecision === "keep_selection" ? "내 선택 유지" : "별도 조정 없음" }]} />{section.payload.evidence.length ? <div className="mt-6 grid gap-3 md:grid-cols-5">{section.payload.evidence.map((item) => <article key={item.label} className="border border-[var(--app-border)] p-3"><p className="text-xs font-black text-[var(--app-muted)]">{item.label}</p><p className="mt-2 font-black">{item.finding}</p><p className="mt-2 text-xs leading-5 text-[var(--app-muted)]">{item.impact}</p></article>)}</div> : null}<div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{section.payload.modules.map((module) => <article key={module.module} className="border border-[var(--app-border)] p-4"><div className="flex items-center justify-between gap-3"><h4 className="font-black">{module.module}</h4><span className="text-xs font-bold">{module.enabled ? "사용" : "제외"}</span></div>{module.color ? <p className="mt-3 text-sm">색상 · {module.color}</p> : null}{module.texture ? <p className="mt-1 text-sm">질감 · {module.texture}</p> : null}{module.intensity !== null ? <p className="mt-1 text-sm">강도 · {module.intensity}%</p> : null}</article>)}</div></>;
     case "fashion-result":
       return <><DefinitionGrid rows={[
@@ -113,11 +115,12 @@ function SectionPayload({ section }: { section: ConsultationReportSectionV2 }) {
   }
 }
 
-export function ReportSectionV2({ section }: { section: ConsultationReportSectionV2 }) {
+export function ReportSectionV2({ section, onRetryMakeupReport }: { section: ConsultationReportSectionV2; onRetryMakeupReport?: () => void }) {
+  const hasDedicatedMakeupReport = section.key === "makeup-result" && Boolean(section.payload.professionalReport);
   return <section id={`report-${section.key}`} data-report-section="true" data-report-section-key={section.key} className="f-consulting-report__section border-b border-[var(--app-border)] p-5 last:border-b-0 sm:p-8">
     <div data-report-keep="true" className="flex flex-wrap items-start justify-between gap-4"><div className="min-w-0"><p className="app-kicker">{section.kicker}</p><h3 className="mt-2 text-xl font-black sm:text-2xl">{section.title}</h3><p className="mt-3 max-w-3xl text-base font-bold leading-7">{section.conclusion}</p></div><StatusStamp status={section.status} /></div>
-    <SectionPayload section={section} />
-    <CommonBlocks section={section} />
+    <SectionPayload section={section} onRetryMakeupReport={onRetryMakeupReport} />
+    {!hasDedicatedMakeupReport ? <CommonBlocks section={section} /> : null}
     {section.detailHref ? <div className="mt-6" data-report-screen-only="true"><Link href={section.detailHref} className="inline-flex min-h-11 items-center gap-2 border border-[var(--app-border)] px-4 py-2 text-sm font-black hover:border-[var(--app-border-strong)]">{section.title} 상세 보기<ArrowUpRight className="h-4 w-4" aria-hidden="true" /></Link></div> : null}
   </section>;
 }

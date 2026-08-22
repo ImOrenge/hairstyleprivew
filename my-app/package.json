@@ -104,7 +104,7 @@
     "personal-color-makeup:phase-06:test": "node --no-warnings --test lib/personal-color-makeup-phase-06.test.ts",
     "personal-color-makeup:phase-07:test": "node --no-warnings --test lib/personal-color-makeup-phase-07.test.ts",
     "personal-color-makeup:phase-08:test": "node --no-warnings --test lib/personal-color-makeup-phase-08.test.ts",
-    "personal-color-makeup:phase-09:test": "node --no-warnings --test lib/personal-color-makeup-phase-09.test.ts lib/makeup/makeup-interview-topic.test.ts",
+    "personal-color-makeup:phase-09:test": "node --no-warnings --test lib/personal-color-makeup-phase-09.test.ts lib/makeup/makeup-interview-topic.test.ts lib/makeup/makeup-professional-report-contract.test.ts",
     "salon-consent:contract:test": "node --no-warnings --test lib/salon-connection-consent.test.ts",
     "global-css:contract:test": "node --no-warnings --test lib/global-css-contract.test.ts lib/button-stability.test.ts lib/form-feedback-stability.test.ts",
     "dialog-accessibility:contract:test": "node --no-warnings --test lib/dialog-adoption.test.ts lib/dialog-e2e-harness.test.ts lib/modal-coordinator.test.ts",

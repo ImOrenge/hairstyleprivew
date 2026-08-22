@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MAKEUP_FACE_TOPOLOGY_V2, MAKEUP_MODULES, MAKEUP_SEMI_REAL_MODEL_LANDMARKS_V3, compileMakeupArtistBriefV1, compileMakeupDenseAtlasV3, compileMakeupRoutineV1, compileMakeupSemanticProjectionV3, type MakeupAtlasMode, type MakeupComplexionGuideGeometry, type MakeupDirectionSnapshot, type MakeupModule, type MakeupModuleDirection, type MakeupModuleGeometry, type MakeupNormalizedPoint, type MakeupSemanticArtifactV3, type MakeupTopologyPointSetId, type MakeupTopologyProjectionV2 } from "@hairfit/shared/makeup";
+import { MAKEUP_FACE_TOPOLOGY_V2, MAKEUP_MODULES, MAKEUP_SEMI_REAL_MODEL_LANDMARKS_V3, buildMakeupProfessionalReportFallbackV1, compileMakeupArtistBriefV1, compileMakeupDenseAtlasV3, compileMakeupRoutineV1, compileMakeupSemanticProjectionV3, type MakeupAtlasMode, type MakeupComplexionGuideGeometry, type MakeupDirectionProfessionalReportEnvelopeV1, type MakeupDirectionProfessionalReportInputV1, type MakeupDirectionSnapshot, type MakeupModule, type MakeupModuleDirection, type MakeupModuleGeometry, type MakeupNormalizedPoint, type MakeupSemanticArtifactV3, type MakeupTopologyPointSetId, type MakeupTopologyProjectionV2 } from "@hairfit/shared/makeup";
 import type { FaceObservationBundleV2 } from "@hairfit/shared/personal-color-v2";
 import { Panel, SurfaceCard } from "../workbenches/shared";
 import { MakeupDirectionCanvas } from "./MakeupDirectionCanvas";
 import { MakeupDirectionMatrix } from "./MakeupDirectionMatrix";
 import { MakeupOutputs } from "./MakeupOutputs";
+import { MakeupProfessionalReport } from "./MakeupProfessionalReport";
 
 const rectangle = (x: number, y: number, width: number, height: number) => [{ x: x - width, y: y - height }, { x: x + width, y: y - height }, { x: x + width, y: y + height }, { x: x - width, y: y + height }];
 const ellipse = (x: number, y: number, radiusX: number, radiusY: number, count = 16) => Array.from({ length: count }, (_, index) => {
@@ -133,16 +134,44 @@ const semanticArtifact: MakeupSemanticArtifactV3 = {
 const semanticProjection = compileMakeupSemanticProjectionV3({ artifact: semanticArtifact, atlas: fixtureDenseAtlas, expectedSourceFingerprint: semanticArtifact.sourceFingerprint });
 const routine = compileMakeupRoutineV1({ id: "e2e-routine", snapshot, createdAt: "2026-08-15T04:05:01.000Z" });
 const brief = compileMakeupArtistBriefV1({ id: "e2e-brief", snapshot, createdAt: "2026-08-15T04:05:01.000Z" });
+const professionalReportInput: MakeupDirectionProfessionalReportInputV1 = {
+  schemaVersion: "makeup-direction-professional-report-input-v1",
+  enabledModules: [...MAKEUP_MODULES],
+  facts: [
+    { id: "direction", kind: "decision", module: null, label: "확정 방향", value: "정돈된 내추럴 메이크업 방향을 확정했습니다." },
+    { id: "reason", kind: "reason", module: null, label: "조화 근거", value: "딥 웜 컬러와 부드러운 헤어 흐름을 자연스럽게 연결합니다." },
+    { id: "guidance", kind: "guidance", module: null, label: "활용법", value: "경계를 부드럽게 풀어 일상과 업무 상황에 함께 활용하세요." },
+    { id: "limitation", kind: "limitation", module: null, label: "확인할 점", value: "실제 발색과 질감은 피부 상태와 조명에 따라 달라질 수 있습니다." },
+    ...MAKEUP_MODULES.map((module) => ({ id: `module-${module}`, kind: "module" as const, module, label: module, value: `${module} 부위는 전체 인상과 자연스럽게 이어지도록 정돈합니다.` })),
+  ],
+};
+const fallbackReportContent = buildMakeupProfessionalReportFallbackV1(professionalReportInput);
+const readyReportContent = { ...fallbackReportContent, headline: "딥 웜 컬러와 헤어 흐름을 잇는 내추럴 메이크업" };
 
-export function MakeupDirectionFixture({ diagnostics = false }: { diagnostics?: boolean }) {
+export function MakeupDirectionFixture({ diagnostics = false, initialReportState = "ready" }: { diagnostics?: boolean; initialReportState?: MakeupDirectionProfessionalReportEnvelopeV1["state"] }) {
   const [activeModule, setActiveModule] = useState<MakeupModule>("base");
   const [mode, setMode] = useState<MakeupAtlasMode>("application");
   const [refined, setRefined] = useState(false);
+  const [reportState, setReportState] = useState(initialReportState);
   useEffect(() => {
     const timer = window.setTimeout(() => setRefined(true), 1500);
     return () => window.clearTimeout(timer);
   }, []);
+  useEffect(() => {
+    if (reportState !== "preparing") return;
+    const timer = window.setTimeout(() => setReportState("ready"), 700);
+    return () => window.clearTimeout(timer);
+  }, [reportState]);
+  const professionalReport: MakeupDirectionProfessionalReportEnvelopeV1 = {
+    schemaVersion: "makeup-direction-professional-report-envelope-v1",
+    state: reportState,
+    canEnhance: true,
+    content: reportState === "ready" ? readyReportContent : fallbackReportContent,
+    outputFingerprint: reportState === "ready" ? "e2e-makeup-professional-report" : null,
+    updatedAt: reportState === "ready" ? "2026-08-15T04:05:02.000Z" : null,
+  };
   return <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5" data-testid="makeup-direction-fixture">
+    <MakeupProfessionalReport report={professionalReport} routine={routine} brief={brief} onRetry={() => setReportState("preparing")} />
     <Panel className="min-w-0 p-4"><p className="app-kicker">Makeup color guide</p><h2 className="mt-1 text-lg font-black">컬러와 적용 부위</h2>{diagnostics ? <div className="mt-3 flex gap-2" role="group" aria-label="메이크업 라인 지도 밀도">{(["structure", "application", "precision"] as const).map((item) => <button key={item} type="button" data-makeup-atlas-mode={item} aria-pressed={mode === item} onClick={() => setMode(item)} className="min-h-11 border border-[var(--app-border)] px-3 py-2 text-sm font-black">{{ structure: "구조", application: "적용", precision: "정밀" }[item]}</button>)}</div> : null}<div className="mt-4 min-w-0"><MakeupDirectionCanvas photoUrl="/images/consulting/models/hairfit-semi-real-model-v1.png" modules={modules} topology={snapshot.topologyProjection} denseAtlas={snapshot.denseAtlas} semanticProjection={refined ? semanticProjection : null} activeModule={activeModule} mode={diagnostics ? mode : "application"} onSelect={setActiveModule} showInfo={diagnostics} /></div>{diagnostics ? <div className="mt-3 border border-[var(--app-border)] px-3 py-2 text-xs" role="status" aria-live="polite" data-makeup-semantic-fixture-state={refined ? "completed" : "running"}>{refined ? "AI 정밀 가이드 준비 완료" : "얼굴 구조를 먼저 보여드리고 정밀 가이드를 다듬고 있어요."}</div> : null}</Panel>
     {diagnostics ? <SurfaceCard className="p-0"><MakeupDirectionMatrix modules={modules} activeModule={activeModule} onSelect={setActiveModule} /></SurfaceCard> : null}
     <MakeupOutputs sessionId={snapshot.consultationId} routine={routine} brief={brief} onRefresh={async () => undefined} />

@@ -1,4 +1,5 @@
-import type { MakeupDirectionSnapshot } from "../makeup/contract.ts";
+import type { MakeupArtistBrief, MakeupDirectionSnapshot, MakeupRoutine } from "../makeup/contract.ts";
+import type { MakeupDirectionProfessionalReportEnvelopeV1 } from "../makeup/professional-report.ts";
 import { MAKEUP_MODE_LABELS } from "../makeup/interview.ts";
 import type { PersonalColorProfileV2 } from "../personal-color-v2/contract.ts";
 import type { AnalysisEvidenceV2 } from "../v2/analysis/contract.ts";
@@ -28,6 +29,9 @@ export interface ConsultationReportSourceV2 {
   salonBrief?: SalonBriefV2 | null;
   makeupDirection?: MakeupDirectionSnapshot | null;
   makeupMoodImageUrl?: string | null;
+  makeupRoutine?: MakeupRoutine | null;
+  makeupArtistBrief?: MakeupArtistBrief | null;
+  makeupProfessionalReport?: MakeupDirectionProfessionalReportEnvelopeV1 | null;
   hairProfile?: HairProfileV2 | null;
   hairRecommendation?: HairRecommendationDecisionV1 | null;
   fashionBatch?: FashionPreviewBatch | null;
@@ -126,6 +130,9 @@ export type MakeupResultSectionV2 = SectionBaseV2<"makeup-result", "makeup", {
   evidence: Array<{ label: string; finding: string; impact: string }>;
   limitations: string[];
   modules: Array<{ module: string; enabled: boolean; color: string | null; texture: string | null; intensity: number | null; reasons: string[] }>;
+  routine?: MakeupRoutine | null;
+  artistBrief?: MakeupArtistBrief | null;
+  professionalReport?: MakeupDirectionProfessionalReportEnvelopeV1 | null;
   confirmedAt: string | null;
 }>;
 
@@ -382,6 +389,8 @@ function buildProvenance(
     source.personalColorProfile?.id,
     source.salonBrief ? `${source.salonBrief.consultationId}:brief:${source.salonBrief.version}` : null,
     source.makeupDirection?.id,
+    source.makeupRoutine?.id,
+    source.makeupArtistBrief?.id,
     hair?.previewBatchId,
     fashion?.batchId,
     fashion?.personalizationSnapshotId,
@@ -399,6 +408,7 @@ function buildProvenance(
     colorRevision: snapshot.colorDecision.revision,
     makeupRevision: source.makeupDirection?.version ?? null,
     sourceIds,
+    makeupProfessionalReportFingerprint: source.makeupProfessionalReport?.outputFingerprint ?? null,
     generatedAt,
   });
   return {
@@ -597,7 +607,7 @@ export function projectConsultationReportV2(
       key: "makeup-result", tab: "makeup", title: "메이크업 결과", kicker: "추천 메이크업", status: modules.length === 7 ? "ready" : makeupState === "failed_retryable" ? "unavailable" : "partial",
       conclusion: makeupRationale?.acceptedMode ? `${MAKEUP_MODE_LABELS[makeupRationale.acceptedMode]} 방향을 확정했습니다.` : "퍼스널 컬러와 확정 헤어에 맞춘 메이크업 방향입니다.", rationale: makeupRationale?.evidence.map((item) => `${item.label} · ${item.finding}`) ?? modules.flatMap((item) => item.reasons).slice(0, 5), effects: ["헤어·컬러·메이크업의 온도감과 대비를 일관되게 연결합니다."],
       avoid: modules.filter((item) => !item.enabled).map((item) => `${item.module} 비활성`), cautions: makeupRationale?.limitations ?? (modules.length ? [] : ["확정 모듈 상세가 없어 상태만 표시합니다."]), detailHref: stageHref(snapshot.sessionId, "makeup"),
-      payload: { moodImage: source.makeupMoodImageUrl ? reportImage("makeup-mood", source.makeupMoodImageUrl, "확정 메이크업 무드", "메이크업 무드") : null, requestedMode: makeupRationale ? MAKEUP_MODE_LABELS[makeupRationale.requestedMode] : null, acceptedMode: makeupRationale?.acceptedMode ? MAKEUP_MODE_LABELS[makeupRationale.acceptedMode] : null, adjustmentDecision: makeupRationale?.decision ?? null, rationaleRevision: makeupRationale?.revision ?? null, evidence: makeupRationale?.evidence.map(({ label, finding, impact }) => ({ label, finding, impact })) ?? [], limitations: makeupRationale?.limitations ?? [], modules, confirmedAt: source.makeupDirection?.confirmedAt ?? snapshot.makeupDirection?.confirmedAt ?? null },
+      payload: { moodImage: source.makeupMoodImageUrl ? reportImage("makeup-mood", source.makeupMoodImageUrl, "확정 메이크업 무드", "메이크업 무드") : null, requestedMode: makeupRationale ? MAKEUP_MODE_LABELS[makeupRationale.requestedMode] : null, acceptedMode: makeupRationale?.acceptedMode ? MAKEUP_MODE_LABELS[makeupRationale.acceptedMode] : null, adjustmentDecision: makeupRationale?.decision ?? null, rationaleRevision: makeupRationale?.revision ?? null, evidence: makeupRationale?.evidence.map(({ label, finding, impact }) => ({ label, finding, impact })) ?? [], limitations: makeupRationale?.limitations ?? [], modules, routine: source.makeupRoutine ?? null, artistBrief: source.makeupArtistBrief ?? null, professionalReport: source.makeupProfessionalReport ?? null, confirmedAt: source.makeupDirection?.confirmedAt ?? snapshot.makeupDirection?.confirmedAt ?? null },
     });
   }
 

@@ -5,6 +5,7 @@ import { processMakeupSimulation, queueMakeupSimulation } from "../../../../../.
 import { confirmMakeupDirection } from "../../../../../../lib/makeup/makeup-direction-server";
 import { isHairfitV2Enabled } from "../../../../../../lib/v2/feature-flags";
 import { v2Failure } from "../../../../../../lib/v2/http";
+import { projectMakeupProfessionalReportInputV1, runMakeupProfessionalReportCapability } from "../../../../../../lib/capabilities/makeup-professional-report-service";
 
 interface Params { params: Promise<{ sessionId: string }> }
 export async function POST(request: Request, { params }: Params) {
@@ -13,6 +14,17 @@ export async function POST(request: Request, { params }: Params) {
   const body = (await request.json().catch(() => null)) as { snapshotId?: string; expectedRevision?: number } | null;
   if (!body?.snapshotId || !Number.isInteger(body.expectedRevision)) return NextResponse.json({ error: "snapshotId와 expectedRevision이 필요합니다." }, { status: 400 });
   const { sessionId } = await params;
-  try { const confirmed = await confirmMakeupDirection(userId, sessionId, body.snapshotId, body.expectedRevision!); if (!isMakeupStyleSimulationEnabled()) return NextResponse.json(confirmed); const run = await queueMakeupSimulation(userId, sessionId); if (run.state === "queued") after(() => processMakeupSimulation(userId, sessionId, run.id)); return NextResponse.json({ ...confirmed, simulationRun: run }, { status: 202 }); }
+  try {
+    const confirmed = await confirmMakeupDirection(userId, sessionId, body.snapshotId, body.expectedRevision!);
+    const reportInput = projectMakeupProfessionalReportInputV1({ snapshot: confirmed.snapshot, routine: confirmed.artifacts.routine, brief: confirmed.artifacts.brief });
+    const run = isMakeupStyleSimulationEnabled() ? await queueMakeupSimulation(userId, sessionId) : null;
+    after(async () => {
+      await Promise.allSettled([
+        runMakeupProfessionalReportCapability({ userId, consultationId: sessionId, reportInput }),
+        run?.state === "queued" ? processMakeupSimulation(userId, sessionId, run.id) : Promise.resolve(),
+      ]);
+    });
+    return NextResponse.json(run ? { ...confirmed, simulationRun: run } : confirmed, { status: run ? 202 : 200 });
+  }
   catch (error) { return v2Failure(error); }
 }

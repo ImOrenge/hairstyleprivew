@@ -879,6 +879,7 @@
         "my-app/components/consulting/makeup/MakeupDirectionFixture.tsx",
         "my-app/components/consulting/makeup/MakeupInterviewFixture.tsx",
         "my-app/components/consulting/makeup/MakeupOutputs.tsx",
+        "my-app/components/consulting/makeup/MakeupProfessionalReport.tsx",
         "my-app/components/consulting/makeup/MakeupSimulationWorkspace.tsx",
         "my-app/app/globals.css"
       ],
@@ -886,7 +887,7 @@
       "passport": "docs/components/passports/web-consulting-makeup-direction.yaml",
       "observed_usage": {
         "consumer_files": 1,
-        "scope": "HairFit makeup interview, grounded direction, durable style simulation, immutable confirmation, and report handoff"
+        "scope": "HairFit makeup interview, grounded direction, durable professional AI report, style simulation, immutable confirmation, and report handoff"
       }
     },
     {

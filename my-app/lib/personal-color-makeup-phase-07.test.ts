@@ -66,12 +66,12 @@ test("Phase 07 persistence is additive, mirrored, private, and immutable", () =>
   assert.match(root, /personal_color_profile_id/);
 });
 
-test("confirmed Makeup shows routine, brief, product guide, and explicit share permission", () => {
-  const stage = readApp("components/consulting/makeup/MakeupDirectionStage.tsx"); const outputs = readApp("components/consulting/makeup/MakeupOutputs.tsx");
-  assert.match(stage, /MakeupOutputs/);
-  assert.match(outputs, /Self makeup/);
-  assert.match(outputs, /Artist handoff/);
-  assert.match(outputs, /Product search guide/);
+test("confirmed Makeup shows professional report, routine, artist brief, product guide, and explicit share permission", () => {
+  const stage = readApp("components/consulting/makeup/MakeupDirectionStage.tsx"); const outputs = readApp("components/consulting/makeup/MakeupOutputs.tsx"); const report = readApp("components/consulting/makeup/MakeupProfessionalReport.tsx");
+  assert.match(stage, /MakeupProfessionalReportNarrative/);
+  assert.match(report, /셀프 메이크업 적용 순서/);
+  assert.match(report, /메이크업 아티스트용 상세 명세/);
+  assert.match(outputs, /제품 찾기/);
   assert.match(outputs, /checked=\{includeSourcePhoto\}/);
   assert.match(outputs, /useState\(false\)/);
 });

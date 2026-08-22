@@ -7,6 +7,7 @@ import { readMakeupArtifacts } from "../../../../../lib/makeup/makeup-artifacts-
 import { isConsultationMakeupInterviewEnabled, isMakeupStyleSimulationEnabled } from "../../../../../lib/consulting/feature-flag";
 import { readCurrentMakeupRationale, readMakeupInterview } from "../../../../../lib/makeup/makeup-interview-server";
 import { readMakeupSimulation } from "../../../../../lib/makeup/makeup-simulation-server";
+import { readMakeupProfessionalReportForArtifacts } from "../../../../../lib/capabilities/makeup-professional-report-service";
 
 interface Params { params: Promise<{ sessionId: string }> }
 export async function GET(_request: Request, { params }: Params) {
@@ -21,7 +22,10 @@ export async function GET(_request: Request, { params }: Params) {
     const rationaleAi = interviewEnabled && direction.snapshot?.rationale ? await readCurrentMakeupRationale(userId, sessionId) : null;
     const simulationEnabled = isMakeupStyleSimulationEnabled();
     const simulation = simulationEnabled ? await readMakeupSimulation(userId, sessionId) : null;
-    return NextResponse.json({ ...direction, artifacts, interviewEnabled, interview, rationaleAi, simulationEnabled, simulation });
+    const professionalReport = direction.snapshot?.confirmedAt && artifacts.routine && artifacts.brief
+      ? await readMakeupProfessionalReportForArtifacts({ userId, snapshot: direction.snapshot, routine: artifacts.routine, brief: artifacts.brief })
+      : null;
+    return NextResponse.json({ ...direction, artifacts, interviewEnabled, interview, rationaleAi, professionalReport, simulationEnabled, simulation });
   }
   catch (error) { return v2Failure(error); }
 }

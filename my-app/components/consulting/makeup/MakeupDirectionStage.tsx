@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { CapabilityResult, CapabilityTaskState } from "@hairfit/shared/consulting/capability";
-import { type MakeupArtistBrief, type MakeupContextProfile, type MakeupDirectionSnapshot, type MakeupInterviewProfileV2, type MakeupInterviewTopic, type MakeupModule, type MakeupRationaleNarrativeV1, type MakeupRoutine, type MakeupSemanticProjectionV3, type MakeupSimulationOutputV1, type MakeupSimulationRunV1, type MakeupSimulationSelectionSnapshotV1, type MakeupSourceStaleReason, type MakeupWorkspaceStateV2 } from "@hairfit/shared/makeup";
+import { type MakeupArtistBrief, type MakeupContextProfile, type MakeupDirectionProfessionalReportEnvelopeV1, type MakeupDirectionSnapshot, type MakeupInterviewProfileV2, type MakeupInterviewTopic, type MakeupModule, type MakeupRationaleNarrativeV1, type MakeupRoutine, type MakeupSemanticProjectionV3, type MakeupSimulationOutputV1, type MakeupSimulationRunV1, type MakeupSimulationSelectionSnapshotV1, type MakeupSourceStaleReason, type MakeupWorkspaceStateV2 } from "@hairfit/shared/makeup";
 import type { ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { Button } from "../../ui/Button";
 import { Panel, SurfaceCard } from "../workbenches/shared";
@@ -12,10 +12,11 @@ import { MakeupOutputs } from "./MakeupOutputs";
 import { MakeupDirectionInterview } from "./MakeupDirectionInterview";
 import { MakeupRecommendationReview } from "./MakeupRecommendationReview";
 import { MakeupSimulationWorkspace } from "./MakeupSimulationWorkspace";
+import { MakeupProfessionalReportDetails, MakeupProfessionalReportNarrative } from "./MakeupProfessionalReport";
 
 type InterviewPayload = { profile: MakeupInterviewProfileV2; coverage: Array<{ topicId: MakeupInterviewTopic; required: boolean; status: "complete" | "skipped" | "pending" }>; complete: boolean; confirmed: boolean; savedAt: string | null };
 type SimulationPayload = { run: MakeupSimulationRunV1 | null; outputs: MakeupSimulationOutputV1[]; selection: MakeupSimulationSelectionSnapshotV1 | null; workspaceState: MakeupWorkspaceStateV2 };
-type Payload = { snapshot: MakeupDirectionSnapshot | null; revision: number | null; sourceFingerprint?: string | null; staleSourceReasons: MakeupSourceStaleReason[]; defaultContext: MakeupContextProfile; interviewEnabled?: boolean; interview?: InterviewPayload | null; rationaleAi?: CapabilityResult<MakeupRationaleNarrativeV1> | null; semanticMap?: CapabilityResult<MakeupSemanticProjectionV3> | null; semanticEnabled?: boolean; denseAtlasEnabled?: boolean; simulationEnabled?: boolean; simulation?: SimulationPayload | null; artifacts?: { routine: MakeupRoutine | null; brief: MakeupArtistBrief | null; share: { active: boolean; expiresAt: string; sourcePhotoIncluded: boolean } | null } };
+type Payload = { snapshot: MakeupDirectionSnapshot | null; revision: number | null; sourceFingerprint?: string | null; staleSourceReasons: MakeupSourceStaleReason[]; defaultContext: MakeupContextProfile; interviewEnabled?: boolean; interview?: InterviewPayload | null; rationaleAi?: CapabilityResult<MakeupRationaleNarrativeV1> | null; professionalReport?: MakeupDirectionProfessionalReportEnvelopeV1 | null; semanticMap?: CapabilityResult<MakeupSemanticProjectionV3> | null; semanticEnabled?: boolean; denseAtlasEnabled?: boolean; simulationEnabled?: boolean; simulation?: SimulationPayload | null; artifacts?: { routine: MakeupRoutine | null; brief: MakeupArtistBrief | null; share: { active: boolean; expiresAt: string; sourcePhotoIncluded: boolean } | null } };
 const STALE_LABELS: Record<MakeupSourceStaleReason, string> = { face_observation_changed: "얼굴 관측", personal_color_changed: "퍼스널 컬러", selected_style_changed: "확정 헤어", input_profile_changed: "입력 프로필" };
 const SEMANTIC_WAITING_MESSAGES = ["컬러칩을 실제 메이크업 부위에 연결하고 있어요.", "아이라인과 속눈썹의 눈매 기준을 확인하고 있어요.", "부위별 컬러와 적용 정보를 정리하고 있어요."];
 
@@ -53,15 +54,16 @@ export function MakeupDirectionStage({ consultation, onConfirmed }: { consultati
   const [semanticLocalState, setSemanticLocalState] = useState<CapabilityTaskState | "idle">("idle");
   const [semanticMessageIndex, setSemanticMessageIndex] = useState(0);
   const semanticDispatchKeyRef = useRef<string | null>(null);
+  const reportDispatchKeyRef = useRef<string | null>(null);
   const interviewRevisionRef = useRef<number | null>(null);
 
-  const applyLoadedData = ({ data, sourceImageUrl }: Awaited<ReturnType<typeof fetchMakeupStageData>>) => {
+  const applyLoadedData = useCallback(({ data, sourceImageUrl }: Awaited<ReturnType<typeof fetchMakeupStageData>>) => {
     interviewRevisionRef.current = data.interview?.profile.revision ?? null;
     setPayload(data);
     setContext(data.snapshot?.context ?? data.defaultContext);
     if (sourceImageUrl) setSourcePhotoUrl(sourceImageUrl);
-  };
-  const load = async () => applyLoadedData(await fetchMakeupStageData(baseUrl, consultation.sessionId));
+  }, []);
+  const load = useCallback(async () => applyLoadedData(await fetchMakeupStageData(baseUrl, consultation.sessionId)), [applyLoadedData, baseUrl, consultation.sessionId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -98,6 +100,7 @@ export function MakeupDirectionStage({ consultation, onConfirmed }: { consultati
 
   const semanticState = payload?.semanticMap?.state ?? semanticLocalState;
   const semanticWaiting = ["queued", "waiting", "running", "partial"].includes(semanticState);
+  const semanticPolling = Boolean(payload?.semanticMap && ["queued", "waiting", "running", "partial"].includes(payload.semanticMap.state));
   useEffect(() => {
     if (!semanticWaiting) return;
     const timer = window.setInterval(() => setSemanticMessageIndex((current) => (current + 1) % SEMANTIC_WAITING_MESSAGES.length), 2200);
@@ -105,10 +108,29 @@ export function MakeupDirectionStage({ consultation, onConfirmed }: { consultati
   }, [semanticWaiting]);
 
   useEffect(() => {
-    if (!payload?.semanticMap || !["queued", "waiting", "running", "partial"].includes(payload.semanticMap.state)) return;
-    const timer = window.setTimeout(() => void load().catch(() => undefined), 1500);
-    return () => window.clearTimeout(timer);
-  });
+    if (!semanticPolling) return;
+    const timer = window.setInterval(() => void load().catch(() => undefined), 1500);
+    return () => window.clearInterval(timer);
+  }, [load, semanticPolling]);
+
+  const reportState = payload?.professionalReport?.state ?? null;
+  const reportCanEnhance = payload?.professionalReport?.canEnhance ?? false;
+  const confirmedSnapshotId = payload?.snapshot?.confirmedAt ? payload.snapshot.id : null;
+
+  useEffect(() => {
+    if (!confirmedSnapshotId || !reportCanEnhance || reportState !== "fallback" || reportDispatchKeyRef.current === confirmedSnapshotId) return;
+    reportDispatchKeyRef.current = confirmedSnapshotId;
+    void jsonRequest(`${baseUrl}/report`, { method: "POST", body: "{}" }).then((value) => {
+      const professionalReport = (value as { professionalReport?: MakeupDirectionProfessionalReportEnvelopeV1 }).professionalReport;
+      if (professionalReport) setPayload((current) => current ? { ...current, professionalReport } : current);
+    }).catch(() => setPayload((current) => current?.professionalReport ? { ...current, professionalReport: { ...current.professionalReport, state: "failed" } } : current));
+  }, [baseUrl, confirmedSnapshotId, reportCanEnhance, reportState]);
+
+  useEffect(() => {
+    if (reportState !== "preparing") return;
+    const timer = window.setInterval(() => void load().catch(() => undefined), 1500);
+    return () => window.clearInterval(timer);
+  }, [load, reportState]);
 
   const saveAndBuild = async () => {
     if (!context) return;
@@ -175,6 +197,14 @@ export function MakeupDirectionStage({ consultation, onConfirmed }: { consultati
     catch (reason) { setError(reason instanceof Error ? reason.message : "AI 설명을 다시 요청하지 못했습니다."); }
   };
 
+  const retryProfessionalReport = async () => {
+    setError("");
+    try {
+      const value = await jsonRequest(`${baseUrl}/report`, { method: "PUT", body: "{}" }) as { professionalReport?: MakeupDirectionProfessionalReportEnvelopeV1 };
+      if (value.professionalReport) setPayload((current) => current ? { ...current, professionalReport: value.professionalReport } : current);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "AI 해설을 다시 준비하지 못했습니다."); }
+  };
+
   const reopenInterview = async () => {
     if (!payload?.interview) return;
     try { await saveInterview("mode", payload.interview.profile); await load(); }
@@ -189,16 +219,22 @@ export function MakeupDirectionStage({ consultation, onConfirmed }: { consultati
 
   if (!payload.snapshot || payload.snapshot.status === "context_draft" || payload.staleSourceReasons.length) return <div className="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
     <Panel className="p-6"><p className="app-kicker">Makeup context</p><h2 className="mt-2 text-xl font-black">어떤 표현을 원하는지 먼저 알려주세요</h2>{payload.staleSourceReasons.length ? <div role="alert" className="mt-4 border border-amber-500/50 bg-amber-500/10 p-4 text-sm"><strong>기준 결과가 바뀌었습니다.</strong><p className="mt-1">{payload.staleSourceReasons.map((item) => STALE_LABELS[item]).join(" · ")} 기준으로 다시 계산합니다.</p></div> : null}<div className="mt-6"><MakeupContextForm value={context} onChange={setContext} onSubmit={saveAndBuild} working={working} /></div>{error ? <p role="alert" className="mt-4 text-sm text-red-400">{error}</p> : null}</Panel>
-    <SurfaceCard className="p-6"><p className="app-kicker">Source contract</p><h2 className="mt-2 text-lg font-black">재분석 없이 이어지는 근거</h2><dl className="mt-5 grid gap-3 text-sm"><div><dt className="text-[var(--app-muted)]">얼굴 관측</dt><dd className="font-bold">기존 FaceObservationBundle 재사용</dd></div><div><dt className="text-[var(--app-muted)]">컬러</dt><dd className="font-bold">확정 Personal Color V2 프로필</dd></div><div><dt className="text-[var(--app-muted)]">헤어</dt><dd className="font-bold">확정 스타일의 컬러·앞머리·가르마 힌트</dd></div><div><dt className="text-[var(--app-muted)]">기능 범위</dt><dd className="font-bold">합성 이미지가 아닌 적용 위치·방향 지도</dd></div></dl></SurfaceCard>
+    <SurfaceCard className="p-6"><p className="app-kicker">이어지는 상담 정보</p><h2 className="mt-2 text-lg font-black">이미 확인한 결과를 함께 반영해요</h2><dl className="mt-5 grid gap-3 text-sm"><div><dt className="text-[var(--app-muted)]">얼굴 특징</dt><dd className="font-bold">앞 단계에서 확인한 얼굴 균형</dd></div><div><dt className="text-[var(--app-muted)]">퍼스널 컬러</dt><dd className="font-bold">확정한 추천·주의 팔레트</dd></div><div><dt className="text-[var(--app-muted)]">헤어</dt><dd className="font-bold">확정 스타일의 컬러·앞머리·가르마</dd></div><div><dt className="text-[var(--app-muted)]">제공 결과</dt><dd className="font-bold">얼굴을 바꾸지 않는 적용 위치·방향 안내</dd></div></dl></SurfaceCard>
   </div>;
 
   const confirmed = payload.snapshot.status === "confirmed" || payload.snapshot.status === "routine_ready" || payload.snapshot.status === "brief_ready";
-  if (confirmed && payload.simulationEnabled) return <MakeupSimulationWorkspace sessionId={consultation.sessionId} sourcePhotoUrl={sourcePhotoUrl} initial={payload.simulation ?? null} onConfirmed={onConfirmed} />;
+  if (confirmed) return <div className="grid gap-5">
+    {payload.professionalReport ? <MakeupProfessionalReportNarrative report={payload.professionalReport} onRetry={() => void retryProfessionalReport()} /> : <Panel className="p-6"><p className="app-kicker">AI 메이크업 디렉터 리포트</p><h2 className="mt-2 text-xl font-black">확정한 방향을 리포트로 정리하고 있어요</h2></Panel>}
+    {payload.simulationEnabled ? <MakeupSimulationWorkspace sessionId={consultation.sessionId} sourcePhotoUrl={sourcePhotoUrl} initial={payload.simulation ?? null} onConfirmed={onConfirmed} /> : null}
+    {payload.artifacts?.routine && payload.artifacts.brief ? <MakeupProfessionalReportDetails routine={payload.artifacts.routine} brief={payload.artifacts.brief} /> : null}
+    <MakeupOutputs sessionId={consultation.sessionId} routine={payload.artifacts?.routine ?? null} brief={payload.artifacts?.brief ?? null} onRefresh={load} />
+    {error ? <p role="alert" className="text-sm text-red-400">{error}</p> : null}
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--app-border)] pt-5"><p className="font-black">메이크업 방향이 확정되었습니다.</p><span className="border border-emerald-500/50 px-3 py-2 text-sm font-black text-emerald-300">확정 완료</span></div>
+  </div>;
   const semanticProjection = payload.semanticMap?.state === "completed" ? payload.semanticMap.output : null;
   return <div className="grid gap-5">
-    {payload.snapshot.rationale ? <Panel className="p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="app-kicker">Recommendation rationale</p><h2 className="mt-1 text-lg font-black">{payload.snapshot.rationale.decision === "accept_adjustment" ? "AI 조정안을 반영한 방향" : "사용자 선택을 유지한 방향"}</h2></div>{payload.interviewEnabled && !confirmed ? <Button variant="ghost" onClick={() => void reopenInterview()}>인터뷰 답변 수정</Button> : null}</div><div className="mt-3 grid gap-2 md:grid-cols-5">{payload.snapshot.rationale.evidence.map((item) => <div key={item.id} className="border-l border-[var(--app-border)] pl-3"><p className="text-xs font-black text-[var(--app-muted)]">{item.label}</p><p className="mt-1 text-sm font-bold">{item.finding}</p></div>)}</div><p className="mt-3 text-xs text-[var(--app-muted)]">근거 revision {payload.snapshot.rationale.revision} · 루틴·아티스트 브리프·리포트와 동일한 기준을 사용합니다.</p></Panel> : null}
+    {payload.snapshot.rationale ? <Panel className="p-4"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="app-kicker">추천 방향 확인</p><h2 className="mt-1 text-lg font-black">{payload.snapshot.rationale.decision === "accept_adjustment" ? "AI 조정안을 반영한 방향" : "내 선택을 유지한 방향"}</h2></div>{payload.interviewEnabled && !confirmed ? <Button variant="ghost" onClick={() => void reopenInterview()}>인터뷰 답변 수정</Button> : null}</div><div className="mt-3 grid gap-2 md:grid-cols-5">{payload.snapshot.rationale.evidence.map((item) => <div key={item.id} className="border-l border-[var(--app-border)] pl-3"><p className="text-xs font-black text-[var(--app-muted)]">{item.label}</p><p className="mt-1 text-sm font-bold">{item.finding}</p></div>)}</div><p className="mt-3 text-xs text-[var(--app-muted)]">확정하면 같은 기준으로 셀프 루틴과 아티스트 전달용 리포트를 준비합니다.</p></Panel> : null}
     <Panel className="p-4"><div className="mb-4"><p className="app-kicker">Makeup color guide</p><h2 className="mt-1 text-lg font-black">컬러와 적용 부위</h2></div><MakeupDirectionCanvas photoUrl={sourcePhotoUrl} modules={payload.snapshot.modules} topology={payload.snapshot.topologyProjection} denseAtlas={payload.denseAtlasEnabled === false ? null : payload.snapshot.denseAtlas} semanticProjection={semanticProjection} activeModule={activeModule} mode="application" onSelect={setActiveModule} />{payload.semanticEnabled ? <div className="mt-3 border border-[var(--app-border)] px-3 py-2 text-xs leading-5" role="status" aria-live="polite" data-makeup-semantic-task-state={semanticState}><strong>{semanticProjection ? "부위 연결 기준 준비 완료" : semanticWaiting ? "부위 연결 기준을 확인하는 중" : semanticState === "failed" || semanticState === "retry_required" ? "기본 부위 연결 정보로 계속 진행" : "기본 부위 연결 정보 준비 완료"}</strong>{semanticWaiting ? <p className="text-[var(--app-muted)]">{SEMANTIC_WAITING_MESSAGES[semanticMessageIndex]}</p> : null}{semanticState === "failed" || semanticState === "retry_required" ? <Button type="button" className="mt-2" variant="secondary" onClick={() => void retrySemantic()}>부위 연결 정보 다시 시도</Button> : null}</div> : null}<p className="mt-3 text-xs leading-5 text-[var(--app-muted)]">원본 얼굴 픽셀은 바꾸지 않습니다. 얼굴 위 전체 랜드마크는 숨기고 컬러칩·부위명·연결선과 아이라인·속눈썹 국소 가이드만 표시합니다.</p></Panel>
-    {confirmed ? <MakeupOutputs sessionId={consultation.sessionId} routine={payload.artifacts?.routine ?? null} brief={payload.artifacts?.brief ?? null} onRefresh={load} /> : null}
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--app-border)] pt-5"><div><p className="font-black">{confirmed ? "메이크업 방향이 확정되었습니다." : "확정 후에는 이 스냅샷을 수정할 수 없습니다."}</p>{error ? <p role="alert" className="mt-1 text-sm text-red-400">{error}</p> : null}</div>{!confirmed ? <Button type="button" loading={working} onClick={() => void confirm()}>7개 방향 확정</Button> : <span className="border border-emerald-500/50 px-3 py-2 text-sm font-black text-emerald-300">Confirmed</span>}</div>
   </div>;
 }

@@ -17,6 +17,8 @@ import { readFashionBatch } from "./fashion-batch-server";
 import { listFashionOfferSnapshotsV2 } from "./fashion-product-offer-server";
 import { recordConsultationReportProjectionEvent } from "../v2/observability";
 import { attachConsultationResultNarrative, readConsultationResultNarrative } from "./result-narrative-service";
+import { readMakeupArtifacts } from "../makeup/makeup-artifacts-server";
+import { readMakeupProfessionalReportForArtifacts } from "../capabilities/makeup-professional-report-service";
 
 function analysisEvidence(row: Record<string, unknown> | null): AnalysisEvidenceV2 | null {
   if (!row) return null;
@@ -123,12 +125,21 @@ export async function readConsultationReportV2(input: {
   const selectedMakeupOutput = makeupSimulation?.selection
     ? makeupSimulation.outputs.find((item) => item.id === makeupSimulation.selection?.outputId) ?? null
     : null;
+  const makeupArtifacts = makeupRow?.snapshot?.confirmedAt
+    ? await readMakeupArtifacts(input.userId, input.consultationId).catch(() => ({ routine: null, brief: null, share: null }))
+    : { routine: null, brief: null, share: null };
+  const makeupProfessionalReport = makeupRow?.snapshot && makeupArtifacts.routine && makeupArtifacts.brief
+    ? await readMakeupProfessionalReportForArtifacts({ userId: input.userId, snapshot: makeupRow.snapshot, routine: makeupArtifacts.routine, brief: makeupArtifacts.brief }).catch(() => null)
+    : null;
   const baseReport = projectConsultationReportV2(snapshot, {
     analysisEvidence: analysisEvidence(analysisRow),
     personalColorProfile: personalColorRow?.profile ?? null,
     salonBrief: salonBriefRow?.brief ?? null,
     makeupDirection: makeupRow?.snapshot ?? null,
     makeupMoodImageUrl: selectedMakeupOutput?.imageUrl ?? null,
+    makeupRoutine: makeupArtifacts.routine,
+    makeupArtistBrief: makeupArtifacts.brief,
+    makeupProfessionalReport,
     hairProfile: hairDiagnosis?.profile ?? null,
     hairRecommendation,
     fashionBatch: fashionBatch ?? snapshot.fashionBatch,

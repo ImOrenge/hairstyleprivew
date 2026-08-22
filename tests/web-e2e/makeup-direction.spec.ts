@@ -40,14 +40,14 @@ test("makeup stays inside the consultation journey with stage selection and a re
 
   const navigation = page.getByRole("navigation", { name: "상담 단계 이동" });
   await expect(navigation).toBeVisible();
-  await navigation.getByRole("button", { name: "All stages" }).click();
+  await navigation.getByRole("button", { name: "Chapters" }).click();
 
-  const stageMap = page.getByRole("dialog", { name: "ALL STAGES" });
-  await expect(stageMap.getByRole("link", { name: /MAKEUP DIRECTION/ })).toHaveAttribute("aria-current", "step");
-  await expect(stageMap.getByRole("link", { name: /FASHION/ })).toBeVisible();
+  const stageMap = page.getByRole("dialog", { name: "4 CHAPTERS" });
+  await expect(stageMap.getByRole("link", { name: /STYLE DESIGN/ })).toHaveAttribute("aria-current", "step");
+  await expect(stageMap.getByText("FINAL REPORT", { exact: true })).toBeVisible();
   await stageMap.getByRole("button", { name: "전체 단계 닫기" }).click();
 
-  const recommended = navigation.getByRole("link", { name: "AI 추천 작업: FASHION" });
+  const recommended = navigation.getByRole("link", { name: "AI 추천 작업: 패션 방향 정하기" });
   await expect(recommended).toBeVisible();
   await recommended.click();
   await expect(page).toHaveURL(/\/consulting\/e2e-harness\?stage=fashion$/);
@@ -69,7 +69,7 @@ test("makeup direction presents separated color callouts, local eye guides, and 
   await page.mouse.move(1, 1);
   await expect(colorInfo).toHaveCount(0);
   await browCallout.click();
-  await page.getByRole("button", { name: "All stages" }).focus();
+  await page.getByRole("button", { name: "Chapters" }).focus();
   await expect(colorInfo).toBeVisible();
   const [desktopStageBox, desktopInfoBox] = await Promise.all([
     fixture.locator(".makeup-direction-map__stage").boundingBox(),
@@ -123,9 +123,11 @@ test("makeup direction presents separated color callouts, local eye guides, and 
   await expect(fixture.locator("[data-makeup-callout-connector='nose_contour']")).toBeVisible();
   await expect(noseCallout).toHaveAttribute("aria-pressed", "true");
   await page.screenshot({ path: "docs/hairfit-v2/evidence/p06-makeup-zone-direction-desktop.png", fullPage: true });
-  await expect(fixture.getByText("Self makeup", { exact: true })).toBeVisible();
-  await expect(fixture.getByText("Artist handoff", { exact: true })).toBeVisible();
-  await expect(fixture.getByText("Product search guide", { exact: true })).toBeVisible();
+  await expect(fixture.getByText("AI 메이크업 디렉터 리포트", { exact: true })).toBeVisible();
+  await expect(fixture.getByText("셀프 메이크업 적용 순서", { exact: true })).toBeVisible();
+  await expect(fixture.getByText("메이크업 아티스트용 상세 명세", { exact: true })).toBeVisible();
+  await expect(fixture.getByText("브랜드와 관계없이 활용할 검색어", { exact: true })).toBeVisible();
+  await expect(fixture.getByText("아티스트에게 리포트 전달", { exact: true })).toBeVisible();
   await expect(fixture.getByRole("checkbox")).not.toBeChecked();
   await page.screenshot({ path: "docs/hairfit-v2/evidence/p07-makeup-routine-brief-share-desktop.png", fullPage: true });
   expect(consoleErrors).toEqual([]);
@@ -178,4 +180,30 @@ test("makeup callouts remain distinct and operable at mobile width", async ({ pa
   await jawCallout.focus();
   await jawCallout.click();
   await expect(fixture.locator("[data-makeup-visible-callout]")).toHaveAttribute("data-makeup-visible-callout", "jaw_shadow");
+});
+
+test("professional makeup report keeps fallback visible, replaces it asynchronously, and recovers by keyboard", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/consulting/e2e-harness?stage=makeup&reportState=preparing");
+  const fixture = page.getByTestId("makeup-direction-fixture");
+  const report = fixture.locator("[data-makeup-professional-report]");
+  await expect(report).toHaveAttribute("data-makeup-professional-report", "preparing");
+  await expect(report.getByRole("heading", { name: "확정한 분위기를 실제 메이크업으로 연결했어요" })).toBeVisible();
+  await expect(report).toHaveAttribute("data-makeup-professional-report", "ready");
+  await expect(report.getByRole("heading", { name: "딥 웜 컬러와 헤어 흐름을 잇는 내추럴 메이크업" })).toBeVisible();
+  const overflow = await fixture.evaluate((element) => ({ scrollWidth: element.scrollWidth, clientWidth: element.clientWidth }));
+  expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
+  const specification = fixture.getByText("메이크업 아티스트용 상세 명세", { exact: true });
+  await specification.focus();
+  await page.keyboard.press("Enter");
+  await expect(specification.locator("xpath=..")).toHaveAttribute("open", "");
+  await page.emulateMedia({ media: "print" });
+  await expect(report).toBeVisible();
+
+  await page.goto("/consulting/e2e-harness?stage=makeup&reportState=failed");
+  const retry = page.getByRole("button", { name: "해설 다시 준비하기" });
+  await retry.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("[data-makeup-professional-report]")).toHaveAttribute("data-makeup-professional-report", "preparing");
+  await expect(page.locator("[data-makeup-professional-report]")).toHaveAttribute("data-makeup-professional-report", "ready");
 });

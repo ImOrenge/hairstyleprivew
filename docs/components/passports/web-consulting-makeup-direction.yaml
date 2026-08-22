@@ -17,6 +17,7 @@ related_source:
   - my-app/components/consulting/makeup/MakeupDirectionFixture.tsx
   - my-app/components/consulting/makeup/MakeupInterviewFixture.tsx
   - my-app/components/consulting/makeup/MakeupOutputs.tsx
+  - my-app/components/consulting/makeup/MakeupProfessionalReport.tsx
   - my-app/components/consulting/makeup/MakeupSimulationWorkspace.tsx
   - my-app/lib/makeup/makeup-simulation-server.ts
   - my-app/lib/capabilities/makeup-simulation-service.ts
@@ -36,6 +37,7 @@ public_api:
     - MakeupZoneDetail
     - MakeupAdjustmentControls
     - MakeupOutputs
+    - MakeupProfessionalReport
   props:
     - consultation-server-snapshot
     - optional-confirmation-refresh
@@ -48,6 +50,7 @@ public_api:
     - interview-confirm
     - recommendation-adjustment-decision
     - nonblocking-rationale-dispatch-and-retry
+    - nonblocking-professional-report-dispatch-poll-and-retry
     - context-save-and-build
     - module-select
     - color-callout-hover-focus-select
@@ -102,6 +105,9 @@ boundaries:
       - facial-hair-exclusion-presentation
       - self-makeup-routine
       - artist-brief-and-share-permission
+      - customer-first-professional-makeup-report
+      - authoritative-collapsible-artist-specification
+      - shared-stage-result-pdf-and-public-handoff-report
       - product-search-guide
       - direction-confirmed-makeup-style-simulation
       - waiting-message-carousel-and-server-resume
@@ -147,6 +153,7 @@ state:
     - interview-profile-and-coverage
     - structured-rationale-and-decision
     - durable-rationale-narrative-result
+    - durable-professional-report-result
     - modules
     - geometry
     - topology-projection
@@ -191,6 +198,7 @@ test_surface:
   interview_migration: supabase/migrations/20260816112511_extend_makeup_interview_rationale.sql
   simulation_contract: packages/shared/src/makeup/simulation.test.ts
   simulation_migration: supabase/migrations/20260820144500_makeup_style_simulation.sql
+  professional_report_migration: supabase/migrations/20260822120000_makeup_professional_report.sql
 
 change_policy:
   compatible_change_requires:
