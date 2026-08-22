@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getLatestAftercareStateV2, recordActualServiceAndAftercareV2, updateAftercareProgramV2 } from "../../../../../../lib/v2/outputs-server";
+import { getAftercareEmailPreference } from "../../../../../../lib/aftercare-email-server";
 import { v2Disabled, v2Failure } from "../../../../../../lib/v2/http";
 
 interface Params { params: Promise<{ consultationId: string }> }
@@ -9,7 +10,13 @@ export async function GET(_request: Request, { params }: Params) {
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   const disabled = v2Disabled("CONSULTATION_SESSION_V2_ENABLED", "SALON_BRIEF_V2_ENABLED"); if (disabled) return disabled;
   const { consultationId } = await params;
-  try { return NextResponse.json(await getLatestAftercareStateV2(userId, consultationId)); }
+  try {
+    const state = await getLatestAftercareStateV2(userId, consultationId);
+    const notification = state.program?.actualServiceId
+      ? await getAftercareEmailPreference(userId, state.program.actualServiceId)
+      : null;
+    return NextResponse.json({ ...state, notification });
+  }
   catch (error) { return v2Failure(error); }
 }
 

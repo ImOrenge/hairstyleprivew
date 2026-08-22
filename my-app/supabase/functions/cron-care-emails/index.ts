@@ -1,167 +1,129 @@
-/**
- * cron-care-emails
- * 매일 09:00 KST(00:00 UTC) 실행
- * user_care_contents에서 오늘 발송 예정인 항목을 조회하여 Resend로 발송합니다.
- */
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
-const RESEND_FROM_EMAIL = resolveResendFromEmail(Deno.env.get("RESEND_FROM_EMAIL"));
-const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") ?? "";
+const RESEND_FROM_EMAIL = resolveFrom(Deno.env.get("RESEND_FROM_EMAIL"));
+const DELIVERY_MODE = (Deno.env.get("AFTERCARE_EMAIL_DELIVERY_MODE") ?? "off").trim().toLowerCase();
+const CANARY_TO = Deno.env.get("AFTERCARE_EMAIL_CANARY_TO")?.trim().toLowerCase() ?? "";
+const BATCH_SIZE = 25;
 
-const BATCH_SIZE = 50; // 1회 실행 당 최대 발송 수
+type ClaimedEmail = {
+  outbox_id: string;
+  recipient_email: string;
+  subject: string;
+  html_body: string;
+  text_body: string;
+  idempotency_key: string;
+  attempt_count: number;
+  lease_token: string;
+};
 
-function resolveResendFromEmail(value?: string | null) {
+function resolveFrom(value?: string | null) {
   const trimmed = value?.trim();
-  if (!trimmed || /@resend\.dev\b/i.test(trimmed)) {
-    return PRODUCTION_FROM_EMAIL;
-  }
-  return trimmed;
+  return trimmed && !/@resend\.dev\b/i.test(trimmed)
+    ? trimmed
+    : "HairFit <noreply@hairfit.beauty>";
 }
 
-async function sendEmail(
-  to: string,
-  subject: string,
-  html: string,
-): Promise<{ messageId: string | null; error: string | null }> {
-  if (!RESEND_API_KEY) {
-    return { messageId: null, error: "Missing RESEND_API_KEY" };
-  }
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+}
 
+async function resendEmail(row: ClaimedEmail) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         Authorization: `Bearer ${RESEND_API_KEY}`,
         "Content-Type": "application/json",
+        "Idempotency-Key": row.idempotency_key,
       },
       body: JSON.stringify({
         from: RESEND_FROM_EMAIL,
-        to,
-        subject,
-        html,
+        to: [row.recipient_email],
+        subject: row.subject,
+        html: row.html_body,
+        text: row.text_body,
       }),
     });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      return { messageId: null, error: `Resend error ${res.status}: ${text}` };
+    const responseText = await response.text().catch(() => "");
+    if (!response.ok) {
+      return {
+        messageId: null,
+        errorKind: `resend_http_${response.status}`,
+        error: responseText.slice(0, 1000),
+        retryable: response.status === 408 || response.status === 429 || response.status >= 500,
+        deliveryUnknown: false,
+      };
     }
-
-    const data = (await res.json()) as { id?: string };
-    return { messageId: data.id ?? null, error: data.id ? null : "Resend response missing id" };
+    const payload = JSON.parse(responseText || "{}") as { id?: unknown };
+    if (typeof payload.id !== "string" || !payload.id) {
+      return { messageId: null, errorKind: "resend_missing_id", error: "Provider accepted without a message id", retryable: false, deliveryUnknown: true };
+    }
+    return { messageId: payload.id, errorKind: null, error: null, retryable: false, deliveryUnknown: false };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    return { messageId: null, error: message };
+    return {
+      messageId: null,
+      errorKind: error instanceof DOMException && error.name === "AbortError" ? "resend_timeout" : "resend_network_error",
+      error: error instanceof Error ? error.message.slice(0, 1000) : "Provider request failed",
+      retryable: false,
+      deliveryUnknown: true,
+    };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
-Deno.serve(async () => {
-  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+Deno.serve(async (request) => {
+  if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405);
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) return json({ error: "missing_database_configuration" }, 503);
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const bearer = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") || "";
+  const authorization = await supabase.rpc("authorize_aftercare_cron_request", { p_bearer: bearer });
+  if (authorization.error || authorization.data !== true) return json({ error: "unauthorized" }, 401);
+  if (DELIVERY_MODE === "off") return json({ mode: "off", claimed: 0, accepted: 0 });
+  if (!RESEND_API_KEY) return json({ error: "missing_delivery_configuration" }, 503);
+  if (DELIVERY_MODE !== "live" && (DELIVERY_MODE !== "canary" || !CANARY_TO)) return json({ error: "invalid_delivery_mode" }, 503);
+  const claim = await supabase.rpc("claim_aftercare_email_outbox", {
+    p_limit: BATCH_SIZE,
+    p_lease_seconds: 300,
+    p_recipient_email: DELIVERY_MODE === "canary" ? CANARY_TO : null,
+  });
+  if (claim.error) return json({ error: "claim_failed", detail: claim.error.message }, 500);
 
-  // 오늘 발송 예정이고 아직 보내지 않은 항목 조회
-  // scheduled_send_at <= now() AND sent_at IS NULL
-  const { data: rows, error: fetchError } = await supabase
-    .from("user_care_contents")
-    .select(
-      `
-      id,
-      subject,
-      body_html,
-      content_type,
-      hair_record:user_hair_records!inner(
-        user_id
-      )
-    `,
-    )
-    .lte("scheduled_send_at", new Date().toISOString())
-    .is("sent_at", null)
-    .limit(BATCH_SIZE);
-
-  if (fetchError) {
-    console.error("[cron-care-emails] fetch error:", fetchError.message);
-    return new Response(JSON.stringify({ error: fetchError.message }), { status: 500 });
-  }
-
-  const pending = (rows ?? []) as unknown as Array<{
-    id: string;
-    subject: string;
-    body_html: string;
-    content_type: string;
-    hair_record: { user_id: string };
-  }>;
-
-  if (pending.length === 0) {
-    return new Response(JSON.stringify({ sent: 0, message: "no pending emails" }), { status: 200 });
-  }
-
-  // user_id 목록 수집 → Clerk 없이 Supabase auth.users에서 이메일 조회
-  const userIds = [...new Set(pending.map((r) => r.hair_record.user_id))];
-
-  const { data: userRows, error: userFetchError } = await supabase
-    .from("users")
-    .select("id, email, display_name")
-    .in("id", userIds);
-
-  if (userFetchError) {
-    console.error("[cron-care-emails] user fetch error:", userFetchError.message);
-    // 이메일을 모르면 발송 불가 → 조용히 종료
-    return new Response(JSON.stringify({ error: userFetchError.message }), { status: 500 });
-  }
-
-  const emailByUserId = new Map<string, { email: string; name: string | null }>();
-  for (const u of userRows ?? []) {
-    if (u.email) {
-      emailByUserId.set(u.id as string, { email: u.email as string, name: u.display_name as string | null });
-    }
-  }
-
-  let sentCount = 0;
-  let failCount = 0;
-
-  for (const row of pending) {
-    const userId = row.hair_record.user_id;
-    const userInfo = emailByUserId.get(userId);
-
-    if (!userInfo) {
-      console.warn(`[cron-care-emails] no email for user ${userId}, skipping id=${row.id}`);
-      failCount++;
+  const rows = (claim.data ?? []) as ClaimedEmail[];
+  const summary = { mode: DELIVERY_MODE, claimed: rows.length, accepted: 0, retryWait: 0, deadLetter: 0, deliveryUnknown: 0, staleLease: 0 };
+  for (const row of rows) {
+    const begun = await supabase.rpc("begin_aftercare_email_provider_attempt", {
+      p_outbox_id: row.outbox_id,
+      p_lease_token: row.lease_token,
+    });
+    if (begun.error || begun.data !== true) {
+      summary.staleLease += 1;
       continue;
     }
 
-    // {{CTA_URL}} 등 남은 플레이스홀더 치환
-    const resolvedHtml = row.body_html
-      .replace(/\{\{CTA_URL\}\}/g, `${APP_URL}/mypage`)
-      .replace(/\{\{USER_NAME\}\}/g, userInfo.name ?? "고객");
-
-    const { messageId, error: sendError } = await sendEmail(userInfo.email, row.subject, resolvedHtml);
-
-    if (sendError || !messageId) {
-      console.error(`[cron-care-emails] send failed id=${row.id}:`, sendError ?? "missing message id");
-      failCount++;
-      continue;
-    }
-
-    const { error: updateError } = await supabase
-      .from("user_care_contents")
-      .update({
-        sent_at: new Date().toISOString(),
-        email_message_id: messageId,
-      })
-      .eq("id", row.id);
-
-    if (updateError) {
-      console.error(`[cron-care-emails] update failed id=${row.id}:`, updateError.message);
-      failCount++;
-    } else {
-      sentCount++;
-    }
+    const delivery = await resendEmail(row);
+    const completion = await supabase.rpc("complete_aftercare_email_provider_attempt", {
+      p_outbox_id: row.outbox_id,
+      p_lease_token: row.lease_token,
+      p_provider_message_id: delivery.messageId,
+      p_error_kind: delivery.errorKind,
+      p_error: delivery.error,
+      p_retryable: delivery.retryable,
+      p_delivery_unknown: delivery.deliveryUnknown,
+    });
+    if (completion.error || completion.data === "stale_lease") summary.staleLease += 1;
+    else if (completion.data === "provider_accepted") summary.accepted += 1;
+    else if (completion.data === "retry_wait") summary.retryWait += 1;
+    else if (completion.data === "delivery_unknown") summary.deliveryUnknown += 1;
+    else if (completion.data === "dead_letter") summary.deadLetter += 1;
   }
-
-  console.log(`[cron-care-emails] sent=${sentCount} fail=${failCount}`);
-  return new Response(JSON.stringify({ sent: sentCount, fail: failCount }), { status: 200 });
+  return json(summary);
 });

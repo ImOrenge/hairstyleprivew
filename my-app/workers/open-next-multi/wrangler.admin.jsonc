@@ -1,23 +1,13 @@
 {
   "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "hairstyleprivew",
-  "main": "server.js",
+  "name": "hairfit-admin",
+  "main": "admin-server.js",
   "compatibility_date": "2026-02-05",
   "compatibility_flags": ["nodejs_compat", "allow_importable_env", "global_fetch_strictly_public"],
   "minify": true,
   "keep_vars": true,
   "workers_dev": false,
-  "preview_urls": true,
-  "routes": [
-    {
-      "pattern": "hairfit.beauty",
-      "custom_domain": true
-    },
-    {
-      "pattern": "www.hairfit.beauty",
-      "custom_domain": true
-    }
-  ],
+  "preview_urls": false,
   "vars": {
     "HAIRFIT_SOURCE_REVISION": "unversioned"
   },

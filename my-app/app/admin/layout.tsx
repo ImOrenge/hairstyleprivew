@@ -13,6 +13,7 @@ const adminLinks = [
   { href: "/admin/refunds", label: "환불" },
   { href: "/admin/b2b", label: "B2B" },
   { href: "/admin/inbox", label: "메일함" },
+  { href: "/admin/aftercare-emails", label: "에프터케어 메일" },
   { href: "/admin/reviews", label: "리뷰관리" },
   { href: "/admin/support", label: "고객지원" },
   { href: "/admin/stats", label: "통계" },

@@ -13,8 +13,7 @@ import type {
 } from "@hairfit/shared/consulting/report-v2";
 import { getSupabaseAdminClient } from "../supabase";
 import { readServerConsultation } from "./server-store";
-import { renderConsultationReportPdf } from "./render-report-pdf";
-import { renderConsultationReportPdfV2 } from "./render-report-pdf-v2";
+import { renderConsultationReportPdfWithWorker } from "./report-pdf-worker";
 import { readConsultationReportV2 } from "./report-v2-server";
 
 const REPORT_BUCKET = "consultation-report-exports";
@@ -132,10 +131,6 @@ function secureReportImagesV2(report: ConsultationReportViewModelV2): Consultati
       }),
     })),
   };
-}
-
-function isReportV2(report: ConsultationReportViewModelV1 | ConsultationReportViewModelV2): report is ConsultationReportViewModelV2 {
-  return report.schemaVersion === "consultation-report-view-model-v2";
 }
 
 function normalizeExport(row: ReportExportRow) {
@@ -287,10 +282,7 @@ export async function createConsultationReportExport(input: {
   if (created.error) throw new Error(created.error.message);
 
   try {
-    const pdf = isReportV2(reportSnapshot.view_model)
-      ? await renderConsultationReportPdfV2(reportSnapshot.view_model)
-      : await renderConsultationReportPdf(reportSnapshot.view_model);
-    if (pdf.subarray(0, 5).toString("ascii") !== "%PDF-") throw new Error("INVALID_PDF_OUTPUT");
+    const pdf = await renderConsultationReportPdfWithWorker(reportSnapshot.view_model);
     const upload = await db.storage.from(REPORT_BUCKET).upload(objectPath, pdf, { contentType: "application/pdf", upsert: false });
     if (upload.error) throw new Error(upload.error.message);
     const fileSha256 = sha256(pdf);

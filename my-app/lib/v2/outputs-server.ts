@@ -11,6 +11,7 @@ import type {
 import type { FashionCategory, FashionDirectionSnapshot, FashionLookItem } from "@hairfit/shared";
 import { randomUUID } from "node:crypto";
 import { runAftercareCapability } from "../capabilities/aftercare-service";
+import { enqueueAftercareEmailProgram } from "../aftercare-email-server";
 import type { ServiceType } from "../hair-care-generator";
 import { getSupabaseAdminClient } from "../supabase";
 import {
@@ -181,6 +182,36 @@ function normalizeStoredAftercareProgram(value: unknown): AftercareProgramV2 {
     },
     createdAt,
   };
+}
+
+async function ensureAftercareEmailProgram(input: {
+  program: AftercareProgramV2;
+  serviceDate?: string;
+  services?: string[];
+}) {
+  let serviceDate = input.serviceDate;
+  let services = input.services;
+  if (!serviceDate || !services?.length) {
+    const actual = await getSupabaseAdminClient()
+      .from("actual_services_v2")
+      .select("service_date,services")
+      .eq("id", input.program.actualServiceId)
+      .single();
+    if (actual.error) throw new Error(actual.error.message);
+    serviceDate = String(actual.data.service_date);
+    services = stringArray(actual.data.services);
+  }
+  await enqueueAftercareEmailProgram({
+    actualServiceId: input.program.actualServiceId,
+    consultationId: input.program.consultationId,
+    programVersion: input.program.version,
+    serviceDate,
+    styleName: services.join(" · ") || "시술 스타일",
+    services,
+    today: input.program.today,
+    checkpoints: input.program.checkpoints,
+    concerns: input.program.concerns,
+  });
 }
 
 function normalizeStoredSalonBrief(value: unknown): SalonBriefV2 {
@@ -492,8 +523,10 @@ export async function recordActualServiceAndAftercareV2(input: {
     .maybeSingle();
   if (replay.error) throw new Error(replay.error.message);
   if (replay.data) {
+    const program = normalizeStoredAftercareProgram((replay.data as unknown as { program: unknown }).program);
+    await ensureAftercareEmailProgram({ program });
     await ensureAftercareCheckinsV2(input.userId,input.consultationId);
-    return normalizeStoredAftercareProgram((replay.data as unknown as { program: unknown }).program);
+    return program;
   }
   const selection = await confirmedSelection(input.userId, input.consultationId);
   const serviceIdempotencyKey = `${input.idempotencyKey}:service`;
@@ -573,13 +606,16 @@ export async function recordActualServiceAndAftercareV2(input: {
     if (racedProgram.error || !(racedProgram.data as { program?: unknown } | null)?.program) {
       throw new Error(racedProgram.error?.message || aftercare.error.message);
     }
+    const program = normalizeStoredAftercareProgram((racedProgram.data as { program: unknown }).program);
+    await ensureAftercareEmailProgram({ program });
     await transitionOutputState(input.userId, input.consultationId, "aftercare_ready");
     await ensureAftercareCheckinsV2(input.userId,input.consultationId);
-    return normalizeStoredAftercareProgram((racedProgram.data as { program: unknown }).program);
+    return program;
   }
   if (aftercare.error) {
     throw new Error(aftercare.error.message);
   }
+  await ensureAftercareEmailProgram({ program, serviceDate: input.serviceDate, services });
   await transitionOutputState(input.userId, input.consultationId, "aftercare_ready");
   await ensureAftercareCheckinsV2(input.userId,input.consultationId);
   return program;
@@ -649,7 +685,11 @@ export async function updateAftercareProgramV2(input: {
     .eq("idempotency_key", input.idempotencyKey)
     .maybeSingle();
   if (replay.error) throw new Error(replay.error.message);
-  if (replay.data) return normalizeStoredAftercareProgram((replay.data as unknown as { program: unknown }).program);
+  if (replay.data) {
+    const program = normalizeStoredAftercareProgram((replay.data as unknown as { program: unknown }).program);
+    await ensureAftercareEmailProgram({ program });
+    return program;
+  }
   const actual = await db
     .from("actual_services_v2")
     .select("id,selection_snapshot_id")
@@ -699,6 +739,7 @@ export async function updateAftercareProgramV2(input: {
     throw new HairfitV2Error("AFTERCARE_VERSION_CONFLICT", 409, "관리 기록이 다른 화면에서 변경되었습니다. 다시 불러와 주세요.");
   }
   if (insert.error) throw new Error(insert.error.message);
+  await ensureAftercareEmailProgram({ program });
   return program;
 }
 

@@ -3,12 +3,13 @@ import { WorkerEntrypoint } from "cloudflare:workers";
 import { handleImageRequest } from "../../.open-next/cloudflare/images.js";
 import { runWithCloudflareRequestContext } from "../../.open-next/cloudflare/init.js";
 import { resolveLocalImageAssetUrl } from "./image-route.js";
+import { classifyServerRoute } from "./server-route.js";
 
-function fetchPinnedServer(service, request, versionId) {
+function fetchPinnedServer(service, request, workerName, versionId) {
   const downstreamHeaders = new Headers(request.headers);
   downstreamHeaders.set(
     "Cloudflare-Workers-Version-Overrides",
-    `hairstyleprivew="${versionId}"`,
+    `${workerName}="${versionId}"`,
   );
   const downstreamRequest = new Request(request, {
     headers: downstreamHeaders,
@@ -20,10 +21,11 @@ function fetchPinnedServer(service, request, versionId) {
   });
 }
 
-async function fetchPinnedServerDiagnostic(service, request, versionId) {
-  const response = await fetchPinnedServer(service, request, versionId);
+async function fetchPinnedServerDiagnostic(service, request, workerName, versionId) {
+  const response = await fetchPinnedServer(service, request, workerName, versionId);
   const headers = new Headers(response.headers);
   headers.set("x-hairfit-pinned-server-version", versionId);
+  headers.set("x-hairfit-pinned-worker", workerName);
   headers.set("cache-control", "no-store, max-age=0");
   return new Response(response.body, {
     status: response.status,
@@ -51,6 +53,38 @@ function isServerVerifiedRequest(pathname) {
     SERVER_VERIFIED_CALLBACK_DETAIL.test(pathname) ||
     pathname.startsWith("/api/admin/hairstyles/") ||
     pathname.startsWith("/api/admin/fashion/")
+  );
+}
+
+function resolveServerTarget(pathname, env) {
+  const route = classifyServerRoute(pathname);
+  if (route === "media") {
+    return {
+      service: env.MEDIA_WORKER,
+      workerName: "hairfit-media",
+      versionId: env.MEDIA_WORKER_VERSION_ID,
+    };
+  }
+  if (route === "admin") {
+    return {
+      service: env.ADMIN_WORKER,
+      workerName: "hairfit-admin",
+      versionId: env.ADMIN_WORKER_VERSION_ID,
+    };
+  }
+  return {
+    service: env.DEFAULT_WORKER,
+    workerName: "hairstyleprivew",
+    versionId: env.WORKER_VERSION_ID,
+  };
+}
+
+function fetchServerTarget(target, request) {
+  return fetchPinnedServer(
+    target.service,
+    request,
+    target.workerName,
+    target.versionId,
   );
 }
 
@@ -97,6 +131,8 @@ export default class HairFitOpenNextRouter extends WorkerEntrypoint {
         {
           service: "hairstyleprivew-router",
           pinnedServerVersion: this.env.WORKER_VERSION_ID,
+          pinnedMediaVersion: this.env.MEDIA_WORKER_VERSION_ID,
+          pinnedAdminVersion: this.env.ADMIN_WORKER_VERSION_ID,
         },
         {
           headers: {
@@ -106,15 +142,25 @@ export default class HairFitOpenNextRouter extends WorkerEntrypoint {
       );
     }
 
-    if (pathname === "/.well-known/hairfit-deployment") {
-      return fetchPinnedServerDiagnostic(this.env.DEFAULT_WORKER, request, this.env.WORKER_VERSION_ID);
+    if (
+      pathname === "/.well-known/hairfit-deployment" ||
+      pathname === "/.well-known/hairfit-media-deployment" ||
+      pathname === "/.well-known/hairfit-admin-deployment"
+    ) {
+      const target = resolveServerTarget(pathname, this.env);
+      return fetchPinnedServerDiagnostic(
+        target.service,
+        request,
+        target.workerName,
+        target.versionId,
+      );
     }
 
     // These handlers perform their own constant-time secret verification on the
     // server Worker. The router intentionally does not duplicate callback/admin
     // secrets, so it forwards only this narrow allow-list before Clerk middleware.
     if (isServerVerifiedRequest(pathname)) {
-      return fetchPinnedServer(this.env.DEFAULT_WORKER, request, this.env.WORKER_VERSION_ID);
+      return fetchServerTarget(resolveServerTarget(pathname, this.env), request);
     }
 
     return runWithCloudflareRequestContext(request, this.env, this.ctx, async () => {
@@ -129,10 +175,10 @@ export default class HairFitOpenNextRouter extends WorkerEntrypoint {
         return requestOrResponse;
       }
 
-      return fetchPinnedServer(
-        this.env.DEFAULT_WORKER,
+      const downstreamPathname = new URL(requestOrResponse.url).pathname;
+      return fetchServerTarget(
+        resolveServerTarget(downstreamPathname, this.env),
         requestOrResponse,
-        this.env.WORKER_VERSION_ID,
       );
     });
   }

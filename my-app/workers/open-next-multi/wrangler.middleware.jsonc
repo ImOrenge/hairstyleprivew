@@ -13,7 +13,9 @@
     "binding": "ASSETS"
   },
   "vars": {
-    "WORKER_VERSION_ID": "00000000-0000-0000-0000-000000000000"
+    "WORKER_VERSION_ID": "00000000-0000-0000-0000-000000000000",
+    "MEDIA_WORKER_VERSION_ID": "00000000-0000-0000-0000-000000000000",
+    "ADMIN_WORKER_VERSION_ID": "00000000-0000-0000-0000-000000000000"
   },
   "services": [
     {
@@ -23,6 +25,14 @@
     {
       "binding": "DEFAULT_WORKER",
       "service": "hairstyleprivew"
+    },
+    {
+      "binding": "MEDIA_WORKER",
+      "service": "hairfit-media"
+    },
+    {
+      "binding": "ADMIN_WORKER",
+      "service": "hairfit-admin"
     }
   ],
   "observability": {

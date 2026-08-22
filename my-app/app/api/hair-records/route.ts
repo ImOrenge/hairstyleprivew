@@ -111,7 +111,7 @@ function normalizeRecommendationSet(raw: unknown): RecommendationSet | null {
 }
 
 function scheduledAt(serviceDate: string, dayOffset: number): string {
-  const baseTimestamp = Date.parse(`${serviceDate}T10:00:00+09:00`);
+  const baseTimestamp = Date.parse(`${serviceDate}T09:00:00+09:00`);
   return new Date(baseTimestamp + dayOffset * 24 * 60 * 60 * 1000).toISOString();
 }
 

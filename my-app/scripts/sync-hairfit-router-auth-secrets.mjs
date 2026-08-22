@@ -84,9 +84,16 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   }
 
   const sourceEnvPath = resolve(argumentValue("--env-file") || envPath);
-  const serverVersionId = argumentValue("--server-version-id");
-  if (!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/iu.test(serverVersionId)) {
-    throw new Error("--apply requires --server-version-id=<UUID>");
+  const versionIds = {
+    server: argumentValue("--server-version-id"),
+    media: argumentValue("--media-version-id"),
+    admin: argumentValue("--admin-version-id"),
+  };
+  const invalidVersion = Object.entries(versionIds).find(([, value]) => (
+    !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/iu.test(value)
+  ));
+  if (invalidVersion) {
+    throw new Error(`--apply requires --${invalidVersion[0]}-version-id=<UUID>`);
   }
   const local = parseEnv(readFileSync(sourceEnvPath, "utf8"));
   const missing = ROUTER_AUTH_SECRET_NAMES.filter((name) => !local[name]?.trim());
@@ -102,7 +109,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     writeFileSync(secretsPath, `${JSON.stringify(payload)}\n`, { encoding: "utf8", mode: 0o600 });
     const output = runWrangler([
       "versions", "upload", "--config", configPath, "--keep-vars",
-      "--var", `WORKER_VERSION_ID:${serverVersionId}`,
+      "--var", `WORKER_VERSION_ID:${versionIds.server}`,
+      "--var", `MEDIA_WORKER_VERSION_ID:${versionIds.media}`,
+      "--var", `ADMIN_WORKER_VERSION_ID:${versionIds.admin}`,
       "--secrets-file", secretsPath,
       "--message", "HairFit-V2-router-auth-sync",
     ]);

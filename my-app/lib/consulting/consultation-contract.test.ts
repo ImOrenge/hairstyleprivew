@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { buildConsultationHairProfile } from "./hair-profile.ts";
 import { isConsultationFrontendEnabled } from "./feature-flag.ts";
+import { classifyServerRoute } from "../../workers/open-next-multi/server-route.js";
 
 function read(relativePath: string) { return readFileSync(new URL(relativePath, import.meta.url), "utf8"); }
 
@@ -262,8 +263,12 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   const router = read("../../workers/open-next-multi/middleware.js");
   const imageRoute = read("../../workers/open-next-multi/image-route.js");
   const server = read("../../workers/open-next-multi/server.js");
+  const mediaServer = read("../../workers/open-next-multi/media-server.js");
+  const adminServer = read("../../workers/open-next-multi/admin-server.js");
   const routerConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.middleware.jsonc"));
   const serverConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.server.jsonc"));
+  const mediaConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.media.jsonc"));
+  const adminConfig = JSON.parse(read("../../workers/open-next-multi/wrangler.admin.jsonc"));
   assert.equal(routerConfig.workers_dev, false);
   assert.equal(routerConfig.preview_urls, true);
   assert.equal(serverConfig.workers_dev, false);
@@ -273,8 +278,8 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /Cloudflare-Workers-Version-Overrides/);
   assert.match(router, /x-hairfit-pinned-server-version/);
   assert.match(router, /fetchPinnedServerDiagnostic/);
-  assert.match(router, /hairstyleprivew=\"\$\{versionId\}\"/);
-  assert.match(router, /function fetchPinnedServer\(service, request, versionId\)/);
+  assert.match(router, /\$\{workerName\}=\"\$\{versionId\}\"/);
+  assert.match(router, /function fetchPinnedServer\(service, request, workerName, versionId\)/);
   assert.match(router, /const downstreamHeaders = new Headers\(request\.headers\)/);
   assert.match(router, /const downstreamRequest = new Request\(request/);
   assert.match(router, /service\.fetch\(downstreamRequest/);
@@ -290,6 +295,8 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /\/\.well-known\/hairfit-deployment/);
   assert.match(router, /\/\.well-known\/hairfit-router/);
   assert.match(router, /pinnedServerVersion: this\.env\.WORKER_VERSION_ID/);
+  assert.match(router, /pinnedMediaVersion: this\.env\.MEDIA_WORKER_VERSION_ID/);
+  assert.match(router, /pinnedAdminVersion: this\.env\.ADMIN_WORKER_VERSION_ID/);
   assert.match(router, /function isServerVerifiedRequest\(pathname\)/);
   assert.match(router, /function ensureMiddlewareProcessEnv\(env\)/);
   assert.match(router, /process\.env\[name\] = env\[name\]/);
@@ -304,6 +311,8 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /SERVER_VERIFIED_CALLBACK_PATHS/);
   assert.match(router, /pathname\.startsWith\("\/api\/admin\/hairstyles\/"\)/);
   assert.match(server, /server-functions\/default\/handler\.mjs/);
+  assert.match(mediaServer, /server-functions\/media\/handler\.mjs/);
+  assert.match(adminServer, /server-functions\/admin\/handler\.mjs/);
   assert.equal(routerConfig.name, "hairstyleprivew-router");
   assert.equal(routerConfig.keep_vars, true);
   assert.deepEqual(routerConfig.compatibility_flags, [
@@ -315,6 +324,8 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.deepEqual(routerConfig.services, [
     { binding: "WORKER_SELF_REFERENCE", service: "hairstyleprivew-router" },
     { binding: "DEFAULT_WORKER", service: "hairstyleprivew" },
+    { binding: "MEDIA_WORKER", service: "hairfit-media" },
+    { binding: "ADMIN_WORKER", service: "hairfit-admin" },
   ]);
   assert.equal(serverConfig.name, "hairstyleprivew");
   assert.equal(serverConfig.keep_vars, true);
@@ -322,7 +333,30 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.equal(serverConfig.vars.HAIRFIT_SOURCE_REVISION, "unversioned");
   assert.deepEqual(serverConfig.services, [
     { binding: "WORKER_SELF_REFERENCE", service: "hairstyleprivew-router" },
+    { binding: "REPORT_PDF_WORKER", service: "hairfit-report-pdf" },
   ]);
+  for (const splitConfig of [mediaConfig, adminConfig]) {
+    assert.equal(splitConfig.workers_dev, false);
+    assert.equal(splitConfig.preview_urls, false);
+    assert.equal(splitConfig.routes, undefined);
+    assert.equal(splitConfig.keep_vars, true);
+    assert.deepEqual(splitConfig.compatibility_flags, routerConfig.compatibility_flags);
+  }
+  assert.equal(mediaConfig.name, "hairfit-media");
+  assert.equal(adminConfig.name, "hairfit-admin");
+
+  const reportPdfConfig = JSON.parse(read("../../workers/report-pdf/wrangler.jsonc")) as {
+    name?: string;
+    workers_dev?: boolean;
+    preview_urls?: boolean;
+    routes?: unknown[];
+    assets?: { binding?: string };
+  };
+  assert.equal(reportPdfConfig.name, "hairfit-report-pdf");
+  assert.equal(reportPdfConfig.workers_dev, false);
+  assert.equal(reportPdfConfig.preview_urls, false);
+  assert.equal(reportPdfConfig.routes, undefined);
+  assert.equal(reportPdfConfig.assets?.binding, "REPORT_PDF_ASSETS");
   assert.match(server, /\/\.well-known\/hairfit-deployment/);
   assert.match(server, /sourceRevision: env\.HAIRFIT_SOURCE_REVISION/);
   assert.match(server, /"cache-control": "no-store, max-age=0"/);
@@ -334,9 +368,56 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(packageJson.scripts["cf:multi:server:staff-canary"], /upload-hairfit-v2-staff-canary\.mjs --mode=canary/);
   assert.equal(packageJson.scripts["cf:multi:staff-canary:verify"], "node scripts/verify-hairfit-v2-version-override.mjs");
   const routerAuthSync = read("../../scripts/sync-hairfit-router-auth-secrets.mjs");
+  assert.match(routerAuthSync, /MEDIA_WORKER_VERSION_ID:\$\{versionIds\.media\}/);
+  assert.match(routerAuthSync, /ADMIN_WORKER_VERSION_ID:\$\{versionIds\.admin\}/);
+  assert.match(routerAuthSync, /--media-version-id/);
+  assert.match(routerAuthSync, /--admin-version-id/);
   assert.match(routerAuthSync, /createClerkClient/);
   assert.match(routerAuthSync, /getUserList\(\{ limit: 1 \}\)/);
   assert.match(routerAuthSync, /Production Clerk API rejected the supplied router credential/);
+});
+
+test("Cloudflare router sends only explicit dynamic route families to split Workers", () => {
+  for (const pathname of [
+    "/admin",
+    "/admin/aftercare-emails",
+    "/api/admin/aftercare-emails",
+    "/api/admin/hairstyles/rebuild",
+    "/.well-known/hairfit-admin-deployment",
+  ]) {
+    assert.equal(classifyServerRoute(pathname), "admin", pathname);
+  }
+
+  for (const pathname of [
+    "/api/consultations",
+    "/api/consultations/session-1/events",
+    "/api/v2/consultations/consultation-1/report",
+    "/api/generations/run",
+    "/api/styling/job-1/notify",
+    "/api/personal-color/analyze",
+    "/api/style-profile/body-photo",
+    "/consulting/new",
+    "/consulting/share/token-1",
+    "/consulting/session-1/analysis",
+    "/generate/job-1",
+    "/result/job-1",
+    "/styler/job-1",
+    "/.well-known/hairfit-media-deployment",
+  ]) {
+    assert.equal(classifyServerRoute(pathname), "media", pathname);
+  }
+
+  for (const pathname of [
+    "/",
+    "/aftercare",
+    "/api/email/resend",
+    "/api/v2/catalog",
+    "/consulting/e2e-harness",
+    "/generate",
+    "/styler/new",
+  ]) {
+    assert.equal(classifyServerRoute(pathname), "default", pathname);
+  }
 });
 
 test("photo analysis advances through a durable automatic pipeline without scan approval", () => {
