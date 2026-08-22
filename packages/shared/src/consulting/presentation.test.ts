@@ -10,28 +10,57 @@ function snapshot(overrides: Partial<ConsultationSnapshot> = {}) {
     sessionId: "consultation",
     updatedAt: "2026-08-09T00:00:00.000Z",
     currentStage: "scan",
-    discovery: { purpose: "정돈", goals: ["균형"], currentHair: "중간", allowedServices: ["커트"] },
+    discovery: {
+      purpose: "정돈",
+      goals: ["균형"],
+      currentHair: "중간",
+      allowedServices: ["커트"],
+    },
     photo: { generationId: null, draftId: "draft", capturedAt: null },
     evidence: { items: [] },
-    personalColorDiagnosis: { state: "pending", evidenceId: null, completedAt: null, errorMessage: null },
+    personalColorDiagnosis: {
+      state: "pending",
+      evidenceId: null,
+      completedAt: null,
+      errorMessage: null,
+    },
     strategyRecommendations: [],
     strategy: { revision: 1, confirmedAt: null },
     previews: [],
     shortlist: { previewIds: [] },
     finalist: { finalistPreviewId: null },
     selectedStyleHistory: [],
-    colorDecision: { state: "not-applicable", hairMask: null, finalImagePath: null, generationAttemptId: null, confirmedAt: null },
+    colorDecision: {
+      state: "not-applicable",
+      hairMask: null,
+      finalImagePath: null,
+      generationAttemptId: null,
+      confirmedAt: null,
+    },
     salonBrief: { version: 1, createdAt: null },
     result: { id: null, state: "not-started", compiledAt: null },
     actualService: { confirmedAt: null, serviceDate: null },
     careProgram: { actualServiceId: null, today: [], checkpoints: [] },
     fashion: { selectedAt: null, lookId: null },
-    analysisRun: { id: "run", state: "landmarks", pipeline: {}, errorCode: null, errorMessage: null, attemptCount: 1, startedAt: null, completedAt: null, updatedAt: "2026-08-09T00:00:00.000Z" },
+    analysisRun: {
+      id: "run",
+      state: "landmarks",
+      pipeline: {},
+      errorCode: null,
+      errorMessage: null,
+      attemptCount: 1,
+      startedAt: null,
+      completedAt: null,
+      updatedAt: "2026-08-09T00:00:00.000Z",
+    },
     hairColorGenerationRun: null,
     fashionBatch: null,
   } as unknown as ConsultationSnapshot;
   const merged = { ...base, ...overrides };
-  return { ...merged, journey: deriveConsultationJourney(merged, overrides.lifecycleState ?? "photo_validated") } as ConsultationSnapshot;
+  return {
+    ...merged,
+    journey: deriveConsultationJourney(merged, overrides.lifecycleState ?? "photo_validated"),
+  } as ConsultationSnapshot;
 }
 
 test("durable tasks expose the complete transition presentation contract", () => {
@@ -51,22 +80,41 @@ test("transition selector does not hide approval input and releases same-stage r
     currentStage: "previews",
     analysisRun: null,
     evidence: { items: [{ id: "e" }] } as ConsultationSnapshot["evidence"],
-    strategyRecommendations: Array.from({ length: 8 }, (_, index) => ({ axis: String(index) })) as ConsultationSnapshot["strategyRecommendations"],
-    strategy: { revision: 1, confirmedAt: "2026-08-09" } as ConsultationSnapshot["strategy"],
+    strategyRecommendations: Array.from({ length: 8 }, (_, index) => ({
+      axis: String(index),
+    })) as ConsultationSnapshot["strategyRecommendations"],
+    strategy: {
+      revision: 1,
+      confirmedAt: "2026-08-09",
+    } as ConsultationSnapshot["strategy"],
   });
   assert.equal(resolveConsultationTransitionTask(beforeApproval, "previews"), null);
 
   const ready = snapshot({
     ...beforeApproval,
     photo: { ...beforeApproval.photo, generationId: "generation" },
-    previews: [{ id: "a", status: "accepted" }, { id: "b", status: "accepted" }] as ConsultationSnapshot["previews"],
+    previews: [
+      { id: "a", status: "accepted" },
+      { id: "b", status: "accepted" },
+    ] as ConsultationSnapshot["previews"],
   });
   assert.equal(resolveConsultationTransitionTask(ready, "previews"), null);
   assert.equal(resolveConsultationTransitionTask(ready, "previews", "preview-generation")?.status, "complete");
 });
 
 test("client task receipts remain presentation-only and deterministic", () => {
-  const task = createClientConsultationTask({ id: "brief", kind: "brief", stage: "decision", originStage: "decision", destinationStage: "salon-brief", phaseKey: "summary", label: "Brief", detail: "구성 중", completedUnits: 0, totalUnits: 3 });
+  const task = createClientConsultationTask({
+    id: "brief",
+    kind: "brief",
+    stage: "decision",
+    originStage: "decision",
+    destinationStage: "salon-brief",
+    phaseKey: "summary",
+    label: "Brief",
+    detail: "구성 중",
+    completedUnits: 0,
+    totalUnits: 3,
+  });
   assert.equal(task.status, "running");
   assert.equal(task.partialOutputCount, 0);
   assert.equal(task.readinessKey, "brief-server-response-ready");
@@ -87,6 +135,9 @@ test("chapter presentation derives resume task without persisting a wizard curso
   assert.equal(presentation.schemaVersion, "consultation-chapter-presentation-v2");
   assert.equal(presentation.activeChapter, "diagnosis");
   assert.equal(presentation.chapters.length, 4);
+  assert.equal(presentation.chapters.filter((chapter) => chapter.isCurrent).length, 1);
+  assert.ok(presentation.chapters.filter((chapter) => chapter.isRecommended).length <= 1);
+  assert.match(presentation.chapters.find((chapter) => chapter.isCurrent)?.customerStatusLabel ?? "", /^현재/);
   assert.equal(presentation.recommendedTask.stage, value.journey.recommendedStage);
   assert.match(presentation.resumableHref, new RegExp(`/${value.journey.recommendedStage}$`));
   assert.ok(!("currentStep" in presentation));
@@ -97,7 +148,9 @@ test("chapter surface separates clarification input from diagnosis result", () =
   const clarification = snapshot({
     currentStage: "analysis",
     analysisRun: null,
-    evidence: { items: [{ id: "face-evidence" }] } as ConsultationSnapshot["evidence"],
+    evidence: {
+      items: [{ id: "face-evidence" }],
+    } as ConsultationSnapshot["evidence"],
     diagnosticQuestions: [{ id: "question", state: "visible" }] as ConsultationSnapshot["diagnosticQuestions"],
   });
   const input = deriveConsultationChapterSurface(clarification, "analysis");

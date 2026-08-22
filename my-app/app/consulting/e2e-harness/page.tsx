@@ -12,7 +12,7 @@ import { projectConsultationReportV2, type ConsultationReportSourceV2 } from "..
 import { attachConsultationResultNarrative } from "../../../lib/consulting/result-narrative-service";
 
 export const metadata = { title: "Consulting Scene E2E Harness", robots: { index: false, follow: false } };
-interface Props { searchParams: Promise<{ stage?: string; transition?: string; liveness?: string; transitionState?: string; polling?: string; interview?: string; zeroInput?: string; hairRecommendation?: string; fashionAdaptive?: string; colorLevel?: string; color?: string; diagnostics?: string; simulation?: string; reportState?: string }> }
+interface Props { searchParams: Promise<{ stage?: string; transition?: string; liveness?: string; transitionState?: string; polling?: string; interview?: string; zeroInput?: string; hairRecommendation?: string; fashionAdaptive?: string; colorLevel?: string; color?: string; diagnostics?: string; simulation?: string; reportState?: string; clarification?: string }> }
 export default async function ConsultingSceneHarnessPage({ searchParams }: Props) {
   if (process.env.E2E_UI_HARNESS_ENABLED !== "true") notFound();
   const query = await searchParams;
@@ -66,7 +66,7 @@ export default async function ConsultingSceneHarnessPage({ searchParams }: Props
     impact: "선택에 따른 예상 영향",
     tradeoff: "관리 조건과 함께 확인",
   }));
-  if (requested === "analysis") {
+  if (requested === "analysis" && query.clarification === "1") {
     const observedAt = "2026-08-08T00:02:00.000Z";
     snapshot.hairProfile = {
       schemaVersion: "hair-profile-v2", id: "00000000-0000-4000-8000-000000000081", consultationId: snapshot.sessionId, revision: 1,

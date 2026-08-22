@@ -40,14 +40,14 @@ test("makeup stays inside the consultation journey with stage selection and a re
 
   const navigation = page.getByRole("navigation", { name: "상담 단계 이동" });
   await expect(navigation).toBeVisible();
-  await navigation.getByRole("button", { name: "Chapters" }).click();
+  await navigation.getByRole("button", { name: "챕터" }).click();
 
-  const stageMap = page.getByRole("dialog", { name: "4 CHAPTERS" });
-  await expect(stageMap.getByRole("link", { name: /STYLE DESIGN/ })).toHaveAttribute("aria-current", "step");
-  await expect(stageMap.getByText("FINAL REPORT", { exact: true })).toBeVisible();
+  const stageMap = page.getByRole("dialog", { name: "4개 상담 챕터" });
+  await expect(stageMap.getByRole("link", { name: /스타일 디자인/ })).toHaveAttribute("aria-current", "step");
+  await expect(stageMap.getByText("최종 리포트", { exact: true })).toBeVisible();
   await stageMap.getByRole("button", { name: "전체 단계 닫기" }).click();
 
-  const recommended = navigation.getByRole("link", { name: "AI 추천 작업: 패션 방향 정하기" });
+  const recommended = navigation.getByRole("link", { name: "다음 추천 작업: 패션 방향 정하기" });
   await expect(recommended).toBeVisible();
   await recommended.click();
   await expect(page).toHaveURL(/\/consulting\/e2e-harness\?stage=fashion$/);
@@ -69,7 +69,7 @@ test("makeup direction presents separated color callouts, local eye guides, and 
   await page.mouse.move(1, 1);
   await expect(colorInfo).toHaveCount(0);
   await browCallout.click();
-  await page.getByRole("button", { name: "Chapters" }).focus();
+  await page.getByRole("button", { name: "챕터" }).focus();
   await expect(colorInfo).toBeVisible();
   const [desktopStageBox, desktopInfoBox] = await Promise.all([
     fixture.locator(".makeup-direction-map__stage").boundingBox(),

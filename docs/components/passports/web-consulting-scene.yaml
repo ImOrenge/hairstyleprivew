@@ -9,6 +9,7 @@ related_source:
   - my-app/components/consulting/scene/SceneIdentity.tsx
   - my-app/components/consulting/scene/FloatingStageControls.tsx
   - my-app/components/consulting/scene/StageMapOverlay.tsx
+  - my-app/components/consulting/scene/StageContextStrip.tsx
   - my-app/components/consulting/workbenches/shared.tsx
   - my-app/components/consulting/photo/ConsultationPhotoEvidence.tsx
   - my-app/components/consulting/photo/FaceEvidenceOverlay.tsx
@@ -55,6 +56,11 @@ boundaries:
       - compact-desktop-scene-identity
       - lifecycle-capability-navigation
       - four-customer-chapter-projection-over-fifteen-internal-stages
+      - single-current-chapter-with-distinct-next-recommendation
+      - customer-localized-chapter-domain-and-status-labels
+      - stage-context-strip-with-input-focus-and-result-expectation
+      - progress-only-scan-with-read-only-evidence-and-recovery-link
+      - blocked-decision-recovery-to-preview-or-comparison
       - adaptive-hair-trait-observation-and-two-question-clarification
       - chapter-local-input-waiting-result-revision-attention-surface
       - result-read-only-input-snapshot-reference
@@ -137,6 +143,7 @@ state:
 a11y_contract:
   stage_map: dialog-with-escape-and-focus-return
   navigation: labelled-native-links-and-buttons-without-common-next-control
+  chapter_status: one-aria-current-chapter-and-visible-mobile-next-action
   exit: confirmation-dialog-with-escape-focus-return-and-saved-state-disclosure
   scene_entry: programmatic-focus-on-level-one-heading
   reduced_motion: no-required-motion
@@ -157,6 +164,8 @@ test_surface:
   drape: explicit-left-right-no-difference-unsure-controls-original-toggle-and-color-independent-labels
   evidence_correction: server-revision-locked-user-adjustment-with-model-original-preserved
   evidence_linkage: photo-overlay-ledger-direction-matrix-share-active-evidence-id
+  scan_role: no-client-only-evidence-confidence-edit-and-explicit-photo-recovery
+  decision_recovery: missing-finalist-has-an-actionable-route
   makeup_direction: seven-module-source-aligned-svg-map-semantic-matrix-gender-invariant-and-confirmed-snapshot-immutable
   makeup_harness_navigation: fixture-remains-inside-consultation-scene-with-stage-map-and-recommended-fashion-handoff
   split_canvas: all-15-scenes-desktop-independent-scroll-and-mobile-stacking

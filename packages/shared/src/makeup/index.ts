@@ -13,3 +13,4 @@ export * from "./interview";
 export * from "./rationale";
 export * from "./simulation";
 export * from "./professional-report";
+export * from "./presentation";

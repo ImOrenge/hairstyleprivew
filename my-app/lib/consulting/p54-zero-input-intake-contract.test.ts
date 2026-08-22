@@ -39,7 +39,7 @@ test("P54 keeps adaptive questions capped at two and separates clarification fro
   const hair = read("my-app", "components", "consulting", "hair", "HairRecommendationWorkbench.tsx");
   assert.match(profile, /Math\.min\(input\.maximum \?\? 2, 2,/);
   assert.match(analysis, /data-consulting-surface="clarification"/);
-  assert.match(analysis, /if \(visibleQuestions\.length\) return/);
+  assert.match(analysis, /if \(visibleQuestions\.length\)\s*return/);
   assert.match(hair, /data-consulting-surface="revision"/);
   assert.match(hair, /data-consulting-surface="clarification"/);
 });

@@ -104,6 +104,8 @@ boundaries:
       - seven-zone-technical-direction
       - facial-hair-exclusion-presentation
       - self-makeup-routine
+      - customer-natural-language-routine-without-zone-identifiers
+      - localized-technical-label-presentation-with-structured-values-preserved
       - artist-brief-and-share-permission
       - customer-first-professional-makeup-report
       - authoritative-collapsible-artist-specification

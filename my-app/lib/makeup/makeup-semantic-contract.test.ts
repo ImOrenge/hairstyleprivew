@@ -48,7 +48,8 @@ test("makeup canvas keeps color-chip connectors and eye-feature guides without a
   assert.match(renderer, /mode !== "application" && topology/);
   assert.match(renderer, /mode === "application" && eyeFeatureGuides\.length/);
   assert.match(stage, /semantic-map/);
-  assert.match(stage, /setTimeout\(\(\) => void load/);
+  assert.match(stage, /setInterval\(\(\) => void load/);
+  assert.match(stage, /clearInterval\(timer\)/);
   assert.doesNotMatch(stage, /7 MODULE TOOLBAR|ACTIVE ZONE DETAIL/);
   assert.doesNotMatch(stage, />Next<|>NEXT</);
 });
@@ -61,8 +62,20 @@ test("P38 flags provide independent atlas, semantic, and staff-only rollback gat
   assert.match(flags, /MAKEUP_SEMANTIC_VISION_STAFF_ONLY/);
   assert.match(flags, /isMakeupDenseAtlasV3Enabled\(env\) && env\.MAKEUP_SEMANTIC_VISION_V3 === "true"/);
   assert.equal(isMakeupDenseAtlasV3Enabled({ MAKEUP_DENSE_ATLAS_V3: "false" }), false);
-  assert.equal(isMakeupSemanticVisionV3Enabled({ MAKEUP_DENSE_ATLAS_V3: "false", MAKEUP_SEMANTIC_VISION_V3: "true" }), false);
-  assert.equal(isMakeupSemanticVisionV3Enabled({ MAKEUP_DENSE_ATLAS_V3: "true", MAKEUP_SEMANTIC_VISION_V3: "true" }), true);
+  assert.equal(
+    isMakeupSemanticVisionV3Enabled({
+      MAKEUP_DENSE_ATLAS_V3: "false",
+      MAKEUP_SEMANTIC_VISION_V3: "true",
+    }),
+    false,
+  );
+  assert.equal(
+    isMakeupSemanticVisionV3Enabled({
+      MAKEUP_DENSE_ATLAS_V3: "true",
+      MAKEUP_SEMANTIC_VISION_V3: "true",
+    }),
+    true,
+  );
   assert.equal(isMakeupSemanticVisionStaffOnly({}), true);
   assert.match(readiness, /"MAKEUP_DENSE_ATLAS_V3"/);
   assert.match(readiness, /"MAKEUP_SEMANTIC_VISION_V3"/);
