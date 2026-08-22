@@ -24,15 +24,15 @@ const directionRows = [
   ["TEXTURE / COLOR", "소프트 C컬 · 뉴트럴 브라운", "아침 10분과 저채도 방향에 맞춤"],
 ] as const;
 
-const compareRows = [
-  ["얼굴 균형", "좋음", "매우 좋음", "보통"],
-  ["원하는 인상", "차분함", "단정+부드러움", "선명함"],
-  ["아침 손질", "8분", "10분", "15분"],
-  ["필요 시술", "커트", "커트+C컬", "펌+컬러"],
-  ["현재 모발 적합", "높음", "높음", "중간"],
-  ["퍼스널 컬러", "적합", "매우 적합", "보정 필요"],
-  ["관리 주기", "10주", "8주", "6주"],
-  ["리스크", "볼륨 부족", "낮음", "손상·손질"],
+const decisionEvidenceRows = [
+  ["얼굴 균형", "관자 폭과 정수리 높이", "쇄골선 · 정수리 볼륨", "옆 폭을 줄이고 상하 균형을 살림"],
+  ["얼굴 비율", "중안부 안정 · 하관선 완만", "앞머리 없음 · 6:4", "얼굴 세로선을 답답하지 않게 유지"],
+  ["원하는 인상", "단정함 · 부드러운 변화", "낮은 레이어 · 소프트 C컬", "선명한 대비 없이 정돈된 인상 연결"],
+  ["생활 조건", "아침 손질 10분", "말리기 쉬운 자연스러운 흐름", "반복 가능한 관리 난이도로 제한"],
+  ["현재 모발 적합", "끝선 밀도와 손상 가능성", "커트 우선 · C컬 선택", "불필요한 고강도 시술을 피함"],
+  ["퍼스널 컬러", "저채도 · 중명도 · 뉴트럴", "뉴트럴 브라운", "얼굴 가까운 색의 과한 대비를 줄임"],
+  ["살롱 구현", "길이·가르마·볼륨 명세", "현장에서 재현 가능한 조합", "Salon Brief로 그대로 전달 가능"],
+  ["피해야 할 요소", "짧은 앞머리 · 강한 컬 · 무거운 옆 볼륨", "해당 요소 제외", "분석 근거와 충돌하는 결과를 배제"],
 ] as const;
 
 const salonBriefRows = [
@@ -71,7 +71,7 @@ const makeupRoutine = [
 ] as const;
 
 const consultationContinuityProofs = [
-  ["01", "8개 판단 기준", "균형·손질·시술·컬러·관리 주기·리스크를 같은 표에서 비교"],
+  ["01", "8개 판단 기준", "균형·손질·시술·컬러·관리 주기·리스크를 AI 선정 근거로 설명"],
   ["02", "살롱 전달", "확정한 길이·볼륨·질감과 피해야 할 요소를 시술 언어로 정리"],
   ["03", "시술 후 관리", "시술 기록이 등록되면 오늘 관리와 다음 방문 기준으로 연결"],
 ] as const;
@@ -79,14 +79,14 @@ const consultationContinuityProofs = [
 const dossierPages = [
   ["01", "FACE PROFILE", "얼굴 혼합형·비율·랜드마크와 분석 신뢰도"],
   ["02", "HAIR DIRECTION", "길이·가르마·볼륨·질감의 확정 전략"],
-  ["03", "DECISION", "후보 비교와 최종 선택, 선택하지 않은 이유"],
+  ["03", "DECISION", "AI 최종 헤어 1개와 얼굴·모발·생활 조건에 따른 선정 근거"],
   ["04", "MAKEUP & FASHION", "메이크업 전문 리포트·루틴과 패션 방향"],
   ["05", "CARE PROTOCOL", "살롱 브리프·관리 안내·AI 사후상담 기준"],
 ] as const;
 
 const dossierCurrent = [
   "분석 근거와 얼굴 랜드마크",
-  "확정한 전략과 비교 후보",
+  "AI가 확정한 헤어와 판단 근거",
   "선택 시점의 기준이 보존된 결정 기록",
   "살롱 브리프와 시술 후 애프터케어",
   "메이크업 전문 리포트·셀프 루틴·아티스트 브리프",
@@ -191,28 +191,26 @@ export function CompareDecisionShowcase() {
       <div className="f-premium-compare-layout">
         <div>
           <SceneHeader
-            eyebrow="Compare & Decision"
-            title="같은 구도에서 비교하고, 결정의 이유까지 남깁니다."
-            description="shortlist 2~3개를 같은 구도로 비교한 뒤 정확히 1개만 최종 확정합니다. 확정 결과는 이후 브리프와 패션 방향의 기준이 됩니다."
+            eyebrow="AI Decision Evidence"
+            title="AI가 가장 맞는 헤어 1개를 확정하고, 이유를 설명합니다."
+            description="AI가 생성 결과 9개를 얼굴 균형·현재 모발·퍼스널 컬러·원하는 인상·생활 조건과 함께 검토합니다. 최종 헤어는 정확히 1개만 확정하며, 고객은 선정 근거와 피한 요소를 확인할 수 있습니다."
           />
           <ul className="f-premium-checklist" data-reveal-item data-reveal-order="4">
-            <li><Check aria-hidden="true" /> 같은 구도 비교</li>
-            <li><Check aria-hidden="true" /> 최종 헤어 1개 확정</li>
-            <li><LockKeyhole aria-hidden="true" /> 선택 시점의 기준을 버전으로 보존</li>
+            <li><Check aria-hidden="true" /> AI 최종 헤어 1개 확정</li>
+            <li><Check aria-hidden="true" /> 8개 판단 기준과 선정 이유 공개</li>
+            <li><LockKeyhole aria-hidden="true" /> 확정 시점의 근거와 결과 보존</li>
           </ul>
         </div>
-        <p className="f-premium-scroll-hint" id="compare-scroll-hint">후보 이미지와 비교표를 좌우로 밀어 모든 기준을 확인하세요.</p>
-        <div className="f-premium-compare" data-reveal-item data-reveal-order="5" role="region" aria-label="동일 구도 후보 이미지 비교" aria-describedby="compare-scroll-hint" tabIndex={0}>
-          {["03", "05", "07"].map((id, index) => (
-            <figure key={id}>
-              <Image src={`/hero/demo/grid/female-v2-${id}.webp`} alt={`동일 구도 비교 후보 ${index + 1}`} fill sizes="(max-width: 840px) 45vw, 25vw" />
-              <figcaption>{index === 1 ? "최종 선택" : `후보 0${index + 1}`}</figcaption>
-            </figure>
-          ))}
+        <p className="f-premium-scroll-hint" id="compare-scroll-hint">AI 판단 근거표를 좌우로 밀어 모든 기준을 확인하세요.</p>
+        <div className="f-premium-compare f-premium-compare--single" data-reveal-item data-reveal-order="5" role="region" aria-label="AI가 최종 확정한 헤어 예시" aria-describedby="compare-scroll-hint" tabIndex={0}>
+          <figure>
+            <Image src="/hero/demo/grid/female-v2-05.webp" alt="AI가 얼굴·모발·퍼스널 컬러 근거로 최종 확정한 헤어 예시" fill sizes="(max-width: 840px) 92vw, 54vw" />
+            <figcaption>AI FINAL · 01</figcaption>
+          </figure>
         </div>
-        <div className="f-premium-compare-matrix" data-reveal-item data-reveal-order="6" role="region" aria-label="후보별 8개 판단축 비교표" aria-describedby="compare-scroll-hint" tabIndex={0}>
-          <div className="f-premium-compare-matrix__head"><span>판단 기준</span><span>A · 부드러움</span><span>B · 균형</span><span>C · 선명함</span></div>
-          {compareRows.map(([axis, a, b, c]) => <div key={axis}><strong>{axis}</strong><span>{a}</span><span className="is-selected">{b}</span><span>{c}</span></div>)}
+        <div className="f-premium-compare-matrix" data-reveal-item data-reveal-order="6" role="region" aria-label="AI 최종 헤어 8개 판단 근거" aria-describedby="compare-scroll-hint" tabIndex={0}>
+          <div className="f-premium-compare-matrix__head"><span>판단 기준</span><span>확인한 정보</span><span>AI 결론</span><span>선정 이유</span></div>
+          {decisionEvidenceRows.map(([axis, evidence, conclusion, reason]) => <div key={axis}><strong>{axis}</strong><span>{evidence}</span><span className="is-selected">{conclusion}</span><span>{reason}</span></div>)}
         </div>
       </div>
     </LandingScene>

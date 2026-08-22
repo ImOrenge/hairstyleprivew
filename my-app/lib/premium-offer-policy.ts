@@ -3,13 +3,13 @@ import { FULL_STYLE_REFUND_POLICY_VERSION } from "@hairfit/shared/v2";
 export const FULL_STYLE_COMMON_BENEFITS = [
   "얼굴·모발 분석과 정밀 퍼스널 컬러 진단",
   "AI 주도 방향 설정과 실제 헤어 3×3 생성",
-  "2~3개 후보 비교 후 최종 헤어 1개 확정",
+  "AI가 9개 생성 결과를 검토해 최종 헤어 1개와 선정 근거 확정",
   "염색·메이크업·패션 기본 3개와 최대 6개 추가 생성",
   "Salon Brief·AI 결과 해설·PDF·애프터케어",
 ] as const;
 
 export const PREMIUM_OFFER_POLICY = {
-  version: "2026-08-22-v4",
+  version: "2026-08-22-v5",
   priceVersion: 2,
   statusLabel: "가격 확정",
   disclosure:

@@ -57,6 +57,8 @@ test("core scenes expose decision-grade consulting artifacts", () => {
     "STRATEGY FIELD",
     "EVIDENCE & IMPACT",
     "판단 기준",
+    "AI 결론",
+    "선정 이유",
     "현재 모발 적합",
     "SALON HANDOFF",
     "현장 확인",
@@ -67,10 +69,12 @@ test("core scenes expose decision-grade consulting artifacts", () => {
     "FACE PROFILE",
     "CARE PROTOCOL",
   ]) assert.match(showcases, new RegExp(term, "i"));
-  assert.equal(compareRows(showcases), 8);
-  assert.match(showcases, /aria-label="동일 구도 후보 이미지 비교"[^>]*tabIndex=\{0\}/);
-  assert.match(showcases, /aria-label="후보별 8개 판단축 비교표"[^>]*tabIndex=\{0\}/);
+  assert.equal(decisionEvidenceRows(showcases), 8);
+  assert.match(showcases, /aria-label="AI가 최종 확정한 헤어 예시"[^>]*tabIndex=\{0\}/);
+  assert.match(showcases, /aria-label="AI 최종 헤어 8개 판단 근거"[^>]*tabIndex=\{0\}/);
   assert.match(showcases, /id="compare-scroll-hint"/);
+  assert.match(showcases, /AI가 가장 맞는 헤어 1개를 확정하고, 이유를 설명합니다/);
+  assert.doesNotMatch(showcases, /shortlist|동일 구도 후보 이미지 비교|후보별 8개 판단축 비교표/i);
   assert.match(showcases, /컨설팅 결과 연결 증거/);
   assert.match(showcases, /8개 판단 기준/);
   assert.match(showcases, /살롱 전달/);
@@ -82,8 +86,8 @@ test("core scenes expose decision-grade consulting artifacts", () => {
   assert.match(showcases, /연간 플랜[\s\S]*?연 4개 상담 각각 D\+30·60·90/);
 });
 
-function compareRows(source: string) {
-  const block = source.match(/const compareRows = \[([\s\S]*?)\] as const;/)?.[1] ?? "";
+function decisionEvidenceRows(source: string) {
+  const block = source.match(/const decisionEvidenceRows = \[([\s\S]*?)\] as const;/)?.[1] ?? "";
   return block.match(/^\s*\[/gm)?.length ?? 0;
 }
 
@@ -95,11 +99,17 @@ test("free demo, shared paid scope, and approved price boundary remain truthful"
   assert.match(offerPolicy, /priceLabel: "89,000원",[\s\S]*?periodLabel: "\/ 3개월"/);
   assert.equal(offerPolicy.match(/recommended: true/g)?.length, 1);
   assert.match(offerPolicy, /key: "full_style_quarterly"[\s\S]*?recommended: true/);
-  for (const benefit of ["정밀 퍼스널 컬러 진단", "실제 헤어 3×3 생성", "최종 헤어 1개 확정", "최대 6개 추가 생성", "Salon Brief·AI 결과 해설·PDF·애프터케어"]) {
+  for (const benefit of ["정밀 퍼스널 컬러 진단", "실제 헤어 3×3 생성", "최종 헤어 1개와 선정 근거 확정", "최대 6개 추가 생성", "Salon Brief·AI 결과 해설·PDF·애프터케어"]) {
     assert.match(offerPolicy, new RegExp(benefit));
   }
   for (const type of ["1회 완결형", "3개월 정기형", "연간 관리형"]) assert.match(offerPolicy, new RegExp(type));
   assert.match(offers, /결제 전에 직접 확인하는 범위/);
+  assert.match(offers, /className="f-premium-offers__list"/);
+  assert.match(offers, /PREMIUM_OFFER_POLICY\.offers\.map/);
+  assert.match(offers, /offer\.management\.map/);
+  assert.match(offers, /offer\.priceLabel/);
+  assert.match(offers, /부가세 포함 승인 총액/);
+  assert.match(offers, /상세 혜택 비교/);
   assert.match(offerPolicy, /부가세를 포함한 실제 승인 총액/);
   assert.match(offerPolicy, /free_hair_demo/);
   assert.match(offerPolicy, /워터마크 헤어 3×3/);

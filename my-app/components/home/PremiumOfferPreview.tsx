@@ -31,7 +31,50 @@ export function PremiumOfferPreview() {
         </ul>
       </section>
 
-      <div className="f-premium-final" data-reveal-item data-reveal-order="6">
+      <div className="f-premium-offers__list" aria-label="HairFit 유료 플랜 비교">
+        {PREMIUM_OFFER_POLICY.offers.map((offer, index) => (
+          <article
+            className="f-premium-offer"
+            data-recommended={offer.recommended}
+            data-reveal-item
+            data-reveal-order={index + 6}
+            key={offer.key}
+          >
+            <div className="f-premium-offer__identity">
+              <p className="f-premium-offer__index">{String(index + 1).padStart(2, "0")}</p>
+              <p className="f-premium-offer__korean-name">{offer.planTypeLabel}</p>
+              <h3>{offer.koreanName}</h3>
+              {offer.recommended ? <span className="f-premium-offer__recommended">권장 플랜</span> : null}
+            </div>
+
+            <div className="f-premium-offer__promise">
+              <p className="f-premium-offer__tagline">{offer.tagline}</p>
+              <p className="f-premium-offer__summary">{offer.summary}</p>
+              <span className="f-premium-offer__state">
+                {offer.autoRenew ? "자동 갱신" : "단건 결제"} · 결과 {offer.retentionDays}일 보관
+              </span>
+            </div>
+
+            <ul className="f-premium-offer__scope">
+              {offer.management.map((item) => <li key={item}>{item}</li>)}
+              <li>미사용 회차 이월 없음</li>
+            </ul>
+
+            <div className="f-premium-offer__conversion">
+              <div className="f-premium-offer__price">
+                <strong>{offer.priceLabel}</strong>
+                <span>{offer.periodLabel}</span>
+              </div>
+              <span className="f-premium-offer__state">부가세 포함 승인 총액</span>
+              <Link href="/consulting/plans" className="f-premium-offer__cta">
+                상세 혜택 비교 <ArrowRight aria-hidden="true" className="h-4 w-4" />
+              </Link>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      <div className="f-premium-final" data-reveal-item data-reveal-order="9">
         <p>NO CARD REQUIRED</p>
         <h2>무료 결과를 본 뒤, 필요한 이용 기간을 선택하세요.</h2>
         <div>
@@ -40,7 +83,7 @@ export function PremiumOfferPreview() {
         </div>
       </div>
 
-      <div className="f-premium-offers__billing-note" data-reveal-item data-reveal-order="7">
+      <div className="f-premium-offers__billing-note" data-reveal-item data-reveal-order="10">
         <div>
           <p>모든 유료 상담에는 시술 후 관리 안내 6회(D+1·3·7·30·45·90)가 포함됩니다.</p>
           <ul>

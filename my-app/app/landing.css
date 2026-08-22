@@ -2506,6 +2506,7 @@
   .f-premium-checklist svg { width: 1rem; color: var(--app-accent-strong); }
   .f-premium-compare-layout { display: grid; grid-template-columns: minmax(16rem, .62fr) minmax(24rem, 1.38fr); gap: clamp(2rem, 5vw, 5rem); }
   .f-premium-compare { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .f-premium-compare--single { grid-template-columns: minmax(0, 1fr); }
   .f-premium-compare figure { position: relative; min-height: clamp(22rem, 36vw, 34rem); overflow: hidden; }
   .f-premium-compare img { object-fit: cover; }
   .f-premium-compare figcaption { position: absolute; left: .75rem; bottom: .75rem; padding: .45rem .6rem; background: rgba(0,0,0,.7); color: white; font-size: .62rem; font-weight: 900; letter-spacing: .1em; }
@@ -2655,6 +2656,7 @@
     .f-premium-scroll-hint { display: block; margin: 1rem 0 .65rem; color: var(--app-muted); font-size: .72rem; font-weight: 760; line-height: 1.5; }
     [data-tone="inverse"] .f-premium-scroll-hint { color: color-mix(in srgb, currentColor 68%, transparent); }
     .f-premium-compare { grid-template-columns: repeat(3, minmax(9rem, 1fr)); overflow-x: auto; scroll-snap-type: x mandatory; }
+    .f-premium-compare--single { grid-template-columns: minmax(0, 1fr); overflow: visible; scroll-snap-type: none; }
     .f-premium-compare figure { scroll-snap-align: start; }
     .f-premium-compare-matrix { overflow-x: auto; }
     .f-premium-compare-matrix__head, .f-premium-compare-matrix > div:not(.f-premium-compare-matrix__head) { min-width: 38rem; }

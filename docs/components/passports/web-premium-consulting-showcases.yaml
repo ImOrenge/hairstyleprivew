@@ -55,7 +55,8 @@ styling:
   data_contract:
     data-landing-media: present on evidence and salon media
     model-switch: female and male preview panels rotate every 5 seconds while visible and unpaused
-    artifact-depth: analysis provenance, four-field direction matrix, eight-axis comparison, salon handoff, personal-color makeup palette and professional report, six-point aftercare program, fashion brief, and dossier pages use privacy-safe fixtures
+    artifact-depth: analysis provenance, four-field direction matrix, one AI-confirmed hair with eight evidence rows, salon handoff, personal-color makeup palette and professional report, six-point aftercare program, fashion brief, and dossier pages use privacy-safe fixtures
+    ai-hair-decision: the landing shows one AI-confirmed hair and its evidence; customer shortlist comparison is not presented
     scene-order: hero 00 then analysis 01 through pricing 11; aftercare follows the style dossier
   allows_className: false
   inline_styles_allowed: false
@@ -86,7 +87,7 @@ test_surface:
     - CTA and anchor browser verification
     - FAQ keyboard disclosure verification
     - hair and fashion gender tab keyboard and automatic switching verification
-    - horizontal comparison artifacts remain reachable on narrow viewports
+    - the single AI-confirmed hair and horizontally scrollable evidence matrix remain reachable on narrow viewports
     - makeup palette, routine, report, and both CTAs remain reachable at 320px
   visual:
     - 1440x1000 desktop
