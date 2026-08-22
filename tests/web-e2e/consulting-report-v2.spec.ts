@@ -30,9 +30,9 @@ test("Result V2 exposes five query-backed keyboard tabs and customer-only conten
   await expect(fashionPanel.locator("figure img")).toHaveCount(9);
   await expect(fashionPanel.getByAltText("딥 웜 미니멀 워크 룩 패션 생성 결과").first()).toBeVisible();
 
-  await page.getByRole("button", { name: "Chapters" }).click();
-  const stageMap = page.getByRole("dialog", { name: "4 CHAPTERS" });
-  await expect(stageMap.getByRole("link", { name: /FINAL REPORT/ })).toBeVisible();
+  await page.getByRole("button", { name: "챕터" }).click();
+  const stageMap = page.getByRole("dialog", { name: "4개 상담 챕터" });
+  await expect(stageMap.getByRole("link", { name: /최종 리포트/ })).toBeVisible();
 });
 
 test("Result V2 remains contained at 320px and print expands every tab panel", async ({ page }) => {

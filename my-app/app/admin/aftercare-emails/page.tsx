@@ -22,7 +22,27 @@ type LegacyRow = {
   source_snapshot: { subject?: string; contentType?: string; wasOverdueAtMigration?: boolean };
 };
 
+type AftercareEmailPayload = {
+  emails?: OutboxRow[];
+  legacyHeld?: LegacyRow[];
+  counts?: Record<string, number>;
+  error?: string;
+};
+
 const FILTERS = ["held_for_review", "pending", "provider_accepted", "delivered", "delivery_unknown", "bounced", "dead_letter", "cancelled"];
+
+async function fetchAftercareEmails(status: string) {
+  const response = await fetch(`/api/admin/aftercare-emails?status=${encodeURIComponent(status)}`, { cache: "no-store" });
+  const payload = await response.json().catch(() => ({})) as AftercareEmailPayload;
+  if (!response.ok) throw new Error(payload.error || "에프터케어 메일 현황을 불러오지 못했습니다.");
+  return payload;
+}
+
+function parseFutureScheduledSendAt(input: string) {
+  const parsed = new Date(input);
+  if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) return null;
+  return parsed.toISOString();
+}
 
 export default function AdminAftercareEmailsPage() {
   const [status, setStatus] = useState("held_for_review");
@@ -34,15 +54,25 @@ export default function AdminAftercareEmailsPage() {
 
   const load = useCallback(async () => {
     setError(null);
-    const response = await fetch(`/api/admin/aftercare-emails?status=${encodeURIComponent(status)}`, { cache: "no-store" });
-    const payload = await response.json().catch(() => ({})) as { emails?: OutboxRow[]; legacyHeld?: LegacyRow[]; counts?: Record<string, number>; error?: string };
-    if (!response.ok) throw new Error(payload.error || "에프터케어 메일 현황을 불러오지 못했습니다.");
+    const payload = await fetchAftercareEmails(status);
     setEmails(payload.emails || []);
     setLegacyHeld(payload.legacyHeld || []);
     setCounts(payload.counts || {});
   }, [status]);
 
-  useEffect(() => { void load().catch((cause) => setError(cause instanceof Error ? cause.message : "조회에 실패했습니다.")); }, [load]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAftercareEmails(status).then((payload) => {
+      if (cancelled) return;
+      setError(null);
+      setEmails(payload.emails || []);
+      setLegacyHeld(payload.legacyHeld || []);
+      setCounts(payload.counts || {});
+    }).catch((cause) => {
+      if (!cancelled) setError(cause instanceof Error ? cause.message : "조회에 실패했습니다.");
+    });
+    return () => { cancelled = true; };
+  }, [status]);
 
   const act = async (input: { outboxId?: string; legacyCareContentId?: string; action: "release" | "cancel" | "retry" }) => {
     const id = input.outboxId || input.legacyCareContentId || "";
@@ -50,12 +80,12 @@ export default function AdminAftercareEmailsPage() {
     if (input.action === "release") {
       const entered = window.prompt("재예약 시각을 입력하세요. 예: 2026-08-22T09:00:00+09:00");
       if (!entered) return;
-      const parsed = new Date(entered);
-      if (Number.isNaN(parsed.getTime()) || parsed.getTime() <= Date.now()) {
+      const parsedSchedule = parseFutureScheduledSendAt(entered);
+      if (!parsedSchedule) {
         setError("현재보다 미래인 올바른 재예약 시각을 입력해 주세요.");
         return;
       }
-      scheduledSendAt = parsed.toISOString();
+      scheduledSendAt = parsedSchedule;
     }
     setBusyId(id);
     setError(null);

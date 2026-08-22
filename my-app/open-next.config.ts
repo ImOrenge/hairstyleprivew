@@ -154,7 +154,7 @@ const adminWorkerRoutes = [
   "app/api/admin/support/posts/route",
 ] as const;
 
-export default {
+const openNextConfig = {
   ...base,
   functions: {
     media: {
@@ -180,3 +180,5 @@ export default {
     },
   },
 };
+
+export default openNextConfig;

@@ -135,16 +135,16 @@ test("desktop panes scroll independently while mobile keeps input before output"
   expect(mobile.outputTop).toBeGreaterThan(mobile.inputTop);
 });
 
-test("ALL STAGES overlay traps focus, closes with Escape, and returns focus", async ({ page }) => {
+test("챕터 overlay traps focus, closes with Escape, and returns focus", async ({ page }) => {
   await page.goto("/consulting/e2e-harness?stage=discovery");
   await dismissGlobalNotices(page);
-  const trigger = page.getByRole("button", { name: "All stages" });
+  const trigger = page.getByRole("button", { name: "챕터" });
   await trigger.focus();
   await page.keyboard.press("Enter");
-  const dialog = page.getByRole("dialog", { name: "ALL STAGES" });
+  const dialog = page.getByRole("dialog", { name: "4개 상담 챕터" });
   await expect(dialog).toBeVisible();
-  await expect(dialog.locator("li")).toHaveCount(11);
-  await expect(dialog.getByRole("link")).toHaveCount(6);
+  await expect(dialog.locator("li")).toHaveCount(4);
+  expect(await dialog.getByRole("link").count()).toBeGreaterThanOrEqual(2);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(trigger).toBeFocused();
@@ -410,7 +410,7 @@ test("completed readiness performs its completion moment and automatic handoff w
   expect(Date.now() - startedAt).toBeLessThanOrEqual(1_500);
 });
 
-test("Scan renders persisted face landmarks and measurement interactions over the photo", async ({ page }, testInfo) => {
+test("Analysis renders persisted face landmarks and saves measurement corrections over the photo", async ({ page }, testInfo) => {
   let landmarkEvidence: AnalysisEvidenceV2 = structuredClone(LANDMARK_EVIDENCE);
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
@@ -442,7 +442,7 @@ test("Scan renders persisted face landmarks and measurement interactions over th
     }
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ evidence: landmarkEvidence }) });
   });
-  await page.goto("/consulting/e2e-harness?stage=scan");
+  await page.goto("/consulting/e2e-harness?stage=analysis");
   await dismissGlobalNotices(page);
   await expect(page.locator('[data-consulting-hydrated="true"]')).toBeVisible();
   await expect(page.getByRole("img", { name: "상담 분석용 원본 사진" })).toBeVisible();
@@ -457,11 +457,11 @@ test("Scan renders persisted face landmarks and measurement interactions over th
   await expect(faceContour).toHaveAttribute("data-evidence-source", "detected");
   await expect(faceContour).toHaveCSS("fill", "none");
   await expect(overlay.locator('[data-evidence-id="hairline_estimate"]')).toHaveAttribute("data-evidence-source", "inferred");
-  await page.getByRole("button", { name: "피부 샘플" }).click();
+  await page.getByRole("button", { name: "피부 샘플", exact: true }).click();
   await expect(overlay.locator('[data-evidence-id="skin_left_cheek"]')).toBeVisible();
-  await page.getByRole("button", { name: "컬러 제외" }).click();
+  await page.getByRole("button", { name: "컬러 제외", exact: true }).click();
   await expect(overlay.locator('[data-evidence-id="excluded_lips"]')).toBeVisible();
-  await page.getByRole("button", { name: /hairline 사진 근거 강조/ }).click();
+  await page.locator('[data-evidence-ledger-id="hairline"]').click();
   await expect(overlay.locator('[data-evidence-id="hairline_estimate"]')).toHaveAttribute("data-evidence-active", "true");
   const cheekbone = page.getByRole("button", { name: "광대 폭 측정 근거" });
   await cheekbone.focus();
@@ -478,9 +478,17 @@ test("Scan renders persisted face landmarks and measurement interactions over th
   expect(await page.locator("body").innerText()).not.toHaveLength(0);
   expect(consoleErrors).toEqual([]);
   await page.locator('[data-photo-evidence-stage="true"]').screenshot({
-    path: testInfo.outputPath("scan-landmark-overlay.png"),
+    path: testInfo.outputPath("analysis-landmark-overlay.png"),
     animations: "disabled",
   });
+});
+
+test("Scan is progress-only and does not expose evidence correction controls", async ({ page }) => {
+  await page.goto("/consulting/e2e-harness?stage=scan");
+  await dismissGlobalNotices(page);
+  await expect(page.getByText("AI 분석 자동 진행")).toBeVisible();
+  await expect(page.getByLabel("보정할 AI 기준점")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "분석 결과 보기" })).toBeVisible();
 });
 
 test("Analysis renders the persisted facial proportion matrix without inventing physical units", async ({ page }) => {

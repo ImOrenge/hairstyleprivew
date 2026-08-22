@@ -10,7 +10,7 @@ test("P43 chapter navigation remains while P54 replaces the three-decision intak
   const presentation = read("packages", "shared", "src", "consulting", "presentation.ts");
   const interview = read("my-app", "components", "consulting", "interview", "ZeroInputConsultationStart.tsx");
   const native = read("apps", "hairfit-app", "app", "consulting.tsx");
-  assert.match(presentation, /\["intake",\s*"diagnosis",\s*"design",\s*"report"\]/);
+  assert.match(presentation, /\[\s*"intake",\s*"diagnosis",\s*"design",\s*"report",?\s*\]/);
   assert.match(interview, /사진 전 필수 질문 0개/);
   assert.doesNotMatch(interview, /currentStep|questionIndex|현재 모발 상태/);
   assert.match(native, /상담 시작 · 입력 0개/);

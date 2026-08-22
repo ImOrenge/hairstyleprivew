@@ -57,7 +57,7 @@ function sectionLines(section: ConsultationReportSectionV2) {
       ...Object.entries(section.payload.palettes).map(([key, colors]) => `${key}: ${colors.join(" · ") || "없음"}`),
     ];
     case "final-color": return [`컬러: ${section.payload.colorName}`, `기법: ${section.payload.technique}`, `목표 레벨: ${section.payload.targetLevel ?? "현장 확인"}`, `탈색: ${section.payload.bleachPolicy}`, `퇴색 방향: ${section.payload.fadeDirection || "확인 필요"}`];
-    case "makeup-result": return section.payload.modules.map((item) => `${item.module}: ${item.enabled ? "사용" : "제외"}${item.color ? ` · ${item.color}` : ""}${item.texture ? ` · ${item.texture}` : ""}`);
+    case "makeup-result": return section.payload.professionalReport ? [] : section.payload.modules.map((item) => `${item.module}: ${item.enabled ? "사용" : "제외"}${item.color ? ` · ${item.color}` : ""}${item.texture ? ` · ${item.texture}` : ""}`);
     case "fashion-result": return [
       `준비된 패션 제안: ${section.payload.completedCount}개`,
       ...section.payload.looks.flatMap((look) => [`${look.label} · ${preparationLabel(look.generationState)}${look.isRecommended ? " · AI 추천" : ""}${look.isSelected ? " · 내가 고른 스타일" : ""}`, `실루엣·네크라인: ${look.silhouette} · ${look.neckline}`, `구성: ${look.items.join(" · ")}`, `팔레트: ${look.palette.join(" · ")}`]),
@@ -87,6 +87,19 @@ function Section({ section }: { section: ConsultationReportSectionV2 }) {
   return <View style={styles.section} minPresenceAhead={60}>
     <View style={styles.sectionHead}><View><Text style={styles.eyebrow}>{section.kicker}</Text><Text style={styles.sectionTitle}>{section.title}</Text></View><Text style={styles.status}>{consultationReportStatusLabelV2(section.status)}</Text></View>
     <Text style={styles.conclusion}>{section.conclusion}</Text>
+    {section.key === "makeup-result" && section.payload.professionalReport ? <View style={styles.narrative} minPresenceAhead={80}>
+      <Text style={styles.eyebrow}>{section.payload.professionalReport.state === "ready" ? "AI 메이크업 디렉터 리포트" : "메이크업 디렉터 리포트"}</Text>
+      <Text style={styles.narrativeTitle}>{section.payload.professionalReport.content.headline}</Text>
+      {section.payload.professionalReport.content.summary.map((item, index) => <Text key={`makeup-summary-${index}`} style={styles.line}>• {item.text}</Text>)}
+      <Text style={styles.label}>이 방향이 잘 맞는 이유</Text>
+      {section.payload.professionalReport.content.fitReasons.map((item, index) => <Text key={`makeup-reason-${index}`} style={styles.line}>• {item.text}</Text>)}
+      <Text style={styles.label}>부위별 디렉팅</Text>
+      {section.payload.professionalReport.content.moduleInsights.flatMap((item) => item.summary.map((line, index) => <Text key={`makeup-module-${item.module}-${index}`} style={styles.line}>• {item.module}: {line.text}</Text>))}
+      <Text style={styles.label}>실제로 활용하는 방법</Text>
+      {section.payload.professionalReport.content.applicationTips.map((item, index) => <Text key={`makeup-tip-${index}`} style={styles.line}>• {item.text}</Text>)}
+      {section.payload.routine ? <><Text style={styles.label}>셀프 메이크업 적용 순서 · {Math.ceil(section.payload.routine.estimatedSeconds / 60)}분 이내</Text>{section.payload.routine.steps.map((step) => <Text key={`makeup-routine-${step.order}`} style={styles.line}>• {step.order}. {step.module}: {step.instruction}</Text>)}</> : null}
+      {section.payload.artistBrief ? <><Text style={styles.label}>메이크업 아티스트용 상세 명세</Text>{section.payload.artistBrief.moduleSummaries.map((item) => <Text key={`makeup-brief-${item.module}`} style={styles.line}>• {item.module}: {item.enabled ? `${item.colorFamily ?? "현장 선택"} · ${item.finish} · 강도 ${Math.round(item.intensity * 100)}% · ${item.placement.join(" · ")} · ${item.applicationDirection.join(" · ")} · ${item.technique}` : "제외"}</Text>)}</> : null}
+    </View> : null}
     {lines.map((line, index) => <Text key={`${section.key}-line-${index}`} style={styles.line}>• {line}</Text>)}
     {section.rationale.length ? <><Text style={styles.label}>이 결과가 잘 맞는 이유</Text>{section.rationale.map((item, index) => <Text key={`${section.key}-rationale-${index}`} style={styles.line}>• {item}</Text>)}</> : null}
     {section.effects.length ? <><Text style={styles.label}>기대할 수 있는 변화</Text>{section.effects.map((item, index) => <Text key={`${section.key}-effect-${index}`} style={styles.line}>• {item}</Text>)}</> : null}
@@ -113,7 +126,8 @@ function ReportPdfDocumentV2({ report }: { report: ConsultationReportViewModelV2
     <Page size="A4" wrap style={styles.page}>
       <View style={styles.header}><Text style={styles.eyebrow}>HAIRFIT AI CONSULTANT · 상담 결과</Text><Text style={styles.title}>{report.headline}</Text><View style={styles.metaRow}><Text style={styles.meta}>{consultationReportStatusLabelV2(report.status)}</Text><Text style={styles.meta}>작성일 {report.generatedAt}</Text></View></View>
       {report.tabs.map((tab) => {
-        const panel = report.narrative ? (tab.key === "final" ? report.narrative.content.overall : report.narrative.content.tabs[tab.key]) : null;
+        const hasDedicatedMakeupReport = tab.key === "makeup" && tab.sections.some((section) => section.key === "makeup-result" && Boolean(section.payload.professionalReport));
+        const panel = report.narrative && !hasDedicatedMakeupReport ? (tab.key === "final" ? report.narrative.content.overall : report.narrative.content.tabs[tab.key]) : null;
         return <View key={tab.key}><View style={styles.group} break><Text style={styles.eyebrow}>상담 결과</Text><Text style={styles.groupTitle}>{tab.label}</Text></View>{panel ? <Narrative panel={panel} state={report.narrative!.state} /> : null}{tab.sections.map((section) => <Section key={section.key} section={section} />)}</View>;
       })}
       <View style={styles.footer} wrap={false}><Text>원본 얼굴·시술 후 사진은 포함하지 않습니다. 실제 시술 이후 장기 관리는 별도 케어 프로그램에서 진행합니다.</Text><Text>AI 해설은 상담에서 확인한 사실을 이해하기 쉽게 설명하며, 주의사항과 시술 명세의 의미를 바꾸지 않습니다.</Text><Text>AI 분석은 의료 진단이 아니며 실제 시술 전 디자이너 확인이 우선합니다. · 문서 확인번호 {report.integrityCode}</Text></View>

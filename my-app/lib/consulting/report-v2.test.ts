@@ -79,6 +79,18 @@ test("V2 report uses the confirmed makeup simulation and hair profile provenance
   if (hair?.key === "face-hair-analysis") assert.equal(hair.payload.observations.some((item) => item.value.includes("약한 웨이브")), true);
 });
 
+test("V2 report fingerprint changes when the professional makeup report changes", () => {
+  const snapshot = completeSnapshot();
+  const fallback = projectConsultationReportV2(snapshot, {
+    makeupProfessionalReport: { outputFingerprint: null } as never,
+  });
+  const ready = projectConsultationReportV2(snapshot, {
+    makeupProfessionalReport: { outputFingerprint: "makeup-report-ready-fingerprint" } as never,
+  });
+  assert.notEqual(fallback.sourceFingerprint, ready.sourceFingerprint);
+  assert.notEqual(fallback.integrityCode, ready.integrityCode);
+});
+
 test("P53 report and PDF projection retain every generated Hair and Fashion result", () => {
   const snapshot = completeSnapshot();
   const fashionCandidates = Array.from({ length: 9 }, (_, index) => ({

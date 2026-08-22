@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import {
-  getSafePaymentFailureCopy,
-  getSafeRefundFailureCopy,
-  getSafeSubscriptionFailureCopy,
-} from "../components/mypage/myPageSafeCopy.ts";
+import { getSafePaymentFailureCopy, getSafeRefundFailureCopy, getSafeSubscriptionFailureCopy } from "../components/mypage/myPageSafeCopy.ts";
 
 function read(relativePath: string) {
   return readFileSync(new URL(relativePath, import.meta.url), "utf8");
@@ -23,34 +19,16 @@ test("billing and account formatters never expose provider messages, codes, or u
   }
 
   const formatterSource = read("../components/mypage/myPageFormatters.ts");
-  for (const safeFallback of [
-    "플랜 정보 확인 필요",
-    "상태 확인 필요",
-    "결제 상태 확인 필요",
-    "환불 상태 확인 필요",
-    "상태 확인 중",
-  ]) {
+  for (const safeFallback of ["플랜 정보 확인 필요", "상태 확인 필요", "결제 상태 확인 필요", "환불 상태 확인 필요", "상태 확인 중"]) {
     assert.match(formatterSource, new RegExp(safeFallback));
   }
   assert.doesNotMatch(formatterSource, /return message \|\| code|return normalized;/);
 });
 
 test("customer payment surfaces explain state and recovery without developer terminology", () => {
-  const sources = [
-    read("../app/billing/page.tsx"),
-    read("../app/billing/checkout/page.tsx"),
-    read("../components/billing/PaidActionQuoteCard.tsx"),
-    read("../components/layout/SubscriptionPaymentNoticeModal.tsx"),
-    read("../components/mypage/panels/MyPagePlanPanel.tsx"),
-    read("../components/payments/PortoneSubscriptionButton.tsx"),
-    read("../components/payments/SubscriptionWaitlistForm.tsx"),
-    read("../../apps/hairfit-app/app/billing.tsx"),
-  ].join("\n");
+  const sources = [read("../app/billing/page.tsx"), read("../app/billing/checkout/page.tsx"), read("../components/billing/PaidActionQuoteCard.tsx"), read("../components/layout/SubscriptionPaymentNoticeModal.tsx"), read("../components/mypage/panels/MyPagePlanPanel.tsx"), read("../components/payments/PortoneSubscriptionButton.tsx"), read("../components/payments/SubscriptionWaitlistForm.tsx"), read("../../apps/hairfit-app/app/billing.tsx")].join("\n");
 
-  assert.doesNotMatch(
-    sources,
-    /PortOne Checkout|Subscription Waitlist|Payment Notice|카드 빌링키|PG 연동|웨잇리스트|웹훅 처리|웹훅:|결제 취소 API|서버 크레딧 견적|서버 검증|서버 상태/,
-  );
+  assert.doesNotMatch(sources, /PortOne Checkout|Subscription Waitlist|Payment Notice|카드 빌링키|PG 연동|웨잇리스트|웹훅 처리|웹훅:|결제 취소 API|서버 크레딧 견적|서버 검증|서버 상태/);
   assert.match(sources, /안전한 결제창/);
   assert.match(sources, /최신 크레딧 견적/);
   assert.match(sources, /결제 상태 다시 확인/);
@@ -80,16 +58,10 @@ test("selection, confirmation, retry, regeneration, and payment return keep dist
   assert.match(quote, /결제를 마치고 돌아오면 자동 실행하지 않고 최신 견적을 다시 확인합니다/);
   assert.match(generation, /실패한 후보만 다시 시도/);
   assert.match(generation, /실패한 후보 다시 시도/);
-  assert.doesNotMatch(
-    generation,
-    /Recommendation Board|Nine tailored|Variant failed|Rendering AI preview|Waiting in queue|Pending score|Open Result|"Retrying|>Retry</,
-  );
+  assert.doesNotMatch(generation, /Recommendation Board|Nine tailored|Variant failed|Rendering AI preview|Waiting in queue|Pending score|Open Result|"Retrying|>Retry</);
   assert.doesNotMatch(generation, /\{variant\.error\}|\{preparationError\}/);
   assert.match(mobileGeneration, /실패한 후보 다시 시도/);
-  assert.doesNotMatch(
-    mobileGeneration,
-    /Recommendation Board|Nine tailored|Variant failed|Rendering AI preview|Waiting in queue|Pending score|Open Result|Retrying|Render again/,
-  );
+  assert.doesNotMatch(mobileGeneration, /Recommendation Board|Nine tailored|Variant failed|Rendering AI preview|Waiting in queue|Pending score|Open Result|Retrying|Render again/);
   assert.doesNotMatch(mobileGeneration, /<BodyText style=\{styles\.errorText\}>\{variant\.error\}/);
   assert.doesNotMatch(mobileGenerationEntry, /<Kicker>Generate|Nine tailored|Upload required|Choose portrait|멱등/);
 });
@@ -97,49 +69,15 @@ test("selection, confirmation, retry, regeneration, and payment return keep dist
 test("audited static UI copy keeps implementation and generic English labels off user screens", () => {
   const pricingPreview = read("../components/home/PricingPreview.tsx");
   const myPagePlanPanel = read("../components/mypage/panels/MyPagePlanPanel.tsx");
-  const webPassCopy = [
-    read("../app/home/page.tsx"),
-    read("../app/admin/members/[userId]/page.tsx"),
-    read("../components/billing/SubscriptionPolicyDisclosure.tsx"),
-    read("../components/mypage/SubscriptionCancelButton.tsx"),
-    myPagePlanPanel,
-    read("../lib/resend.ts"),
-  ].join("\n");
-  const auditedSources = [
-    read("../app/billing/page.tsx"),
-    read("../app/api/generations/run/route.ts"),
-    read("../app/home/page.tsx"),
-    read("../app/support/page.tsx"),
-    read("../components/home/AccountSetupPromptModal.tsx"),
-    read("../components/home/B2BLeadForm.tsx"),
-    read("../components/mypage/MyPageDashboardTabs.tsx"),
-    read("../components/personal-color/PersonalColorDiagnosisProgress.tsx"),
-    read("../components/salon/SalonConnectionsClient.tsx"),
-    read("../components/workspace/WorkspaceWizard.tsx"),
-    read("../../apps/hairfit-app/app/(auth)/login.tsx"),
-    read("../../apps/hairfit-app/app/(auth)/signup.tsx"),
-    read("../../apps/hairfit-app/app/account.tsx"),
-    read("../../apps/hairfit-app/app/index.tsx"),
-    read("../../apps/hairfit-app/app/payments/complete.tsx"),
-    read("../../apps/hairfit-app/app/upload.tsx"),
-    read("../../apps/hairfit-app/components/PersonalColorDiagnosisProgress.tsx"),
-    read("../../apps/hairfit-app/components/styler/MobileStylerNewView.tsx"),
-    read("../components/styler/StylerNewView.tsx"),
-    read("../hooks/useGenerate.ts"),
-  ].join("\n");
+  const webPassCopy = [read("../app/home/page.tsx"), read("../app/admin/members/[userId]/page.tsx"), read("../components/billing/SubscriptionPolicyDisclosure.tsx"), read("../components/mypage/SubscriptionCancelButton.tsx"), myPagePlanPanel, read("../lib/resend.ts")].join("\n");
+  const auditedSources = [read("../app/billing/page.tsx"), read("../app/api/generations/run/route.ts"), read("../app/home/page.tsx"), read("../app/support/page.tsx"), read("../components/home/AccountSetupPromptModal.tsx"), read("../components/home/B2BLeadForm.tsx"), read("../components/mypage/MyPageDashboardTabs.tsx"), read("../components/personal-color/PersonalColorDiagnosisProgress.tsx"), read("../components/salon/SalonConnectionsClient.tsx"), read("../components/workspace/WorkspaceWizard.tsx"), read("../../apps/hairfit-app/app/(auth)/login.tsx"), read("../../apps/hairfit-app/app/(auth)/signup.tsx"), read("../../apps/hairfit-app/app/account.tsx"), read("../../apps/hairfit-app/app/index.tsx"), read("../../apps/hairfit-app/app/payments/complete.tsx"), read("../../apps/hairfit-app/app/upload.tsx"), read("../../apps/hairfit-app/components/PersonalColorDiagnosisProgress.tsx"), read("../../apps/hairfit-app/components/styler/MobileStylerNewView.tsx"), read("../components/styler/StylerNewView.tsx"), read("../hooks/useGenerate.ts")].join("\n");
 
-  assert.doesNotMatch(
-    auditedSources,
-    /Account Setup|Admin Dashboard|App Home|Hair History|Style History|Personal Color Scan|Analysis Preview|Warm \/ Cool|Privacy &amp; consent|NEXT_PUBLIC_TURNSTILE_SITE_KEY 설정이 필요합니다|NEXT_PUBLIC_CLERK|Clerk publishable|멱등|임시 서명 링크|결제 콜백 정보|추가\s+이용량/,
-  );
+  assert.doesNotMatch(auditedSources, /Account Setup|Admin Dashboard|App Home|Hair History|Style History|Personal Color Scan|Analysis Preview|Warm \/ Cool|Privacy &amp; consent|NEXT_PUBLIC_TURNSTILE_SITE_KEY 설정이 필요합니다|NEXT_PUBLIC_CLERK|Clerk publishable|멱등|임시 서명 링크|결제 콜백 정보|추가\s+이용량/);
   assert.match(auditedSources, /보안 확인을 준비하지 못했습니다/);
   assert.match(auditedSources, /개인정보 및 동의/);
   assert.match(auditedSources, /팔레트 비교 과정/);
   assert.doesNotMatch(pricingPreview, /passSummary|pricing\.(?:paidCredits|freeCredits)/);
-  assert.doesNotMatch(
-    webPassCopy,
-    /(?:남는|남은|잔여)\s*(?:이용량|이용권|분)|미사용\s*이용권|서비스\s*이용량|지급\s*이용량/,
-  );
+  assert.doesNotMatch(webPassCopy, /(?:남는|남은|잔여)\s*(?:이용량|이용권|분)|미사용\s*이용권|서비스\s*이용량|지급\s*이용량/);
   assert.doesNotMatch(myPagePlanPanel, /크레딧|잔여|추가\s+\{plan\./);
   assert.match(myPagePlanPanel, /현재 플랜 혜택/);
   assert.match(myPagePlanPanel, /href="\/billing"/);
@@ -155,18 +93,8 @@ test("the written glossary records the same user-facing action boundaries", () =
 });
 
 test("consultation journey and result copy explain customer outcomes without implementation terminology", () => {
-  const sources = [
-    read("../components/consulting/report/ReportReceiptV2.tsx"),
-    read("../components/consulting/report/ReportSectionV2.tsx"),
-    read("../components/consulting/report/ReportTabsV2.tsx"),
-    read("../components/consulting/transition/ConsultantActivityRail.tsx"),
-    read("../components/consulting/transition/ConsultationTransitionScreen.tsx"),
-    read("../components/consulting/transition/PartialResultReveal.tsx"),
-    read("../components/consulting/recovery/RecoveryNotice.tsx"),
-    read("../components/consulting/workbenches/DecisionWorkbench.tsx"),
-    read("../components/consulting/workbenches/DiscoveryWorkbench.tsx"),
-  ].join("\n");
-  assert.doesNotMatch(sources, /AI 판단 근거|RESULT GROUP|>Live task<|>First evidence<|>Brief draft<|>Fashion batch<|AI consultant is working|Consultation snapshot|서버 스냅샷|최종 snapshot|새 revision|Evidence ID|Strategy revision|Quality state/);
+  const sources = [read("../components/consulting/report/ReportReceiptV2.tsx"), read("../components/consulting/report/ReportSectionV2.tsx"), read("../components/consulting/report/ReportTabsV2.tsx"), read("../components/consulting/transition/ConsultantActivityRail.tsx"), read("../components/consulting/transition/ConsultationTransitionScreen.tsx"), read("../components/consulting/transition/PartialResultReveal.tsx"), read("../components/consulting/recovery/RecoveryNotice.tsx"), read("../components/consulting/workbenches/DecisionWorkbench.tsx"), read("../components/consulting/workbenches/DiscoveryWorkbench.tsx"), read("../components/consulting/workbenches/ScanWorkbench.tsx"), read("../components/consulting/workbenches/AnalysisWorkbench.tsx"), read("../components/consulting/workbenches/ColorStudioWorkbench.tsx"), read("../components/consulting/workbenches/FashionBatchWorkbench.tsx"), read("../components/consulting/workbenches/PreviewsWorkbench.tsx"), read("../components/consulting/scene/StageMapOverlay.tsx")].join("\n");
+  assert.doesNotMatch(sources, /AI 판단 근거|RESULT GROUP|>Live task<|>First evidence<|>Brief draft<|>Fashion batch<|AI consultant is working|Consultation snapshot|서버 스냅샷|최종 snapshot|새 revision|Evidence ID|Strategy revision|Quality state|Decision lock|Backup candidate|Evidence ledger|Focused evidence|4 CHAPTERS|ALL STAGES|AI preview board|Generation status|All generated outputs|gpt-image-2/);
   assert.match(sources, /이 결과가 잘 맞는 이유/);
   assert.match(sources, /기대할 수 있는 변화/);
   assert.match(sources, /시술 전 확인할 점/);

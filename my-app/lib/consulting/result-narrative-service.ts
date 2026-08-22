@@ -68,7 +68,8 @@ function sectionFacts(section: ConsultationReportSectionV2, tab: ConsultationRes
 
 export function projectConsultationResultNarrativeInputV1(report: ConsultationReportViewModelV2): ConsultationResultNarrativeInputV1 {
   const baseFingerprint = report.narrative?.content.reportFingerprint ?? report.sourceFingerprint;
-  const availableTabs = report.tabs.map((tab) => tab.key).filter((key): key is ConsultationResultNarrativeTabKeyV1 => CONSULTATION_RESULT_NARRATIVE_TAB_KEYS.includes(key as ConsultationResultNarrativeTabKeyV1));
+  const hasDedicatedMakeupReport = report.tabs.some((tab) => tab.key === "makeup" && tab.sections.some((section) => section.key === "makeup-result" && Boolean(section.payload.professionalReport)));
+  const availableTabs = report.tabs.map((tab) => tab.key).filter((key): key is ConsultationResultNarrativeTabKeyV1 => CONSULTATION_RESULT_NARRATIVE_TAB_KEYS.includes(key as ConsultationResultNarrativeTabKeyV1) && !(key === "makeup" && hasDedicatedMakeupReport));
   const facts: ConsultationResultNarrativeFactV1[] = [
     { id: "final-report-headline", tab: "final", kind: "decision", label: "종합 결론", value: clean(report.headline) || "확인된 상담 결과를 하나의 스타일 방향으로 정리했습니다." },
   ];

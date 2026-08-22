@@ -72,6 +72,8 @@ notes:
   - screen-and-pdf-share-the-same-grounded-narrative
   - fallback-content-renders-before-ai-enhancement
   - narrative-failure-never-blocks-result-reading
+  - executive-summary-does-not-repeat-ai-fit-reasons-or-effects
+  - customer-labels-replace-raw-change-and-maintenance-enums
   - every-ai-sentence-references-allowlisted-result-facts
   - generated-content-is-never-shortlisted-away-from-the-report
   - aftercare-program-state-is-not-a-report-section

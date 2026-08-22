@@ -52,6 +52,7 @@ export function isConsultationMakeupInterviewEnabled() {
 export function isMakeupRationaleAiEnabled() {
   return process.env.MAKEUP_RATIONALE_AI_ENABLED === "true";
 }
+export function isMakeupProfessionalReportAiEnabled() { return process.env.MAKEUP_PROFESSIONAL_REPORT_AI_ENABLED === "true"; }
 export function isMakeupStyleSimulationEnabled() { return process.env.MAKEUP_STYLE_SIMULATION_ENABLED === "true"; }
 export function isMakeupStyleSimulationAlternativeEnabled() { return process.env.MAKEUP_STYLE_SIMULATION_ALTERNATIVE_ENABLED === "true"; }
 export function isHairTraitAnalysisEnabled() { return process.env.CONSULTATION_HAIR_TRAIT_ANALYSIS_ENABLED !== "false"; }
@@ -122,6 +123,7 @@ export function isCapabilityDurabilityEnabled(capability: string) {
   if (capability === "fashion-recommendation-generation") return isConsultationFashionBatchEnabled();
   if (capability === "makeup-semantic-map") return isMakeupSemanticVisionV3Enabled();
   if (capability === "makeup-rationale-generation") return isMakeupRationaleAiEnabled();
+  if (capability === "makeup-direction-professional-report-generation") return isMakeupProfessionalReportAiEnabled();
   if (capability === "makeup-simulation-generation") return isMakeupStyleSimulationEnabled();
   if (capability === "hair-trait-analysis") return isHairTraitAnalysisEnabled();
   if (capability === "consultation-result-narrative-generation") return isConsultationResultNarrativeAiEnabled();

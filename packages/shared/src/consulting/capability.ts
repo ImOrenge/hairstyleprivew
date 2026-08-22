@@ -10,6 +10,7 @@ export const CONSULTATION_CAPABILITIES = [
   "hair-trait-analysis",
   "makeup-simulation-generation",
   "consultation-result-narrative-generation",
+  "makeup-direction-professional-report-generation",
   "aftercare-checkin-photo-analysis",
   "aftercare-checkin-response-generation",
 ] as const;

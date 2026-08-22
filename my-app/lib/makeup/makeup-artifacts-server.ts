@@ -5,6 +5,7 @@ import { compileMakeupArtistBriefV1, compileMakeupRoutineV1, type MakeupArtistBr
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "../v2/errors";
 import { recordV2Event } from "../v2/observability";
+import { readMakeupProfessionalReportForArtifacts } from "../capabilities/makeup-professional-report-service";
 
 type DirectionRow = { id: string; consultation_id: string; user_id: string; status: string; snapshot: MakeupDirectionSnapshot };
 const tokenHash = (token: string) => createHash("sha256").update(token).digest("hex");
@@ -96,5 +97,15 @@ export async function readPublicMakeupBriefShare(token: string) {
     const signed = await db.storage.from(row.payload.sourceAsset.bucket).createSignedUrl(row.payload.sourceAsset.path, 600);
     if (!signed.error) sourcePhotoUrl = signed.data.signedUrl;
   }
-  return { brief: row.payload.brief, expiresAt: row.expires_at, sourcePhotoIncluded: Boolean(sourcePhotoUrl), sourcePhotoUrl };
+  const [direction, routine] = await Promise.all([
+    db.from("makeup_direction_snapshots").select("snapshot,user_id").eq("id", row.payload.brief.makeupDirectionSnapshotId).maybeSingle(),
+    db.from("makeup_routines").select("routine").eq("makeup_direction_snapshot_id", row.payload.brief.makeupDirectionSnapshotId).eq("mode", row.payload.brief.context.preparationMinutes <= 10 ? "compact" : "full").maybeSingle(),
+  ]);
+  const snapshot = (direction.data as unknown as { snapshot?: MakeupDirectionSnapshot; user_id?: string } | null)?.snapshot ?? null;
+  const ownerId = (direction.data as unknown as { user_id?: string } | null)?.user_id ?? null;
+  const routineValue = (routine.data as unknown as { routine?: MakeupRoutine } | null)?.routine ?? null;
+  const professionalReport = snapshot && ownerId && routineValue
+    ? await readMakeupProfessionalReportForArtifacts({ userId: ownerId, snapshot, routine: routineValue, brief: row.payload.brief }).catch(() => null)
+    : null;
+  return { brief: row.payload.brief, routine: routineValue, professionalReport, expiresAt: row.expires_at, sourcePhotoIncluded: Boolean(sourcePhotoUrl), sourcePhotoUrl };
 }
