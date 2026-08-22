@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "registry_id": "hairfit.frontend.components",
-  "updated_at": "2026-08-21",
+  "updated_at": "2026-08-22",
   "baseline": {
     "git_branch": "develop/2026-07-14-generation-completion-notifications",
     "git_head": "eb77c7f5421b9b8ac44e540e66931573f4097a41",
@@ -60,6 +60,45 @@
     ]
   },
   "components": [
+    {
+      "id": "web.admin.email-campaign-composer",
+      "name": "AdminEmailCampaignComposer",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/admin/AdminEmailCampaignComposer.tsx",
+      "related_source": [
+        "my-app/app/admin/email-campaigns/page.tsx",
+        "my-app/app/api/admin/email-campaigns/route.ts",
+        "my-app/lib/email-campaign.ts"
+      ],
+      "owner": "admin-operations",
+      "passport": "docs/components/passports/web-admin-email-campaign-composer.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "versioned admin launch campaign preview, frozen audience, test-send gate, scheduling, and delivery operations"
+      }
+    },
+    {
+      "id": "web.auth.signup-marketing-consent",
+      "name": "SignupWithMarketingConsent",
+      "platform": "web",
+      "kind": "feature",
+      "status": "candidate",
+      "source": "my-app/components/auth/SignupWithMarketingConsent.tsx",
+      "related_source": [
+        "my-app/app/(auth)/signup/[[...rest]]/page.tsx",
+        "my-app/app/api/me/marketing-email-preference/route.ts",
+        "my-app/lib/style-profile-server.ts"
+      ],
+      "owner": "customer-account",
+      "passport": "docs/components/passports/web-auth-signup-marketing-consent.yaml",
+      "observed_usage": {
+        "consumer_files": 1,
+        "scope": "optional default-off marketing email consent captured during Clerk signup and synchronized without overriding later withdrawal"
+      },
+      "notes": "Candidate until Clerk email and OAuth signup metadata persistence are verified in staging."
+    },
     {
       "id": "web.ui.button",
       "name": "Button",

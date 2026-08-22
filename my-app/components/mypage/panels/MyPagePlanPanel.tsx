@@ -35,6 +35,7 @@ import type {
   RefundRequestRow,
   SubscriptionRow,
 } from "../myPageTypes";
+import { LaunchPromotionCard } from "../../promotions/LaunchPromotionCard";
 
 export function MyPagePlanPanel({
   activePlan,
@@ -73,6 +74,7 @@ export function MyPagePlanPanel({
       className="p-4 sm:p-5"
     >
       <SectionHeader title="플랜 및 결제" description="현재 플랜과 최근 결제 내역입니다." />
+      <LaunchPromotionCard className="mt-4" />
       <div className="mt-4 grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)]">
         <SurfaceCard className="px-4 py-3">
           <p className="text-xs font-bold uppercase text-[var(--app-muted)]">활성 플랜</p>

@@ -26,11 +26,12 @@ export async function getPaidStartStateV2(userId:string,consultationId:string):P
   if(!session.data)throw new HairfitV2Error("CONSULTATION_NOT_FOUND",404,"상담을 찾을 수 없습니다.");
   const grantId=(session.data as {entitlement_grant_id?:string|null}).entitlement_grant_id;
   if(!grantId)return {policyVersion:FULL_STYLE_REFUND_POLICY_VERSION,paid:false,required:false,activated:false,startTrigger:null,startedAt:null,statutoryWithdrawalDeadline:null};
-  const grant=await db.from("customer_entitlement_grants_v2").select("id,offering_key,source_transaction_id")
+  const grant=await db.from("customer_entitlement_grants_v2").select("id,offering_key,source,source_transaction_id")
     .eq("id",grantId).eq("user_id",userId).maybeSingle();
   if(grant.error)throw new Error(grant.error.message);
-  const grantRow=grant.data as {id:string;offering_key:string;source_transaction_id:string|null}|null;
+  const grantRow=grant.data as {id:string;offering_key:string;source:string;source_transaction_id:string|null}|null;
   if(!grantRow?.offering_key.startsWith("full_style_"))return {policyVersion:FULL_STYLE_REFUND_POLICY_VERSION,paid:false,required:false,activated:false,startTrigger:null,startedAt:null,statutoryWithdrawalDeadline:null};
+  if(grantRow.source==="promotion")return {policyVersion:FULL_STYLE_REFUND_POLICY_VERSION,paid:false,required:false,activated:true,startTrigger:null,startedAt:null,statutoryWithdrawalDeadline:null};
   const contract=grantRow.source_transaction_id?await db.from("full_style_contracts_v2")
     .select("id,statutory_withdrawal_deadline")
     .eq("user_id",userId).eq("latest_payment_transaction_id",grantRow.source_transaction_id)

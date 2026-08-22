@@ -122,6 +122,7 @@
     "landing-premium:contract:test": "node --no-warnings --test lib/landing-premium-contract.test.ts",
     "full-style:contract:test": "node --no-warnings --test lib/full-style-product-contract.test.ts",
     "full-style-refund:contract:test": "node --no-warnings --test lib/full-style-refund-policy-contract.test.ts",
+    "email-campaign:contract:test": "tsx --test lib/email-campaign-contract.test.ts",
     "landing-hero:contract:test": "node --no-warnings --test lib/landing-hero-contract.test.ts",
     "landing-flat-surface:contract:test": "node --no-warnings --test lib/landing-flat-surface-contract.test.ts",
     "landing-motion:contract:test": "node --no-warnings --test lib/landing-motion-contract.test.ts",

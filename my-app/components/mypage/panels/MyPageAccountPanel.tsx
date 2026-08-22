@@ -6,6 +6,7 @@ import { MemberGenderForm } from "../MemberGenderForm";
 import { MyPageSectionHeader as SectionHeader } from "../MyPageSectionHeader";
 import type { MemberProfileRow } from "../myPageTypes";
 import { AccountDeletionCard } from "../AccountDeletionCard";
+import { MarketingEmailPreferenceCard } from "../MarketingEmailPreferenceCard";
 
 export function MyPageAccountPanel({
   accountSetupComplete,
@@ -49,6 +50,7 @@ export function MyPageAccountPanel({
         initialPreferredStyleTone={memberProfile?.preferred_style_tone ?? "natural"}
         initialStyleTarget={memberProfile?.style_target ?? null}
       />
+      <MarketingEmailPreferenceCard />
       <SurfaceCard className="mt-4 px-4 py-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>

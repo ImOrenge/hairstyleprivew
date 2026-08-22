@@ -1,26 +1,6 @@
-import { SignUp } from "@clerk/nextjs";
+import { SignupWithMarketingConsent } from "../../../../components/auth/SignupWithMarketingConsent";
 import { AppPage, Panel } from "../../../../components/ui/Surface";
 import { getClerkConfigState } from "../../../../lib/clerk";
-
-const clerkAppearance = {
-  variables: {
-    colorBackground: "var(--app-surface)",
-    colorText: "var(--app-text)",
-    colorTextSecondary: "var(--app-muted)",
-    colorPrimary: "var(--app-accent)",
-    colorInputBackground: "var(--app-surface-muted)",
-    colorInputText: "var(--app-text)",
-    borderRadius: "0.1875rem",
-  },
-  elements: {
-    cardBox: "border border-[var(--app-border)] bg-[var(--app-surface)] shadow-none",
-    headerTitle: "text-[var(--app-text)]",
-    headerSubtitle: "text-[var(--app-muted)]",
-    formButtonPrimary: "bg-[var(--app-inverse)] text-[var(--app-inverse-text)] hover:bg-[var(--app-inverse-muted)]",
-    formFieldInput: "border-[var(--app-border)] bg-[var(--app-surface-muted)] text-[var(--app-text)]",
-    footerActionLink: "text-[var(--app-accent)]",
-  },
-} as const;
 
 export default function SignupPage() {
   const clerkConfig = getClerkConfigState();
@@ -41,13 +21,7 @@ export default function SignupPage() {
 
   return (
     <AppPage className="flex max-w-md justify-center pb-16 pt-8">
-      <SignUp
-        path="/signup"
-        signInUrl="/login"
-        oauthFlow="redirect"
-        fallbackRedirectUrl="/home"
-        appearance={clerkAppearance}
-      />
+      <SignupWithMarketingConsent />
     </AppPage>
   );
 }

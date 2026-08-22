@@ -19,14 +19,14 @@ export async function quoteEntitlementV2(userId:string, offeringKey:OfferingKey)
   const { data, error } = await getSupabaseAdminClient().from("customer_entitlement_grants_v2").select("id,user_id,offering_key,offering_version,capability_snapshot,quantity_granted,quantity_consumed,status,source,source_transaction_id,valid_from,expires_at").eq("user_id",userId).eq("offering_key",offeringKey).eq("status","active").lte("valid_from",now).or(`expires_at.is.null,expires_at.gt.${now}`).order("expires_at",{ascending:true,nullsFirst:false}).limit(1).maybeSingle();
   if (error) throw new Error(error.message);
   const grant = data as unknown as GrantRow | null;
-  if (grant && remaining(grant)>0) return { schemaVersion:"entitlement-decision-v1",allowed:true,reason:"allowed",offeringKey,grantId:grant.id,remainingSessions:remaining(grant),capabilities:grant.capability_snapshot,decisionVersion:grant.offering_version,decidedAt:now,source:"v2" };
+  if (grant && remaining(grant)>0) return { schemaVersion:"entitlement-decision-v1",allowed:true,reason:"allowed",offeringKey,grantId:grant.id,remainingSessions:remaining(grant),capabilities:grant.capability_snapshot,decisionVersion:grant.offering_version,decidedAt:now,source:"v2",grantSource:grant.source };
   if (isLegacyEntitlementBridgeEnabled() && offeringKey === "hair_decision_once") {
     const { data:user,error:userError } = await getSupabaseAdminClient().from("users").select("credits").eq("id",userId).maybeSingle();
     if (userError) throw new Error(userError.message);
     const credits = Number((user as unknown as {credits?:number}|null)?.credits ?? 0);
-    if (credits >= getCreditsPerStyle()) return { schemaVersion:"entitlement-decision-v1",allowed:true,reason:"allowed",offeringKey,grantId:null,remainingSessions:1,capabilities:EMPTY_CAPABILITIES,decisionVersion:1,decidedAt:now,source:"legacy_bridge" };
+    if (credits >= getCreditsPerStyle()) return { schemaVersion:"entitlement-decision-v1",allowed:true,reason:"allowed",offeringKey,grantId:null,remainingSessions:1,capabilities:EMPTY_CAPABILITIES,decisionVersion:1,decidedAt:now,source:"legacy_bridge",grantSource:"legacy_credit_bridge" };
   }
-  return { schemaVersion:"entitlement-decision-v1",allowed:false,reason:grant?.status === "expired" ? "expired" : grant && remaining(grant)===0 ? "exhausted" : "no_grant",offeringKey,grantId:null,remainingSessions:0,capabilities:null,decisionVersion:1,decidedAt:now,source:"v2" };
+  return { schemaVersion:"entitlement-decision-v1",allowed:false,reason:grant?.status === "expired" ? "expired" : grant && remaining(grant)===0 ? "exhausted" : "no_grant",offeringKey,grantId:null,remainingSessions:0,capabilities:null,decisionVersion:1,decidedAt:now,source:"v2",grantSource:null };
 }
 
 export async function ensureFreeHairDemoGrantV2(userId: string) {
@@ -49,11 +49,11 @@ export async function ensureFreeHairDemoGrantV2(userId: string) {
 export async function quoteFullStyleAccessV2(userId: string) {
   for (const offeringKey of PAID_FULL_STYLE_KEYS) {
     const decision = await quoteEntitlementV2(userId, offeringKey);
-    if (decision.allowed) return { ...decision, access:"paid" as const };
+    if (decision.allowed) return { ...decision, access:"paid" as const, requiresPaidStart:decision.grantSource !== "promotion" };
   }
   await ensureFreeHairDemoGrantV2(userId);
   const free = await quoteEntitlementV2(userId, "free_hair_demo");
-  return { ...free, access:free.allowed ? "demo" as const : "none" as const };
+  return { ...free, access:free.allowed ? "demo" as const : "none" as const, requiresPaidStart:false };
 }
 
 export async function quoteFullStyleConsultationAccessV2(userId:string,consultationId:string) {
@@ -65,10 +65,10 @@ export async function quoteFullStyleConsultationAccessV2(userId:string,consultat
   const grantId=(session.data as {entitlement_grant_id?:string|null}).entitlement_grant_id;
   if(grantId) {
     const attached=await db.from("customer_entitlement_grants_v2")
-      .select("id,offering_key,offering_version,capability_snapshot,status")
+      .select("id,offering_key,offering_version,capability_snapshot,status,source")
       .eq("id",grantId).eq("user_id",userId).maybeSingle();
     if(attached.error) throw new Error(attached.error.message);
-    const grant=attached.data as {id:string;offering_key:string;offering_version:number;capability_snapshot:OfferingCapabilities;status:string}|null;
+    const grant=attached.data as {id:string;offering_key:string;offering_version:number;capability_snapshot:OfferingCapabilities;status:string;source:EntitlementGrantV2["source"]}|null;
     if(grant&&grant.status!=="revoked") {
       const paid=grant.offering_key.startsWith("full_style_");
       if(paid||grant.offering_key==="free_hair_demo") return {
@@ -76,6 +76,8 @@ export async function quoteFullStyleConsultationAccessV2(userId:string,consultat
         offeringKey:grant.offering_key,grantId:grant.id,remainingSessions:0,capabilities:grant.capability_snapshot,
         decisionVersion:grant.offering_version,decidedAt:new Date().toISOString(),source:"v2" as const,
         access:paid?"paid" as const:"demo" as const,
+        grantSource:grant.source,
+        requiresPaidStart:paid && grant.source !== "promotion",
       };
     }
   }

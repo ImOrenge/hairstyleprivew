@@ -132,7 +132,7 @@ export async function POST(request: Request) {
     if (draftContextError) throw new Error(draftContextError.message);
     const isAcceptanceReplay = draftContext?.user_id === userId && draftContext.state === "accepted";
 
-    if (!isAcceptanceReplay && consultationId && fullStyleAccess?.access === "paid" && isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED")) {
+    if (!isAcceptanceReplay && consultationId && fullStyleAccess?.access === "paid" && fullStyleAccess.requiresPaidStart && isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED")) {
       const paidStart = await getPaidStartStateV2(userId, consultationId);
       if (!paidStart.activated) {
         return NextResponse.json(

@@ -1,0 +1,74 @@
+id: web.auth.signup-marketing-consent
+name: SignupWithMarketingConsent
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/auth/SignupWithMarketingConsent.tsx
+owner: customer-account
+
+public_api:
+  exports:
+    - SignupWithMarketingConsent
+  props: []
+  events:
+    - marketing-consent-toggle
+    - clerk-signup-submit
+
+dependencies:
+  internal:
+    - my-app/lib/email-campaign.ts
+    - my-app/app/api/me/marketing-email-preference/route.ts
+  external:
+    - react
+    - "@clerk/nextjs"
+
+styling:
+  strategy: existing-global-tokens-and-utilities
+  global_css: null
+  tokens:
+    - --app-border
+    - --app-surface
+    - --app-text
+    - --app-muted
+    - --app-accent
+  inline_styles_allowed: false
+
+state:
+  local:
+    - marketing-consent-default-false
+  external_store: false
+side_effects:
+  - clerk-signup-unsafe-metadata-on-explicit-opt-in
+
+a11y_contract:
+  keyboard:
+    - native-checkbox
+    - clerk-form-controls
+  status:
+    - visible-optional-label
+    - non-consent-does-not-block-signup
+  responsive:
+    - no-horizontal-overflow-at-320px
+
+test_surface:
+  unit:
+    - my-app/lib/email-campaign-contract.test.ts
+  interaction:
+    - unchecked-by-default
+    - explicit-opt-in-only
+    - mypage-withdrawal-is-not-overwritten
+  visual: recommended
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+  behavioral_change_requires:
+    - contract-test
+    - keyboard-verification
+  breaking_change_requires:
+    - consent-policy-version-change
+
+residual_risks:
+  - oauth-and-email-signup-metadata-persistence-requires-staging-evidence

@@ -14,6 +14,7 @@ const adminLinks = [
   { href: "/admin/b2b", label: "B2B" },
   { href: "/admin/inbox", label: "메일함" },
   { href: "/admin/aftercare-emails", label: "에프터케어 메일" },
+  { href: "/admin/email-campaigns", label: "캠페인 메일" },
   { href: "/admin/reviews", label: "리뷰관리" },
   { href: "/admin/support", label: "고객지원" },
   { href: "/admin/stats", label: "통계" },

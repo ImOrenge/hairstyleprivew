@@ -87,6 +87,25 @@ export async function ensureCurrentUserProfile(userId: string, supabase: ServerS
     p_display_name: displayName,
   });
 
+  const unsafeMetadata = user?.unsafeMetadata as Record<string, unknown> | undefined;
+  if (
+    !result.error &&
+    unsafeMetadata?.marketingEmailConsent === true &&
+    unsafeMetadata.marketingEmailConsentPolicy === "marketing-email-consent-2026-08-22-v1"
+  ) {
+    const consentResult = await supabase.rpc("capture_signup_marketing_consent_v2", {
+      p_user_id: userId,
+      p_policy_version: unsafeMetadata.marketingEmailConsentPolicy,
+    });
+    if (consentResult.error && !/function .* does not exist/i.test(consentResult.error.message)) {
+      console.error("[style-profile] signup marketing consent sync failed", {
+        stage: "marketing_consent_sync",
+        userId,
+        ...errorLogDetails(consentResult.error),
+      });
+    }
+  }
+
   const avatarUrl = user?.imageUrl?.trim();
   if (!result.error && avatarUrl && !avatarUrl.includes("default-user-icon")) {
     await supabase.from("users").update({ avatar_url: avatarUrl }).eq("id", userId);

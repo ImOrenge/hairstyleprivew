@@ -17,7 +17,7 @@ export interface EntitlementGrantV2 {
   quantityGranted: number;
   quantityConsumed: number;
   status: "active" | "exhausted" | "expired" | "revoked";
-  source: "portone" | "google_play" | "manual" | "legacy_credit_bridge";
+  source: "portone" | "google_play" | "manual" | "legacy_credit_bridge" | "promotion";
   sourceTransactionId: string | null;
   validFrom: string;
   expiresAt: string | null;
@@ -34,6 +34,7 @@ export interface EntitlementDecisionV2 {
   decisionVersion: number;
   decidedAt: string;
   source: "v2" | "legacy_bridge";
+  grantSource?: EntitlementGrantV2["source"] | null;
 }
 
 export interface EntitlementQuoteRequestV2 {

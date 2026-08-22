@@ -35,8 +35,8 @@ export async function POST(request: Request, { params }: Params) {
       if (access.access !== "paid") {
         return NextResponse.json({ error: "후보 비교에는 유료 풀 스타일 권리가 필요합니다." }, { status: 402 });
       }
-      const paidStart = await getPaidStartStateV2(userId, consultationId);
-      if (!paidStart.activated) {
+      const paidStart = access.requiresPaidStart ? await getPaidStartStateV2(userId, consultationId) : null;
+      if (paidStart && !paidStart.activated) {
         return NextResponse.json({ error: "유료 상담 시작 안내를 확인하고 별도로 동의해 주세요.", code: "PAID_START_CONSENT_REQUIRED" }, { status: 428 });
       }
     }

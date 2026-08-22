@@ -1,0 +1,85 @@
+id: web.admin.email-campaign-composer
+name: AdminEmailCampaignComposer
+platform: web
+kind: feature
+status: candidate
+source: my-app/components/admin/AdminEmailCampaignComposer.tsx
+owner: admin-operations
+
+public_api:
+  exports:
+    - AdminEmailCampaignComposer
+  props: []
+  events:
+    - campaign-create
+    - audience-freeze
+    - template-preview
+    - test-send
+    - schedule
+    - pause-resume-cancel-retry
+
+dependencies:
+  internal:
+    - my-app/components/ui/Button.tsx
+    - my-app/components/ui/ConfirmActionDialog.tsx
+    - my-app/components/ui/Surface.tsx
+    - my-app/app/api/admin/email-campaigns/route.ts
+  external:
+    - react
+
+styling:
+  strategy: existing-global-tokens-and-utilities
+  global_css:
+    file: my-app/app/globals.css
+    layer: features
+    namespace: f-admin-email-campaign
+  tokens:
+    - --app-border
+    - --app-border-strong
+    - --app-surface
+    - --app-muted
+  inline_styles_allowed: false
+
+state:
+  local:
+    - draft-fields
+    - preview
+    - operation-status
+    - typed-schedule-confirmation
+  external_store: false
+side_effects:
+  - authenticated-admin-api-requests
+  - no-direct-bulk-delivery
+
+a11y_contract:
+  keyboard:
+    - native-form-controls
+    - confirm-dialog-focus-contract
+  status:
+    - polite-operation-announcement
+    - visible-disabled-state
+  responsive:
+    - no-horizontal-overflow-at-320px
+
+test_surface:
+  unit:
+    - my-app/lib/email-campaign-contract.test.ts
+  interaction:
+    - test-send-required-before-schedule
+    - typed-confirmation-required
+    - immutable-audience-after-schedule
+  visual: recommended
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - typecheck
+  behavioral_change_requires:
+    - contract-test
+    - keyboard-verification
+  breaking_change_requires:
+    - admin-route-migration-note
+
+residual_risks:
+  - provider-delivery-and-authenticated-admin-success-require-staging-evidence

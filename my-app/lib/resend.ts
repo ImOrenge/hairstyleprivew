@@ -20,6 +20,7 @@ export type PreparedEmailPayload = {
   from: string;
   source: string;
   idempotencyKey: string;
+  headers?: Record<string, string>;
 };
 
 type OutboundEmailStatus = "sent" | "failed" | "skipped";
@@ -567,6 +568,7 @@ export async function sendEmail({
   from = defaultFromEmail,
   source = "app",
   idempotencyKey,
+  headers,
 }: {
   to: string | string[];
   subject: string;
@@ -575,6 +577,7 @@ export async function sendEmail({
   from?: string;
   source?: string;
   idempotencyKey?: string;
+  headers?: Record<string, string>;
 }): Promise<SendEmailResult> {
   const resolvedFrom = normalizeFromEmail(from) || defaultFromEmail;
 
@@ -613,6 +616,7 @@ export async function sendEmail({
       subject,
       html,
       text,
+      headers,
     };
     const { data, error } = idempotencyKey
       ? await client.emails.send(payload, { idempotencyKey })

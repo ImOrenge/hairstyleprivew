@@ -20,7 +20,7 @@ export async function GET(_: Request, context: { params: Promise<{ consultationI
       .eq("id",consultationId).eq("user_id",userId).single();
     if(restart.error)throw new Error(restart.error.message);
     const restartRow=restart.data as {user_restart_count:number;user_restart_limit:number;lifecycle_state:string};
-    const paidStart=isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED")
+    const paidStart=isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED") && decision.requiresPaidStart
       ? await getPaidStartStateV2(userId,consultationId)
       : null;
     return NextResponse.json({
@@ -28,6 +28,7 @@ export async function GET(_: Request, context: { params: Promise<{ consultationI
       offeringKey:decision.offeringKey,
       canGenerate:decision.allowed,
       canCompare:decision.access === "paid",
+      requiresPaidStart:decision.requiresPaidStart,
       remainingSessions:decision.remainingSessions,
       capabilities:decision.capabilities,
       paidStart,

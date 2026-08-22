@@ -45,13 +45,27 @@ export async function POST(request: Request) {
   const providerMessageId = typeof parsed.data?.email_id === "string" ? parsed.data.email_id : "";
   if (!providerMessageId) return NextResponse.json({ error: "missing_email_id" }, { status: 400 });
 
-  const result = await getSupabaseAdminClient().rpc("record_aftercare_email_webhook", {
+  const parameters = {
     p_svix_id: svixId,
     p_event_type: parsed.type,
     p_provider_message_id: providerMessageId,
     p_provider_created_at: typeof parsed.created_at === "string" ? parsed.created_at : null,
     p_payload: JSON.parse(payload),
-  });
-  if (result.error) return NextResponse.json({ error: "webhook_persistence_failed" }, { status: 500 });
-  return NextResponse.json({ received: true, duplicate: result.data === false });
+  };
+  const supabase = getSupabaseAdminClient();
+  const campaign = await supabase.rpc("record_email_campaign_webhook_v2", parameters);
+  if (campaign.error) {
+    console.error("[Resend webhook] campaign persistence failed", campaign.error.message);
+    return NextResponse.json({ error: "webhook_persistence_failed" }, { status: 500 });
+  }
+  if (campaign.data === true) {
+    return NextResponse.json({ received: true, source: "email_campaign" });
+  }
+
+  const aftercare = await supabase.rpc("record_aftercare_email_webhook", parameters);
+  if (aftercare.error) {
+    console.error("[Resend webhook] aftercare persistence failed", aftercare.error.message);
+    return NextResponse.json({ error: "webhook_persistence_failed" }, { status: 500 });
+  }
+  return NextResponse.json({ received: true, source: "aftercare", duplicate: aftercare.data === false });
 }

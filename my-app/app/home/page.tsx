@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
+import { LaunchPromotionCard } from "../../components/promotions/LaunchPromotionCard";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import {
@@ -401,6 +402,8 @@ export default async function CustomerHomePage() {
           </Link>
         </div>
       </Panel>
+
+      <LaunchPromotionCard />
 
       <Panel as="section" className="overflow-hidden p-0">
         <div className="grid grid-cols-2 divide-x divide-[var(--app-border)]">
