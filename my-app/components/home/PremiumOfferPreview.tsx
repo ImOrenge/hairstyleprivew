@@ -1,84 +1,48 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import Link from "next/link";
 import { PREMIUM_OFFER_POLICY } from "../../lib/premium-offer-policy";
 import { LandingScene, SceneHeader } from "./LandingScene";
 
 export function PremiumOfferPreview() {
+  const demo = PREMIUM_OFFER_POLICY.freeDemo;
   return (
     <LandingScene id="services" number="11" layout="typographic-index" className="f-premium-offers">
       <div className="f-premium-offers__header">
         <SceneHeader
-          eyebrow="Services · Pricing Hypothesis"
-          title="같은 핵심 혜택, 필요한 관리 기간으로 선택하세요."
-          description="분석부터 후보 비교, Salon Brief, Aftercare와 Style Dossier까지 기본 결과는 같습니다. 차이는 컨설팅 결과를 관리하고 업데이트하는 기간입니다."
+          eyebrow="Free Demo · Full Style"
+          title="퍼스널 컬러와 헤어 9개를 먼저 확인하세요."
+          description="무료 데모에서 사진 기반 간이 퍼스널 컬러와 워터마크 헤어 3×3을 실제로 만듭니다. 결과가 마음에 들면 상세 상품을 비교하고 같은 상담에서 계속할 수 있습니다."
         />
         <div className="f-premium-offers__disclosure" data-reveal-item data-reveal-order="4">
-          <span>{PREMIUM_OFFER_POLICY.statusLabel}</span>
-          <p>{PREMIUM_OFFER_POLICY.disclosure}</p>
+          <span>{demo.priceLabel}</span>
+          <p>{demo.periodLabel} · {demo.management.join(" · ")}</p>
         </div>
       </div>
 
       <section className="f-premium-offers__common" aria-labelledby="premium-common-benefits" data-reveal-item data-reveal-order="5">
         <div>
-          <p>ALL PLANS</p>
-          <h3 id="premium-common-benefits">모든 플랜 공통 혜택</h3>
+          <p>FREE DEMO</p>
+          <h3 id="premium-common-benefits">결제 전에 직접 확인하는 범위</h3>
         </div>
         <ul>
-          {PREMIUM_OFFER_POLICY.commonBenefits.map((benefit) => <li key={benefit}>{benefit}</li>)}
+          <li><Check aria-hidden="true" /> 사진 기반 간이 퍼스널 컬러</li>
+          <li><Check aria-hidden="true" /> 워터마크 헤어 3×3 실제 생성</li>
+          <li><Check aria-hidden="true" /> 결과를 유지한 채 비교부터 이어가기</li>
         </ul>
       </section>
 
-      <div className="f-premium-offers__list" aria-label="프리미엄 컨설팅 출시 예정가">
-        {PREMIUM_OFFER_POLICY.offers.map((offer, index) => (
-          <article
-            className="f-premium-offer"
-            data-recommended={offer.recommended}
-            data-reveal-item
-            data-reveal-order={index + 6}
-            key={offer.key}
-          >
-            <div className="f-premium-offer__identity">
-              <p className="f-premium-offer__index">{String(index + 1).padStart(2, "0")}</p>
-              <p className="f-premium-offer__korean-name">{offer.koreanName}</p>
-              <h3>{offer.name}</h3>
-              {offer.recommended ? <span className="f-premium-offer__recommended">권장 플랜</span> : null}
-            </div>
-
-            <div className="f-premium-offer__promise">
-              <p className="f-premium-offer__tagline">{offer.tagline}</p>
-              <p className="f-premium-offer__summary">{offer.summary}</p>
-              <span className="f-premium-offer__state">{offer.planTypeLabel}</span>
-            </div>
-
-            <ul className="f-premium-offer__scope">
-              {offer.management.map((item) => <li key={item}>{item}</li>)}
-            </ul>
-
-            <div className="f-premium-offer__conversion">
-              <div className="f-premium-offer__price">
-                <strong>{offer.priceLabel}</strong>
-                <span>{offer.periodLabel}</span>
-              </div>
-              <Link href="/consulting/new" className="f-premium-offer__cta">
-                {offer.ctaLabel} <ArrowRight aria-hidden="true" className="h-4 w-4" />
-              </Link>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      <div className="f-premium-offers__billing-note" data-reveal-item data-reveal-order="8">
-        <p>지금 이용 가능한 월 구독·사용권과 위 출시 예정가는 서로 다른 정책입니다.</p>
-        <Link href="/billing">현재 이용권 확인 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
-      </div>
-
-      <div className="f-premium-final" data-reveal-item data-reveal-order="9">
-        <p>PHOTO-FIRST AI STYLE CONSULTING</p>
-        <h2>결제 전에, 내게 필요한 컨설팅 범위부터 확인하세요.</h2>
+      <div className="f-premium-final" data-reveal-item data-reveal-order="6">
+        <p>NO CARD REQUIRED</p>
+        <h2>무료 결과를 본 뒤, 필요한 이용 기간을 선택하세요.</h2>
         <div>
-          <Link href="/consulting/new" className="f-landing-cta">내 사진 분석 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
-          <Link href="/b2b/contact" className="f-landing-ghost-cta">살롱 도입 문의</Link>
+          <Link href="/consulting/new" className="f-landing-cta">{demo.ctaLabel} <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+          <Link href="/consulting/plans" className="f-landing-ghost-cta">상품·혜택 자세히 비교</Link>
         </div>
+      </div>
+
+      <div className="f-premium-offers__billing-note" data-reveal-item data-reveal-order="7">
+        <p>풀코스는 같고 전체 재시작·AI 사후상담은 1회 1/1, 3개월 2/3, 연간은 각 상담 5/3입니다.</p>
+        <Link href="/billing">내 계약 관리 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
       </div>
     </LandingScene>
   );

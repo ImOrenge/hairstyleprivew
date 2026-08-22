@@ -456,7 +456,7 @@ async function handlePost(request: Request) {
 
   const { data: generation, error: generationError } = await supabase
     .from("generations")
-    .select("id,user_id,status,options,original_image_path")
+    .select("id,user_id,status,options,original_image_path,consultation_id")
     .eq("id", generationId)
     .maybeSingle();
 
@@ -653,6 +653,19 @@ async function handlePost(request: Request) {
       : suppliedImageDataUrl;
     const userId = ownerUserId;
     const entitlement = await getPlanEntitlement(supabase, userId);
+    let watermarkHairResults=entitlement.watermarkHairResults;
+    const consultationId=typeof generation.consultation_id==="string"?generation.consultation_id:null;
+    if(consultationId) {
+      const session=await supabase.from("consultation_sessions").select("entitlement_grant_id")
+        .eq("id",consultationId).eq("user_id",userId).limit(1).maybeSingle();
+      const grantId=typeof session.data?.entitlement_grant_id==="string"?session.data.entitlement_grant_id:null;
+      if(grantId) {
+        const grant=await supabase.from("customer_entitlement_grants_v2").select("capability_snapshot")
+          .eq("id",grantId).eq("user_id",userId).limit(1).maybeSingle();
+        const capabilities=isObject(grant.data?.capability_snapshot)?grant.data.capability_snapshot:{};
+        if(typeof capabilities.watermarkGeneratedAssets==="boolean") watermarkHairResults=capabilities.watermarkGeneratedAssets;
+      }
+    }
 
     const claimResult = await claimRecommendationVariantAttempt(supabase, {
       generationId,
@@ -769,7 +782,7 @@ async function handlePost(request: Request) {
 
     let outputUrl = result.outputUrl || null;
 
-    if (entitlement.watermarkHairResults && outputUrl) {
+    if (watermarkHairResults && outputUrl) {
       try {
         outputUrl = await applyWatermark(outputUrl);
       } catch (watermarkError) {

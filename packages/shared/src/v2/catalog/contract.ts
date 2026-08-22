@@ -1,4 +1,12 @@
-export type OfferingKey = "hair_decision_once" | "total_style_seasonal" | "style_management_annual" | string;
+export type OfferingKey =
+  | "free_hair_demo"
+  | "full_style_once"
+  | "full_style_quarterly"
+  | "full_style_annual"
+  | "hair_decision_once"
+  | "total_style_seasonal"
+  | "style_management_annual"
+  | string;
 export type PurchaseMode = "one_time" | "recurring";
 export type BillingInterval = "month" | "quarter" | "year" | null;
 export type CatalogStatus = "draft" | "active" | "retired";
@@ -6,10 +14,24 @@ export type PriceProvider = "portone" | "google_play" | "apple_iap" | "manual";
 
 export interface OfferingCapabilities {
   acceptedHairPreviews: number;
+  watermarkGeneratedAssets: boolean;
+  hairRestartCount: number;
+  finalHairSelectionCount: number;
   salonBrief: boolean;
   aftercare: boolean;
+  aftercareConsultationCount: number;
+  checkInDays: number[];
   personalColor: boolean;
+  personalColorMode: "quick_photo" | "precision";
+  hairColor: boolean;
+  makeup: boolean;
+  aiNarrative: boolean;
+  pdf: boolean;
   fashionPreviews: number;
+  fashionAdditionalPreviews: number;
+  beforeAfterComparison: boolean;
+  annualSummary: boolean;
+  annualArchive: boolean;
   generatedAssetRetentionDays: number | null;
 }
 

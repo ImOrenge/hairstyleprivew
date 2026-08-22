@@ -475,13 +475,14 @@ export async function createPaidActionQuoteForUser(input: {
   billingScope: PaidActionBillingScope;
   now?: Date;
   env?: NodeJS.ProcessEnv;
+  hairGenerationEntitled?: boolean;
 }) {
   const subjectId = normalizeSubjectId(input.subjectId);
   if (input.billingScope === "salon" && input.action !== "hair_generation") {
     throw new PaidActionQuoteContextError("이 작업은 살롱 계정 결제 범위를 지원하지 않습니다.", 400);
   }
 
-  const [currentBalance, policy] = await Promise.all([
+  const [currentBalance, resolvedPolicy] = await Promise.all([
     loadBalance(input.supabase, input.userId),
     input.action === "hair_generation"
       ? resolveHairGenerationCost(input.supabase, input.userId, subjectId)
@@ -489,6 +490,14 @@ export async function createPaidActionQuoteForUser(input: {
         ? resolveOutfitGenerationCost(input.supabase, input.userId, subjectId)
         : resolveAftercareCost(input.supabase, input.userId, subjectId),
   ]);
+  const policy = input.action === "hair_generation" && input.hairGenerationEntitled && resolvedPolicy.costCredits > 0
+    ? {
+        ...resolvedPolicy,
+        costCredits: 0,
+        freeReason: "full_style_entitlement",
+        failurePolicy: "HairFit 상담 이용권으로 생성하며, 품질 실패 자동 재처리는 상담 재시작 횟수에 포함하지 않습니다.",
+      }
+    : resolvedPolicy;
   const now = input.now ?? new Date();
   const issuedAt = now.toISOString();
   const expiresAt = new Date(now.getTime() + QUOTE_TTL_MS).toISOString();

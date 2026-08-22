@@ -17,9 +17,9 @@ const autoSwitch = readFileSync(join(appRoot, "components", "home", "PremiumAuto
 test("premium landing keeps the rolling hero and consultant message", () => {
   assert.match(hero, /ROLLING_COLUMNS/);
   assert.match(hero, /data-testid="hero-rolling-stage"/);
-  assert.match(hero, /사진 한 장으로,/);
-  assert.match(hero, /내게 맞는 헤어를 비교하고 결정하세요\./);
-  assert.match(hero, /사진 전 필수 질문 0개 · 무료 체험 가능/);
+  assert.match(hero, /사진 한 장으로 퍼스널 컬러를 찾고/);
+  assert.match(hero, /내게 맞는 헤어를 실제로 만들어 보세요\./);
+  assert.match(hero, /계정당 1회 · 실제 헤어 9개 생성 · 비교 직전 유료 전환/);
   assert.match(hero, /href="#style-dossier"/);
   assert.match(hero, /9가지 결과 예시 보기/);
   assert.match(hero, /aria-label="SCROLL — 분석 근거 섹션으로 이동"/);
@@ -40,9 +40,10 @@ test("landing exposes the documented eleven scene order", () => {
 });
 
 test("proof artifacts map to current V2 vocabulary", () => {
-  for (const term of ["Analysis Evidence", "랜드마크", "BALANCE", "IMAGE", "LIFESTYLE", "최종 후보", "Decision", "Salon Brief", "실제 시술 완료 후", "9-LOOK BATCH", "현재 제공", "예정 기능"]) {
+  for (const term of ["Analysis Evidence", "랜드마크", "BALANCE", "IMAGE", "LIFESTYLE", "최종 헤어 1개", "Decision", "Salon Brief", "실제 시술 완료 후", "현재 제공", "예정 기능"]) {
     assert.match(showcases, new RegExp(term, "i"));
   }
+  assert.match(showcases, /3 \+ 3 \+ 3/i);
 });
 
 test("core scenes expose decision-grade consulting artifacts", () => {
@@ -77,32 +78,33 @@ function compareRows(source: string) {
   return block.match(/^\s*\[/gm)?.length ?? 0;
 }
 
-test("conversion paths and pricing boundary remain truthful", () => {
+test("free demo, shared paid scope, and approved price boundary remain truthful", () => {
   const combined = `${page}\n${hero}\n${showcases}\n${mobileCta}\n${offers}\n${offerPolicy}`;
   assert.doesNotMatch(combined, /\/workspace/);
   assert.doesNotMatch(combined, /무료로 내 스타일 보기/);
-  for (const price of ["99,000원", "189,000원", "649,000원"]) assert.match(offerPolicy, new RegExp(price));
-  assert.match(offerPolicy, /priceLabel: "189,000원",[\s\S]*?periodLabel: "\/ 3개월"/);
+  for (const price of ["59,000원", "89,000원", "299,000원"]) assert.match(offerPolicy, new RegExp(price));
+  assert.match(offerPolicy, /priceLabel: "89,000원",[\s\S]*?periodLabel: "\/ 3개월"/);
   assert.equal(offerPolicy.match(/recommended: true/g)?.length, 1);
-  assert.match(offerPolicy, /name: "Total Image Direction"[\s\S]*?recommended: true/);
-  for (const benefit of ["추정 퍼스널 컬러 분석", "헤어 후보 9개와 패션 방향 9개 룩", "Salon Brief", "Aftercare와 Style Dossier"]) {
+  assert.match(offerPolicy, /key: "full_style_quarterly"[\s\S]*?recommended: true/);
+  for (const benefit of ["정밀 퍼스널 컬러 진단", "실제 헤어 3×3 생성", "최종 헤어 1개 확정", "최대 6개 추가 생성", "Salon Brief·AI 결과 해설·PDF·애프터케어"]) {
     assert.match(offerPolicy, new RegExp(benefit));
   }
-  for (const type of ["1회 완결형", "3개월 관리형", "연간 관리형"]) assert.match(offerPolicy, new RegExp(type));
-  assert.match(offers, /모든 플랜 공통 혜택/);
-  assert.match(offers, /PREMIUM_OFFER_POLICY\.commonBenefits\.map/);
-  assert.match(offers, /offer\.management\.map/);
-  assert.doesNotMatch(offerPolicy, /프라이빗 헤어 디렉팅 전체 범위|토털 이미지 디렉팅 전체 범위/);
-  assert.match(offers, /출시 예정가/);
-  assert.match(offerPolicy, /새 결제 상품이 연결되기 전/);
+  for (const type of ["1회 완결형", "3개월 정기형", "연간 관리형"]) assert.match(offerPolicy, new RegExp(type));
+  assert.match(offers, /결제 전에 직접 확인하는 범위/);
+  assert.match(offerPolicy, /부가세를 포함한 실제 승인 총액/);
+  assert.match(offerPolicy, /free_hair_demo/);
+  assert.match(offerPolicy, /워터마크 헤어 3×3/);
+  assert.doesNotMatch(`${offers}\n${offerPolicy}`, /계절별 관리|seasonal/i);
+  assert.match(offerPolicy, /가격 확정/);
+  assert.match(offerPolicy, /미사용 회차가 이월되지 않으며/);
   assert.doesNotMatch(offers, /PortoneSubscriptionButton/);
-  assert.equal(offerPolicy.match(/\n\s+key: /g)?.length, 3);
-  assert.match(offers, /PREMIUM_OFFER_POLICY\.offers\.map/);
-  assert.equal(offers.match(/href="\/consulting\/new"/g)?.length, 2);
+  assert.equal(offerPolicy.match(/\n\s+key: /g)?.length, 4);
+  assert.match(offers, /PREMIUM_OFFER_POLICY\.freeDemo/);
+  assert.equal(offers.match(/href="\/consulting\/new"/g)?.length, 1);
   assert.ok((combined.match(/href="\/consulting\/new"/g)?.length ?? 0) >= 4);
-  assert.match(offers, /href="\/b2b\/contact"/);
+  assert.match(offers, /href="\/consulting\/plans"/);
   assert.match(offers, /href="\/billing"/);
-  assert.match(offers, /내 사진 분석 시작/);
+  assert.match(offerPolicy, /무료 3×3 생성 시작/);
   assert.ok(page.indexOf("<TrustShowcase") < page.indexOf("<PremiumOfferPreview"));
   for (const phrase of ["변경할 수 없는 최종 결정 기록", "변경 불가 최종 결정 기록", "데이터 계약에서 확인할 수 있는 연결 범위", "슬롯마다 반복 요청하는 마법사 흐름", "생성보다 정확한 기준"]) {
     assert.doesNotMatch(combined, new RegExp(phrase));

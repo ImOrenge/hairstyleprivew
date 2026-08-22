@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { createConsultationSnapshot } from "../consulting/defaults";
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "./errors";
+import { ensureFreeHairDemoGrantV2 } from "./entitlement-server";
 
 type SessionRow={id:string;user_id:string;session_kind:ConsultationKindV2;lifecycle_state:ConsultationStateV2;version:number;entitlement_grant_id:string|null;source_generation_id:string|null;source_photo_id:string|null;analysis_evidence_id:string|null;current_preview_board_id:string|null;selected_snapshot_id:string|null;preferences:Record<string,unknown>;plan_snapshot:Record<string,unknown>;started_at?:string;created_at:string;updated_at:string;completed_at:string|null;cancelled_at:string|null};
 function actions(state:ConsultationStateV2){const map:Record<ConsultationStateV2,string[]>={draft:["attach_photo","cancel"],photo_validated:["analyze","cancel"],analysis_ready:["create_preview_board","cancel"],preview_board_queued:["resume"],preview_board_ready:["shortlist","select"],shortlisted:["select"],style_selected:["change_selection","confirm"],selection_confirmed:["get_brief","record_service","create_fashion"],salon_brief_ready:["record_service","create_fashion","complete"],aftercare_ready:["get_brief","create_fashion","complete"],fashion_ready:["get_brief","record_service","complete"],completed:["read"],cancelled:["read"]};return map[state];}
@@ -11,6 +12,7 @@ function map(row:SessionRow):ConsultationSessionV2{return{schemaVersion:"consult
 const SELECT="id,user_id,session_kind,lifecycle_state,version,entitlement_grant_id,source_generation_id,source_photo_id,analysis_evidence_id,current_preview_board_id,selected_snapshot_id,preferences,plan_snapshot,created_at,updated_at,completed_at,cancelled_at";
 export async function createConsultationV2(input:{userId:string;sessionKind:ConsultationKindV2;idempotencyKey:string;preferences?:Record<string,unknown>;planSnapshot?:Record<string,unknown>}){
   if(input.idempotencyKey.trim().length<8)throw new HairfitV2Error("INVALID_IDEMPOTENCY_KEY",400,"idempotency key가 너무 짧습니다.");
+  await ensureFreeHairDemoGrantV2(input.userId);
   const db=getSupabaseAdminClient(); const existing=await db.from("consultation_sessions").select(SELECT).eq("user_id",input.userId).eq("idempotency_key",input.idempotencyKey).maybeSingle(); if(existing.error)throw new Error(existing.error.message); if(existing.data)return map(existing.data as unknown as SessionRow);
   const id=randomUUID(); const snapshot=createConsultationSnapshot({sessionId:id,userId:input.userId}); const {data,error}=await db.from("consultation_sessions").insert({id,user_id:input.userId,version:1,current_stage:"discovery",snapshot,session_kind:input.sessionKind,lifecycle_state:"draft",idempotency_key:input.idempotencyKey,preferences:input.preferences??{},plan_snapshot:input.planSnapshot??{}}).select(SELECT).single();
   if(error){

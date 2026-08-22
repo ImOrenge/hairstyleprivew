@@ -11,6 +11,10 @@ import {
 } from "../../../../lib/paid-action-quote";
 import { getApiContext } from "../../../../lib/rbac-server";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
+import { quoteFullStyleConsultationAccessV2 } from "../../../../lib/v2/entitlement-server";
+import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
+
+const UUID_PATTERN=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +24,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as Partial<PaidActionQuoteRequest>;
+  const body = (await request.json().catch(() => ({}))) as Partial<PaidActionQuoteRequest> & { consultationId?:unknown };
   if (!isPaidAction(body.action)) {
     return NextResponse.json({ error: "지원하지 않는 유료 작업입니다." }, { status: 400 });
   }
@@ -38,12 +42,21 @@ export async function POST(request: Request) {
     if (salonContext && !salonContext.ok) {
       return salonContext.response;
     }
+    const supabase=salonContext?.ok ? salonContext.supabase : getSupabaseAdminClient();
+    const consultationId=typeof body.consultationId==="string"&&UUID_PATTERN.test(body.consultationId)?body.consultationId:null;
+    let hairGenerationEntitled=false;
+    if(body.action==="hair_generation"&&body.billingScope==="customer"&&consultationId&&(isHairfitV2Enabled("FREE_HAIR_DEMO_ENABLED")||isHairfitV2Enabled("FULL_STYLE_CATALOG_ENABLED"))) {
+      const owner=await supabase.from("consultation_sessions").select("id").eq("id",consultationId).eq("user_id",userId).maybeSingle();
+      if(owner.error) throw new PaidActionQuoteContextError(owner.error.message,500);
+      if(owner.data) hairGenerationEntitled=(await quoteFullStyleConsultationAccessV2(userId,consultationId)).allowed;
+    }
     const quote = await createPaidActionQuoteForUser({
-      supabase: salonContext?.ok ? salonContext.supabase : getSupabaseAdminClient(),
+      supabase,
       userId,
       action: body.action,
       subjectId: body.subjectId,
       billingScope: body.billingScope,
+      hairGenerationEntitled,
     });
     return NextResponse.json(
       { quote },

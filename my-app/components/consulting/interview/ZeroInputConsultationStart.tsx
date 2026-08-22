@@ -23,6 +23,7 @@ export function ZeroInputConsultationStart({ snapshot, mutate, saving }: {
   const router = useRouter();
   const [optionalOpen, setOptionalOpen] = useState(false);
   const [selected, setSelected] = useState<OptionalOpeningIntent | null>(snapshot.startContext?.optionalOpeningIntent ?? null);
+  const [optionalNote, setOptionalNote] = useState(snapshot.startContext?.optionalNote ?? "");
   const [exitOpen, setExitOpen] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "offline" | "conflict">("idle");
   const opened = useRef(false);
@@ -33,11 +34,12 @@ export function ZeroInputConsultationStart({ snapshot, mutate, saving }: {
     void trackConsultationInterviewEvent({ consultationId: snapshot.sessionId, event: snapshot.startContext ? "resumed" : "opened", interviewKind: "discovery", revision: snapshot.startContext?.revision ?? 0 });
   }, [snapshot.sessionId, snapshot.startContext]);
 
-  const start = async (openingIntent: OptionalOpeningIntent | null) => {
+  const start = async (openingIntent: OptionalOpeningIntent | null, note = optionalNote) => {
     const now = new Date().toISOString();
     const startContext = createConsultationStartContext({
       now,
       optionalOpeningIntent: openingIntent,
+      optionalNote: note,
       sourceProfileId: snapshot.discovery.intent?.sourceProfileId ?? null,
       revision: (snapshot.startContext?.revision ?? 0) + 1,
     });
@@ -84,8 +86,8 @@ export function ZeroInputConsultationStart({ snapshot, mutate, saving }: {
             </div>
             {optionalOpen ? <div id="optional-opening-intent" className="f-consulting-opening-intent mt-6">
               <fieldset className="f-consulting-opening-intent__fieldset">
-                <legend className="text-sm font-black">오늘 바라는 변화가 있다면 하나만 알려주세요</legend>
-                <p className="mt-1 text-xs text-[var(--app-muted)]">선택하지 않아도 분석을 시작할 수 있습니다.</p>
+                <legend className="text-sm font-black">원하는 방향이나 추가 고려사항이 있다면 알려주세요</legend>
+                <p className="mt-1 text-xs text-[var(--app-muted)]">선택과 메모 모두 선택 사항이며, 비워 둬도 AI가 먼저 제안합니다.</p>
                 <div className="f-consulting-opening-intent__choices mt-4">
                   {OPENING_OPTIONS.map((option) => <label key={option.value} className="f-consulting-opening-intent__option">
                     <input type="radio" name="optional-opening-intent" checked={selected === option.value} onChange={() => setSelected(option.value)} />
@@ -93,8 +95,19 @@ export function ZeroInputConsultationStart({ snapshot, mutate, saving }: {
                   </label>)}
                 </div>
               </fieldset>
+              <label className="mt-5 grid gap-2 text-sm font-black">
+                추가로 고려할 점 <span className="text-xs font-normal text-[var(--app-muted)]">선택 입력</span>
+                <textarea
+                  value={optionalNote}
+                  onChange={(event) => setOptionalNote(event.target.value.slice(0, 500))}
+                  placeholder="예: 안경을 자주 쓰고, 앞머리는 눈을 찌르지 않았으면 해요."
+                  rows={3}
+                  className="w-full resize-y rounded-md border border-[var(--app-border)] bg-[var(--app-bg)] p-3 text-sm font-normal text-[var(--app-text)]"
+                />
+                <span className="text-right text-xs font-normal text-[var(--app-muted)]">{optionalNote.length} / 500</span>
+              </label>
               <div className="f-consulting-opening-intent__footer">
-                <Button type="button" loading={saving || saveState === "saving"} disabled={!selected} onClick={() => void start(selected)}>선택한 방향으로 사진 분석</Button>
+                <Button type="button" loading={saving || saveState === "saving"} onClick={() => void start(selected, optionalNote)}>이 내용으로 사진 분석</Button>
               </div>
             </div> : null}
           </div>

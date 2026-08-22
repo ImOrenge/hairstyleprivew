@@ -468,6 +468,111 @@ async function markSubscriptionRenewalFailed(
   }
 }
 
+interface FullStyleContractRenewal {
+  id:string; user_id:string; offering_id:string; offering_key:string; offering_version:number;
+  price_id:string; price_version:number; price_snapshot:Record<string,unknown>;
+  capability_snapshot:Record<string,unknown>; billing_interval:"quarter"|"year";
+  billing_key_encrypted:string|null; renewal_failure_count:number|null;
+}
+
+type FullStyleRenewalError={message:string;code?:string};
+type FullStyleRenewalResult<T>={data:T|null;error:FullStyleRenewalError|null};
+interface FullStyleRenewalClient {
+  rpc:(name:string,args:Record<string,unknown>)=>Promise<FullStyleRenewalResult<unknown[]>>;
+  from:(table:string)=>{
+    insert:(values:Record<string,unknown>)=>{select:(columns:string)=>{single:()=>Promise<FullStyleRenewalResult<Record<string,unknown>>>}};
+    update:(values:Record<string,unknown>)=>{eq:(column:string,value:unknown)=>Promise<FullStyleRenewalResult<unknown>>};
+    upsert:(values:Record<string,unknown>,options:Record<string,unknown>)=>Promise<FullStyleRenewalResult<unknown>>;
+  };
+}
+
+function addFullStyleBillingPeriod(start:Date, interval:"quarter"|"year") {
+  const end=new Date(start);
+  if(interval==="quarter") end.setUTCMonth(end.getUTCMonth()+3);
+  else end.setUTCFullYear(end.getUTCFullYear()+1);
+  return end;
+}
+
+function buildFullStyleRenewalPaymentId(offeringKey:string) {
+  const code=offeringKey==="full_style_quarterly"?"q":"y";
+  return `fsr-${code}-${Date.now().toString(36)}-${crypto.randomUUID().replaceAll("-","").slice(0,10)}`;
+}
+
+async function renewFullStyleContracts(supabase:FullStyleRenewalClient) {
+  const claimed=await supabase.rpc("claim_full_style_contract_renewals_v2",{p_limit:50});
+  if(claimed.error) {
+    if(claimed.error.code==="42883"||claimed.error.code==="42P01") return {renewed:0,failed:0};
+    throw new Error(claimed.error.message);
+  }
+  let renewed=0; let failed=0;
+  for(const contract of (claimed.data??[]) as FullStyleContractRenewal[]) {
+    const paymentId=buildFullStyleRenewalPaymentId(contract.offering_key);
+    const quantity=contract.offering_key==="full_style_annual"?4:1;
+    const amount=Number(contract.price_snapshot?.amountMinor??0);
+    const currency=String(contract.price_snapshot?.currency??"KRW");
+    let txId:string|null=null; let paymentCharged=false;
+    try {
+      if(!contract.billing_key_encrypted) throw new Error("encrypted billing key is missing");
+      if(!Number.isInteger(amount)||amount<=0||currency!=="KRW") throw new Error("invalid full-style price snapshot");
+      const billingKey=await decryptEncryptedBillingKey(contract.billing_key_encrypted);
+      const customer=await getBillingKeyCustomer(billingKey,contract.user_id);
+      const orderName=contract.offering_key==="full_style_quarterly"?"HairFit 3개월 스타일 관리 갱신":"HairFit 연간 스타일 아카이브 갱신";
+      const tx=await supabase.from("payment_transactions").insert({
+        user_id:contract.user_id,provider:"portone",provider_order_id:paymentId,provider_customer_id:contract.user_id,
+        amount,currency,status:"pending",credits_to_grant:quantity,
+        metadata:{source:"cron-full-style-renewal",full_style_contract_id:contract.id,
+          hairfit_v2_offering_key:contract.offering_key,hairfit_v2_offering_version:contract.offering_version,
+          hairfit_v2_quantity:quantity,price_version:contract.price_version},
+      }).select("id").single();
+      if(tx.error||!tx.data) throw new Error(tx.error?.message??"renewal transaction insert failed");
+      if(typeof tx.data.id!=="string") throw new Error("renewal transaction id is invalid");
+      txId=tx.data.id;
+      const charged=await chargeBillingKey(paymentId,billingKey,orderName,customer,amount);
+      const payment=await getPayment(paymentId);
+      if(!payment||payment.status!=="PAID") throw new Error(payment?.failureMessage??"PortOne renewal payment was not paid");
+      paymentCharged=true;
+      if(payment.amountTotal!==amount||payment.currency!==currency) throw new Error("PortOne renewal amount or currency mismatch");
+      const paid=await supabase.from("payment_transactions").update({status:"paid",provider_transaction_id:payment.pgTxId,
+        paid_at:payment.paidAt??new Date().toISOString(),failure_code:null,failure_message:null,
+        metadata:{source:"cron-full-style-renewal",full_style_contract_id:contract.id,portoneCharge:charged,portone:payment,
+          hairfit_v2_offering_key:contract.offering_key,hairfit_v2_offering_version:contract.offering_version,hairfit_v2_quantity:quantity,
+          price_version:contract.price_version},
+      }).eq("id",txId);
+      if(paid.error) throw new Error(paid.error.message);
+      const periodStart=new Date(); const periodEnd=addFullStyleBillingPeriod(periodStart,contract.billing_interval);
+      const grant=await supabase.from("customer_entitlement_grants_v2").upsert({
+        user_id:contract.user_id,offering_id:contract.offering_id,offering_key:contract.offering_key,
+        offering_version:contract.offering_version,capability_snapshot:contract.capability_snapshot,
+        quantity_granted:quantity,quantity_consumed:0,status:"active",source:"portone",source_transaction_id:txId,
+        valid_from:periodStart.toISOString(),expires_at:periodEnd.toISOString(),
+      },{onConflict:"source,source_transaction_id,offering_key",ignoreDuplicates:true});
+      if(grant.error) throw new Error(grant.error.message);
+      const advanced=await supabase.from("full_style_contracts_v2").update({
+        status:"active",period_started_at:periodStart.toISOString(),period_ends_at:periodEnd.toISOString(),
+        next_billing_at:periodEnd.toISOString(),latest_payment_transaction_id:txId,renewal_failure_count:0,
+        renewal_last_failed_at:null,renewal_next_retry_at:null,renewal_failure_code:null,renewal_failure_message:null,
+        renewal_claimed_until:null,updated_at:new Date().toISOString(),
+      }).eq("id",contract.id);
+      if(advanced.error) throw new Error(advanced.error.message);
+      renewed++;
+    } catch(error) {
+      const message=error instanceof Error?error.message:String(error);
+      if(txId&&!paymentCharged) await supabase.from("payment_transactions").update({status:"failed",failure_code:"full_style_renewal_failed",failure_message:message}).eq("id",txId);
+      const failureCount=Math.max(0,Number(contract.renewal_failure_count??0))+1;
+      const retryAt=new Date(); retryAt.setUTCDate(retryAt.getUTCDate()+Math.min(failureCount,7));
+      await supabase.from("full_style_contracts_v2").update({
+        status:paymentCharged?"refund_review":"past_due",renewal_failure_count:failureCount,
+        renewal_last_failed_at:new Date().toISOString(),renewal_next_retry_at:paymentCharged?null:retryAt.toISOString(),
+        renewal_failure_code:paymentCharged?"charged_but_not_finalized":"full_style_renewal_failed",
+        renewal_failure_message:message.slice(0,500),renewal_claimed_until:null,updated_at:new Date().toISOString(),
+      }).eq("id",contract.id);
+      failed++;
+      console.error(`[cron-renewal] full-style FAIL contract=${contract.id}:`,message);
+    }
+  }
+  return {renewed,failed};
+}
+
 Deno.serve(async () => {
   if (!PORTONE_V2_API_SECRET) {
     console.error("[cron-renewal] Missing PORTONE_V2_API_SECRET");
@@ -497,8 +602,9 @@ Deno.serve(async () => {
   >>;
 
   if (dueSubscriptions.length === 0) {
+    const fullStyle=await renewFullStyleContracts(supabase as unknown as FullStyleRenewalClient);
     return new Response(
-      JSON.stringify({ renewed: 0, failed: 0, message: "no subscriptions due" }),
+      JSON.stringify({ renewed: 0, failed: 0, fullStyle }),
       { status: 200 },
     );
   }
@@ -795,6 +901,7 @@ Deno.serve(async () => {
     }
   }
 
-  console.log(`[cron-renewal] renewed=${renewed} failed=${failed}`);
-  return new Response(JSON.stringify({ renewed, failed }), { status: 200 });
+  const fullStyle=await renewFullStyleContracts(supabase as unknown as FullStyleRenewalClient);
+  console.log(`[cron-renewal] renewed=${renewed} failed=${failed} fullStyleRenewed=${fullStyle.renewed} fullStyleFailed=${fullStyle.failed}`);
+  return new Response(JSON.stringify({ renewed, failed, fullStyle }), { status: 200 });
 });

@@ -85,12 +85,12 @@ export function AnalysisEvidenceShowcase() {
         <div>
           <SceneHeader
             eyebrow="Analysis Evidence"
-            title="추천보다 먼저, 판단의 근거를 보여드립니다."
-            description="사진 품질을 확인한 뒤 얼굴 랜드마크와 관찰 근거를 연결합니다. 결과만 제시하지 않고 어떤 비율과 조건이 방향에 영향을 주었는지 확인할 수 있습니다."
+            title="헤어보다 먼저, 나에게 편안한 색의 기준을 찾습니다."
+            description="사진 품질과 얼굴 균형을 확인하고 퍼스널 컬러의 명도·채도·온도 근거를 연결합니다. 추천 팔레트와 피하면 좋은 색을 함께 보여드리며, 사진 진단의 한계도 숨기지 않습니다."
           />
           <dl className="f-premium-metrics" data-reveal-item data-reveal-order="4">
             <div><dt>FACE BALANCE</dt><dd>세로 비율 안정 · 관자 폭 보정 필요</dd></div>
-            <div><dt>HAIR CONDITION</dt><dd>중간 길이 · 직모 · 손상 낮음</dd></div>
+            <div><dt>PERSONAL COLOR</dt><dd>저채도 · 중명도 · 뉴트럴 추천 / 고채도 오렌지 주의</dd></div>
             <div><dt>EVIDENCE STATUS</dt><dd><ShieldCheck aria-hidden="true" /> 분석 근거 연결됨</dd></div>
           </dl>
           <div className="f-premium-evidence-ledger" data-reveal-item data-reveal-order="5">
@@ -98,7 +98,7 @@ export function AnalysisEvidenceShowcase() {
               <article key={label}><span>{label}</span><strong>{value}</strong><small>{source}</small></article>
             ))}
           </div>
-          <p className="f-premium-proof-note" data-reveal-item data-reveal-order="6">직접 측정·AI 추정·시스템 검증을 구분해 표시합니다. 값은 실제 V2 필드 구조를 설명하기 위한 개인정보 비식별 샘플입니다.</p>
+          <p className="f-premium-proof-note" data-reveal-item data-reveal-order="6">무료 진단은 사진 기반 간이 결과입니다. 조명·카메라 색감에 영향을 받을 수 있으며, 보조 사진과 드레이프를 쓰는 정밀 진단은 유료 풀코스에서 제공합니다.</p>
         </div>
       </div>
     </LandingScene>
@@ -110,13 +110,13 @@ export function DirectionShowcase() {
     <LandingScene id="user-direction" number="03" layout="typographic-index">
       <SceneHeader
         eyebrow="User Direction"
-        title="AI의 답을 받는 대신, 나의 기준으로 전략을 조정합니다."
-        description="원하는 변화, 관리 가능한 범위, 피하고 싶은 요소를 입력하면 전략과 생성 브리프에 같은 기준이 이어집니다."
+        title="AI가 먼저 제안하고, 원하는 방향은 선택해서 더합니다."
+        description="아무것도 입력하지 않아도 AI가 사진을 보고 시작합니다. 원하는 변화나 추가 고려사항이 있다면 선택 항목과 자유 메모로 더할 수 있으며 필수 질문은 없습니다."
       />
       <div className="f-premium-direction" data-reveal-item data-reveal-order="4">
         <div className="f-premium-direction__input">
-          <span>USER INPUT</span>
-          <strong>적당한 변화 · 아침 10분 · 8주 관리</strong>
+          <span>OPTIONAL INPUT</span>
+          <strong>자연스러운 변화 · 아침 10분 · 안경 고려</strong>
           <p>짧은 앞머리와 강한 컬은 피하고, 염색·펌·커트는 허용</p>
         </div>
         <ArrowRight aria-hidden="true" />
@@ -167,11 +167,11 @@ export function CompareDecisionShowcase() {
           <SceneHeader
             eyebrow="Compare & Decision"
             title="같은 구도에서 비교하고, 결정의 이유까지 남깁니다."
-            description="최종 후보를 같은 구도로 비교한 뒤 선택을 확정합니다. 확정 기록은 이후 브리프와 패션 방향의 기준이 됩니다."
+            description="shortlist 2~3개를 같은 구도로 비교한 뒤 정확히 1개만 최종 확정합니다. 확정 결과는 이후 브리프와 패션 방향의 기준이 됩니다."
           />
           <ul className="f-premium-checklist" data-reveal-item data-reveal-order="4">
             <li><Check aria-hidden="true" /> 같은 구도 비교</li>
-            <li><Check aria-hidden="true" /> 최종 후보 선정</li>
+            <li><Check aria-hidden="true" /> 최종 헤어 1개 확정</li>
             <li><LockKeyhole aria-hidden="true" /> 선택 시점의 기준을 버전으로 보존</li>
           </ul>
         </div>
@@ -253,8 +253,8 @@ export function FashionDirectionShowcase() {
     <LandingScene id="fashion-direction" number="08" layout="editorial-split">
       <div className="f-premium-split f-premium-split--reverse">
         <div>
-          <SceneHeader eyebrow="Fashion Direction" title="확정한 헤어의 인상을, 9개의 패션 방향으로 확장합니다." description="헤어 결정과 상황·무드·체형을 한 번 연결해 Work·Weekend·Occasion 9개 룩을 한 화면에서 비교합니다." />
-          <div className="f-premium-batch" data-reveal-item data-reveal-order="4"><Sparkles aria-hidden="true" /><span>9-LOOK BATCH</span><strong>Work · Weekend · Occasion</strong></div>
+          <SceneHeader eyebrow="Fashion Direction" title="기본 3개를 지키면서, 최대 6개를 더 만듭니다." description="먼저 Work·Weekend·Occasion 기본 3개를 확인합니다. 원하면 기존 결과를 교체하지 않고 3개씩 두 번 추가해 최대 9개까지 비교할 수 있습니다." />
+          <div className="f-premium-batch" data-reveal-item data-reveal-order="4"><Sparkles aria-hidden="true" /><span>3 + 3 + 3</span><strong>기본 3개 · 최대 6개 추가 생성</strong></div>
           <dl className="f-premium-fashion-brief" data-reveal-item data-reveal-order="5">
             <div><dt>PALETTE</dt><dd>뉴트럴 베이지 · 잉크 네이비 · 더스티 로즈</dd></div>
             <div><dt>NECKLINE</dt><dd>열린 칼라와 부드러운 V선으로 얼굴선 연장</dd></div>

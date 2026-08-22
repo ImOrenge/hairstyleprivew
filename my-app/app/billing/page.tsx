@@ -1,48 +1,94 @@
+import { auth } from "@clerk/nextjs/server";
+import Link from "next/link";
 import { PricingPreview } from "../../components/home/PricingPreview";
 import { SubscriptionPolicyDisclosure } from "../../components/billing/SubscriptionPolicyDisclosure";
+import { FullStyleContractActions } from "../../components/billing/FullStyleContractActions";
+import { RefundInterviewFlow } from "../../components/mypage/RefundInterviewFlow";
 import { UsagePackCatalog } from "../../components/billing/UsagePackCatalog";
 import { AppPage, Panel } from "../../components/ui/Surface";
-import { normalizeBillingReturnTarget } from "../../lib/billing-return-target";
 import { getPlanDisplayBenefits } from "../../lib/plan-benefit-display";
+import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 import { getSubscriptionAccessMode } from "../../lib/subscription-access";
+import { getFullStyleOffer } from "../../lib/premium-offer-policy";
 
-interface BillingPageProps {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+type LegacySubscription = { plan_key:string; status:string; current_period_end:string|null; cancel_at_period_end:boolean };
+type FullStyleContract = { id:string; offering_key:string; status:string; billing_interval:string|null; period_ends_at:string|null; next_billing_at:string|null; cancel_at_period_end:boolean; latest_payment_transaction_id:string|null; quantity_granted:number; quantity_consumed:number; restart_count:number; aftercare_count:number };
+
+async function readLegacySubscription(userId:string|null):Promise<LegacySubscription|null> {
+  if (!userId || !isSupabaseConfigured()) return null;
+  const { data, error } = await getSupabaseAdminClient().from("user_subscriptions")
+    .select("plan_key,status,current_period_end,cancel_at_period_end").eq("user_id",userId).in("status",["active","trialing","past_due"]).maybeSingle();
+  if (error) return null;
+  return data as LegacySubscription|null;
 }
 
-export default async function BillingPage({ searchParams }: BillingPageProps) {
-  const params = await searchParams;
-  const successRedirectPath = normalizeBillingReturnTarget(params.returnTo);
-  const pricingDisplayBenefits = getPlanDisplayBenefits();
-  const subscriptionAccessMode = getSubscriptionAccessMode();
-  const waitlistMode = subscriptionAccessMode === "waitlist";
+async function readFullStyleContract(userId:string|null):Promise<FullStyleContract|null> {
+  if (!userId || !isSupabaseConfigured()) return null;
+  const db = getSupabaseAdminClient();
+  const { data, error } = await db.from("full_style_contracts_v2")
+    .select("id,offering_key,status,billing_interval,period_ends_at,next_billing_at,cancel_at_period_end,latest_payment_transaction_id")
+    .eq("user_id",userId).in("status",["active","cancel_at_period_end","refund_review"])
+    .order("created_at",{ascending:false}).limit(1).maybeSingle();
+  if (error || !data) return null;
+  const contract = data as Omit<FullStyleContract,"quantity_granted"|"quantity_consumed"|"restart_count"|"aftercare_count">;
+  let quantityGranted=0; let quantityConsumed=0;let restartCount=0;let aftercareCount=0;
+  if (contract.latest_payment_transaction_id) {
+    const grant = await db.from("customer_entitlement_grants_v2")
+      .select("quantity_granted,quantity_consumed,capability_snapshot")
+      .eq("source","portone").eq("source_transaction_id",contract.latest_payment_transaction_id)
+      .eq("offering_key",contract.offering_key).maybeSingle();
+    if (grant.data) {
+      quantityGranted=Number((grant.data as {quantity_granted:number}).quantity_granted||0);
+      quantityConsumed=Number((grant.data as {quantity_consumed:number}).quantity_consumed||0);
+      const capabilities=(grant.data as {capability_snapshot?:{hairRestartCount?:number;aftercareConsultationCount?:number}}).capability_snapshot;
+      restartCount=Number(capabilities?.hairRestartCount??0);aftercareCount=Number(capabilities?.aftercareConsultationCount??0);
+    }
+  }
+  return {...contract,quantity_granted:quantityGranted,quantity_consumed:quantityConsumed,restart_count:restartCount,aftercare_count:aftercareCount};
+}
 
+function fullStyleLabel(key:string) {
+  return key === "full_style_once" ? "풀 스타일 1회" : key === "full_style_quarterly" ? "3개월 정기" : "연간";
+}
+
+export default async function BillingPage() {
+  const { userId } = await auth();
+  const [legacy,fullStyle] = await Promise.all([readLegacySubscription(userId),readFullStyleContract(userId)]);
   return (
     <AppPage className="flex flex-col gap-5 pb-16">
       <Panel as="section" className="p-5 sm:p-6">
-        <p className="app-kicker">{waitlistMode ? "구독 오픈 알림" : "플랜 결제"}</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
-          {waitlistMode ? "구독 오픈 알림" : "플랜 결제"}
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">
-          {waitlistMode
-            ? "현재 정기 결제를 준비하고 있어 구독은 오픈 알림 신청으로 운영합니다. 희망 플랜을 남겨주시면 결제가 열릴 때 우선 안내드리겠습니다."
-            : "헤어·패션·케어 이용 횟수에 맞춰 플랜을 선택하고 안전한 카드 결제로 구독을 시작하세요. 패션 횟수는 헤어와 패션을 함께 이용하는 세트 기준입니다."}
-        </p>
+        <p className="app-kicker">계약·구매 관리</p>
+        <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">내 HairFit 계약</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">현재 계약, 남은 회차, 다음 결제일, 기간말 해지와 환불 요청을 한곳에서 관리합니다. 새 상품 비교는 공개 상품페이지에서 확인할 수 있습니다.</p>
+        <div className="mt-5 flex flex-wrap gap-3"><Link href="/consulting/plans" className="f-landing-cta">풀 스타일 상품 비교</Link><Link href="/mypage?tab=plan" className="f-landing-ghost-cta">남은 이용권 확인</Link></div>
       </Panel>
-      <PricingPreview
-        initialDisplayBenefits={pricingDisplayBenefits}
-        subscriptionAccessMode={subscriptionAccessMode}
-        successRedirectPath={successRedirectPath}
-      />
-      <UsagePackCatalog />
-      {!waitlistMode ? (
-        <Panel as="section" className="p-5 sm:p-6">
-          <p className="app-kicker">결제 전 확인</p>
-          <h2 className="mt-2 text-xl font-black text-[var(--app-text)]">정기결제·해지·이용권 안내</h2>
-          <SubscriptionPolicyDisclosure className="mt-4" />
-        </Panel>
-      ) : null}
+
+      {fullStyle ? <Panel as="section" className="grid gap-4 p-5 sm:p-6">
+        <div><p className="app-kicker">현재 계약</p><h2 className="mt-2 text-xl font-black">{fullStyleLabel(fullStyle.offering_key)}</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">남은 회차와 다음 결제일을 확인하고 자동갱신을 관리할 수 있습니다.</p></div>
+        <dl className="grid gap-3 text-sm sm:grid-cols-4"><div><dt className="font-bold">남은 회차</dt><dd>{Math.max(0,fullStyle.quantity_granted-fullStyle.quantity_consumed)}회</dd></div><div><dt className="font-bold">상담별 관리 혜택</dt><dd>전체 재시작 {fullStyle.restart_count||getFullStyleOffer(fullStyle.offering_key)?.restartCount||0}회 · AI 사후상담 {fullStyle.aftercare_count||getFullStyleOffer(fullStyle.offering_key)?.aftercareConsultationCount||0}회</dd></div><div><dt className="font-bold">다음 결제일</dt><dd>{fullStyle.next_billing_at?new Date(fullStyle.next_billing_at).toLocaleDateString("ko-KR"):"추가 결제 없음"}</dd></div><div><dt className="font-bold">계약 상태</dt><dd>{fullStyle.cancel_at_period_end?"기간말 해지 예약됨":"이용 중"}</dd></div></dl>
+        <div className="flex flex-wrap gap-3">{fullStyle.billing_interval?<FullStyleContractActions contractId={fullStyle.id} cancelAtPeriodEnd={fullStyle.cancel_at_period_end}/>:null}{fullStyle.offering_key==="full_style_annual"?<Link href="/consulting/archive" className="f-landing-ghost-cta">연간 스타일 아카이브</Link>:null}</div>
+        {fullStyle.latest_payment_transaction_id?<div className="border-t border-[var(--app-border)] pt-4"><h3 className="text-sm font-black">즉시 종료·환불 견적</h3><p className="mt-1 text-xs leading-5 text-[var(--app-muted)]">완전 미사용이면 자동 환불, 사용 이력이 있으면 검토 절차로 연결됩니다.</p><div className="mt-3"><RefundInterviewFlow paymentTransactionId={fullStyle.latest_payment_transaction_id}/></div></div>:null}
+      </Panel> : null}
+
+      {legacy ? <Panel as="section" className="p-5 sm:p-6">
+        <p className="app-kicker">기존 고객 계약</p>
+        <h2 className="mt-2 text-xl font-black">{legacy.plan_key.toUpperCase()} 플랜 유지 중</h2>
+        <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">기존 가격·갱신·사용권은 해지할 때까지 그대로 유지됩니다. 신규 고객에게는 이 레거시 상품을 판매하지 않습니다.</p>
+        <dl className="mt-4 grid gap-2 text-sm"><div><dt className="font-bold">상태</dt><dd>{legacy.status}</dd></div><div><dt className="font-bold">다음 결제일</dt><dd>{legacy.current_period_end ? new Date(legacy.current_period_end).toLocaleDateString("ko-KR") : "확인 중"}</dd></div><div><dt className="font-bold">해지</dt><dd>{legacy.cancel_at_period_end ? "기간말 해지 예약됨" : "계속 이용 중"}</dd></div></dl>
+      </Panel> : null}
+
+      {!legacy&&!fullStyle?<Panel as="section" className="p-5 sm:p-6"><p className="app-kicker">현재 계약</p><h2 className="mt-2 text-xl font-black">활성 계약이 없습니다</h2><p className="mt-2 text-sm text-[var(--app-muted)]">무료 데모를 먼저 보거나 풀 스타일 상품을 비교해 보세요.</p></Panel>:null}
+
+      {legacy ? <>
+        <Panel as="section" className="p-5 sm:p-6"><p className="app-kicker">기존 플랜 관리</p><h2 className="mt-2 text-xl font-black">기존 가격·혜택</h2><div className="mt-4"><PricingPreview initialDisplayBenefits={getPlanDisplayBenefits()} subscriptionAccessMode={getSubscriptionAccessMode()} /></div></Panel>
+        <UsagePackCatalog />
+      </> : null}
+
+      <Panel as="section" className="p-5 sm:p-6">
+        <p className="app-kicker">해지·환불</p><h2 className="mt-2 text-xl font-black">기간말 해지와 즉시 종료 요청</h2>
+        <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">완전 미사용 계약은 자동 환불 대상입니다. 사용 이력이 있으면 즉시 종료 금액을 검토한 뒤 안내합니다.</p>
+        <SubscriptionPolicyDisclosure className="mt-4" />
+      </Panel>
     </AppPage>
   );
 }

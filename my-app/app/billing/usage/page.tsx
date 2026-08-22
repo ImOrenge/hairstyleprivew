@@ -47,6 +47,7 @@ export default async function UsagePackCheckoutPage({
       console.error("[billing/usage] 구독 자격 확인 실패:", error);
     }
   }
+  if (!eligible) redirect("/consulting/plans");
 
   const clerkUser = await currentUser();
   const initialBuyerName =
@@ -103,23 +104,7 @@ export default async function UsagePackCheckoutPage({
         ))}
       </section>
 
-      {!eligible ? (
-        <Panel as="section" className="grid gap-4 p-5 sm:p-6">
-          <div>
-            <h2 className="text-xl font-black text-[var(--app-text)]">먼저 정기구독을 시작해 주세요</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">
-              추가 이용권은 Basic, Standard, Pro 등 활성 유료 구독을 보완하는 상품입니다.
-            </p>
-          </div>
-          <Link
-            className="inline-flex min-h-11 w-fit items-center justify-center rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 py-2 text-sm font-bold text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
-            href="/billing"
-          >
-            정기구독 플랜 보기
-          </Link>
-        </Panel>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <Panel as="section" className="p-5 sm:p-6">
             <PortoneUsagePackCheckoutForm
               packKey={pack.key}
@@ -151,8 +136,7 @@ export default async function UsagePackCheckoutPage({
               <li>미사용분 환불은 서비스 환불 정책과 결제 내역을 기준으로 처리됩니다.</li>
             </ul>
           </SurfaceCard>
-        </div>
-      )}
+      </div>
     </AppPage>
   );
 }

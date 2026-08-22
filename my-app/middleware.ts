@@ -39,6 +39,7 @@ const isPublicSupportApiRoute = createRouteMatcher([
 const isPublicSubscriptionWaitlistRoute = createRouteMatcher([
   "/api/subscription-waitlist",
 ]);
+const isPublicCatalogRoute = createRouteMatcher(["/api/v2/catalog/public"]);
 const isBillingCheckoutRoute = createRouteMatcher(["/billing/checkout(.*)"]);
 const isAccountApiRoute = createRouteMatcher(["/api/account"]);
 const isMobileApiRoute = createRouteMatcher(["/api/mobile(.*)"]);
@@ -59,6 +60,7 @@ const isHomeRoute = createRouteMatcher(["/home(.*)"]);
 const isMyPageRoute = createRouteMatcher(["/mypage"]);
 const isWorkspaceRoute = createRouteMatcher(["/workspace(.*)"]);
 const isConsultingE2EHarnessRoute = createRouteMatcher(["/consulting/e2e-harness"]);
+const isPublicConsultingPlansRoute = createRouteMatcher(["/consulting/plans"]);
 
 function isEnabledConsultingE2EHarness(req: NextRequest) {
   return process.env.E2E_UI_HARNESS_ENABLED === "true" && isConsultingE2EHarnessRoute(req);
@@ -226,8 +228,10 @@ const clerkAppMiddleware = clerkMiddleware(async (auth, req) => {
 
       if (
         !isProtectedRoute(req) ||
+        isPublicConsultingPlansRoute(req) ||
         isEnabledConsultingE2EHarness(req) ||
         isWebhookRoute(req) ||
+        (isPublicCatalogRoute(req) && !isMutationRequest(req)) ||
         isPublicWaitlistCheckoutRoute(req) ||
         (isPublicSupportApiRoute(req) && !isMutationRequest(req)) ||
         (isPublicSubscriptionWaitlistRoute(req) && req.method === "POST")
@@ -323,8 +327,10 @@ async function clerkUnavailableMiddleware(req: NextRequest) {
 
       if (
         !isProtectedRoute(req) ||
+        isPublicConsultingPlansRoute(req) ||
         isEnabledConsultingE2EHarness(req) ||
         isWebhookRoute(req) ||
+        (isPublicCatalogRoute(req) && !isMutationRequest(req)) ||
         isPublicWaitlistCheckoutRoute(req) ||
         (isPublicSupportApiRoute(req) && !isMutationRequest(req)) ||
         (isPublicSubscriptionWaitlistRoute(req) && req.method === "POST")

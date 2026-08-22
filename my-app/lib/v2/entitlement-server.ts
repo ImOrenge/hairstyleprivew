@@ -3,10 +3,16 @@ import type { EntitlementDecisionV2, EntitlementGrantV2, OfferingCapabilities, O
 import { getCreditsPerStyle } from "../pricing-plan";
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "./errors";
-import { isLegacyEntitlementBridgeEnabled } from "./feature-flags";
+import { isHairfitV2Enabled, isLegacyEntitlementBridgeEnabled } from "./feature-flags";
 
 type GrantRow = { id:string; user_id:string; offering_key:string; offering_version:number; capability_snapshot:OfferingCapabilities; quantity_granted:number; quantity_consumed:number; status:EntitlementGrantV2["status"]; source:EntitlementGrantV2["source"]; source_transaction_id:string|null; valid_from:string; expires_at:string|null };
-const EMPTY_CAPABILITIES: OfferingCapabilities = { acceptedHairPreviews:9,salonBrief:true,aftercare:true,personalColor:false,fashionPreviews:0,generatedAssetRetentionDays:7 };
+const EMPTY_CAPABILITIES: OfferingCapabilities = {
+  acceptedHairPreviews:9,watermarkGeneratedAssets:false,hairRestartCount:0,finalHairSelectionCount:1,salonBrief:true,
+  aftercare:true,aftercareConsultationCount:1,checkInDays:[30],personalColor:false,personalColorMode:"quick_photo",hairColor:false,makeup:false,
+  aiNarrative:false,pdf:false,fashionPreviews:0,fashionAdditionalPreviews:0,
+  beforeAfterComparison:false,annualSummary:false,annualArchive:false,generatedAssetRetentionDays:7,
+};
+const PAID_FULL_STYLE_KEYS = ["full_style_once", "full_style_quarterly", "full_style_annual"] as const;
 function remaining(row: GrantRow) { return Math.max(0,row.quantity_granted-row.quantity_consumed); }
 export async function quoteEntitlementV2(userId:string, offeringKey:OfferingKey):Promise<EntitlementDecisionV2> {
   const now = new Date().toISOString();
@@ -21,6 +27,82 @@ export async function quoteEntitlementV2(userId:string, offeringKey:OfferingKey)
     if (credits >= getCreditsPerStyle()) return { schemaVersion:"entitlement-decision-v1",allowed:true,reason:"allowed",offeringKey,grantId:null,remainingSessions:1,capabilities:EMPTY_CAPABILITIES,decisionVersion:1,decidedAt:now,source:"legacy_bridge" };
   }
   return { schemaVersion:"entitlement-decision-v1",allowed:false,reason:grant?.status === "expired" ? "expired" : grant && remaining(grant)===0 ? "exhausted" : "no_grant",offeringKey,grantId:null,remainingSessions:0,capabilities:null,decisionVersion:1,decidedAt:now,source:"v2" };
+}
+
+export async function ensureFreeHairDemoGrantV2(userId: string) {
+  if (!isHairfitV2Enabled("FREE_HAIR_DEMO_ENABLED")) return null;
+  const db = getSupabaseAdminClient();
+  const { data: offering, error: offeringError } = await db.from("product_offerings_v2")
+    .select("id,version,capabilities,status").eq("offering_key", "free_hair_demo").eq("status", "active").maybeSingle();
+  if (offeringError) throw new Error(offeringError.message);
+  if (!offering) return null;
+  const row = offering as unknown as { id:string; version:number; capabilities:OfferingCapabilities };
+  const { data, error } = await db.from("customer_entitlement_grants_v2").upsert({
+    user_id:userId, offering_id:row.id, offering_key:"free_hair_demo", offering_version:row.version,
+    capability_snapshot:row.capabilities, quantity_granted:1, source:"manual",
+    source_transaction_id:`free-hair-demo:${userId}`,
+  }, { onConflict:"source,source_transaction_id,offering_key", ignoreDuplicates:true }).select("id").maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function quoteFullStyleAccessV2(userId: string) {
+  for (const offeringKey of PAID_FULL_STYLE_KEYS) {
+    const decision = await quoteEntitlementV2(userId, offeringKey);
+    if (decision.allowed) return { ...decision, access:"paid" as const };
+  }
+  await ensureFreeHairDemoGrantV2(userId);
+  const free = await quoteEntitlementV2(userId, "free_hair_demo");
+  return { ...free, access:free.allowed ? "demo" as const : "none" as const };
+}
+
+export async function quoteFullStyleConsultationAccessV2(userId:string,consultationId:string) {
+  const db=getSupabaseAdminClient();
+  const session=await db.from("consultation_sessions").select("id,entitlement_grant_id")
+    .eq("id",consultationId).eq("user_id",userId).maybeSingle();
+  if(session.error) throw new Error(session.error.message);
+  if(!session.data) throw new HairfitV2Error("CONSULTATION_NOT_FOUND",404,"상담을 찾을 수 없습니다.");
+  const grantId=(session.data as {entitlement_grant_id?:string|null}).entitlement_grant_id;
+  if(grantId) {
+    const attached=await db.from("customer_entitlement_grants_v2")
+      .select("id,offering_key,offering_version,capability_snapshot,status")
+      .eq("id",grantId).eq("user_id",userId).maybeSingle();
+    if(attached.error) throw new Error(attached.error.message);
+    const grant=attached.data as {id:string;offering_key:string;offering_version:number;capability_snapshot:OfferingCapabilities;status:string}|null;
+    if(grant&&grant.status!=="revoked") {
+      const paid=grant.offering_key.startsWith("full_style_");
+      if(paid||grant.offering_key==="free_hair_demo") return {
+        schemaVersion:"entitlement-decision-v1" as const,allowed:true,reason:"allowed" as const,
+        offeringKey:grant.offering_key,grantId:grant.id,remainingSessions:0,capabilities:grant.capability_snapshot,
+        decisionVersion:grant.offering_version,decidedAt:new Date().toISOString(),source:"v2" as const,
+        access:paid?"paid" as const:"demo" as const,
+      };
+    }
+  }
+  return quoteFullStyleAccessV2(userId);
+}
+
+export async function consumeFullStyleGenerationEntitlementV2(input:{userId:string;consultationId:string;idempotencyKey:string}) {
+  const existing=await getSupabaseAdminClient().from("entitlement_consumptions_v2")
+    .select("id,state,grant_id").eq("user_id",input.userId).eq("consultation_id",input.consultationId).maybeSingle();
+  if(existing.error) throw new Error(existing.error.message);
+  if(existing.data&&(existing.data as {state:string}).state!=="restored") return {
+    id:(existing.data as {id:string}).id,state:(existing.data as {state:string}).state,
+    grantId:(existing.data as {grant_id:string}).grant_id,replayed:true,
+  };
+  const decision = await quoteFullStyleConsultationAccessV2(input.userId,input.consultationId);
+  if (!decision.allowed) throw new HairfitV2Error("ENTITLEMENT_UNAVAILABLE",402,"이 상담에 사용할 수 있는 이용 권리가 없습니다.");
+  const consumption = await consumeEntitlementV2({ ...input, offeringKey:decision.offeringKey });
+  const grantId = (consumption as { grantId?:unknown }|null)?.grantId;
+  if (typeof grantId === "string") {
+    await getSupabaseAdminClient().from("consultation_sessions").update({
+      entitlement_grant_id:grantId,
+      user_restart_limit:Number(decision.capabilities?.hairRestartCount ?? 0),
+      retention_policy_days:Number(decision.capabilities?.generatedAssetRetentionDays ?? 7),
+    })
+      .eq("id",input.consultationId).eq("user_id",input.userId);
+  }
+  return consumption;
 }
 async function createLegacyBridgeGrant(userId:string,offeringKey:OfferingKey,consultationId:string,capabilities:OfferingCapabilities) {
   const db=getSupabaseAdminClient();

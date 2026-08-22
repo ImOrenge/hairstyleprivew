@@ -24,6 +24,7 @@ type Quote = {
 };
 
 type PreviewGenerationVisualState = "waiting" | "generating" | "partial" | "complete" | "failed";
+type RestartAccess = { used:number; limit:number; remaining:number; availableBeforeFinal:boolean };
 
 function initialPreviewBoardState(previews: ConsultationSnapshot["previews"], generationId: string | null) {
   const accepted = previews.filter((item) => item.status === "accepted").length;
@@ -86,8 +87,17 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
   const [acceptedCount, setAcceptedCount] = useState(snapshot.previews.filter((item) => item.status === "accepted").length);
   const [error, setError] = useState<string | null>(null);
   const [needsPurchase, setNeedsPurchase] = useState(false);
+  const [demoWatermark, setDemoWatermark] = useState(false);
+  const [restartAccess,setRestartAccess]=useState<RestartAccess>({used:0,limit:0,remaining:0,availableBeforeFinal:true});
   const persistedBoardId = useRef<string | null>(null);
   const autoStartAttempted = useRef(false);
+
+  useEffect(() => {
+    void fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/access`,{cache:"no-store"})
+      .then(async(response)=>response.ok?await response.json() as {access?:string;capabilities?:{watermarkGeneratedAssets?:boolean};restart?:RestartAccess}:null)
+      .then((access)=>{setDemoWatermark(access?.access==="demo"||access?.capabilities?.watermarkGeneratedAssets===true);if(access?.restart)setRestartAccess(access.restart);})
+      .catch(()=>undefined);
+  },[snapshot.sessionId]);
 
   const requestGenerationQuote = useCallback(async () => {
     const draftId = snapshot.photo.draftId;
@@ -95,13 +105,13 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
     const response = await fetch("/api/paid-actions/quote", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "hair_generation", subjectId: draftId, billingScope: "customer" }),
+      body: JSON.stringify({ action: "hair_generation", subjectId: draftId, billingScope: "customer", consultationId:snapshot.sessionId }),
     });
     const data = (await response.json().catch(() => ({}))) as { quote?: Quote; error?: string };
     if (!response.ok || !data.quote) throw new Error(data.error || "생성 이용 권한을 확인하지 못했습니다.");
     setQuote(data.quote);
     return data.quote;
-  }, [snapshot.photo.draftId]);
+  }, [snapshot.photo.draftId,snapshot.sessionId]);
 
   const refreshBoard = useCallback(async () => {
     if (!generationId) return;
@@ -207,6 +217,13 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
     setLoading(true);
     setError(null);
     try {
+      const accessResponse = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/access`, { cache:"no-store" });
+      const access = (await accessResponse.json().catch(() => ({}))) as { canCompare?:boolean; access?:string; error?:string };
+      if (accessResponse.ok && !access.canCompare) {
+        setNeedsPurchase(true);
+        setError("무료 데모의 실제 3×3 생성이 완료됐습니다. 풀 스타일 상품을 선택하면 이 결과를 유지한 채 비교부터 계속할 수 있어요.");
+        return;
+      }
       const v2Response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/shortlist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -225,6 +242,19 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
     }
   };
 
+  const restartWithNewBoard = async () => {
+    if(!window.confirm(`현재 후보와 확정 전 결과를 보관 기록으로 남기고 새 3×3을 만듭니다. 남은 전체 재시작 ${restartAccess.remaining}회 중 1회를 사용할까요?`))return;
+    setLoading(true); setError(null);
+    try {
+      const response=await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/restart`,{method:"POST"});
+      const data=await response.json().catch(()=>({})) as {error?:string;restartCount?:number;restartLimit?:number;remaining?:number}; if(!response.ok)throw new Error(data.error||"재시작하지 못했습니다.");
+      setRestartAccess((current)=>({...current,used:data.restartCount??current.used+1,limit:data.restartLimit??current.limit,remaining:data.remaining??Math.max(0,current.remaining-1)}));
+      const cleared=snapshot.previews.map((preview)=>({...preview,status:"pending" as const,imageUrl:null,generatedImagePath:null}));
+      await mutate({photo:{...snapshot.photo,generationId:null},previews:cleared,shortlist:{previewIds:[],updatedAt:new Date().toISOString()},finalist:{finalistPreviewId:null,backupPreviewId:null,decidedAt:null},currentStage:"previews"});
+      window.location.reload();
+    } catch(cause) { setError(cause instanceof Error?cause.message:"재시작하지 못했습니다."); setLoading(false); }
+  };
+
   return <WorkbenchGrid input={<div className="grid gap-5">
     <SurfaceCard className="f-preview-generation-status p-5" data-generation-state={generationStatus.state}>
       <div className="f-preview-generation-status__heading">
@@ -235,15 +265,15 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
       <div className="f-preview-generation-status__progress"><div><span>품질 승인 결과</span><strong>{acceptedCount} / 9</strong></div><progress max={9} value={acceptedCount} aria-label={`품질 승인 프리뷰 ${acceptedCount} / 9`} /></div>
     </SurfaceCard>
     {error ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{error}</p> : null}
-    {needsPurchase ? <p className="border border-[var(--app-border)] bg-[var(--app-surface)] p-3 text-sm">상담 전략은 저장되어 있습니다. <Link href="/billing" className="font-black underline">이용 상품을 선택한 뒤 같은 상담에서 이어서 진행</Link>할 수 있습니다.</p> : null}
+    {needsPurchase ? <p className="border border-[var(--app-border)] bg-[var(--app-surface)] p-3 text-sm">사진·간이 퍼스널 컬러·헤어 9개는 저장되어 있습니다. <Link href={`/consulting/plans?consultationId=${encodeURIComponent(snapshot.sessionId)}`} className="font-black underline">풀 스타일 상품을 선택한 뒤 같은 상담의 비교 단계부터 계속</Link>할 수 있습니다.</p> : null}
     <Panel className="grid gap-5 p-5"><div><p className="app-kicker">Preview controls</p><h2 className="mt-2 text-xl font-black">생성 결과를 2~3개 후보로 좁힙니다</h2><p className="mt-2 font-black">Shortlist {selected.length} / 3</p><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">오른쪽 AI 보드에서 품질 승인을 받은 이미지를 선택하면 이곳의 shortlist와 비교 가능 상태가 즉시 갱신됩니다.</p></div><DefinitionRows items={[
       { label: "Selected", value: `${selected.length} / 3` },
       { label: "Compare readiness", value: canCompare ? "비교 가능" : "승인 결과 2개 이상 필요" },
       { label: "Generation status", value: generationStatus.title },
       { label: "Accepted outputs", value: `${acceptedCount} / 9` },
-    ]} /><SaveStageButton loading={saving || loading} disabled={!canCompare} onClick={() => void saveShortlist()}>선택한 후보 비교하기</SaveStageButton></Panel>
+    ]} /><div className="grid gap-2"><SaveStageButton loading={saving || loading} disabled={!canCompare} onClick={() => void saveShortlist()}>선택한 후보 비교하기</SaveStageButton>{boardState==="ready"&&restartAccess.limit>0?<Button type="button" variant="secondary" disabled={loading||restartAccess.remaining<=0||!restartAccess.availableBeforeFinal} onClick={()=>void restartWithNewBoard()}>새 3×3으로 전체 재시작 · 남은 {restartAccess.remaining}회</Button>:null}<p className="text-xs leading-5 text-[var(--app-muted)]">전체 재시작은 최종 헤어 확정 전 새 결과 9개를 만드는 권리입니다. 품질 실패 자동 재처리는 차감하지 않습니다.</p></div></Panel>
   </div>} output={<>
-    <div className="grid gap-5 lg:grid-cols-3">{(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => <Panel key={axis} className="p-4"><p className="app-kicker">{axis}</p><div className="mt-4 grid gap-3">{previews.filter((item) => item.axis === axis).map((preview) => <button key={preview.id} type="button" disabled={preview.status !== "accepted"} onClick={() => toggle(preview.id)} aria-pressed={selected.includes(preview.id)} className={`overflow-hidden border text-left ${selected.includes(preview.id) ? "border-[var(--app-border-strong)] ring-2 ring-[var(--app-ring)]" : "border-[var(--app-border)]"} disabled:opacity-55`}><div className="aspect-[4/5] bg-[var(--app-surface-muted)]">{preview.imageUrl ? <img src={preview.imageUrl} alt={preview.label} className="h-full w-full object-cover" decoding="async" loading="lazy" /> : <div className="flex h-full items-center justify-center p-4 text-center text-xs text-[var(--app-muted)]">{preview.status === "failed" ? "품질 검사 실패" : preview.status === "generating" ? "AI 생성 및 품질 검사 중" : "결과 대기 중"}</div>}</div><div className="p-3"><p className="font-black">{preview.label}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--app-muted)]">{preview.reason}</p></div></button>)}</div></Panel>)}</div>
+    <div className="grid gap-5 lg:grid-cols-3">{(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => <Panel key={axis} className="p-4"><p className="app-kicker">{axis}</p><div className="mt-4 grid gap-3">{previews.filter((item) => item.axis === axis).map((preview) => <button key={preview.id} type="button" disabled={preview.status !== "accepted"} onClick={() => toggle(preview.id)} aria-pressed={selected.includes(preview.id)} className={`overflow-hidden border text-left ${selected.includes(preview.id) ? "border-[var(--app-border-strong)] ring-2 ring-[var(--app-ring)]" : "border-[var(--app-border)]"} disabled:opacity-55`}><div className="relative aspect-[4/5] bg-[var(--app-surface-muted)]">{preview.imageUrl ? <><img src={preview.imageUrl} alt={preview.label} className="h-full w-full object-cover" decoding="async" loading="lazy" />{demoWatermark?<span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/10 text-lg font-black tracking-[0.2em] text-white/80 [text-shadow:0_1px_3px_rgb(0_0_0/0.7)]">HAIRFIT DEMO</span>:null}</> : <div className="flex h-full items-center justify-center p-4 text-center text-xs text-[var(--app-muted)]">{preview.status === "failed" ? "품질 검사 실패" : preview.status === "generating" ? "AI 생성 및 품질 검사 중" : "결과 대기 중"}</div>}</div><div className="p-3"><p className="font-black">{preview.label}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--app-muted)]">{preview.reason}</p></div></button>)}</div></Panel>)}</div>
     <SurfaceCard className="p-5"><p className="app-kicker">Board telemetry</p><h2 className="mt-2 text-xl font-black">AI 생성·품질 승인 분포</h2><div className="mt-5"><DefinitionRows items={(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => {
       const axisPreviews = previews.filter((item) => item.axis === axis);
       return { label: axis, value: `${axisPreviews.filter((item) => item.status === "accepted").length} 승인 · ${axisPreviews.filter((item) => item.status === "generating").length} 생성 중 · ${axisPreviews.filter((item) => item.status === "failed").length} 실패` };

@@ -713,7 +713,8 @@ test("comparison, decision, brief and aftercare use derived lifecycle data", () 
   assert.match(outputs, /projectConsultationGenerationInputV2/);
   assert.doesNotMatch(outputs, /delete\(\)\.eq\("id", actualServiceId\)/);
   assert.match(aftercare, /실제 시술 확정하고 관리 프로그램 자동 생성/);
-  assert.match(aftercare, /AI care output/);
+  assert.match(aftercare, /오늘의 관리/);
+  assert.match(aftercare, /AftercareCheckinPanel/);
 });
 
 test("generation inputs share one versioned snapshot and preserve onboarding target through every output", () => {

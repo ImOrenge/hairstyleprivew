@@ -10,7 +10,7 @@ import {
 import { randomUUID } from "node:crypto";
 import { getSupabaseAdminClient } from "../supabase";
 import { createGenerationImageSignedUrl } from "../generation-image-storage";
-import { consumeEntitlementV2 } from "./entitlement-server";
+import { consumeFullStyleGenerationEntitlementV2 } from "./entitlement-server";
 import { HairfitV2Error } from "./errors";
 import { recordV2Event } from "./observability";
 import type { PromptPlanV2 } from "./prompt-server";
@@ -80,16 +80,15 @@ async function ensureAnalysisReady(userId: string, consultationId: string) {
   throw new HairfitV2Error("CONSULTATION_VERSION_CONFLICT", 409, "상담 상태가 동시에 변경되었습니다.");
 }
 
-async function loadAssociations(consultationId: string, generationId: string) {
+async function loadAssociations(consultationId: string, generationId: string, currentBoardId:string|null) {
   const db = getSupabaseAdminClient();
-  const board = await db
+  let boardQuery = db
     .from("preview_boards_v2")
     .select("id")
     .eq("consultation_id", consultationId)
-    .eq("source_generation_id", generationId)
-    .order("version", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .eq("source_generation_id", generationId);
+  boardQuery=currentBoardId?boardQuery.eq("id",currentBoardId):boardQuery.order("created_at",{ascending:false}).limit(1);
+  const board = await boardQuery.maybeSingle();
   if (board.error) throw new Error(board.error.message);
   if (!board.data) return null;
   const boardId = String((board.data as { id: string }).id);
@@ -136,7 +135,13 @@ export async function preparePreviewBoardV2(input: {
       "프리뷰 보드는 정확히 9개의 슬롯이 필요합니다.",
     );
   }
-  const existing = await loadAssociations(input.consultationId, input.generationId);
+  const restartState=await getSupabaseAdminClient().from("consultation_sessions").select("user_restart_count,current_preview_board_id")
+    .eq("id",input.consultationId).eq("user_id",input.userId).maybeSingle();
+  if(restartState.error) throw new Error(restartState.error.message);
+  if(!restartState.data) throw new HairfitV2Error("CONSULTATION_NOT_FOUND",404,"상담을 찾을 수 없습니다.");
+  const restartRow=restartState.data as {user_restart_count?:number;current_preview_board_id?:string|null};
+  const forceNewBoard=Number(restartRow.user_restart_count??0)>0&&!restartRow.current_preview_board_id;
+  const existing = forceNewBoard?null:await loadAssociations(input.consultationId,input.generationId,restartRow.current_preview_board_id??null);
   if (existing) return existing;
 
   await ensureAnalysisReady(input.userId, input.consultationId);
@@ -151,15 +156,15 @@ export async function preparePreviewBoardV2(input: {
   if (latestBoard.error) throw new Error(latestBoard.error.message);
   const boardVersion = Number((latestBoard.data as { version?: unknown } | null)?.version ?? 0) + 1;
   const consumption = object(
-    await consumeEntitlementV2({
+    await consumeFullStyleGenerationEntitlementV2({
       userId: input.userId,
-      offeringKey: "hair_decision_once",
       consultationId: input.consultationId,
       idempotencyKey: `preview-board:${input.consultationId}:${input.generationId}`,
     }),
   );
   const consumptionId = typeof consumption.id === "string" ? consumption.id : null;
   if (!consumptionId) throw new Error("Entitlement consumption did not return an id");
+  const restoreConsumptionOnFailure=consumption.replayed!==true&&consumption.state==="reserved";
 
   const db = getSupabaseAdminClient();
   const boardId = randomUUID();
@@ -246,6 +251,10 @@ export async function preparePreviewBoardV2(input: {
       .eq("id", input.consultationId)
       .eq("user_id", input.userId);
     if (link.error) throw new Error(link.error.message);
+    const restartLink=await db.rpc("link_consultation_restart_board_v2",{
+      p_user_id:input.userId,p_consultation_id:input.consultationId,p_preview_board_id:boardId,
+    });
+    if(restartLink.error&&restartLink.error.code!=="42883") throw new Error(restartLink.error.message);
     const appliedAdjustment = await db
       .from("consultation_hair_adjustments_v2")
       .update({ state: "applied", applied_at: new Date().toISOString() })
@@ -263,10 +272,12 @@ export async function preparePreviewBoardV2(input: {
     if (generating.error) throw new Error(generating.error.message);
   } catch (error) {
     await db.from("preview_boards_v2").delete().eq("id", boardId).eq("user_id", input.userId);
-    await db.rpc("restore_entitlement_v2", {
-      p_user_id: input.userId,
-      p_consumption_id: consumptionId,
-    });
+    if(restoreConsumptionOnFailure) {
+      await db.rpc("restore_entitlement_v2", {
+        p_user_id: input.userId,
+        p_consumption_id: consumptionId,
+      });
+    }
     throw error;
   }
 
