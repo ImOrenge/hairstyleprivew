@@ -60,6 +60,8 @@ export async function activatePaidConsultationV2(input:{
   if(error){
     const code=error.message.toUpperCase();
     if(code.includes("PAID_FULL_STYLE_REQUIRED")||code.includes("ENTITLEMENT_UNAVAILABLE"))throw new HairfitV2Error("PAID_FULL_STYLE_REQUIRED",402,"이 상담에 사용할 유료 풀 스타일 권리가 필요합니다.");
+    if(code.includes("CONTRACT_DOCUMENT_NOT_PROVIDED"))throw new HairfitV2Error("CONTRACT_DOCUMENT_NOT_PROVIDED",409,"계약 문서 제공을 확인하는 중입니다. 잠시 후 다시 시도하거나 고객센터에 문의해 주세요.");
+    if(code.includes("CONTRACT_NOT_ACTIVE"))throw new HairfitV2Error("CONTRACT_NOT_ACTIVE",409,"환불 검토 중인 계약에서는 새 상담 회차를 시작할 수 없습니다.");
     if(code.includes("CONSENT")||code.includes("POLICY_VERSION"))throw new HairfitV2Error("PAID_START_CONSENT_REQUIRED",409,"최신 청약철회 안내를 확인하고 다시 동의해 주세요.");
     throw new Error(error.message);
   }

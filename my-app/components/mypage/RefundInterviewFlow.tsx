@@ -48,6 +48,8 @@ function fullStyleEligibilityDescription(quote: NonNullable<RefundQuote["fullSty
       : "상담 회차가 이미 시작되어 단순 변심에 따른 환불이 제한됩니다.";
   }
   if (quote.eligibilityCode === "window_expired") return "법정 청약철회 7일이 지나 단순 변심 환불액은 0원입니다. 구매한 권리는 계약 만료일까지 이용할 수 있습니다.";
+  if (quote.eligibilityCode === "document_delivery_unverified") return "계약 문서 제공 기록을 확인해야 해 자동 거절하지 않고 담당자가 직접 검토합니다.";
+  if (quote.eligibilityCode === "legal_calendar_review") return "공휴일을 포함한 법정 기한을 확인해야 해 자동 거절하지 않고 담당자가 직접 검토합니다.";
   return "법정·정책상 예외 가능성을 확인하기 위해 담당자가 결제, 서비스 제공과 제출 내용을 검토합니다.";
 }
 
@@ -74,7 +76,7 @@ export function RefundInterviewFlow({
   const manualReview = quote?.decision === "manual";
   const fullStyleCannotRefund = outcome === "immediate_refund_and_cancel"
     && Boolean(quote?.fullStyle)
-    && quote?.fullStyle?.eligibilityCode !== "exception_review"
+    && !["exception_review","document_delivery_unverified","legal_calendar_review"].includes(quote?.fullStyle?.eligibilityCode??"")
     && quote?.fullStyle?.eligibleForImmediateRefund === false;
   const canContinue = useMemo(() => {
     if (step === 0) return true;
@@ -285,8 +287,8 @@ export function RefundInterviewFlow({
               <div className="f-refund-interview__quote">
                 <div><span>원 결제액</span><strong>{formatKrw(quote.originalAmountKrw)}</strong></div>
                 {quote.fullStyle ? <>
-                  <div><span>계약 문서 제공일</span><strong>{new Date(quote.fullStyle.contractDocumentDeliveredAt).toLocaleString("ko-KR")}</strong></div>
-                  <div><span>법정 청약철회 마감</span><strong>{new Date(quote.fullStyle.statutoryWithdrawalDeadline).toLocaleString("ko-KR")}</strong></div>
+                  <div><span>계약 문서 제공일</span><strong>{quote.fullStyle.contractDocumentProvidedAt?new Date(quote.fullStyle.contractDocumentProvidedAt).toLocaleString("ko-KR"):"제공 기록 확인 중"}</strong></div>
+                  <div><span>법정 청약철회 마감</span><strong>{quote.fullStyle.statutoryWithdrawalDeadline?new Date(quote.fullStyle.statutoryWithdrawalDeadline).toLocaleString("ko-KR"):"담당자 확인 필요"}</strong></div>
                   <div><span>전체 / 시작 / 미시작 상담</span><strong>{quote.fullStyle.includedSessions} / {quote.fullStyle.startedSessions} / {quote.fullStyle.unusedSessions}회</strong></div>
                   <div><span>결제 당시 상담당 금액</span><strong>{formatKrw(quote.fullStyle.sessionUnitAmountKrw)}</strong></div>
                 </> : <>

@@ -42,6 +42,8 @@ export const REFUND_RISK_CODES = [
   "withdrawal_window_expired",
   "started_session_restriction",
   "full_style_exception_review",
+  "contract_document_unverified",
+  "legal_calendar_review",
 ] as const;
 export type RefundRiskCode = (typeof REFUND_RISK_CODES)[number];
 

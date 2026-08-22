@@ -1,4 +1,5 @@
 import type { GenerationCreditReceipt } from "@hairfit/shared";
+import type { FullStyleContractDocumentSnapshotV2 } from "@hairfit/shared/v2";
 import { Resend } from "resend";
 import { isAmbiguousResendDeliveryError } from "./resend-delivery-classification";
 import { formatServicePassCountsKo, getServicePassCounts } from "./service-pass-counts";
@@ -83,13 +84,9 @@ type PaymentFailureEmailInput = {
 type FullStyleContractEmailInput = {
   to:string;
   displayName?:string|null;
-  offeringKey:string;
-  offeringLabel:string;
-  amountKrw:number;
-  paymentTransactionId:string;
-  contractDocumentDeliveredAt:string;
+  document:FullStyleContractDocumentSnapshotV2;
+  contractDocumentProvidedAt:string;
   statutoryWithdrawalDeadline:string;
-  billingUrl:string;
 };
 
 type UsagePackFailureEmailInput = {
@@ -934,6 +931,8 @@ export async function sendPaymentSuccessEmail(input: PaymentSuccessEmailInput) {
 }
 
 export async function sendFullStyleContractEmail(input:FullStyleContractEmailInput){
+  const document=input.document;
+  const annualUnit=document.withdrawal.annualUnusedSessionUnitAmountKrw;
   return sendTemplatedEmail({
     to:input.to,
     subject:"[HairFit] 풀 스타일 계약과 청약철회 안내",
@@ -941,25 +940,37 @@ export async function sendFullStyleContractEmail(input:FullStyleContractEmailInp
     layout:{
       kicker:"Contract & withdrawal",
       title:"결제와 계약 등록이 완료되었습니다",
-      preview:`${input.offeringLabel} 계약 및 법정 청약철회 기한을 확인해 주세요.`,
+      preview:`${document.product.offeringLabel} 계약 및 법정 청약철회 기한을 확인해 주세요.`,
       tone:"success",
       body:[
-        `${greetingName(input.displayName)}님, ${input.offeringLabel} 결제가 완료되었습니다.`,
+        `${greetingName(input.displayName)}님, ${document.product.offeringLabel} 결제가 완료되었습니다.`,
+        `${document.seller.businessName}(대표 ${document.seller.representative})이 ${document.product.description}을 제공합니다. ${document.supply.method}`,
+        `서비스 내용: ${document.product.serviceContents.join(" · ")}`,
+        `이용 조건: ${document.product.technicalRequirements.join(" ")}`,
         "계약 내용을 확인할 수 있는 문서를 받은 날부터 법정 청약철회 기간은 7일입니다. 서비스 제공이 그보다 늦게 시작되면 법령에 따라 서비스 제공 시작일을 기준으로 다시 계산될 수 있습니다.",
         "청약철회 기한이 지나면 미사용 상태라도 단순 변심 환불은 제공되지 않습니다. 유료 상담을 시작한 회차는 기한 안에도 환불이 제한될 수 있으며 법정 예외 사유는 별도로 심사합니다.",
         "중복·오결제·과오납, 승인하지 않은 결제, HairFit 책임의 결과 미제공, 표시·광고·계약과 중요한 부분이 다른 서비스, 개인정보 또는 안전 문제는 별도 예외 규정으로 처리합니다.",
-        ...(input.offeringKey==="full_style_annual"?["청약철회 기간 안에 일부 상담을 시작했다면 미시작 회차는 결제 당시 회차당 74,750원으로 계산합니다. 기간이 지난 뒤에는 미시작 회차도 단순 변심 환불 대상이 아닙니다."]:[]),
+        ...(annualUnit!==null?[`청약철회 기간 안에 일부 상담을 시작했다면 미시작 회차는 결제 당시 회차당 ${annualUnit.toLocaleString("ko-KR")}원으로 계산합니다. 기간이 지난 뒤에는 미시작 회차도 단순 변심 환불 대상이 아닙니다.`]:[]),
+        `청약철회 신청: ${document.withdrawal.requestMethod}`,
+        `불만·분쟁 접수: ${document.dispute.complaintMethod}. ${document.dispute.processingStandard}`,
       ],
       details:[
-        {label:"상품",value:input.offeringLabel},
-        {label:"결제 금액",value:formatMoney(input.amountKrw,"KRW")},
-        {label:"계약 문서 제공일",value:new Date(input.contractDocumentDeliveredAt).toLocaleString("ko-KR")},
+        {label:"판매자",value:`${document.seller.businessName} / ${document.seller.representative}`},
+        {label:"사업자등록번호",value:document.seller.businessRegistrationNumber},
+        {label:"통신판매업 신고번호",value:document.seller.mailOrderReportNumber??"해당 시 계약·구매 관리에서 확인"},
+        {label:"사업장",value:document.seller.address},
+        {label:"상품",value:document.product.offeringLabel},
+        {label:"결제 금액",value:formatMoney(document.payment.amountKrw,"KRW")+" (부가세 포함)"},
+        {label:"결제 방법",value:document.payment.method},
+        {label:"결과 보관",value:`완료 후 ${document.supply.resultRetentionDays}일`},
+        {label:"계약 문서 제공일",value:new Date(input.contractDocumentProvidedAt).toLocaleString("ko-KR")},
         {label:"현재 청약철회 마감",value:new Date(input.statutoryWithdrawalDeadline).toLocaleString("ko-KR")},
-        {label:"결제 번호",value:input.paymentTransactionId},
+        {label:"결제 번호",value:document.paymentTransactionId},
       ],
-      cta:{label:"계약과 환불규정 확인하기",url:input.billingUrl},
-      note:"정기상품의 기간말 해지는 환불과 별도로 언제든 신청할 수 있습니다.",
+      cta:{label:"계약과 환불규정 확인하기",url:document.withdrawal.requestUrl},
+      note:`정기상품의 기간말 해지는 환불과 별도로 언제든 신청할 수 있습니다. ${document.dispute.delayedRefundStandard}`,
     },
+    idempotencyKey:`full-style-contract-${document.contractId}-${document.policyVersion}`,
   });
 }
 

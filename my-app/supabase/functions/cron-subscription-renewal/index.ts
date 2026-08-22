@@ -27,7 +27,7 @@ const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
 const RESEND_FROM_EMAIL = resolveResendFromEmail(Deno.env.get("RESEND_FROM_EMAIL"));
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
 const FULL_STYLE_REFUND_POLICY_V2_ENABLED = Deno.env.get("FULL_STYLE_REFUND_POLICY_V2_ENABLED") === "true";
-const FULL_STYLE_REFUND_POLICY_VERSION = "full-style-refund-2026-08-22-v1";
+const FULL_STYLE_REFUND_POLICY_VERSION = "full-style-refund-2026-08-22-v2";
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -475,6 +475,7 @@ interface FullStyleContractRenewal {
   price_id:string; price_version:number; price_snapshot:Record<string,unknown>;
   capability_snapshot:Record<string,unknown>; billing_interval:"quarter"|"year";
   billing_key_encrypted:string|null; renewal_failure_count:number|null;
+  contract_document_snapshot?:Record<string,unknown>|null;
 }
 
 type FullStyleRenewalError={message:string;code?:string};
@@ -502,10 +503,10 @@ function buildFullStyleRenewalPaymentId(offeringKey:string) {
 
 async function sendFullStyleRenewalContractEmail(input:{
   to:string;customerName:string;orderName:string;amountKrw:number;
-  contractDocumentDeliveredAt:string;statutoryWithdrawalDeadline:string;
+  contractId:string;contractDocumentProvidedAt:string;statutoryWithdrawalDeadline:string;
 }) {
-  if(!RESEND_API_KEY)return;
-  const deliveredAt=new Date(input.contractDocumentDeliveredAt).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"});
+  if(!RESEND_API_KEY)return {ok:false,deliveryUncertain:false,providerMessageId:null};
+  const deliveredAt=new Date(input.contractDocumentProvidedAt).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"});
   const deadline=new Date(input.statutoryWithdrawalDeadline).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"});
   const text=[
     `[HairFit] ${input.orderName} 계약 문서 및 환불규정`,"",
@@ -518,11 +519,18 @@ async function sendFullStyleRenewalContractEmail(input:{
     "중복·오결제, 승인하지 않은 결제, 결과 미제공, 계약 불일치는 예외 심사합니다.",
     `계약 및 환불 관리: ${APP_URL}/billing`,
   ].join("\n");
-  await fetch("https://api.resend.com/emails",{
-    method:"POST",headers:{Authorization:`Bearer ${RESEND_API_KEY}`,"Content-Type":"application/json"},
+  try {
+    const response=await fetch("https://api.resend.com/emails",{
+    method:"POST",headers:{Authorization:`Bearer ${RESEND_API_KEY}`,"Content-Type":"application/json","Idempotency-Key":`full-style-renewal-contract-${input.contractId}-${input.contractDocumentProvidedAt.slice(0,10)}`},
     body:JSON.stringify({from:RESEND_FROM_EMAIL,to:input.to,subject:`[HairFit] ${input.orderName} 계약 문서 및 환불규정`,text,
       html:`<div style="font-family:sans-serif;line-height:1.7"><h1>${escapeHtml(input.orderName)} 계약 문서</h1><p>${escapeHtml(input.customerName)}님, 정기결제가 완료되었습니다.</p><p><strong>결제 금액</strong> ${input.amountKrw.toLocaleString("ko-KR")}원 (부가세 포함)</p><p><strong>계약 문서 제공일</strong> ${escapeHtml(deliveredAt)}</p><p><strong>법정 청약철회 마감</strong> ${escapeHtml(deadline)}</p><p>법정 청약철회 기한이 지나면 미사용 상태라도 단순 변심 환불이 불가능합니다. 유료 상담을 시작한 회차는 7일 이내라도 단순 변심 환불이 제한됩니다.</p><p>중복·오결제, 승인하지 않은 결제, 결과 미제공, 계약 불일치는 예외 심사합니다.</p><p><a href="${APP_URL}/billing">계약 및 환불 관리</a></p></div>`}),
-  }).catch((error:unknown)=>console.error("[cron-renewal] full-style contract email error:",error));
+    });
+    const payload=await response.json().catch(()=>null) as {id?:string}|null;
+    return {ok:response.ok,deliveryUncertain:response.status>=500,providerMessageId:payload?.id??null};
+  } catch(error) {
+    console.error("[cron-renewal] full-style contract email error:",error);
+    return {ok:false,deliveryUncertain:true,providerMessageId:null};
+  }
 }
 
 async function renewFullStyleContracts(supabase:FullStyleRenewalClient) {
@@ -541,6 +549,7 @@ async function renewFullStyleContracts(supabase:FullStyleRenewalClient) {
     try {
       if(!contract.billing_key_encrypted) throw new Error("encrypted billing key is missing");
       if(!Number.isInteger(amount)||amount<=0||currency!=="KRW") throw new Error("invalid full-style price snapshot");
+      if(FULL_STYLE_REFUND_POLICY_V2_ENABLED&&!contract.contract_document_snapshot)throw new Error("verified contract document snapshot is missing");
       const billingKey=await decryptEncryptedBillingKey(contract.billing_key_encrypted);
       const customer=await getBillingKeyCustomer(billingKey,contract.user_id);
       const orderName=contract.offering_key==="full_style_quarterly"?"HairFit 3개월 스타일 관리 갱신":"HairFit 연간 스타일 아카이브 갱신";
@@ -576,20 +585,50 @@ async function renewFullStyleContracts(supabase:FullStyleRenewalClient) {
         valid_from:periodStart.toISOString(),expires_at:periodEnd.toISOString(),
       },{onConflict:"source,source_transaction_id,offering_key",ignoreDuplicates:true});
       if(grant.error) throw new Error(grant.error.message);
-      const contractDocumentDeliveredAt=periodStart.toISOString();
-      const statutoryWithdrawalDeadline=new Date(periodStart.getTime()+7*24*60*60*1000).toISOString();
+      const contractDocumentProvidedAt=periodStart.toISOString();
+      const deadlineResult=await supabase.rpc("full_style_legal_deadline_v2",{p_base_at:contractDocumentProvidedAt,p_calendar_days:7});
+      const statutoryWithdrawalDeadline=typeof deadlineResult.data==="string"?deadlineResult.data:null;
+      const previousDocument=contract.contract_document_snapshot??{};
+      const renewalDocument={...previousDocument,policyVersion:FULL_STYLE_REFUND_POLICY_VERSION,contractId:contract.id,
+        paymentTransactionId:txId,issuedAt:contractDocumentProvidedAt,
+        payment:{...((previousDocument.payment as Record<string,unknown>|undefined)??{}),amountKrw:amount,paidAt:contractDocumentProvidedAt,
+          nextBillingAt:periodEnd.toISOString()}};
       const advanced=await supabase.from("full_style_contracts_v2").update({
         status:"active",period_started_at:periodStart.toISOString(),period_ends_at:periodEnd.toISOString(),
         next_billing_at:periodEnd.toISOString(),latest_payment_transaction_id:txId,renewal_failure_count:0,
         renewal_last_failed_at:null,renewal_next_retry_at:null,renewal_failure_code:null,renewal_failure_message:null,
-        ...(FULL_STYLE_REFUND_POLICY_V2_ENABLED?{contract_document_delivered_at:contractDocumentDeliveredAt,
-          statutory_withdrawal_deadline:statutoryWithdrawalDeadline,refund_policy_version:FULL_STYLE_REFUND_POLICY_VERSION}:{}),
+        ...(FULL_STYLE_REFUND_POLICY_V2_ENABLED?{contract_document_status:"pending",contract_document_last_attempted_at:contractDocumentProvidedAt,
+          contract_document_provided_at:null,contract_document_delivered_at:null,
+          statutory_withdrawal_deadline:null,legal_calendar_verified:false,refund_policy_version:FULL_STYLE_REFUND_POLICY_VERSION,
+          contract_document_snapshot:renewalDocument}:{}),
         renewal_claimed_until:null,updated_at:new Date().toISOString(),
       }).eq("id",contract.id);
       if(advanced.error) throw new Error(advanced.error.message);
       if(FULL_STYLE_REFUND_POLICY_V2_ENABLED){
-        await sendFullStyleRenewalContractEmail({to:customer.email,customerName:customer.name,orderName,
-          amountKrw:amount,contractDocumentDeliveredAt,statutoryWithdrawalDeadline});
+        const documentInsert=await supabase.from("full_style_contract_documents_v2").upsert({
+          contract_id:contract.id,payment_transaction_id:txId,user_id:contract.user_id,
+          policy_version:FULL_STYLE_REFUND_POLICY_VERSION,status:"pending",document_snapshot:renewalDocument,
+          last_attempted_at:contractDocumentProvidedAt,
+        },{onConflict:"payment_transaction_id"});
+        if(documentInsert.error)throw new Error(documentInsert.error.message);
+        const delivery=statutoryWithdrawalDeadline?await sendFullStyleRenewalContractEmail({to:customer.email,customerName:customer.name,orderName,
+          amountKrw:amount,contractId:contract.id,contractDocumentProvidedAt,statutoryWithdrawalDeadline}):{ok:false,deliveryUncertain:false,providerMessageId:null};
+        const evidence=await supabase.from("full_style_contracts_v2").update({
+          contract_document_status:delivery.ok?"sent":delivery.deliveryUncertain?"delivery_uncertain":"failed",
+          contract_document_provider_message_id:delivery.providerMessageId,
+          contract_document_provided_at:delivery.ok?contractDocumentProvidedAt:null,
+          contract_document_delivered_at:delivery.ok?contractDocumentProvidedAt:null,
+          statutory_withdrawal_deadline:delivery.ok?statutoryWithdrawalDeadline:null,
+          legal_calendar_verified:delivery.ok&&Boolean(statutoryWithdrawalDeadline),updated_at:new Date().toISOString(),
+        }).eq("id",contract.id);
+        if(evidence.error)throw new Error(evidence.error.message);
+        const documentEvidence=await supabase.from("full_style_contract_documents_v2").update({
+          status:delivery.ok?"sent":delivery.deliveryUncertain?"delivery_uncertain":"failed",
+          provider_message_id:delivery.providerMessageId,provided_at:delivery.ok?contractDocumentProvidedAt:null,
+          statutory_withdrawal_deadline:delivery.ok?statutoryWithdrawalDeadline:null,
+          legal_calendar_verified:delivery.ok&&Boolean(statutoryWithdrawalDeadline),updated_at:new Date().toISOString(),
+        }).eq("payment_transaction_id",txId);
+        if(documentEvidence.error)throw new Error(documentEvidence.error.message);
       }
       renewed++;
     } catch(error) {

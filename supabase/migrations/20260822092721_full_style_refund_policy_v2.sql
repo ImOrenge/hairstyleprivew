@@ -6,16 +6,8 @@ alter table public.full_style_contracts_v2
   add column if not exists statutory_withdrawal_deadline timestamptz,
   add column if not exists refund_policy_version text;
 
-update public.full_style_contracts_v2
-set
-  contract_document_delivered_at = coalesce(contract_document_delivered_at, created_at),
-  statutory_withdrawal_deadline = coalesce(statutory_withdrawal_deadline, created_at + interval '7 days'),
-  refund_policy_version = coalesce(refund_policy_version, 'full-style-refund-2026-08-22-v1');
-
-alter table public.full_style_contracts_v2
-  alter column contract_document_delivered_at set not null,
-  alter column statutory_withdrawal_deadline set not null,
-  alter column refund_policy_version set not null;
+-- Existing contracts have no verified delivery evidence. Do not infer it from
+-- created_at; the hardening migration records an immutable delivered document.
 
 alter table public.entitlement_consumptions_v2
   drop constraint if exists entitlement_consumptions_v2_consultation_id_key;
@@ -68,7 +60,7 @@ begin
   if p_start_trigger not in ('paid_preview_generation','demo_upgrade_compare') then
     raise exception 'INVALID_START_TRIGGER' using errcode='22023';
   end if;
-  if p_refund_policy_version<>'full-style-refund-2026-08-22-v1' then
+  if p_refund_policy_version<>'full-style-refund-2026-08-22-v2' then
     raise exception 'REFUND_POLICY_VERSION_MISMATCH' using errcode='22023';
   end if;
   if p_consented_at is null or p_consented_at>v_started_at+interval '5 minutes'
@@ -137,10 +129,7 @@ begin
     p_start_trigger,p_refund_policy_version,p_consented_at,v_started_at
   ) returning * into v_activation;
 
-  update public.full_style_contracts_v2 set
-    statutory_withdrawal_deadline=
-      greatest(contract_document_delivered_at,v_started_at)+interval '7 days',
-    updated_at=v_started_at
+  update public.full_style_contracts_v2 set updated_at=v_started_at
     where id=v_contract.id
     returning * into v_contract;
 

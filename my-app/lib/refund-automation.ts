@@ -51,8 +51,8 @@ interface PaymentRow {
 
 interface FullStyleContractRow {
   id:string;offering_key:string;price_snapshot:Record<string,unknown>;period_ends_at:string|null;
-  latest_payment_transaction_id:string|null;contract_document_delivered_at:string;
-  statutory_withdrawal_deadline:string;created_at:string;
+  latest_payment_transaction_id:string|null;contract_document_provided_at:string|null;
+  contract_document_status:string;statutory_withdrawal_deadline:string|null;created_at:string;
 }
 
 interface SubscriptionRow {
@@ -153,7 +153,7 @@ export async function createRefundQuote(
 
   if(["full-style-checkout","cron-full-style-renewal"].includes(String(transaction.metadata?.source??""))&&isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED")){
     const contractResult=await supabase.from("full_style_contracts_v2")
-      .select("id,offering_key,price_snapshot,period_ends_at,latest_payment_transaction_id,contract_document_delivered_at,statutory_withdrawal_deadline,created_at")
+      .select("id,offering_key,price_snapshot,period_ends_at,latest_payment_transaction_id,contract_document_provided_at,contract_document_status,statutory_withdrawal_deadline,created_at")
       .eq("user_id",userId).eq("latest_payment_transaction_id",transaction.id).maybeSingle<FullStyleContractRow>();
     if(contractResult.error)throw new Error(contractResult.error.message);
     if(!contractResult.data)throw new Error("풀 스타일 환불 대상 계약을 찾지 못했습니다.");
@@ -361,7 +361,7 @@ async function createFullStyleRefundQuote(input:{
   const fullStyle=decideFullStyleRefund({
     now:new Date().toISOString(),contractId:contract.id,offeringKey:contract.offering_key,
     originalAmountKrw:transaction.amount??0,providerCancellableAmountKrw,includedSessions,
-    startedSessions:activations.length,contractDocumentDeliveredAt:contract.contract_document_delivered_at||contract.created_at,
+    startedSessions:activations.length,contractDocumentProvidedAt:contract.contract_document_status==="sent"?contract.contract_document_provided_at:null,
     serviceStartedAt:activations[0]?.started_at??null,reasonCategory:input.input.reasonCategory,
   });
   const riskCodes:RefundQuote["riskCodes"]=[];
@@ -369,6 +369,8 @@ async function createFullStyleRefundQuote(input:{
     if(fullStyle.eligibilityCode==="window_expired")riskCodes.push("withdrawal_window_expired");
     if(fullStyle.eligibilityCode==="started_session_restriction")riskCodes.push("started_session_restriction");
     if(fullStyle.eligibilityCode==="exception_review")riskCodes.push("full_style_exception_review");
+    if(fullStyle.eligibilityCode==="document_delivery_unverified")riskCodes.push("contract_document_unverified");
+    if(fullStyle.eligibilityCode==="legal_calendar_review")riskCodes.push("legal_calendar_review");
     if(providerLookupFailed)riskCodes.push("provider_lookup_failed");
     if(!providerAmountMatches)riskCodes.push("provider_amount_mismatch");
     if(previousPartialCancellation)riskCodes.push("previous_partial_cancellation");
@@ -387,8 +389,10 @@ async function createFullStyleRefundQuote(input:{
     preserved_credits:0,refund_amount_krw:refundAmountKrw,credit_lot_id:null,
     subscription_ends_at:input.input.outcome==="cancel_at_period_end"?contract.period_ends_at:null,
     expires_at:expiresAt,product_family:"full_style",full_style_contract_id:contract.id,
-    contract_document_delivered_at:fullStyle.contractDocumentDeliveredAt,service_started_at:fullStyle.serviceStartedAt,
+    contract_document_delivered_at:fullStyle.contractDocumentProvidedAt,
+    contract_document_provided_at:fullStyle.contractDocumentProvidedAt,service_started_at:fullStyle.serviceStartedAt,
     statutory_withdrawal_deadline:fullStyle.statutoryWithdrawalDeadline,
+    legal_calendar_verified:fullStyle.legalCalendarVerified,recovery_status:fullStyle.recoveryStatus,
     full_style_started_sessions:fullStyle.startedSessions,full_style_unused_sessions:fullStyle.unusedSessions,
     full_style_session_unit_amount_krw:fullStyle.sessionUnitAmountKrw,
     refund_eligibility_code:fullStyle.eligibilityCode,eligible_for_immediate_refund:fullStyle.eligibleForImmediateRefund,
