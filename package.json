@@ -72,6 +72,7 @@
     "component-registry:validate": "node scripts/validate-component-registry.mjs",
     "paid-action:contract:test": "npm --prefix my-app run paid-action:contract:test",
     "billing-content:contract:test": "npm --prefix my-app run billing-content:contract:test",
+    "full-style-refund:contract:test": "npm --prefix my-app run full-style-refund:contract:test",
     "styling-workflow:contract:test": "npm --prefix my-app run styling-workflow:contract:test",
     "ui-shell:contract:test": "npm --prefix my-app run ui-shell:contract:test",
     "app-links:external:check": "npm --prefix my-app run app-links:external:check --",

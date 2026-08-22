@@ -83,15 +83,17 @@ export async function quoteFullStyleConsultationAccessV2(userId:string,consultat
 }
 
 export async function consumeFullStyleGenerationEntitlementV2(input:{userId:string;consultationId:string;idempotencyKey:string}) {
+  const decision = await quoteFullStyleConsultationAccessV2(input.userId,input.consultationId);
+  if (!decision.allowed) throw new HairfitV2Error("ENTITLEMENT_UNAVAILABLE",402,"이 상담에 사용할 수 있는 이용 권리가 없습니다.");
+  if (!decision.grantId) throw new HairfitV2Error("ENTITLEMENT_GRANT_NOT_FOUND",409,"이 상담의 이용 권리를 다시 확인해 주세요.");
   const existing=await getSupabaseAdminClient().from("entitlement_consumptions_v2")
-    .select("id,state,grant_id").eq("user_id",input.userId).eq("consultation_id",input.consultationId).maybeSingle();
+    .select("id,state,grant_id").eq("user_id",input.userId).eq("consultation_id",input.consultationId)
+    .eq("grant_id",decision.grantId).neq("state","restored").maybeSingle();
   if(existing.error) throw new Error(existing.error.message);
   if(existing.data&&(existing.data as {state:string}).state!=="restored") return {
     id:(existing.data as {id:string}).id,state:(existing.data as {state:string}).state,
     grantId:(existing.data as {grant_id:string}).grant_id,replayed:true,
   };
-  const decision = await quoteFullStyleConsultationAccessV2(input.userId,input.consultationId);
-  if (!decision.allowed) throw new HairfitV2Error("ENTITLEMENT_UNAVAILABLE",402,"이 상담에 사용할 수 있는 이용 권리가 없습니다.");
   const consumption = await consumeEntitlementV2({ ...input, offeringKey:decision.offeringKey });
   const grantId = (consumption as { grantId?:unknown }|null)?.grantId;
   if (typeof grantId === "string") {

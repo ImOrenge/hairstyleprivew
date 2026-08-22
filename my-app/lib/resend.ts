@@ -80,6 +80,18 @@ type PaymentFailureEmailInput = {
   paymentTransactionId?: string | null;
 };
 
+type FullStyleContractEmailInput = {
+  to:string;
+  displayName?:string|null;
+  offeringKey:string;
+  offeringLabel:string;
+  amountKrw:number;
+  paymentTransactionId:string;
+  contractDocumentDeliveredAt:string;
+  statutoryWithdrawalDeadline:string;
+  billingUrl:string;
+};
+
 type UsagePackFailureEmailInput = {
   to: string;
   displayName?: string | null;
@@ -917,6 +929,36 @@ export async function sendPaymentSuccessEmail(input: PaymentSuccessEmailInput) {
         label: "마이페이지에서 확인하기",
         url: input.myPageUrl,
       },
+    },
+  });
+}
+
+export async function sendFullStyleContractEmail(input:FullStyleContractEmailInput){
+  return sendTemplatedEmail({
+    to:input.to,
+    subject:"[HairFit] 풀 스타일 계약과 청약철회 안내",
+    source:"full_style_contract",
+    layout:{
+      kicker:"Contract & withdrawal",
+      title:"결제와 계약 등록이 완료되었습니다",
+      preview:`${input.offeringLabel} 계약 및 법정 청약철회 기한을 확인해 주세요.`,
+      tone:"success",
+      body:[
+        `${greetingName(input.displayName)}님, ${input.offeringLabel} 결제가 완료되었습니다.`,
+        "계약 내용을 확인할 수 있는 문서를 받은 날부터 법정 청약철회 기간은 7일입니다. 서비스 제공이 그보다 늦게 시작되면 법령에 따라 서비스 제공 시작일을 기준으로 다시 계산될 수 있습니다.",
+        "청약철회 기한이 지나면 미사용 상태라도 단순 변심 환불은 제공되지 않습니다. 유료 상담을 시작한 회차는 기한 안에도 환불이 제한될 수 있으며 법정 예외 사유는 별도로 심사합니다.",
+        "중복·오결제·과오납, 승인하지 않은 결제, HairFit 책임의 결과 미제공, 표시·광고·계약과 중요한 부분이 다른 서비스, 개인정보 또는 안전 문제는 별도 예외 규정으로 처리합니다.",
+        ...(input.offeringKey==="full_style_annual"?["청약철회 기간 안에 일부 상담을 시작했다면 미시작 회차는 결제 당시 회차당 74,750원으로 계산합니다. 기간이 지난 뒤에는 미시작 회차도 단순 변심 환불 대상이 아닙니다."]:[]),
+      ],
+      details:[
+        {label:"상품",value:input.offeringLabel},
+        {label:"결제 금액",value:formatMoney(input.amountKrw,"KRW")},
+        {label:"계약 문서 제공일",value:new Date(input.contractDocumentDeliveredAt).toLocaleString("ko-KR")},
+        {label:"현재 청약철회 마감",value:new Date(input.statutoryWithdrawalDeadline).toLocaleString("ko-KR")},
+        {label:"결제 번호",value:input.paymentTransactionId},
+      ],
+      cta:{label:"계약과 환불규정 확인하기",url:input.billingUrl},
+      note:"정기상품의 기간말 해지는 환불과 별도로 언제든 신청할 수 있습니다.",
     },
   });
 }

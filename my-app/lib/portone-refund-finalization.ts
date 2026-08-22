@@ -38,7 +38,7 @@ interface RefundPolicyRow {
   policy_version: string | null;
 }
 
-async function usesCreditLotRefundPolicy(
+async function readRefundPolicyVersion(
   supabase: SupabaseRefundClient,
   refundRequestId: string,
 ) {
@@ -48,7 +48,7 @@ async function usesCreditLotRefundPolicy(
     .eq("id", refundRequestId)
     .maybeSingle<RefundPolicyRow>();
   if (error) throw new Error(error.message);
-  return Boolean(data?.policy_version);
+  return data?.policy_version ?? null;
 }
 
 async function finalizeCreditLotRefund(
@@ -235,7 +235,15 @@ export async function finalizePortoneRefundFromLookup({
       throw new Error(result.message);
     }
 
-    if (await usesCreditLotRefundPolicy(supabase, refundRequestId)) {
+    const policyVersion=await readRefundPolicyVersion(supabase,refundRequestId);
+    if (policyVersion?.startsWith("full-style-refund-")) {
+      const {error}=await supabase.rpc("finalize_full_style_refund_v2",{
+        p_payment_transaction_id:result.transaction.id,p_refund_request_id:refundRequestId,
+      });
+      if(error)throw new Error(error.message);
+      return {status:"completed",payment,transaction:result.transaction,creditClawback:null};
+    }
+    if (policyVersion?.startsWith("hairfit-refund-")) {
       await finalizeCreditLotRefund(
         supabase,
         result.transaction,
@@ -284,7 +292,15 @@ export async function finalizePortoneRefundFromLookup({
     throw new Error(result.message);
   }
 
-  if (await usesCreditLotRefundPolicy(supabase, refundRequestId)) {
+  const policyVersion=await readRefundPolicyVersion(supabase,refundRequestId);
+  if (policyVersion?.startsWith("full-style-refund-")) {
+    const {error}=await supabase.rpc("finalize_full_style_refund_v2",{
+      p_payment_transaction_id:result.transaction.id,p_refund_request_id:refundRequestId,
+    });
+    if(error)throw new Error(error.message);
+    return {status:"completed",payment,transaction:result.transaction,creditClawback:null};
+  }
+  if (policyVersion?.startsWith("hairfit-refund-")) {
     await finalizeCreditLotRefund(
       supabase,
       result.transaction,

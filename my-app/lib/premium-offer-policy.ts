@@ -1,3 +1,5 @@
+import { FULL_STYLE_REFUND_POLICY_VERSION } from "@hairfit/shared/v2";
+
 export const FULL_STYLE_COMMON_BENEFITS = [
   "얼굴·모발 분석과 정밀 퍼스널 컬러 진단",
   "AI 주도 방향 설정과 실제 헤어 3×3 생성",
@@ -7,7 +9,7 @@ export const FULL_STYLE_COMMON_BENEFITS = [
 ] as const;
 
 export const PREMIUM_OFFER_POLICY = {
-  version: "2026-08-21-v3",
+  version: "2026-08-22-v4",
   priceVersion: 2,
   statusLabel: "가격 확정",
   disclosure:
@@ -90,7 +92,16 @@ export const PREMIUM_OFFER_POLICY = {
     vatIncluded: true,
     rollover: false,
     cancellation: "기간말 해지 또는 즉시 종료·환불 견적 요청",
-    refund: "완전 미사용 계약만 자동 환불하며, 사용 이력이 있으면 검토 후 안내",
+    refundPolicyVersion:FULL_STYLE_REFUND_POLICY_VERSION,
+    refund: "법정 청약철회 7일 경과 후에는 미사용 상태라도 단순 변심 환불 불가",
+    withdrawalNotice:[
+      "계약 내용을 확인할 수 있는 문서를 받은 날부터 법정 청약철회 기간인 7일 이내에 환불을 신청할 수 있습니다. 서비스 제공이 그보다 늦게 시작되면 법령에 따라 서비스 제공 시작일을 기준으로 다시 계산될 수 있습니다.",
+      "법정 청약철회 기한이 지나면 상담을 시작하지 않았더라도 단순 변심에 따른 환불은 불가능합니다.",
+      "유료 3×3 생성 또는 무료 데모 결제 후 비교 계속하기를 실행하면 해당 상담 회차가 시작되며, 시작된 회차는 7일 이내라도 단순 변심 환불이 제한됩니다.",
+      "중복·오결제, 승인하지 않은 결제, HairFit 책임의 결과 미제공, 표시·광고·계약과 중요한 부분이 다른 경우는 별도 예외 규정으로 처리합니다.",
+    ],
+    paidStartNotice:"지금 유료 상담 1회가 시작됩니다. 시작 후에는 단순 변심에 따른 해당 회차의 청약철회와 환불이 제한됩니다. 연간 플랜의 아직 시작하지 않은 회차와 법정 예외 사유에 대한 권리는 유지됩니다.",
+    annualNotice:"법정 청약철회 기간 안에 일부 상담을 시작했다면 시작하지 않은 회차는 회차당 74,750원으로 계산합니다. 청약철회 기간이 지난 뒤에는 미시작 회차도 단순 변심 환불 대상이 아닙니다.",
   },
 } as const;
 

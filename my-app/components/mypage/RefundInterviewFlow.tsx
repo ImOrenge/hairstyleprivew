@@ -22,6 +22,9 @@ const REASON_LABELS: Record<RefundReasonCategory, string> = {
   duplicate_charge: "중복 결제",
   unauthorized_charge: "본인이 승인하지 않은 결제",
   privacy_or_safety: "개인정보 또는 안전 문제",
+  overpayment: "과오납 또는 초과 결제",
+  service_not_delivered: "HairFit 책임으로 결과를 받지 못함",
+  service_not_as_described: "표시·광고 또는 계약과 다른 서비스",
   other: "기타",
 };
 
@@ -33,8 +36,19 @@ function formatKrw(value: number) {
 
 function outcomeDescription(outcome: RefundOutcome) {
   return outcome === "immediate_refund_and_cancel"
-    ? "남은 결제분 이용량을 회수하고 비례 환불한 뒤 구독을 즉시 종료합니다."
+    ? "법정 청약철회 기간, 시작한 상담 회차와 예외 사유를 서버 기록으로 확인해 환불 가능 여부와 금액을 안내합니다."
     : "현재 기간의 이용권은 유지하고 다음 정기결제만 중단합니다.";
+}
+
+function fullStyleEligibilityDescription(quote: NonNullable<RefundQuote["fullStyle"]>) {
+  if (quote.eligibilityCode === "statutory_withdrawal") return "법정 청약철회 기간 안이며 시작한 상담이 없어 전액 환불 대상입니다.";
+  if (quote.eligibilityCode === "started_session_restriction") {
+    return quote.eligibleForImmediateRefund
+      ? "시작된 회차는 제외하고, 연간 플랜의 아직 시작하지 않은 회차만 결제 당시 회차 단가로 계산했습니다."
+      : "상담 회차가 이미 시작되어 단순 변심에 따른 환불이 제한됩니다.";
+  }
+  if (quote.eligibilityCode === "window_expired") return "법정 청약철회 7일이 지나 단순 변심 환불액은 0원입니다. 구매한 권리는 계약 만료일까지 이용할 수 있습니다.";
+  return "법정·정책상 예외 가능성을 확인하기 위해 담당자가 결제, 서비스 제공과 제출 내용을 검토합니다.";
 }
 
 export function RefundInterviewFlow({
@@ -58,13 +72,17 @@ export function RefundInterviewFlow({
   const [submitted, setSubmitted] = useState<RefundRequestResponse | null>(null);
 
   const manualReview = quote?.decision === "manual";
+  const fullStyleCannotRefund = outcome === "immediate_refund_and_cancel"
+    && Boolean(quote?.fullStyle)
+    && quote?.fullStyle?.eligibilityCode !== "exception_review"
+    && quote?.fullStyle?.eligibleForImmediateRefund === false;
   const canContinue = useMemo(() => {
     if (step === 0) return true;
     if (step === 1) return Boolean(reasonCategory);
     if (step === 2) return detail.trim().length >= 5;
-    if (step === 3) return quote !== null;
+    if (step === 3) return quote !== null && !fullStyleCannotRefund;
     return accepted;
-  }, [accepted, detail, quote, reasonCategory, step]);
+  }, [accepted, detail, fullStyleCannotRefund, quote, reasonCategory, step]);
 
   function reset() {
     setStep(0);
@@ -189,7 +207,7 @@ export function RefundInterviewFlow({
                   {isBusy ? "계산 중…" : "환불 명세 확인"}
                 </Button>
               ) : step === 3 ? (
-                <Button type="button" disabled={!quote || isBusy} onClick={() => setStep(4)}>
+                <Button type="button" disabled={!canContinue || isBusy} onClick={() => setStep(4)}>
                   최종 확인
                 </Button>
               ) : (
@@ -229,7 +247,7 @@ export function RefundInterviewFlow({
                 {(["immediate_refund_and_cancel", "cancel_at_period_end"] as const).map((value) => (
                   <label key={value} data-selected={outcome === value}>
                     <input type="radio" name="refund-outcome" value={value} checked={outcome === value} onChange={() => setOutcome(value)} />
-                    <span><strong>{value === "immediate_refund_and_cancel" ? "즉시 차등 환불" : "다음 갱신 중단"}</strong>{outcomeDescription(value)}</span>
+                    <span><strong>{value === "immediate_refund_and_cancel" ? "환불 가능 여부·금액 확인" : "다음 갱신 중단"}</strong>{outcomeDescription(value)}</span>
                   </label>
                 ))}
               </fieldset>
@@ -254,7 +272,7 @@ export function RefundInterviewFlow({
                   <textarea value={detail} onChange={(event) => setDetail(event.target.value)} rows={5} maxLength={500} placeholder="5자 이상 입력해 주세요." />
                   <span className="text-xs font-medium text-[var(--app-muted)]">{detail.length}/500 · 사용량은 서버 기록으로 확인합니다.</span>
                 </label>
-                {reasonCategory === "technical_issue" ? (
+                {["technical_issue", "service_not_delivered", "service_not_as_described"].includes(reasonCategory) ? (
                   <label className="grid gap-2 text-sm font-bold text-[var(--app-text)]">
                     문제가 발생한 기능
                     <input value={affectedFeature} onChange={(event) => setAffectedFeature(event.target.value)} maxLength={80} placeholder="예: 헤어스타일 생성" />
@@ -266,11 +284,19 @@ export function RefundInterviewFlow({
             {step === 3 && quote ? (
               <div className="f-refund-interview__quote">
                 <div><span>원 결제액</span><strong>{formatKrw(quote.originalAmountKrw)}</strong></div>
-                <div><span>지급 / 사용 / 잔여 이용량</span><strong>{quote.creditsGranted} / {quote.creditsUsed} / {quote.creditsRemaining}</strong></div>
-                <div><span>회수 대상 이용량</span><strong>{quote.creditsToClawBack}</strong></div>
-                <div><span>보존되는 다른 이용량</span><strong>{quote.preservedCredits}</strong></div>
+                {quote.fullStyle ? <>
+                  <div><span>계약 문서 제공일</span><strong>{new Date(quote.fullStyle.contractDocumentDeliveredAt).toLocaleString("ko-KR")}</strong></div>
+                  <div><span>법정 청약철회 마감</span><strong>{new Date(quote.fullStyle.statutoryWithdrawalDeadline).toLocaleString("ko-KR")}</strong></div>
+                  <div><span>전체 / 시작 / 미시작 상담</span><strong>{quote.fullStyle.includedSessions} / {quote.fullStyle.startedSessions} / {quote.fullStyle.unusedSessions}회</strong></div>
+                  <div><span>결제 당시 상담당 금액</span><strong>{formatKrw(quote.fullStyle.sessionUnitAmountKrw)}</strong></div>
+                </> : <>
+                  <div><span>지급 / 사용 / 잔여 이용량</span><strong>{quote.creditsGranted} / {quote.creditsUsed} / {quote.creditsRemaining}</strong></div>
+                  <div><span>회수 대상 이용량</span><strong>{quote.creditsToClawBack}</strong></div>
+                  <div><span>보존되는 다른 이용량</span><strong>{quote.preservedCredits}</strong></div>
+                </>}
                 <div className="f-refund-interview__quote-total"><span>예상 환불액</span><strong>{formatKrw(quote.refundAmountKrw)}</strong></div>
-                <p>{manualReview ? "안전한 처리를 위해 담당자가 결제와 인터뷰 내용을 검토합니다." : quote.decision === "period_end" ? "이용량 회수 없이 현재 기간 종료일까지 이용할 수 있습니다." : "현재 기록이 일치해 자동 처리 대상입니다."}</p>
+                <p>{quote.fullStyle ? fullStyleEligibilityDescription(quote.fullStyle) : manualReview ? "안전한 처리를 위해 담당자가 결제와 인터뷰 내용을 검토합니다." : quote.decision === "period_end" ? "이용량 회수 없이 현재 기간 종료일까지 이용할 수 있습니다." : "현재 기록이 일치해 자동 처리 대상입니다."}</p>
+                {fullStyleCannotRefund && quote.fullStyle?.offeringKey !== "full_style_once" ? <Button type="button" variant="secondary" onClick={()=>{setOutcome("cancel_at_period_end");setQuote(null);setAccepted(false);setStep(0);}}>환불 대신 다음 갱신 중단 선택</Button> : null}
               </div>
             ) : null}
 
@@ -278,7 +304,7 @@ export function RefundInterviewFlow({
               <div className="f-refund-interview__confirmation">
                 <p className="font-black text-[var(--app-text)]">{outcomeDescription(outcome)}</p>
                 <p>환불 견적은 {new Date(quote.expiresAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}까지 유효합니다.</p>
-                <label><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>환불액, 이용량 회수량과 구독 종료 시점을 확인했습니다.</span></label>
+                <label><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>{quote.fullStyle ? "법정 청약철회 마감, 시작·미시작 회차, 예상 환불액과 계약 종료 시점을 확인했습니다." : "환불액, 이용량 회수량과 구독 종료 시점을 확인했습니다."}</span></label>
               </div>
             ) : null}
 

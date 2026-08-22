@@ -52,12 +52,16 @@ state:
     - reason-category
     - detail
     - quote
+    - full-style-eligibility
+    - statutory-withdrawal-deadline
+    - started-and-unused-session-counts
     - acceptance
     - submission
   external_store: false
 side_effects:
   - authenticated-refund-quote-request
   - authenticated-refund-submission
+  - full-style-period-end-cancellation-switch
   - last-request-id-local-storage
 
 a11y_contract:
@@ -84,6 +88,7 @@ change_policy:
   behavioral_change_requires:
     - refund-contract-test
     - dialog-keyboard-verification
+    - full-style-seven-day-and-started-session-boundary-test
   style_contract_change_requires:
     - f-refund-interview-selector-search
     - 320-375-1024-visual-verification

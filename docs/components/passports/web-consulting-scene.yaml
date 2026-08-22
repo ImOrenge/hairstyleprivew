@@ -66,6 +66,7 @@ boundaries:
       - ai-recommended-fashion-primary-with-customer-override
       - ai-led-hair-primary-with-all-nine-generated-results-visible
       - common-versioned-generation-input-provenance
+      - explicit-paid-consultation-start-refund-policy-consent
       - automatic-salon-brief-hydration
       - legacy-blueprint-backed-structured-salon-brief
       - salon-brief-section-level-recommendation-source-map
@@ -132,6 +133,7 @@ state:
     - independent-pane-scroll-position
     - fashion-customer-override-before-confirmation
     - consultation-exit-dialog-open
+    - paid-start-consent
     - active-chapter-surface-rendering-only
 
 a11y_contract:
@@ -145,6 +147,7 @@ a11y_contract:
   photo_crop: labelled-native-range-controls-and-explicit-framing-confirmation
   analysis_matrix: native-meter-values-with-text-equivalents-and-non-physical-unit-disclosure
   face_shape_blend: chart-has-text-percentage-equivalent-and-non-medical-disclosure
+  paid_start: native-checkbox-before-generation-or-demo-upgrade-comparison
 
 test_surface:
   structure: my-app/lib/consulting/consultation-contract.test.ts
@@ -169,6 +172,7 @@ test_surface:
   fashion_visibility: every-requested-slot-remains-visible-at-three-six-and-nine-with-complete-running-stalled-and-failed-copy
   fashion_batch_recovery: two-of-three-five-of-six-and-eight-of-nine-remain-partial-reentry-restores-results-and-live-jobs-are-not-duplicated
   hair_recommendation: all-nine-visible-primary-requires-nine-no-shortlist-and-adjustment-creates-new-board-revision
+  paid_start: separate-consent-required-and-server-enforced-before-first-paid-generation-or-comparison
   photo_crop: shared-four-by-five-transform-unit-and-browser-interaction
   photo_color_assist: separate-private-draft-used-only-for-personal-color-when-valid
   analysis_matrix: persisted-measurements-only-without-client-inference-or-centimeter-claims

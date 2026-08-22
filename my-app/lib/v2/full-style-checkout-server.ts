@@ -1,13 +1,16 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import type { OfferingCapabilities } from "@hairfit/shared/v2";
+import { FULL_STYLE_REFUND_POLICY_VERSION, calculateFullStyleWithdrawalDeadline, type OfferingCapabilities } from "@hairfit/shared/v2";
 import { encryptBillingKey, hashBillingKey, maskBillingKey } from "../billing-key-secret";
 import { confirmPortonePayment, type PortoneConfirmationSupabaseClient } from "../portone-payment-confirmation";
 import { chargeBillingKey, confirmBillingKeyIssue, readPortoneBillingKeyChannelKey, readPortoneStoreId } from "../portone";
 import { getSupabaseAdminClient } from "../supabase";
 import { grantEntitlementFromPaidTransactionV2 } from "./entitlement-server";
 import { HairfitV2Error } from "./errors";
+import { sendFullStyleContractEmail } from "../resend";
+import { getSiteUrl } from "../site-url";
+import { isHairfitV2Enabled } from "./feature-flags";
 
 type PreparedRow = {
   id:string; user_id:string; consultation_id:string|null; offering_id:string; offering_key:string;
@@ -62,7 +65,7 @@ export async function prepareFullStyleCheckout(input:{
     offeringKey:offering.offering_key, offeringVersion:offering.version, customerName:offering.customer_name,
     priceVersion:price.version, providerProductId:price.provider_product_id, amountMinor:price.amount_minor,
     currency:price.currency, billingInterval:offering.billing_interval, includedSessions:offering.included_consultation_sessions,
-    capabilities:offering.capabilities, customer:input.customer,
+    capabilities:offering.capabilities, customer:input.customer,refundPolicyVersion:FULL_STYLE_REFUND_POLICY_VERSION,
   };
   const { data: attempt, error: attemptError } = await db.from("full_style_checkout_attempts_v2").insert({
     user_id:input.userId, consultation_id:input.consultationId || null, offering_id:offering.id,
@@ -104,6 +107,9 @@ export async function completeFullStyleCheckout(input:{ userId:string; checkoutA
   const snapshot = prepared.snapshot;
   const interval = snapshot.billingInterval === "quarter" || snapshot.billingInterval === "year" ? snapshot.billingInterval : null;
   const startedAt = new Date();
+  const contractDocumentDeliveredAt=startedAt.toISOString();
+  const statutoryWithdrawalDeadline=calculateFullStyleWithdrawalDeadline({contractDocumentDeliveredAt});
+  const refundPolicyEnabled=isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED");
   const periodEnd = addBillingPeriod(startedAt,interval);
   const encrypted = input.billingKey ? await encryptBillingKey(input.billingKey) : null;
   const hashed = input.billingKey ? await hashBillingKey(input.billingKey) : null;
@@ -116,6 +122,11 @@ export async function completeFullStyleCheckout(input:{ userId:string; checkoutA
     next_billing_at:periodEnd?.toISOString() ?? null, provider_contract_id:prepared.provider_payment_id,
     billing_key_encrypted:encrypted, billing_key_hash:hashed, billing_key_masked:input.billingKey ? maskBillingKey(input.billingKey) : null,
     latest_payment_transaction_id:confirmation.transaction.id,
+    ...(refundPolicyEnabled?{
+      contract_document_delivered_at:contractDocumentDeliveredAt,
+      statutory_withdrawal_deadline:statutoryWithdrawalDeadline,
+      refund_policy_version:FULL_STYLE_REFUND_POLICY_VERSION,
+    }:{}),
   }, { onConflict:"provider,provider_contract_id" }).select("id").single();
   if (contractError || !contract) throw new Error(contractError?.message ?? "계약을 저장하지 못했습니다.");
   const quantity = Number(snapshot.includedSessions ?? 1);
@@ -137,8 +148,17 @@ export async function completeFullStyleCheckout(input:{ userId:string; checkoutA
     }).eq("id",prepared.consultation_id).eq("user_id",input.userId);
   }
   await db.from("full_style_checkout_attempts_v2").update({ status:"paid",completed_at:new Date().toISOString() }).eq("id",prepared.id);
+  const customer=snapshot.customer as {fullName?:string;email?:string}|undefined;
+  if(refundPolicyEnabled&&customer?.email){
+    await sendFullStyleContractEmail({
+      to:customer.email,displayName:customer.fullName,offeringKey:prepared.offering_key,offeringLabel:String(snapshot.customerName??prepared.offering_key),
+      amountKrw:prepared.amount_minor,paymentTransactionId:confirmation.transaction.id,
+      contractDocumentDeliveredAt,statutoryWithdrawalDeadline,billingUrl:new URL("/billing",getSiteUrl()).toString(),
+    }).catch((error)=>console.error("[full-style-checkout] contract email failed",{message:error instanceof Error?error.message:"unknown"}));
+  }
   return { alreadyProcessed:confirmation.alreadyPaid, paymentId:prepared.provider_payment_id, offeringKey:prepared.offering_key,
-    contractId:(contract as {id:string}).id, consultationId:prepared.consultation_id, periodEnd:periodEnd?.toISOString() ?? null };
+    contractId:(contract as {id:string}).id, consultationId:prepared.consultation_id, periodEnd:periodEnd?.toISOString() ?? null,
+    contractDocumentDeliveredAt,statutoryWithdrawalDeadline,refundPolicyVersion:FULL_STYLE_REFUND_POLICY_VERSION };
 }
 
 export async function chargeAndCompleteFullStyleSubscription(input:{

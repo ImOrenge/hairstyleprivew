@@ -1,3 +1,5 @@
+import { FULL_STYLE_REFUND_POLICY_VERSION, type FullStyleRefundQuoteV1 } from "../v2/refund/contract.ts";
+
 export const REFUND_POLICY_VERSION = "hairfit-refund-2026-07" as const;
 export const REFUND_QUOTE_TTL_MS = 10 * 60 * 1000;
 
@@ -16,6 +18,9 @@ export const REFUND_REASON_CATEGORIES = [
   "duplicate_charge",
   "unauthorized_charge",
   "privacy_or_safety",
+  "overpayment",
+  "service_not_delivered",
+  "service_not_as_described",
   "other",
 ] as const;
 export type RefundReasonCategory = (typeof REFUND_REASON_CATEGORIES)[number];
@@ -34,6 +39,9 @@ export const REFUND_RISK_CODES = [
   "provider_lookup_failed",
   "unsupported_payment",
   "repeat_behavior_review",
+  "withdrawal_window_expired",
+  "started_session_restriction",
+  "full_style_exception_review",
 ] as const;
 export type RefundRiskCode = (typeof REFUND_RISK_CODES)[number];
 
@@ -64,7 +72,7 @@ export interface RefundQuote {
   reasonCategory: RefundReasonCategory;
   decision: RefundDecision;
   riskCodes: RefundRiskCode[];
-  policyVersion: typeof REFUND_POLICY_VERSION;
+  policyVersion: typeof REFUND_POLICY_VERSION | typeof FULL_STYLE_REFUND_POLICY_VERSION;
   originalAmountKrw: number;
   providerCancellableAmountKrw: number;
   creditsGranted: number;
@@ -75,6 +83,7 @@ export interface RefundQuote {
   refundAmountKrw: number;
   expiresAt: string;
   subscriptionEndsAt: string | null;
+  fullStyle?: FullStyleRefundQuoteV1 | null;
 }
 
 export interface RefundQuoteRequest {
@@ -123,6 +132,9 @@ const SERIOUS_REASONS = new Set<RefundReasonCategory>([
   "duplicate_charge",
   "unauthorized_charge",
   "privacy_or_safety",
+  "overpayment",
+  "service_not_delivered",
+  "service_not_as_described",
 ]);
 
 export function isRefundOutcome(value: unknown): value is RefundOutcome {

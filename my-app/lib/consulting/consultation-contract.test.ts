@@ -571,7 +571,9 @@ test("preview comparison permits two accepted results before the full board is r
   assert.doesNotMatch(previews, /snapshot\.previews\.some\(\(item\) => item\.status === "accepted"\) \? "ready"/);
   assert.match(previews, /autoStartAttempted/);
   assert.match(previews, /void startGeneration\(\)/);
-  assert.doesNotMatch(previews, /이용 조건 확인|3×3 생성 시작/);
+  assert.doesNotMatch(previews, /이용 조건 확인/);
+  assert.match(previews, /동의하고 헤어 3×3 생성 시작/);
+  assert.match(previews, /activatePaidStart\("paid_preview_generation"\)/);
 });
 
 test("decision chain enforces accepted shortlist, finalist, immutable revision and actual-service lock", () => {

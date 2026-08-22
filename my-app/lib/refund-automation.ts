@@ -10,6 +10,10 @@ import {
   type RefundRequestStatus,
   type RefundRequestSummary,
 } from "@hairfit/shared";
+import {
+  FULL_STYLE_REFUND_POLICY_VERSION,
+  decideFullStyleRefund,
+} from "@hairfit/shared/v2";
 import { decryptBillingKey } from "./billing-key-secret";
 import {
   cancelPortonePayment,
@@ -19,6 +23,7 @@ import {
 } from "./portone";
 import { getSupabaseAdminClient } from "./supabase";
 import { callSupabaseRpc } from "./supabase-rpc";
+import { isHairfitV2Enabled } from "./v2/feature-flags";
 
 const OPEN_REFUND_STATUSES: RefundRequestStatus[] = [
   "pending",
@@ -41,6 +46,13 @@ interface PaymentRow {
   currency: string | null;
   credits_to_grant: number | null;
   paid_at: string | null;
+  metadata: Record<string,unknown> | null;
+}
+
+interface FullStyleContractRow {
+  id:string;offering_key:string;price_snapshot:Record<string,unknown>;period_ends_at:string|null;
+  latest_payment_transaction_id:string|null;contract_document_delivered_at:string;
+  statutory_withdrawal_deadline:string;created_at:string;
 }
 
 interface SubscriptionRow {
@@ -125,7 +137,7 @@ export async function createRefundQuote(
   const supabase = getSupabaseAdminClient();
   const { data: transaction, error: transactionError } = await supabase
     .from("payment_transactions")
-    .select("id,user_id,provider,provider_order_id,subscription_id,status,amount,currency,credits_to_grant,paid_at")
+    .select("id,user_id,provider,provider_order_id,subscription_id,status,amount,currency,credits_to_grant,paid_at,metadata")
     .eq("id", input.paymentTransactionId)
     .eq("user_id", userId)
     .maybeSingle<PaymentRow>();
@@ -137,6 +149,15 @@ export async function createRefundQuote(
   }
   if (transaction.currency !== "KRW" || transaction.status !== "paid") {
     throw new Error("결제 완료 상태의 KRW 거래만 환불 요청할 수 있습니다.");
+  }
+
+  if(["full-style-checkout","cron-full-style-renewal"].includes(String(transaction.metadata?.source??""))&&isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED")){
+    const contractResult=await supabase.from("full_style_contracts_v2")
+      .select("id,offering_key,price_snapshot,period_ends_at,latest_payment_transaction_id,contract_document_delivered_at,statutory_withdrawal_deadline,created_at")
+      .eq("user_id",userId).eq("latest_payment_transaction_id",transaction.id).maybeSingle<FullStyleContractRow>();
+    if(contractResult.error)throw new Error(contractResult.error.message);
+    if(!contractResult.data)throw new Error("풀 스타일 환불 대상 계약을 찾지 못했습니다.");
+    return createFullStyleRefundQuote({supabase,userId,input,transaction,contract:contractResult.data});
   }
 
   const [subscriptionResult, lotResult, userResult, openRefundResult, reservationResult, historyResult] =
@@ -296,6 +317,91 @@ export async function createRefundQuote(
     expiresAt,
     subscriptionEndsAt:
       input.outcome === "cancel_at_period_end" ? subscription?.current_period_end ?? null : null,
+  };
+}
+
+async function createFullStyleRefundQuote(input:{
+  supabase:ReturnType<typeof getSupabaseAdminClient>;userId:string;input:RefundQuoteRequest;
+  transaction:PaymentRow;contract:FullStyleContractRow;
+}):Promise<RefundQuote>{
+  const {supabase,userId,transaction,contract}=input;
+  const [activationResult,grantResult,openRefundResult,historyResult]=await Promise.all([
+    supabase.from("full_style_service_activations_v2").select("started_at")
+      .eq("contract_id",contract.id).eq("payment_transaction_id",transaction.id).eq("user_id",userId).order("started_at",{ascending:true}),
+    supabase.from("customer_entitlement_grants_v2").select("quantity_granted,quantity_consumed,status")
+      .eq("source","portone").eq("source_transaction_id",transaction.id).eq("offering_key",contract.offering_key).maybeSingle(),
+    supabase.from("payment_refund_requests").select("id").eq("payment_transaction_id",transaction.id)
+      .in("status",OPEN_REFUND_STATUSES).limit(1),
+    supabase.from("payment_refund_requests").select("id").eq("user_id",userId)
+      .gte("requested_at",new Date(Date.now()-90*24*60*60*1000).toISOString()).limit(3),
+  ]);
+  const structuralError=activationResult.error||grantResult.error||openRefundResult.error||historyResult.error;
+  if(structuralError)throw new Error(structuralError.message);
+  const grant=grantResult.data as {quantity_granted?:number;quantity_consumed?:number;status?:string}|null;
+  const includedSessions=Math.max(1,Number(grant?.quantity_granted??(contract.offering_key==="full_style_annual"?4:1)));
+  const activations=(activationResult.data??[]) as Array<{started_at:string}>;
+
+  let providerLookupFailed=false;
+  let providerAmountMatches=input.input.outcome==="cancel_at_period_end";
+  let providerCancellableAmountKrw=Math.max(0,transaction.amount??0);
+  let previousPartialCancellation=false;
+  if(input.input.outcome==="immediate_refund_and_cancel"){
+    if(!isPortoneConfigured())providerLookupFailed=true;
+    else try{
+      const payment=await getPayment(transaction.provider_order_id!);
+      if(!payment)providerLookupFailed=true;
+      else{
+        providerAmountMatches=payment.amountTotal===transaction.amount&&payment.currency===transaction.currency;
+        providerCancellableAmountKrw=Math.max(0,payment.amountCancellable??payment.amountTotal-(payment.amountCancelled??0));
+        previousPartialCancellation=payment.status==="PARTIAL_CANCELLED"||(payment.amountCancelled??0)>0;
+      }
+    }catch{providerLookupFailed=true;}
+  }
+
+  const fullStyle=decideFullStyleRefund({
+    now:new Date().toISOString(),contractId:contract.id,offeringKey:contract.offering_key,
+    originalAmountKrw:transaction.amount??0,providerCancellableAmountKrw,includedSessions,
+    startedSessions:activations.length,contractDocumentDeliveredAt:contract.contract_document_delivered_at||contract.created_at,
+    serviceStartedAt:activations[0]?.started_at??null,reasonCategory:input.input.reasonCategory,
+  });
+  const riskCodes:RefundQuote["riskCodes"]=[];
+  if(input.input.outcome==="immediate_refund_and_cancel"){
+    if(fullStyle.eligibilityCode==="window_expired")riskCodes.push("withdrawal_window_expired");
+    if(fullStyle.eligibilityCode==="started_session_restriction")riskCodes.push("started_session_restriction");
+    if(fullStyle.eligibilityCode==="exception_review")riskCodes.push("full_style_exception_review");
+    if(providerLookupFailed)riskCodes.push("provider_lookup_failed");
+    if(!providerAmountMatches)riskCodes.push("provider_amount_mismatch");
+    if(previousPartialCancellation)riskCodes.push("previous_partial_cancellation");
+    if((openRefundResult.data?.length??0)>0)riskCodes.push("existing_open_refund");
+    if((historyResult.data?.length??0)>=2)riskCodes.push("repeat_behavior_review");
+  }
+  const decision=input.input.outcome==="cancel_at_period_end"?"period_end":"manual";
+  const refundAmountKrw=input.input.outcome==="cancel_at_period_end"?0:fullStyle.estimatedRefundAmountKrw;
+  const expiresAt=new Date(Date.now()+REFUND_QUOTE_TTL_MS).toISOString();
+  const {data:quoteRow,error:quoteError}=await supabase.from("payment_refund_quotes").insert({
+    payment_transaction_id:transaction.id,user_id:userId,outcome_choice:input.input.outcome,
+    reason_category:input.input.reasonCategory,interview_answers:input.input.answers,decision,risk_codes:riskCodes,
+    policy_version:FULL_STYLE_REFUND_POLICY_VERSION,original_amount_krw:Math.max(0,transaction.amount??0),
+    provider_cancellable_amount_krw:providerCancellableAmountKrw,credits_granted:includedSessions,
+    credits_remaining:fullStyle.unusedSessions,credits_to_claw_back:input.input.outcome==="cancel_at_period_end"?0:fullStyle.unusedSessions,
+    preserved_credits:0,refund_amount_krw:refundAmountKrw,credit_lot_id:null,
+    subscription_ends_at:input.input.outcome==="cancel_at_period_end"?contract.period_ends_at:null,
+    expires_at:expiresAt,product_family:"full_style",full_style_contract_id:contract.id,
+    contract_document_delivered_at:fullStyle.contractDocumentDeliveredAt,service_started_at:fullStyle.serviceStartedAt,
+    statutory_withdrawal_deadline:fullStyle.statutoryWithdrawalDeadline,
+    full_style_started_sessions:fullStyle.startedSessions,full_style_unused_sessions:fullStyle.unusedSessions,
+    full_style_session_unit_amount_krw:fullStyle.sessionUnitAmountKrw,
+    refund_eligibility_code:fullStyle.eligibilityCode,eligible_for_immediate_refund:fullStyle.eligibleForImmediateRefund,
+  }).select("id").single<{id:string}>();
+  if(quoteError||!quoteRow)throw new Error(quoteError?.message||"환불 견적을 저장하지 못했습니다.");
+  return {
+    id:quoteRow.id,paymentTransactionId:transaction.id,outcome:input.input.outcome,
+    reasonCategory:input.input.reasonCategory,decision,riskCodes,policyVersion:FULL_STYLE_REFUND_POLICY_VERSION,
+    originalAmountKrw:Math.max(0,transaction.amount??0),providerCancellableAmountKrw,
+    creditsGranted:includedSessions,creditsRemaining:fullStyle.unusedSessions,
+    creditsUsed:fullStyle.startedSessions,creditsToClawBack:input.input.outcome==="cancel_at_period_end"?0:fullStyle.unusedSessions,
+    preservedCredits:0,refundAmountKrw,expiresAt,
+    subscriptionEndsAt:input.input.outcome==="cancel_at_period_end"?contract.period_ends_at:null,fullStyle,
   };
 }
 

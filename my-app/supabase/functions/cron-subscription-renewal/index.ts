@@ -26,6 +26,8 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit.beauty>";
 const RESEND_FROM_EMAIL = resolveResendFromEmail(Deno.env.get("RESEND_FROM_EMAIL"));
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://haristyle.app";
+const FULL_STYLE_REFUND_POLICY_V2_ENABLED = Deno.env.get("FULL_STYLE_REFUND_POLICY_V2_ENABLED") === "true";
+const FULL_STYLE_REFUND_POLICY_VERSION = "full-style-refund-2026-08-22-v1";
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -498,6 +500,31 @@ function buildFullStyleRenewalPaymentId(offeringKey:string) {
   return `fsr-${code}-${Date.now().toString(36)}-${crypto.randomUUID().replaceAll("-","").slice(0,10)}`;
 }
 
+async function sendFullStyleRenewalContractEmail(input:{
+  to:string;customerName:string;orderName:string;amountKrw:number;
+  contractDocumentDeliveredAt:string;statutoryWithdrawalDeadline:string;
+}) {
+  if(!RESEND_API_KEY)return;
+  const deliveredAt=new Date(input.contractDocumentDeliveredAt).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"});
+  const deadline=new Date(input.statutoryWithdrawalDeadline).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"});
+  const text=[
+    `[HairFit] ${input.orderName} 계약 문서 및 환불규정`,"",
+    `${input.customerName}님, 정기결제가 완료되었습니다.`,
+    `결제 금액: ${input.amountKrw.toLocaleString("ko-KR")}원 (부가세 포함)`,
+    `계약 문서 제공일: ${deliveredAt}`,
+    `법정 청약철회 마감: ${deadline}`,
+    "법정 청약철회 기한이 지나면 미사용 상태라도 단순 변심 환불이 불가능합니다.",
+    "유료 상담을 시작한 회차는 7일 이내라도 단순 변심 환불이 제한됩니다.",
+    "중복·오결제, 승인하지 않은 결제, 결과 미제공, 계약 불일치는 예외 심사합니다.",
+    `계약 및 환불 관리: ${APP_URL}/billing`,
+  ].join("\n");
+  await fetch("https://api.resend.com/emails",{
+    method:"POST",headers:{Authorization:`Bearer ${RESEND_API_KEY}`,"Content-Type":"application/json"},
+    body:JSON.stringify({from:RESEND_FROM_EMAIL,to:input.to,subject:`[HairFit] ${input.orderName} 계약 문서 및 환불규정`,text,
+      html:`<div style="font-family:sans-serif;line-height:1.7"><h1>${escapeHtml(input.orderName)} 계약 문서</h1><p>${escapeHtml(input.customerName)}님, 정기결제가 완료되었습니다.</p><p><strong>결제 금액</strong> ${input.amountKrw.toLocaleString("ko-KR")}원 (부가세 포함)</p><p><strong>계약 문서 제공일</strong> ${escapeHtml(deliveredAt)}</p><p><strong>법정 청약철회 마감</strong> ${escapeHtml(deadline)}</p><p>법정 청약철회 기한이 지나면 미사용 상태라도 단순 변심 환불이 불가능합니다. 유료 상담을 시작한 회차는 7일 이내라도 단순 변심 환불이 제한됩니다.</p><p>중복·오결제, 승인하지 않은 결제, 결과 미제공, 계약 불일치는 예외 심사합니다.</p><p><a href="${APP_URL}/billing">계약 및 환불 관리</a></p></div>`}),
+  }).catch((error:unknown)=>console.error("[cron-renewal] full-style contract email error:",error));
+}
+
 async function renewFullStyleContracts(supabase:FullStyleRenewalClient) {
   const claimed=await supabase.rpc("claim_full_style_contract_renewals_v2",{p_limit:50});
   if(claimed.error) {
@@ -522,7 +549,8 @@ async function renewFullStyleContracts(supabase:FullStyleRenewalClient) {
         amount,currency,status:"pending",credits_to_grant:quantity,
         metadata:{source:"cron-full-style-renewal",full_style_contract_id:contract.id,
           hairfit_v2_offering_key:contract.offering_key,hairfit_v2_offering_version:contract.offering_version,
-          hairfit_v2_quantity:quantity,price_version:contract.price_version},
+          hairfit_v2_quantity:quantity,price_version:contract.price_version,
+          ...(FULL_STYLE_REFUND_POLICY_V2_ENABLED?{refundPolicyVersion:FULL_STYLE_REFUND_POLICY_VERSION}:{} )},
       }).select("id").single();
       if(tx.error||!tx.data) throw new Error(tx.error?.message??"renewal transaction insert failed");
       if(typeof tx.data.id!=="string") throw new Error("renewal transaction id is invalid");
@@ -536,7 +564,8 @@ async function renewFullStyleContracts(supabase:FullStyleRenewalClient) {
         paid_at:payment.paidAt??new Date().toISOString(),failure_code:null,failure_message:null,
         metadata:{source:"cron-full-style-renewal",full_style_contract_id:contract.id,portoneCharge:charged,portone:payment,
           hairfit_v2_offering_key:contract.offering_key,hairfit_v2_offering_version:contract.offering_version,hairfit_v2_quantity:quantity,
-          price_version:contract.price_version},
+          price_version:contract.price_version,
+          ...(FULL_STYLE_REFUND_POLICY_V2_ENABLED?{refundPolicyVersion:FULL_STYLE_REFUND_POLICY_VERSION}:{} )},
       }).eq("id",txId);
       if(paid.error) throw new Error(paid.error.message);
       const periodStart=new Date(); const periodEnd=addFullStyleBillingPeriod(periodStart,contract.billing_interval);
@@ -547,13 +576,21 @@ async function renewFullStyleContracts(supabase:FullStyleRenewalClient) {
         valid_from:periodStart.toISOString(),expires_at:periodEnd.toISOString(),
       },{onConflict:"source,source_transaction_id,offering_key",ignoreDuplicates:true});
       if(grant.error) throw new Error(grant.error.message);
+      const contractDocumentDeliveredAt=periodStart.toISOString();
+      const statutoryWithdrawalDeadline=new Date(periodStart.getTime()+7*24*60*60*1000).toISOString();
       const advanced=await supabase.from("full_style_contracts_v2").update({
         status:"active",period_started_at:periodStart.toISOString(),period_ends_at:periodEnd.toISOString(),
         next_billing_at:periodEnd.toISOString(),latest_payment_transaction_id:txId,renewal_failure_count:0,
         renewal_last_failed_at:null,renewal_next_retry_at:null,renewal_failure_code:null,renewal_failure_message:null,
+        ...(FULL_STYLE_REFUND_POLICY_V2_ENABLED?{contract_document_delivered_at:contractDocumentDeliveredAt,
+          statutory_withdrawal_deadline:statutoryWithdrawalDeadline,refund_policy_version:FULL_STYLE_REFUND_POLICY_VERSION}:{}),
         renewal_claimed_until:null,updated_at:new Date().toISOString(),
       }).eq("id",contract.id);
       if(advanced.error) throw new Error(advanced.error.message);
+      if(FULL_STYLE_REFUND_POLICY_V2_ENABLED){
+        await sendFullStyleRenewalContractEmail({to:customer.email,customerName:customer.name,orderName,
+          amountKrw:amount,contractDocumentDeliveredAt,statutoryWithdrawalDeadline});
+      }
       renewed++;
     } catch(error) {
       const message=error instanceof Error?error.message:String(error);

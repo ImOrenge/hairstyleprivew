@@ -22,6 +22,7 @@ export function FullStylePlanCards({ checkoutEnabled, consultationId = "" }: { c
                 {offer.management.map((item) => <li key={item} className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />{item}</li>)}
                 <li className="flex gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />미사용 회차 이월 없음</li>
               </ul>
+              <p className="mt-4 border-t border-[var(--app-border)] pt-3 text-xs leading-5 text-[var(--app-muted)]">법정 청약철회 7일 경과 후에는 미사용 상태라도 단순 변심 환불이 불가능합니다. 기간말 해지는 별도로 신청할 수 있습니다.</p>
             </div>
             {checkoutEnabled ? <Link href={`/billing/checkout?${query.toString()}`} className="flex min-h-11 items-center justify-center bg-[var(--app-inverse)] px-4 text-sm font-black text-[var(--app-inverse-text)]">{offer.ctaLabel}</Link> : <span className="flex min-h-11 items-center justify-center border border-[var(--app-border)] px-4 text-sm font-black text-[var(--app-muted)]">결제 순차 오픈 예정</span>}
           </article>

@@ -44,6 +44,7 @@ state:
     - interview-step
     - outcome
     - reason-category
+    - statutory-exception-reason
     - detail
     - quote
     - acceptance
@@ -65,7 +66,7 @@ a11y_contract:
 
 test_surface:
   unit: packages/shared/src/billing/refund.test.ts
-  contract: my-app/lib/refund-automation-contract.test.ts
+  contract: my-app/lib/refund-automation-contract.test.ts, my-app/lib/full-style-refund-policy-contract.test.ts
   interaction: required-before-candidate-promotion
   accessibility: required-before-candidate-promotion
   visual: required-before-candidate-promotion

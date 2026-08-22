@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FULL_STYLE_REFUND_POLICY_VERSION, type FullStyleServiceStartTrigger } from "@hairfit/shared/v2";
 import { createClientConsultationTask, type ConsultationPatch, type ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { buildConsultationHairProfile } from "../../../lib/consulting/hair-profile";
 import { mapPreviewBoard, type PreviewBoard as Board } from "../../../lib/consulting/preview-board-client";
@@ -25,6 +26,13 @@ type Quote = {
 
 type PreviewGenerationVisualState = "waiting" | "generating" | "partial" | "complete" | "failed";
 type RestartAccess = { used:number; limit:number; remaining:number; availableBeforeFinal:boolean };
+type PaidStartState = {
+  paid:boolean;
+  required:boolean;
+  activated:boolean;
+  policyVersion:string;
+  statutoryWithdrawalDeadline:string|null;
+};
 
 function initialPreviewBoardState(previews: ConsultationSnapshot["previews"], generationId: string | null) {
   const accepted = previews.filter((item) => item.status === "accepted").length;
@@ -88,16 +96,39 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
   const [error, setError] = useState<string | null>(null);
   const [needsPurchase, setNeedsPurchase] = useState(false);
   const [demoWatermark, setDemoWatermark] = useState(false);
+  const [accessLoaded,setAccessLoaded]=useState(false);
+  const [accessType,setAccessType]=useState<"demo"|"paid"|"none">("none");
+  const [paidStart,setPaidStart]=useState<PaidStartState|null>(null);
+  const [paidStartConsent,setPaidStartConsent]=useState(false);
   const [restartAccess,setRestartAccess]=useState<RestartAccess>({used:0,limit:0,remaining:0,availableBeforeFinal:true});
   const persistedBoardId = useRef<string | null>(null);
   const autoStartAttempted = useRef(false);
 
   useEffect(() => {
     void fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/access`,{cache:"no-store"})
-      .then(async(response)=>response.ok?await response.json() as {access?:string;capabilities?:{watermarkGeneratedAssets?:boolean};restart?:RestartAccess}:null)
-      .then((access)=>{setDemoWatermark(access?.access==="demo"||access?.capabilities?.watermarkGeneratedAssets===true);if(access?.restart)setRestartAccess(access.restart);})
-      .catch(()=>undefined);
+      .then(async(response)=>response.ok?await response.json() as {access?:"demo"|"paid"|"none";capabilities?:{watermarkGeneratedAssets?:boolean};restart?:RestartAccess;paidStart?:PaidStartState|null}:null)
+      .then((access)=>{
+        setAccessType(access?.access??"none");
+        setDemoWatermark(access?.access==="demo"||access?.capabilities?.watermarkGeneratedAssets===true);
+        setPaidStart(access?.paidStart??null);
+        if(access?.restart)setRestartAccess(access.restart);
+      })
+      .catch(()=>undefined)
+      .finally(()=>setAccessLoaded(true));
   },[snapshot.sessionId]);
+
+  const activatePaidStart = useCallback(async(startTrigger:FullStyleServiceStartTrigger) => {
+    if(!paidStart?.required||paidStart.activated)return;
+    if(!paidStartConsent)throw new Error("유료 상담 시작 안내를 확인하고 동의해 주세요.");
+    const response=await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/paid-start`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({startTrigger,policyVersion:FULL_STYLE_REFUND_POLICY_VERSION,consentedAt:new Date().toISOString()}),
+    });
+    const data=await response.json().catch(()=>({})) as {error?:string};
+    if(!response.ok)throw new Error(data.error||"유료 상담 시작 동의를 저장하지 못했습니다.");
+    setPaidStart((current)=>current?{...current,required:false,activated:true}:current);
+  },[paidStart,paidStartConsent,snapshot.sessionId]);
 
   const requestGenerationQuote = useCallback(async () => {
     const draftId = snapshot.photo.draftId;
@@ -152,6 +183,7 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
     setError(null);
     setNeedsPurchase(false);
     try {
+      await activatePaidStart("paid_preview_generation");
       const executionQuote = quote && Date.parse(quote.expiresAt) > Date.now()
         ? quote
         : await requestGenerationQuote();
@@ -197,14 +229,15 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
     } finally {
       setLoading(false);
     }
-  }, [generationId, loading, mutate, quote, requestGenerationQuote, router, snapshot.discovery, snapshot.photo, snapshot.sessionId, snapshot.strategy, taskRuntime]);
+  }, [activatePaidStart, generationId, loading, mutate, quote, requestGenerationQuote, router, snapshot.discovery, snapshot.photo, snapshot.sessionId, snapshot.strategy, taskRuntime]);
 
   useEffect(() => {
-    if (autoStartAttempted.current || generationId || !snapshot.photo.draftId || !snapshot.strategy.confirmedAt) return;
+    if (!accessLoaded || autoStartAttempted.current || generationId || !snapshot.photo.draftId || !snapshot.strategy.confirmedAt) return;
+    if(accessType==="paid"&&paidStart?.required&&!paidStart.activated)return;
     autoStartAttempted.current = true;
     const timer = window.setTimeout(() => void startGeneration(), 0);
     return () => window.clearTimeout(timer);
-  }, [generationId, snapshot.photo.draftId, snapshot.strategy.confirmedAt, startGeneration]);
+  }, [accessLoaded, accessType, generationId, paidStart, snapshot.photo.draftId, snapshot.strategy.confirmedAt, startGeneration]);
 
   const toggle = (id: string) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : current.length < 3 ? [...current, id] : current);
   const canCompare = selected.length >= 2
@@ -224,6 +257,7 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
         setError("무료 데모의 실제 3×3 생성이 완료됐습니다. 풀 스타일 상품을 선택하면 이 결과를 유지한 채 비교부터 계속할 수 있어요.");
         return;
       }
+      await activatePaidStart("demo_upgrade_compare");
       const v2Response = await fetch(`/api/v2/consultations/${encodeURIComponent(snapshot.sessionId)}/shortlist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -256,6 +290,13 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
   };
 
   return <WorkbenchGrid input={<div className="grid gap-5">
+    {accessType==="paid"&&paidStart?.required&&!paidStart.activated?<SurfaceCard className="grid gap-4 border-amber-300 bg-amber-50 p-5 text-amber-950">
+      <div><p className="app-kicker">유료 상담 시작 전 확인</p><h2 className="mt-2 text-xl font-black">이 작업부터 유료 상담 1회가 시작됩니다</h2></div>
+      <p className="text-sm leading-6">시작 후에는 단순 변심에 따른 해당 회차의 청약철회와 환불이 제한됩니다. 연간 플랜의 아직 시작하지 않은 회차와 법정 예외 사유에 대한 권리는 유지됩니다.</p>
+      {paidStart.statutoryWithdrawalDeadline?<p className="text-xs leading-5">현재 계약의 법정 청약철회 마감: <strong>{new Date(paidStart.statutoryWithdrawalDeadline).toLocaleString("ko-KR")}</strong></p>:null}
+      <label className="flex items-start gap-3 text-sm font-bold"><input type="checkbox" checked={paidStartConsent} onChange={(event)=>setPaidStartConsent(event.target.checked)} className="mt-1"/><span>위 환불 제한과 법정 예외 권리를 확인했고 유료 상담 시작에 동의합니다.</span></label>
+      {!generationId?<Button type="button" disabled={!paidStartConsent||loading} loading={loading} onClick={()=>void startGeneration()}>동의하고 헤어 3×3 생성 시작</Button>:null}
+    </SurfaceCard>:null}
     <SurfaceCard className="f-preview-generation-status p-5" data-generation-state={generationStatus.state}>
       <div className="f-preview-generation-status__heading">
         <div className="f-preview-generation-status__copy" role="status" aria-live="polite" aria-atomic="true"><span className="f-preview-generation-status__signal" aria-hidden="true" /><div><p className="app-kicker">3×3 AI preview board</p><h2>{generationStatus.title}</h2></div></div>
@@ -271,7 +312,7 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: {
       { label: "Compare readiness", value: canCompare ? "비교 가능" : "승인 결과 2개 이상 필요" },
       { label: "Generation status", value: generationStatus.title },
       { label: "Accepted outputs", value: `${acceptedCount} / 9` },
-    ]} /><div className="grid gap-2"><SaveStageButton loading={saving || loading} disabled={!canCompare} onClick={() => void saveShortlist()}>선택한 후보 비교하기</SaveStageButton>{boardState==="ready"&&restartAccess.limit>0?<Button type="button" variant="secondary" disabled={loading||restartAccess.remaining<=0||!restartAccess.availableBeforeFinal} onClick={()=>void restartWithNewBoard()}>새 3×3으로 전체 재시작 · 남은 {restartAccess.remaining}회</Button>:null}<p className="text-xs leading-5 text-[var(--app-muted)]">전체 재시작은 최종 헤어 확정 전 새 결과 9개를 만드는 권리입니다. 품질 실패 자동 재처리는 차감하지 않습니다.</p></div></Panel>
+    ]} /><div className="grid gap-2"><SaveStageButton loading={saving || loading} disabled={!canCompare||(Boolean(paidStart?.required&&!paidStart.activated)&&!paidStartConsent)} onClick={() => void saveShortlist()}>{paidStart?.required&&!paidStart.activated?"동의하고 선택한 후보 비교하기":"선택한 후보 비교하기"}</SaveStageButton>{boardState==="ready"&&restartAccess.limit>0?<Button type="button" variant="secondary" disabled={loading||restartAccess.remaining<=0||!restartAccess.availableBeforeFinal} onClick={()=>void restartWithNewBoard()}>새 3×3으로 전체 재시작 · 남은 {restartAccess.remaining}회</Button>:null}<p className="text-xs leading-5 text-[var(--app-muted)]">전체 재시작은 최종 헤어 확정 전 새 결과 9개를 만드는 권리입니다. 품질 실패 자동 재처리는 차감하지 않습니다.</p></div></Panel>
   </div>} output={<>
     <div className="grid gap-5 lg:grid-cols-3">{(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => <Panel key={axis} className="p-4"><p className="app-kicker">{axis}</p><div className="mt-4 grid gap-3">{previews.filter((item) => item.axis === axis).map((preview) => <button key={preview.id} type="button" disabled={preview.status !== "accepted"} onClick={() => toggle(preview.id)} aria-pressed={selected.includes(preview.id)} className={`overflow-hidden border text-left ${selected.includes(preview.id) ? "border-[var(--app-border-strong)] ring-2 ring-[var(--app-ring)]" : "border-[var(--app-border)]"} disabled:opacity-55`}><div className="relative aspect-[4/5] bg-[var(--app-surface-muted)]">{preview.imageUrl ? <><img src={preview.imageUrl} alt={preview.label} className="h-full w-full object-cover" decoding="async" loading="lazy" />{demoWatermark?<span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/10 text-lg font-black tracking-[0.2em] text-white/80 [text-shadow:0_1px_3px_rgb(0_0_0/0.7)]">HAIRFIT DEMO</span>:null}</> : <div className="flex h-full items-center justify-center p-4 text-center text-xs text-[var(--app-muted)]">{preview.status === "failed" ? "품질 검사 실패" : preview.status === "generating" ? "AI 생성 및 품질 검사 중" : "결과 대기 중"}</div>}</div><div className="p-3"><p className="font-black">{preview.label}</p><p className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--app-muted)]">{preview.reason}</p></div></button>)}</div></Panel>)}</div>
     <SurfaceCard className="p-5"><p className="app-kicker">Board telemetry</p><h2 className="mt-2 text-xl font-black">AI 생성·품질 승인 분포</h2><div className="mt-5"><DefinitionRows items={(["BALANCE","IMAGE","LIFESTYLE"] as const).map((axis) => {
