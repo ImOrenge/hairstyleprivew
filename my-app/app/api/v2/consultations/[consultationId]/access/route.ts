@@ -4,6 +4,8 @@ import { getConsultationV2 } from "../../../../../../lib/v2/consultation-server"
 import { quoteFullStyleConsultationAccessV2 } from "../../../../../../lib/v2/entitlement-server";
 import { v2Failure } from "../../../../../../lib/v2/http";
 import { getSupabaseAdminClient } from "../../../../../../lib/supabase";
+import { isHairfitV2Enabled } from "../../../../../../lib/v2/feature-flags";
+import { getPaidStartStateV2 } from "../../../../../../lib/v2/paid-start-server";
 
 export async function GET(_: Request, context: { params: Promise<{ consultationId:string }> }) {
   const { userId } = await auth();
@@ -18,6 +20,9 @@ export async function GET(_: Request, context: { params: Promise<{ consultationI
       .eq("id",consultationId).eq("user_id",userId).single();
     if(restart.error)throw new Error(restart.error.message);
     const restartRow=restart.data as {user_restart_count:number;user_restart_limit:number;lifecycle_state:string};
+    const paidStart=isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED")
+      ? await getPaidStartStateV2(userId,consultationId)
+      : null;
     return NextResponse.json({
       access:decision.access,
       offeringKey:decision.offeringKey,
@@ -25,6 +30,7 @@ export async function GET(_: Request, context: { params: Promise<{ consultationI
       canCompare:decision.access === "paid",
       remainingSessions:decision.remainingSessions,
       capabilities:decision.capabilities,
+      paidStart,
       restart:{
         used:restartRow.user_restart_count,
         limit:restartRow.user_restart_limit,

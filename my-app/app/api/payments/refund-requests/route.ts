@@ -103,7 +103,13 @@ export async function POST(request: Request) {
     }
 
     const supabase = getSupabaseAdminClient();
-    const { data, error } = await callSupabaseRpc(supabase, "submit_payment_refund_request", {
+    const quoteKind=await supabase.from("payment_refund_quotes").select("product_family")
+      .eq("id",quoteId).eq("user_id",userId).maybeSingle();
+    if(quoteKind.error)return NextResponse.json({error:quoteKind.error.message},{status:409});
+    const rpcName=(quoteKind.data as {product_family?:string|null}|null)?.product_family==="full_style"
+      ? "submit_full_style_refund_request_v2"
+      : "submit_payment_refund_request";
+    const { data, error } = await callSupabaseRpc(supabase, rpcName, {
       p_user_id: userId,
       p_quote_id: quoteId,
       p_idempotency_key: idempotencyKey,

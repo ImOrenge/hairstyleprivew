@@ -22,6 +22,7 @@ import {
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 import { isHairfitV2Enabled } from "../../../../lib/v2/feature-flags";
 import { quoteEntitlementV2, quoteFullStyleConsultationAccessV2 } from "../../../../lib/v2/entitlement-server";
+import { getPaidStartStateV2 } from "../../../../lib/v2/paid-start-server";
 import { recordV2Event } from "../../../../lib/v2/observability";
 import {
   buildAccountSetupRedirectUrl,
@@ -130,6 +131,16 @@ export async function POST(request: Request) {
       .maybeSingle();
     if (draftContextError) throw new Error(draftContextError.message);
     const isAcceptanceReplay = draftContext?.user_id === userId && draftContext.state === "accepted";
+
+    if (!isAcceptanceReplay && consultationId && fullStyleAccess?.access === "paid" && isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED")) {
+      const paidStart = await getPaidStartStateV2(userId, consultationId);
+      if (!paidStart.activated) {
+        return NextResponse.json(
+          { error: "유료 상담 시작 안내를 확인하고 별도로 동의해 주세요.", code: "PAID_START_CONSENT_REQUIRED" },
+          { status: 428 },
+        );
+      }
+    }
 
     if (!isAcceptanceReplay && !isGenerationAcceptanceEnabled()) {
       return NextResponse.json(

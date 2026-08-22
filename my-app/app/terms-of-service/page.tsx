@@ -63,7 +63,14 @@ const sections = [
     title: "7. 결제, 이용권 및 환불",
     items: [
       ...webSubscriptionBillingPolicy.map((item) => `${item.title}: ${item.description}`),
-      "환불 요청은 관련 법령 및 회사의 환불 정책에 의거하여 검토됩니다.",
+      "풀 스타일 상품은 계약 내용을 확인할 수 있는 문서를 받은 날부터 법정 청약철회 기간인 7일 이내에 환불을 신청할 수 있습니다. 서비스 제공이 그보다 늦게 시작되면 법령에 따라 서비스 제공 시작일을 기준으로 다시 계산될 수 있습니다.",
+      "법정 청약철회 기한이 지나면 상담을 시작하지 않았더라도 단순 변심에 따른 환불은 제공되지 않습니다.",
+      "유료 3×3 생성 또는 무료 데모 결제 후 비교 계속하기를 실행하면 해당 상담 회차가 시작됩니다. 시작된 회차는 7일 이내라도 단순 변심 환불이 제한될 수 있습니다.",
+      "연간 플랜은 청약철회 기간 안에 시작하지 않은 회차를 결제 당시 총액의 회차별 금액으로 계산합니다. 현재 299,000원 상품은 회차당 74,750원입니다.",
+      "중복·오결제·과오납, 승인하지 않은 결제, HairFit 책임의 결과 미제공, 표시·광고·계약과 중요한 부분이 다른 서비스, 개인정보 또는 안전 문제는 일반 단순 변심과 구분하여 별도로 심사합니다.",
+      "HairFit 책임의 장애는 무상 복구 또는 이용 권리 복원을 먼저 제안하며, 복구가 실패하거나 고객이 원하지 않으면 해당 회차 환불을 검토합니다.",
+      "정상 결과 제공 후 취향 차이, 단순 불만족 또는 고객의 중도 이탈은 예외 환불 사유에 포함되지 않습니다.",
+      "정기상품의 기간말 해지는 환불과 별도로 다음 결제를 중지하며 현재 계약의 이용 권리는 기간 종료일까지 유지됩니다.",
     ],
   },
   {
@@ -110,7 +117,7 @@ export default function TermsOfServicePage() {
         <h1 className="mt-3 text-3xl font-black tracking-tight text-[var(--app-text)] sm:text-4xl">
           이용 약관
         </h1>
-        <p className="mt-2 text-sm text-[var(--app-muted)]">최종 수정일: 2026-07-18</p>
+        <p className="mt-2 text-sm text-[var(--app-muted)]">최종 수정일: 2026-08-22</p>
       </Panel>
 
       <SurfaceCard as="section" className="mt-5 space-y-3 p-5 text-sm leading-6 text-[var(--app-muted)] sm:p-6">

@@ -20,7 +20,10 @@ const REASON_LABELS: Record<RefundReasonCategory, string> = {
   quality_expectation: "기대했던 결과와 다름",
   technical_issue: "서비스 장애 또는 기술 문제",
   duplicate_charge: "중복 결제",
+  overpayment: "오결제 또는 과오납",
   unauthorized_charge: "승인하지 않은 결제",
+  service_not_delivered: "서비스 결과를 받지 못함",
+  service_not_as_described: "계약 내용과 다른 서비스",
   privacy_or_safety: "개인정보 또는 안전 문제",
   other: "기타",
 };

@@ -2,6 +2,9 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getShortlistV2, saveShortlistV2 } from "../../../../../../lib/v2/selection-server";
 import { v2Disabled, v2Failure } from "../../../../../../lib/v2/http";
+import { isHairfitV2Enabled } from "../../../../../../lib/v2/feature-flags";
+import { quoteFullStyleConsultationAccessV2 } from "../../../../../../lib/v2/entitlement-server";
+import { getPaidStartStateV2 } from "../../../../../../lib/v2/paid-start-server";
 
 interface Params { params: Promise<{ consultationId: string }> }
 export async function GET(_request: Request, { params }: Params) {
@@ -27,6 +30,16 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: "previewVariantIds와 expectedVersion을 확인해 주세요." }, { status: 400 });
   }
   try {
+    if (isHairfitV2Enabled("FULL_STYLE_REFUND_POLICY_V2_ENABLED")) {
+      const access = await quoteFullStyleConsultationAccessV2(userId, consultationId);
+      if (access.access !== "paid") {
+        return NextResponse.json({ error: "후보 비교에는 유료 풀 스타일 권리가 필요합니다." }, { status: 402 });
+      }
+      const paidStart = await getPaidStartStateV2(userId, consultationId);
+      if (!paidStart.activated) {
+        return NextResponse.json({ error: "유료 상담 시작 안내를 확인하고 별도로 동의해 주세요.", code: "PAID_START_CONSENT_REQUIRED" }, { status: 428 });
+      }
+    }
     return NextResponse.json({ shortlist: await saveShortlistV2({
       userId, consultationId, previewVariantIds: body.previewVariantIds as string[], expectedVersion: body.expectedVersion as number,
     }) });
