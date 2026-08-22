@@ -25,8 +25,8 @@ test("premium landing keeps the rolling hero and consultant message", () => {
   assert.match(hero, /aria-label="SCROLL — 분석 근거 섹션으로 이동"/);
 });
 
-test("landing exposes the documented eleven scene order", () => {
-  const componentOrder = ["HeroSection", "AnalysisEvidenceShowcase", "DirectionShowcase", "StrategicPreviewShowcase", "CompareDecisionShowcase", "SalonBriefShowcase", "AftercareTimelineShowcase", "FashionDirectionShowcase", "StyleDossierShowcase", "TrustShowcase", "PremiumOfferPreview"];
+test("landing exposes the documented 00 through 11 consultation journey", () => {
+  const componentOrder = ["HeroSection", "AnalysisEvidenceShowcase", "DirectionShowcase", "StrategicPreviewShowcase", "CompareDecisionShowcase", "SalonBriefShowcase", "MakeupDirectionShowcase", "FashionDirectionShowcase", "StyleDossierShowcase", "AftercareTimelineShowcase", "TrustShowcase", "PremiumOfferPreview"];
   let cursor = -1;
   const renderedPage = page.slice(page.indexOf("return ("));
   for (const name of componentOrder) {
@@ -34,13 +34,17 @@ test("landing exposes the documented eleven scene order", () => {
     assert.ok(index > cursor, `${name} must appear after the previous scene`);
     cursor = index;
   }
-  for (const id of ["analysis-evidence", "user-direction", "strategic-preview", "compare-decision", "salon-brief", "aftercare", "fashion-direction", "style-dossier", "trust"]) assert.match(showcases, new RegExp(`id=\\"${id}\\"`));
+  for (const id of ["analysis-evidence", "user-direction", "strategic-preview", "compare-decision", "salon-brief", "makeup-direction", "fashion-direction", "style-dossier", "aftercare", "trust"]) assert.match(showcases, new RegExp(`id=\\"${id}\\"`));
   assert.match(offers, /id="services"/);
-  assert.equal(content.match(/shortLabel: "(?:0[1-9]|1[01])"/g)?.length, 11);
+  assert.equal(content.match(/shortLabel: "(?:0[0-9]|1[01])"/g)?.length, 12);
+  for (const [id, number] of [["analysis-evidence", "01"], ["user-direction", "02"], ["strategic-preview", "03"], ["compare-decision", "04"], ["salon-brief", "05"], ["makeup-direction", "06"], ["fashion-direction", "07"], ["style-dossier", "08"], ["aftercare", "09"], ["trust", "10"]]) {
+    assert.match(showcases, new RegExp(`id=\\"${id}\\" number=\\"${number}\\"`));
+  }
+  assert.match(hero, /className=\{styles\.sceneNumber\}[^>]*>00/);
 });
 
 test("proof artifacts map to current V2 vocabulary", () => {
-  for (const term of ["Analysis Evidence", "랜드마크", "BALANCE", "IMAGE", "LIFESTYLE", "최종 헤어 1개", "Decision", "Salon Brief", "실제 시술 완료 후", "현재 제공", "예정 기능"]) {
+  for (const term of ["Analysis Evidence", "랜드마크", "BALANCE", "IMAGE", "LIFESTYLE", "최종 헤어 1개", "Decision", "Salon Brief", "AI 메이크업 디렉터 리포트", "현재 제공", "예정 기능"]) {
     assert.match(showcases, new RegExp(term, "i"));
   }
   assert.match(showcases, /3 \+ 3 \+ 3/i);
@@ -57,7 +61,7 @@ test("core scenes expose decision-grade consulting artifacts", () => {
     "SALON HANDOFF",
     "현장 확인",
     "TODAY",
-    "현재 체크인",
+      "현재 안내",
     "PALETTE",
     "NECKLINE",
     "FACE PROFILE",
@@ -71,6 +75,11 @@ test("core scenes expose decision-grade consulting artifacts", () => {
   assert.match(showcases, /8개 판단 기준/);
   assert.match(showcases, /살롱 전달/);
   assert.match(showcases, /시술 후 관리/);
+  for (const checkpoint of ["D\\+1", "D\\+3", "D\\+7", "D\\+30", "D\\+45", "D\\+90"]) assert.match(showcases, new RegExp(checkpoint));
+  assert.doesNotMatch(showcases, /WEEK 02|WEEK 08/);
+  assert.match(showcases, /1회 플랜[\s\S]*?D\+30 · 1회/);
+  assert.match(showcases, /3개월 플랜[\s\S]*?D\+30·60·90 · 3회/);
+  assert.match(showcases, /연간 플랜[\s\S]*?연 4개 상담 각각 D\+30·60·90/);
 });
 
 function compareRows(source: string) {
@@ -104,6 +113,10 @@ test("free demo, shared paid scope, and approved price boundary remain truthful"
   assert.ok((combined.match(/href="\/consulting\/new"/g)?.length ?? 0) >= 4);
   assert.match(offers, /href="\/consulting\/plans"/);
   assert.match(offers, /href="\/billing"/);
+  assert.match(offers, /관리 안내 6회\(D\+1·3·7·30·45·90\)/);
+  assert.match(offers, /전체 재시작 1회 · AI 사후상담 D\+30 1회/);
+  assert.match(offers, /상담당 전체 재시작 2회 · AI 사후상담 D\+30·60·90 3회/);
+  assert.match(offers, /각 상담 전체 재시작 5회 · AI 사후상담 D\+30·60·90 3회/);
   assert.match(offerPolicy, /무료 3×3 생성 시작/);
   assert.ok(page.indexOf("<TrustShowcase") < page.indexOf("<PremiumOfferPreview"));
   for (const phrase of ["변경할 수 없는 최종 결정 기록", "변경 불가 최종 결정 기록", "데이터 계약에서 확인할 수 있는 연결 범위", "슬롯마다 반복 요청하는 마법사 흐름", "생성보다 정확한 기준"]) {

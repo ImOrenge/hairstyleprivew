@@ -41,7 +41,14 @@ export function PremiumOfferPreview() {
       </div>
 
       <div className="f-premium-offers__billing-note" data-reveal-item data-reveal-order="7">
-        <p>풀코스는 같고 전체 재시작·AI 사후상담은 1회 1/1, 3개월 2/3, 연간은 각 상담 5/3입니다.</p>
+        <div>
+          <p>모든 유료 상담에는 시술 후 관리 안내 6회(D+1·3·7·30·45·90)가 포함됩니다.</p>
+          <ul>
+            <li><strong>1회</strong> 전체 재시작 1회 · AI 사후상담 D+30 1회</li>
+            <li><strong>3개월</strong> 상담당 전체 재시작 2회 · AI 사후상담 D+30·60·90 3회</li>
+            <li><strong>연간</strong> 각 상담 전체 재시작 5회 · AI 사후상담 D+30·60·90 3회</li>
+          </ul>
+        </div>
         <Link href="/billing">내 계약 관리 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
       </div>
     </LandingScene>

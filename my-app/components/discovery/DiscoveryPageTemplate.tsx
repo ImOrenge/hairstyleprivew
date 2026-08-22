@@ -39,7 +39,7 @@ export const discoveryLayouts = {
   "D-MEN": ["intent", "sample", "artifact", "workflow", "trust", "related", "faq"],
   "D-WOMEN": ["sample", "intent", "artifact", "workflow", "trust", "faq", "related"],
   "D-BANGS": ["intent", "artifact", "workflow", "sample", "trust", "faq", "related"],
-  "D-BOB": ["artifact", "intent", "sample", "trust", "workflow", "faq", "related"],
+  "D-MAKEUP": ["sample", "artifact", "intent", "workflow", "trust", "faq", "related"],
   "D-SALON": ["intent", "artifact", "workflow", "sample", "proof", "trust", "faq", "related"],
 } as const satisfies Record<DiscoveryPageDefinition["id"], readonly DiscoverySlot[]>;
 

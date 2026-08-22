@@ -6,13 +6,15 @@ import { discoverySampleManifests } from "./sample-manifests.ts";
 import type { DiscoveryPageDefinition } from "./types.ts";
 import { validateDiscoveryRegistry } from "./validate-discovery.ts";
 
-const expectedIds = ["D-AI-SIM", "D-FACE", "D-MEN", "D-WOMEN", "D-BANGS", "D-BOB", "D-SALON"];
-const expectedSlugs = ["ai-hairstyle-simulation", "face-shape-hairstyle", "men-hairstyle-simulation", "women-hairstyle-simulation", "bangs-preview", "bob-cut-preview", "salon-consultation-image"];
+const expectedIds = ["D-AI-SIM", "D-FACE", "D-MEN", "D-WOMEN", "D-BANGS", "D-MAKEUP", "D-SALON"];
+const expectedSlugs = ["ai-hairstyle-simulation", "face-shape-hairstyle", "men-hairstyle-simulation", "women-hairstyle-simulation", "bangs-preview", "personal-color-makeup", "salon-consultation-image"];
 
 test("all seven discovery pages are published and support exact lookups", () => {
   assert.equal(getDiscoveryPageById("D-AI-SIM")?.slug, "ai-hairstyle-simulation");
   assert.equal(getDiscoveryPageBySlug("ai-hairstyle-simulation")?.id, "D-AI-SIM");
   assert.equal(getDiscoveryPageBySlug(" AI-HAIRSTYLE-SIMULATION "), undefined);
+  assert.equal(getDiscoveryPageBySlug("personal-color-makeup")?.seo.title, "퍼스널 컬러 메이크업 추천 | HairFit");
+  assert.equal(getDiscoveryPageBySlug("bob-cut-preview"), undefined);
   assert.deepEqual(getPublishedDiscoveryPages().map((page) => page.id), expectedIds);
   assert.deepEqual(getPublishedDiscoveryPages().map((page) => page.slug), expectedSlugs);
   assert.equal(new Set(getPublishedDiscoveryPages().map((page) => page.artifact.kind)).size, 7);

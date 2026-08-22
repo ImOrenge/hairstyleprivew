@@ -34,6 +34,7 @@ export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
   const isSupportPage = isCurrentNavigationPath(pathname, "/support");
+  const isDiscoveryPage = isCurrentNavigationPath(pathname, "/discover");
   const mobileMenuLinkClassName =
     "rounded-[var(--app-radius-control)] px-3 py-2.5 text-[var(--app-muted)] transition hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)]";
 
@@ -48,6 +49,13 @@ export function Header() {
           <HeaderBrandLink />
 
           <nav className="hidden items-center gap-4 text-sm font-semibold md:flex">
+            <Link
+              href="/discover"
+              className="text-[var(--app-muted)] hover:text-[var(--app-text)]"
+              aria-current={isDiscoveryPage ? "page" : undefined}
+            >
+              스타일 가이드
+            </Link>
             <Link
               href="/support"
               className="text-[var(--app-muted)] hover:text-[var(--app-text)]"
@@ -83,6 +91,14 @@ export function Header() {
         {isMobileMenuOpen ? (
           <div className="border-t border-[var(--app-border)] bg-[var(--app-surface)] px-2 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.10)] md:hidden">
             <nav className="mx-auto flex w-full max-w-[82rem] flex-col gap-1 text-sm font-semibold">
+              <Link
+                href="/discover"
+                className={mobileMenuLinkClassName}
+                onClick={closeMobileMenu}
+                aria-current={isDiscoveryPage ? "page" : undefined}
+              >
+                스타일 가이드
+              </Link>
               <Link
                 href="/support"
                 className={mobileMenuLinkClassName}

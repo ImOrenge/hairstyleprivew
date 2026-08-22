@@ -8,15 +8,22 @@ import { discoverySampleManifests, getDiscoverySampleAsset } from "./sample-mani
 
 const appRoot = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-test("all seven samples have one source, nine previews, one OG and three strategies", () => {
+test("all seven samples satisfy their hair-grid or makeup-direction contract", () => {
   assert.equal(discoverySampleManifests.length, 7);
   assert.equal(new Set(discoverySampleManifests.map((manifest) => manifest.id)).size, 7);
   for (const manifest of discoverySampleManifests) {
     assert.equal(manifest.status, "approved");
     assert.equal(manifest.assets.filter((asset) => asset.role === "source").length, 1);
-    assert.equal(manifest.assets.filter((asset) => asset.role === "preview").length, 9);
     assert.equal(manifest.assets.filter((asset) => asset.role === "og").length, 1);
-    assert.deepEqual(manifest.strategies.map((strategy) => [strategy.id, strategy.assetIds.length]), [["BALANCE", 3], ["IMAGE", 3], ["LIFESTYLE", 3]]);
+    if (manifest.sampleKind === "hair-grid") {
+      assert.equal(manifest.assets.filter((asset) => asset.role === "preview").length, 9);
+      assert.deepEqual(manifest.strategies.map((strategy) => [strategy.id, strategy.assetIds.length]), [["BALANCE", 3], ["IMAGE", 3], ["LIFESTYLE", 3]]);
+    } else {
+      assert.equal(manifest.assets.filter((asset) => asset.role === "preview").length, 0);
+      assert.equal(manifest.direction.palettes.length, 2);
+      assert.equal(manifest.direction.zones.length, 3);
+      assert.equal(manifest.direction.routine.length, 3);
+    }
   }
 });
 
@@ -30,8 +37,10 @@ test("sample paths and recorded byte sizes match repository assets", () => {
       assert.ok(asset.width > 0 && asset.height > 0 && asset.alt && asset.licenseRef && asset.consentRef);
       assert.equal(asset.status, "approved");
     }
-    for (const strategy of manifest.strategies) {
-      for (const assetId of strategy.assetIds) assert.equal(getDiscoverySampleAsset(manifest, assetId)?.role, "preview");
+    if (manifest.sampleKind === "hair-grid") {
+      for (const strategy of manifest.strategies) {
+        for (const assetId of strategy.assetIds) assert.equal(getDiscoverySampleAsset(manifest, assetId)?.role, "preview");
+      }
     }
   }
 });
@@ -61,7 +70,7 @@ test("each discovery page owns a unique model and preview asset set", () => {
     }
   }
   assert.equal(sourceHashes.size, discoverySampleManifests.length, "source image bytes are reused");
-  assert.equal(previewHashes.size, 63, "preview image bytes are reused");
+  assert.equal(previewHashes.size, 54, "preview image bytes are reused");
 });
 
 test("all preview candidates map to real catalog-v4 entries", () => {

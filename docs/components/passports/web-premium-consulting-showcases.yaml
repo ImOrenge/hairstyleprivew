@@ -15,14 +15,15 @@ public_api:
     - StrategicPreviewShowcase
     - CompareDecisionShowcase
     - SalonBriefShowcase
+    - MakeupDirectionShowcase
     - AftercareTimelineShowcase
     - FashionDirectionShowcase
     - StyleDossierShowcase
-    - TrustAndFinalCta
+    - TrustShowcase
     - StrategicHairPreviewPanel
     - FashionDirectionPreviewPanel
   props:
-    - TrustAndFinalCta.faqs
+    - TrustShowcase.faqs
   events: []
 
 dependencies:
@@ -54,7 +55,8 @@ styling:
   data_contract:
     data-landing-media: present on evidence and salon media
     model-switch: female and male preview panels rotate every 5 seconds while visible and unpaused
-    artifact-depth: analysis provenance, four-field direction matrix, eight-axis comparison, salon handoff, aftercare dashboard, fashion brief, and dossier pages use privacy-safe fixtures
+    artifact-depth: analysis provenance, four-field direction matrix, eight-axis comparison, salon handoff, personal-color makeup palette and professional report, six-point aftercare program, fashion brief, and dossier pages use privacy-safe fixtures
+    scene-order: hero 00 then analysis 01 through pricing 11; aftercare follows the style dossier
   allows_className: false
   inline_styles_allowed: false
 
@@ -85,6 +87,7 @@ test_surface:
     - FAQ keyboard disclosure verification
     - hair and fashion gender tab keyboard and automatic switching verification
     - horizontal comparison artifacts remain reachable on narrow viewports
+    - makeup palette, routine, report, and both CTAs remain reachable at 320px
   visual:
     - 1440x1000 desktop
     - 768x1024 tablet
@@ -95,7 +98,7 @@ observed_usage:
   scope: public premium landing route
 
 change_policy:
-  current_gate: behavioral
+  current_gate: style-contract
   compatible_change_requires:
     - passport-update
     - premium-contract-test

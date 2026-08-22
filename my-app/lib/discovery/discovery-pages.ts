@@ -4,7 +4,8 @@ import type { DiscoveryPageDefinition, DiscoveryPageId, DiscoverySection } from 
 import { validateDiscoveryRegistry } from "./validate-discovery.ts";
 
 const forbiddenClaims = ["실제 시술과 동일", "100% 어울림", "실패 없음", "정확도 보장"] as const;
-const commonEvidence = ["EVD-STRATEGY-3", "EVD-PREVIEW-9", "EVD-SHORTLIST-3", "EVD-COMPARE-2", "EVD-SALON-BRIEF", "EVD-RESULT-LIMIT"] as const;
+const hairCommonEvidence = ["EVD-STRATEGY-3", "EVD-PREVIEW-9", "EVD-SHORTLIST-3", "EVD-COMPARE-2", "EVD-SALON-BRIEF", "EVD-RESULT-LIMIT"] as const;
+const makeupCommonEvidence = ["EVD-MAKEUP-COLOR-GROUNDING", "EVD-MAKEUP-ROUTINE-BRIEF", "EVD-MAKEUP-PROFESSIONAL-REPORT", "EVD-RESULT-LIMIT"] as const;
 
 interface PageSeed {
   id: DiscoveryPageId;
@@ -23,6 +24,7 @@ interface PageSeed {
   finalTitle: string;
   finalSupport: string;
   sample: DiscoveryPageDefinition["sample"];
+  sampleKind?: DiscoveryPageDefinition["sampleKind"];
   artifact: DiscoveryPageDefinition["artifact"];
   workflowTitle: string;
   workflowDescription: string;
@@ -40,6 +42,33 @@ interface PageSeed {
 }
 
 function page(seed: PageSeed): DiscoveryPageDefinition {
+  const sampleKind = seed.sampleKind ?? "hair-grid";
+  const evidenceIds = sampleKind === "hair-grid" ? hairCommonEvidence : makeupCommonEvidence;
+  const proofItems = sampleKind === "hair-grid"
+    ? [
+        { label: seed.uniqueProofLabel, value: seed.uniqueProofValue, evidenceId: seed.uniqueEvidenceId },
+        { label: "스타일 방향", value: "3", evidenceId: "EVD-STRATEGY-3" },
+        { label: "헤어 후보", value: "9", evidenceId: "EVD-PREVIEW-9" },
+        { label: "Shortlist", value: "최대 3", evidenceId: "EVD-SHORTLIST-3" },
+        { label: "후보 비교", value: "최소 2", evidenceId: "EVD-COMPARE-2" },
+      ]
+    : [
+        { label: seed.uniqueProofLabel, value: seed.uniqueProofValue, evidenceId: seed.uniqueEvidenceId },
+        { label: "컬러 근거", value: "퍼스널 컬러 연결", evidenceId: "EVD-MAKEUP-COLOR-GROUNDING" },
+        { label: "부위별 방향", value: "눈·볼·입술", evidenceId: "EVD-MAKEUP-COLOR-GROUNDING" },
+        { label: "활용 결과", value: "셀프 루틴·아티스트 브리프", evidenceId: "EVD-MAKEUP-ROUTINE-BRIEF" },
+      ];
+  const trustNotes = sampleKind === "hair-grid"
+    ? [
+        { ...seed.trustNote, evidenceId: seed.uniqueEvidenceId },
+        { title: "고정 합성 예시", body: "이 페이지는 기능 설명용 synthetic model을 사용하며 방문자의 사진을 자동으로 수집하거나 분석하지 않습니다.", evidenceId: "EVD-PREVIEW-9" },
+        { title: "시술 결과는 별도", body: "후보 이미지는 비교와 상담을 돕는 시각 자료입니다. 모질, 손상도와 시술 방식에 따라 실제 결과는 달라집니다.", evidenceId: "EVD-RESULT-LIMIT" },
+      ]
+    : [
+        { ...seed.trustNote, evidenceId: seed.uniqueEvidenceId },
+        { title: "제품 작성 예시", body: "이 페이지는 실제 고객의 전후 사진이 아니라 구조화된 제품 예시이며 방문자의 사진을 자동으로 수집하거나 분석하지 않습니다.", evidenceId: "EVD-MAKEUP-PROFESSIONAL-REPORT" },
+        { title: "사진 발색의 한계", body: "조명, 화이트밸런스와 피부 표현에 따라 실제 발색은 달라집니다. 화면의 팔레트는 방향을 정하는 참고 자료입니다.", evidenceId: "EVD-RESULT-LIMIT" },
+      ];
   const sections: readonly DiscoverySection[] = [
     {
       type: "workflow",
@@ -53,24 +82,14 @@ function page(seed: PageSeed): DiscoveryPageDefinition {
       eyebrow: "PRODUCT CONTRACT",
       title: seed.proofTitle,
       description: "현재 HairFit V2 화면과 코드 계약에서 확인할 수 있는 범위만 표시합니다.",
-      items: [
-        { label: seed.uniqueProofLabel, value: seed.uniqueProofValue, evidenceId: seed.uniqueEvidenceId },
-        { label: "스타일 방향", value: "3", evidenceId: "EVD-STRATEGY-3" },
-        { label: "헤어 후보", value: "9", evidenceId: "EVD-PREVIEW-9" },
-        { label: "Shortlist", value: "최대 3", evidenceId: "EVD-SHORTLIST-3" },
-        { label: "후보 비교", value: "최소 2", evidenceId: "EVD-COMPARE-2" },
-      ],
+      items: proofItems,
     },
     {
       type: "trust",
       eyebrow: "TRUST BOUNDARY",
       title: seed.trustTitle,
       description: seed.trustDescription,
-      notes: [
-        { ...seed.trustNote, evidenceId: seed.uniqueEvidenceId },
-        { title: "고정 합성 예시", body: "이 페이지는 기능 설명용 synthetic model을 사용하며 방문자의 사진을 자동으로 수집하거나 분석하지 않습니다.", evidenceId: "EVD-PREVIEW-9" },
-        { title: "시술 결과는 별도", body: "후보 이미지는 비교와 상담을 돕는 시각 자료입니다. 모질, 손상도와 시술 방식에 따라 실제 결과는 달라집니다.", evidenceId: "EVD-RESULT-LIMIT" },
-      ],
+      notes: trustNotes,
     },
     { type: "related", title: "다음 비교 기준도 확인하세요" },
     { type: "faq", title: `${seed.h1.replace(/,.+$/, "")} FAQ` },
@@ -84,7 +103,7 @@ function page(seed: PageSeed): DiscoveryPageDefinition {
     intentId: seed.slug,
     audience: seed.audience,
     locale: "ko-KR",
-    updatedAt: "2026-08-14",
+    updatedAt: "2026-08-22",
     seo: {
       title: seed.title,
       description: seed.description,
@@ -104,11 +123,12 @@ function page(seed: PageSeed): DiscoveryPageDefinition {
       forbiddenClaims,
     },
     sample: seed.sample,
+    sampleKind,
     artifact: seed.artifact,
     sections,
     faq: seed.faq,
     sampleManifestId: seed.manifestId,
-    evidenceIds: [...commonEvidence, seed.uniqueEvidenceId],
+    evidenceIds: [...new Set([...evidenceIds, seed.uniqueEvidenceId])],
     relatedPageIds: seed.relatedPageIds,
     trustPolicyVersion: "discovery-trust-v1",
     reviewer: "HairFit product design",
@@ -231,7 +251,7 @@ export const discoveryPages = [
     ],
     manifestId: "SAMPLE-D-FACE-CATALOG-V4",
     uniqueEvidenceId: "EVD-FACE-MEASUREMENT",
-    relatedPageIds: ["D-AI-SIM", "D-BANGS", "D-BOB"],
+    relatedPageIds: ["D-AI-SIM", "D-BANGS", "D-MAKEUP"],
   }),
   page({
     id: "D-MEN",
@@ -347,7 +367,7 @@ export const discoveryPages = [
     ],
     manifestId: "SAMPLE-D-WOMEN-CATALOG-V4",
     uniqueEvidenceId: "EVD-WOMEN-CONTINUITY",
-    relatedPageIds: ["D-AI-SIM", "D-BANGS", "D-BOB"],
+    relatedPageIds: ["D-AI-SIM", "D-BANGS", "D-MAKEUP"],
   }),
   page({
     id: "D-BANGS",
@@ -406,66 +426,67 @@ export const discoveryPages = [
     ],
     manifestId: "SAMPLE-D-BANGS-CATALOG-V4",
     uniqueEvidenceId: "EVD-FRINGE-AXIS",
-    relatedPageIds: ["D-FACE", "D-WOMEN", "D-BOB"],
+    relatedPageIds: ["D-FACE", "D-WOMEN", "D-MAKEUP"],
   }),
   page({
-    id: "D-BOB",
-    slug: "bob-cut-preview",
+    id: "D-MAKEUP",
+    slug: "personal-color-makeup",
     pageType: "style",
     audience: "b2c",
-    title: "단발 미리보기, 보브컷 길이와 끝선 비교 | HairFit",
-    description: "턱선 단발, 보브컷, 어깨선 미디엄과 길이 유지 후보를 같은 얼굴에서 비교해 자르기 전 기준을 정하세요.",
+    title: "퍼스널 컬러 메이크업 추천 | HairFit",
+    description: "사진 기반 퍼스널 컬러 근거를 추천·회피 팔레트와 눈·볼·입술 방향, 셀프 루틴, 아티스트 브리프와 AI 전문 리포트로 연결합니다.",
     eyebrow: "HAIRFIT DISCOVERY · 06",
-    h1: "단발 미리보기, 턱선과 어깨선 사이를 구체적으로 비교",
-    support: "단발이 어울릴지 묻기보다 끝선 위치, 앞머리, 층과 바깥선이 달라질 때의 인상과 관리 조건을 봅니다.",
-    heroNote: "단발은 모발 수축과 목선, 현재 층에 따라 실제 완성 길이가 달라질 수 있습니다.",
-    primaryLabel: "단발 컨설팅 시작",
+    h1: "퍼스널 컬러에 맞는 메이크업 방향 찾기",
+    support: "웜·쿨 한 단어로 끝내지 않고 명도·채도·온도 근거를 눈·볼·입술의 컬러와 적용 순서로 연결합니다.",
+    heroNote: "제품 작성 예시이며 실제 고객의 전후 사진이 아닙니다. 조명과 카메라 색감에 따라 실제 발색은 달라질 수 있습니다.",
+    primaryLabel: "내 퍼스널 컬러와 메이크업 방향 확인하기",
     sampleLabel: "내 사진 분석부터 시작",
-    finalLabel: "분석 후 단발 후보 비교",
-    finalTitle: "단발 한 장 대신, 턱선 전후의 선택지를 비교하세요",
-    finalSupport: "short·medium·long 길이 축으로 커트 폭과 유지 대안을 함께 확인합니다.",
+    finalLabel: "분석 후 메이크업 방향 확인",
+    finalTitle: "팔레트에서 끝나지 않고, 실제 적용 순서와 전달 문장까지 준비하세요",
+    finalSupport: "추천·회피 색과 부위별 방향을 셀프 루틴, 아티스트 브리프와 고객용 전문 해설로 이어갑니다.",
+    sampleKind: "makeup-direction",
     sample: {
-      eyebrow: "BOB LENGTH BOARD",
-      title: "턱선 보브, 어깨선, 길이 유지 대조 후보",
-      description: "짧은 세 후보만 보여주지 않고 어깨선과 롱 대안을 함께 둬 커트 폭을 판단합니다.",
-      heroLinkLabel: "단발 샘플 보기",
-      heroCaption: "짧음·중간·유지 길이로 나눈 동일 인물 비교 보드",
-      note: "끝선 위치는 목 길이, 곱슬과 건조 후 수축을 고려해 미용실에서 조정해야 합니다.",
+      eyebrow: "PERSONAL COLOR MAKEUP MAP",
+      title: "추천·회피 팔레트를 눈·볼·입술 방향으로 연결",
+      description: "전후 합성 이미지 대신 어떤 색을 어디에 왜 쓰는지, 셀프 루틴과 전문 리포트가 어떻게 이어지는지 보여드립니다.",
+      heroLinkLabel: "메이크업 방향 예시 보기",
+      heroCaption: "제품 작성 메이크업 방향 예시 · 전후 비교 아님",
+      note: "화면 속 색은 방향을 설명하는 예시입니다. 실제 피부 발색과 제품 질감은 조명, 피부 상태와 제품에 따라 달라집니다.",
     },
     artifact: {
-      kind: "bob-cut-ladder",
-      eyebrow: "CUT COMMITMENT LADDER",
-      title: "한 번에 자를 길이를 네 단계로 낮춰보기",
-      description: "가장 짧은 단발만 보지 않고, 변화 폭과 되돌림 비용이 커지는 순서로 선택지를 배열합니다.",
+      kind: "makeup-direction-map",
+      eyebrow: "MAKEUP DIRECTION MAP",
+      title: "진단 이름보다 중요한 네 개의 연결 지점",
+      description: "퍼스널 컬러 근거가 실제 메이크업 선택으로 어떻게 이어지는지 고객 언어와 전문가 명세를 나눠 보여드립니다.",
       items: [
-        { label: "KEEP", value: "길이 유지", body: "얼굴선 레이어만 더해 커트 폭을 최소화합니다.", note: "변화 폭: 낮음" },
-        { label: "COLLARBONE", value: "쇄골선", body: "묶임을 유지하면서 손상된 끝과 무게를 줄입니다.", note: "변화 폭: 낮음~중간" },
-        { label: "SHOULDER", value: "어깨선", body: "미디엄 끝선과 바깥 뻗침 가능성을 함께 봅니다.", note: "변화 폭: 중간" },
-        { label: "JAW", value: "턱선 보브", body: "목선을 드러내고 선명한 끝선을 만드는 가장 큰 커트 변화입니다.", note: "변화 폭: 높음 · 되돌림 오래 걸림" },
+        { label: "PALETTE", value: "추천·회피 색", body: "명도·채도·온도 근거를 사용할 색과 피하면 좋은 색으로 나눕니다.", note: "사진 기반 간이 진단 한계 표시" },
+        { label: "ZONES", value: "눈·볼·입술", body: "활성 부위마다 어울리는 이유와 실제 적용 방향을 설명합니다.", note: "비활성 부위는 새로 추천하지 않음" },
+        { label: "ROUTINE", value: "적용 순서", body: "준비 시간과 숙련도에 맞춰 셀프 메이크업 순서를 정리합니다.", note: "확정 방향을 바꾸지 않음" },
+        { label: "ARTIST BRIEF", value: "전문가 명세", body: "부위별 컬러·마감·강도와 주의사항은 권위 데이터를 그대로 전달합니다.", note: "AI가 수치나 제품명을 만들지 않음" },
       ],
     },
-    workflowTitle: "얼마나 자를지를 세 길이 구간으로 봅니다",
-    workflowDescription: "단발 후보와 유지 대안을 같은 화면에 두어 커트 폭과 되돌림 비용을 판단합니다.",
+    workflowTitle: "컬러 근거를 일상에서 쓸 수 있는 순서로 바꿉니다",
+    workflowDescription: "사진 분석, 방향 확정, 셀프 적용과 아티스트 전달을 한 맥락으로 이어갑니다.",
     workflowSteps: [
-      { title: "01 · 턱선 구간", body: "턱 위·아래 끝선과 앞머리 유무가 만드는 차이를 봅니다." },
-      { title: "02 · 어깨선 대안", body: "한 번에 짧게 자르지 않는 미디엄 후보를 비교합니다." },
-      { title: "03 · 유지 대조", body: "긴 길이를 유지했을 때의 레이어와 관리 차이도 함께 둡니다." },
+      { title: "01 · 컬러 근거", body: "사진 품질을 확인하고 명도·채도·온도와 추천·회피 팔레트를 정리합니다." },
+      { title: "02 · 부위별 방향", body: "확정 헤어와 원하는 인상에 맞춰 눈·볼·입술의 색과 마감을 연결합니다." },
+      { title: "03 · 실제 활용", body: "셀프 루틴, AI 전문 해설과 아티스트용 정확한 명세를 함께 확인합니다." },
     ],
-    proofTitle: "커트 길이를 독립된 방향 축으로 다룹니다",
-    uniqueProofLabel: "길이 축",
-    uniqueProofValue: "short·medium·long",
-    trustTitle: "미리보기의 끝선이 실제 커트 기준선은 아닙니다",
-    trustDescription: "건조 수축, 현재 층과 모발 방향을 확인한 뒤 최종 길이를 정해야 합니다.",
-    trustNote: { title: "명시적 length 축", body: "현재 방향 조정 계약은 길이를 short, medium, long으로 구분해 후보 수정에 사용합니다." },
+    proofTitle: "현재 메이크업 결과 계약에서 제공하는 범위를 보여드립니다",
+    uniqueProofLabel: "AI 전문 리포트",
+    uniqueProofValue: "고객 해설 + 전문가 명세",
+    trustTitle: "사진 속 컬러는 실제 피부 발색을 확정하지 않습니다",
+    trustDescription: "조명, 화이트밸런스, 피부 상태와 제품 제형에 따라 색과 마감은 다르게 보일 수 있습니다.",
+    trustNote: { title: "근거가 연결된 해설", body: "AI 전문 리포트는 허용된 퍼스널 컬러·헤어·요구 근거만 설명하고 제품명, 호수나 새로운 수치를 만들지 않습니다." },
     faq: [
-      { question: "턱선 단발과 어깨선 길이를 같이 볼 수 있나요?", answer: "네. 짧은 보브와 미디엄, 길이 유지 후보를 한 화면에서 비교합니다." },
-      { question: "단발이 어울리는지 확정해 주나요?", answer: "아닙니다. 여러 길이 후보를 비교하고 상담 질문을 만드는 도구입니다." },
-      { question: "곱슬머리도 같은 길이로 나오나요?", answer: "건조 후 수축이 있어 실제 끝선은 달라질 수 있습니다. 현장에서 조정해야 합니다." },
-      { question: "긴 머리를 유지하는 후보도 필요한가요?", answer: "네. 변화 폭을 판단하려면 길이를 유지하는 대조 후보가 도움이 됩니다." },
+      { question: "사진만으로 퍼스널 컬러를 정확히 확정하나요?", answer: "아닙니다. 사진 기반 결과는 조명과 카메라 색감의 영향을 받는 간이 진단입니다. 보조 사진과 드레이프를 쓰는 정밀 진단은 유료 풀코스에서 제공합니다." },
+      { question: "추천 팔레트가 실제 제품 색과 똑같이 보이나요?", answer: "아닙니다. 제품 제형, 피부 상태와 조명에 따라 발색은 달라집니다. 팔레트는 색의 방향과 비교 기준입니다." },
+      { question: "셀프 메이크업 순서도 제공하나요?", answer: "네. 확정 방향을 준비 시간과 숙련도에 맞춘 적용 순서로 정리합니다." },
+      { question: "메이크업 아티스트에게 보여줄 수 있나요?", answer: "네. 고객용 해설과 별도로 부위별 컬러, 마감, 강도와 주의사항을 담은 아티스트 브리프를 제공합니다." },
     ],
-    manifestId: "SAMPLE-D-BOB-CATALOG-V4",
-    uniqueEvidenceId: "EVD-LENGTH-AXIS",
-    relatedPageIds: ["D-WOMEN", "D-FACE", "D-SALON"],
+    manifestId: "SAMPLE-D-MAKEUP-V1",
+    uniqueEvidenceId: "EVD-MAKEUP-PROFESSIONAL-REPORT",
+    relatedPageIds: ["D-FACE", "D-WOMEN", "D-SALON"],
   }),
   page({
     id: "D-SALON",
@@ -524,7 +545,7 @@ export const discoveryPages = [
     ],
     manifestId: "SAMPLE-D-SALON-CATALOG-V4",
     uniqueEvidenceId: "EVD-SALON-BRIEF-VERSION",
-    relatedPageIds: ["D-AI-SIM", "D-MEN", "D-BOB"],
+    relatedPageIds: ["D-AI-SIM", "D-MEN", "D-MAKEUP"],
   }),
 ] satisfies readonly DiscoveryPageDefinition[];
 

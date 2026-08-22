@@ -13,6 +13,7 @@ const sample = read("components", "discovery", "SampleComparison.tsx");
 const intentExperience = read("components", "discovery", "DiscoveryIntentExperience.tsx");
 const metadata = read("lib", "discovery", "metadata.ts");
 const sitemap = read("app", "sitemap.ts");
+const bobRedirect = read("app", "(marketing)", "discover", "bob-cut-preview", "route.ts");
 
 test("detail route is a closed static registry route", () => {
   assert.match(detailRoute, /export const dynamicParams = false/);
@@ -30,18 +31,26 @@ test("metadata and sitemap share the published registry selector", () => {
   assert.match(sitemap, /page\.updatedAt/);
 });
 
-test("all pages preserve the 3 strategy, 9 preview and consulting CTA contract", () => {
+test("hair and makeup pages preserve their sample kind and consulting CTA contracts", () => {
   assert.equal(discoveryPages.length, 7);
-  for (const [index, page] of discoveryPages.entries()) {
-    const manifest = discoverySampleManifests[index];
+  for (const page of discoveryPages) {
+    const manifest = discoverySampleManifests.find((candidate) => candidate.id === page.sampleManifestId);
+    assert.ok(manifest);
     assert.equal(page.message.primaryCta.href, "/consulting/new");
     assert.equal(page.message.sampleCta.href, "/consulting/new");
     assert.equal(page.message.finalCta.href, "/consulting/new");
     assert.match(page.message.sampleCta.label, /분석부터 시작/);
     assert.match(page.message.finalCta.label, /^분석 후 /);
     assert.match(page.message.finalSupport, /사진 분석에서 시작해 퍼스널 컬러·메이크업·패션 방향까지/);
-    assert.equal(manifest.strategies.length, 3);
-    assert.equal(manifest.strategies.flatMap((strategy) => strategy.assetIds).length, 9);
+    assert.equal(manifest.sampleKind, page.sampleKind);
+    if (manifest.sampleKind === "hair-grid") {
+      assert.equal(manifest.strategies.length, 3);
+      assert.equal(manifest.strategies.flatMap((strategy) => strategy.assetIds).length, 9);
+    } else {
+      assert.equal(manifest.direction.palettes.length, 2);
+      assert.ok(manifest.direction.zones.length >= 3);
+      assert.ok(manifest.direction.report.headline);
+    }
   }
   assert.match(template, /href=\{definition\.message\.finalCta\.href\}/);
   assert.match(sample, /href=\{definition\.message\.sampleCta\.href\}/);
@@ -62,7 +71,7 @@ test("every search intent owns a distinct layout, sample treatment and decision 
     "men-grooming-planner",
     "women-length-planner",
     "bangs-risk-planner",
-    "bob-cut-planner",
+    "personal-color-makeup-planner",
     "salon-brief-builder",
   ];
   const sampleLayoutIds = [
@@ -71,7 +80,7 @@ test("every search intent owns a distinct layout, sample treatment and decision 
     "grooming-schedule",
     "length-chapters",
     "fringe-baseline",
-    "cut-ladder",
+    "makeup-direction-report",
     "salon-shortlist",
   ];
   assert.match(template, /export const discoveryLayouts/);
@@ -79,6 +88,12 @@ test("every search intent owns a distinct layout, sample treatment and decision 
   assert.equal(new Set(sampleLayoutIds).size, discoveryPages.length);
   for (const id of experienceIds) assert.match(intentExperience, new RegExp(`data-intent-experience=\\"${id}\\"`));
   for (const id of sampleLayoutIds) assert.match(sample, new RegExp(`\\"${id}\\"`));
+});
+
+test("retired bob intent returns an exact 301 to the women hair guide", () => {
+  assert.match(bobRedirect, /women-hairstyle-simulation/);
+  assert.match(bobRedirect, /301/);
+  assert.doesNotMatch(JSON.stringify(discoveryPages), /bob-cut-preview|D-BOB/);
 });
 
 function read(...segments: string[]) {

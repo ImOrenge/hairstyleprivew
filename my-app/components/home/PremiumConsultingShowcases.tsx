@@ -46,6 +46,30 @@ const salonBriefRows = [
   ["AVOID", "짧은 앞머리, 강한 컬, 무거운 옆 볼륨"],
 ] as const;
 
+const makeupPalette = {
+  recommended: [
+    ["SOFT BEIGE", "부드러운 뉴트럴 베이지", "soft-beige"],
+    ["MUTED ROSE", "채도를 낮춘 로즈", "muted-rose"],
+    ["COCOA BROWN", "붉지 않은 코코아 브라운", "cocoa-brown"],
+  ],
+  avoid: [
+    ["VIVID ORANGE", "얼굴 가까운 고채도 오렌지", "vivid-orange"],
+    ["ICY PINK", "푸른 기가 강한 아이시 핑크", "icy-pink"],
+  ],
+} as const;
+
+const makeupZones = [
+  ["EYES", "코코아 브라운으로 음영", "헤어의 부드러운 C컬과 연결하되 경계를 진하게 닫지 않습니다."],
+  ["CHEEKS", "뮤트 로즈를 얇게", "광대 중심보다 바깥쪽으로 연결해 얼굴선의 흐름을 살립니다."],
+  ["LIPS", "로즈 베이지로 마무리", "추천 팔레트 안에서 입술 중심만 한 단계 선명하게 정리합니다."],
+] as const;
+
+const makeupRoutine = [
+  ["01", "베이스", "얇게 정돈하고 붉은 부위만 필요한 만큼 보정"],
+  ["02", "눈·눈썹", "코코아 브라운으로 결을 살리고 경계는 부드럽게"],
+  ["03", "볼·입술", "뮤트 로즈와 로즈 베이지를 같은 채도 안에서 연결"],
+] as const;
+
 const consultationContinuityProofs = [
   ["01", "8개 판단 기준", "균형·손질·시술·컬러·관리 주기·리스크를 같은 표에서 비교"],
   ["02", "살롱 전달", "확정한 길이·볼륨·질감과 피해야 할 요소를 시술 언어로 정리"],
@@ -56,7 +80,8 @@ const dossierPages = [
   ["01", "FACE PROFILE", "얼굴 혼합형·비율·랜드마크와 분석 신뢰도"],
   ["02", "HAIR DIRECTION", "길이·가르마·볼륨·질감의 확정 전략"],
   ["03", "DECISION", "후보 비교와 최종 선택, 선택하지 않은 이유"],
-  ["04", "CARE PROTOCOL", "살롱 브리프·오늘의 관리·다음 방문 기준"],
+  ["04", "MAKEUP & FASHION", "메이크업 전문 리포트·루틴과 패션 방향"],
+  ["05", "CARE PROTOCOL", "살롱 브리프·관리 안내·AI 사후상담 기준"],
 ] as const;
 
 const dossierCurrent = [
@@ -64,6 +89,7 @@ const dossierCurrent = [
   "확정한 전략과 비교 후보",
   "선택 시점의 기준이 보존된 결정 기록",
   "살롱 브리프와 시술 후 애프터케어",
+  "메이크업 전문 리포트·셀프 루틴·아티스트 브리프",
   "패션 9-look 방향",
 ] as const;
 
@@ -71,7 +97,7 @@ const dossierPlanned = ["PDF 내보내기", "연간 Style Archive", "전문가 �
 
 export function AnalysisEvidenceShowcase() {
   return (
-    <LandingScene id="analysis-evidence" number="02" layout="editorial-split" tone="quiet">
+    <LandingScene id="analysis-evidence" number="01" layout="editorial-split" tone="quiet">
       <div className="f-premium-split">
         <div className="f-premium-media" data-landing-media data-detail-closeup data-reveal-item data-reveal-order="1">
           <Image
@@ -107,7 +133,7 @@ export function AnalysisEvidenceShowcase() {
 
 export function DirectionShowcase() {
   return (
-    <LandingScene id="user-direction" number="03" layout="typographic-index">
+    <LandingScene id="user-direction" number="02" layout="typographic-index">
       <SceneHeader
         eyebrow="User Direction"
         title="AI가 먼저 제안하고, 원하는 방향은 선택해서 더합니다."
@@ -139,7 +165,7 @@ export function DirectionShowcase() {
 
 export function StrategicPreviewShowcase() {
   return (
-    <LandingScene id="strategic-preview" number="04" layout="sticky-stage" motion="scroll-progress" tone="quiet">
+    <LandingScene id="strategic-preview" number="03" layout="sticky-stage" motion="scroll-progress" tone="quiet">
       <SceneHeader
         eyebrow="Strategic Preview"
         title="9개 이미지를 만들기 전에, 3개의 전략축을 설계합니다."
@@ -161,7 +187,7 @@ export function StrategicPreviewShowcase() {
 
 export function CompareDecisionShowcase() {
   return (
-    <LandingScene id="compare-decision" number="05" layout="editorial-split">
+    <LandingScene id="compare-decision" number="04" layout="editorial-split">
       <div className="f-premium-compare-layout">
         <div>
           <SceneHeader
@@ -195,7 +221,7 @@ export function CompareDecisionShowcase() {
 
 export function SalonBriefShowcase() {
   return (
-    <LandingScene id="salon-brief" number="06" layout="editorial-split" tone="inverse">
+    <LandingScene id="salon-brief" number="05" layout="editorial-split" tone="inverse">
       <div className="f-premium-split">
         <div className="f-premium-media" data-landing-media data-detail-closeup data-reveal-item data-reveal-order="1">
           <Image src="/landing/editorial/salon-consultation-tablet-chair.webp" alt="미용실에서 태블릿의 상담 브리프를 함께 확인하는 고객과 디자이너" fill sizes="(max-width: 840px) 92vw, 50vw" />
@@ -228,29 +254,93 @@ export function SalonBriefShowcase() {
   );
 }
 
+export function MakeupDirectionShowcase() {
+  return (
+    <LandingScene id="makeup-direction" number="06" layout="editorial-split" tone="quiet">
+      <div className="f-premium-makeup">
+        <div>
+          <SceneHeader
+            eyebrow="Personal Color Makeup Direction"
+            title="퍼스널 컬러를 메이크업 방향으로 연결합니다"
+            description="사진 기반 컬러 근거와 확정한 헤어, 원하는 인상을 함께 보고 눈·볼·입술의 방향을 정합니다. 고객용 AI 전문 해설과 셀프 루틴, 아티스트에게 전달할 부위별 명세까지 같은 결과로 이어집니다."
+          />
+          <div className="f-premium-makeup__palette" data-reveal-item data-reveal-order="4">
+            <section aria-labelledby="makeup-palette-recommended">
+              <p id="makeup-palette-recommended">추천 팔레트</p>
+              <ul>
+                {makeupPalette.recommended.map(([code, label, token]) => (
+                  <li key={code}><span data-makeup-swatch={token} aria-hidden="true" /><strong>{code}</strong><small>{label}</small></li>
+                ))}
+              </ul>
+            </section>
+            <section aria-labelledby="makeup-palette-avoid">
+              <p id="makeup-palette-avoid">피하면 좋은 색</p>
+              <ul>
+                {makeupPalette.avoid.map(([code, label, token]) => (
+                  <li key={code}><span data-makeup-swatch={token} aria-hidden="true" /><strong>{code}</strong><small>{label}</small></li>
+                ))}
+              </ul>
+            </section>
+          </div>
+          <p className="f-premium-proof-note" data-reveal-item data-reveal-order="5">제품 작성 예시이며 실제 고객의 전후 사진이 아닙니다. 사진의 조명·화이트밸런스와 피부 표현에 따라 실제 발색은 달라질 수 있습니다.</p>
+        </div>
+
+        <div className="f-premium-makeup__report" data-reveal-item data-reveal-order="6">
+          <div className="f-premium-makeup__report-head">
+            <span>AI 메이크업 디렉터 리포트 · 예시</span>
+            <strong>저채도 뉴트럴 팔레트로 헤어의 부드러운 흐름을 이어갑니다.</strong>
+            <p>색을 많이 더하기보다 눈매와 입술의 경계를 정돈하면 확정 헤어의 차분한 인상과 자연스럽게 연결됩니다.</p>
+          </div>
+          <dl className="f-premium-makeup__zones">
+            {makeupZones.map(([zone, direction, reason]) => <div key={zone}><dt>{zone}</dt><dd><strong>{direction}</strong><span>{reason}</span></dd></div>)}
+          </dl>
+          <ol className="f-premium-makeup__routine" aria-label="셀프 메이크업 적용 순서">
+            {makeupRoutine.map(([step, title, body]) => <li key={step}><span>{step}</span><strong>{title}</strong><p>{body}</p></li>)}
+          </ol>
+          <div className="f-premium-makeup__artist-brief">
+            <span>ARTIST BRIEF</span>
+            <p>눈·볼·입술의 정확한 컬러·강도·위치는 AI가 다시 쓰지 않고 확정된 전문가 명세를 그대로 전달합니다.</p>
+          </div>
+          <div className="f-premium-makeup__actions">
+            <Link href="/consulting/new" className="f-landing-cta">내 메이크업 방향 확인 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+            <Link href="/discover/personal-color-makeup" className="f-landing-ghost-cta">퍼스널 컬러 메이크업 가이드</Link>
+          </div>
+        </div>
+      </div>
+    </LandingScene>
+  );
+}
+
 export function AftercareTimelineShowcase() {
   return (
-    <LandingScene id="aftercare" number="07" layout="typographic-index" tone="quiet">
-      <SceneHeader eyebrow="Aftercare" title="시술이 끝난 뒤에, 관리가 시작됩니다." description="애프터케어는 실제 시술 완료 후 열립니다. 시술 정보와 관리 주기를 기준으로 오늘 해야 할 일을 과도한 단계 없이 이어갑니다." />
+    <LandingScene id="aftercare" number="09" layout="typographic-index" tone="quiet">
+      <SceneHeader eyebrow="Aftercare" title="시술이 끝난 뒤에, 관리가 시작됩니다." description="시술 정보가 등록되면 D+1·3·7·30·45·90에 관리 안내를 제공합니다. 사진과 고민을 바탕으로 답변하는 AI 사후상담은 플랜에 따라 별도로 열립니다." />
       <div className="f-premium-care-dashboard" data-reveal-item data-reveal-order="4">
         <article><span>TODAY</span><strong>컬을 당기지 말고 뿌리부터 80% 건조</strong><p>남은 시간 약 7분 · 필요한 도구: 드라이어, 큰 롤 브러시</p></article>
-        <dl><div><dt>시술 등록</dt><dd>커트 + 소프트 C컬</dd></div><div><dt>현재 체크인</dt><dd>DAY 03 / 세정 가능</dd></div><div><dt>다음 기준</dt><dd>볼륨 유지와 끝선 건조도</dd></div></dl>
+        <dl><div><dt>관리 안내</dt><dd>D+1·3·7·30·45·90, 총 6회</dd></div><div><dt>현재 안내</dt><dd>D+3 / 세정·건조 루틴 확인</dd></div><div><dt>AI 사후상담</dt><dd>플랜별 D+30 또는 D+30·60·90</dd></div></dl>
       </div>
       <ol className="f-premium-timeline">
         {[
-          ["SERVICE DAY", "시술 결과와 주의사항 기록"],
-          ["DAY 03", "세정·건조 루틴 확인"],
-          ["WEEK 02", "볼륨과 컬 유지 상태 점검"],
-          ["WEEK 08", "다음 관리 시점 제안"],
-        ].map(([time, task], index) => <li key={time} data-reveal-item data-reveal-order={index + 5}><Clock3 aria-hidden="true" /><span>{time}</span><strong>{task}</strong><small>{index === 0 ? "완료" : index === 1 ? "오늘" : "예정"}</small></li>)}
+          ["D+1", "시술 직후 주의사항과 첫 세정 전 관리"],
+          ["D+3", "세정·건조 루틴 확인"],
+          ["D+7", "컬·볼륨과 불편 신호 확인"],
+          ["D+30", "유지 상태 점검 · AI 사후상담 가능 시점"],
+          ["D+45", "손질 변화와 다음 관리 준비"],
+          ["D+90", "장기 유지와 다음 상담 기준 정리"],
+        ].map(([time, task], index) => <li key={time} data-reveal-item data-reveal-order={index + 5}><Clock3 aria-hidden="true" /><span>{time}</span><strong>{task}</strong><small>{index < 2 ? "초기 관리" : "예정"}</small></li>)}
       </ol>
+      <div className="f-premium-aftercare-entitlements" data-reveal-item data-reveal-order="11">
+        <p><strong>1회 플랜</strong><span>AI 사후상담 D+30 · 1회</span></p>
+        <p><strong>3개월 플랜</strong><span>상담당 D+30·60·90 · 3회</span></p>
+        <p><strong>연간 플랜</strong><span>연 4개 상담 각각 D+30·60·90 · 상담당 3회</span></p>
+      </div>
     </LandingScene>
   );
 }
 
 export function FashionDirectionShowcase() {
   return (
-    <LandingScene id="fashion-direction" number="08" layout="editorial-split">
+    <LandingScene id="fashion-direction" number="07" layout="editorial-split">
       <div className="f-premium-split f-premium-split--reverse">
         <div>
           <SceneHeader eyebrow="Fashion Direction" title="기본 3개를 지키면서, 최대 6개를 더 만듭니다." description="먼저 Work·Weekend·Occasion 기본 3개를 확인합니다. 원하면 기존 결과를 교체하지 않고 3개씩 두 번 추가해 최대 9개까지 비교할 수 있습니다." />
@@ -270,7 +360,7 @@ export function FashionDirectionShowcase() {
 
 export function StyleDossierShowcase() {
   return (
-    <LandingScene id="style-dossier" number="09" layout="closing-stage" tone="inverse">
+    <LandingScene id="style-dossier" number="08" layout="closing-stage" tone="inverse">
       <div className="f-premium-dossier">
         <div>
           <SceneHeader eyebrow="Style Dossier · Sample" title="한 번의 생성이 아니라, 결정의 맥락을 남깁니다." description="현재 컨설팅에서 이어지는 분석·전략·결정·브리프·관리 데이터를 하나의 샘플 Dossier로 보여드립니다." />

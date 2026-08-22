@@ -42,14 +42,14 @@ export function DiscoveryHero({ definition }: { definition: DiscoveryPageDefinit
               priority
             />
             <figcaption>
-              <span>ORIGIN REFERENCE</span>
+              <span>{definition.sampleKind === "hair-grid" ? "ORIGIN REFERENCE" : "PRODUCT-AUTHORED SAMPLE"}</span>
               <strong>{definition.sample.heroCaption}</strong>
             </figcaption>
           </figure>
         ) : null}
       </div>
       <a className={styles.nextSectionHint} href="#sample-comparison" aria-label={`${definition.sample.title}로 이동`}>
-        <span>3 STRATEGIES · 9 PREVIEWS</span>
+        <span>{definition.sampleKind === "hair-grid" ? "3 STRATEGIES · 9 PREVIEWS" : "PALETTE · ZONES · PROFESSIONAL REPORT"}</span>
         <ArrowDown aria-hidden="true" />
       </a>
     </section>

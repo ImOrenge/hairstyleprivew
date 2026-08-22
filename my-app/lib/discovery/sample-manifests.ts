@@ -1,4 +1,5 @@
 import type {
+  DiscoveryMakeupSampleManifest,
   DiscoverySampleAsset,
   DiscoverySampleManifest,
   DiscoveryStrategyId,
@@ -135,23 +136,6 @@ const bangsSet = discoveryContinuitySet({
   ],
 });
 
-const bobSet = discoveryContinuitySet({
-  slug: "bob-hairstyle",
-  source: { width: 768, height: 1024, bytes: 42152 },
-  personId: "synthetic-discovery-bob-model-11",
-  previews: [
-    catalogPreview("01", 13004, "female-short-french-bob-straight-damaged", "여성 프렌치 보브 · 직모 손상 모발"),
-    catalogPreview("02", 15810, "female-short-tassel-bob-wavy-curly-bleached", "여성 태슬 보브 · 곱슬 웨이브 탈색 모발"),
-    catalogPreview("03", 17820, "female-short-rounded-bob-tight-curly-frizzy-untreated", "여성 라운드 보브 · 강한 곱슬 일반 모발"),
-    catalogPreview("04", 14540, "female-medium-s-curl-lob-straight-damaged", "여성 S컬 로브 · 직모 손상 모발"),
-    catalogPreview("05", 17414, "female-medium-clavicle-bob-wavy-curly-damaged", "여성 쇄골 보브 · 곱슬 웨이브 손상 모발"),
-    catalogPreview("06", 19260, "female-medium-volume-bob-tight-curly-frizzy-colored", "여성 볼륨 보브 · 강한 곱슬 염색 모발"),
-    catalogPreview("07", 24640, "female-long-blunt-long-tight-curly-frizzy-colored", "여성 블런트 롱 · 강한 곱슬 염색 모발"),
-    catalogPreview("08", 24520, "female-long-face-frame-long-tight-curly-frizzy-colored", "여성 페이스 프레임 롱 · 강한 곱슬 염색 모발"),
-    catalogPreview("09", 21004, "female-long-curtain-long-wavy-curly-untreated", "여성 커튼 롱 · 곱슬 웨이브 일반 모발"),
-  ],
-});
-
 const salonSet = discoveryContinuitySet({
   slug: "salon-consultation",
   source: { width: 768, height: 1024, bytes: 41286 },
@@ -275,18 +259,82 @@ export const discoverySampleManifests = [
       { id: "LIFESTYLE", label: "CURTAIN FRINGE", description: "카탈로그의 커튼 프린지 후보와 컬 강도를 비교합니다.", numbers: ["03", "06", "09"] },
     ],
   }),
-  createManifest({
-    id: "SAMPLE-D-BOB-CATALOG-V4",
-    prefix: "sample-bob",
-    set: bobSet,
-    sourceAlt: "단발과 보브컷 전환을 비교하는 여성 원본 모델 예시",
-    og: { ...previewBoardOg, alt: "단발과 보브컷 후보를 비교하는 HairFit 보드 예시", personId: "synthetic-editorial-bob-preview-v2" },
-    strategies: [
-      { id: "BALANCE", label: "JAW LINE", description: "턱선에 닿는 세 가지 짧은 실루엣을 비교합니다.", numbers: ["01", "02", "03"] },
-      { id: "IMAGE", label: "SHOULDER LINE", description: "어깨선 전후의 길이와 끝선 움직임을 확인합니다.", numbers: ["04", "05", "06"] },
-      { id: "LIFESTYLE", label: "KEEP LENGTH", description: "길이를 유지하는 대조 후보와 관리 차이를 함께 봅니다.", numbers: ["07", "08", "09"] },
+  {
+    id: "SAMPLE-D-MAKEUP-V1",
+    sampleKind: "makeup-direction",
+    status: "approved",
+    sourceAssetId: "sample-makeup-source",
+    ogAssetId: "sample-makeup-og",
+    reviewedAt: "2026-08-22",
+    owner: "HairFit product design",
+    provenanceRef: "product-authored:makeup-direction-fixture-v1",
+    assets: [
+      {
+        id: "sample-makeup-source",
+        path: "/images/consulting/models/hairfit-semi-real-model-v1.png",
+        role: "source",
+        width: 1122,
+        height: 1402,
+        bytes: 2158459,
+        alt: "퍼스널 컬러 메이크업 방향을 설명하는 HairFit 합성 기준 모델",
+        crop: "portrait",
+        status: "approved",
+        personId: "synthetic-makeup-direction-model-v1",
+        licenseRef: "internal-generated-content:makeup-direction-fixture-v1",
+        consentRef: "synthetic-model:no-user-upload",
+      },
+      {
+        id: "sample-makeup-og",
+        path: "/images/consulting/models/hairfit-semi-real-model-v1.png",
+        role: "og",
+        width: 1122,
+        height: 1402,
+        bytes: 2158459,
+        alt: "HairFit 퍼스널 컬러 메이크업 추천 가이드",
+        crop: "portrait",
+        status: "approved",
+        personId: "synthetic-makeup-direction-model-v1",
+        licenseRef: "internal-generated-content:makeup-direction-fixture-v1",
+        consentRef: "synthetic-model:no-user-upload",
+      },
     ],
-  }),
+    direction: {
+      palettes: [
+        {
+          group: "recommended",
+          label: "추천 팔레트",
+          colors: [
+            { token: "soft-beige", label: "소프트 베이지", note: "얇고 자연스러운 피부 표현" },
+            { token: "muted-rose", label: "뮤트 로즈", note: "볼과 입술을 같은 채도로 연결" },
+            { token: "cocoa-brown", label: "코코아 브라운", note: "눈매를 닫지 않는 부드러운 음영" },
+          ],
+        },
+        {
+          group: "avoid",
+          label: "피하면 좋은 팔레트",
+          colors: [
+            { token: "vivid-orange", label: "비비드 오렌지", note: "얼굴 가까이에서는 채도가 튈 수 있음" },
+            { token: "icy-pink", label: "아이시 핑크", note: "푸른 기가 피부 표현과 분리될 수 있음" },
+          ],
+        },
+      ],
+      zones: [
+        { area: "눈", direction: "코코아 브라운 음영", reason: "확정 헤어의 부드러운 흐름과 연결" },
+        { area: "볼", direction: "뮤트 로즈를 바깥쪽으로", reason: "얼굴선의 흐름을 막지 않도록 얇게 적용" },
+        { area: "입술", direction: "로즈 베이지 중심 발색", reason: "전체 채도를 유지하며 중심만 정돈" },
+      ],
+      routine: [
+        { step: "01", title: "베이스", body: "얇게 정돈하고 필요한 부위만 보정합니다." },
+        { step: "02", title: "눈·눈썹", body: "결을 살리고 경계는 부드럽게 연결합니다." },
+        { step: "03", title: "볼·입술", body: "뮤트 로즈 계열로 채도를 맞춥니다." },
+      ],
+      report: {
+        headline: "저채도 뉴트럴 팔레트로 헤어의 부드러운 흐름을 이어갑니다.",
+        summary: "색을 많이 더하기보다 눈매와 입술의 경계를 정돈해 차분한 인상을 유지합니다.",
+        artistBrief: "부위별 컬러·마감·강도는 확정된 전문가 명세를 그대로 전달합니다.",
+      },
+    },
+  } satisfies DiscoveryMakeupSampleManifest,
   createManifest({
     id: "SAMPLE-D-SALON-CATALOG-V4",
     prefix: "sample-salon",
@@ -340,6 +388,7 @@ function createManifest(config: ManifestConfig): DiscoverySampleManifest {
 
   return {
     id: config.id,
+    sampleKind: "hair-grid",
     status: "approved",
     sourceAssetId,
     ogAssetId,

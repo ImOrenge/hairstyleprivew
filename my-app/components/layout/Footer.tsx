@@ -21,6 +21,9 @@ export function Footer() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p>&copy; {new Date().getFullYear()} {footerCompanyName}</p>
           <div className="flex flex-wrap items-center gap-3">
+            <Link href="/discover" className="underline-offset-4 hover:underline">
+              스타일 가이드
+            </Link>
             <Link href="/privacy-policy" className="underline-offset-4 hover:underline">
               {t("footer.privacy")}
             </Link>

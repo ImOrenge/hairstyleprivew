@@ -11,6 +11,19 @@
   padding: 0;
 }
 
+.sceneNumber {
+  position: absolute;
+  top: clamp(1.5rem, 3vw, 3rem);
+  left: max(var(--landing-gutter), calc((100vw - 80rem) / 2));
+  z-index: 3;
+  color: color-mix(in srgb, var(--app-text) 48%, transparent);
+  font-size: clamp(3rem, 9vw, 8rem);
+  font-weight: 950;
+  letter-spacing: -0.08em;
+  line-height: 0.8;
+  pointer-events: none;
+}
+
 .visualStage {
   position: absolute;
   inset: 0;
@@ -325,6 +338,12 @@
 
   .visualStage {
     height: 100%;
+  }
+
+  .sceneNumber {
+    top: 1.5rem;
+    left: 1rem;
+    font-size: 3rem;
   }
 
   .columns {

@@ -149,7 +149,7 @@ flowchart LR
 | `D-MEN` | `/discover/men-hairstyle-simulation` | 남자 헤어스타일 시뮬레이션 | audience | 남자 헤어 9가지 보기 |
 | `D-WOMEN` | `/discover/women-hairstyle-simulation` | 여자 헤어스타일 시뮬레이션 | audience | 여자 헤어 9가지 보기 |
 | `D-BANGS` | `/discover/bangs-preview` | 앞머리 어울리는지 테스트 | style | 앞머리 후보 비교하기 |
-| `D-BOB` | `/discover/bob-cut-preview` | 단발·보브컷 미리보기 | style | 단발 후보 비교하기 |
+| `D-MAKEUP` | `/discover/personal-color-makeup` | 퍼스널 컬러 메이크업 추천 | style | 내 메이크업 방향 확인하기 |
 | `D-SALON` | `/discover/salon-consultation-image` | 미용실 상담 이미지 | use-case | 상담용 헤어 후보 만들기 |
 
 URL에 연도나 유행어를 넣지 않는다. 트렌드가 바뀌어도 canonical을 유지하기 위함이다.

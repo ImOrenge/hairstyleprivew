@@ -24,7 +24,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${siteUrl}/discover`,
-      lastModified: new Date("2026-08-14"),
+      lastModified: new Date("2026-08-22"),
       changeFrequency: "weekly",
       priority: 0.9,
     },

@@ -118,6 +118,33 @@ export const discoveryEvidenceRegistry = [
     expiresAt: "2027-08-14",
     owner: "HairFit V2 consulting",
   },
+  {
+    id: "EVD-MAKEUP-COLOR-GROUNDING",
+    status: "verified",
+    statement: "확정 메이크업 방향은 퍼스널 컬러 근거와 확정 헤어, 사용자 요구를 구조화된 입력으로 연결한다.",
+    sourceRef: "my-app/components/consulting/makeup/MakeupDirectionFixture.tsx#professionalReportInput",
+    verifiedAt: "2026-08-22",
+    expiresAt: "2027-08-22",
+    owner: "HairFit makeup direction",
+  },
+  {
+    id: "EVD-MAKEUP-ROUTINE-BRIEF",
+    status: "verified",
+    statement: "확정 메이크업 방향은 셀프 적용 루틴과 아티스트용 부위별 명세로 함께 제공된다.",
+    sourceRef: "my-app/components/consulting/makeup/MakeupDirectionFixture.tsx#routine",
+    verifiedAt: "2026-08-22",
+    expiresAt: "2027-08-22",
+    owner: "HairFit makeup direction",
+  },
+  {
+    id: "EVD-MAKEUP-PROFESSIONAL-REPORT",
+    status: "verified",
+    statement: "확정 메이크업 방향에는 고객용 AI 전문 해설과 권위 데이터인 전문가 명세가 같은 화면에서 제공된다.",
+    sourceRef: "my-app/components/consulting/makeup/MakeupDirectionFixture.tsx#MakeupProfessionalReport",
+    verifiedAt: "2026-08-22",
+    expiresAt: "2027-08-22",
+    owner: "HairFit makeup report",
+  },
 ] satisfies readonly DiscoveryEvidenceEntry[];
 
 export function getDiscoveryEvidence(id: string) {
