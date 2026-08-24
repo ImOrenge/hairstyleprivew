@@ -1,4 +1,5 @@
 import type { MakeupModule } from "./contract.ts";
+import type { MakeupRecipeBindingV1 } from "./catalog.ts";
 
 export type MakeupProfessionalReportFactKindV1 = "decision" | "reason" | "guidance" | "limitation" | "module";
 
@@ -14,6 +15,7 @@ export interface MakeupDirectionProfessionalReportInputV1 {
   schemaVersion: "makeup-direction-professional-report-input-v1";
   enabledModules: MakeupModule[];
   facts: MakeupProfessionalReportFactV1[];
+  recipeBinding?: MakeupRecipeBindingV1;
 }
 
 export interface MakeupProfessionalReportLineV1 {

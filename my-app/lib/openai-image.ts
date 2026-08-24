@@ -1,5 +1,6 @@
 import type { FashionRecommendation, StyleProfile } from "./fashion-types";
 import type { GeneratedVariant } from "./recommendation-types";
+import { buildOpenAIMakeupStyleSimulationPrompt } from "./makeup/makeup-simulation-prompt.ts";
 
 export interface OpenAIImageRunRequest {
   prompt: string;
@@ -383,23 +384,24 @@ Keep realistic strand detail, roots, highlights, shadows, translucency, and natu
   });
 }
 
-export async function runOpenAIMakeupStyleSimulation(input: {
+export interface OpenAIMakeupStyleSimulationInput {
   imageDataUrl: string;
   mode: string;
   palette: string[];
-  modules: Array<{ module: string; color: string; intensity: number; finish: string }>;
+  presentationFamily?: "masculine" | "feminine" | "neutral";
+  recipeId?: string;
+  recipeFingerprint?: string;
+  occasion?: string;
+  preparationMinutes?: number;
+  skillLevel?: string;
+  facialHair?: { type: string; userWantsCoverage: boolean };
+  modules: Array<{ module: string; color: string; intensity: number; finish: string; enabled?: boolean; paletteRole?: string; techniqueTokens?: string[] }>;
   exclusions: string[];
   quality?: "low" | "medium" | "high" | "auto";
-}) {
-  const moduleLines = input.modules.map((item) => `${item.module}: color ${item.color}, intensity ${item.intensity}%, finish ${item.finish}`).join("\n");
-  const prompt = `Create one photorealistic makeup style simulation from the supplied portrait.
-Apply makeup only. Preserve the exact same person, facial geometry, eye size, nose, lips, jaw, skin tone, freckles, marks, hair, clothing, background, pose, crop, and lighting intent.
-Do not slim or reshape the face, enlarge eyes, reshape the nose, restyle hair, replace the background, whiten skin, erase natural texture, or apply beauty retouching.
-Mode: ${input.mode}.
-Personal color palette: ${input.palette.join(", ") || "use the supplied structured module colors"}.
-Structured modules:\n${moduleLines}
-Explicit exclusions: ${input.exclusions.join(", ") || "none"}.
-Keep realistic pores and product texture. Return a single portrait without text, labels, split panels, or decorative graphics.`;
+}
+
+export async function runOpenAIMakeupStyleSimulation(input: OpenAIMakeupStyleSimulationInput) {
+  const prompt = buildOpenAIMakeupStyleSimulationPrompt(input);
   return runImageEdit({ prompt, images: [{ dataUrl: input.imageDataUrl, filename: "makeup-source" }], quality: input.quality ?? "medium", model: DEFAULT_OPENAI_IMAGE_MODEL });
 }
 

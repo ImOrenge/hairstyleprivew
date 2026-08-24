@@ -55,6 +55,8 @@ export function isMakeupRationaleAiEnabled() {
 export function isMakeupProfessionalReportAiEnabled() { return process.env.MAKEUP_PROFESSIONAL_REPORT_AI_ENABLED === "true"; }
 export function isMakeupStyleSimulationEnabled() { return process.env.MAKEUP_STYLE_SIMULATION_ENABLED === "true"; }
 export function isMakeupStyleSimulationAlternativeEnabled() { return process.env.MAKEUP_STYLE_SIMULATION_ALTERNATIVE_ENABLED === "true"; }
+export function isMakeupRecipeCatalogEnabled(env: MakeupFeatureFlagEnv = process.env) { return env.MAKEUP_RECIPE_CATALOG_ENABLED === "true"; }
+export function isMakeupRecipeCatalogShadowEnabled(env: MakeupFeatureFlagEnv = process.env) { return env.MAKEUP_RECIPE_CATALOG_SHADOW_ENABLED === "true"; }
 export function isHairTraitAnalysisEnabled() { return process.env.CONSULTATION_HAIR_TRAIT_ANALYSIS_ENABLED !== "false"; }
 
 export function isPersonalColorCapabilityEnabled() {

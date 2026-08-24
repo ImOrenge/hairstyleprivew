@@ -145,6 +145,18 @@ export const MAKEUP_DIRECTION_SNAPSHOT_JSON_SCHEMA = {
     },
     topologyProjection: TOPOLOGY_PROJECTION_SCHEMA,
     denseAtlas: DENSE_ATLAS_SCHEMA,
+    recipeBinding: {
+      type: "object",
+      additionalProperties: false,
+      required: ["cycleId", "cycleVersion", "recipeId", "recipeFingerprint", "presentationFamily"],
+      properties: {
+        cycleId: { type: "string", minLength: 1 },
+        cycleVersion: { type: "integer", minimum: 1 },
+        recipeId: { type: "string", minLength: 1 },
+        recipeFingerprint: { type: "string", pattern: "^[a-fA-F0-9]{64}$" },
+        presentationFamily: { enum: ["masculine", "feminine", "neutral"] },
+      },
+    },
     modelManifest: { type: "object", additionalProperties: false, required: ["geometryPolicyVersion", "directionPolicyVersion", "routinePolicyVersion", "explanationModel", "createdAt"], properties: { geometryPolicyVersion: { type: "string" }, directionPolicyVersion: { type: "string" }, routinePolicyVersion: { type: "string" }, explanationModel: { type: ["string", "null"] }, createdAt: { type: "string", format: "date-time" } } },
     confirmedAt: { type: ["string", "null"], format: "date-time" },
     createdAt: { type: "string", format: "date-time" },

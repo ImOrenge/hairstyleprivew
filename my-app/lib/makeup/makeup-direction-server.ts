@@ -12,6 +12,8 @@ import {
   type MakeupDenseAtlasV3,
   type MakeupModule,
   type MakeupModulePatch,
+  type MakeupMode,
+  type MakeupRecipeV1,
   type MakeupProtectedRegionV3,
   type MakeupSourceStaleReason,
   validateMakeupModulePatchBounds,
@@ -22,15 +24,17 @@ import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "../v2/errors";
 import { recordV2Event } from "../v2/observability";
 import { ensureMakeupArtifacts } from "./makeup-artifacts-server";
-import { isMakeupDenseAtlasV3Enabled, isMakeupSemanticVisionStaffOnly, isMakeupSemanticVisionV3Enabled } from "../consulting/feature-flag";
+import { isMakeupDenseAtlasV3Enabled, isMakeupRecipeCatalogEnabled, isMakeupRecipeCatalogShadowEnabled, isMakeupSemanticVisionStaffOnly, isMakeupSemanticVisionV3Enabled } from "../consulting/feature-flag";
 import { readMakeupSemanticCapability, retryMakeupSemanticCapability, runMakeupSemanticCapability, type MakeupSemanticCapabilityInput } from "../capabilities/makeup-semantic-map-service";
 import { readMakeupSourceImageDataUrl } from "./makeup-source-image-server";
+import { readActiveMakeupRecipeV1 } from "./makeup-recipe-catalog-server";
 
 type SnapshotRow = {
   id: string; consultation_id: string; user_id: string; snapshot_version: number; revision: number; status: string;
   face_observation_bundle_id: string; personal_color_profile_id: string; selected_style_snapshot_id: string;
   input_profile_revision: number; source_fingerprint: string; context: MakeupContextProfile; modules: MakeupDirectionSnapshot["modules"];
   snapshot: MakeupDirectionSnapshot; confirmed_at: string | null; created_at: string; updated_at: string;
+  recipe_catalog_cycle_id?: string | null; recipe_id?: string | null; recipe_fingerprint?: string | null; presentation_family?: string | null;
 };
 
 const EDITABLE_STATES = ["context_draft", "geometry_building", "map_ready", "partial_ready", "user_adjusted", "failed_retryable"];
@@ -236,7 +240,8 @@ export async function saveMakeupContext(userId: string, consultationId: string, 
   const existing = existingResult.data as unknown as SnapshotRow | null;
   if (existing && existing.source_fingerprint === sources.fingerprint) {
     const snapshot = { ...existing.snapshot, context, status: "context_draft" as const, modules: emptyModules(), confirmedAt: null };
-    const updated = await db.from("makeup_direction_snapshots").update({ context, modules: snapshot.modules, snapshot, status: "context_draft", revision: existing.revision + 1, updated_at: new Date().toISOString() })
+    delete snapshot.recipeBinding;
+    const updated = await db.from("makeup_direction_snapshots").update({ context, modules: snapshot.modules, snapshot, status: "context_draft", revision: existing.revision + 1, recipe_catalog_cycle_id: null, recipe_id: null, recipe_fingerprint: null, presentation_family: null, updated_at: new Date().toISOString() })
       .eq("id", existing.id).eq("user_id", userId).eq("revision", existing.revision).select("*").maybeSingle();
     if (updated.error) throw new Error(updated.error.message);
     if (!updated.data) throw new HairfitV2Error("MAKEUP_REVISION_CONFLICT", 409, "메이크업 입력이 변경되었습니다. 다시 불러와 주세요.");
@@ -271,7 +276,17 @@ export async function buildMakeupDirection(userId: string, consultationId: strin
   if (!row) throw new HairfitV2Error("MAKEUP_CONTEXT_REQUIRED", 409, "메이크업 컨텍스트를 먼저 저장해 주세요.");
   if (row.revision !== expectedRevision) throw new HairfitV2Error("MAKEUP_REVISION_CONFLICT", 409, "메이크업 입력이 변경되었습니다. 다시 불러와 주세요.");
   const stale = staleReasons(row.snapshot, sources.source); if (stale.length) throw new HairfitV2Error("MAKEUP_SOURCE_VERSION_STALE", 409, "원본 분석 또는 선택 결과가 바뀌었습니다. 컨텍스트부터 다시 저장해 주세요.");
-  const snapshot = buildMakeupFoundationSnapshotV1({ id: row.id, consultationId, version: row.snapshot_version, source: sources.source, context: row.context, observation: sources.observation, personalColor: sources.profile, hair: sources.hair, createdAt: row.created_at });
+  const selectedMode = (row.snapshot.rationale?.acceptedMode ?? row.context.makeupMode ?? row.snapshot.interviewProfile?.primaryMode ?? "daily_natural") as MakeupMode;
+  let recipe: MakeupRecipeV1 | null = null;
+  if (isMakeupRecipeCatalogEnabled() || isMakeupRecipeCatalogShadowEnabled()) {
+    try { recipe = await readActiveMakeupRecipeV1(row.context.gender, selectedMode); }
+    catch (error) {
+      if (isMakeupRecipeCatalogEnabled()) throw error;
+      await recordV2Event({ consultationId, userId, eventType: "makeup.recipe_catalog.shadow_failed", payload: { selectedMode, errorCode: error instanceof HairfitV2Error ? error.code : "MAKEUP_RECIPE_SHADOW_FAILED" } });
+    }
+  }
+  const useRecipe = isMakeupRecipeCatalogEnabled() ? recipe : null;
+  const snapshot = buildMakeupFoundationSnapshotV1({ id: row.id, consultationId, version: row.snapshot_version, source: sources.source, context: row.context, observation: sources.observation, personalColor: sources.profile, hair: sources.hair, createdAt: row.created_at, recipe: useRecipe });
   snapshot.interviewProfile = row.snapshot.interviewProfile;
   if (row.snapshot.interviewProfile && row.snapshot.rationale) {
     const refreshed = compileMakeupRecommendationRationaleV1({
@@ -297,11 +312,15 @@ export async function buildMakeupDirection(userId: string, consultationId: strin
     snapshot.modelManifest.geometryPolicyVersion = snapshot.topologyProjection?.degradedReason ? "makeup-geometry-mediapipe-v1-fallback" : "makeup-geometry-mediapipe-v2";
     assertMakeupDirectionSnapshot(snapshot);
   }
-  const updated = await db.from("makeup_direction_snapshots").update({ status: snapshot.status, revision: row.revision + 1, modules: snapshot.modules, snapshot, geometry_policy_version: snapshot.modelManifest.geometryPolicyVersion, direction_policy_version: snapshot.modelManifest.directionPolicyVersion, updated_at: new Date().toISOString() })
+  if (recipe && !isMakeupRecipeCatalogEnabled()) {
+    const shadow = buildMakeupFoundationSnapshotV1({ id: row.id, consultationId, version: row.snapshot_version, source: sources.source, context: row.context, observation: sources.observation, personalColor: sources.profile, hair: sources.hair, createdAt: row.created_at, recipe });
+    await recordV2Event({ consultationId, userId, eventType: "makeup.recipe_catalog.shadow_compared", payload: { cycleId: recipe.cycleId, recipeId: recipe.id, presentationFamily: recipe.presentationFamily, selectedMode, changedModules: shadow.modules.filter((item, index) => item.state !== snapshot.modules[index]?.state || item.direction.intensity !== snapshot.modules[index]?.direction.intensity).map((item) => item.module) } });
+  }
+  const updated = await db.from("makeup_direction_snapshots").update({ status: snapshot.status, revision: row.revision + 1, modules: snapshot.modules, snapshot, geometry_policy_version: snapshot.modelManifest.geometryPolicyVersion, direction_policy_version: snapshot.modelManifest.directionPolicyVersion, recipe_catalog_cycle_id: snapshot.recipeBinding?.cycleId ?? null, recipe_id: snapshot.recipeBinding?.recipeId ?? null, recipe_fingerprint: snapshot.recipeBinding?.recipeFingerprint ?? null, presentation_family: snapshot.recipeBinding?.presentationFamily ?? null, updated_at: new Date().toISOString() })
     .eq("id", row.id).eq("user_id", userId).eq("revision", row.revision).select("*").maybeSingle();
   if (updated.error) throw new Error(updated.error.message);
   if (!updated.data) throw new HairfitV2Error("MAKEUP_REVISION_CONFLICT", 409, "메이크업 지도가 변경되었습니다. 다시 불러와 주세요.");
-  await recordV2Event({ consultationId, userId, eventType: "makeup.zone_map.built", payload: { moduleCount: snapshot.modules.length, presentation: snapshot.context.presentation, preparationMinutes: snapshot.context.preparationMinutes, skillLevel: snapshot.context.skillLevel, directionPolicyVersion: snapshot.modelManifest.directionPolicyVersion } });
+  await recordV2Event({ consultationId, userId, eventType: "makeup.zone_map.built", payload: { moduleCount: snapshot.modules.length, presentation: snapshot.context.presentation, presentationFamily: snapshot.recipeBinding?.presentationFamily ?? null, recipeId: snapshot.recipeBinding?.recipeId ?? null, recipeFingerprint: snapshot.recipeBinding?.recipeFingerprint ?? null, preparationMinutes: snapshot.context.preparationMinutes, skillLevel: snapshot.context.skillLevel, directionPolicyVersion: snapshot.modelManifest.directionPolicyVersion } });
   return { ...mapRow(updated.data as unknown as SnapshotRow), semanticMap: null, semanticEnabled: await semanticVisionAllowed(userId), denseAtlasEnabled: isMakeupDenseAtlasV3Enabled() };
 }
 

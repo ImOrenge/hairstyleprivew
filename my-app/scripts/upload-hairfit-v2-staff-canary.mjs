@@ -23,7 +23,7 @@ export function buildServerVersionPayload(mode) {
   if (!(mode in modeContracts)) throw new Error("--mode must be canary or off");
   return Object.fromEntries(SERVER_ROLLOUT_FLAGS.map((name) => [
     name,
-    mode === "canary" && name !== "ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED" ? "true" : "false",
+    mode === "canary" && !["ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED", "MAKEUP_RECIPE_CATALOG_ENABLED"].includes(name) ? "true" : "false",
   ]));
 }
 

@@ -1,4 +1,5 @@
 import type { MakeupInterviewProfileV2, MakeupMode, MakeupRecommendationRationaleV1 } from "./interview.ts";
+import type { MakeupRecipeBindingV1 } from "./catalog.ts";
 
 export const MAKEUP_MODULES = ["base", "brow", "eyeshadow", "eyeliner", "blush", "lip", "lashes"] as const;
 export type MakeupModule = (typeof MAKEUP_MODULES)[number];
@@ -221,6 +222,7 @@ export interface MakeupDirectionSnapshot {
   topologyProjection?: MakeupTopologyProjectionV2;
   denseAtlas?: MakeupDenseAtlasV3;
   modelManifest: { geometryPolicyVersion: string; directionPolicyVersion: string; routinePolicyVersion: string; explanationModel: string | null; createdAt: string };
+  recipeBinding?: MakeupRecipeBindingV1;
   confirmedAt: string | null;
   createdAt: string;
 }
@@ -281,6 +283,12 @@ export function assertMakeupDirectionSnapshot(snapshot: MakeupDirectionSnapshot)
   const modules = new Set(snapshot.modules.map((item) => item.module));
   if (snapshot.modules.length !== MAKEUP_MODULES.length || MAKEUP_MODULES.some((module) => !modules.has(module))) {
     throw new Error("MAKEUP_DIRECTION_SNAPSHOT_MODULES_INVALID");
+  }
+  const recipe = snapshot.recipeBinding;
+  if (recipe && (!recipe.cycleId || !Number.isInteger(recipe.cycleVersion) || recipe.cycleVersion < 1
+    || !recipe.recipeId || !/^[a-f0-9]{64}$/i.test(recipe.recipeFingerprint)
+    || !["masculine", "feminine", "neutral"].includes(recipe.presentationFamily))) {
+    throw new Error("MAKEUP_DIRECTION_SNAPSHOT_RECIPE_INVALID");
   }
   const points = snapshot.modules.flatMap((item) => [
     ...item.geometry.anchors,

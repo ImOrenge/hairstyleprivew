@@ -47,10 +47,11 @@ export function projectMakeupProfessionalReportInputV1(input: {
   [...snapshot.rationale?.limitations ?? [], ...brief.exclusions].filter(Boolean).forEach((item, index) => facts.push({ id: `limitation-${index}`, kind: "limitation", module: null, label: "확인할 점", value: item }));
   if (!facts.some((fact) => fact.kind === "reason")) facts.push({ id: "fit-reason-fallback", kind: "reason", module: null, label: "조화 기준", value: "확정한 헤어와 퍼스널 컬러 흐름에 맞춰 메이크업 방향을 연결했습니다." });
   if (!facts.some((fact) => fact.kind === "limitation")) facts.push({ id: "limitation-fallback", kind: "limitation", module: null, label: "확인할 점", value: "실제 발색과 질감은 피부 상태, 제품, 조명과 적용 방법에 따라 달라질 수 있습니다." });
-  return { schemaVersion: "makeup-direction-professional-report-input-v1", enabledModules, facts };
+  return { schemaVersion: "makeup-direction-professional-report-input-v1", enabledModules, facts, ...(snapshot.recipeBinding ? { recipeBinding: snapshot.recipeBinding } : {}) };
 }
 
 function prompt(input: MakeupDirectionProfessionalReportInputV1) {
+  const modelInput = { schemaVersion: input.schemaVersion, enabledModules: input.enabledModules, facts: input.facts };
   return [
     "당신은 HairFit의 전문 메이크업 디렉터입니다.",
     "제공된 구조화 사실만 사용해 고객이 이해하기 쉬운 한국어 메이크업 결과 리포트를 작성하세요.",
@@ -60,7 +61,7 @@ function prompt(input: MakeupDirectionProfessionalReportInputV1) {
     "모든 문장은 직접 뒷받침하는 fact id를 evidenceIds로 포함하세요.",
     "summary는 3~5개, fitReasons와 applicationTips는 각각 1~4개, 부위별 summary는 1~2개로 제한하세요.",
     "JSON만 반환하세요.",
-    JSON.stringify(input),
+    JSON.stringify(modelInput),
   ].join("\n");
 }
 
@@ -116,19 +117,19 @@ async function execute(input: MakeupDirectionProfessionalReportInputV1) {
   return normalizeMakeupProfessionalReportV1(JSON.parse(raw), input);
 }
 
-export const makeupProfessionalReportAdapter: CapabilityEngineAdapter<MakeupDirectionProfessionalReportInputV1, MakeupDirectionProfessionalReportV1> = {
+const makeupProfessionalReportAdapter = (catalogCycleId: string | null): CapabilityEngineAdapter<MakeupDirectionProfessionalReportInputV1, MakeupDirectionProfessionalReportV1> => ({
   capability: "makeup-direction-professional-report-generation",
   engineVersion: MAKEUP_PROFESSIONAL_REPORT_ENGINE_VERSION,
   sourceRevision: MAKEUP_PROFESSIONAL_REPORT_ENGINE_VERSION,
   provider,
   model,
   promptPolicyVersion: MAKEUP_PROFESSIONAL_REPORT_PROMPT_POLICY_VERSION,
-  catalogCycleId: null,
+  catalogCycleId,
   fallbackMode: "deterministic",
   execute,
   failureCode: (error) => error instanceof Error && error.message.startsWith("MAKEUP_PROFESSIONAL_REPORT_") ? error.message : "MAKEUP_PROFESSIONAL_REPORT_GENERATION_FAILED",
   failureMessage: () => "AI 해설을 더 다듬지 못해 확정한 메이크업 방향을 기준으로 안내합니다.",
-};
+});
 
 export function makeupProfessionalReportIdempotencyKey(input: MakeupDirectionProfessionalReportInputV1) {
   return `makeup-professional-report:${capabilityFingerprint({ input, promptPolicy: MAKEUP_PROFESSIONAL_REPORT_PROMPT_POLICY_VERSION, model })}`;
@@ -136,12 +137,12 @@ export function makeupProfessionalReportIdempotencyKey(input: MakeupDirectionPro
 
 export function runMakeupProfessionalReportCapability(input: { userId: string; consultationId: string; reportInput: MakeupDirectionProfessionalReportInputV1 }) {
   if (!isMakeupProfessionalReportAiEnabled()) return Promise.resolve(null);
-  return runDurableCapability(makeupProfessionalReportAdapter, { userId: input.userId, consultationId: input.consultationId, idempotencyKey: makeupProfessionalReportIdempotencyKey(input.reportInput), input: input.reportInput });
+  return runDurableCapability(makeupProfessionalReportAdapter(input.reportInput.recipeBinding?.cycleId ?? null), { userId: input.userId, consultationId: input.consultationId, idempotencyKey: makeupProfessionalReportIdempotencyKey(input.reportInput), input: input.reportInput });
 }
 
 export function readMakeupProfessionalReportCapability(input: { userId: string; reportInput: MakeupDirectionProfessionalReportInputV1 }) {
   if (!isMakeupProfessionalReportAiEnabled()) return Promise.resolve(null);
-  return readDurableCapabilityResult(makeupProfessionalReportAdapter, { userId: input.userId, idempotencyKey: makeupProfessionalReportIdempotencyKey(input.reportInput) });
+  return readDurableCapabilityResult(makeupProfessionalReportAdapter(input.reportInput.recipeBinding?.cycleId ?? null), { userId: input.userId, idempotencyKey: makeupProfessionalReportIdempotencyKey(input.reportInput) });
 }
 
 export async function retryMakeupProfessionalReportCapability(input: { userId: string; consultationId: string; reportInput: MakeupDirectionProfessionalReportInputV1 }) {

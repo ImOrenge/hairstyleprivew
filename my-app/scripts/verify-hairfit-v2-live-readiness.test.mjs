@@ -20,6 +20,7 @@ const mirrored = { ok: true, rootCount: 85, appCount: 85 };
 test("live readiness requires explicit credentials, models, flags, link and migration mirror", () => {
   const env = completeEnvironment();
   env.ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED = "false";
+  env.MAKEUP_RECIPE_CATALOG_ENABLED = "false";
   const result = evaluateLiveReadiness({ env, mode: "canary", linked: true, migrationMirror: mirrored });
   assert.equal(result.ok, true);
   assert.equal(result.failures.length, 0);
@@ -27,6 +28,7 @@ test("live readiness requires explicit credentials, models, flags, link and migr
   assert.equal(env.MAKEUP_SEMANTIC_VISION_V3, "true");
   assert.equal(env.MAKEUP_SEMANTIC_VISION_STAFF_ONLY, "true");
   assert.equal(env.CONSULTATION_RESULT_AI_NARRATIVE_ENABLED, "true");
+  assert.equal(env.MAKEUP_RECIPE_CATALOG_SHADOW_ENABLED, "true");
 });
 
 test("readiness output names missing keys without leaking configured secret values", () => {

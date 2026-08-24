@@ -1,16 +1,30 @@
 import type { MakeupMode } from "./interview.ts";
-import type { MakeupModule } from "./contract.ts";
+import type { MakeupContextProfile, MakeupModule } from "./contract.ts";
+import type { MakeupPresentationFamilyV1, MakeupRecipeTechniqueTokenV1, MakeupRecipePaletteRoleV1 } from "./catalog.ts";
 
 export type MakeupSimulationRunState = "idle" | "queued" | "preparing" | "generating" | "quality_review" | "partial_ready" | "completed" | "retry_required" | "failed" | "cancelled";
 export type MakeupSimulationOutputState = "pending" | "generated" | "quality_rejected" | "ready" | "failed";
 export type MakeupWorkspaceStateV2 = "interview" | "recommendation_preparing" | "recommendation_review" | "direction_review" | "simulation_queued" | "simulation_generating" | "simulation_partial" | "simulation_review" | "simulation_retry_required" | "simulation_failed" | "confirmed";
 
-export interface MakeupSimulationModuleSummaryV1 { module: MakeupModule; color: string; intensity: number; finish: string; reasonCodes: string[] }
+export interface MakeupSimulationModuleSummaryV1 { module: MakeupModule; color: string; intensity: number; finish: string; reasonCodes: string[]; enabled?: boolean; paletteRole?: MakeupRecipePaletteRoleV1; techniqueTokens?: MakeupRecipeTechniqueTokenV1[] }
 export interface MakeupSimulationQualityV1 { identityPreservation: number | null; faceGeometryPreservation: number | null; moduleAdherence: number | null; colorAdherence: number | null; backgroundPreservation: number | null; hairPreservation: number | null; retouchingRisk: number | null; status: "pending" | "pass" | "warning" | "reject"; warnings: string[] }
 export interface MakeupSimulationRunV1 { id: string; consultationId: string; state: MakeupSimulationRunState; purpose: "makeup_style_simulation"; requestedOutputCount: 1 | 2; terminalOutputCount: number; sourceAssetId: string; sourceFingerprint: string; inputFingerprint: string; makeupInterviewRevision: number; rationaleRevision: number; directionRevision: number; personalColorProfileId: string | null; selectedHairSnapshotId: string; selectedColorSnapshotId: string | null; attemptCount: number; leaseOwner: string | null; leaseExpiresAt: string | null; fencingToken: number; errorCode: string | null; errorMessage: string | null; startedAt: string | null; updatedAt: string; completedAt: string | null }
 export interface MakeupSimulationOutputV1 { id: string; runId: string; variant: "primary" | "alternative"; state: MakeupSimulationOutputState; imagePath: string | null; imageUrl: string | null; width: number | null; height: number | null; moduleSummary: MakeupSimulationModuleSummaryV1[]; quality: MakeupSimulationQualityV1; provider: string | null; model: string | null; modelVersion: string | null; createdAt: string }
 export interface MakeupSimulationSelectionSnapshotV1 { schemaVersion: "makeup-simulation-selection-v1"; id: string; consultationId: string; revision: number; runId: string; outputId: string; sourceAssetId: string; inputFingerprint: string; makeupInterviewRevision: number; rationaleRevision: number; directionRevision: number; adjustmentDecision: "accept_adjustment" | "keep_selection"; confirmedModuleValues: MakeupSimulationModuleSummaryV1[]; limitations: string[]; confirmedAt: string; supersedesSnapshotId: string | null }
 export interface MakeupSimulationInputV1 { schemaVersion: "makeup-simulation-input-v1"; consultationId: string; sourceAsset: { id: string; fingerprint: string }; personalColor: { profileId: string | null; evidenceId: string | null; palette: string[]; confidence: number | null }; makeup: { interviewRevision: number; selectedMode: MakeupMode; rationaleRevision: number; adjustmentDecision: "accept_adjustment" | "keep_selection"; modules: MakeupSimulationModuleSummaryV1[]; exclusions: string[] }; stylingContext: { hairSnapshotId: string; colorSnapshotId: string | null; fashionDirectionId: string | null }; preserve: { identity: true; faceGeometry: true; hair: true; background: true; pose: true; lightingIntent: true }; prohibit: readonly ["skin_shape_change", "face_slimming", "eye_enlargement", "nose_reshaping", "hair_restyle", "background_replacement", "beauty_retouching"] }
+export interface MakeupSimulationInputV2 {
+  schemaVersion: "makeup-simulation-input-v2";
+  consultationId: string;
+  sourceAsset: { id: string; fingerprint: string; kind: "confirmed_hair" | "retained_original"; storagePath: string };
+  personalColor: MakeupSimulationInputV1["personalColor"];
+  makeup: MakeupSimulationInputV1["makeup"] & {
+    recipe: { id: string; cycleId: string; cycleVersion: number; fingerprint: string; presentationFamily: MakeupPresentationFamilyV1 };
+    context: Pick<MakeupContextProfile, "occasions" | "preparationMinutes" | "skillLevel" | "finishPreference" | "facialHair">;
+  };
+  stylingContext: MakeupSimulationInputV1["stylingContext"];
+  preserve: MakeupSimulationInputV1["preserve"];
+  prohibit: MakeupSimulationInputV1["prohibit"];
+}
 
 export function deriveMakeupWorkspaceState(input: { interviewConfirmed: boolean; recommendationDecision: "pending" | "accept_adjustment" | "keep_selection" | null; directionStatus: string | null; run: MakeupSimulationRunV1 | null; selection: MakeupSimulationSelectionSnapshotV1 | null }): MakeupWorkspaceStateV2 {
   if (input.selection) return "confirmed";

@@ -41,7 +41,7 @@ test("daily reconciliation checks seven modules, artifacts, profile provenance, 
 
 test("deployment canary and OFF payloads include every Personal Color and Makeup flag", () => {
   const readiness = readApp("scripts", "verify-hairfit-v2-live-readiness.mjs");
-  for (const flag of ["PERSONAL_COLOR_V2_WRITE", "PERSONAL_COLOR_V2_READ", "PERSONAL_COLOR_DRAPE_V1", "MAKEUP_DIRECTION_V1"]) assert.match(readiness, new RegExp(`"${flag}"`));
+  for (const flag of ["PERSONAL_COLOR_V2_WRITE", "PERSONAL_COLOR_V2_READ", "PERSONAL_COLOR_DRAPE_V1", "MAKEUP_DIRECTION_V1", "MAKEUP_RECIPE_CATALOG_SHADOW_ENABLED", "MAKEUP_RECIPE_CATALOG_ENABLED"]) assert.match(readiness, new RegExp(`"${flag}"`));
   const off = readApp("scripts", "set-hairfit-v2-cloudflare-off.mjs");
   assert.match(off, /buildOffPayload/); assert.match(off, /"false"/);
 });

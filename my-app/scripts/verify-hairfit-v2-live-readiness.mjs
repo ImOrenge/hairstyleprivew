@@ -55,6 +55,8 @@ export const EXPLICIT_ROLLOUT_FLAGS = Object.freeze([
   "MAKEUP_DENSE_ATLAS_V3",
   "MAKEUP_SEMANTIC_VISION_V3",
   "MAKEUP_SEMANTIC_VISION_STAFF_ONLY",
+  "MAKEUP_RECIPE_CATALOG_SHADOW_ENABLED",
+  "MAKEUP_RECIPE_CATALOG_ENABLED",
   "CONSULTATION_ZERO_INPUT_INTAKE_ENABLED",
   "FASHION_PRODUCT_TRUTH_ENABLED",
   "ONBOARDING_FASHION_PERSONALIZATION_ENABLED",
@@ -64,8 +66,9 @@ export const EXPLICIT_ROLLOUT_FLAGS = Object.freeze([
 ]);
 
 const CANARY_TRUE_FLAGS = new Set(EXPLICIT_ROLLOUT_FLAGS.filter(
-  (name) => name !== "ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED",
+  (name) => !["ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED", "MAKEUP_RECIPE_CATALOG_ENABLED"].includes(name),
 ));
+const CANARY_FALSE_FLAGS = new Set(["ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED", "MAKEUP_RECIPE_CATALOG_ENABLED"]);
 
 function isPlaceholder(value) {
   return !value || /^(?:your_|change_me|example|<)/i.test(value.trim());
@@ -105,6 +108,8 @@ export function evaluateLiveReadiness({ env, mode, linked, migrationMirror }) {
   } else if (mode === "canary") {
     const disabled = [...CANARY_TRUE_FLAGS].filter((key) => env[key] !== "true");
     if (disabled.length) failures.push(`canary-required flags are not true: ${disabled.join(", ")}`);
+    const unexpectedlyEnabled = [...CANARY_FALSE_FLAGS].filter((key) => env[key] !== "false");
+    if (unexpectedlyEnabled.length) failures.push(`canary-required flags are not false: ${unexpectedlyEnabled.join(", ")}`);
   } else if (mode !== "inventory") {
     failures.push(`unsupported mode: ${mode}`);
   }
