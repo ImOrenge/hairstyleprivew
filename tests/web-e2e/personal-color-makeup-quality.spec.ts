@@ -8,7 +8,7 @@ for (const width of [390, 768, 1440]) {
     await page.goto("/consulting/e2e-harness?stage=makeup");
     const fixture = page.getByTestId("makeup-direction-fixture");
     await expect(fixture).toBeVisible();
-    await expect(fixture.getByText("Self makeup", { exact: true })).toBeVisible();
+    await expect(fixture.getByText("셀프 메이크업 적용 순서", { exact: true })).toBeVisible();
     await expect(fixture.getByRole("checkbox")).not.toBeChecked();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);

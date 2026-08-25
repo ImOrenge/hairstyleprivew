@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { buildConsultationHairProfile } from "./hair-profile.ts";
 import { isConsultationFrontendEnabled } from "./feature-flag.ts";
+import { formatConsultationTimestampKst } from "./format-timestamp.ts";
 import { classifyServerRoute } from "../../workers/open-next-multi/server-route.js";
 
 function read(relativePath: string) {
@@ -21,6 +22,12 @@ test("consulting routes define the complete 15-stage lifecycle journey", () => {
   assert.match(journey, /allowedStages/);
   assert.match(journey, /activeTasks/);
   assert.doesNotMatch(routes, /requested <= current/);
+});
+
+test("consulting timestamps are deterministic across server and browser locales", () => {
+  assert.equal(formatConsultationTimestampKst("2026-08-08T00:00:00.000Z"), "2026. 8. 8. 09:00");
+  assert.equal(formatConsultationTimestampKst("invalid"), "확인 중");
+  assert.doesNotMatch(read("../../components/consulting/workbenches/shared.tsx"), /toLocaleString\("ko-KR"\)/);
 });
 
 test("consulting entry derives progress from the shared journey and promises the photo-first flow", () => {

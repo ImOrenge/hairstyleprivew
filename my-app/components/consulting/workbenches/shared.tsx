@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { ConsultationSnapshot } from "../../../lib/consulting/contracts";
+import { formatConsultationTimestampKst } from "../../../lib/consulting/format-timestamp";
 import { Button } from "../../ui/Button";
 import { Panel, SurfaceCard } from "../../ui/Surface";
 
@@ -91,7 +92,7 @@ export function ConsultationSystemData({ snapshot, items = [] }: { snapshot: Con
             { label: "내가 고른 헤어", value: selected?.label || "선택 전" },
             {
               label: "마지막 저장",
-              value: new Date(snapshot.updatedAt).toLocaleString("ko-KR"),
+              value: formatConsultationTimestampKst(snapshot.updatedAt),
             },
           ]}
         />

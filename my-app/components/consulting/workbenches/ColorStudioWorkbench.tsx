@@ -102,7 +102,7 @@ function CandidateGuidance({ candidate }: { candidate: HairColorPreviewCandidate
           <p className="app-kicker">{candidate.name}</p>
           <h3 className="mt-2 text-lg font-black">{candidate.salonName}</h3>
         </div>
-        <span className="h-10 w-10 shrink-0 rounded-full border border-[var(--app-border-strong)]" style={{ backgroundColor: candidate.swatchHex }} aria-label={`${candidate.salonName} ${candidate.swatchHex}`} />
+        <span role="img" className="h-10 w-10 shrink-0 rounded-full border border-[var(--app-border-strong)]" style={{ backgroundColor: candidate.swatchHex }} aria-label={`${candidate.salonName} ${candidate.swatchHex}`} />
       </div>
       <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">{candidate.rationale[0]}</p>
       <dl className="mt-4 grid gap-2 text-sm">

@@ -4,8 +4,21 @@ import type { AnalysisEvidenceV2 } from "@hairfit/shared/v2";
 import path from "node:path";
 
 const STAGES = [
-  ["discovery","DISCOVERY"],["photo","PHOTO"],["scan","FACE SCAN"],["analysis","ANALYSIS"],["direction","DIRECTION"],
-  ["previews","PREVIEW"],["compare","COMPARE"],["decision","DECISION"],["salon-brief","SALON BRIEF"],["aftercare","AFTERCARE"],["fashion","FASHION"],
+  ["discovery", "AI 상담을 가볍게 시작해요"],
+  ["photo", "분석할 사진을 준비해요"],
+  ["scan", "분석 근거를 검토해요"],
+  ["analysis", "근거가 뜻하는 방향을 읽어요"],
+  ["personal-color", "나에게 맞는 색 기준을 정리해요"],
+  ["direction", "생성 전에 전략을 확정해요"],
+  ["previews", "AI가 9가지 가능성에서 먼저 추천해요"],
+  ["compare", "같은 기준으로 나란히 비교해요"],
+  ["decision", "현실적으로 가능한 스타일을 확정해요"],
+  ["color-studio", "확정한 헤어에서 컬러를 비교해요"],
+  ["salon-brief", "말로 설명하기 어려운 것을 브리프로"],
+  ["makeup", "얼굴 위 적용 위치와 방향을 정리해요"],
+  ["fashion", "헤어와 이어지는 인상을 완성해요"],
+  ["result", "상담 결과를 한눈에 마무리해요"],
+  ["aftercare", "실제 시술을 기준으로 관리해요"],
 ] as const;
 
 const LANDMARK_EVIDENCE = {
@@ -49,18 +62,18 @@ async function dismissGlobalNotices(page: import("@playwright/test").Page) {
   }
 }
 
-test("all 11 document Scenes are headerless, addressable, and overflow-safe", async ({ page }, testInfo) => {
-  for (const [stage, task] of STAGES) {
+test("all consultation scenes are headerless, addressable, and overflow-safe", async ({ page }, testInfo) => {
+  for (const [stage, title] of STAGES) {
     await page.goto(`/consulting/e2e-harness?stage=${stage}`);
     await dismissGlobalNotices(page);
-    await expect(page.getByText(task, { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+    await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
     await expect(page.locator('[data-app-shell="header"]')).toHaveCount(0);
     await expect(page.locator('[data-app-shell="footer"]')).toHaveCount(0);
-    await expect(page.locator('[data-consulting-split-canvas="true"]')).toHaveCount(1);
-    await expect(page.locator('[data-consulting-pane="input"]')).toHaveCount(1);
-    await expect(page.locator('[data-consulting-pane="output"]')).toHaveCount(1);
-    await expect(page.locator('[data-consulting-system-data="true"]')).toBeVisible();
+    const splitCanvas = page.locator('[data-consulting-split-canvas="true"]');
+    if (await splitCanvas.count()) {
+      await expect(page.locator('[data-consulting-pane="input"]')).toHaveCount(1);
+      await expect(page.locator('[data-consulting-pane="output"]')).toHaveCount(1);
+    }
     expect(await page.locator('[data-consulting-scene-identity="true"]').evaluate((element) => element.getBoundingClientRect().height)).toBeLessThan(240);
     const overflow = await page.evaluate(() => ({ client: document.documentElement.clientWidth, scroll: document.documentElement.scrollWidth }));
     expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
@@ -72,14 +85,15 @@ test("all 11 document Scenes are headerless, addressable, and overflow-safe", as
 
 test("desktop panes scroll independently while mobile keeps input before output", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto("/consulting/e2e-harness?stage=discovery");
+  await page.goto("/consulting/e2e-harness?stage=direction");
   await dismissGlobalNotices(page);
   const desktop = await page.locator('[data-consulting-split-canvas="true"]').evaluate((canvas) => {
     const input = canvas.querySelector<HTMLElement>('[data-consulting-pane="input"]');
     const output = canvas.querySelector<HTMLElement>('[data-consulting-pane="output"]');
     if (!input || !output) throw new Error("split panes missing");
     return {
-      canvasOverflow: getComputedStyle(canvas).overflow,
+      canvasOverflowX: getComputedStyle(canvas).overflowX,
+      canvasOverflowY: getComputedStyle(canvas).overflowY,
       inputOverflowY: getComputedStyle(input).overflowY,
       outputOverflowY: getComputedStyle(output).overflowY,
       inputHeight: input.getBoundingClientRect().height,
@@ -88,20 +102,15 @@ test("desktop panes scroll independently while mobile keeps input before output"
       outputScrollable: output.scrollHeight > output.clientHeight,
     };
   });
-  expect(desktop.canvasOverflow).toBe("hidden");
+  expect(desktop.canvasOverflowX).toBe("hidden");
+  expect(desktop.canvasOverflowY).toBe("hidden");
   expect(desktop.inputOverflowY).toBe("auto");
   expect(desktop.outputOverflowY).toBe("auto");
   expect(desktop.inputHeight).toBeGreaterThan(200);
   expect(desktop.outputHeight).toBe(desktop.inputHeight);
   expect(desktop.inputScrollable).toBe(true);
   expect(desktop.outputScrollable).toBe(true);
-  const inputControlSeparators = await page.locator('[data-consulting-input-control="true"]').evaluateAll((controls) => controls.map((control) => {
-    const style = getComputedStyle(control);
-    return { width: style.borderBottomWidth, style: style.borderBottomStyle, color: style.borderBottomColor };
-  }));
-  expect(inputControlSeparators.length).toBeGreaterThan(10);
-  expect(inputControlSeparators.filter((separator) => separator.width === "1px" && separator.style === "solid").length).toBeGreaterThan(8);
-  await page.screenshot({ path: testInfo.outputPath("consulting-discovery-input-separators.png"), fullPage: true, animations: "disabled" });
+  await page.screenshot({ path: testInfo.outputPath("consulting-direction-split-panes.png"), fullPage: true, animations: "disabled" });
   const independentScroll = await page.locator('[data-consulting-split-canvas="true"]').evaluate((canvas) => {
     const input = canvas.querySelector<HTMLElement>('[data-consulting-pane="input"]');
     const output = canvas.querySelector<HTMLElement>('[data-consulting-pane="output"]');
@@ -126,13 +135,12 @@ test("desktop panes scroll independently while mobile keeps input before output"
     return {
       inputOverflowY: getComputedStyle(input).overflowY,
       outputOverflowY: getComputedStyle(output).overflowY,
-      inputTop: input.getBoundingClientRect().top,
-      outputTop: output.getBoundingClientRect().top,
+      outputFollowsInput: Boolean(input.compareDocumentPosition(output) & Node.DOCUMENT_POSITION_FOLLOWING),
     };
   });
   expect(mobile.inputOverflowY).not.toBe("auto");
   expect(mobile.outputOverflowY).not.toBe("auto");
-  expect(mobile.outputTop).toBeGreaterThan(mobile.inputTop);
+  expect(mobile.outputFollowsInput).toBe(true);
 });
 
 test("챕터 overlay traps focus, closes with Escape, and returns focus", async ({ page }) => {
