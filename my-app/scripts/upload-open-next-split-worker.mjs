@@ -87,6 +87,10 @@ export function selectRuntimeSecrets(local) {
   );
 }
 
+export function buildUploadMessage(targetName, sourceRevision) {
+  return `HairFit-split-${targetName}-${sourceRevision}`;
+}
+
 function argumentValue(name) {
   return process.argv.find((value) => value.startsWith(`${name}=`))?.slice(name.length + 1) ?? "";
 }
@@ -138,7 +142,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       "--keep-vars",
       "--var", `HAIRFIT_SOURCE_REVISION:${sourceRevision}`,
       "--secrets-file", secretsPath,
-      "--message", `HairFit split ${targetName} ${sourceRevision}`,
+      "--message", buildUploadMessage(targetName, sourceRevision),
     ]);
     const uploadedVersion = output.match(/Worker Version ID:\s*([0-9a-f-]+)/iu)?.[1];
     if (!uploadedVersion) throw new Error("Split Worker upload succeeded without a parseable version ID");

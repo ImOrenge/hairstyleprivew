@@ -2,9 +2,16 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   SPLIT_WORKER_RUNTIME_NAMES,
+  buildUploadMessage,
   parseEnv,
   selectRuntimeSecrets,
 } from "./upload-open-next-split-worker.mjs";
+
+test("split Worker upload message stays a single Windows-safe argument", () => {
+  const message = buildUploadMessage("media", "dfa0a217");
+  assert.equal(message, "HairFit-split-media-dfa0a217");
+  assert.doesNotMatch(message, /\s/u);
+});
 
 test("split Worker secret selection excludes deployment and database credentials", () => {
   for (const name of [
