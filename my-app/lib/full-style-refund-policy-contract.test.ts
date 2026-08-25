@@ -40,7 +40,7 @@ test("checkout and terms disclose the withdrawal deadline, start restriction and
   assert.match(checkout,/결제 없이 계약 문서 다시 받기/);
   assert.match(contractDocument,/NEXT_PUBLIC_MAIL_ORDER_REPORT_NUMBER/);
   assert.match(contractDocument,/assertFullStyleContractDocumentReady/);
-  assert.match(terms,/회차당 74,750원/);
+  assert.match(terms,/회차당 103,200원/);
   assert.match(terms,/기간말 해지/);
   assert.match(renewal,/sendFullStyleRenewalContractEmail/);
   assert.match(renewal,/contract_document_provided_at:delivery\.ok\?contractDocumentProvidedAt:null/);

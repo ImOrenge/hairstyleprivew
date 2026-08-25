@@ -7,7 +7,7 @@ import { isHairfitV2Enabled } from "../../../lib/v2/feature-flags";
 
 export const metadata: Metadata = {
   title:"HairFit 풀 스타일 상품",
-  description:"59,000원 1회, 89,000원 3개월, 299,000원 연간 HairFit 풀 스타일 컨설팅을 비교합니다.",
+  description:"59,000원 1회, 129,000원 3개월 관리형, 412,800원 연간 HairFit 풀 스타일 컨설팅을 비교합니다.",
 };
 
 export default async function ConsultingPlansPage({ searchParams }: { searchParams:Promise<Record<string,string|string[]|undefined>> }) {

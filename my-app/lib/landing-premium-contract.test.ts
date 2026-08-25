@@ -95,14 +95,14 @@ test("free demo, shared paid scope, and approved price boundary remain truthful"
   const combined = `${page}\n${hero}\n${showcases}\n${mobileCta}\n${offers}\n${offerPolicy}`;
   assert.doesNotMatch(combined, /\/workspace/);
   assert.doesNotMatch(combined, /무료로 내 스타일 보기/);
-  for (const price of ["59,000원", "89,000원", "299,000원"]) assert.match(offerPolicy, new RegExp(price));
-  assert.match(offerPolicy, /priceLabel: "89,000원",[\s\S]*?periodLabel: "\/ 3개월"/);
+  for (const price of ["59,000원", "129,000원", "412,800원"]) assert.match(offerPolicy, new RegExp(price));
+  assert.match(offerPolicy, /priceLabel: "129,000원",[\s\S]*?periodLabel: "\/ 3개월"/);
   assert.equal(offerPolicy.match(/recommended: true/g)?.length, 1);
   assert.match(offerPolicy, /key: "full_style_quarterly"[\s\S]*?recommended: true/);
   for (const benefit of ["정밀 퍼스널 컬러 진단", "실제 헤어 3×3 생성", "최종 헤어 1개와 선정 근거 확정", "최대 6개 추가 생성", "Salon Brief·AI 결과 해설·PDF·애프터케어"]) {
     assert.match(offerPolicy, new RegExp(benefit));
   }
-  for (const type of ["1회 완결형", "3개월 정기형", "연간 관리형"]) assert.match(offerPolicy, new RegExp(type));
+  for (const type of ["1회 완결형", "3개월 관리형", "연간 관리형"]) assert.match(offerPolicy, new RegExp(type));
   assert.match(offers, /결제 전에 직접 확인하는 범위/);
   assert.match(offers, /className="f-premium-offers__list"/);
   assert.match(offers, /PREMIUM_OFFER_POLICY\.offers\.map/);

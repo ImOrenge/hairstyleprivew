@@ -55,7 +55,7 @@ async function readFullStyleContract(userId:string|null):Promise<FullStyleContra
 }
 
 function fullStyleLabel(key:string) {
-  return key === "full_style_once" ? "풀 스타일 1회" : key === "full_style_quarterly" ? "3개월 정기" : "연간";
+  return key === "full_style_once" ? "풀 스타일 1회" : key === "full_style_quarterly" ? "3개월 관리형" : "연간";
 }
 
 export default async function BillingPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {

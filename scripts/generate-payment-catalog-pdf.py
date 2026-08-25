@@ -9,18 +9,11 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import (
-    PageBreak,
-    Paragraph,
-    SimpleDocTemplate,
-    Spacer,
-    Table,
-    TableStyle,
-)
+from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "output" / "pdf" / "hairfit-payment-product-catalog-2026-08-03.pdf"
+OUTPUT = ROOT / "output" / "pdf" / "hairfit-payment-product-catalog-2026-08-25.pdf"
 REGULAR_FONT_PATH = Path(r"C:\Windows\Fonts\malgun.ttf")
 BOLD_FONT_PATH = Path(r"C:\Windows\Fonts\malgunbd.ttf")
 
@@ -32,105 +25,25 @@ ACCENT = colors.HexColor("#e16b4d")
 ACCENT_PALE = colors.HexColor("#fff1ec")
 
 
-def money(value: int) -> str:
-    return f"{value:,}원"
-
-
 def register_fonts() -> None:
     if not REGULAR_FONT_PATH.exists() or not BOLD_FONT_PATH.exists():
-        raise FileNotFoundError(
-            "맑은 고딕 폰트가 필요합니다: C:\\Windows\\Fonts\\malgun.ttf, malgunbd.ttf"
-        )
+        raise FileNotFoundError("맑은 고딕 폰트가 필요합니다.")
     pdfmetrics.registerFont(TTFont("Malgun", str(REGULAR_FONT_PATH)))
     pdfmetrics.registerFont(TTFont("Malgun-Bold", str(BOLD_FONT_PATH)))
 
 
-def styles():
+def styles() -> dict[str, ParagraphStyle]:
     base = getSampleStyleSheet()
     return {
-        "title": ParagraphStyle(
-            "CatalogTitle",
-            parent=base["Title"],
-            fontName="Malgun-Bold",
-            fontSize=24,
-            leading=32,
-            textColor=INK,
-            alignment=TA_LEFT,
-            spaceAfter=4,
-        ),
-        "subtitle": ParagraphStyle(
-            "CatalogSubtitle",
-            parent=base["Normal"],
-            fontName="Malgun",
-            fontSize=10,
-            leading=16,
-            textColor=MUTED,
-            spaceAfter=10,
-        ),
-        "section": ParagraphStyle(
-            "Section",
-            parent=base["Heading2"],
-            fontName="Malgun-Bold",
-            fontSize=14,
-            leading=20,
-            textColor=INK,
-            spaceBefore=12,
-            spaceAfter=7,
-        ),
-        "body": ParagraphStyle(
-            "Body",
-            parent=base["BodyText"],
-            fontName="Malgun",
-            fontSize=8.8,
-            leading=15,
-            textColor=INK,
-            spaceAfter=5,
-        ),
-        "small": ParagraphStyle(
-            "Small",
-            parent=base["BodyText"],
-            fontName="Malgun",
-            fontSize=7.4,
-            leading=11,
-            textColor=MUTED,
-            spaceAfter=4,
-        ),
-        "table_head": ParagraphStyle(
-            "TableHead",
-            parent=base["BodyText"],
-            fontName="Malgun-Bold",
-            fontSize=7.5,
-            leading=10,
-            textColor=colors.white,
-        ),
-        "table_cell": ParagraphStyle(
-            "TableCell",
-            parent=base["BodyText"],
-            fontName="Malgun",
-            fontSize=7.5,
-            leading=10,
-            textColor=INK,
-        ),
-        "table_cell_small": ParagraphStyle(
-            "TableCellSmall",
-            parent=base["BodyText"],
-            fontName="Malgun",
-            fontSize=6.8,
-            leading=9,
-            textColor=INK,
-        ),
-        "note": ParagraphStyle(
-            "Note",
-            parent=base["BodyText"],
-            fontName="Malgun",
-            fontSize=8,
-            leading=13,
-            textColor=INK,
-            leftIndent=8,
-            rightIndent=8,
-            spaceBefore=4,
-            spaceAfter=4,
-        ),
+        "title": ParagraphStyle("Title", parent=base["Title"], fontName="Malgun-Bold", fontSize=23, leading=30, textColor=INK, alignment=TA_LEFT, spaceAfter=4),
+        "subtitle": ParagraphStyle("Subtitle", parent=base["Normal"], fontName="Malgun", fontSize=10, leading=16, textColor=MUTED, spaceAfter=10),
+        "section": ParagraphStyle("Section", parent=base["Heading2"], fontName="Malgun-Bold", fontSize=14, leading=20, textColor=INK, spaceBefore=10, spaceAfter=6),
+        "body": ParagraphStyle("Body", parent=base["BodyText"], fontName="Malgun", fontSize=8.6, leading=14, textColor=INK, spaceAfter=5),
+        "small": ParagraphStyle("Small", parent=base["BodyText"], fontName="Malgun", fontSize=7.2, leading=11, textColor=MUTED, spaceAfter=4),
+        "table_head": ParagraphStyle("TableHead", parent=base["BodyText"], fontName="Malgun-Bold", fontSize=7, leading=9, textColor=colors.white),
+        "table_cell": ParagraphStyle("TableCell", parent=base["BodyText"], fontName="Malgun", fontSize=7, leading=9.5, textColor=INK),
+        "table_cell_small": ParagraphStyle("TableCellSmall", parent=base["BodyText"], fontName="Malgun", fontSize=6.2, leading=8.2, textColor=INK),
+        "note": ParagraphStyle("Note", parent=base["BodyText"], fontName="Malgun", fontSize=8, leading=13, textColor=INK, leftIndent=8, rightIndent=8, spaceBefore=3, spaceAfter=3),
     }
 
 
@@ -139,48 +52,42 @@ def paragraph(text: str, style: ParagraphStyle) -> Paragraph:
 
 
 def make_table(rows, widths, style_set, small=False):
-    cell_style = style_set["table_cell_small" if small else "table_cell"]
-    table_rows = []
+    body_style = style_set["table_cell_small" if small else "table_cell"]
+    rendered = []
     for row_index, row in enumerate(rows):
-        current_style = style_set["table_head"] if row_index == 0 else cell_style
-        table_rows.append([paragraph(str(value), current_style) for value in row])
-
-    table = Table(table_rows, colWidths=widths, repeatRows=1, hAlign="LEFT")
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, 0), INK),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("GRID", (0, 0), (-1, -1), 0.35, LINE),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, PALE]),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
-    )
+        cell_style = style_set["table_head"] if row_index == 0 else body_style
+        rendered.append([paragraph(str(value), cell_style) for value in row])
+    table = Table(rendered, colWidths=widths, repeatRows=1, hAlign="LEFT")
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), INK),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("GRID", (0, 0), (-1, -1), 0.35, LINE),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, PALE]),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+        ("TOPPADDING", (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ]))
     return table
 
 
 def note_box(text: str, style_set):
     table = Table([[paragraph(text, style_set["note"])]], colWidths=[170 * mm])
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), ACCENT_PALE),
-                ("BOX", (0, 0), (-1, -1), 0.7, ACCENT),
-                ("LINEBEFORE", (0, 0), (0, -1), 3, ACCENT),
-                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("LEFTPADDING", (0, 0), (-1, -1), 9),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 9),
-                ("TOPPADDING", (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
-    )
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), ACCENT_PALE),
+        ("BOX", (0, 0), (-1, -1), 0.7, ACCENT),
+        ("LINEBEFORE", (0, 0), (0, -1), 3, ACCENT),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 9),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 9),
+        ("TOPPADDING", (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+    ]))
     return table
+
+
+def bullets(items: list[str], style_set):
+    return [paragraph(f"• {item}", style_set["body"]) for item in items]
 
 
 def draw_page(canvas, doc):
@@ -199,111 +106,72 @@ def draw_page(canvas, doc):
     canvas.restoreState()
 
 
-def build_pdf():
+def build_pdf() -> None:
     register_fonts()
     style_set = styles()
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-
     doc = SimpleDocTemplate(
-        str(OUTPUT),
-        pagesize=A4,
-        rightMargin=20 * mm,
-        leftMargin=20 * mm,
-        topMargin=22 * mm,
-        bottomMargin=19 * mm,
-        title="HairFit 결제 상품 카탈로그",
-        author="제이코더랩",
-        subject="HairFit PortOne payment catalog",
+        str(OUTPUT), pagesize=A4, rightMargin=20 * mm, leftMargin=20 * mm,
+        topMargin=22 * mm, bottomMargin=19 * mm,
+        title="HairFit 결제 상품 카탈로그", author="제이코더랩",
+        subject="HairFit PortOne / KG이니시스 결제 상품 카탈로그",
     )
 
     story = [
         paragraph("HairFit 결제 상품 카탈로그", style_set["title"]),
-        paragraph("웹 PortOne 단건 결제 및 정기결제 이용권", style_set["subtitle"]),
-        make_table(
-            [
-                ["기준일", "2026-08-03 (수정 2026-08-04)", "상호", "제이코더랩"],
-                ["서비스 브랜드", "HairFit", "통화", "KRW"],
-                ["문서 성격", "상품 안내용", "결제 채널", "웹 PortOne"],
-            ],
-            [24 * mm, 57 * mm, 24 * mm, 65 * mm],
-            style_set,
-        ),
+        paragraph("PortOne / KG이니시스 신규 판매 상품 V3", style_set["subtitle"]),
+        make_table([
+            ["기준일", "2026-08-25", "상호", "제이코더랩"],
+            ["서비스", "HairFit", "통화", "KRW"],
+            ["문서 성격", "결제 상품 안내", "결제 연동", "PortOne / KG이니시스"],
+        ], [24 * mm, 57 * mm, 24 * mm, 65 * mm], style_set),
         Spacer(1, 8),
-        note_box(
-            "횟수 안내: 표시 횟수는 각 서비스를 단독으로 이용할 때의 최대치이며 실제 횟수는 서비스 조합에 따라 달라질 수 있습니다. 패션 1세트는 헤어 1회와 패션 1회를 함께 이용하는 기준입니다. 케어 최초 1회 무료는 계정당 별도 혜택이며 상품의 케어 횟수에 포함하지 않습니다.",
-            style_set,
-        ),
-        paragraph("1. 정기결제 이용권", style_set["section"]),
-        paragraph(
-            "웹 카드 빌링키를 발급한 뒤 첫 결제를 처리하고 이후 월 단위로 갱신합니다. 아래 금액은 현재 기본 판매가 기준입니다.",
-            style_set["body"],
-        ),
-        make_table(
-            [
-                ["상품", "기본 금액", "헤어<br/>이용권", "패션<br/>이용권", "케어<br/>이용권", "구매 후<br/>사용기간", "최대<br/>1개월"],
-                ["Basic", money(9900) + "/월", "8회", "2세트", "2회", "결제일 기준<br/>1개월", "예"],
-                ["Standard", money(19900) + "/월", "20회", "6세트", "6회", "결제일 기준<br/>1개월", "예"],
-                ["Pro", money(49900) + "/월", "60회", "20세트", "20회", "결제일 기준<br/>1개월", "예"],
-                ["Salon", money(39900) + "/월", "50회", "16세트", "16회", "결제일 기준<br/>1개월", "예"],
-            ],
-            [22 * mm, 26 * mm, 22 * mm, 24 * mm, 22 * mm, 34 * mm, 20 * mm],
-            style_set,
-            small=True,
-        ),
-        paragraph(
-            "Salon은 일반 사용자 직접 결제에서 제외되며 B2B 문의로 운영합니다. 정기결제의 한 번 결제분은 결제일 기준 최대 한 달 이용으로 분류합니다.",
-            style_set["small"],
-        ),
+        note_box("모든 금액은 부가가치세가 포함된 실제 승인 총액입니다. 결제 요청 금액은 고객 화면이 아니라 서버의 활성 상품·가격 버전을 기준으로 확정합니다.", style_set),
+        paragraph("1. 신규 판매 상품", style_set["section"]),
+        paragraph("모든 유료 상품은 얼굴·모발 분석, 정밀 퍼스널 컬러, 헤어 3×3과 최종 1개 확정, 염색·메이크업·패션 디렉팅, Salon Brief, AI 결과 리포트·PDF 및 애프터케어를 포함합니다.", style_set["body"]),
+        make_table([
+            ["상품", "승인 총액", "결제 방식", "제공 회차", "전체 재시작", "AI 사후상담", "보관"],
+            ["풀 스타일 1회", "59,000원", "단건", "1회", "1회", "D+30 1회", "60일"],
+            ["3개월 관리형", "129,000원<br/>/3개월", "3개월<br/>자동갱신", "주기당 1회", "2회", "D+30·60·90<br/>3회", "90일"],
+            ["연간", "412,800원<br/>/년", "연간<br/>자동갱신", "연 4회", "각 상담 5회", "각 상담<br/>3회", "365일"],
+        ], [30 * mm, 27 * mm, 25 * mm, 23 * mm, 23 * mm, 27 * mm, 15 * mm], style_set, small=True),
+        Spacer(1, 7),
+        note_box("연간 412,800원은 3개월 관리형 4회 총액 516,000원에서 정확히 20% 할인한 금액입니다. 연간 회차당 기준 금액은 103,200원입니다.", style_set),
+        paragraph("2. KG/PortOne 상품 코드", style_set["section"]),
+        make_table([
+            ["상품", "상품 코드", "가격 버전", "승인 금액"],
+            ["풀 스타일 1회", "hairfit-full-style-once-v3", "V3", "59,000원"],
+            ["3개월 관리형", "hairfit-full-style-quarterly-v3", "V3", "129,000원"],
+            ["연간", "hairfit-full-style-annual-v3", "V3", "412,800원"],
+        ], [35 * mm, 77 * mm, 23 * mm, 35 * mm], style_set, small=True),
         PageBreak(),
-        paragraph("2. 단건 결제 추가 이용권", style_set["section"]),
-        paragraph(
-            "추가 이용권은 활성 유료 구독자만 구매할 수 있습니다. 구매 후 사용기간은 이용권 소진 시까지이며 정기결제의 한 달 사용기간과 별도로 운영합니다.",
-            style_set["body"],
-        ),
-        make_table(
-            [
-                ["상품", "기본 금액", "헤어<br/>이용권", "패션<br/>이용권", "케어<br/>이용권", "구매 후<br/>사용기간", "최대<br/>1개월"],
-                ["추가 이용권 S", money(5900), "3회", "1세트", "1회", "이용권 소진<br/>시까지", "아니오"],
-                ["추가 이용권 M", money(13900), "8회", "2세트", "2회", "이용권 소진<br/>시까지", "아니오"],
-                ["추가 이용권 L", money(29900), "20회", "6세트", "6회", "이용권 소진<br/>시까지", "아니오"],
-            ],
-            [27 * mm, 27 * mm, 21 * mm, 24 * mm, 21 * mm, 32 * mm, 18 * mm],
-            style_set,
-            small=True,
-        ),
-        Spacer(1, 8),
-        note_box(
-            "Basic 예시: 헤어 8회, 패션 2세트, 케어 2회 이용권입니다. 최초 케어 1회 무료를 사용하지 않은 계정은 무료 혜택 1회를 별도로 이용할 수 있습니다.",
-            style_set,
-        ),
-        paragraph("3. 서비스 기간 분류 요약", style_set["section"]),
-        make_table(
-            [
-                ["상품 분류", "서비스 기간", "최대 1개월", "분류 기준"],
-                ["정기결제 Basic/Standard/Pro/Salon", "결제일 기준 1개월", "예", "한 번의 결제로 한 달 이용권 제공"],
-                ["추가 이용권 S/M/L", "이용권 소진 시까지", "아니오", "활성 유료 구독자에게 별도 이용권 제공"],
-                ["Free", "결제 상품 아님", "해당 없음", "헤어 1회 및 계정당 최초 케어 1회 무료"],
-            ],
-            [45 * mm, 43 * mm, 28 * mm, 54 * mm],
-            style_set,
-            small=True,
-        ),
-        Spacer(1, 8),
-        paragraph("4. 이용권 횟수 안내", style_set["section"]),
-        paragraph(
-            "헤어 이용권: 헤어 결과 이미지 생성 기준<br/>"
-            "패션 이용권: 헤어 1회와 패션 1회를 함께 이용하는 세트 기준<br/>"
-            "케어 이용권: 케어 프로그램 생성 기준<br/>"
-            "최초 케어 1회 무료 혜택은 계정당 한 번만 제공되며 상품별 케어 이용권 횟수와 별도입니다.",
-            style_set["body"],
-        ),
-        Spacer(1, 10),
-        note_box(
-            "발행 문서: HairFit 결제 상품 카탈로그 / 상호: 제이코더랩 / 기준일: 2026-08-03 / 수정일: 2026-08-04",
-            style_set,
-        ),
+        paragraph("3. 이용·갱신 정책", style_set["section"]),
+        *bullets([
+            "3개월 관리형은 3개월마다 풀 스타일 1회를, 연간은 1년 동안 풀 스타일 4회를 제공합니다.",
+            "미사용 회차는 다음 계약 기간으로 이월되지 않습니다.",
+            "정기 상품은 다음 결제 전에 기간말 해지를 신청할 수 있고, 현재 권리는 계약 만료일까지 유지됩니다.",
+            "신규 판매에는 V3 snapshot을 사용하며 기존 계약은 구매 당시 가격·회차·갱신·환불 기준을 유지합니다.",
+            "무료 데모는 결제 상품이 아닙니다.",
+        ], style_set),
+        paragraph("4. 청약철회·환불 정책", style_set["section"]),
+        *bullets([
+            "계약 문서를 받은 날부터 법정 청약철회 기간인 7일 이내에 환불을 신청할 수 있습니다. 서비스 제공이 더 늦게 시작되면 관련 법령에 따라 제공 시작일이 기준이 될 수 있습니다.",
+            "유료 상담 회차를 시작하면 7일 이내라도 해당 회차의 단순 변심 환불이 제한됩니다.",
+            "법정 기간이 지나면 미사용 상태라도 단순 변심 환불은 제공하지 않으며, 정기 상품은 기간말 해지로 다음 결제를 중지할 수 있습니다.",
+            "연간 상품의 법정 기한 내 미시작 회차는 결제 당시 snapshot의 회차당 103,200원을 기준으로 계산합니다.",
+            "중복·오결제, 미승인 결제, HairFit 책임의 결과 미제공, 계약과 중요한 부분이 다른 서비스는 별도 예외 심사를 진행합니다.",
+        ], style_set),
+        paragraph("5. 레거시 상품", style_set["section"]),
+        paragraph("Basic·Standard·Pro·Salon 및 추가 이용권 S·M·L은 신규 판매를 종료했습니다. 기존 계약 고객은 해지 시까지 구매 당시 가격·갱신·사용권 snapshot을 유지합니다. Salon은 B2B 문의 경로로만 운영합니다.", style_set["body"]),
+        paragraph("6. 결제 정합성", style_set["section"]),
+        *bullets([
+            "결제 준비 API는 서버 카탈로그의 offeringKey, 상품 버전 및 가격 버전을 사용합니다.",
+            "PortOne/KG이니시스 승인 금액과 서버의 준비 결제 금액이 일치할 때만 사용권을 발급합니다.",
+            "구매 완료 시 상품·가격·혜택 snapshot을 계약에 고정하고 환불·갱신·권리 판정에도 재사용합니다.",
+        ], style_set),
+        Spacer(1, 9),
+        note_box("발행 문서: HairFit 결제 상품 카탈로그 / 상호: 제이코더랩 / 기준일: 2026-08-25", style_set),
     ]
-
     doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
     print(OUTPUT)
 

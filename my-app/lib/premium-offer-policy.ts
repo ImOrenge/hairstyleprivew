@@ -9,8 +9,8 @@ export const FULL_STYLE_COMMON_BENEFITS = [
 ] as const;
 
 export const PREMIUM_OFFER_POLICY = {
-  version: "2026-08-22-v5",
-  priceVersion: 2,
+  version: "2026-08-25-v6",
+  priceVersion: 3,
   statusLabel: "가격 확정",
   disclosure:
     "표시 금액은 부가세를 포함한 실제 승인 총액입니다. 정기 상품은 미사용 회차가 이월되지 않으며, 다음 결제 전에 언제든 기간말 해지를 신청할 수 있습니다.",
@@ -50,9 +50,9 @@ export const PREMIUM_OFFER_POLICY = {
     {
       key: "full_style_quarterly",
       name: "Full Style Quarterly",
-      koreanName: "3개월 정기",
-      priceKrw: 89_000,
-      priceLabel: "89,000원",
+      koreanName: "3개월 관리형",
+      priceKrw: 129_000,
+      priceLabel: "129,000원",
       periodLabel: "/ 3개월",
       billingInterval: "quarter",
       sessions: 1,
@@ -61,9 +61,9 @@ export const PREMIUM_OFFER_POLICY = {
       tagline: "한 계절의 변화와 관리를 한 기준으로 이어갑니다.",
       summary: "3개월마다 풀코스 1회, 전체 재시작 2회와 D+30·60·90 AI 사후상담",
       management: ["3개월 안에 풀코스 1회", "상담당 전체 재시작 2회", "시술 후 D+30·60·90 AI 사후상담 3회", "회차별 결과 완료 후 90일 보관"],
-      ctaLabel: "3개월 정기 선택",
+      ctaLabel: "3개월 관리형 선택",
       recommended: true,
-      planTypeLabel: "3개월 정기형",
+      planTypeLabel: "3개월 관리형",
       retentionDays: 90,
       autoRenew: true,
     },
@@ -71,8 +71,8 @@ export const PREMIUM_OFFER_POLICY = {
       key: "full_style_annual",
       name: "Full Style Annual",
       koreanName: "연간",
-      priceKrw: 299_000,
-      priceLabel: "299,000원",
+      priceKrw: 412_800,
+      priceLabel: "412,800원",
       periodLabel: "/ 년",
       billingInterval: "year",
       sessions: 4,
@@ -101,7 +101,7 @@ export const PREMIUM_OFFER_POLICY = {
       "중복·오결제, 승인하지 않은 결제, HairFit 책임의 결과 미제공, 표시·광고·계약과 중요한 부분이 다른 경우는 별도 예외 규정으로 처리합니다.",
     ],
     paidStartNotice:"지금 유료 상담 1회가 시작됩니다. 시작 후에는 단순 변심에 따른 해당 회차의 청약철회와 환불이 제한됩니다. 연간 플랜의 아직 시작하지 않은 회차와 법정 예외 사유에 대한 권리는 유지됩니다.",
-    annualNotice:"법정 청약철회 기간 안에 일부 상담을 시작했다면 시작하지 않은 회차는 회차당 74,750원으로 계산합니다. 청약철회 기간이 지난 뒤에는 미시작 회차도 단순 변심 환불 대상이 아닙니다.",
+    annualNotice:"법정 청약철회 기간 안에 일부 상담을 시작했다면 시작하지 않은 회차는 회차당 103,200원으로 계산합니다. 청약철회 기간이 지난 뒤에는 미시작 회차도 단순 변심 환불 대상이 아닙니다.",
   },
 } as const;
 

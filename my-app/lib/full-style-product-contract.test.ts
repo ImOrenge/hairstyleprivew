@@ -12,6 +12,8 @@ const benefitMigration=read("../supabase/migrations/20260821103000_full_style_be
 const benefitMirrored=read("supabase/migrations/20260821103000_full_style_benefit_limits.sql");
 const activationMigration=read("../supabase/migrations/20260825041004_activate_full_style_v2_catalog.sql");
 const activationMirrored=read("supabase/migrations/20260825041004_activate_full_style_v2_catalog.sql");
+const priceV3Migration=read("../supabase/migrations/20260825103949_full_style_price_v3.sql");
+const priceV3Mirrored=read("supabase/migrations/20260825103949_full_style_price_v3.sql");
 const start=read("components/consulting/interview/ZeroInputConsultationStart.tsx");
 const compare=read("components/consulting/workbenches/CompareWorkbench.tsx");
 const previews=read("components/consulting/workbenches/PreviewsWorkbench.tsx");
@@ -23,10 +25,13 @@ const archive=read("app/consulting/archive/page.tsx");
 const renewal=read("supabase/functions/cron-subscription-renewal/index.ts");
 const generationAccept=read("app/api/generations/accept/route.ts");
 const generationRun=read("app/api/generations/run/route.ts");
+const paymentCatalog=read("../docs/payment-product-catalog.md");
+const paymentCatalogGenerator=read("../scripts/generate-payment-catalog-pdf.py");
 
 test("approved total prices, sessions, periods and shared capabilities are one contract",()=>{
-  for(const value of ["59,000원","89,000원","299,000원","full_style_once","full_style_quarterly","full_style_annual"])assert.match(policy,new RegExp(value));
-  for(const amount of ["59000","89000","299000"])assert.match(migration,new RegExp(amount));
+  for(const value of ["59,000원","129,000원","412,800원","full_style_once","full_style_quarterly","full_style_annual"])assert.match(policy,new RegExp(value));
+  for(const amount of ["59000","129000","412800"])assert.match(priceV3Migration,new RegExp(amount));
+  assert.match(policy,/priceVersion: 3/);
   assert.match(policy,/sessions: 4/); assert.match(policy,/미사용 회차가 이월되지 않으며/);
   for(const benefit of ['"hairRestartCount":1','"hairRestartCount":2','"hairRestartCount":5','"aftercareConsultationCount":1','"aftercareConsultationCount":3'])assert.match(benefitMigration,new RegExp(benefit));
   assert.equal((migration.match(/"finalHairSelectionCount":1/g)||[]).length,3);
@@ -96,4 +101,23 @@ test("all three approved V2 offers activate together and V1 stays retired",()=>{
   assert.match(activationMigration,/FULL_STYLE_V2_CATALOG_INCOMPLETE/);
   assert.match(activationMigration,/version = 1[\s\S]*status = 'active'[\s\S]*version = 2/);
   assert.match(activationMigration,/p\.provider = 'portone'/);
+});
+
+test("V3 price catalog retires V2 for new sales and preserves snapshot-based contracts",()=>{
+  assert.equal(priceV3Migration,priceV3Mirrored);
+  for(const offering of ["full_style_once","full_style_quarterly","full_style_annual"])assert.match(priceV3Migration,new RegExp(offering));
+  assert.match(priceV3Migration,/set status='retired'[\s\S]*version=2/);
+  assert.match(priceV3Migration,/version,provider,provider_product_id,currency,amount_minor,status,valid_from/);
+  assert.match(priceV3Migration,/FULL_STYLE_V3_CATALOG_INCOMPLETE/);
+  assert.match(checkout,/prepared\.amount_minor/);
+});
+
+test("KG Inicis catalog publishes only current V3 sale terms",()=>{
+  for(const value of ["59,000원","129,000원","412,800원","103,200원","정확히 20% 할인"])assert.match(paymentCatalog,new RegExp(value));
+  for(const productId of ["hairfit-full-style-once-v3","hairfit-full-style-quarterly-v3","hairfit-full-style-annual-v3"]) {
+    assert.match(paymentCatalog,new RegExp(productId));
+    assert.match(paymentCatalogGenerator,new RegExp(productId));
+  }
+  assert.match(paymentCatalog,/Basic·Standard·Pro·Salon[\s\S]*신규 판매를 종료/);
+  assert.match(paymentCatalogGenerator,/hairfit-payment-product-catalog-2026-08-25\.pdf/);
 });
