@@ -117,6 +117,10 @@ export default class HairFitOpenNextRouter extends WorkerEntrypoint {
   async fetch(request) {
     ensureMiddlewareProcessEnv(this.env);
     const pathname = new URL(request.url).pathname;
+    if (pathname === "/favicon.ico") {
+      return this.env.ASSETS.fetch(new URL("/icon.png", request.url));
+    }
+
     if (pathname === "/_next/image") {
       const localAssetUrl = resolveLocalImageAssetUrl(request.url);
       if (localAssetUrl) {
