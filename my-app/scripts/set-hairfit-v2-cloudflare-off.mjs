@@ -2,7 +2,11 @@ import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { EXPLICIT_ROLLOUT_FLAGS } from "./verify-hairfit-v2-live-readiness.mjs";
+import {
+  EXPLICIT_ROLLOUT_FLAGS,
+  EXPLICIT_ROLLOUT_SETTINGS,
+  expectedRolloutSettingValue,
+} from "./verify-hairfit-v2-live-readiness.mjs";
 import { parseWranglerSecretNames } from "./check-hairfit-v2-cloudflare-secret-names.mjs";
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -13,6 +17,7 @@ export const OFF_APPLY_CONFIRMATION = "HAIRFIT_V2_SERVER_FLAGS_OFF";
 export const SERVER_ROLLOUT_FLAGS = Object.freeze(
   EXPLICIT_ROLLOUT_FLAGS.filter((name) => !name.startsWith("NEXT_PUBLIC_")),
 );
+export const SERVER_ROLLOUT_SETTINGS = EXPLICIT_ROLLOUT_SETTINGS;
 
 export function workerNameFromConfig(source) {
   const match = source.match(/^[\t ]*"name"[\t ]*:[\t ]*"([^"]+)"/mu);
@@ -21,7 +26,10 @@ export function workerNameFromConfig(source) {
 }
 
 export function buildOffPayload() {
-  return Object.fromEntries(SERVER_ROLLOUT_FLAGS.map((name) => [name, "false"]));
+  return Object.fromEntries([
+    ...SERVER_ROLLOUT_FLAGS.map((name) => [name, "false"]),
+    ...SERVER_ROLLOUT_SETTINGS.map((name) => [name, expectedRolloutSettingValue("off", name)]),
+  ]);
 }
 
 export function validateApplyRequest({ apply, confirmation, workerName }) {
@@ -31,7 +39,7 @@ export function validateApplyRequest({ apply, confirmation, workerName }) {
   if (apply && confirmation !== OFF_APPLY_CONFIRMATION) {
     throw new Error(`--apply requires --confirm=${OFF_APPLY_CONFIRMATION}`);
   }
-  return { apply, workerName, flagCount: SERVER_ROLLOUT_FLAGS.length };
+  return { apply, workerName, flagCount: SERVER_ROLLOUT_FLAGS.length, settingCount: SERVER_ROLLOUT_SETTINGS.length };
 }
 
 function runWrangler(args, input = undefined) {
@@ -68,7 +76,8 @@ function printPlan() {
   console.log("HairFit V2 Cloudflare OFF registration plan");
   console.log(`target Worker: ${EXPECTED_WEB_WORKER_NAME}`);
   console.log(`server rollout flags: ${SERVER_ROLLOUT_FLAGS.length}`);
-  console.log("target values: false");
+  console.log(`server rollout settings: ${SERVER_ROLLOUT_SETTINGS.length}`);
+  console.log("target values: feature flags false; marketing email delivery off");
   console.log("NEXT_PUBLIC build-time values: unchanged");
   console.log("migration, deployment source, provider calls: unchanged");
   console.log("remote access: no");
@@ -89,11 +98,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         "secret", "bulk", "--config", "wrangler.jsonc", "--name", EXPECTED_WEB_WORKER_NAME,
       ], `${JSON.stringify(payload)}\n`);
       const after = listRemoteNames();
-      const missing = SERVER_ROLLOUT_FLAGS.filter((name) => !after.has(name));
+      const missing = [...SERVER_ROLLOUT_FLAGS, ...SERVER_ROLLOUT_SETTINGS].filter((name) => !after.has(name));
       if (missing.length) throw new Error(`OFF registration incomplete: ${missing.join(", ")}`);
       console.log("HairFit V2 Cloudflare OFF registration: COMPLETE");
       console.log(`target Worker: ${EXPECTED_WEB_WORKER_NAME}`);
       console.log(`registered server flags: ${SERVER_ROLLOUT_FLAGS.length}/${SERVER_ROLLOUT_FLAGS.length}`);
+      console.log(`registered server settings: ${SERVER_ROLLOUT_SETTINGS.length}/${SERVER_ROLLOUT_SETTINGS.length}`);
       console.log(`previously named flags: ${SERVER_ROLLOUT_FLAGS.filter((name) => before.has(name)).length}`);
       console.log("secret values rendered: no");
       console.log("NEXT_PUBLIC build-time values changed: no");

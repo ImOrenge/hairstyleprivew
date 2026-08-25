@@ -1,13 +1,18 @@
 import { spawnSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { EXPLICIT_ROLLOUT_FLAGS, REQUIRED_LIVE_KEYS } from "./verify-hairfit-v2-live-readiness.mjs";
+import {
+  EXPLICIT_ROLLOUT_FLAGS,
+  EXPLICIT_ROLLOUT_SETTINGS,
+  REQUIRED_LIVE_KEYS,
+} from "./verify-hairfit-v2-live-readiness.mjs";
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 export const REQUIRED_CLOUDFLARE_SECRET_NAMES = Object.freeze([
   ...REQUIRED_LIVE_KEYS.filter((name) => !name.startsWith("NEXT_PUBLIC_")),
   ...EXPLICIT_ROLLOUT_FLAGS.filter((name) => !name.startsWith("NEXT_PUBLIC_")),
+  ...EXPLICIT_ROLLOUT_SETTINGS,
 ]);
 
 export function parseWranglerSecretNames(payload) {

@@ -4,24 +4,27 @@ import {
   EXPECTED_WEB_WORKER_NAME,
   OFF_APPLY_CONFIRMATION,
   SERVER_ROLLOUT_FLAGS,
+  SERVER_ROLLOUT_SETTINGS,
   buildOffPayload,
   validateApplyRequest,
   workerNameFromConfig,
 } from "./set-hairfit-v2-cloudflare-off.mjs";
 import { buildServerVersionPayload, buildStaffCanaryPayload } from "./upload-hairfit-v2-staff-canary.mjs";
+import { EXPLICIT_ROLLOUT_FLAGS } from "./verify-hairfit-v2-live-readiness.mjs";
 
 test("OFF payload contains every explicit server flag and only false values", () => {
   const payload = buildOffPayload();
-  assert.equal(SERVER_ROLLOUT_FLAGS.length, 41);
-  assert.equal(Object.keys(payload).length, SERVER_ROLLOUT_FLAGS.length);
-  assert.equal(Object.values(payload).every((value) => value === "false"), true);
+  assert.equal(SERVER_ROLLOUT_FLAGS.length, EXPLICIT_ROLLOUT_FLAGS.length - 1);
+  assert.equal(Object.keys(payload).length, SERVER_ROLLOUT_FLAGS.length + SERVER_ROLLOUT_SETTINGS.length);
+  assert.equal(SERVER_ROLLOUT_FLAGS.every((name) => payload[name] === "false"), true);
+  assert.equal(payload.MARKETING_EMAIL_DELIVERY_MODE, "off");
   assert.equal(Object.keys(payload).some((name) => name.startsWith("NEXT_PUBLIC_")), false);
   assert.deepEqual(SERVER_ROLLOUT_FLAGS.slice(-5), [
-    "FASHION_PRODUCT_TRUTH_ENABLED",
-    "ONBOARDING_FASHION_PERSONALIZATION_ENABLED",
-    "FASHION_TREND_SIGNALS_V2_ENABLED",
-    "FASHION_ADAPTIVE_BATCH_ENABLED",
     "CONSULTATION_AI_LED_HAIR_DECISION_ENABLED",
+    "CONSULTATION_HAIR_RANKER_SHADOW_ENABLED",
+    "HAIRSTYLE_BLUEPRINT_V4_ENABLED",
+    "GENERATION_ACCEPTANCE_ENABLED",
+    "STYLING_ACCEPTANCE_ENABLED",
   ]);
 });
 
@@ -34,7 +37,7 @@ test("OFF payload excludes model, credential and paid-confirmation keys", () => 
 
 test("staff canary enables V2 server flags but keeps the legacy entitlement bridge off", () => {
   const payload = buildStaffCanaryPayload();
-  assert.equal(Object.keys(payload).length, SERVER_ROLLOUT_FLAGS.length);
+  assert.equal(Object.keys(payload).length, SERVER_ROLLOUT_FLAGS.length + SERVER_ROLLOUT_SETTINGS.length);
   assert.equal(payload.ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED, "false");
   assert.equal(payload.PERSONAL_COLOR_V2_WRITE, "true");
   assert.equal(payload.PERSONAL_COLOR_V2_READ, "true");
@@ -46,16 +49,29 @@ test("staff canary enables V2 server flags but keeps the legacy entitlement brid
   assert.equal(payload.MAKEUP_RECIPE_CATALOG_SHADOW_ENABLED, "true");
   assert.equal(payload.MAKEUP_RECIPE_CATALOG_ENABLED, "false");
   assert.equal(payload.CONSULTATION_RESULT_AI_NARRATIVE_ENABLED, "true");
-  assert.equal(Object.entries(payload).every(([name, value]) => (
+  assert.equal(payload.MARKETING_EMAIL_DELIVERY_MODE, "test");
+  assert.equal(Object.entries(payload).filter(([name]) => SERVER_ROLLOUT_FLAGS.includes(name)).every(([name, value]) => (
     ["ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED", "MAKEUP_RECIPE_CATALOG_ENABLED"].includes(name) ? value === "false" : value === "true"
   )), true);
 });
 
 test("versioned OFF upload keeps every server rollout flag false", () => {
   const payload = buildServerVersionPayload("off");
-  assert.equal(Object.keys(payload).length, SERVER_ROLLOUT_FLAGS.length);
-  assert.equal(Object.values(payload).every((value) => value === "false"), true);
+  assert.equal(Object.keys(payload).length, SERVER_ROLLOUT_FLAGS.length + SERVER_ROLLOUT_SETTINGS.length);
+  assert.equal(SERVER_ROLLOUT_FLAGS.every((name) => payload[name] === "false"), true);
+  assert.equal(payload.MARKETING_EMAIL_DELIVERY_MODE, "off");
   assert.throws(() => buildServerVersionPayload("invalid"), /mode/);
+});
+
+test("launch upload opens customer features but retains the legacy and staff-only boundaries", () => {
+  const payload = buildServerVersionPayload("launch");
+  assert.equal(Object.keys(payload).length, SERVER_ROLLOUT_FLAGS.length + SERVER_ROLLOUT_SETTINGS.length);
+  assert.equal(payload.MAKEUP_RECIPE_CATALOG_SHADOW_ENABLED, "true");
+  assert.equal(payload.MAKEUP_RECIPE_CATALOG_ENABLED, "true");
+  assert.equal(payload.MAKEUP_SEMANTIC_VISION_STAFF_ONLY, "false");
+  assert.equal(payload.ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED, "false");
+  assert.equal(payload.MARKETING_EMAIL_DELIVERY_MODE, "test");
+  assert.equal(Object.values(payload).filter((value) => value === "false").length, 2);
 });
 
 test("apply refuses an unexpected Worker or missing exact confirmation", () => {

@@ -139,6 +139,7 @@
     "cf:multi:router:bootstrap": "wrangler deploy --config workers/open-next-multi/wrangler.middleware.bootstrap.jsonc",
     "cf:multi:router:auth-sync": "node scripts/sync-hairfit-router-auth-secrets.mjs",
     "cf:multi:server:staff-canary": "node scripts/upload-hairfit-v2-staff-canary.mjs --mode=canary",
+    "cf:multi:server:launch": "node scripts/upload-hairfit-v2-staff-canary.mjs --mode=launch",
     "cf:multi:staff-canary:verify": "node scripts/verify-hairfit-v2-version-override.mjs",
     "cf:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",

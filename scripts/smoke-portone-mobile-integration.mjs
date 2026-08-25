@@ -29,7 +29,8 @@ const mobileSync = read("scripts/mobile-sync-verify.mjs");
 
 assertIncludes(mobileBilling, 'dashboard\\?\\.customer\\.billingPlans \\?\\? \\[\\]', "mobile billing must render the server-provided plan catalog");
 assertIncludes(mobileBilling, 'plan\\.priceKrw\\.toLocaleString\\("ko-KR"\\)', "mobile billing must render the server-provided price");
-assertIncludes(mobileBilling, 'plan\\.credits\\.toLocaleString\\("ko-KR"\\)', "mobile billing must render the server-provided credits");
+assertIncludes(mobileBilling, '월 \\{plan\\.priceKrw\\.toLocaleString\\("ko-KR"\\)\\}원 · 월 이용권', "mobile billing must explain the customer-facing monthly pass");
+assertAbsent(mobileBilling, 'plan\\.credits', "mobile billing plan cards must not expose compatibility credits");
 assertAbsent(mobileBilling, '9,900원|19,900원|49,900원', "mobile billing must not hardcode server-configurable plan prices");
 assertIncludes(mobileDashboardRoute, 'billingPlans: getSelfServeBillingPlans\\(\\)', "mobile dashboard must expose the server-owned self-serve catalog");
 

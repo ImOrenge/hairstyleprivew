@@ -22,6 +22,13 @@ export const REQUIRED_LIVE_KEYS = Object.freeze([
 
 export const EXPLICIT_ROLLOUT_FLAGS = Object.freeze([
   "NEXT_PUBLIC_CONSULTATION_FRONTEND_V2",
+  "FREE_HAIR_DEMO_ENABLED",
+  "FULL_STYLE_CATALOG_ENABLED",
+  "FULL_STYLE_CHECKOUT_ENABLED",
+  "FULL_STYLE_AFTERCARE_CHECKINS_ENABLED",
+  "FULL_STYLE_REFUND_POLICY_V2_ENABLED",
+  "MARKETING_EMAIL_CAMPAIGNS_ENABLED",
+  "LAUNCH_PROMOTION_REDEMPTION_ENABLED",
   "CATALOG_V2_ENABLED",
   "ENTITLEMENT_V2_DUAL_WRITE_ENABLED",
   "ENTITLEMENT_V2_SHADOW_READ_ENABLED",
@@ -40,9 +47,16 @@ export const EXPLICIT_ROLLOUT_FLAGS = Object.freeze([
   "STYLING_LINK_V2_ENABLED",
   "FASHION_BATCH_V2_ENABLED",
   "CONSULTATION_DISCOVERY_INTERVIEW_ENABLED",
+  "CONSULTATION_CHAPTER_NAV_ENABLED",
+  "CONSULTATION_PROGRESSIVE_INTERVIEW_ENABLED",
   "CONSULTATION_FASHION_INTERVIEW_ENABLED",
+  "CONSULTATION_MAKEUP_INTERVIEW_ENABLED",
   "CONSULTATION_INTERVIEW_AI_SUMMARY_ENABLED",
   "CONSULTATION_RESULT_AI_NARRATIVE_ENABLED",
+  "CONSULTATION_RESULT_V2_ENABLED",
+  "CONSULTATION_HAIR_TRAIT_ANALYSIS_ENABLED",
+  "CONSULTATION_PERSONAL_COLOR_SCENE_ENABLED",
+  "CONSULTATION_COLOR_STUDIO_ENABLED",
   "CONSULTATION_PERSONAL_COLOR_CAPABILITY_ENABLED",
   "CONSULTATION_SALON_BRIEF_CAPABILITY_ENABLED",
   "CONSULTATION_AFTERCARE_CAPABILITY_ENABLED",
@@ -57,18 +71,47 @@ export const EXPLICIT_ROLLOUT_FLAGS = Object.freeze([
   "MAKEUP_SEMANTIC_VISION_STAFF_ONLY",
   "MAKEUP_RECIPE_CATALOG_SHADOW_ENABLED",
   "MAKEUP_RECIPE_CATALOG_ENABLED",
+  "MAKEUP_RATIONALE_AI_ENABLED",
+  "MAKEUP_PROFESSIONAL_REPORT_AI_ENABLED",
+  "MAKEUP_STYLE_SIMULATION_ENABLED",
+  "MAKEUP_STYLE_SIMULATION_ALTERNATIVE_ENABLED",
   "CONSULTATION_ZERO_INPUT_INTAKE_ENABLED",
   "FASHION_PRODUCT_TRUTH_ENABLED",
   "ONBOARDING_FASHION_PERSONALIZATION_ENABLED",
   "FASHION_TREND_SIGNALS_V2_ENABLED",
   "FASHION_ADAPTIVE_BATCH_ENABLED",
   "CONSULTATION_AI_LED_HAIR_DECISION_ENABLED",
+  "CONSULTATION_HAIR_RANKER_SHADOW_ENABLED",
+  "HAIRSTYLE_BLUEPRINT_V4_ENABLED",
+  "GENERATION_ACCEPTANCE_ENABLED",
+  "STYLING_ACCEPTANCE_ENABLED",
 ]);
 
-const CANARY_TRUE_FLAGS = new Set(EXPLICIT_ROLLOUT_FLAGS.filter(
-  (name) => !["ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED", "MAKEUP_RECIPE_CATALOG_ENABLED"].includes(name),
-));
-const CANARY_FALSE_FLAGS = new Set(["ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED", "MAKEUP_RECIPE_CATALOG_ENABLED"]);
+export const EXPLICIT_ROLLOUT_SETTINGS = Object.freeze([
+  "MARKETING_EMAIL_DELIVERY_MODE",
+]);
+
+export const ROLLOUT_DISABLED_FLAGS = Object.freeze({
+  off: new Set(EXPLICIT_ROLLOUT_FLAGS),
+  canary: new Set(["ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED", "MAKEUP_RECIPE_CATALOG_ENABLED"]),
+  launch: new Set(["ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED", "MAKEUP_SEMANTIC_VISION_STAFF_ONLY"]),
+});
+
+export function expectedRolloutFlagValue(mode, name) {
+  const disabled = ROLLOUT_DISABLED_FLAGS[mode];
+  if (!disabled) throw new Error(`unsupported rollout mode: ${mode}`);
+  if (!EXPLICIT_ROLLOUT_FLAGS.includes(name)) throw new Error(`unknown rollout flag: ${name}`);
+  return disabled.has(name) ? "false" : "true";
+}
+
+export function expectedRolloutSettingValue(mode, name) {
+  if (!EXPLICIT_ROLLOUT_SETTINGS.includes(name)) throw new Error(`unknown rollout setting: ${name}`);
+  if (name === "MARKETING_EMAIL_DELIVERY_MODE") {
+    if (mode === "off") return "off";
+    if (mode === "canary" || mode === "launch") return "test";
+  }
+  throw new Error(`unsupported rollout mode: ${mode}`);
+}
 
 function isPlaceholder(value) {
   return !value || /^(?:your_|change_me|example|<)/i.test(value.trim());
@@ -95,21 +138,23 @@ export function evaluateLiveReadiness({ env, mode, linked, migrationMirror }) {
   const failures = [];
   const missingKeys = REQUIRED_LIVE_KEYS.filter((key) => isPlaceholder(env[key]));
   const invalidFlags = EXPLICIT_ROLLOUT_FLAGS.filter((key) => env[key] !== "true" && env[key] !== "false");
+  const invalidSettings = EXPLICIT_ROLLOUT_SETTINGS.filter((key) => !["off", "test", "live"].includes(env[key]));
 
   if (missingKeys.length) failures.push(`missing configured keys: ${missingKeys.join(", ")}`);
   if (invalidFlags.length) failures.push(`flags must be explicit true/false: ${invalidFlags.join(", ")}`);
+  if (invalidSettings.length) failures.push(`rollout settings must be explicit: ${invalidSettings.join(", ")}`);
   if (!linked) failures.push("Supabase project link marker is missing");
   if (!migrationMirror.ok) failures.push(`migration mirrors differ: root=${migrationMirror.rootCount}, app=${migrationMirror.appCount}`);
 
-  if (mode === "off") {
-    for (const key of ["NEXT_PUBLIC_CONSULTATION_FRONTEND_V2", "CONSULTATION_SESSION_V2_ENABLED"]) {
-      if (env[key] !== "false") failures.push(`${key} must be false for the OFF smoke`);
-    }
-  } else if (mode === "canary") {
-    const disabled = [...CANARY_TRUE_FLAGS].filter((key) => env[key] !== "true");
-    if (disabled.length) failures.push(`canary-required flags are not true: ${disabled.join(", ")}`);
-    const unexpectedlyEnabled = [...CANARY_FALSE_FLAGS].filter((key) => env[key] !== "false");
-    if (unexpectedlyEnabled.length) failures.push(`canary-required flags are not false: ${unexpectedlyEnabled.join(", ")}`);
+  if (mode === "off" || mode === "canary" || mode === "launch") {
+    const mismatched = EXPLICIT_ROLLOUT_FLAGS.filter(
+      (key) => env[key] !== expectedRolloutFlagValue(mode, key),
+    );
+    if (mismatched.length) failures.push(`${mode}-required flag values differ: ${mismatched.join(", ")}`);
+    const mismatchedSettings = EXPLICIT_ROLLOUT_SETTINGS.filter(
+      (key) => env[key] !== expectedRolloutSettingValue(mode, key),
+    );
+    if (mismatchedSettings.length) failures.push(`${mode}-required setting values differ: ${mismatchedSettings.join(", ")}`);
   } else if (mode !== "inventory") {
     failures.push(`unsupported mode: ${mode}`);
   }
@@ -121,6 +166,8 @@ export function evaluateLiveReadiness({ env, mode, linked, migrationMirror }) {
     requiredKeyCount: REQUIRED_LIVE_KEYS.length,
     explicitFlagCount: EXPLICIT_ROLLOUT_FLAGS.length - invalidFlags.length,
     requiredFlagCount: EXPLICIT_ROLLOUT_FLAGS.length,
+    explicitSettingCount: EXPLICIT_ROLLOUT_SETTINGS.length - invalidSettings.length,
+    requiredSettingCount: EXPLICIT_ROLLOUT_SETTINGS.length,
     linked,
     migrationMirror,
     failures,
@@ -152,6 +199,7 @@ export function formatReadiness(result) {
     `mode: ${result.mode}`,
     `configured keys: ${result.configuredKeyCount}/${result.requiredKeyCount}`,
     `explicit rollout flags: ${result.explicitFlagCount}/${result.requiredFlagCount}`,
+    `explicit rollout settings: ${result.explicitSettingCount}/${result.requiredSettingCount}`,
     `Supabase project linked: ${result.linked ? "yes" : "no"}`,
     `migration mirror: ${result.migrationMirror.ok ? "match" : "mismatch"} (${result.migrationMirror.rootCount}/${result.migrationMirror.appCount})`,
   ];
