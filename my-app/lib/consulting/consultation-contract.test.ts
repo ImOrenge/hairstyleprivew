@@ -309,7 +309,7 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /resolveLocalImageAssetUrl\(request\.url\)/);
   assert.match(router, /this\.env\.ASSETS\.fetch\(localAssetUrl\)/);
   assert.match(router, /pathname === "\/favicon\.ico"/);
-  assert.match(router, /this\.env\.ASSETS\.fetch\(new URL\("\/icon\.png", request\.url\)\)/);
+  assert.match(router, /this\.env\.ASSETS\.fetch\(new URL\("\/logo\.png", request\.url\)\)/);
   assert.match(router, /if \(pathname === "\/_next\/image"\)/);
   assert.match(router, /handleImageRequest\(new URL\(request\.url\), request\.headers, this\.env\)/);
   assert.match(imageRoute, /!source\.startsWith\("\/"\) \|\| source\.startsWith\("\/\/"\)/);
