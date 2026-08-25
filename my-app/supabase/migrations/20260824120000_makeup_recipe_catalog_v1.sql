@@ -151,7 +151,7 @@ begin
     return jsonb_build_object('valid',false,'errors',v_errors,'entryCount',v_count);
   end if;
 
-  select encode(public.digest(string_agg(e.fingerprint, '' order by e.presentation_family, e.makeup_mode), 'sha256'), 'hex')
+  select encode(extensions.digest(string_agg(e.fingerprint, '' order by e.presentation_family, e.makeup_mode), 'sha256'), 'hex')
     into v_fingerprint from public.makeup_recipe_catalog_entries e where e.cycle_id = p_cycle_id;
   update public.makeup_recipe_catalog_cycles
     set status = 'validated', fingerprint = v_fingerprint,
@@ -175,7 +175,7 @@ begin
   insert into public.makeup_recipe_catalog_cycles(id,version,status,created_by) values(v_cycle_id,p_version,'draft',p_actor);
   for v_entry in select value from jsonb_array_elements(p_entries) loop
     v_family := v_entry->>'presentationFamily'; v_mode := v_entry->>'mode'; v_modules := v_entry->'modules';
-    v_fingerprint := encode(public.digest(jsonb_build_object('family',v_family,'mode',v_mode,'modules',v_modules)::text,'sha256'),'hex');
+    v_fingerprint := encode(extensions.digest(jsonb_build_object('family',v_family,'mode',v_mode,'modules',v_modules)::text,'sha256'),'hex');
     insert into public.makeup_recipe_catalog_entries(cycle_id,recipe_key,presentation_family,makeup_mode,module_policies,fingerprint)
     values(v_cycle_id,v_family||':'||v_mode,v_family,v_mode,v_modules,v_fingerprint);
   end loop;
@@ -261,7 +261,7 @@ begin
         );
         v_policies := v_policies || jsonb_build_array(v_family_modules);
       end loop;
-      v_recipe_fingerprint := encode(public.digest(jsonb_build_object('family',v_family,'mode',v_mode,'modules',v_policies)::text,'sha256'),'hex');
+      v_recipe_fingerprint := encode(extensions.digest(jsonb_build_object('family',v_family,'mode',v_mode,'modules',v_policies)::text,'sha256'),'hex');
       insert into public.makeup_recipe_catalog_entries(cycle_id,recipe_key,presentation_family,makeup_mode,module_policies,fingerprint)
       values(v_cycle,v_family||':'||v_mode,v_family,v_mode,v_policies,v_recipe_fingerprint);
     end loop;
