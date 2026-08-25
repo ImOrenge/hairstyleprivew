@@ -162,10 +162,62 @@ export interface AdminMemberListRow {
   email: string | null;
   display_name: string | null;
   account_type: string | null;
-  credits: number | null;
+  entitlementSummary: AdminEntitlementSummary;
   onboarding_completed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AdminEntitlementSummary {
+  activeGrantCount: number;
+  remainingSessions: number;
+  nearestExpiryAt: string | null;
+}
+
+export interface AdminEntitlementGrant {
+  id: string;
+  userId: string;
+  offeringKey: string;
+  offeringVersion: number;
+  customerName: string;
+  description: string;
+  quantityGranted: number;
+  quantityConsumed: number;
+  remainingSessions: number;
+  status: "active" | "exhausted" | "expired" | "revoked";
+  effectiveStatus: "active" | "exhausted" | "expired" | "revoked";
+  source: string;
+  validFrom: string;
+  expiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  revocable: boolean;
+  revocationBlockedReason: string | null;
+}
+
+export interface AdminGrantableOffering {
+  key: string;
+  version: number;
+  customerName: string;
+  description: string;
+  purchaseMode: "one_time" | "recurring";
+  billingInterval: "month" | "quarter" | "year" | null;
+  includedSessions: number;
+  validityLabel: string;
+}
+
+export interface AdminEntitlementAudit {
+  id: string;
+  actionType: "entitlement_grant" | "entitlement_revoke";
+  status: string;
+  actorUserId: string;
+  grantId: string | null;
+  reason: string;
+  beforeState: Record<string, unknown>;
+  afterState: Record<string, unknown>;
+  errorCode: string | null;
+  createdAt: string;
+  completedAt: string | null;
 }
 
 export interface AdminMemberDetailResponse {
@@ -180,8 +232,13 @@ export interface AdminMemberDetailResponse {
     stylingSessions: Record<string, unknown>[];
     hairRecords: Record<string, unknown>[];
     payments: Record<string, unknown>[];
-    creditLedger: Record<string, unknown>[];
     subscriptions: Record<string, unknown>[];
+  };
+  entitlements: {
+    summary: AdminEntitlementSummary;
+    grants: AdminEntitlementGrant[];
+    grantableOfferings: AdminGrantableOffering[];
+    auditHistory: AdminEntitlementAudit[];
   };
   salon: {
     customers: Record<string, unknown>[];
@@ -729,8 +786,31 @@ export class HairfitApiClient {
     );
   }
 
-  listAdminReviews(
-    options: {
+  grantAdminMemberEntitlement(userId: string, input: {
+    actionKey: string;
+    offeringKey: string;
+    expectedOfferingVersion: number;
+    reason: string;
+  }) {
+    return this.request<Record<string, unknown>>(
+      `/api/admin/members/${encodeURIComponent(userId)}/entitlements`,
+      { method: "POST", body: JSON.stringify(input) },
+    );
+  }
+
+  revokeAdminMemberEntitlement(userId: string, grantId: string, input: {
+    actionKey: string;
+    expectedStatus: "active";
+    expectedQuantityConsumed: 0;
+    reason: string;
+  }) {
+    return this.request<Record<string, unknown>>(
+      `/api/admin/members/${encodeURIComponent(userId)}/entitlements/${encodeURIComponent(grantId)}/revoke`,
+      { method: "POST", body: JSON.stringify(input) },
+    );
+  }
+
+  listAdminReviews(options: {
       q?: string;
       visibility?: "visible" | "hidden";
       limit?: number;
@@ -773,8 +853,7 @@ export class HairfitApiClient {
     );
   }
 
-  listAdminInboundEmails(
-    options: {
+  listAdminInboundEmails(options: {
       q?: string;
       status?: "new" | "read" | "archived";
       mailbox?: "support" | "business" | "general";
@@ -804,8 +883,7 @@ export class HairfitApiClient {
     }>(`/api/admin/inbound-emails${querySuffix(params)}`);
   }
 
-  listAdminB2bLeads(
-    options: {
+  listAdminB2bLeads(options: {
       q?: string;
       stage?: AdminB2bLeadRow["stage"];
       source?: AdminB2bLeadRow["source"];
@@ -858,8 +936,7 @@ export class HairfitApiClient {
     }>(`/api/salon/customers${querySuffix(params)}`);
   }
 
-  listSalonMatchCandidates(
-    options: {
+  listSalonMatchCandidates(options: {
       q?: string;
       status?: "pending" | "linked" | "all";
       limit?: number;

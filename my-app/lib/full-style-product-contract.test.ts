@@ -29,6 +29,7 @@ const generationAccept=read("app/api/generations/accept/route.ts");
 const generationRun=read("app/api/generations/run/route.ts");
 const paymentCatalog=read("../docs/payment-product-catalog.md");
 const paymentCatalogGenerator=read("../scripts/generate-payment-catalog-pdf.py");
+const paidStart=read("lib/v2/paid-start-server.ts");
 
 test("approved total prices, sessions, periods and shared capabilities are one contract",()=>{
   for(const value of ["59,000원","129,000원","412,800원","full_style_once","full_style_quarterly","full_style_annual"])assert.match(policy,new RegExp(value));
@@ -40,6 +41,11 @@ test("approved total prices, sessions, periods and shared capabilities are one c
   assert.equal((migration.match(/"finalHairSelectionCount":1/g)||[]).length,3);
   assert.equal((migration.match(/"fashionPreviews":3,"fashionAdditionalPreviews":6/g)||[]).length,3);
   assert.match(migration,/"beforeAfterComparison":true,"annualSummary":true/);
+});
+
+test("manual and promotional grants are complimentary starts without a paid contract",()=>{
+  assert.match(paidStart,/source==="promotion"\|\|grantRow\.source==="manual"/);
+  assert.match(paidStart,/paid:false,required:false,activated:true/);
 });
 
 test("free demo is account-once, watermarked, quick-color, 3x3 and paywalled before compare",()=>{

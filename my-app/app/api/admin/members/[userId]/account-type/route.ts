@@ -26,7 +26,6 @@ interface UpdatedMemberRow {
   email: string | null;
   display_name: string | null;
   account_type: string | null;
-  credits: number | null;
   onboarding_completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -148,7 +147,7 @@ export async function PATCH(request: Request, { params }: Params) {
 
   const { data: member, error: memberError } = await context.supabase
     .from("users")
-    .select("id,email,display_name,account_type,credits,onboarding_completed_at,created_at,updated_at")
+    .select("id,email,display_name,account_type,onboarding_completed_at,created_at,updated_at")
     .eq("id", targetUserId)
     .maybeSingle<UpdatedMemberRow>();
 

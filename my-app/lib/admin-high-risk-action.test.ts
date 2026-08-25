@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 import {
   adminActionErrorMessage,
@@ -66,19 +66,25 @@ test("root and app migrations are exact mirrors with service-role-only RPCs", ()
 });
 
 test("member mutations use expected state, action keys, and receipt RPCs", () => {
-  const creditsRoute = readFileSync(
-    new URL("../app/api/admin/members/[userId]/credits/route.ts", import.meta.url),
-    "utf8",
-  );
+  const grantRoute = readFileSync(new URL("../app/api/admin/members/[userId]/entitlements/route.ts", import.meta.url), "utf8");
+  const revokeRoute = readFileSync(new URL("../app/api/admin/members/[userId]/entitlements/[grantId]/revoke/route.ts", import.meta.url), "utf8");
   const roleRoute = readFileSync(
     new URL("../app/api/admin/members/[userId]/account-type/route.ts", import.meta.url),
     "utf8",
   );
+  const listRoute = readFileSync(new URL("../app/api/admin/members/route.ts", import.meta.url), "utf8");
+  const detailRoute = readFileSync(new URL("../app/api/admin/members/[userId]/route.ts", import.meta.url), "utf8");
 
-  assert.match(creditsRoute, /execute_admin_credit_adjustment/);
-  assert.match(creditsRoute, /p_expected_balance/);
-  assert.match(creditsRoute, /p_action_key/);
-  assert.doesNotMatch(creditsRoute, /from\("credit_ledger"\)[\s\S]*\.insert/);
+  assert.equal(existsSync(new URL("../app/api/admin/members/[userId]/credits/route.ts", import.meta.url)), false);
+  assert.match(grantRoute, /execute_admin_entitlement_grant_v2/);
+  assert.match(grantRoute, /p_expected_offering_version/);
+  assert.match(revokeRoute, /execute_admin_entitlement_revoke_v2/);
+  assert.match(revokeRoute, /p_expected_quantity_consumed/);
+  assert.doesNotMatch(`${grantRoute}\n${revokeRoute}`, /\.from\("customer_entitlement_grants_v2"\)/);
+  assert.match(listRoute, /entitlementSummary/);
+  assert.match(detailRoute, /auditHistory/);
+  assert.match(detailRoute, /grantableOfferings/);
+  assert.doesNotMatch(`${listRoute}\n${detailRoute}`, /credit_ledger|credits_to_grant|credits_used|account_type,credits/);
   assert.match(roleRoute, /execute_admin_account_type_change/);
   assert.match(roleRoute, /p_expected_account_type/);
   assert.match(roleRoute, /finalize_admin_action_receipt/);
@@ -112,17 +118,41 @@ test("PortOne webhook finalizes refund ledger and audit receipt through one RPC"
 
 test("admin screens require typed confirmation and display audit receipts", () => {
   const members = readFileSync(new URL("../app/admin/members/page.tsx", import.meta.url), "utf8");
+  const memberDetail = readFileSync(new URL("../app/admin/members/[userId]/page.tsx", import.meta.url), "utf8");
   const refunds = readFileSync(new URL("../app/admin/refunds/page.tsx", import.meta.url), "utf8");
 
   assert.match(members, /ConfirmActionDialog/);
-  assert.match(members, /confirmationText !== requiredConfirmation/);
+  assert.match(members, /confirmation !== "권한 변경"/);
   assert.match(members, /감사 영수증/);
-  assert.match(members, /expectedBalance/);
   assert.match(members, /expectedAccountType/);
+  assert.doesNotMatch(members, /크레딧|expectedBalance|\/credits/);
+  assert.match(memberDetail, /confirmation !== requiredPhrase/);
+  assert.match(memberDetail, /이용권 지급/);
+  assert.match(memberDetail, /이용권 회수/);
+  assert.match(memberDetail, /감사 영수증/);
+  assert.doesNotMatch(memberDetail, /creditLedger|\/credits|크레딧/);
   assert.match(refunds, /ConfirmActionDialog/);
   assert.match(refunds, /confirmationText !== requiredConfirmation/);
   assert.match(refunds, /외부 상태 재조회/);
   assert.match(refunds, /external_reference/);
+});
+
+test("V2 entitlement migration is mirrored, atomic, idempotent, and service-role-only", () => {
+  const rootMigration = readFileSync(new URL("../../supabase/migrations/20260825122320_admin_v2_entitlement_management.sql", import.meta.url), "utf8");
+  const appMigration = readFileSync(new URL("../supabase/migrations/20260825122320_admin_v2_entitlement_management.sql", import.meta.url), "utf8");
+  assert.equal(rootMigration, appMigration);
+  assert.match(rootMigration, /execute_admin_entitlement_grant_v2/);
+  assert.match(rootMigration, /execute_admin_entitlement_revoke_v2/);
+  assert.match(rootMigration, /pg_advisory_xact_lock/);
+  assert.match(rootMigration, /action_key_conflict/);
+  assert.match(rootMigration, /offering_key like 'full_style_%'/);
+  assert.match(rootMigration, /v_now \+ interval '3 months'/);
+  assert.match(rootMigration, /v_now \+ interval '1 year'/);
+  assert.match(rootMigration, /source, source_transaction_id[\s\S]*'active', 'manual'/);
+  assert.match(rootMigration, /set status = 'revoked'/);
+  assert.doesNotMatch(rootMigration, /delete from public\.customer_entitlement_grants_v2/);
+  assert.match(rootMigration, /revoke all on function public\.execute_admin_entitlement_grant_v2[\s\S]*from public, anon, authenticated/);
+  assert.match(rootMigration, /grant execute on function public\.execute_admin_entitlement_revoke_v2[\s\S]*to service_role/);
 });
 
 test("dialog contract retains focus trap, escape handling, and focus restoration", () => {

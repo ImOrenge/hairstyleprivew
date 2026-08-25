@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { getAdminApiContext } from "../../../../lib/admin-auth";
 import { isAccountType, trimText } from "../../../../lib/onboarding";
 import { decodeListCursor, encodeListCursor } from "../../../../lib/list-cursor";
+import {
+  summarizeAdminEntitlements,
+  type AdminEntitlementGrantRecord,
+} from "../../../../lib/admin-entitlement-view";
 
 interface MemberListRow {
   id: string;
   email: string | null;
   display_name: string | null;
   account_type: string | null;
-  credits: number | null;
   onboarding_completed_at: string | null;
   created_at: string;
   updated_at: string;
@@ -46,7 +49,7 @@ export async function GET(request: Request) {
   let query = context.supabase
     .from("users")
     .select(
-      "id,email,display_name,account_type,credits,onboarding_completed_at,created_at,updated_at",
+      "id,email,display_name,account_type,onboarding_completed_at,created_at,updated_at",
       { count: "exact" },
     )
     .order("created_at", { ascending: false })
@@ -76,10 +79,33 @@ export async function GET(request: Request) {
   const rows = data || [];
   const hasMore = rows.length > limit;
   const members = rows.slice(0, limit);
+  const memberIds = members.map((member) => member.id);
+  let grantRows: AdminEntitlementGrantRecord[] = [];
+  if (memberIds.length > 0) {
+    const { data: grants, error: grantError } = await context.supabase
+      .from("customer_entitlement_grants_v2")
+      .select("id,user_id,offering_key,offering_version,quantity_granted,quantity_consumed,status,source,valid_from,expires_at,created_at,updated_at")
+      .in("user_id", memberIds)
+      .returns<AdminEntitlementGrantRecord[]>();
+    if (grantError) {
+      return NextResponse.json({ error: grantError.message }, { status: 500 });
+    }
+    grantRows = grants || [];
+  }
+  const summaries = new Map(
+    memberIds.map((userId) => [
+      userId,
+      summarizeAdminEntitlements(grantRows.filter((grant) => grant.user_id === userId)),
+    ]),
+  );
+  const memberRows = members.map((member) => ({
+    ...member,
+    entitlementSummary: summaries.get(member.id) || summarizeAdminEntitlements([]),
+  }));
   const lastMember = members.at(-1);
   return NextResponse.json(
     {
-      members,
+      members: memberRows,
       total: count ?? members.length,
       limit,
       nextCursor:

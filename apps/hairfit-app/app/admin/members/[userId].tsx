@@ -13,11 +13,6 @@ function readString(source: Record<string, unknown> | null | undefined, key: str
   return typeof value === "string" && value.trim() ? value : null;
 }
 
-function readNumber(source: Record<string, unknown> | null | undefined, key: string) {
-  const value = source?.[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
 function formatDate(value: unknown) {
   if (typeof value !== "string" || !value) return "-";
   const date = new Date(value);
@@ -119,7 +114,6 @@ export default function AdminMemberDetailScreen() {
   const user = detail?.user ?? null;
   const displayName = readString(user, "display_name") || readString(user, "email") || targetUserId || "회원";
   const accountType = readString(user, "account_type");
-  const credits = readNumber(user, "credits") ?? 0;
 
   return (
     <AppScreen>
@@ -130,10 +124,11 @@ export default function AdminMemberDetailScreen() {
           <Kicker>회원 상세</Kicker>
           <Heading>{displayName}</Heading>
           <BodyText>{targetUserId}</BodyText>
-          <BodyText>앱 회원 상세는 조회 전용입니다. 권한과 크레딧 변경은 웹 관리자에서 진행해 주세요.</BodyText>
+          <BodyText>앱 회원 상세는 V2 이용권 조회 전용입니다. 지급과 회수는 웹 관리자 상세에서 진행해 주세요.</BodyText>
           <Cluster>
             <Chip tone={accountType === "admin" ? "accent" : "neutral"}>{accountTypeLabel(accountType)}</Chip>
-            <Chip>남은 이용량 {credits.toLocaleString("ko-KR")}</Chip>
+            <Chip>활성 {detail?.entitlements.summary.activeGrantCount ?? 0}건</Chip>
+            <Chip>남은 {detail?.entitlements.summary.remainingSessions ?? 0}회</Chip>
             <Chip>가입 {formatDate(user?.created_at)}</Chip>
           </Cluster>
           <Button variant="secondary" onPress={() => router.push("/admin/members")}>
@@ -164,7 +159,22 @@ export default function AdminMemberDetailScreen() {
             <CountCard label="결제" value={detail.activity.payments.length} />
           </Cluster>
           <ActivityList title="헤어 생성 기록" items={detail.activity.generations} empty="생성 기록이 없습니다." />
-          <ActivityList title="결제/이용량" items={[...detail.activity.payments, ...detail.activity.creditLedger]} empty="결제 기록이 없습니다." />
+          <Panel>
+            <Stack>
+              <Heading style={{ fontSize: 20, lineHeight: 26 }}>V2 이용권</Heading>
+              {detail.entitlements.grants.length === 0 ? <BodyText>지급된 이용권이 없습니다.</BodyText> : null}
+              {detail.entitlements.grants.slice(0, 10).map((grant) => (
+                <Card key={grant.id}>
+                  <Stack gap={6}>
+                    <BodyText style={{ color: "#f4f1e8", fontWeight: "800" }}>{grant.customerName} · v{grant.offeringVersion}</BodyText>
+                    <BodyText>{grant.effectiveStatus} · {grant.source} · 지급 {grant.quantityGranted} / 사용 {grant.quantityConsumed} / 남은 {grant.remainingSessions}회</BodyText>
+                    <BodyText>{formatDate(grant.validFrom)} ~ {grant.expiresAt ? formatDate(grant.expiresAt) : "무기한"}</BodyText>
+                  </Stack>
+                </Card>
+              ))}
+            </Stack>
+          </Panel>
+          <ActivityList title="결제" items={detail.activity.payments} empty="결제 기록이 없습니다." />
           <ActivityList title="살롱 고객/애프터케어" items={[...detail.salon.customers, ...detail.salon.aftercareTasks]} empty="살롱 활동이 없습니다." />
         </>
       ) : null}

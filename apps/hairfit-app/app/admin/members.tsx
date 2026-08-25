@@ -41,7 +41,8 @@ function MemberCard({ member }: { member: AdminMemberListRow }) {
           <Chip tone={member.account_type === "admin" ? "accent" : "neutral"}>
             {accountTypeLabel(member.account_type)}
           </Chip>
-          <Chip>{member.credits ?? 0} 크레딧</Chip>
+          <Chip>활성 이용권 {member.entitlementSummary.activeGrantCount}건</Chip>
+          <Chip>남은 {member.entitlementSummary.remainingSessions}회</Chip>
           <Chip>{member.onboarding_completed_at ? "온보딩 완료" : "미완료"}</Chip>
         </Cluster>
         <Heading style={{ fontSize: 20, lineHeight: 26 }}>{title}</Heading>
@@ -117,7 +118,7 @@ export default function AdminMembersScreen() {
       <AdminPageHeader
         title="회원관리"
         countLabel={countLabel}
-        description="앱 회원관리는 조회 전용입니다. 회원·권한·온보딩·크레딧 상태를 확인하고, 권한과 크레딧 변경은 웹 관리자에서 진행해 주세요."
+        description="앱 회원관리는 조회 전용입니다. 회원·권한·온보딩·V2 이용권 상태를 확인하고, 지급과 회수는 웹 관리자 상세에서 진행해 주세요."
       >
         <Stack>
           <TextField value={query} onChangeText={setQuery} placeholder="user id / email / 이름 검색" />

@@ -9,7 +9,7 @@ export type AdminActionOutcome =
 export interface AdminActionReceipt {
   id: string;
   action_key: string;
-  action_type: "credit_adjustment" | "account_type_change" | "refund_approval";
+  action_type: "credit_adjustment" | "account_type_change" | "refund_approval" | "entitlement_grant" | "entitlement_revoke";
   actor_user_id: string;
   target_user_id: string | null;
   target_resource_type: string;
@@ -34,6 +34,7 @@ export interface AdminActionResult {
   ledger?: Record<string, unknown>;
   member?: Record<string, unknown>;
   refundRequest?: Record<string, unknown>;
+  entitlementGrant?: Record<string, unknown>;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -93,6 +94,18 @@ export function adminActionErrorMessage(result: AdminActionResult): string {
       return "확인하는 동안 환불 상태 또는 금액이 변경되었습니다.";
     case "member_not_found":
       return "대상 회원을 찾지 못했습니다.";
+    case "offering_not_grantable":
+      return "현재 수동 지급할 수 있는 풀스타일 상품이 아닙니다.";
+    case "offering_version_conflict":
+      return "확인하는 동안 상품 버전이 변경되었습니다. 최신 상품을 다시 선택해 주세요.";
+    case "entitlement_state_conflict":
+      return "확인하는 동안 이용권 상태나 사용량이 변경되었습니다. 최신 정보를 확인해 주세요.";
+    case "entitlement_not_revocable":
+      return "이 이용권은 수동 회수 조건을 충족하지 않습니다.";
+    case "entitlement_in_use":
+      return "진행 중인 상담에 연결된 이용권은 회수할 수 없습니다.";
+    case "entitlement_not_found":
+      return "대상 이용권을 찾지 못했습니다.";
     case "refund_request_not_found":
       return "환불 요청을 찾지 못했습니다.";
     default:
@@ -105,7 +118,9 @@ export function adminActionHttpStatus(result: AdminActionResult): number {
   if (result.outcome === "processing" || result.outcome === "provider_pending") return 202;
   if (result.outcome === "failed") {
     const code = result.errorCode || result.receipt.error_code;
-    return code?.endsWith("_not_found") ? 404 : 500;
+    if (code?.endsWith("_not_found")) return 404;
+    if (code === "offering_not_grantable" || code === "entitlement_not_revocable") return 400;
+    return 500;
   }
   return 200;
 }

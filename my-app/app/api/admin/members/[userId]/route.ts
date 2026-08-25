@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { getAdminApiContext } from "../../../../../lib/admin-auth";
 import { trimText } from "../../../../../lib/onboarding";
+import {
+  buildAdminEntitlementView,
+  buildGrantableOfferings,
+  summarizeAdminEntitlements,
+  type AdminEntitlementGrantRecord,
+  type AdminOfferingRecord,
+} from "../../../../../lib/admin-entitlement-view";
 
 interface Params {
   params: Promise<{ userId: string }>;
@@ -54,7 +61,7 @@ export async function GET(_request: Request, { params }: Params) {
     const user = await optionalSingle<Record<string, unknown>>(
       context.supabase
         .from("users")
-        .select("id,email,display_name,avatar_url,account_type,credits,onboarding_completed_at,created_at,updated_at")
+        .select("id,email,display_name,avatar_url,account_type,onboarding_completed_at,created_at,updated_at")
         .eq("id", targetUserId)
         .maybeSingle<Record<string, unknown>>(),
     );
@@ -71,10 +78,13 @@ export async function GET(_request: Request, { params }: Params) {
       stylingSessions,
       hairRecords,
       payments,
-      creditLedger,
       subscriptions,
       salonCustomers,
       salonAftercare,
+      entitlementGrants,
+      entitlementOfferings,
+      linkedConsultations,
+      entitlementAudits,
     ] = await Promise.all([
       optionalSingle<Record<string, unknown>>(
         context.supabase
@@ -100,7 +110,7 @@ export async function GET(_request: Request, { params }: Params) {
       optionalList<Record<string, unknown>>(
         context.supabase
           .from("generations")
-          .select("id,status,prompt_used,generated_image_path,credits_used,created_at,updated_at")
+          .select("id,status,prompt_used,generated_image_path,created_at,updated_at")
           .eq("user_id", targetUserId)
           .order("created_at", { ascending: false })
           .limit(10) as unknown as QueryListResult<Record<string, unknown>>,
@@ -108,7 +118,7 @@ export async function GET(_request: Request, { params }: Params) {
       optionalList<Record<string, unknown>>(
         context.supabase
           .from("styling_sessions")
-          .select("id,status,genre,occasion,mood,generated_image_path,credits_used,created_at,updated_at")
+          .select("id,status,genre,occasion,mood,generated_image_path,created_at,updated_at")
           .eq("user_id", targetUserId)
           .order("created_at", { ascending: false })
           .limit(10) as unknown as QueryListResult<Record<string, unknown>>,
@@ -124,15 +134,7 @@ export async function GET(_request: Request, { params }: Params) {
       optionalList<Record<string, unknown>>(
         context.supabase
           .from("payment_transactions")
-          .select("id,status,currency,amount,credits_to_grant,paid_at,created_at")
-          .eq("user_id", targetUserId)
-          .order("created_at", { ascending: false })
-          .limit(10) as unknown as QueryListResult<Record<string, unknown>>,
-      ),
-      optionalList<Record<string, unknown>>(
-        context.supabase
-          .from("credit_ledger")
-          .select("id,entry_type,amount,balance_after,reason,created_at")
+          .select("id,status,currency,amount,paid_at,created_at")
           .eq("user_id", targetUserId)
           .order("created_at", { ascending: false })
           .limit(10) as unknown as QueryListResult<Record<string, unknown>>,
@@ -161,7 +163,49 @@ export async function GET(_request: Request, { params }: Params) {
           .order("scheduled_for", { ascending: false })
           .limit(20) as unknown as QueryListResult<Record<string, unknown>>,
       ),
+      optionalList<AdminEntitlementGrantRecord>(
+        context.supabase
+          .from("customer_entitlement_grants_v2")
+          .select("id,user_id,offering_key,offering_version,quantity_granted,quantity_consumed,status,source,valid_from,expires_at,created_at,updated_at")
+          .eq("user_id", targetUserId)
+          .order("created_at", { ascending: false })
+          .limit(100) as unknown as QueryListResult<AdminEntitlementGrantRecord>,
+      ),
+      optionalList<AdminOfferingRecord>(
+        context.supabase
+          .from("product_offerings_v2")
+          .select("offering_key,version,customer_name,description,purchase_mode,billing_interval,status,included_consultation_sessions")
+          .like("offering_key", "full_style_%")
+          .order("version", { ascending: false }) as unknown as QueryListResult<AdminOfferingRecord>,
+      ),
+      optionalList<{ entitlement_grant_id: string }>(
+        context.supabase
+          .from("consultation_sessions")
+          .select("entitlement_grant_id")
+          .eq("user_id", targetUserId)
+          .not("entitlement_grant_id", "is", null)
+          .not("lifecycle_state", "in", '("completed","cancelled")') as unknown as QueryListResult<{ entitlement_grant_id: string }>,
+      ),
+      optionalList<Record<string, unknown>>(
+        context.supabase
+          .from("admin_action_receipts")
+          .select("id,action_type,status,actor_user_id,target_resource_id,request_payload,before_state,after_state,error_code,created_at,completed_at")
+          .eq("target_user_id", targetUserId)
+          .in("action_type", ["entitlement_grant", "entitlement_revoke"])
+          .order("created_at", { ascending: false })
+          .limit(100) as unknown as QueryListResult<Record<string, unknown>>,
+      ),
     ]);
+
+    const offeringMap = new Map(
+      entitlementOfferings.map((offering) => [`${offering.offering_key}:${offering.version}`, offering]),
+    );
+    const linkedGrantIds = new Set(linkedConsultations.map((row) => row.entitlement_grant_id));
+    const grantViews = entitlementGrants.map((grant) => buildAdminEntitlementView(
+      grant,
+      offeringMap.get(`${grant.offering_key}:${grant.offering_version}`),
+      linkedGrantIds.has(grant.id),
+    ));
 
     return NextResponse.json(
       {
@@ -176,8 +220,31 @@ export async function GET(_request: Request, { params }: Params) {
           stylingSessions,
           hairRecords,
           payments,
-          creditLedger,
           subscriptions,
+        },
+        entitlements: {
+          summary: summarizeAdminEntitlements(entitlementGrants),
+          grants: grantViews,
+          grantableOfferings: buildGrantableOfferings(entitlementOfferings),
+          auditHistory: entitlementAudits.map((row) => {
+            const requestPayload = row.request_payload && typeof row.request_payload === "object" ? row.request_payload as Record<string, unknown> : {};
+            const afterState = row.after_state && typeof row.after_state === "object" ? row.after_state as Record<string, unknown> : {};
+            const beforeState = row.before_state && typeof row.before_state === "object" ? row.before_state as Record<string, unknown> : {};
+            const grant = afterState.entitlementGrant && typeof afterState.entitlementGrant === "object" ? afterState.entitlementGrant as Record<string, unknown> : {};
+            return {
+              id: String(row.id),
+              actionType: row.action_type,
+              status: String(row.status),
+              actorUserId: String(row.actor_user_id),
+              grantId: typeof requestPayload.grantId === "string" ? requestPayload.grantId : typeof grant.id === "string" ? grant.id : null,
+              reason: typeof requestPayload.reason === "string" ? requestPayload.reason : "",
+              beforeState,
+              afterState,
+              errorCode: typeof row.error_code === "string" ? row.error_code : null,
+              createdAt: String(row.created_at),
+              completedAt: typeof row.completed_at === "string" ? row.completed_at : null,
+            };
+          }),
         },
         salon: {
           customers: salonCustomers,
