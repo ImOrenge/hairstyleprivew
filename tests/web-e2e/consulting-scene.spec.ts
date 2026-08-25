@@ -309,6 +309,10 @@ test("AI guidance keeps all nine available and confirms the customer's single fi
 
   await page.goto("/consulting/e2e-harness?stage=previews&hairRecommendation=1");
   await dismissGlobalNotices(page);
+  const gallery = page.locator('[data-hair-generated-gallery="all-nine"]');
+  await expect(gallery.locator("img")).toHaveCount(9);
+  await expect(page.locator('[data-hair-recommendation-workbench="true"] img')).toHaveCount(9);
+  await expect(page.locator('[data-hair-selected-summary="text-only"] img')).toHaveCount(0);
   const choices = page.locator('input[name="confirmed-hair-preview"]');
   await expect(choices).toHaveCount(9);
   await expect(choices.first()).toBeChecked();

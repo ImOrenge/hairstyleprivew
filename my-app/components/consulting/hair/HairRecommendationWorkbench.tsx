@@ -96,7 +96,6 @@ export function HairRecommendationWorkbench({ snapshot, mutate, saving, pollingE
   const rankedPreviews = useMemo(() => [...(recommendation.decision?.rankedPreviews ?? [])].sort((a, b) => a.rank - b.rank), [recommendation.decision?.rankedPreviews]);
   const selectedId = rankedPreviews.some((item) => item.previewId === selectedPreviewId && item.eligible) ? selectedPreviewId : primaryId;
   const selectedVariant = recommendation.board?.variants.find((variant) => variant.id === selectedId);
-  const selectedAttempt = selectedVariant?.attempts.find((attempt) => attempt.status === "accepted" && attempt.outputUrl);
   const selectedSnapshot = snapshot.previews.find((preview) => preview.id === selectedId);
   const selectedRank = rankedPreviews.find((item) => item.previewId === selectedId)?.rank ?? null;
   const reasons = useMemo(() => [...new Set((rankedPreviews.find((item) => item.previewId === selectedId)?.reasonCodes ?? []).map(customerHairReasonLabel))].slice(0, 5), [rankedPreviews, selectedId]);
@@ -185,18 +184,6 @@ export function HairRecommendationWorkbench({ snapshot, mutate, saving, pollingE
       </Panel> : null}
       {actionError || recommendation.error ? <p role="alert" className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm">{actionError || recommendation.error}</p> : null}
     </div>} output={<div className="grid gap-5">
-      <Panel className="overflow-hidden">
-        {selectedAttempt?.outputUrl ? <div className="mx-auto aspect-[4/5] w-full max-w-2xl bg-[var(--app-surface-muted)]"><img src={selectedAttempt.outputUrl} alt={`선택한 헤어${selectedId === primaryId ? ", AI 1순위" : ""}`} className="h-full w-full object-cover" decoding="async" /></div> : <div className="grid aspect-[4/5] max-h-[62vh] place-items-center bg-[var(--app-surface-muted)] p-6 text-center"><div><p className="font-black">{statusCopy}</p><p className="mt-2 text-sm text-[var(--app-muted)]">완료되지 않은 이미지는 추천 결과처럼 표시하지 않습니다.</p></div></div>}
-        <div className="grid gap-4 p-5"><div><p className="app-kicker">{selectedId === primaryId ? "AI 1순위 · 현재 선택" : `AI 추천 ${selectedRank ?? "-"}위 · 현재 선택`}</p><h2 className="mt-2 text-2xl font-black">{selectedSnapshot?.label ?? (selectedVariant ? "선택한 스타일" : "평가 중")}</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{selectedSnapshot?.reason ?? "선택한 스타일이 얼굴·모발·관리 조건에 어떻게 맞는지 설명합니다."}</p></div>
-          {reasons.length ? <div><p className="text-sm font-black">추천 이유</p><ul className="mt-2 grid gap-2 text-sm leading-6">{reasons.map((reason) => <li key={reason} className="border-l-2 border-[var(--app-border-strong)] pl-3">{reason}</li>)}</ul></div> : null}
-          {selectedId ? <DefinitionRows items={[
-            { label: "예상 변화", value: `${snapshot.strategy.length} · ${snapshot.strategy.fringe} · ${snapshot.strategy.texture}` },
-            { label: "관리 조건", value: `${snapshot.discovery.morningMinutes ?? "미확인"}분 · ${snapshot.discovery.maintenanceLevel}` },
-            { label: "현실적 제한", value: snapshot.discovery.avoid.join(" · ") || "현장 모질과 시술 이력 재확인" },
-            { label: "신뢰도", value: recommendation.decision ? `${Math.round(recommendation.decision.confidence * 100)}%` : "평가 중" },
-          ]} /> : null}
-        </div>
-      </Panel>
       <SurfaceCard className="p-5" data-hair-generated-gallery="all-nine">
         <div><p className="app-kicker">9개 전체 선택</p><h2 className="mt-2 text-xl font-black">준비된 스타일 {acceptedCount} / 9</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">AI 1순위와 대안 2개를 먼저 표시했습니다. 품질 확인을 통과한 9개 중 하나를 최종 선택하세요.</p></div>
         <fieldset className="mt-5" disabled={viewState !== "primary-review" || confirming} data-hair-selection="all-nine-customer-selection"><legend className="sr-only">최종 헤어 한 개 선택</legend><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{recommendation.board?.variants.map((variant, index) => {
@@ -210,6 +197,16 @@ export function HairRecommendationWorkbench({ snapshot, mutate, saving, pollingE
             <div className="p-3"><div className="flex items-center justify-between gap-2"><strong>스타일 {index + 1}</strong>{rank && rank <= 3 ? <span className="text-xs font-black text-[var(--app-accent-strong)]">{rank === 1 ? "AI 1순위" : `AI 대안 ${rank - 1}`}</span> : null}</div><p className="mt-1 text-xs text-[var(--app-muted)]">{isSelected ? "최종 선택됨" : "선택해서 자세히 보기"}</p></div>
           </label>;
         }) ?? Array.from({ length: 9 }, (_, index) => <div key={index} className="grid aspect-[4/5] place-items-center border border-[var(--app-border)] bg-[var(--app-surface-muted)] text-xs text-[var(--app-muted)]">스타일 {index + 1} · 준비 중</div>)}</div></fieldset>
+      </SurfaceCard>
+      <SurfaceCard className="grid gap-4 p-5" data-hair-selected-summary="text-only">
+        <div><p className="app-kicker">{selectedId === primaryId ? "AI 1순위 · 현재 선택" : `AI 추천 ${selectedRank ?? "-"}위 · 현재 선택`}</p><h2 className="mt-2 text-2xl font-black">{selectedSnapshot?.label ?? (selectedVariant ? `스타일 ${selectedVariant.slot}` : "평가 중")}</h2><p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">{selectedSnapshot?.reason ?? "선택한 스타일이 얼굴·모발·관리 조건에 어떻게 맞는지 설명합니다."}</p></div>
+        {reasons.length ? <div><p className="text-sm font-black">추천 이유</p><ul className="mt-2 grid gap-2 text-sm leading-6">{reasons.map((reason) => <li key={reason} className="border-l-2 border-[var(--app-border-strong)] pl-3">{reason}</li>)}</ul></div> : null}
+        {selectedId ? <DefinitionRows items={[
+          { label: "예상 변화", value: `${snapshot.strategy.length} · ${snapshot.strategy.fringe} · ${snapshot.strategy.texture}` },
+          { label: "관리 조건", value: `${snapshot.discovery.morningMinutes ?? "미확인"}분 · ${snapshot.discovery.maintenanceLevel}` },
+          { label: "현실적 제한", value: snapshot.discovery.avoid.join(" · ") || "현장 모질과 시술 이력 재확인" },
+          { label: "신뢰도", value: recommendation.decision ? `${Math.round(recommendation.decision.confidence * 100)}%` : "평가 중" },
+        ]} /> : null}
       </SurfaceCard>
     </div>} />
   </div>;

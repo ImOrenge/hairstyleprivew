@@ -28,6 +28,8 @@ boundaries:
     - nine-slot-progress-and-recovery-presentation
     - ai-top-three-guidance
     - all-nine-generated-output-gallery
+    - single-rendered-nine-image-gallery
+    - text-only-selected-style-summary
     - all-nine-customer-selection
     - single-final-confirmation
     - adjustment-capture
@@ -39,6 +41,7 @@ boundaries:
     - final-confirm-before-nine-accepted
     - common-next-control
     - simultaneous-edit-form-and-result-gallery
+    - duplicated-selected-preview-media-outside-gallery
 
 styling:
   strategy: existing-tailwind-utilities-with-global-app-tokens
@@ -73,12 +76,12 @@ a11y_contract:
   gallery: all-nine-images-have-slot-ai-rank-and-selected-labels
   controls: native-single-select-radio-group-and-buttons-with-disabled-state
   errors: role-alert
-  keyboard: DOM-order-current-selection-before-all-nine-radio-gallery
+  keyboard: DOM-order-all-nine-radio-gallery-before-text-only-current-selection-summary
 
 test_surface:
   unit: hair-recommendation-view-and-policy
   contract: phase-49-hair-primary-ux-contract
-  interaction: clarification-confirm-adjust-and-resume
+  interaction: clarification-confirm-adjust-resume-and-single-gallery-render
   visual: 390-768-desktop-all-nine-overflow
 
 change_policy:

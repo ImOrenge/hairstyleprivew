@@ -23,6 +23,8 @@ test("web and native show all nine outputs without making shortlist the primary 
   const web = read(join(appRoot, "components/consulting/hair/HairRecommendationWorkbench.tsx"));
   const native = read(join(repositoryRoot, "apps/hairfit-app/app/consulting.tsx"));
   assert.match(web, /data-hair-generated-gallery="all-nine"/);
+  assert.match(web, /data-hair-selected-summary="text-only"/);
+  assert.doesNotMatch(web, /selectedAttempt/);
   assert.match(web, /recommendation\.board\?\.variants\.map/);
   assert.match(web, /품질 확인을 통과한 9개 중 하나/);
   assert.match(web, /data-hair-selection="all-nine-customer-selection"/);
