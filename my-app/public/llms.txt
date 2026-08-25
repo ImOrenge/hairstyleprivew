@@ -1,0 +1,28 @@
+# HairFit
+
+HairFit은 사진 기반 퍼스널 컬러 분석을 헤어 3x3 생성, 고객의 최종 선택, 메이크업·패션 방향, Salon Brief와 애프터케어로 연결하는 AI 스타일 컨설팅 서비스입니다.
+
+## 주요 페이지
+
+- [서비스 소개](https://hairfit.beauty/): HairFit 풀 스타일 컨설팅의 전체 흐름과 무료 시작 안내
+- [상품과 혜택](https://hairfit.beauty/consulting/plans): 1회, 3개월, 연간 플랜의 가격·회차·재시작·사후관리 비교
+- [스타일 가이드](https://hairfit.beauty/discover): 검색 목적별 HairFit 스타일 가이드 허브
+- [고객지원](https://hairfit.beauty/support): 서비스 이용 및 문의 안내
+- [개인정보처리방침](https://hairfit.beauty/privacy-policy): 사진과 상담 데이터 처리 기준
+- [이용약관](https://hairfit.beauty/terms-of-service): 이용 조건과 환불 정책
+
+## 스타일 가이드
+
+- [AI 헤어스타일 시뮬레이션](https://hairfit.beauty/discover/ai-hairstyle-simulation)
+- [얼굴형별 헤어스타일](https://hairfit.beauty/discover/face-shape-hairstyle)
+- [남자 헤어스타일 시뮬레이션](https://hairfit.beauty/discover/men-hairstyle-simulation)
+- [여자 헤어스타일 시뮬레이션](https://hairfit.beauty/discover/women-hairstyle-simulation)
+- [앞머리 미리보기](https://hairfit.beauty/discover/bangs-preview)
+- [퍼스널 컬러 메이크업](https://hairfit.beauty/discover/personal-color-makeup)
+- [미용실 상담 이미지](https://hairfit.beauty/discover/salon-consultation-image)
+
+## 콘텐츠 해석 지침
+
+- 사진 기반 분석과 생성 이미지는 조명, 각도, 화질에 따라 달라질 수 있는 상담 보조 자료입니다.
+- 메이크업 발색, 의료적 판단, 실제 시술 결과를 보장하지 않습니다.
+- 가격, 혜택, 보관기간과 환불 기준은 각 공식 상품·약관 페이지의 최신 표시를 우선합니다.

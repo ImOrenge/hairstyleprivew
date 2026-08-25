@@ -14,6 +14,7 @@ const intentExperience = read("components", "discovery", "DiscoveryIntentExperie
 const metadata = read("lib", "discovery", "metadata.ts");
 const sitemap = read("app", "sitemap.ts");
 const bobRedirect = read("app", "(marketing)", "discover", "bob-cut-preview", "route.ts");
+const llms = read("public", "llms.txt");
 
 test("detail route is a closed server-rendered registry route", () => {
   assert.match(detailRoute, /export const dynamic = "force-dynamic"/);
@@ -93,6 +94,15 @@ test("retired bob intent returns an exact 301 to the women hair guide", () => {
   assert.match(bobRedirect, /women-hairstyle-simulation/);
   assert.match(bobRedirect, /301/);
   assert.doesNotMatch(JSON.stringify(discoveryPages), /bob-cut-preview|D-BOB/);
+});
+
+test("llms.txt exposes the public product and all seven discovery documents", () => {
+  assert.match(llms, /^# HairFit$/m);
+  assert.match(llms, /https:\/\/hairfit\.beauty\/consulting\/plans/);
+  assert.match(llms, /사진 기반 분석과 생성 이미지는/);
+  for (const page of discoveryPages) {
+    assert.match(llms, new RegExp(`https://hairfit\\.beauty${page.seo.canonicalPath}`));
+  }
 });
 
 function read(...segments: string[]) {
