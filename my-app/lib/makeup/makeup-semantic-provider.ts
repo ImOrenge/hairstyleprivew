@@ -8,7 +8,7 @@ import {
   type MakeupDenseAtlasV3,
   type MakeupSemanticMapV3,
 } from "@hairfit/shared/makeup";
-import sharp from "sharp";
+import { loadSharp } from "../sharp-loader.ts";
 import { extractOpenAIResponseText, getPromptVisionModel, getVisionProvider, type OpenAIResponsePayload } from "../vision-model";
 
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
@@ -31,12 +31,14 @@ function dataUrl(mimeType: string, buffer: Buffer) {
 const escapeXml = (value: string) => value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
 
 async function normalizedSourceImage(sourceImageDataUrl: string) {
+  const sharp = await loadSharp();
   const parsed = parseDataUrl(sourceImageDataUrl);
   const buffer = await sharp(parsed.buffer).rotate().resize({ width: REFERENCE_WIDTH, height: REFERENCE_HEIGHT, fit: "cover", position: "centre" }).webp({ quality: 84 }).toBuffer();
   return { buffer, dataUrl: dataUrl("image/webp", buffer) };
 }
 
 async function anchorReferenceImage(source: Buffer, atlas: MakeupDenseAtlasV3) {
+  const sharp = await loadSharp();
   const labels: string[] = [];
   const paths: string[] = [];
   atlas.lineSets.forEach((line, lineIndex) => {

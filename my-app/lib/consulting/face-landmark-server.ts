@@ -4,7 +4,7 @@ import type { FaceLandmarksDetector } from "@tensorflow-models/face-landmarks-de
 import type * as TensorFlowCore from "@tensorflow/tfjs-core";
 import type { NormalizedPointV2, PhotoQualityV2 } from "@hairfit/shared/v2";
 import { buildFaceGeometryV2 } from "@hairfit/shared/v2";
-import sharp from "sharp";
+import { loadSharp } from "../sharp-loader.ts";
 
 const LANDMARK_MODEL = {
   provider: "tensorflow-js",
@@ -74,6 +74,7 @@ export async function extractFaceLandmarkEvidence(
   imageDataUrl: string,
   quality: PhotoQualityV2,
 ) {
+  const sharp = await loadSharp();
   const decoded = await sharp(imageBufferFromDataUrl(imageDataUrl))
     .rotate()
     .resize({

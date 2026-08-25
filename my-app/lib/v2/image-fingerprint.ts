@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
-import sharp from "sharp";
+import { loadSharp } from "../sharp-loader.ts";
 
 function decodeImageDataUrl(value: string) {
   const match = /^data:image\/[a-zA-Z0-9.+-]+;base64,([A-Za-z0-9+/=]+)$/.exec(value);
@@ -12,6 +12,7 @@ function decodeImageDataUrl(value: string) {
 }
 
 export async function createOutputFingerprintV2(imageDataUrl: string) {
+  const sharp = await loadSharp();
   const buffer = decodeImageDataUrl(imageDataUrl);
   const image = sharp(buffer, { limitInputPixels: 40_000_000 });
   const metadata = await image.metadata();

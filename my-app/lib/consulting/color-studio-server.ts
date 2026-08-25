@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
-import sharp from "sharp";
+import { loadSharp } from "../sharp-loader.ts";
 import type { ConsultationSnapshot, HairMaskArtifact } from "./contracts";
 import type { PersonalColorEvidenceV2 } from "@hairfit/shared/v2";
 import { measureHairMaskGeometry, normalizeClientHairMask } from "./hair-mask-image";
@@ -31,6 +31,7 @@ function mapMask(row: Record<string, unknown>, signedUrl: string | null): HairMa
 export interface HairMaskArtifactOptions { force?: boolean; maskDataUrl?: string; modelVersion?: string }
 
 export async function ensureHairMaskArtifactV2(userId: string, consultationId: string, options: HairMaskArtifactOptions = {}) {
+  const sharp = await loadSharp();
   const force = options.force === true;
   const db = getSupabaseAdminClient();
   const selection = await db.from("style_selection_snapshots_v2").select("id,snapshot").eq("consultation_id", consultationId).eq("user_id", userId).eq("status", "confirmed").maybeSingle();

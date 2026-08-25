@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import sharp from "sharp";
+import { loadSharp } from "../../../../lib/sharp-loader.ts";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 import {
   BODY_PHOTO_BUCKET,
@@ -52,6 +52,7 @@ export async function POST(request: Request) {
   }
 
   try {
+    const sharp = await loadSharp();
     const existing = await readExistingProfile(supabase, userId);
     const input = Buffer.from(await file.arrayBuffer());
     const output = await sharp(input)

@@ -1,6 +1,6 @@
 import "server-only";
 
-import sharp from "sharp";
+import { loadSharp } from "./sharp-loader.ts";
 import type {
   PersonalColorCaptureQualityV2,
   PersonalColorQualityObservationV2,
@@ -32,6 +32,7 @@ export async function assessPersonalColorCaptureQuality(input: {
   face: PhotoFaceDetectionEvidence;
   makeupInfluence?: "low" | "possible" | "high";
 }): Promise<PersonalColorCaptureQualityV2> {
+  const sharp = await loadSharp();
   const preflight = await inspectConsultationPhotoPreflightBuffer(input.buffer, input.face);
   const sample = await sharp(input.buffer, { failOn: "warning" })
     .rotate()

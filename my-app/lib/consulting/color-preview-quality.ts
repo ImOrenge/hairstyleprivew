@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import { loadSharp } from "../sharp-loader.ts";
 
 function dataUrlBuffer(dataUrl: string) {
   const match = dataUrl.match(/^data:[^;]+;base64,(.+)$/);
@@ -14,6 +14,7 @@ async function imageBuffer(value: string) {
 }
 
 export async function measureReferenceRecolorQuality(sourceDataUrl: string, outputUrl: string) {
+  const sharp = await loadSharp();
   const source = dataUrlBuffer(sourceDataUrl);
   const output = await imageBuffer(outputUrl);
   const [sourceMetadata, outputMetadata] = await Promise.all([sharp(source).metadata(), sharp(output).metadata()]);

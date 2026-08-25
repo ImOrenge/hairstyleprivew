@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import sharp from "sharp";
+import { loadSharp } from "../../../../../../lib/sharp-loader.ts";
 import { getSupabaseAdminClient } from "../../../../../../lib/supabase";
 import { v2Disabled, v2Failure } from "../../../../../../lib/v2/http";
 
@@ -37,6 +37,7 @@ export async function POST(request: Request, { params }: Params) {
   }
 
   try {
+    const sharp = await loadSharp();
     const db = getSupabaseAdminClient();
     const current = await db
       .from("actual_services_v2")

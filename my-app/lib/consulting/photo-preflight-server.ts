@@ -1,6 +1,6 @@
 import "server-only";
 
-import sharp from "sharp";
+import { loadSharp } from "../sharp-loader.ts";
 import { assessConsultationPhotoPreflight, summarizePhotoPixels } from "@hairfit/shared";
 import type {
   ConsultationPhotoPreflightAssessment,
@@ -60,6 +60,7 @@ export async function inspectConsultationPhotoPreflightBuffer(
   sourceBuffer: Buffer,
   face: PhotoFaceDetectionEvidence,
 ): Promise<ConsultationPhotoPreflightAssessment> {
+  const sharp = await loadSharp();
   const normalizedBuffer = await sharp(sourceBuffer, { failOn: "warning" }).rotate().toBuffer();
   const normalizedImage = sharp(normalizedBuffer, { failOn: "warning" });
   const metadata = await normalizedImage.metadata();

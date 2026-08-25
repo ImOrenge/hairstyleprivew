@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import sharp from "sharp";
+import { loadSharp } from "../../../../../../../lib/sharp-loader.ts";
 import { isFullStyleAftercareCheckinsEnabled } from "../../../../../../../lib/consulting/feature-flag";
 import { getSupabaseAdminClient } from "../../../../../../../lib/supabase";
 import { saveAftercareCheckinDraftV2 } from "../../../../../../../lib/v2/aftercare-checkin-server";
@@ -21,6 +21,7 @@ export async function PUT(request:Request,{params}:{params:Promise<{consultation
     if(contentType.includes("multipart/form-data")){
       const form=await request.formData();concern=String(form.get("concern")??"");const score=Number(form.get("satisfaction"));satisfaction=Number.isInteger(score)&&score>=1&&score<=5?score:null;
       const file=form.get("file");if(file instanceof File){
+        const sharp=await loadSharp();
         if(form.get("consent")!=="true")return NextResponse.json({error:"사진 분석과 비공개 저장에 동의해 주세요."},{status:400});
         if(!ALLOWED.has(file.type)||file.size>MAX)return NextResponse.json({error:"8MB 이하 JPEG, PNG, WebP 이미지만 사용할 수 있습니다."},{status:400});
         const output=await sharp(Buffer.from(await file.arrayBuffer())).rotate().resize({width:1600,height:2000,fit:"inside",withoutEnlargement:true}).webp({quality:86}).toBuffer();

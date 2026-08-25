@@ -15,7 +15,7 @@ import {
   type NormalizedPointV2,
   type PhotoQualityV2,
 } from "@hairfit/shared/v2";
-import sharp from "sharp";
+import { loadSharp } from "./sharp-loader.ts";
 import { getSupabaseAdminClient } from "./supabase";
 
 const MAX_DIMENSION = 512;
@@ -251,6 +251,7 @@ export async function createOrReuseFaceObservationBundleV2(input: {
   geometry: FaceGeometryV2;
   photoQuality: PhotoQualityV2;
 }) {
+  const sharp = await loadSharp();
   const modelHash = hash(MODEL_MANIFEST);
   const inputHash = hash({ fingerprint: input.sourceFingerprint, landmarks: input.normalizedLandmarks });
   const db = getSupabaseAdminClient();

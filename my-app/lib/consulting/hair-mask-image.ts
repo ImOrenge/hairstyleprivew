@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import { loadSharp } from "../sharp-loader.ts";
 
 function dataUrlBuffer(dataUrl: string) {
   const match = dataUrl.match(/^data:[^;]+;base64,(.+)$/);
@@ -16,6 +16,7 @@ function polygonPath(width: number, height: number, polygon: Array<{ x: number; 
 }
 
 export async function renderHairAlphaMask(width: number, height: number, geometry: HairMaskGeometry | HairMaskGeometry["includePolygons"]) {
+  const sharp = await loadSharp();
   const includePolygons = Array.isArray(geometry) ? geometry : geometry.includePolygons;
   const excludePolygons = Array.isArray(geometry) ? [] : geometry.excludePolygons || [];
   const path = [...includePolygons, ...excludePolygons].map((polygon) => polygonPath(width, height, polygon)).join(" ");
@@ -24,6 +25,7 @@ export async function renderHairAlphaMask(width: number, height: number, geometr
 }
 
 export async function measureHairMaskGeometry(mask: Buffer) {
+  const sharp = await loadSharp();
   const { data, info } = await sharp(mask).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   let weightedHairPixels = 0;
   let confidentHairPixels = 0;
@@ -42,6 +44,7 @@ export async function measureHairMaskGeometry(mask: Buffer) {
 }
 
 export async function normalizeClientHairMask(maskDataUrl: string, width: number, height: number) {
+  const sharp = await loadSharp();
   if (maskDataUrl.length > 4_000_000) throw new Error("HAIR_MASK_PAYLOAD_TOO_LARGE");
   const input = dataUrlBuffer(maskDataUrl);
   const metadata = await sharp(input).metadata();
@@ -50,6 +53,7 @@ export async function normalizeClientHairMask(maskDataUrl: string, width: number
 }
 
 export async function createProviderEditMask(maskDataUrl: string) {
+  const sharp = await loadSharp();
   const { data, info } = await sharp(dataUrlBuffer(maskDataUrl)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   for (let offset = 0; offset < data.length; offset += info.channels) {
     const hair = data[offset + 3];
@@ -60,6 +64,7 @@ export async function createProviderEditMask(maskDataUrl: string) {
 }
 
 export async function measureHairOnlyQuality(sourceDataUrl: string, outputUrl: string, maskDataUrl: string) {
+  const sharp = await loadSharp();
   const source = dataUrlBuffer(sourceDataUrl);
   const output = outputUrl.startsWith("data:") ? dataUrlBuffer(outputUrl) : Buffer.from(await (await fetch(outputUrl)).arrayBuffer());
   const metadata = await sharp(source).metadata();

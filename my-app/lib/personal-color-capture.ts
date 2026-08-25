@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
-import sharp from "sharp";
+import { loadSharp } from "./sharp-loader.ts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   PERSONAL_COLOR_CAPTURE_ROLES_V2,
@@ -221,6 +221,7 @@ export async function finalizePersonalColorCapture(input: {
   face: PhotoFaceDetectionEvidence;
   makeupInfluence?: "low" | "possible" | "high";
 }) {
+  const sharp = await loadSharp();
   if (!UUID_PATTERN.test(input.assetId)) throw new PersonalColorCaptureError("CAPTURE_ID_INVALID", 400, "사진 ID가 올바르지 않습니다.");
   const row = await readOwnedAsset(input.userId, input.consultationId, input.assetId);
   if (row.status === "quality_ready" || row.status === "quality_blocked") return { asset: mapAsset(row), idempotentReplay: true };
@@ -270,6 +271,7 @@ function parseLegacyDataUrl(value: string) {
 }
 
 export async function materializeLegacyPersonalColorCapture(userId: string, imageDataUrl: string) {
+  const sharp = await loadSharp();
   const parsed = parseLegacyDataUrl(imageDataUrl);
   const consultationId = stableLegacyConsultationId(userId);
   const checksumSha256 = createHash("sha256").update(parsed.buffer).digest("hex");
