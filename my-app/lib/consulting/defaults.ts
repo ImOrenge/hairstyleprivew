@@ -86,7 +86,7 @@ export function createConsultationSnapshot(input: { sessionId: string; userId: s
     makeupDirection: { id: null, status: "not-started", confirmedAt: null, sourceFingerprint: null },
     result: { id: null, version: 0, state: "not-started", heroImageUrl: null, heroImagePath: null, headline: "", rationale: [], limitations: [], nextActions: [], selectionSnapshotId: null, colorSelectionSnapshotId: null, personalColorEvidenceId: null, salonBriefVersion: null, fashionLookId: null, fashionSelectedAt: null, fashionSourceColorSelectionId: null, compiledAt: null },
     actualService: { services: [], serviceDate: null, designerNotes: "", confirmedAt: null },
-    careProgram: { actualServiceId: null, programVersion: 0, today: [], checkpoints: ["D+3", "W+2", "W+6", "W+10"].map((offset) => ({ offset: offset as "D+3" | "W+2" | "W+6" | "W+10", action: "상태를 확인하고 필요한 관리만 기록해 주세요.", complete: false })), concerns: [], afterPhotoUrl: null, afterPhotoUpload: null, satisfaction: null },
+    careProgram: { actualServiceId: null, programVersion: 0, today: [], checkpoints: (["D+1", "D+3", "D+7", "D+30", "D+45", "D+90"] as const).map((offset) => ({ offset, action: "상태를 확인하고 필요한 관리만 기록해 주세요.", complete: false })), concerns: [], afterPhotoUrl: null, afterPhotoUpload: null, satisfaction: null },
     fashion: {
       direction: "",
       directionSnapshot: { situation: "daily", genre: "casual", season: "all-season", fit: "regular", exposure: "balanced", budget: "", avoidItems: [] },

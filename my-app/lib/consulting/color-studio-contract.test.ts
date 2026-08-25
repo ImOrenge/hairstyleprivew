@@ -21,8 +21,8 @@ test("personal color is an automatic 4-axis 12-type evidence contract", () => {
     assert.match(mapping, new RegExp(field));
   }
   assert.match(workbench, /PersonalColorResultDetails/);
-  assert.match(workbench, /Color guidance/);
-  assert.match(workbench, /추천 근거|색상별 상세 처방/);
+  assert.match(workbench, /실제 활용법/);
+  assert.match(workbench, /추천 근거|색상별 활용 가이드/);
   assert.match(workbench, /bleachPolicy/);
   assert.match(workbench, /maintenance/);
   const store = read("my-app/lib/consulting/server-store.ts");

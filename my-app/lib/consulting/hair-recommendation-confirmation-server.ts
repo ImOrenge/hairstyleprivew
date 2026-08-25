@@ -24,6 +24,7 @@ export async function confirmHairRecommendationV1(input: {
   userId: string;
   consultationId: string;
   expectedRevision: number;
+  selectedPreviewId: string;
 }) {
   const decision = await readLatestHairRecommendationV1(input.userId, input.consultationId);
   if (!decision) throw new HairfitV2Error("HAIR_RECOMMENDATION_NOT_FOUND", 404, "헤어 추천을 찾을 수 없습니다.");
@@ -31,17 +32,24 @@ export async function confirmHairRecommendationV1(input: {
     throw new HairfitV2Error("HAIR_RECOMMENDATION_REVISION_CONFLICT", 409, "추천 상태가 갱신되었습니다. 최신 결과를 확인해 주세요.");
   }
   if (!decision.primaryPreviewId || decision.state === "clarification-required" || decision.clarification?.answeredValue === null) {
-    throw new HairfitV2Error("HAIR_RECOMMENDATION_NOT_CONFIRMABLE", 409, "필요한 확인을 마친 뒤 주 추천을 확정해 주세요.");
+    throw new HairfitV2Error("HAIR_RECOMMENDATION_NOT_CONFIRMABLE", 409, "필요한 확인을 마친 뒤 최종 헤어를 확정해 주세요.");
+  }
+  const selected = decision.rankedPreviews.find((item) => item.previewId === input.selectedPreviewId);
+  if (!selected || !selected.eligible || selected.hardFailureCodes.length > 0) {
+    throw new HairfitV2Error("HAIR_RECOMMENDATION_SELECTION_INVALID", 409, "현재 9개 결과에서 품질 확인을 마친 헤어를 선택해 주세요.");
+  }
+  if (decision.state === "confirmed" && decision.confirmedPreviewId !== input.selectedPreviewId) {
+    throw new HairfitV2Error("HAIR_RECOMMENDATION_ALREADY_CONFIRMED", 409, "이미 확정한 헤어가 있습니다. 변경하려면 새 추천을 시작해 주세요.");
   }
   const consultation = await getConsultationV2(input.userId, input.consultationId);
   if (!consultation) throw new HairfitV2Error("CONSULTATION_NOT_FOUND", 404, "상담을 찾을 수 없습니다.");
   if (decision.state !== "confirmed") {
     const existing = await getSelectionSnapshotV2(input.userId, input.consultationId);
-    if (existing?.status !== "confirmed" || existing.previewVariantId !== decision.primaryPreviewId) {
+    if (existing?.status !== "confirmed" || existing.previewVariantId !== input.selectedPreviewId) {
       const drafted = await selectStyleV2({
         userId: input.userId,
         consultationId: input.consultationId,
-        previewVariantId: decision.primaryPreviewId,
+        previewVariantId: input.selectedPreviewId,
         expectedVersion: consultation.version,
       });
       await confirmStyleSelectionV2({
@@ -56,13 +64,16 @@ export async function confirmHairRecommendationV1(input: {
       .update({
         state: "confirmed",
         confirmed_revision: decision.revision,
+        confirmed_preview_id: input.selectedPreviewId,
+        confirmed_rank: selected.rank,
+        selection_source: input.selectedPreviewId === decision.primaryPreviewId ? "ai_primary" : "customer_choice",
         updated_at: new Date().toISOString(),
       })
       .eq("consultation_id", input.consultationId)
       .eq("user_id", input.userId)
       .eq("revision", decision.revision)
       .is("confirmed_revision", null)
-      .select("consultation_id,preview_board_id,input_fingerprint,state,catalog_version,policy_version,requested_count,accepted_count,failed_count,terminal_count,ranked_previews,primary_preview_id,confidence,clarification,clarification_count,source_ids,revision,confirmed_revision,supersedes_revision,created_at,updated_at")
+      .select("consultation_id,preview_board_id,input_fingerprint,state,catalog_version,policy_version,requested_count,accepted_count,failed_count,terminal_count,ranked_previews,primary_preview_id,confirmed_preview_id,confirmed_rank,selection_source,confidence,clarification,clarification_count,source_ids,revision,confirmed_revision,supersedes_revision,created_at,updated_at")
       .maybeSingle();
     if (result.error) throw new Error(result.error.message);
     if (result.data) {
@@ -71,11 +82,14 @@ export async function confirmHairRecommendationV1(input: {
         consultationId: input.consultationId,
         userId: input.userId,
         eventType: "hair_recommendation.confirmed",
-        payload: { policyVersion: confirmed.policyVersion, revision: confirmed.revision, confidence: confirmed.confidence },
+        payload: { policyVersion: confirmed.policyVersion, revision: confirmed.revision, confidence: confirmed.confidence, selectedPreviewId: confirmed.confirmedPreviewId, selectionSource: confirmed.selectionSource },
       });
     }
   }
   const confirmedDecision = await readLatestHairRecommendationV1(input.userId, input.consultationId);
+  if (!confirmedDecision || confirmedDecision.confirmedPreviewId !== input.selectedPreviewId) {
+    throw new HairfitV2Error("HAIR_RECOMMENDATION_CONFIRMATION_CONFLICT", 409, "다른 헤어가 먼저 확정되었습니다. 최신 결과를 확인해 주세요.");
+  }
   return {
     decision: confirmedDecision,
     recommendedRoute: `/consulting/${encodeURIComponent(input.consultationId)}/${wantsHairColor(consultation.preferences) ? "color-studio" : "salon-brief"}`,

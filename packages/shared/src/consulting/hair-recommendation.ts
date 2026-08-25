@@ -86,6 +86,9 @@ export interface HairRecommendationDecisionV1 {
   policyVersion: string;
   rankedPreviews: HairRankedPreviewV1[];
   primaryPreviewId: string | null;
+  confirmedPreviewId: string | null;
+  confirmedRank: number | null;
+  selectionSource: "ai_primary" | "customer_choice" | null;
   confidence: number;
   clarification: HairRecommendationClarificationV1 | null;
   clarificationCount: 0 | 1;
@@ -178,8 +181,24 @@ export function assertHairRecommendationDecisionInvariant(decision: HairRecommen
   if (decision.state === "confirmed" && decision.confirmedRevision !== decision.revision) {
     throw new Error("HAIR_RECOMMENDATION_CONFIRMED_REVISION_MISMATCH");
   }
+  if (decision.state === "confirmed") {
+    const confirmed = decision.rankedPreviews.find((item) => item.previewId === decision.confirmedPreviewId);
+    if (!confirmed || !confirmed.eligible || confirmed.hardFailureCodes.length > 0) {
+      throw new Error("HAIR_RECOMMENDATION_CONFIRMED_PREVIEW_MUST_BE_ELIGIBLE");
+    }
+    if (decision.confirmedRank !== confirmed.rank) {
+      throw new Error("HAIR_RECOMMENDATION_CONFIRMED_RANK_MISMATCH");
+    }
+    const expectedSource = decision.confirmedPreviewId === decision.primaryPreviewId ? "ai_primary" : "customer_choice";
+    if (decision.selectionSource !== expectedSource) {
+      throw new Error("HAIR_RECOMMENDATION_SELECTION_SOURCE_MISMATCH");
+    }
+  }
   if (decision.state !== "confirmed" && decision.confirmedRevision !== null) {
     throw new Error("HAIR_RECOMMENDATION_UNCONFIRMED_REVISION_PRESENT");
+  }
+  if (decision.state !== "confirmed" && (decision.confirmedPreviewId !== null || decision.confirmedRank !== null || decision.selectionSource !== null)) {
+    throw new Error("HAIR_RECOMMENDATION_UNCONFIRMED_SELECTION_PRESENT");
   }
 }
 
@@ -187,6 +206,6 @@ export function isHairRecommendationComplete(decision: HairRecommendationDecisio
   if (!decision) return false;
   assertHairRecommendationDecisionInvariant(decision);
   return decision.state === "confirmed"
-    && decision.primaryPreviewId !== null
+    && decision.confirmedPreviewId !== null
     && decision.confirmedRevision === decision.revision;
 }

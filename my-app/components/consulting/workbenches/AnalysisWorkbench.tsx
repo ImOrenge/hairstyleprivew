@@ -265,8 +265,8 @@ export function AnalysisWorkbench({ snapshot, refresh }: { snapshot: Consultatio
             <FaceShapeBlendChart evidence={geometryEvidence} />
             <FacialProportionMatrix evidence={geometryEvidence} />
             <HairTraitInsightPanel consultationId={snapshot.sessionId} initialProfile={snapshot.hairProfile} initialQuestions={snapshot.diagnosticQuestions} mode="result" />
-            <SurfaceCard className="p-5">
-              <p className="app-kicker">분석 근거 목록</p>
+            <SurfaceCard className="p-5"><details>
+              <summary className="min-h-11 cursor-pointer py-2 text-sm font-black">세부 분석 근거 보기 · {snapshot.evidence.items.length}개</summary>
               <div className="mt-4 grid gap-3" aria-label="분석 근거 목록">
                 {snapshot.evidence.items.map((item) => (
                   <button key={item.id} type="button" onClick={() => setActiveEvidenceId(item.id)} aria-pressed={activeEvidenceId === item.id} data-evidence-ledger-id={item.id} className={`min-h-16 border-l-2 p-3 text-left ${activeEvidenceId === item.id ? "border-[var(--app-border-strong)] bg-[var(--app-surface-muted)]" : "border-[var(--app-accent)]"}`}>
@@ -277,7 +277,7 @@ export function AnalysisWorkbench({ snapshot, refresh }: { snapshot: Consultatio
                   </button>
                 ))}
               </div>
-            </SurfaceCard>
+            </details></SurfaceCard>
           </div>
           <ConsultationSystemData snapshot={snapshot} />
         </>
@@ -289,7 +289,7 @@ export function AnalysisWorkbench({ snapshot, refresh }: { snapshot: Consultatio
             <div>
               <p className="app-kicker">관찰에서 추천까지</p>
               <h2 className="mt-3 text-xl font-black">근거와 추천 방향을 함께 확인합니다</h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">AI 분석값은 수정 가능한 입력칸이 아니라 서버에 저장된 관찰 근거입니다. 근거를 선택하면 사진 레이어와 연결된 방향이 함께 강조됩니다.</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">사진에서 확인한 얼굴 균형과 모발 특성이 어떤 헤어 방향으로 이어지는지 설명합니다. 잘못 관찰된 부분은 사진 근거에서 바로 알려주세요.</p>
             </div>
 
             <DefinitionRows
@@ -323,7 +323,7 @@ export function AnalysisWorkbench({ snapshot, refresh }: { snapshot: Consultatio
                   </p>
                 </div>
               ) : (
-                <p className="mt-3 text-sm text-[var(--app-muted)]">왼쪽 근거 목록에서 항목을 선택하세요.</p>
+                <p className="mt-3 text-sm text-[var(--app-muted)]">사진이나 세부 분석 근거에서 항목을 선택하세요.</p>
               )}
             </SurfaceCard>
 

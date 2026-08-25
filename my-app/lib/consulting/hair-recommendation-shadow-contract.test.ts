@@ -63,3 +63,15 @@ test("migration mirrors enforce nine-terminal state, uniqueness, and service-rol
   assert.match(rootMigration, /revoke all[\s\S]*from public, anon, authenticated/);
   assert.match(rootMigration, /grant select, insert, update, delete[\s\S]*to service_role/);
 });
+
+test("customer final selection migration is mirrored, backfills legacy confirmations, and stays server-only", () => {
+  const relative = "supabase/migrations/20260825120000_hair_customer_final_selection.sql";
+  const rootMigration = read(join(repositoryRoot, relative));
+  const appMigration = read(join(appRoot, relative));
+  assert.equal(rootMigration, appMigration);
+  for (const column of ["confirmed_preview_id", "confirmed_rank", "selection_source"]) assert.match(rootMigration, new RegExp(column));
+  assert.match(rootMigration, /where state = 'confirmed'/);
+  assert.match(rootMigration, /'ai_primary', 'customer_choice'/);
+  assert.match(rootMigration, /revoke all[\s\S]*from public, anon, authenticated/);
+  assert.match(rootMigration, /grant select, insert, update, delete[\s\S]*to service_role/);
+});

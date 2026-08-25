@@ -48,6 +48,9 @@ function decision(overrides: Partial<HairRecommendationDecisionV1> = {}): HairRe
       reasonCodes: ["fixture"],
     })),
     primaryPreviewId: "preview-1",
+    confirmedPreviewId: "preview-1",
+    confirmedRank: 1,
+    selectionSource: "ai_primary",
     confidence: 0.9,
     clarification: null,
     clarificationCount: 0,
@@ -83,6 +86,13 @@ test("Hair primary cannot reference an ineligible preview", () => {
 
 test("Hair recommendation enforces one clarification per revision", () => {
   assert.throws(() => assertHairRecommendationDecisionInvariant(decision({ clarificationCount: 2 as 1 })), /CLARIFICATION_BUDGET_EXCEEDED/);
+});
+
+test("Hair recommendation preserves an eligible customer choice independently from the AI primary", () => {
+  const value = decision({ confirmedPreviewId: "preview-4", confirmedRank: 4, selectionSource: "customer_choice" });
+  assert.doesNotThrow(() => assertHairRecommendationDecisionInvariant(value));
+  assert.equal(isHairRecommendationComplete(value), true);
+  assert.throws(() => assertHairRecommendationDecisionInvariant({ ...value, selectionSource: "ai_primary" }), /SELECTION_SOURCE_MISMATCH/);
 });
 
 test("Hair revisions preserve fingerprint and supersede ordering", () => {

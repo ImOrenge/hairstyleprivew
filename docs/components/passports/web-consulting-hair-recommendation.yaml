@@ -19,22 +19,24 @@ public_api:
   events:
     - automatic-nine-preview-start
     - clarification-answer
-    - primary-confirm
+    - customer-final-confirm
     - adjustment-request
     - downstream-handoff
 
 boundaries:
   owns:
     - nine-slot-progress-and-recovery-presentation
-    - one-primary-recommendation-review
+    - ai-top-three-guidance
     - all-nine-generated-output-gallery
+    - all-nine-customer-selection
+    - single-final-confirmation
     - adjustment-capture
     - isolated-clarification-surface
     - isolated-adjustment-revision-surface
   forbidden:
     - customer-required-shortlist
     - client-authored-rank-or-score
-    - primary-confirm-before-nine-accepted
+    - final-confirm-before-nine-accepted
     - common-next-control
     - simultaneous-edit-form-and-result-gallery
 
@@ -57,19 +59,21 @@ state:
     - preview-board-and-nine-slot-attempts
     - recommendation-decision-and-revision
     - primary-preview-id
+    - confirmed-preview-id-rank-and-selection-source
     - pending-adjustment
   local:
     - selected-adjustment-aspect
+    - selected-final-preview-id-before-confirmation
     - unsaved-adjustment-text
     - action-in-flight
   polling: server-snapshot-only
 
 a11y_contract:
   progress: native-progress-with-text-equivalent-and-polite-live-region
-  gallery: all-nine-images-have-slot-and-primary-labels
-  controls: native-buttons-with-disabled-state
+  gallery: all-nine-images-have-slot-ai-rank-and-selected-labels
+  controls: native-single-select-radio-group-and-buttons-with-disabled-state
   errors: role-alert
-  keyboard: DOM-order-primary-before-evidence-gallery
+  keyboard: DOM-order-current-selection-before-all-nine-radio-gallery
 
 test_surface:
   unit: hair-recommendation-view-and-policy

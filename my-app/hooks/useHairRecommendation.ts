@@ -86,7 +86,7 @@ export function useHairRecommendation(sessionId: string, pollingEnabled = true) 
     error,
     refresh,
     answerClarification: (answer: string) => post("clarification", { expectedRevision: decision?.revision, answer }),
-    confirm: () => post("confirm", { expectedRevision: decision?.revision }),
+    confirm: (selectedPreviewId: string) => post("confirm", { expectedRevision: decision?.revision, selectedPreviewId }),
     adjust: (aspects: Array<{ aspect: HairAdjustmentAspect; value: string }>) => post("adjust", {
       expectedRevision: decision?.revision,
       aspects,

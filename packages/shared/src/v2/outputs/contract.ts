@@ -42,7 +42,7 @@ export interface AftercareProgramV2 extends SnapshotLinkedOutputV2 {
   schemaVersion: "aftercare-program-v2";
   actualServiceId: string;
   today: string[];
-  checkpoints: Array<{ offset: "D+3" | "W+2" | "W+6" | "W+10"; action: string; complete: boolean }>;
+  checkpoints: Array<{ offset: "D+1" | "D+3" | "D+7" | "D+30" | "D+45" | "D+90"; action: string; complete: boolean }>;
   concerns: string[];
   satisfaction: number | null;
   inputSnapshot: ConsultationGenerationInputLinkV2;

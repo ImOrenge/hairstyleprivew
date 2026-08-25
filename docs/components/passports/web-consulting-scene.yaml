@@ -132,7 +132,7 @@ state:
     - salon-brief-recommendation-sources
     - hair-profile-revision-and-source-fingerprint
     - makeup-simulation-run-and-selection
-    - hair-recommendation-decision-revision-and-primary
+    - hair-recommendation-decision-revision-ai-primary-and-customer-confirmed-preview
     - consultation-start-context-and-effective-intent-provenance
   client_owned:
     - stage-map-open
@@ -186,7 +186,9 @@ test_surface:
   brief_feedback: separate-revision-without-selected-style-mutation
   fashion_visibility: every-requested-slot-remains-visible-at-three-six-and-nine-with-complete-running-stalled-and-failed-copy
   fashion_batch_recovery: two-of-three-five-of-six-and-eight-of-nine-remain-partial-reentry-restores-results-and-live-jobs-are-not-duplicated
-  hair_recommendation: all-nine-visible-primary-requires-nine-no-shortlist-and-adjustment-creates-new-board-revision
+  hair_recommendation: all-nine-visible-ai-top-three-guidance-customer-single-selection-requires-nine-no-shortlist-and-adjustment-creates-new-board-revision
+  aftercare_guidance: six-management-checkpoints-at-d1-d3-d7-d30-d45-d90-separated-from-plan-ai-checkins
+  customer_information_hierarchy: customer-summary-first-with-system-progress-technical-color-and-post-service-details-collapsed
   paid_start: separate-consent-required-and-server-enforced-before-first-paid-generation-or-comparison
   photo_crop: shared-four-by-five-transform-unit-and-browser-interaction
   photo_color_assist: separate-private-draft-used-only-for-personal-color-when-valid

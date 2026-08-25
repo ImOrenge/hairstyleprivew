@@ -91,7 +91,7 @@ function validateIdempotencyKey(value: string) {
   }
 }
 
-const AFTERCARE_OFFSETS = ["D+3", "W+2", "W+6", "W+10"] as const;
+const AFTERCARE_OFFSETS = ["D+1", "D+3", "D+7", "D+30", "D+45", "D+90"] as const;
 
 function aftercareServiceType(services: string[]): ServiceType {
   const joined = services.join(" ").toLowerCase();
@@ -107,7 +107,9 @@ function generatedAftercareProgramInput(guide: Awaited<ReturnType<typeof runAfte
   if (!guide) throw new HairfitV2Error("AFTERCARE_PROGRAM_GENERATION_FAILED", 503, "관리 프로그램을 준비하지 못했습니다.");
   const actions = [
     guide.sections.dry.steps,
+    guide.sections.dry.steps,
     guide.sections.treatment.steps,
+    guide.sections.styling.steps,
     guide.sections.styling.steps,
     guide.recommendedNextActions,
   ];

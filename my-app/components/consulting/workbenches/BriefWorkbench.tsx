@@ -30,7 +30,7 @@ function StructuredBriefDetails({ brief }: { brief: SalonBriefV2 }) {
   ];
 
   return <SurfaceCard className="p-5" data-brief-engine={brief.engine.id}>
-    <p className="app-kicker">Salon blueprint · provenance linked</p>
+    <p className="app-kicker">미용실 전달용 상세 정보</p>
     <h2 className="mt-2 text-xl font-black">살롱 전달용 상세 브리프</h2>
     <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">구 블루프린트 엔진의 시술 항목을 현재 상담 입력 스냅샷과 연결했습니다. 확인되지 않은 내용은 추측하지 않고 표시합니다.</p>
     <div className="mt-5"><DefinitionRows items={detailRows} /></div>
@@ -236,41 +236,41 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
 
   return <WorkbenchGrid input={
     <Panel className="grid gap-5 p-5 sm:p-7">
-      <div className="flex gap-2">{(["customer","designer"] as const).map((mode) => <button key={mode} type="button" onClick={() => setBrief({ ...brief, mode })} aria-pressed={brief.mode === mode} className={`min-h-11 border px-4 text-sm font-black uppercase ${brief.mode === mode ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{mode}</button>)}</div>
+      <div className="flex gap-2">{(["customer","designer"] as const).map((mode) => <button key={mode} type="button" onClick={() => setBrief({ ...brief, mode })} aria-pressed={brief.mode === mode} className={`min-h-11 border px-4 text-sm font-black ${brief.mode === mode ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{mode === "customer" ? "고객용" : "디자이너용"}</button>)}</div>
       <TextField label="상담 요약" value={brief.summary} onChange={(summary) => setBrief({ ...brief, summary })} />
       <TextField label="커트 방향" value={brief.cut} onChange={(cut) => setBrief({ ...brief, cut })} />
       <TextField label="볼륨·질감" value={brief.volumeTexture} onChange={(volumeTexture) => setBrief({ ...brief, volumeTexture })} />
       <TextField label="스타일링" value={brief.styling} onChange={(styling) => setBrief({ ...brief, styling })} />
       <TextField label="주의·현장 확인 사항" value={brief.caution.join(", ")} onChange={(value) => setBrief({ ...brief, caution: value.split(",").map((item) => item.trim()).filter(Boolean) })} />
-      <fieldset className="grid gap-3 border-t border-[var(--app-border)] pt-5"><legend className="text-sm font-black">미용사 응답 · 별도 revision</legend><div className="flex flex-wrap gap-2">{([
+      <fieldset className="grid gap-3 border-t border-[var(--app-border)] pt-5"><legend className="text-sm font-black">미용사 응답 · 별도 기록</legend><div className="flex flex-wrap gap-2">{([
         ["feasible", "구현 가능"], ["adjustment-needed", "일부 조정"], ["in-person-review", "현장 상담"],
-      ] as const).map(([status, label]) => <button key={status} type="button" aria-pressed={brief.designerFeedback?.status === status} onClick={() => setBrief({ ...brief, designerFeedback: { status, note: brief.designerFeedback?.note ?? "", revision: (snapshot.salonBrief.designerFeedback?.revision ?? 0) + 1, receivedAt: new Date().toISOString() } })} className={`min-h-11 border px-3 text-sm font-black ${brief.designerFeedback?.status === status ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{label}</button>)}</div><TextField label="미용사 메모" value={brief.designerFeedback?.note ?? ""} onChange={(note) => setBrief({ ...brief, designerFeedback: { status: brief.designerFeedback?.status ?? "in-person-review", note, revision: (snapshot.salonBrief.designerFeedback?.revision ?? 0) + 1, receivedAt: new Date().toISOString() } })} /><p className="text-xs text-[var(--app-muted)]">응답은 브리프 revision에만 저장되며 확정 스타일 snapshot을 변경하지 않습니다.</p></fieldset>
+      ] as const).map(([status, label]) => <button key={status} type="button" aria-pressed={brief.designerFeedback?.status === status} onClick={() => setBrief({ ...brief, designerFeedback: { status, note: brief.designerFeedback?.note ?? "", revision: (snapshot.salonBrief.designerFeedback?.revision ?? 0) + 1, receivedAt: new Date().toISOString() } })} className={`min-h-11 border px-3 text-sm font-black ${brief.designerFeedback?.status === status ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{label}</button>)}</div><TextField label="미용사 메모" value={brief.designerFeedback?.note ?? ""} onChange={(note) => setBrief({ ...brief, designerFeedback: { status: brief.designerFeedback?.status ?? "in-person-review", note, revision: (snapshot.salonBrief.designerFeedback?.revision ?? 0) + 1, receivedAt: new Date().toISOString() } })} /><p className="text-xs text-[var(--app-muted)]">미용사 응답은 브리프에 별도로 저장되며 확정한 헤어는 바꾸지 않습니다.</p></fieldset>
       <fieldset><legend className="text-sm font-black">공유 만료</legend><div className="mt-2 flex gap-2">{([24,168,720] as const).map((hours) => <button key={hours} type="button" onClick={() => setBrief({ ...brief, shareExpiryHours: hours, shareRevokedAt: null })} className={`min-h-11 border px-3 text-sm font-black ${brief.shareExpiryHours === hours ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : ""}`}>{hours === 24 ? "24시간" : hours === 168 ? "7일" : "30일"}</button>)}</div></fieldset>
       <SaveStageButton loading={saving || savingBrief} disabled={!style || !brief.summary.trim()} onClick={() => void saveBrief()}>브리프 버전 저장</SaveStageButton>
-      <SurfaceCard className="grid gap-4 p-4">
-        <div><p className="app-kicker">Post-service event</p><h3 className="mt-2 text-lg font-black">실제 시술이 끝난 뒤 기록</h3><p className="mt-1 text-sm text-[var(--app-muted)]">상담 진행을 위해 미리 누르는 단계가 아닙니다. 시술 종류와 날짜가 확정된 뒤에만 Aftercare가 열립니다.</p></div>
+      <details className="border border-[var(--app-border)] p-4"><summary className="min-h-11 cursor-pointer py-2 text-sm font-black">시술을 받은 뒤 기록하기</summary><div className="mt-3 grid gap-4">
+        <div><p className="app-kicker">시술 후에만 사용</p><h3 className="mt-2 text-lg font-black">실제로 받은 시술 기록</h3><p className="mt-1 text-sm text-[var(--app-muted)]">상담을 진행하기 위해 지금 입력할 필요는 없습니다. 시술 종류와 날짜가 정해진 뒤 기록하면 애프터케어가 열립니다.</p></div>
         <div className="flex flex-wrap gap-2">{["커트", "펌", "염색", "클리닉"].map((service) => <button key={service} type="button" aria-pressed={actualServices.includes(service)} onClick={() => setActualServices((current) => current.includes(service) ? current.filter((item) => item !== service) : [...current, service])} className={`min-h-11 border px-3 text-sm font-black ${actualServices.includes(service) ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{service}</button>)}</div>
         <label className="grid gap-2 text-sm font-black">실제 시술일<input type="date" value={serviceDate} onChange={(event) => setServiceDate(event.target.value)} className="app-input min-h-11 px-3" /></label>
         <TextField label="현장 조정 메모" value={serviceNotes} onChange={setServiceNotes} />
         <Button type="button" variant="secondary" loading={registeringService} disabled={!serviceDate || !actualServices.length || Boolean(snapshot.actualService.confirmedAt)} onClick={() => void registerActualService()}>{snapshot.actualService.confirmedAt ? "실제 시술 기록 완료" : "실제 시술 기록 후 Aftercare 열기"}</Button>
-      </SurfaceCard>
+      </div></details>
     </Panel>
   } output={<div className="grid gap-4">
       {structuredBrief ? <StructuredBriefDetails brief={structuredBrief} /> : null}
-      <SurfaceCard className="p-5"><p className="app-kicker">SalonBriefVersion</p><h2 className="mt-3 text-xl font-black">{style?.label || "선택 대기"}</h2><p className="mt-3 text-sm leading-6">{brief.summary}</p><div className="mt-5"><DefinitionRows items={[
-        { label: "Audience", value: brief.mode },
-        { label: "Cut", value: brief.cut || "입력 대기" },
-        { label: "Volume / texture", value: brief.volumeTexture || "입력 대기" },
-        { label: "Styling", value: brief.styling || "입력 대기" },
-        { label: "Cautions", value: brief.caution.join(" · ") || "없음" },
-        { label: "Designer feedback", value: brief.designerFeedback ? `${brief.designerFeedback.status} · r${brief.designerFeedback.revision}${brief.designerFeedback.note ? ` · ${brief.designerFeedback.note}` : ""}` : "응답 대기" },
-        { label: "Raw face", value: "공유 제외" },
+      <SurfaceCard className="p-5"><p className="app-kicker">미용실에 보여줄 브리프</p><h2 className="mt-3 text-xl font-black">{style?.label || "선택 대기"}</h2><p className="mt-3 text-sm leading-6">{brief.summary}</p><div className="mt-5"><DefinitionRows items={[
+        { label: "문서 대상", value: brief.mode === "customer" ? "고객용" : "디자이너용" },
+        { label: "커트", value: brief.cut || "입력 대기" },
+        { label: "볼륨·질감", value: brief.volumeTexture || "입력 대기" },
+        { label: "손질 방법", value: brief.styling || "입력 대기" },
+        { label: "현장에서 확인할 점", value: brief.caution.join(" · ") || "없음" },
+        { label: "미용사 의견", value: brief.designerFeedback ? `${brief.designerFeedback.status}${brief.designerFeedback.note ? ` · ${brief.designerFeedback.note}` : ""}` : "응답 대기" },
+        { label: "원본 얼굴 사진", value: "공유하지 않음" },
       ]} /></div></SurfaceCard>
       <SurfaceCard className="p-5 text-sm leading-6 text-[var(--app-muted)]"><p className="font-black text-[var(--app-text)]">개인정보 기본값</p><p className="mt-2">원본 얼굴 사진은 공유 자료·QR·PDF에 포함하지 않습니다. 공유 링크는 만료 시간을 가지며 언제든 폐기할 수 있습니다.</p>{shareError ? <p className="mt-3 text-[var(--app-danger)]">{shareError}</p> : null}<div className="mt-4 flex flex-wrap gap-2"><Button type="button" variant="secondary" loading={shareLoading} disabled={!snapshot.salonBrief.createdAt} onClick={() => void createShare()}>QR 공유 만들기</Button><Button type="button" variant="ghost" loading={shareLoading} disabled={!shareUrl} onClick={() => void revokeShare()}>공유 권한 폐기</Button></div>{shareUrl ? <div className="mt-5 grid justify-items-start gap-3"><div className="border border-[var(--app-border)] p-3" style={{ backgroundColor: "#fff" }}><QRCodeSVG value={shareUrl} size={148} bgColor="#fff" fgColor="#000" title="살롱 브리프 공유 QR 코드" /></div><button type="button" className="break-all text-left text-xs font-bold underline" onClick={() => void navigator.clipboard.writeText(shareUrl)}>공유 URL 복사 · {shareUrl}</button></div> : null}</SurfaceCard>
       <ConsultationSystemData snapshot={snapshot} items={[
-        { label: "Brief version", value: snapshot.salonBrief.createdAt ? `v${snapshot.salonBrief.version}` : "초안" },
-        { label: "Share expiry", value: `${brief.shareExpiryHours}시간` },
-        { label: "Share state", value: shareUrl ? "활성 QR 발급됨" : snapshot.salonBrief.shareRevokedAt ? "폐기됨" : "비활성" },
+        { label: "브리프 상태", value: snapshot.salonBrief.createdAt ? "저장됨" : "작성 중" },
+        { label: "공유 유효 시간", value: `${brief.shareExpiryHours}시간` },
+        { label: "공유 상태", value: shareUrl ? "QR 발급됨" : snapshot.salonBrief.shareRevokedAt ? "폐기됨" : "공유 전" },
       ]} />
     </div>} />;
 }

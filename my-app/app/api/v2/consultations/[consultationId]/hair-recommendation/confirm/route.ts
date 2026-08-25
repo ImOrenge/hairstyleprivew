@@ -10,11 +10,12 @@ export async function POST(request: Request, { params }: Params) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   if (!isAiLedHairDecisionEnabled()) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  const body = await request.json().catch(() => ({})) as { expectedRevision?: unknown };
+  const body = await request.json().catch(() => ({})) as { expectedRevision?: unknown; selectedPreviewId?: unknown };
   if (!Number.isInteger(body.expectedRevision)) return NextResponse.json({ error: "expectedRevision을 확인해 주세요." }, { status: 400 });
+  if (typeof body.selectedPreviewId !== "string" || !body.selectedPreviewId.trim()) return NextResponse.json({ error: "확정할 헤어를 선택해 주세요." }, { status: 400 });
   const { consultationId } = await params;
   try {
-    return NextResponse.json(await confirmHairRecommendationV1({ userId, consultationId, expectedRevision: body.expectedRevision as number }));
+    return NextResponse.json(await confirmHairRecommendationV1({ userId, consultationId, expectedRevision: body.expectedRevision as number, selectedPreviewId: body.selectedPreviewId }));
   } catch (error) {
     return v2Failure(error);
   }

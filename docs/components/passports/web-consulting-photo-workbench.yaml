@@ -79,6 +79,8 @@ a11y_contract:
     color-only: false
     blocker-role-alert: true
     text-status: required
+    customer-facing-axis-labels: required
+    technical-processing-details: collapsed-native-disclosure
   failure:
     selected-file-preserved: true
     crop-preserved: true

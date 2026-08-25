@@ -133,8 +133,8 @@ function PersonalColorV2ProfilePanel({ sessionId, photoUrl }: { sessionId: strin
     ? profile.regions.reduce((sum, region) => sum + region.confidence, 0) / profile.regions.length
     : 0;
   return <Panel className="p-5" data-personal-color-profile-v2={profile.id}>
-    <p className="app-kicker">Color profile V2</p>
-    <h2 className="mt-2 text-xl font-black">관찰 근거와 프로필 추론을 분리해 보여드려요</h2>
+    <p className="app-kicker">퍼스널 컬러 분석 근거</p>
+    <h2 className="mt-2 text-xl font-black">사진에서 확인한 색 특성을 따로 살펴볼 수 있어요</h2>
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
       <div className="border border-[var(--app-border)] p-3"><p className="text-xs font-black">사진 관찰 신뢰도</p><strong className="mt-1 block text-2xl">{Math.round(captureReliability * 100)}%</strong></div>
       <div className="border border-[var(--app-border)] p-3"><p className="text-xs font-black">프로필 추론 신뢰도</p><strong className="mt-1 block text-2xl">{Math.round(profile.confidence.overall * 100)}%</strong></div>
@@ -148,7 +148,7 @@ function PersonalColorV2ProfilePanel({ sessionId, photoUrl }: { sessionId: strin
       </div>;
     })}</div>
     <div className="mt-6">
-      <p className="text-xs font-black uppercase">12타입 posterior</p>
+      <p className="text-xs font-black uppercase">12타입 유사도</p>
       <div className="mt-3 grid gap-2">{profile.seasonalPosterior.map((item) => <div key={item.type} className="grid grid-cols-[minmax(8rem,1fr)_minmax(8rem,2fr)_3rem] items-center gap-2 text-xs">
         <span className="font-bold">{TYPE_LABELS[item.type] || item.type}</span>
         <meter min={0} max={1} value={item.probability} aria-label={`${TYPE_LABELS[item.type] || item.type} ${Math.round(item.probability * 100)}%`} className="w-full" />
@@ -166,7 +166,7 @@ function PersonalColorV2ProfilePanel({ sessionId, photoUrl }: { sessionId: strin
     </details>
     <PersonalColorTrainingConsent sessionId={sessionId} />
     {drapeEnabled ? <div className="mt-6 border-t border-[var(--app-border)] pt-5" data-personal-color-drape="true">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase">Interactive drape</p><h3 className="mt-1 text-lg font-black">같은 사진에서 얼굴이 더 자연스러운 색을 골라보세요</h3></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-black uppercase">색상 비교</p><h3 className="mt-1 text-lg font-black">같은 사진에서 얼굴이 더 자연스러운 색을 골라보세요</h3></div>
         {!drape ? <button type="button" className="app-button min-h-11" disabled={drapeWorking} onClick={() => void startDrape()}>색상 비교 시작</button> : null}
       </div>
       {profile.captureMode === "quick" && profile.confidence.typeConfidence < 0.6 ? <p className="mt-3 border-l-2 border-[var(--app-warning)] pl-3 text-sm">경계형 결과입니다. 자연광 보조 사진을 추가한 Precision 진단을 권장합니다.</p> : null}
@@ -200,9 +200,9 @@ export function PersonalColorWorkbench({ snapshot, mutate, saving }: {
     inputLabel="퍼스널 컬러 진단 사진과 선택"
     outputLabel="퍼스널 컬러 AI 진단 결과"
     input={<div className="f-consulting-personal-color-input grid gap-4">
-      {snapshot.photo.primaryUrl ? <SurfaceCard className="p-4"><p className="app-kicker">Analysis photo</p><div className="relative mt-3 aspect-[4/5] overflow-hidden bg-[var(--app-surface-muted)]"><Image unoptimized fill loading="eager" src={snapshot.photo.primaryUrl} alt="퍼스널 컬러 분석에 사용한 정면 사진" className="object-cover" /></div></SurfaceCard> : <ConsultationPhotoEvidence sessionId={snapshot.sessionId} enabled={snapshot.photo.usageScopes.includes("personalColor")} />}
+      {snapshot.photo.primaryUrl ? <SurfaceCard className="p-4"><p className="app-kicker">분석에 사용한 사진</p><div className="relative mt-3 aspect-[4/5] overflow-hidden bg-[var(--app-surface-muted)]"><Image unoptimized fill loading="eager" src={snapshot.photo.primaryUrl} alt="퍼스널 컬러 분석에 사용한 정면 사진" className="object-cover" /></div></SurfaceCard> : <ConsultationPhotoEvidence sessionId={snapshot.sessionId} enabled={snapshot.photo.usageScopes.includes("personalColor")} />}
       <Panel className="grid gap-4 p-5">
-        <div><p className="app-kicker">Diagnosis control</p><h2 className="mt-2 text-xl font-black">진단 결과를 상담에 연결합니다</h2></div>
+        <div><p className="app-kicker">진단 상태</p><h2 className="mt-2 text-xl font-black">사진 품질을 확인한 뒤 결과를 보여드려요</h2></div>
         <p className="text-sm leading-6 text-[var(--app-muted)]">진단은 사진 분석과 함께 자동 실행됩니다. 조명 신뢰도가 낮으면 결과를 확정값처럼 사용하지 않고 재촬영을 요청합니다.</p>
         {diagnosis.warnings.length ? <ul className="grid gap-2 text-sm">{diagnosis.warnings.map((warning) => <li key={warning} className="border-l-2 border-[var(--app-accent)] pl-3">{warning}</li>)}</ul> : null}
         {diagnosis.state === "retry-required" ? <Link className="app-button min-h-12" href={`/consulting/${snapshot.sessionId}/photo`}>사진 다시 준비하기</Link> : null}
@@ -212,28 +212,28 @@ export function PersonalColorWorkbench({ snapshot, mutate, saving }: {
     output={<div className="f-consulting-personal-color-output grid gap-4">
       <PersonalColorV2ProfilePanel sessionId={snapshot.sessionId} photoUrl={snapshot.photo.primaryUrl} />
       <Panel className="p-5">
-        <p className="app-kicker">12-type blend</p>
+        <p className="app-kicker">내 퍼스널 컬러</p>
         <h2 className="mt-2 text-xl font-black">{diagnosis.primaryType ? TYPE_LABELS[diagnosis.primaryType] || diagnosis.primaryType : "진단 결과 준비 중"}</h2>
         {diagnosis.secondaryType ? <p className="mt-1 text-sm font-bold text-[var(--app-muted)]">보조 타입 · {TYPE_LABELS[diagnosis.secondaryType] || diagnosis.secondaryType}</p> : null}
-        <p className="mt-2 text-sm text-[var(--app-muted)]">상태 {diagnosis.state} · 색상 신뢰도 {diagnosis.qualityConfidence === null ? "확인 중" : `${Math.round(diagnosis.qualityConfidence * 100)}%`}</p>
+        <p className="mt-2 text-sm text-[var(--app-muted)]">사진 기반 진단 신뢰도 · {diagnosis.qualityConfidence === null ? "확인 중" : `${Math.round(diagnosis.qualityConfidence * 100)}%`}</p>
         {diagnosis.summary ? <p className="mt-4 border-l-2 border-[var(--app-accent)] pl-3 text-sm leading-6 text-[var(--app-text)]">{diagnosis.summary}</p> : null}
         <div className="mt-5 grid gap-3">{AXES.map(([key, label, low, high]) => {
           const value = diagnosis.axes[key];
           return <div key={key} className="grid gap-1"><div className="flex justify-between text-xs font-bold"><span>{label} · {low}</span><span>{high}</span></div><meter min={0} max={1} value={value ?? 0.5} className="w-full" aria-label={`${label} ${value === null ? "분석 중" : Math.round(value * 100)}`} /></div>;
         })}</div>
       </Panel>
-      <SurfaceCard className="p-5"><p className="app-kicker">Similarity distribution</p><div className="mt-4 grid gap-2">{blend.length ? blend.map(([type, score]) => <div key={type} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm"><span>{TYPE_LABELS[type] || type}</span><strong>{Math.round(score * 100)}%</strong></div>) : <p className="text-sm text-[var(--app-muted)]">12타입 유사도를 계산하고 있습니다.</p>}</div></SurfaceCard>
+      <SurfaceCard className="p-5"><details><summary className="min-h-11 cursor-pointer py-2 text-sm font-black">다른 컬러 타입과의 유사도 보기</summary><div className="mt-4 grid gap-2">{blend.length ? blend.map(([type, score]) => <div key={type} className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm"><span>{TYPE_LABELS[type] || type}</span><strong>{Math.round(score * 100)}%</strong></div>) : <p className="text-sm text-[var(--app-muted)]">12타입 유사도를 계산하고 있습니다.</p>}</div></details></SurfaceCard>
       <SurfaceCard className="p-5">
-        <p className="app-kicker">Palette overview</p>
+        <p className="app-kicker">추천·주의 팔레트</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div><p className="text-xs font-black uppercase text-[var(--app-muted)]">추천 팔레트</p><div className="mt-2 flex flex-wrap gap-2" aria-label="추천 색상">{diagnosis.palette.best.map((hex) => <span key={hex} title={hex} className="h-12 w-12 border border-[var(--app-border)]" style={{ background: hex }} />)}</div></div>
           <div><p className="text-xs font-black uppercase text-[var(--app-muted)]">주의 팔레트</p><div className="mt-2 flex flex-wrap gap-2" aria-label="주의 색상">{diagnosis.palette.caution.map((hex) => <span key={hex} title={hex} className="h-12 w-12 border border-[var(--app-border)]" style={{ background: hex }} />)}</div></div>
         </div>
         {diagnosis.palette.metals.length ? <p className="mt-4 text-sm text-[var(--app-muted)]">추천 금속 · <strong className="text-[var(--app-text)]">{diagnosis.palette.metals.join(" · ")}</strong></p> : null}
       </SurfaceCard>
-      {detailedResult ? <SurfaceCard className="p-5"><p className="app-kicker">Color guidance</p><h3 className="mt-2 text-lg font-black">색상별 상세 처방</h3><div className="mt-5"><PersonalColorResultDetails result={detailedResult} showOverview={false} showHairColorHints={false} /></div></SurfaceCard> : null}
-      <SurfaceCard className="p-5"><p className="app-kicker">Hair color directions</p><h3 className="mt-2 text-lg font-black">염색에 연결할 방향</h3><div className="mt-5"><DefinitionRows items={diagnosis.hairColorDirections.map((item) => ({ label: item.name, value: `${item.reason} · 목표 레벨 ${item.targetLevel ?? "현장 확인"} · 탈색 ${item.bleachPolicy} · 유지 ${item.maintenance}` }))} /></div></SurfaceCard>
-      <ConsultationSystemData snapshot={snapshot} items={[{ label: "Personal color evidence", value: diagnosis.evidenceId || "없음" }, { label: "Quality gate", value: diagnosis.qualityStatus }]} />
+      {detailedResult ? <SurfaceCard className="p-5"><p className="app-kicker">실제 활용법</p><h3 className="mt-2 text-lg font-black">색상별 활용 가이드</h3><div className="mt-5"><PersonalColorResultDetails result={detailedResult} showOverview={false} showHairColorHints={false} /></div></SurfaceCard> : null}
+      <SurfaceCard className="p-5"><p className="app-kicker">염색 추천 방향</p><h3 className="mt-2 text-lg font-black">퍼스널 컬러를 헤어 컬러로 연결해요</h3><div className="mt-5"><DefinitionRows items={diagnosis.hairColorDirections.map((item) => ({ label: item.name, value: item.reason }))} /></div>{diagnosis.hairColorDirections.length ? <details className="mt-4 border-t border-[var(--app-border)] pt-3"><summary className="min-h-11 cursor-pointer py-2 text-sm font-black">디자이너용 시술 범위 보기</summary><DefinitionRows items={diagnosis.hairColorDirections.map((item) => ({ label: item.name, value: `목표 레벨 ${item.targetLevel ?? "현장 확인"} · 탈색 ${item.bleachPolicy} · 유지 ${item.maintenance}` }))} /></details> : null}</SurfaceCard>
+      <ConsultationSystemData snapshot={snapshot} items={[{ label: "진단 근거", value: diagnosis.evidenceId ? "연결됨" : "없음" }, { label: "사진 품질", value: diagnosis.qualityStatus }]} />
     </div>}
   />;
 }

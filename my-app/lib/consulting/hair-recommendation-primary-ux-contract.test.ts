@@ -24,7 +24,11 @@ test("web and native show all nine outputs without making shortlist the primary 
   const native = read(join(repositoryRoot, "apps/hairfit-app/app/consulting.tsx"));
   assert.match(web, /data-hair-generated-gallery="all-nine"/);
   assert.match(web, /recommendation\.board\?\.variants\.map/);
-  assert.match(web, /다른 스타일도 빠짐없이 비교/);
+  assert.match(web, /품질 확인을 통과한 9개 중 하나/);
+  assert.match(web, /data-hair-selection="all-nine-customer-selection"/);
+  assert.match(web, /name="confirmed-hair-preview"/);
+  assert.match(web, /AI 1순위와 대안 2개/);
+  assert.match(web, /이 스타일로 확정/);
   assert.match(native, /AI primary · all nine results/);
   assert.match(native, /board\.variants\.map/);
   assert.match(native, /나머지 결과를[\s\S]*생성된 9개는 모두 확인/);
@@ -54,11 +58,16 @@ test("adjustment is immutable and creates a generation-scoped next board revisio
   assert.match(rootMigration, /generation_draft_id/);
 });
 
-test("primary confirmation is revision guarded and returns a server-owned next route", () => {
+test("customer confirmation is revision guarded, eligibility checked, and returns a server-owned next route", () => {
   const server = read(join(appRoot, "lib/consulting/hair-recommendation-confirmation-server.ts"));
   const web = read(join(appRoot, "components/consulting/hair/HairRecommendationWorkbench.tsx"));
   assert.match(server, /decision\.revision !== input\.expectedRevision/);
-  assert.match(server, /acceptedCount === 9|HAIR_RECOMMENDATION_NOT_CONFIRMABLE/);
+  assert.match(server, /HAIR_RECOMMENDATION_SELECTION_INVALID/);
+  assert.match(server, /previewVariantId: input\.selectedPreviewId/);
+  assert.match(server, /selection_source:/);
+  assert.match(server, /HAIR_RECOMMENDATION_ALREADY_CONFIRMED/);
+  assert.match(server, /HAIR_RECOMMENDATION_CONFIRMATION_CONFLICT/);
   assert.match(server, /recommendedRoute:/);
+  assert.match(web, /recommendation\.confirm\(selectedId\)/);
   assert.match(web, /router\.push\(result\.recommendedRoute\)/);
 });

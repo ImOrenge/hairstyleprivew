@@ -32,6 +32,9 @@ type HairRecommendationRow = {
   terminal_count: number;
   ranked_previews: HairRecommendationDecisionV1["rankedPreviews"];
   primary_preview_id: string | null;
+  confirmed_preview_id: string | null;
+  confirmed_rank: number | null;
+  selection_source: HairRecommendationDecisionV1["selectionSource"];
   confidence: number;
   clarification: HairRecommendationDecisionV1["clarification"];
   clarification_count: number;
@@ -62,6 +65,9 @@ const HAIR_RECOMMENDATION_SELECT = [
   "terminal_count",
   "ranked_previews",
   "primary_preview_id",
+  "confirmed_preview_id",
+  "confirmed_rank",
+  "selection_source",
   "confidence",
   "clarification",
   "clarification_count",
@@ -183,6 +189,9 @@ export function mapHairRecommendationRow(row: HairRecommendationRow): HairRecomm
     policyVersion: row.policy_version,
     rankedPreviews: row.ranked_previews,
     primaryPreviewId: row.primary_preview_id,
+    confirmedPreviewId: row.confirmed_preview_id,
+    confirmedRank: row.confirmed_rank,
+    selectionSource: row.selection_source,
     confidence: row.confidence,
     clarification: row.clarification,
     clarificationCount: row.clarification_count === 1 ? 1 : 0,

@@ -49,14 +49,14 @@ export function ConsultationSystemData({ snapshot, items = [] }: { snapshot: Con
   };
   const activeTasks = snapshot.journey.activeTasks.map((task) => `${task.label} ${task.status === "failed" ? "확인 필요" : task.status === "complete" ? "완료" : "진행 중"}`);
   return (
-    <SurfaceCard className="p-5" data-consulting-system-data="true" data-consulting-detail-count={items.length}>
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <p className="app-kicker">상담 진행</p>
-          <h2 className="mt-2 text-lg font-black">지금 확인할 내용</h2>
-        </div>
-      </div>
-      <div className="mt-5">
+    <SurfaceCard className="p-0" data-consulting-system-data="true" data-consulting-detail-count={items.length}>
+      <details className="group p-5">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 font-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">
+          <span><span className="app-kicker block">상담 진행</span><span className="mt-1 block text-base">진행 상세 보기</span></span>
+          <span aria-hidden="true" className="text-xl transition group-open:rotate-45">＋</span>
+        </summary>
+        <p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">다음 단계, 준비 상태와 저장 기록이 필요할 때만 확인하세요.</p>
+        <div className="mt-5">
         <DefinitionRows
           items={[
             {
@@ -96,7 +96,8 @@ export function ConsultationSystemData({ snapshot, items = [] }: { snapshot: Con
             },
           ]}
         />
-      </div>
+        </div>
+      </details>
     </SurfaceCard>
   );
 }

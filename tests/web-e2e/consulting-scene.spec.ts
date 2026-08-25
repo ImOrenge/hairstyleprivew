@@ -87,6 +87,7 @@ test("desktop panes scroll independently while mobile keeps input before output"
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/consulting/e2e-harness?stage=direction");
   await dismissGlobalNotices(page);
+  await page.getByText(/세부 방향 직접 조정하기/).click();
   const desktop = await page.locator('[data-consulting-split-canvas="true"]').evaluate((canvas) => {
     const input = canvas.querySelector<HTMLElement>('[data-consulting-pane="input"]');
     const output = canvas.querySelector<HTMLElement>('[data-consulting-pane="output"]');
@@ -264,6 +265,57 @@ test("two quality-accepted previews can open comparison before all nine finish",
   await expect(balanceTwo).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByText("Shortlist 2 / 3")).toBeVisible();
   await expect(page.getByRole("button", { name: "선택한 후보 비교하기" })).toBeEnabled();
+});
+
+test("AI guidance keeps all nine available and confirms the customer's single final choice", async ({ page }) => {
+  const roles = [
+    "face-balance-proportion", "face-balance-hairline-parting", "face-balance-jawline-volume",
+    "image-change-soft", "image-change-polished", "image-change-distinctive",
+    "manageability-cut-first", "manageability-controlled-perm", "manageability-high-change",
+  ];
+  const image = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='300'%3E%3Crect width='240' height='300' fill='%23d8d2ca'/%3E%3C/svg%3E";
+  const variants = Array.from({ length: 9 }, (_, index) => ({
+    id: `hair-${index + 1}`, slot: index + 1,
+    bucket: index < 3 ? "face_balance" : index < 6 ? "image_change" : "manageability",
+    intent: `스타일 ${index + 1}`, status: "accepted",
+    attempts: [{ id: `attempt-${index + 1}`, status: "accepted", outputUrl: image }],
+  }));
+  const rankedPreviews = variants.map((variant, index) => ({
+    previewId: variant.id, catalogItemId: `catalog-${index + 1}`, slot: variant.slot, gridRole: roles[index], rank: index + 1,
+    eligible: true, hardFailureCodes: [], score: 1 - index / 10,
+    scoreComponents: { userConstraintFit: 1, hairTraitFit: 1, faceEvidenceFit: 1, maintenanceFit: 1, imageQuality: 1, identityPreservation: 1, instructionAdherence: 1, diversityPenalty: 0 },
+    reasonCodes: ["accepted-quality-gate"],
+  }));
+  let confirmedPreviewId: string | null = null;
+  await page.route("**/api/v2/consultations/**/hair-recommendation**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith("/confirm")) {
+      const body = route.request().postDataJSON() as { selectedPreviewId?: string };
+      confirmedPreviewId = body.selectedPreviewId ?? null;
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ recommendedRoute: "/consulting/e2e-harness?stage=salon-brief" }) });
+      return;
+    }
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+      board: { id: "board-nine", state: "ready", acceptedCount: 9, variants },
+      decision: {
+        schemaVersion: "hair-recommendation-decision-v1", consultationId: "00000000-0000-4000-8000-000000000001", state: "primary-ready", inputFingerprint: "e2e-hair-nine",
+        previewBatch: { schemaVersion: "hair-nine-preview-batch-ref-v1", batchId: "board-nine", inputFingerprint: "e2e-hair-nine", requestedCount: 9, acceptedCount: 9, failedCount: 0, terminalCount: 9, state: "terminal" },
+        catalogVersion: "catalog-v1", policyVersion: "ranker-v1", rankedPreviews, primaryPreviewId: "hair-1", confirmedPreviewId: null, confirmedRank: null, selectionSource: null,
+        confidence: 0.91, clarification: null, clarificationCount: 0, sourceIds: ["e2e"], revision: 1, confirmedRevision: null, supersedesRevision: null,
+        createdAt: "2026-08-25T00:00:00.000Z", updatedAt: "2026-08-25T00:00:00.000Z",
+      },
+    }) });
+  });
+
+  await page.goto("/consulting/e2e-harness?stage=previews&hairRecommendation=1");
+  await dismissGlobalNotices(page);
+  const choices = page.locator('input[name="confirmed-hair-preview"]');
+  await expect(choices).toHaveCount(9);
+  await expect(choices.first()).toBeChecked();
+  await choices.nth(3).check();
+  await expect(page.getByText("AI 추천과 다르지만 고객님의 선택을 최종 반영합니다.")).toBeVisible();
+  await page.getByRole("button", { name: "이 스타일로 확정" }).click();
+  await expect.poll(() => confirmedPreviewId).toBe("hair-4");
 });
 
 test("transient consultant activity is lively, pausable, result-neutral, and layout-stable", async ({ page }) => {
@@ -514,8 +566,8 @@ test("Analysis renders the persisted facial proportion matrix without inventing 
   await dismissGlobalNotices(page);
   const matrix = page.locator('[data-analysis-proportion-matrix="ready"]');
   const blend = page.locator('[data-analysis-face-shape-blend="ready"]');
-  const inputPane = page.getByRole("region", { name: "사용자 입력" });
-  const outputPane = page.getByRole("region", { name: "AI 출력 및 시스템 데이터" });
+  const inputPane = page.getByRole("region", { name: "내가 알려줄 내용" });
+  const outputPane = page.getByRole("region", { name: "AI 컨설턴트가 정리한 내용" });
   await expect(inputPane.locator('[data-photo-evidence-stage="true"]')).toBeVisible();
   await expect(outputPane.locator('[data-photo-evidence-stage="true"]')).toHaveCount(0);
   await expect(blend).toBeVisible();
@@ -606,7 +658,7 @@ test("Aftercare starts from actual service and renders server-generated care as 
         actualServiceId: "00000000-0000-4000-8000-000000000071",
         version: 1,
         today: ["두피부터 중간 바람으로 말립니다.", "찬바람으로 끝선을 정리합니다."],
-        checkpoints: ["D+3", "W+2", "W+6", "W+10"].map((offset) => ({ offset, action: `${offset} 모발 상태와 실루엣을 확인합니다.`, complete: false })),
+        checkpoints: ["D+1", "D+3", "D+7", "D+30", "D+45", "D+90"].map((offset) => ({ offset, action: `${offset} 모발 상태와 실루엣을 확인합니다.`, complete: false })),
         concerns: ["강한 열을 한곳에 오래 사용하지 않습니다."],
         satisfaction: null,
         createdAt: "2026-08-10T10:00:00.000Z",
@@ -622,10 +674,10 @@ test("Aftercare starts from actual service and renders server-generated care as 
   generated = true;
   await page.reload();
   await dismissGlobalNotices(page);
-  const aiOutput = page.getByLabel("AI 출력 및 시스템 데이터");
-  await expect(aiOutput.getByText("AI care output")).toBeVisible();
+  const aiOutput = page.getByLabel("AI 컨설턴트가 정리한 내용");
+  await expect(aiOutput.getByText("오늘의 관리")).toBeVisible();
   await expect(aiOutput.getByText("두피부터 중간 바람으로 말립니다.", { exact: true })).toBeVisible();
-  await expect(aiOutput.getByText("W+10 모발 상태와 실루엣을 확인합니다.", { exact: true })).toBeVisible();
+  await expect(aiOutput.getByText("D+90 모발 상태와 실루엣을 확인합니다.", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "관리 프로그램 새 버전 저장" })).toBeVisible();
 });
 
@@ -673,7 +725,7 @@ test("Salon Brief auto-loads the durable designer brief without a user save requ
 
   await page.goto("/consulting/e2e-harness?stage=salon-brief");
   await dismissGlobalNotices(page);
-  const aiOutput = page.getByLabel("AI 출력 및 시스템 데이터");
+  const aiOutput = page.getByLabel("AI 컨설턴트가 정리한 내용");
   await expect(aiOutput.getByText("얼굴 균형과 확정 헤어를 연결한 자동 살롱 요약입니다.")).toBeVisible();
   await expect(aiOutput.locator('[data-brief-engine="legacy-designer-brief-v1"]').getByText("쇄골 기장과 얼굴선 레이어를 유지합니다.")).toBeVisible();
   await expect(aiOutput.getByText("male", { exact: true })).toBeVisible();
@@ -681,11 +733,11 @@ test("Salon Brief auto-loads the durable designer brief without a user save requ
   briefStyleTarget = "female";
   await page.reload();
   await dismissGlobalNotices(page);
-  await expect(page.getByLabel("AI 출력 및 시스템 데이터").getByText("female", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("AI 컨설턴트가 정리한 내용").getByText("female", { exact: true })).toBeVisible();
   expect(automaticBriefRequests).toBe(2);
 });
 
-for (const viewport of [{ width: 390, height: 844, colorScheme: "light" as const }, { width: 768, height: 1024, colorScheme: "dark" as const }]) {
+for (const viewport of [{ width: 320, height: 800, colorScheme: "light" as const }, { width: 390, height: 844, colorScheme: "light" as const }, { width: 768, height: 1024, colorScheme: "dark" as const }]) {
   test(`Scene stays accessible at ${viewport.width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize(viewport);
     await page.emulateMedia({ colorScheme: viewport.colorScheme, reducedMotion: "reduce" });

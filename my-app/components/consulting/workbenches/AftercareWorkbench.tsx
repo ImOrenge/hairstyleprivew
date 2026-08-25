@@ -177,7 +177,7 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
         <div className="grid gap-2">{care.checkpoints.map((checkpoint, index) => <button key={checkpoint.offset} type="button" onClick={() => setCare({ ...care, checkpoints: care.checkpoints.map((item, itemIndex) => itemIndex === index ? { ...item, complete: !item.complete } : item) })} aria-pressed={checkpoint.complete} className={`flex min-h-14 items-center justify-between border px-4 text-left ${checkpoint.complete ? "border-[var(--app-success)] bg-[var(--app-success-bg)]" : "border-[var(--app-border)]"}`}><span className="font-black">{checkpoint.offset}</span><span className="text-xs text-[var(--app-muted)]">{checkpoint.action}</span></button>)}</div>
         <label className="grid gap-2 text-sm font-black">만족도 · {care.satisfaction ?? "미입력"}<input type="range" min="1" max="5" value={care.satisfaction ?? 3} onChange={(event) => setCare({ ...care, satisfaction: Number(event.target.value) })} /></label>
         <TextField label="걱정되는 점·변화 기록" value={care.concerns.join(", ")} onChange={(value) => setCare({ ...care, concerns: value.split(",").map((item) => item.trim()).filter(Boolean) })} />
-      </> : <SurfaceCard className="p-4 text-sm leading-6 text-[var(--app-muted)]">실제 시술을 확정하면 선택 헤어·분석 근거·디자이너 브리프를 연결해 오늘 행동과 네 개 체크포인트를 자동 생성합니다.</SurfaceCard>}
+      </> : <SurfaceCard className="p-4 text-sm leading-6 text-[var(--app-muted)]">실제 시술을 확정하면 선택 헤어·분석 근거·디자이너 브리프를 연결해 오늘 관리와 D+1·3·7·30·45·90 안내를 자동 생성합니다.</SurfaceCard>}
       <label className="grid gap-2 text-sm font-black">시술 후 사진 (선택)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => { setAfterPhoto(event.target.files?.[0] ?? null); setAfterPhotoConsent(false); }} className="app-input min-h-11 px-3 py-2 font-normal" /></label>
       {afterPhoto ? <label className="flex min-h-11 items-start gap-3 border border-[var(--app-border)] p-3 text-sm"><input type="checkbox" checked={afterPhotoConsent} onChange={(event) => setAfterPhotoConsent(event.target.checked)} className="mt-1" /><span><strong className="block">시술 결과 사진 사용 동의</strong><span className="mt-1 block text-xs leading-5 text-[var(--app-muted)]">선택한 사진은 비공개 Storage에 저장되며 이 실제 시술의 관리 기록과 다음 상담에만 사용됩니다.</span></span></label> : null}
       {care.afterPhotoUpload ? <p className="text-xs font-bold text-[var(--app-success)]">시술 후 사진 저장 완료 · {new Date(care.afterPhotoUpload.uploadedAt).toLocaleDateString("ko-KR")}</p> : null}
@@ -185,15 +185,14 @@ export function AftercareWorkbench({ snapshot, mutate, saving }: { snapshot: Con
       <SaveStageButton loading={saving || syncing} disabled={!service.services.length || !service.serviceDate || Boolean(afterPhoto && !afterPhotoConsent)} onClick={() => void saveAftercare()}>{care.actualServiceId ? "관리 프로그램 새 버전 저장" : "실제 시술 확정하고 관리 프로그램 자동 생성"}</SaveStageButton>
     </Panel>
   } output={<div className="grid gap-4"><SurfaceCard className="p-5"><p className="app-kicker">시술 기록과 일상 관리</p><h2 className="mt-3 text-xl font-black">실제로 받은 시술을 기준으로 관리합니다</h2><p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">실제 시술을 확정하면 오늘 할 관리와 시점별 확인 항목을 이어서 볼 수 있습니다.</p><div className="mt-5"><DefinitionRows items={[
-      { label: "Selected style", value: selected?.label || "선택 기록 없음" },
-      { label: "Actual services", value: service.services.join(" · ") || "입력 대기" },
-      { label: "Service date", value: service.serviceDate || "입력 대기" },
-      { label: "Program version", value: care.programVersion ? `v${care.programVersion}` : "초안" },
-      { label: "Checkpoints", value: `${care.checkpoints.filter((item) => item.complete).length} / ${care.checkpoints.length} 완료` },
-      { label: "After photo", value: care.afterPhotoUpload ? "비공개 저장 완료" : "없음" },
+      { label: "확정한 헤어", value: selected?.label || "선택 기록 없음" },
+      { label: "실제로 받은 시술", value: service.services.join(" · ") || "입력 대기" },
+      { label: "시술일", value: service.serviceDate || "입력 대기" },
+      { label: "관리 안내", value: `${care.checkpoints.filter((item) => item.complete).length} / ${care.checkpoints.length} 확인` },
+      { label: "시술 후 사진", value: care.afterPhotoUpload ? "비공개 저장 완료" : "없음" },
     ]} /></div></SurfaceCard>{care.actualServiceId?<AftercareCheckinPanel consultationId={snapshot.sessionId} actualServiceId={care.actualServiceId}/>:null}{care.today.length ? <SurfaceCard className="grid gap-4 p-5"><div><p className="app-kicker">오늘의 관리</p><h3 className="mt-2 text-lg font-black">오늘부터 바로 실행할 관리</h3></div><ul className="grid gap-2 text-sm leading-6">{care.today.map((action) => <li key={action} className="border-l-2 border-[var(--app-border-strong)] pl-3">{action}</li>)}</ul><div className="grid gap-2">{care.checkpoints.map((checkpoint) => <div key={checkpoint.offset} className="grid gap-1 border-t border-[var(--app-border)] pt-3 sm:grid-cols-[4rem_1fr]"><strong>{checkpoint.offset}</strong><span className="text-sm leading-6 text-[var(--app-muted)]">{checkpoint.action}</span></div>)}</div>{care.concerns.length ? <div><p className="text-xs font-black uppercase text-[var(--app-muted)]">주의·관찰</p><p className="mt-2 text-sm leading-6">{care.concerns.join(" · ")}</p></div> : null}</SurfaceCard> : null}{snapshot.photo.generationId && selected ? <Link href={`/result/${encodeURIComponent(snapshot.photo.generationId)}?variant=${encodeURIComponent(selected.previewId)}`} className="inline-flex min-h-11 items-center justify-center border border-[var(--app-border)] bg-[var(--app-surface)] px-4 text-sm font-black">기존 결과 열기</Link> : null}<ConsultationSystemData snapshot={snapshot} items={[
-      { label: "Actual service lock", value: care.actualServiceId ? "원본 잠김" : "미확정" },
-      { label: "Concern log", value: `${care.concerns.length}건` },
-      { label: "Satisfaction", value: care.satisfaction ? `${care.satisfaction} / 5` : "미입력" },
+      { label: "시술 기록", value: care.actualServiceId ? "확정됨" : "미확정" },
+      { label: "걱정 기록", value: `${care.concerns.length}건` },
+      { label: "만족도", value: care.satisfaction ? `${care.satisfaction} / 5` : "미입력" },
     ]} /></div>} />;
 }

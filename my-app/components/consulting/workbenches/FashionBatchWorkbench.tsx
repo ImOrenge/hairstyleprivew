@@ -503,7 +503,7 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
           ) : null}
           <Panel className="grid gap-5 p-5 sm:p-7">
             <div>
-              <p className="app-kicker">One confirmed hair · adaptive outputs</p>
+              <p className="app-kicker">확정한 헤어와 어울리는 패션</p>
               <h2 className="mt-2 text-xl font-black">{style?.label || "확정한 헤어"}에서 AI 권장 룩부터 준비합니다</h2>
               <p className="mt-2 text-sm text-[var(--app-muted)]">기본 3개를 먼저 생성하고 원하면 6개·9개까지 확장합니다. 이미 생성된 결과는 하나도 숨기거나 교체하지 않습니다.</p>
             </div>
@@ -520,11 +520,11 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
                   }
                   className="app-input min-h-11 px-3"
                 >
-                  <option value="spring">spring</option>
-                  <option value="summer">summer</option>
-                  <option value="autumn">autumn</option>
-                  <option value="winter">winter</option>
-                  <option value="all-season">all-season</option>
+                  <option value="spring">봄</option>
+                  <option value="summer">여름</option>
+                  <option value="autumn">가을</option>
+                  <option value="winter">겨울</option>
+                  <option value="all-season">사계절</option>
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-black">
@@ -539,10 +539,10 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
                   }
                   className="app-input min-h-11 px-3"
                 >
-                  <option value="slim">slim</option>
-                  <option value="regular">regular</option>
-                  <option value="relaxed">relaxed</option>
-                  <option value="oversized">oversized</option>
+                  <option value="slim">슬림</option>
+                  <option value="regular">레귤러</option>
+                  <option value="relaxed">여유 있게</option>
+                  <option value="oversized">오버사이즈</option>
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-black">
@@ -557,9 +557,9 @@ export function FashionBatchWorkbench({ snapshot, mutate, saving, interviewEnabl
                   }
                   className="app-input min-h-11 px-3"
                 >
-                  <option value="low">low</option>
-                  <option value="balanced">balanced</option>
-                  <option value="bold">bold</option>
+                  <option value="low">노출 적게</option>
+                  <option value="balanced">균형 있게</option>
+                  <option value="bold">과감하게</option>
                 </select>
               </label>
               <label className="grid gap-2 text-sm font-black">

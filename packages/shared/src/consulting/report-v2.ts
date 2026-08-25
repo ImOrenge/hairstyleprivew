@@ -245,6 +245,8 @@ export interface ConsultingResultProvenanceV3 {
     terminalCount: number;
     recommendationRevision: number;
     primaryPreviewId: string;
+    confirmedPreviewId: string;
+    selectionSource: "ai_primary" | "customer_choice";
     confirmedRevision: number;
     rationaleRevision: number;
     adjustmentRevision: number | null;
@@ -415,13 +417,15 @@ function reportImage(id: string, src: string | null, alt: string, label: string,
 
 function buildProvenance(snapshot: ConsultationSnapshot, source: ConsultationReportSourceV2): ConsultingResultProvenanceV3 {
   const hair =
-    source.hairRecommendation?.primaryPreviewId && source.hairRecommendation.confirmedRevision
+    source.hairRecommendation?.primaryPreviewId && source.hairRecommendation.confirmedPreviewId && source.hairRecommendation.confirmedRevision && source.hairRecommendation.selectionSource
       ? {
           previewBatchId: source.hairRecommendation.previewBatch.batchId,
           requestedCount: 9 as const,
           terminalCount: source.hairRecommendation.previewBatch.terminalCount,
           recommendationRevision: source.hairRecommendation.revision,
           primaryPreviewId: source.hairRecommendation.primaryPreviewId,
+          confirmedPreviewId: source.hairRecommendation.confirmedPreviewId,
+          selectionSource: source.hairRecommendation.selectionSource,
           confirmedRevision: source.hairRecommendation.confirmedRevision,
           rationaleRevision: source.hairRecommendation.revision,
           adjustmentRevision: source.hairRecommendation.supersedesRevision,

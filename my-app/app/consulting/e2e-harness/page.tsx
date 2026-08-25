@@ -330,7 +330,7 @@ export default async function ConsultingSceneHarnessPage({ searchParams }: Props
       inputFingerprint: "e2e-hair-fingerprint", previewBatch: { schemaVersion: "hair-nine-preview-batch-ref-v1", batchId: "e2e-hair-batch", inputFingerprint: "e2e-hair-fingerprint", requestedCount: 9, acceptedCount: 9, failedCount: 0, terminalCount: 9, state: "terminal" },
       catalogVersion: "e2e-catalog", policyVersion: "hair-ranker-v1",
       rankedPreviews: snapshot.previews.map((preview, index) => ({ previewId: preview.id, catalogItemId: preview.sourceVariantId, slot: index + 1, gridRole: reportHairRoles[index], rank: index + 1, eligible: true, hardFailureCodes: [], score: 100 - index, scoreComponents: { userConstraintFit: 1, hairTraitFit: 1, faceEvidenceFit: 1, maintenanceFit: 1, imageQuality: 1, identityPreservation: 1, instructionAdherence: 1, diversityPenalty: 0 }, reasonCodes: ["e2e-fit"] })),
-      primaryPreviewId: snapshot.previews[0].id, confidence: 0.91, clarification: null, clarificationCount: 0, sourceIds: ["e2e-analysis"], revision: 1, confirmedRevision: 1, supersedesRevision: null,
+      primaryPreviewId: snapshot.previews[0].id, confirmedPreviewId: snapshot.previews[0].id, confirmedRank: 1, selectionSource: "ai_primary", confidence: 0.91, clarification: null, clarificationCount: 0, sourceIds: ["e2e-analysis"], revision: 1, confirmedRevision: 1, supersedesRevision: null,
       createdAt: "2026-08-08T00:04:00.000Z", updatedAt: "2026-08-08T00:05:00.000Z",
     },
     fashionCandidates: [

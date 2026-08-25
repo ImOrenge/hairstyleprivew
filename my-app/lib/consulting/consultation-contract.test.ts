@@ -196,7 +196,7 @@ test("customer entry CTAs point directly to the AI consultant while legacy remai
   assert.match(`${hero}\n${showcases}`, /내 (?:사진|얼굴) 분석(?:부터)? 시작/);
   assert.match(customerHome, /AI 헤어 컨설턴트/);
   const photo = read("../../components/consulting/workbenches/PhotoWorkbench.tsx");
-  assert.match(photo, /AI 상담 분석이 자동으로 이어집니다/);
+  assert.match(photo, /분석 단계로 바로 이어집니다/);
   assert.doesNotMatch(photo, /workspace\?legacy=1/);
 });
 
@@ -817,8 +817,8 @@ test("comparison, decision, brief and aftercare use derived lifecycle data", () 
   assert.match(decisionWorkbench, /deriveDecisionSnapshot/);
   assert.doesNotMatch(decisionWorkbench, /TextField/);
   assert.match(brief, /실제 시술 기록 후 Aftercare 열기/);
-  assert.match(brief, /미용사 응답 · 별도 revision/);
-  assert.match(brief, /확정 스타일 snapshot을 변경하지 않습니다/);
+  assert.match(brief, /미용사 응답 · 별도 기록/);
+  assert.match(brief, /확정한 헤어는 바꾸지 않습니다/);
   assert.match(brief, /살롱 전달용 상세 브리프/);
   assert.match(brief, /inputSnapshot\.inputFingerprint/);
   assert.match(sharedContract, /designerFeedback\?:/);
@@ -829,6 +829,8 @@ test("comparison, decision, brief and aftercare use derived lifecycle data", () 
   assert.match(outputs, /generatedBrief\?\.consultationSummary/);
   assert.match(outputs, /runAftercareCapability/);
   assert.match(outputs, /generatedAftercareProgramInput/);
+  for (const offset of ["D+1", "D+3", "D+7", "D+30", "D+45", "D+90"]) assert.match(outputs, new RegExp(offset.replace("+", "\\+")));
+  assert.doesNotMatch(outputs, /W\+2|W\+6|W\+10/);
   assert.match(outputs, /projectConsultationGenerationInputV2/);
   assert.doesNotMatch(outputs, /delete\(\)\.eq\("id", actualServiceId\)/);
   assert.match(aftercare, /실제 시술 확정하고 관리 프로그램 자동 생성/);
