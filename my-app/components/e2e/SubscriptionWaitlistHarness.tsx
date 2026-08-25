@@ -8,7 +8,7 @@ export function SubscriptionWaitlistHarness() {
   const [submittedCount, setSubmittedCount] = useState(0);
 
   return (
-    <main className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-10">
+    <div className="mx-auto grid w-full max-w-3xl gap-6 px-4 py-10">
       <Panel as="section" aria-labelledby="subscription-waitlist-harness-title" className="space-y-4 p-6">
         <p className="app-kicker">E2E 전용</p>
         <h1 id="subscription-waitlist-harness-title" className="text-3xl font-black text-[var(--app-text)]">
@@ -29,6 +29,6 @@ export function SubscriptionWaitlistHarness() {
       <p aria-atomic="true" aria-live="polite" className="text-sm text-[var(--app-muted)]" role="status">
         완료된 신청 {submittedCount}회
       </p>
-    </main>
+    </div>
   );
 }

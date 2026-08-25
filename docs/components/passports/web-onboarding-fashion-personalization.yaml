@@ -47,6 +47,7 @@ state:
     - user-facing-message
 
 a11y_contract:
+  landmark: root-app-layout-owns-main-component-renders-section
   controls: native-input-checkbox-and-button-semantics
   coverage: text-and-symbol-not-color-only
   status: polite-live-region

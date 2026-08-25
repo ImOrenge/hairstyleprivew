@@ -121,7 +121,7 @@ const expectedRoutes = [
       },
       {
         file: "apps/hairfit-app/lib/mobile-user-message.ts",
-        markers: ["mapMobileUserError", "status === 401", "status === 413", "status === 429"],
+        markers: ["mapMobileUserError", "isMobileAuthExpired(error)", "readStatus(error) === 401", "status === 413", "status === 429"],
       },
       {
         file: "apps/hairfit-app/components/app/PhotoLibraryPermissionRecovery.tsx",

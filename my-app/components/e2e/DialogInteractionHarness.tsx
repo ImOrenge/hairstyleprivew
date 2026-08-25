@@ -66,7 +66,7 @@ export function DialogInteractionHarness({
   const [confirmResult, setConfirmResult] = useState("변경 전");
 
   return (
-    <main className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-10">
+    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-10">
       <Panel as="section" className="p-6">
         <p className="app-kicker">E2E 전용</p>
         <h1 className="mt-2 text-3xl font-black text-[var(--app-text)]">운영 Dialog 상호작용 검증</h1>
@@ -159,6 +159,6 @@ export function DialogInteractionHarness({
 
       <AccountSetupPromptModal open />
       {renderSubscriptionNotice ? <SubscriptionPaymentNoticeModal /> : null}
-    </main>
+    </div>
   );
 }

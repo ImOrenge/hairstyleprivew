@@ -90,7 +90,7 @@ export function GenerationProgressHarness() {
   };
 
   return (
-    <main className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-10">
+    <div className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-10">
       <Panel as="section" className="space-y-4 p-6">
         <p className="app-kicker">E2E 전용</p>
         <h1 className="text-3xl font-black text-[var(--app-text)]">운영 생성 진행 상태 검증</h1>
@@ -124,6 +124,6 @@ export function GenerationProgressHarness() {
       <p role="status" aria-live="polite" className="text-sm text-[var(--app-muted)]">
         새로고침 요청 {refreshCount}회
       </p>
-    </main>
+    </div>
   );
 }

@@ -13,8 +13,8 @@ export default function OperationalListE2EPage() {
   }
 
   return (
-    <main data-testid="operational-list-harness">
+    <div data-testid="operational-list-harness">
       <CustomerListClient />
-    </main>
+    </div>
   );
 }

@@ -37,7 +37,7 @@ ARIA는 스타일 속성의 대체물이 아니다. Dialog는 `role=dialog`, `ar
 
 ## 동결 영역
 
-`globals.css` 후반의 Tailwind palette compatibility override와 기존 `!important` 42개는 시각 기준선 없이 수정하거나 확대하지 않는다. 새 컴포넌트는 stone/white palette class 대신 `--app-*` token을 사용한다. 현재 의미 컴포넌트의 위험 동작 텍스트는 `--app-on-danger`로 token화했다.
+`globals.css` 후반의 `frozen-palette-compatibility:start`와 `frozen-palette-compatibility:end` 사이 Tailwind palette compatibility override와 기존 `!important` 36개는 시각 기준선 없이 수정하거나 확대하지 않는다. 인쇄·접근성 등 영역 밖의 필수 override는 이 동결 수치와 분리해 검증한다. 새 컴포넌트는 stone/white palette class 대신 `--app-*` token을 사용한다. 현재 의미 컴포넌트의 위험 동작 텍스트는 `--app-on-danger`로 token화했다.
 
 ## 검증과 마이그레이션
 

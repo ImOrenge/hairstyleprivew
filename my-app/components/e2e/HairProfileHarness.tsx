@@ -19,7 +19,7 @@ export function HairProfileHarness() {
   const [profile, setProfile] = useState(INITIAL_PROFILE);
 
   return (
-    <main className="mx-auto w-full max-w-3xl p-6">
+    <div className="mx-auto w-full max-w-3xl p-6">
       <Panel as="section" className="p-5">
         <p className="app-kicker">E2E Harness</p>
         <h1 className="mt-2 text-2xl font-black">현재 모발 프로필 입력</h1>
@@ -30,6 +30,6 @@ export function HairProfileHarness() {
           {JSON.stringify(profile)}
         </output>
       </Panel>
-    </main>
+    </div>
   );
 }

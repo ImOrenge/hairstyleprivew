@@ -49,6 +49,7 @@ export const NATIVE_SCREEN_MIGRATION_MAP: NativeScreenMigrationEntry[] = [
   entry("app/aftercare/[hairRecordId].tsx", "complex-flow", "AppScreen", "compatibility", "Screen"),
   entry("app/billing.tsx", "complex-flow", "AppScreen", "migrated", "Screen"),
   entry("app/consulting.tsx", "complex-flow", "AppScreen", "migrated", "Screen"),
+  entry("app/fashion-personalization.tsx", "complex-flow", "AppScreen", "migrated", "Screen"),
   entry("app/generate.tsx", "complex-flow", "AppScreen", "migrated", "Screen"),
   entry("app/generate/[id].tsx", "complex-flow", "AppScreen", "migrated", "Screen"),
   entry("app/home.tsx", "route-alias", "RouteAlias", "alias", null),

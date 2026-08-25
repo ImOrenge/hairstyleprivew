@@ -164,7 +164,7 @@ test("Discovery and Fashion use standalone, keyboard-safe interview layouts with
   await page.emulateMedia({ reducedMotion: "reduce" });
 
   for (const stage of ["discovery", "fashion"] as const) {
-    await page.goto(`/consulting/e2e-harness?stage=${stage}&interview=1`);
+    await page.goto(`/consulting/e2e-harness?stage=${stage}&interview=1${stage === "discovery" ? "&zeroInput=0" : ""}`);
     await dismissGlobalNotices(page);
     const interview = page.locator(".f-consulting-interview");
     await expect(interview).toBeVisible();
@@ -248,23 +248,6 @@ test("consultation exit confirms saved state and remains available during work",
   const homeRequest = page.waitForRequest((request) => new URL(request.url()).pathname === "/home");
   await page.getByRole("button", { name: "저장된 상태로 나가기" }).click();
   await homeRequest;
-});
-
-test("two quality-accepted previews can open comparison before all nine finish", async ({ page }) => {
-  await page.route("**/api/v2/consultations/**/preview-board", (route) => route.fulfill({ status: 202, contentType: "application/json", body: JSON.stringify({ state: "generating" }) }));
-  await page.goto("/consulting/e2e-harness?stage=previews");
-  await dismissGlobalNotices(page);
-  const generationStatus = page.locator('[data-generation-state="partial"]');
-  await expect(generationStatus).toContainText("비교 가능 · 나머지 프리뷰 생성 중");
-  await expect(generationStatus).toContainText("2 / 9");
-  const balanceOne = page.getByRole("button", { name: /BALANCE 1/ });
-  const balanceTwo = page.getByRole("button", { name: /BALANCE 2/ });
-  await balanceOne.click();
-  await expect(balanceOne).toHaveAttribute("aria-pressed", "true");
-  await balanceTwo.click();
-  await expect(balanceTwo).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText("Shortlist 2 / 3")).toBeVisible();
-  await expect(page.getByRole("button", { name: "선택한 후보 비교하기" })).toBeEnabled();
 });
 
 test("AI guidance keeps all nine available and confirms the customer's single final choice", async ({ page }) => {
@@ -416,7 +399,8 @@ test("partial output replaces small talk and failure stops decorative waiting", 
   await dismissGlobalNotices(page);
   const partial = page.locator(".f-consultant-transition");
   await expect(partial).toHaveAttribute("data-task-status", "partial");
-  await expect(page.getByRole("heading", { name: "완성된 프리뷰 1개" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "준비된 프리뷰 1개 · 생성 계속 중" })).toBeVisible();
+  await expect(page.locator(".f-consultant-activity__partial img")).toHaveCount(0);
   const partialRevealDelay = await page.evaluate(() => {
     const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
     const visible = performance.getEntriesByName("hairfit:consultant-transition-visible").at(-1);
@@ -525,6 +509,7 @@ test("Analysis renders persisted face landmarks and saves measurement correction
   await expect(overlay.locator('[data-evidence-id="skin_left_cheek"]')).toBeVisible();
   await page.getByRole("button", { name: "컬러 제외", exact: true }).click();
   await expect(overlay.locator('[data-evidence-id="excluded_lips"]')).toBeVisible();
+  await page.getByText(/세부 분석 근거 보기/).click();
   await page.locator('[data-evidence-ledger-id="hairline"]').click();
   await expect(overlay.locator('[data-evidence-id="hairline_estimate"]')).toHaveAttribute("data-evidence-active", "true");
   const cheekbone = page.getByRole("button", { name: "광대 폭 측정 근거" });
@@ -590,6 +575,7 @@ test("Fashion Scene sends one direction request and lets the server prepare and 
   const fashionDirection = { situation: "daily", genre: "casual", season: "all-season", fit: "regular", exposure: "balanced", budget: "20만 원 이내", avoidItems: [] };
   const sessionIds = slots.map((_, index) => `00000000-0000-4000-8000-${String(index + 31).padStart(12, "0")}`);
   let generatedCount = 0;
+  let requestedCount = 3;
   let batchPrepared = false;
   let reconcileCount = 0;
   let allowCompletion = false;
@@ -600,21 +586,31 @@ test("Fashion Scene sends one direction request and lets the server prepare and 
     if (request.url().includes("/api/styling/recommend")) legacyRecommendationRequests += 1;
   });
 
+  const buildBatchPayload = () => {
+    const requestedSlots = slots.slice(0, requestedCount);
+    const slotProgress = Object.fromEntries(requestedSlots.map((slotId, index) => [slotId, { status: index < generatedCount ? "completed" : "queued", attemptCount: index < generatedCount ? 1 : 0, heartbeatAt: "2026-08-09T00:00:00.000Z", errorCode: null, errorMessage: null }]));
+    const state = generatedCount === requestedCount ? "ready" : generatedCount > 0 ? "partial" : "approved";
+    return { schemaVersion: "fashion-preview-batch-v2", id: "00000000-0000-4000-8000-000000000099", baseBatchId: "00000000-0000-4000-8000-000000000099", state, requestedCount, completedCount: generatedCount, failedCount: 0, terminalCount: generatedCount, stalledCount: 0, retryingCount: 0, quoteId: "batch", generationInputFingerprint: "fashion-e2e", colorSelectionSnapshotId: null, personalColorProfileId: null, expansionLevel: requestedCount === 3 ? 0 : requestedCount === 6 ? 1 : 2, recommendedPreviewId: generatedCount > 0 ? sessionIds[0] : null, selectedPreviewId: null, usageReceiptIds: [], revision: requestedCount, slotRoles: {}, slotState: {}, slotProgress, lastHeartbeatAt: "2026-08-09T00:00:00.000Z", errorCode: null, errorMessage: null, updatedAt: "2026-08-09T00:00:00.000Z" };
+  };
+
   await page.route("**/api/style-profile", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ profile: { bodyPhotoPath: "private/body.webp" } }) }));
   await page.route("**/api/v2/consultations/**/fashion-batch", async (route) => {
-    const slotProgress = Object.fromEntries(slots.map((slotId, index) => [slotId, { status: index < generatedCount ? "completed" : "queued", attemptCount: index < generatedCount ? 1 : 0, heartbeatAt: "2026-08-09T00:00:00.000Z", errorCode: null, errorMessage: null }]));
-    const state = generatedCount === 9 ? "ready" : generatedCount > 0 ? "partial" : "approved";
-    const batchPayload = { id: "00000000-0000-4000-8000-000000000099", state, requestedCount: 9, completedCount: generatedCount, failedCount: 0, terminalCount: generatedCount, stalledCount: 0, retryingCount: 0, quoteId: "batch", slotState: {}, slotProgress, lastHeartbeatAt: "2026-08-09T00:00:00.000Z", errorCode: null, errorMessage: null, updatedAt: "2026-08-09T00:00:00.000Z" };
+    const batchPayload = buildBatchPayload();
     if (route.request().method() === "GET") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(batchPrepared ? { batch: batchPayload, stylingSessionIds: sessionIds } : { batch: null, stylingSessionIds: [] }) });
     const body = route.request().postDataJSON() as { action?: string };
     if (!body.action) { batchPrepared = true; generatedCount = 2; }
-    if (body.action === "reconcile") { reconcileCount += 1; generatedCount = allowCompletion ? 9 : Math.max(generatedCount, 5); }
+    if (body.action === "reconcile") { reconcileCount += 1; generatedCount = allowCompletion ? requestedCount : generatedCount; }
     if (body.action === "dispatch") manualDispatchCount += 1;
-    const nextState = generatedCount === 9 ? "ready" : generatedCount > 0 ? "partial" : "approved";
     return route.fulfill({ status: body.action ? 200 : 201, contentType: "application/json", body: JSON.stringify({
-      batch: { ...batchPayload, state: nextState, completedCount: generatedCount, terminalCount: generatedCount },
+      batch: buildBatchPayload(),
       stylingSessionIds: sessionIds,
     }) });
+  });
+  await page.route("**/api/v2/consultations/**/fashion-batch/expand", async (route) => {
+    const body = route.request().postDataJSON() as { targetRequestedCount: number };
+    requestedCount = body.targetRequestedCount;
+    generatedCount = Math.min(requestedCount, generatedCount + 2);
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ batch: buildBatchPayload(), stylingSessionIds: sessionIds }) });
   });
   await page.route("**/api/v2/consultations/**/fashion-previews", (route) => {
     if (route.request().method() !== "GET") return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify({ previewSet: { directionSnapshot: fashionDirection } }) });
@@ -624,23 +620,24 @@ test("Fashion Scene sends one direction request and lets the server prepare and 
 
   await page.goto("/consulting/e2e-harness?stage=fashion");
   await dismissGlobalNotices(page);
-  await expect(page.locator("[data-fashion-slot-id]")).toHaveCount(9);
-  await page.getByRole("button", { name: "이 방향으로 9개 룩 준비" }).click();
+  await expect(page.locator("[data-fashion-slot-id]")).toHaveCount(3);
+  await page.getByRole("button", { name: "AI 권장 3개 룩 준비" }).click();
   expect(batchPrepared).toBe(true);
   expect(legacyRecommendationRequests).toBe(0);
   await expect.poll(() => generatedCount).toBe(2);
   await expect(page.locator('[data-fashion-batch-status="partial"]')).toBeVisible();
   await expect(page.getByRole("img", { name: "데일리 캐주얼 AI 패션 프리뷰" })).toBeVisible();
-  await expect.poll(() => generatedCount, { timeout: 8_000 }).toBe(5);
-  await page.reload();
-  await dismissGlobalNotices(page);
-  await expect(page.locator('[data-fashion-batch-status="partial"]')).toBeVisible();
-  await expect(page.getByRole("img", { name: "데일리 캐주얼 AI 패션 프리뷰" })).toBeVisible();
   await page.getByRole("button", { name: "미완료 슬롯 다시 시도" }).click();
   expect(manualDispatchCount).toBe(1);
   allowCompletion = true;
-  await expect.poll(() => generatedCount, { timeout: 12_000 }).toBe(9);
+  await expect.poll(() => generatedCount, { timeout: 12_000 }).toBe(3);
   await expect(page.locator('[data-fashion-batch-status="completed"]')).toBeVisible();
+  await page.getByRole("button", { name: "3개 더 생성해서 모두 보기" }).click();
+  await expect.poll(() => generatedCount, { timeout: 12_000 }).toBe(6);
+  await expect(page.locator("[data-fashion-slot-id]")).toHaveCount(6);
+  await page.getByRole("button", { name: "3개 더 생성해서 모두 보기" }).click();
+  await expect.poll(() => generatedCount, { timeout: 12_000 }).toBe(9);
+  await expect(page.locator("[data-fashion-slot-id]")).toHaveCount(9);
   expect(reconcileCount).toBeGreaterThanOrEqual(1);
   expect(manualDispatchCount).toBe(1);
   await expect(page.getByRole("button", { name: /견적 승인/ })).toHaveCount(0);

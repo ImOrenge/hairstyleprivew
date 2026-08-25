@@ -11,7 +11,7 @@ export function FormFeedbackStabilityHarness() {
   const [retryCount, setRetryCount] = useState(0);
 
   return (
-    <main className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-10">
+    <div className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-10">
       <Panel as="section" className="p-6">
         <p className="app-kicker">E2E 전용</p>
         <h1 className="mt-2 text-3xl font-black text-[var(--app-text)]">입력·상태 피드백 안정성 검증</h1>
@@ -83,6 +83,6 @@ export function FormFeedbackStabilityHarness() {
           </InlineAlert>
         </SurfaceCard>
       </div>
-    </main>
+    </div>
   );
 }

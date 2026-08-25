@@ -26,7 +26,7 @@ describe("native screen migration map", () => {
 
     expect(new Set(mappedRoutes).size).toBe(mappedRoutes.length);
     expect(mappedRoutes).toEqual(actualRoutes);
-    expect(getNativeScreenMigrationSummary()).toEqual({ alias: 4, compatibility: 2, migrated: 31 });
+    expect(getNativeScreenMigrationSummary()).toEqual({ alias: 4, compatibility: 2, migrated: 32 });
   });
 
   test("non-aftercare routes own AppScreen directly instead of the Screen alias", () => {
@@ -37,7 +37,7 @@ describe("native screen migration map", () => {
       (item) => item.state === "compatibility",
     );
 
-    expect(migratedAppScreens).toHaveLength(23);
+    expect(migratedAppScreens).toHaveLength(24);
     expect(compatibilityRoutes.map((item) => item.file).sort()).toEqual([
       "app/aftercare.tsx",
       "app/aftercare/[hairRecordId].tsx",

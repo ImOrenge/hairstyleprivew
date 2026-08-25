@@ -29,7 +29,7 @@ export function WorkspaceFlowHarness() {
   };
 
   return (
-    <main className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-10 pb-32 md:pb-10">
+    <div className="mx-auto grid w-full max-w-5xl gap-5 px-4 py-10 pb-32 md:pb-10">
       <Panel as="section" className="space-y-4 p-5">
         <p className="app-kicker">E2E 전용</p>
         <h1 className="text-3xl font-black text-[var(--app-text)]">생성 마법사 단계 검증</h1>
@@ -79,6 +79,6 @@ export function WorkspaceFlowHarness() {
       <p role="status" aria-live="polite" aria-atomic="true" className="text-sm text-[var(--app-muted)]">
         {actionMessage}
       </p>
-    </main>
+    </div>
   );
 }

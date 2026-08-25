@@ -9,7 +9,7 @@ export function SubscriptionPolicyHarness() {
   const [compact, setCompact] = useState(false);
 
   return (
-    <main className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-10">
+    <div className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-10">
       <Panel as="section" aria-labelledby="subscription-policy-harness-title" className="space-y-4 p-6">
         <p className="app-kicker">E2E 전용</p>
         <h1 id="subscription-policy-harness-title" className="text-3xl font-black text-[var(--app-text)]">
@@ -41,6 +41,6 @@ export function SubscriptionPolicyHarness() {
       <SurfaceCard className="p-4 sm:p-5">
         <SubscriptionPolicyDisclosure compact={compact} />
       </SurfaceCard>
-    </main>
+    </div>
   );
 }

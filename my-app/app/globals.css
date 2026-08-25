@@ -3104,6 +3104,7 @@ textarea::placeholder {
   }
 }
 
+/* frozen-palette-compatibility:start */
 .bg-white {
   background-color: var(--app-surface) !important;
 }
@@ -3354,6 +3355,7 @@ textarea::placeholder {
 .dark .dark\:text-amber-500 {
   color: var(--app-accent) !important;
 }
+/* frozen-palette-compatibility:end */
 
 .review-roll {
   display: flex;

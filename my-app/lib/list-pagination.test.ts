@@ -230,11 +230,11 @@ test("non-aftercare operational screens label roles and declare whether they can
 test("admin operational API clients preserve cursor compatibility", () => {
   const apiClient = read("packages/api-client/src/index.ts");
   for (const method of ["listAdminMembers", "listAdminReviews", "listAdminInboundEmails", "listAdminB2bLeads"]) {
-    assert.match(apiClient, new RegExp(`${method}\\(options: \\{[^}]*cursor\\?: string`));
+    assert.match(apiClient, new RegExp(`${method}\\(\\s*options:\\s*\\{[^}]*cursor\\?:\\s*string`));
   }
   assert.ok((apiClient.match(/appendParam\(params, "cursor", options\.cursor\)/g) || []).length >= 5);
   assert.ok((apiClient.match(/nextCursor: string \| null/g) || []).length >= 4);
-  assert.match(apiClient, /listSalonMatchCandidates\(options: \{[^}]*cursor\?: string/);
+  assert.match(apiClient, /listSalonMatchCandidates\(\s*options:\s*\{[^}]*cursor\?:\s*string/);
   assert.match(apiClient, /linkSalonMatchCandidate\(requestId: string\)/);
 });
 

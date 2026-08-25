@@ -3,7 +3,7 @@ import { AppPage, InverseCard, InverseSection, Panel, SurfaceCard } from "../ui/
 export function SurfaceStabilityHarness() {
   return (
     <AppPage
-      as="main"
+      as="div"
       className="grid max-w-5xl gap-5 pb-16 pt-8"
       data-testid="surface-stability-matrix"
     >

@@ -52,6 +52,9 @@ side_effects:
   - no-direct-bulk-delivery
 
 a11y_contract:
+  landmark:
+    - root-app-layout-owns-the-single-main-landmark
+    - component-renders-a-section-within-main
   keyboard:
     - native-form-controls
     - confirm-dialog-focus-contract

@@ -108,7 +108,7 @@ export function PaidActionQuoteHarness() {
   };
 
   return (
-    <main className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-10">
+    <div className="mx-auto grid w-full max-w-4xl gap-6 px-4 py-10">
       <Panel as="section" className="space-y-4 p-6" aria-labelledby="quote-harness-title">
         <p className="app-kicker">E2E 전용</p>
         <h1 id="quote-harness-title" className="text-3xl font-black text-[var(--app-text)]">
@@ -144,6 +144,6 @@ export function PaidActionQuoteHarness() {
       <p aria-atomic="true" aria-live="polite" className="text-sm text-[var(--app-muted)]" role="status">
         완료된 견적 갱신 {refreshCount}회
       </p>
-    </main>
+    </div>
   );
 }

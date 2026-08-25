@@ -59,8 +59,9 @@ test("application moves long recommendation work behind acceptedAt", () => {
   assert.doesNotMatch(legacyPromptRoute, /generateRecommendationSet|generateDesignerBriefs/);
   assert.match(acceptRoute, /accept_generation_upload_draft/);
   assert.match(acceptRoute, /accepted_at/);
-  assert.match(prepareRoute, /generateRecommendationSet/);
-  assert.match(prepareRoute, /generateDesignerBriefs/);
+  assert.match(prepareRoute, /runHairBlueprintCapability/);
+  assert.match(prepareRoute, /runSalonBriefCapability/);
+  assert.doesNotMatch(prepareRoute, /generateRecommendationSet|generateDesignerBriefs/);
   assert.match(prepareRoute, /finish_generation_preparation/);
   assert.doesNotMatch(prepareRoute, /preparationStatus: "pending"/);
   assert.ok(

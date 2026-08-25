@@ -129,5 +129,11 @@
     "@clerk/testing": "^2.2.10",
     "@playwright/test": "^1.61.1",
     "cross-env": "^10.1.0"
+  },
+  "overrides": {
+    "brace-expansion": "1.1.18",
+    "next": "16.3.2",
+    "sharp": "0.35.3",
+    "undici": "7.29.0"
   }
 }

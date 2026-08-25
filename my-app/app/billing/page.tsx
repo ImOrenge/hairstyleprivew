@@ -6,6 +6,7 @@ import { FullStyleContractActions } from "../../components/billing/FullStyleCont
 import { RefundInterviewFlow } from "../../components/mypage/RefundInterviewFlow";
 import { UsagePackCatalog } from "../../components/billing/UsagePackCatalog";
 import { AppPage, Panel } from "../../components/ui/Surface";
+import { DEFAULT_BILLING_RETURN_TARGET, normalizeBillingReturnTarget } from "../../lib/billing-return-target";
 import { getPlanDisplayBenefits } from "../../lib/plan-benefit-display";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 import { getSubscriptionAccessMode } from "../../lib/subscription-access";
@@ -57,8 +58,10 @@ function fullStyleLabel(key:string) {
   return key === "full_style_once" ? "풀 스타일 1회" : key === "full_style_quarterly" ? "3개월 정기" : "연간";
 }
 
-export default async function BillingPage() {
+export default async function BillingPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { userId } = await auth();
+  const params = (await searchParams) ?? {};
+  const returnTo = normalizeBillingReturnTarget(params.returnTo);
   const [legacy,fullStyle] = await Promise.all([readLegacySubscription(userId),readFullStyleContract(userId)]);
   return (
     <AppPage className="flex flex-col gap-5 pb-16">
@@ -66,7 +69,7 @@ export default async function BillingPage() {
         <p className="app-kicker">계약·구매 관리</p>
         <h1 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">내 HairFit 계약</h1>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--app-muted)]">현재 계약, 남은 회차, 다음 결제일, 기간말 해지와 환불 요청을 한곳에서 관리합니다. 새 상품 비교는 공개 상품페이지에서 확인할 수 있습니다.</p>
-        <div className="mt-5 flex flex-wrap gap-3"><Link href="/consulting/plans" className="f-landing-cta">풀 스타일 상품 비교</Link><Link href="/mypage?tab=plan" className="f-landing-ghost-cta">남은 이용권 확인</Link></div>
+        <div className="mt-5 flex flex-wrap gap-3"><Link href="/consulting/plans" className="f-landing-cta">풀 스타일 상품 비교</Link><Link href="/mypage?tab=plan" className="f-landing-ghost-cta">남은 이용권 확인</Link>{returnTo !== DEFAULT_BILLING_RETURN_TARGET ? <Link href={returnTo} className="f-landing-ghost-cta">이전 작업으로 돌아가기</Link> : null}</div>
       </Panel>
 
       {fullStyle ? <Panel as="section" className="grid gap-4 p-5 sm:p-6">

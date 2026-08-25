@@ -10,6 +10,8 @@ const migration=read("../supabase/migrations/202608210004_full_style_catalog_dem
 const mirrored=read("supabase/migrations/202608210004_full_style_catalog_demo_checkout.sql");
 const benefitMigration=read("../supabase/migrations/20260821103000_full_style_benefit_limits.sql");
 const benefitMirrored=read("supabase/migrations/20260821103000_full_style_benefit_limits.sql");
+const activationMigration=read("../supabase/migrations/20260825041004_activate_full_style_v2_catalog.sql");
+const activationMirrored=read("supabase/migrations/20260825041004_activate_full_style_v2_catalog.sql");
 const start=read("components/consulting/interview/ZeroInputConsultationStart.tsx");
 const compare=read("components/consulting/workbenches/CompareWorkbench.tsx");
 const previews=read("components/consulting/workbenches/PreviewsWorkbench.tsx");
@@ -85,4 +87,13 @@ test("V2 benefit limits are atomic, per consultation and server-only",()=>{
   assert.match(benefitMigration,/force row level security/);
   assert.match(benefitMigration,/grant execute on function public\.claim_aftercare_checkin_v2[\s\S]*to service_role/);
   assert.doesNotMatch(benefitMigration,/grant execute on function public\.claim_aftercare_checkin_v2[\s\S]*to authenticated/);
+});
+
+test("all three approved V2 offers activate together and V1 stays retired",()=>{
+  assert.equal(activationMigration,activationMirrored);
+  for(const offering of ["full_style_once","full_style_quarterly","full_style_annual"])assert.match(activationMigration,new RegExp(offering));
+  assert.match(activationMigration,/v_offering_count <> 3 or v_price_count <> 3/);
+  assert.match(activationMigration,/FULL_STYLE_V2_CATALOG_INCOMPLETE/);
+  assert.match(activationMigration,/version = 1[\s\S]*status = 'active'[\s\S]*version = 2/);
+  assert.match(activationMigration,/p\.provider = 'portone'/);
 });

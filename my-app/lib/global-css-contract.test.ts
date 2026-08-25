@@ -52,10 +52,17 @@ test("only usage-zero legacy selectors are absent from runtime styles", () => {
 });
 
 test("the frozen palette compatibility boundary remains unchanged", () => {
-  assert.equal(css.match(/!important/g)?.length ?? 0, 42);
+  const startMarker = "/* frozen-palette-compatibility:start */";
+  const endMarker = "/* frozen-palette-compatibility:end */";
+  const start = css.indexOf(startMarker);
+  const end = css.indexOf(endMarker);
+  assert.ok(start >= 0 && end > start, "frozen palette compatibility markers must stay ordered");
+  const frozenPalette = css.slice(start, end + endMarker.length);
+  assert.equal(frozenPalette.match(/!important/g)?.length ?? 0, 36);
   assert.match(css, /\.bg-white \{[\s\S]*background-color: var\(--app-surface\) !important;/);
   assert.match(css, /\.dark \.dark\\:text-white/);
   assert.match(css, /--app-on-danger: #ffffff;/);
   assert.match(css, /color: var\(--app-on-danger\);/);
-  assert.match(contract, /`!important` 42개/);
+  assert.match(contract, /`!important` 36개/);
+  assert.match(contract, /frozen-palette-compatibility:start/);
 });

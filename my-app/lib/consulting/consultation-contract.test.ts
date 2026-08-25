@@ -666,20 +666,19 @@ test("AI strategy recommendations remain linked to evidence through confirmation
   assert.match(direction, /AI 추천/);
 });
 
-test("preview comparison permits two accepted results before the full board is ready", () => {
-  const previews = read("../../components/consulting/workbenches/PreviewsWorkbench.tsx");
-  assert.match(previews, /const canCompare\s*=\s*selected\.length\s*>=\s*2/);
-  assert.doesNotMatch(previews, /acceptedCount === 9/);
-  assert.match(previews, /나머지 결과가 생성 중이어도 비교를 시작/);
-  assert.match(previews, /비교 가능 · 나머지 프리뷰 생성 중/);
-  assert.match(previews, /data-generation-state=\{generationStatus\.state\}/);
-  assert.match(previews, /품질 승인 결과/);
-  assert.doesNotMatch(previews, /snapshot\.previews\.some\(\(item\) => item\.status === "accepted"\) \? "ready"/);
-  assert.match(previews, /autoStartAttempted/);
-  assert.match(previews, /void startGeneration\(\)/);
-  assert.doesNotMatch(previews, /이용 조건 확인/);
-  assert.match(previews, /동의하고 헤어 3×3 생성 시작/);
-  assert.match(previews, /activatePaidStart\("paid_preview_generation"\)/);
+test("AI-led hair decision keeps one gallery and waits for all nine before final confirmation", () => {
+  const recommendation = read("../../components/consulting/hair/HairRecommendationWorkbench.tsx");
+  const transitionPartial = read("../../components/consulting/transition/PartialResultReveal.tsx");
+  assert.match(recommendation, /data-hair-generated-gallery="all-nine"/);
+  assert.equal((recommendation.match(/data-hair-generated-gallery="all-nine"/g) ?? []).length, 1);
+  assert.match(recommendation, /acceptedCount === 9/);
+  assert.match(recommendation, /data-hair-selection="all-nine-customer-selection"/);
+  assert.match(recommendation, /name="confirmed-hair-preview"/);
+  assert.match(recommendation, /AI 1순위와 대안 2개/);
+  assert.match(recommendation, /이 스타일로 확정/);
+  assert.doesNotMatch(recommendation, /Shortlist|선택한 후보 비교하기/);
+  assert.doesNotMatch(transitionPartial, /<Image|<img|f-consultant-activity__result-grid/);
+  assert.match(transitionPartial, /같은 이미지를 중복해서 보여주지 않습니다/);
 });
 
 test("decision chain enforces accepted shortlist, finalist, immutable revision and actual-service lock", () => {

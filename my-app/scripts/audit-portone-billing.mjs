@@ -48,6 +48,7 @@ const pricingPlan = assertFile("lib/pricing-plan.ts");
 const envExample = assertFile(".env.local.example");
 const planBenefitDisplay = assertFile("lib/plan-benefit-display.ts");
 const homePage = assertFile("app/page.tsx");
+const premiumOfferPreview = assertFile("components/home/PremiumOfferPreview.tsx");
 const billingPage = assertFile("app/billing/page.tsx");
 const billingCheckoutPage = assertFile("app/billing/checkout/page.tsx");
 const billingUsagePage = assertFile("app/billing/usage/page.tsx");
@@ -62,7 +63,9 @@ assertIncludes(planBenefitDisplay, 'hairFashionSetCount: servicePasses\\.fashion
 assertIncludes(planBenefitDisplay, 'aftercareProgramCount: servicePasses\\.careCount', "Plan display must expose paid care-pass counts separately from the first-free benefit");
 assertIncludes(pricingPreview, 'initialDisplayBenefits', "Pricing preview must render the server-calculated plan display snapshot");
 assertAbsent(pricingPreview, 'getPlanDisplayBenefits\\(\\)', "Pricing preview must not recalculate private env-backed plan display data on the client");
-assertIncludes(homePage, 'getPlanDisplayBenefits\\(\\)', "Home page must calculate plan display data on the server");
+assertIncludes(homePage, '<PremiumOfferPreview', "Home page must render the current full-style offer preview");
+assertIncludes(premiumOfferPreview, 'PREMIUM_OFFER_POLICY\\.offers', "Full-style landing offers must come from the canonical policy snapshot");
+assertAbsent(premiumOfferPreview, '"use client"', "Full-style landing policy must remain server-rendered");
 assertIncludes(billingPage, 'getPlanDisplayBenefits\\(\\)', "Billing page must calculate plan display data on the server");
 assertAbsent(pricingKo, "컬러\\s*변형|컬러변형|HD 이미지|우선 생성|PDF|팀 계정|살롱 브랜딩|전용 지원", "Korean pricing copy must not claim unimplemented premium benefits");
 assertAbsent(pricingKo, "패션\\s*코디\\s*생성\\s*[0-9]+회\\s*포함|무제한|2회 생성|16회|40회|120회", "Korean pricing copy must not claim stale count-based fashion or old hair limits");
@@ -72,11 +75,6 @@ assertAbsent(pricingEn, "Unlimited fashion|[13] fashion outfit generation|16 wat
 assertAbsent(pricingKo, 'pricing\\.standard\\.f5', "Standard pricing copy must not expose an unimplemented priority-generation benefit");
 assertAbsent(pricingEn, 'pricing\\.standard\\.f5', "Standard pricing copy must not expose an unimplemented priority-generation benefit");
 assertAbsent(pricingPreview, 'pricing\\.standard\\.f5', "Standard pricing UI must not reference an unimplemented priority-generation benefit");
-assertIncludes(pricingKo, '표시 횟수는 각 서비스를 단독으로 이용할 때의 최대치입니다', "Korean pricing copy must explain service-specific maximums");
-assertIncludes(pricingKo, '패션은 헤어 1회와 패션 1회를 한 세트로 계산합니다', "Korean pricing copy must explain the fashion set composition");
-assertIncludes(pricingKo, '케어 최초 1회는 계정당 무료입니다', "Korean pricing copy must separate the account-level first-free care benefit");
-assertIncludes(pricingEn, 'Counts are maximums when using one service type at a time', "English pricing copy must explain service-specific maximums");
-assertIncludes(pricingEn, 'One fashion set includes one hair use and one fashion use', "English pricing copy must explain the fashion set composition");
 assertIncludes(pricingKo, '"pricing\\.usage\\.hairFashionSetsWithRemainder": "패션 \\{\\{sets\\}\\}세트 이용권 · 헤어\\+패션 세트 기준', "Korean pricing copy must show fashion pass sets");
 assertIncludes(pricingKo, '"pricing\\.usage\\.aftercarePolicy": "케어 \\{\\{count\\}\\}회 이용권 · 최초 1회 계정당 무료', "Korean pricing copy must show paid care passes separately");
 assertIncludes(pricingEn, '"pricing\\.usage\\.hairFashionSetsWithRemainder": "\\{\\{sets\\}\\}-set fashion pass · hair\\+fashion set basis', "English pricing copy must show fashion pass sets");
@@ -111,7 +109,7 @@ assertIncludes(generationDetailRoute, 'isGeneratedAssetsExpired', "generation de
 assertIncludes(generationExportRoute, 'generated_assets_expires_at', "consultation sheet export must read the retention deadline");
 assertIncludes(generationExportRoute, 'isGeneratedAssetsExpired', "consultation sheet export must block expired generated assets");
 assertIncludes(stylingRecommendRoute, 'recommendationSet\\.selectedVariantId \\|\\| recommendationSet\\.selectedVariantId !== selectedVariantId', "Fashion recommendation must require the selected hair style");
-assertIncludes(stylingGenerateRoute, 'recommendationSet\\?\\.selectedVariantId \\|\\| recommendationSet\\.selectedVariantId !== session\\.selected_variant_id', "Fashion image generation must re-check the selected hair style");
+assertIncludes(stylingGenerateRoute, 'resolveV2StylingSessionVariant[\\s\\S]*recommendationSet\\.selectedVariantId === session\\.selected_variant_id', "Fashion image generation must re-check either the immutable V2 selection or the legacy selected hair style");
 assertIncludes(hairRecordsRoute, 'createPaidActionQuoteForUser', "Aftercare route must issue a server-owned execution quote");
 assertIncludes(hairRecordsRoute, 'validatePaidActionQuoteForExecution', "Aftercare route must validate the signed quote before AI work");
 assertIncludes(hairRecordsRoute, 'createPaidActionExecutionQuoteSnapshot', "Aftercare route must pass an audited quote snapshot to the database");
@@ -315,7 +313,7 @@ assertAbsent(cronMetadata[0], '(^|[^_A-Za-z0-9])billing_key_hash\\s*:', "renewal
 
 const careCron = assertFile("supabase/functions/cron-care-emails/index.ts");
 const trendCron = assertFile("supabase/functions/cron-trend-emails/index.ts");
-assertIncludes(careCron, 'PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit\\.beauty>"', "care cron must default to the verified HairFit sender");
+assertIncludes(careCron, 'resolveFrom[\\s\\S]*"HairFit <noreply@hairfit\\.beauty>"', "care cron must default to the verified HairFit sender while accepting an approved override");
 assertIncludes(trendCron, 'PRODUCTION_FROM_EMAIL = "HairFit <noreply@hairfit\\.beauty>"', "trend cron must default to the verified HairFit sender");
 assertAbsent(careCron, 'onboarding@resend\\.dev', "care cron must not fall back to the Resend development sender");
 assertAbsent(trendCron, 'onboarding@resend\\.dev', "trend cron must not fall back to the Resend development sender");

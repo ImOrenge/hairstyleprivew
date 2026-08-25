@@ -113,6 +113,6 @@ test("non-aftercare web images keep explicit descriptions and loading policy", (
   const nextImages = images.filter((image) => image.kind === "next-image");
 
   assert.deepEqual(failures, []);
-  assert.equal(rawImages.length, 23, "raw image inventory changed; review loading and layout policy");
-  assert.equal(nextImages.length, 25, "next/image inventory changed; review alt coverage");
+  assert.equal(rawImages.length, 27, "raw image inventory changed; review loading and layout policy");
+  assert.equal(nextImages.length, 34, "next/image inventory changed; review alt coverage");
 });

@@ -16,7 +16,7 @@ export function UploadValidationHarness() {
   }, [validateImage]);
 
   return (
-    <main className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-10">
+    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-10">
       <Panel as="section" className="p-6">
         <p className="app-kicker">E2E 전용</p>
         <h1 className="mt-2 text-3xl font-black text-[var(--app-text)]">운영 업로드 검증</h1>
@@ -33,6 +33,6 @@ export function UploadValidationHarness() {
         <p className="text-sm text-[var(--app-muted)]">검증 파일: {selectedFileName}</p>
         <ValidationCheck status={status} message={message} details={details} />
       </SurfaceCard>
-    </main>
+    </div>
   );
 }

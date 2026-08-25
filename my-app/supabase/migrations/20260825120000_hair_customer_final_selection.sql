@@ -16,17 +16,46 @@ set confirmed_preview_id = primary_preview_id,
 where state = 'confirmed'
   and confirmed_preview_id is null;
 
-alter table public.consultation_hair_recommendations_v2
-  add constraint consultation_hair_recommendations_v2_confirmed_rank_check
-    check (confirmed_rank is null or confirmed_rank between 1 and 9),
-  add constraint consultation_hair_recommendations_v2_selection_source_check
-    check (selection_source is null or selection_source in ('ai_primary', 'customer_choice')),
-  add constraint consultation_hair_recommendations_v2_confirmed_selection_check
-    check (
-      (state = 'confirmed' and confirmed_preview_id is not null and confirmed_rank is not null and selection_source is not null)
-      or
-      (state <> 'confirmed' and confirmed_preview_id is null and confirmed_rank is null and selection_source is null)
-    );
+do $migration$
+begin
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+    where conrelid = 'public.consultation_hair_recommendations_v2'::regclass
+      and conname = 'consultation_hair_recommendations_v2_confirmed_rank_check'
+  ) then
+    alter table public.consultation_hair_recommendations_v2
+      add constraint consultation_hair_recommendations_v2_confirmed_rank_check
+      check (confirmed_rank is null or confirmed_rank between 1 and 9);
+  end if;
+
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+    where conrelid = 'public.consultation_hair_recommendations_v2'::regclass
+      and conname = 'consultation_hair_recommendations_v2_selection_source_check'
+  ) then
+    alter table public.consultation_hair_recommendations_v2
+      add constraint consultation_hair_recommendations_v2_selection_source_check
+      check (selection_source is null or selection_source in ('ai_primary', 'customer_choice'));
+  end if;
+
+  if not exists (
+    select 1 from pg_catalog.pg_constraint
+    where conrelid = 'public.consultation_hair_recommendations_v2'::regclass
+      and conname in (
+        'consultation_hair_recommendations_v2_confirmed_choice_check',
+        'consultation_hair_recommendations_v2_confirmed_selection_check'
+      )
+  ) then
+    alter table public.consultation_hair_recommendations_v2
+      add constraint consultation_hair_recommendations_v2_confirmed_selection_check
+      check (
+        (state = 'confirmed' and confirmed_preview_id is not null and confirmed_rank is not null and selection_source is not null)
+        or
+        (state <> 'confirmed' and confirmed_preview_id is null and confirmed_rank is null and selection_source is null)
+      );
+  end if;
+end
+$migration$;
 
 revoke all on table public.consultation_hair_recommendations_v2 from public, anon, authenticated;
 grant select, insert, update, delete on table public.consultation_hair_recommendations_v2 to service_role;

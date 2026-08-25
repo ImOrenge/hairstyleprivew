@@ -42,6 +42,7 @@ boundaries:
       - task-specific-kinetic-visual
       - result-neutral-optional-fidget
       - partial-result-priority
+      - partial-preview-count-summary-without-duplicate-gallery
       - explicit-partial-result-workbench-handoff
       - completion-moment
       - recoverable-failure
@@ -53,6 +54,7 @@ boundaries:
     - pointer-coordinate-analytics
     - network-request-from-animation-or-fidget
     - twelfth-consultation-stage
+    - duplicate-preview-media-before-workbench-handoff
 
 styling:
   strategy: global-feature-css-with-existing-app-tokens

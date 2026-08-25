@@ -45,5 +45,5 @@ test("web and mobile report only result_opened through the shared endpoint", () 
   assert.match(eventRoute, /record_generation_funnel_event/);
   assert.match(webResult, /event: "result_opened", source: "web"/);
   assert.match(mobileResult, /recordGenerationResultOpened\(generationId, "mobile"\)/);
-  assert.match(apiClient, /recordGenerationResultOpened\(id: string, source: GenerationFunnelClientSource\)/);
+  assert.match(apiClient, /recordGenerationResultOpened\(\s*id:\s*string,\s*source:\s*GenerationFunnelClientSource/);
 });

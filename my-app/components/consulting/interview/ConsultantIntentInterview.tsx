@@ -71,10 +71,15 @@ export function ConsultantIntentInterview({ snapshot, mutate, saving }: {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [exitOpen, setExitOpen] = useState(false);
   const entryRevision = useRef(intent.interviewRevision);
+  const activeQuestionRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     void trackConsultationInterviewEvent({ consultationId: snapshot.sessionId, event: entryRevision.current ? "resumed" : "opened", interviewKind: "discovery", revision: entryRevision.current });
   }, [snapshot.sessionId]);
+
+  useEffect(() => {
+    activeQuestionRef.current?.focus();
+  }, [active]);
 
   const completed = {
     scope: Boolean(snapshot.discovery.intent?.scope || snapshot.discovery.fieldProvenance?.["intent.scope"]),
@@ -107,9 +112,9 @@ export function ConsultantIntentInterview({ snapshot, mutate, saving }: {
   return <>
     <ConsultationInterviewShell kind="discovery" title="먼저 상담의 방향만 짧게 맞춰요" description="모발 상태는 사진 분석 뒤 필요한 것만 다시 물어볼게요. 지금은 세 가지 결정만 확인합니다." coverage={{ completed: Object.values(completed).filter(Boolean).length, total: 3, conflicts: saveState === "conflict" ? 1 : 0 }} saveState={saving ? "saving" : saveState} savedAt={snapshot.updatedAt} summaryOpen={summaryOpen} onSummaryOpenChange={setSummaryOpen} onExitRequest={() => setExitOpen(true)} navigation={navigation} summary={<div className="grid gap-3 text-sm"><p><strong>상담 범위</strong> · {SCOPE_OPTIONS.find((item) => item.value === intent.scope)?.label}</p><p><strong>변화 정도</strong> · {CHANGE_OPTIONS.find((item) => item.value === intent.changeLevel)?.label}</p><p><strong>피하고 싶은 것</strong> · {intent.exclusions.join(", ") || "없음"}</p></div>}>
       <article data-question-id={`intent-${active}`}>
-        {active === "scope" ? <><p className="app-kicker">상담 범위</p><h2 className="mt-2 text-2xl font-black">이번에 어디까지 함께 볼까요?</h2>{choices(SCOPE_OPTIONS, intent.scope, (value) => { const next = { ...intent, scope: value as ConsultationIntentV2["scope"] }; setIntent(next); window.setTimeout(() => void save("scope", next), 200); })}</> : null}
-        {active === "change" ? <><p className="app-kicker">변화 정도</p><h2 className="mt-2 text-2xl font-black">원하는 변화의 크기는 어느 쪽인가요?</h2>{choices(CHANGE_OPTIONS, intent.changeLevel, (value) => { const next = { ...intent, changeLevel: value as ConsultationIntentV2["changeLevel"] }; setIntent(next); window.setTimeout(() => void save("change", next), 200); })}</> : null}
-        {active === "exclusions" ? <><p className="app-kicker">피하고 싶은 것</p><h2 className="mt-2 text-2xl font-black">추천에서 꼭 제외할 조건이 있나요?</h2><div className="f-consulting-interview__choices mt-5">{EXCLUSION_OPTIONS.map((value) => <label key={value} className="f-consulting-interview__choice"><input type="checkbox" checked={intent.exclusions.includes(value)} onChange={() => toggleExclusion(value)} /><span><strong>{value}</strong></span></label>)}</div><button type="button" className="c-button mt-6 min-h-12 w-full border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 font-black text-[var(--app-inverse-text)]" disabled={saving || saveState === "saving"} onClick={() => void save("exclusions", { ...intent, exclusionsConfirmed: true }, true)}>사진 제출하고 분석 시작</button></> : null}
+        {active === "scope" ? <><p className="app-kicker">상담 범위</p><h3 ref={activeQuestionRef} tabIndex={-1} className="mt-2 text-2xl font-black focus:outline-none">이번에 어디까지 함께 볼까요?</h3>{choices(SCOPE_OPTIONS, intent.scope, (value) => { const next = { ...intent, scope: value as ConsultationIntentV2["scope"] }; setIntent(next); window.setTimeout(() => void save("scope", next), 200); })}</> : null}
+        {active === "change" ? <><p className="app-kicker">변화 정도</p><h3 ref={activeQuestionRef} tabIndex={-1} className="mt-2 text-2xl font-black focus:outline-none">원하는 변화의 크기는 어느 쪽인가요?</h3>{choices(CHANGE_OPTIONS, intent.changeLevel, (value) => { const next = { ...intent, changeLevel: value as ConsultationIntentV2["changeLevel"] }; setIntent(next); window.setTimeout(() => void save("change", next), 200); })}</> : null}
+        {active === "exclusions" ? <><p className="app-kicker">피하고 싶은 것</p><h3 ref={activeQuestionRef} tabIndex={-1} className="mt-2 text-2xl font-black focus:outline-none">추천에서 꼭 제외할 조건이 있나요?</h3><div className="f-consulting-interview__choices mt-5">{EXCLUSION_OPTIONS.map((value) => <label key={value} className="f-consulting-interview__choice"><input type="checkbox" checked={intent.exclusions.includes(value)} onChange={() => toggleExclusion(value)} /><span><strong>{value}</strong></span></label>)}</div><button type="button" className="c-button mt-6 min-h-12 w-full border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 font-black text-[var(--app-inverse-text)]" disabled={saving || saveState === "saving"} onClick={() => void save("exclusions", { ...intent, exclusionsConfirmed: true }, true)}>사진 제출하고 분석 시작</button></> : null}
       </article>
     </ConsultationInterviewShell>
     <ConfirmActionDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={() => { void trackConsultationInterviewEvent({ consultationId: snapshot.sessionId, event: "exited", interviewKind: "discovery", revision: intent.interviewRevision, keepalive: true }); router.push("/home"); }} title="상담을 나갈까요?" description="저장된 상담 목표는 유지되어 다음에 이어서 진행할 수 있습니다." confirmLabel="저장된 상태로 나가기" cancelLabel="계속 상담하기" />

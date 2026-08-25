@@ -130,7 +130,7 @@ export function FashionPersonalizationForm({ returnTo, initialState = null, read
 
   const complete = state.coverage.complete;
   const confirmed = state.policy.confirmedRevision === state.policy.revision;
-  return <main className="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-6">
+  return <section className="mx-auto min-h-screen max-w-5xl px-4 py-8 sm:px-6">
     <header className="border-b border-[var(--app-border)] pb-5">
       <p className="app-kicker">Persistent fashion policy</p>
       <h1 className="mt-2 text-3xl font-black">패션 개인화 기준</h1>
@@ -201,5 +201,5 @@ export function FashionPersonalizationForm({ returnTo, initialState = null, read
         </div>
       </div>
     </div>
-  </main>;
+  </section>;
 }
