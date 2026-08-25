@@ -19,11 +19,13 @@ public_api:
   compatibility_exports:
     - apps/hairfit-app/lib/ui-native.tsx#Screen
   props:
+    - backgroundColor: string
     - children: ReactNode
     - footerOverlay: ReactNode
     - scroll: boolean (default true)
     - style: StyleProp<ViewStyle>
     - showHeader: boolean (deprecated and ignored)
+    - showPattern: boolean (default true)
   slots:
     - children
     - footerOverlay
@@ -54,6 +56,8 @@ styling:
   variants:
     - scroll-content
     - scroll-content-with-footer-overlay
+    - pattern-free-customer-surface
+    - caller-supplied-background
   allows_style: true
   runtime_styles_allowed:
     - pattern-lines-from-window-dimensions

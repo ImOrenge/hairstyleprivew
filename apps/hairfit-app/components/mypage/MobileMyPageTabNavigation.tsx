@@ -1,9 +1,9 @@
-import { ScrollView, StyleSheet } from "react-native";
-import { Button, Panel } from "@hairfit/ui-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   MOBILE_MY_PAGE_TABS,
   type MobileMyPageTabId,
 } from "../../lib/mypage";
+import { customerColors } from "../../lib/customer-ui";
 
 interface MobileMyPageTabNavigationProps {
   activeTab: MobileMyPageTabId;
@@ -15,7 +15,7 @@ export function MobileMyPageTabNavigation({
   onSelectTab,
 }: MobileMyPageTabNavigationProps) {
   return (
-    <Panel style={styles.tabPanel}>
+    <View style={styles.tabPanel}>
       <ScrollView
         horizontal
         accessibilityRole="tablist"
@@ -23,29 +23,54 @@ export function MobileMyPageTabNavigation({
         showsHorizontalScrollIndicator={false}
       >
         {MOBILE_MY_PAGE_TABS.map((tab) => (
-          <Button
+          <Pressable
             key={tab.id}
             accessibilityRole="tab"
             accessibilityState={{ selected: activeTab === tab.id }}
-            variant={activeTab === tab.id ? "primary" : "secondary"}
             onPress={() => onSelectTab(tab.id)}
+            style={[styles.tab, activeTab === tab.id ? styles.tabSelected : null]}
           >
-            {tab.label}
-          </Button>
+            <Text style={[styles.tabLabel, activeTab === tab.id ? styles.tabLabelSelected : null]}>{tab.label}</Text>
+          </Pressable>
         ))}
       </ScrollView>
-    </Panel>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   tabPanel: {
-    paddingHorizontal: 8,
-    paddingVertical: 8,
+    backgroundColor: customerColors.surface,
+    borderColor: customerColors.line,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 7,
   },
   tabScrollerContent: {
     flexDirection: "row",
     gap: 8,
     paddingRight: 8,
+  },
+  tab: {
+    alignItems: "center",
+    backgroundColor: customerColors.raised,
+    borderColor: customerColors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 42,
+    paddingHorizontal: 15,
+  },
+  tabSelected: {
+    backgroundColor: customerColors.champagne,
+    borderColor: customerColors.champagne,
+  },
+  tabLabel: {
+    color: customerColors.ivory,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  tabLabelSelected: {
+    color: customerColors.canvas,
   },
 });

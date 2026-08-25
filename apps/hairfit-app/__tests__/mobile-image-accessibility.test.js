@@ -6,6 +6,7 @@ const { resolve } = require("node:path");
 const appRoot = resolve(__dirname, "..");
 const meaningfulImageFiles = [
   "app/index.tsx",
+  "app/stylebook.tsx",
   "app/upload.tsx",
   "app/personal-color.tsx",
   "app/generate/[id].tsx",

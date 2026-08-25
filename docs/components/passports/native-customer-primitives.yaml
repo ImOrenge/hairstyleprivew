@@ -1,0 +1,66 @@
+id: native.customer.primitives
+name: CustomerPrimitives family
+platform: native
+kind: layout
+status: experimental
+source: apps/hairfit-app/components/customer/CustomerPrimitives.tsx
+related_source:
+  - apps/hairfit-app/lib/customer-ui.ts
+owner: customer-experience
+
+public_api:
+  exports:
+    - CustomerScreen
+    - CustomerKicker
+    - CustomerHeading
+    - CustomerBody
+    - CustomerCard
+    - CustomerButton
+    - CustomerSectionHeader
+  props:
+    - ReactNode-content
+    - local-style-overrides
+    - button-state-and-event
+
+boundaries:
+  owns:
+    - customer-only-visual-language
+    - pattern-free-customer-screen
+    - customer-card-and-button-composition
+  forbidden:
+    - consulting-state
+    - role-resolution
+    - api-data-fetching
+    - global-ui-native-token-mutation
+
+styling:
+  strategy: app-local-StyleSheet-and-customer-token-module
+  token_source: apps/hairfit-app/lib/customer-ui.ts
+  palette:
+    - ivory
+    - graphite
+    - champagne
+  global_ui_native_changes: false
+
+a11y_contract:
+  button_role: button
+  disabled_and_busy_state: explicit
+  scroll_and_safe_area: delegated-to-AppScreen
+
+test_surface:
+  native_typecheck: required
+  role_navigation_jest: apps/hairfit-app/__tests__/role-navigation.test.tsx
+  visual: required
+  device_smoke: required
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - native-typecheck
+  breaking_change_requires:
+    - all-customer-screen-consumer-update
+
+promotion_blockers:
+  - no-iOS-and-Android-device-visual-evidence
+  - no-screen-reader-evidence

@@ -1,5 +1,6 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { CustomerPageHeader, CustomerShell } from "../../components/customer/CustomerShell";
 import {
   MyPageDashboardTabs,
   getDisplayName,
@@ -15,7 +16,6 @@ import {
   type UserStyleProfileRow,
 } from "../../components/mypage/MyPageDashboardTabs";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
-import { getConfirmedStyleMediaFromRelation } from "../../lib/confirmed-style-media";
 import type { PersonalColorResult } from "../../lib/fashion-types";
 import { isMemberStyleTarget, isMemberStyleTone } from "../../lib/onboarding";
 import { normalizeStyleProfile } from "../../lib/style-profile-server";
@@ -59,10 +59,6 @@ interface SubscriptionQueryRow extends SubscriptionRow {
   pg_billing_key?: string | null;
   pg_billing_key_encrypted?: string | null;
   pg_billing_key_hash?: string | null;
-}
-
-interface HairRecordQueryRow extends HairRecordRow {
-  generation?: unknown;
 }
 
 function toSafeSubscription(row: SubscriptionQueryRow | null): SubscriptionRow | null {
@@ -141,12 +137,12 @@ export default async function MyPage({
     null;
 
   let profile: UserProfileRow | null = null;
-  let generations: GenerationRow[] = [];
+  const generations: GenerationRow[] = [];
   let payments: PaymentTransactionRow[] = [];
   let refundRequests: RefundRequestRow[] = [];
   let memberProfile: MemberProfileRow | null = null;
   let personalColor: PersonalColorResult | null = null;
-  let hairRecords: HairRecordRow[] = [];
+  const hairRecords: HairRecordRow[] = [];
   let subscription: SubscriptionRow | null = null;
 
   if (isSupabaseConfigured()) {
@@ -162,33 +158,7 @@ export default async function MyPage({
       profile = (ensured.data as UserProfileRow | null) ?? null;
     }
 
-    const [
-      generationResult,
-      paymentResult,
-      refundRequestResult,
-      memberProfileResult,
-      styleProfileResult,
-      hairRecordResult,
-      subscriptionResult,
-    ] = await Promise.all([
-      supabase
-        .from<GenerationRow>("generations")
-        .select("id,created_at,prompt_used,status,credits_used")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(10),
-      supabase
-        .from<PaymentTransactionRow>("payment_transactions")
-        .select("id,status,amount,credits_to_grant,paid_at,created_at,failure_code,failure_message,webhook_event_type,webhook_received_at,metadata")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(6),
-      supabase
-        .from<RefundRequestRow>("payment_refund_requests")
-        .select("id,payment_transaction_id,status,refund_type,amount_krw,reason,requested_at,approved_at,completed_at,failed_code,failed_message")
-        .eq("user_id", userId)
-        .order("requested_at", { ascending: false })
-        .limit(12),
+    const [memberProfileResult, styleProfileResult] = await Promise.all([
       supabase
         .from<MemberProfileRow>("member_profiles")
         .select("display_name, style_target, preferred_style_tone")
@@ -199,24 +169,8 @@ export default async function MyPage({
         .select("height_cm,body_shape,top_size,bottom_size,fit_preference,exposure_preference,body_photo_path,personal_color_tone,personal_color_contrast,personal_color_result,personal_color_model,personal_color_diagnosed_at")
         .eq("user_id", userId)
         .maybeSingle(),
-      supabase
-        .from<HairRecordQueryRow>("user_hair_records")
-        .select("id,generation_id,style_name,service_type,service_date,next_visit_target_days,created_at,generation:generations(selected_variant_id,options)")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase
-        .from<SubscriptionQueryRow>("user_subscriptions")
-        .select("plan_key,status,current_period_end,cancel_at_period_end,canceled_at,pg_billing_key,pg_billing_key_encrypted,pg_billing_key_hash,renewal_failure_count,renewal_failure_code,renewal_failure_message,renewal_last_failed_at,renewal_next_retry_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
     ]);
 
-    if (!generationResult.error && generationResult.data) generations = generationResult.data;
-    if (!paymentResult.error && paymentResult.data) payments = paymentResult.data;
-    if (!refundRequestResult.error && refundRequestResult.data) refundRequests = refundRequestResult.data;
     if (!memberProfileResult.error) {
       memberProfile = {
         display_name:
@@ -234,17 +188,35 @@ export default async function MyPage({
     if (!styleProfileResult.error) {
       personalColor = normalizeStyleProfile(styleProfileResult.data as Record<string, unknown> | null, userId).personalColor;
     }
-    if (!hairRecordResult.error && hairRecordResult.data) {
-      hairRecords = hairRecordResult.data.map((record) => {
-        const media = getConfirmedStyleMediaFromRelation(record.generation);
-        return {
-          ...record,
-          selected_variant_id: media.selectedVariantId,
-          selected_variant_image_url: media.selectedVariantImageUrl,
-        };
-      });
+
+    const shouldLoadBilling = requestedTab === "plan" || payment.length > 0 || subscribed.length > 0;
+    if (shouldLoadBilling) {
+      const [paymentResult, refundRequestResult, subscriptionResult] = await Promise.all([
+        supabase
+          .from<PaymentTransactionRow>("payment_transactions")
+          .select("id,status,amount,credits_to_grant,paid_at,created_at,failure_code,failure_message,webhook_event_type,webhook_received_at,metadata")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(6),
+        supabase
+          .from<RefundRequestRow>("payment_refund_requests")
+          .select("id,payment_transaction_id,status,refund_type,amount_krw,reason,requested_at,approved_at,completed_at,failed_code,failed_message")
+          .eq("user_id", userId)
+          .order("requested_at", { ascending: false })
+          .limit(12),
+        supabase
+          .from<SubscriptionQueryRow>("user_subscriptions")
+          .select("plan_key,status,current_period_end,cancel_at_period_end,canceled_at,pg_billing_key,pg_billing_key_encrypted,pg_billing_key_hash,renewal_failure_count,renewal_failure_code,renewal_failure_message,renewal_last_failed_at,renewal_next_retry_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      if (!paymentResult.error && paymentResult.data) payments = paymentResult.data;
+      if (!refundRequestResult.error && refundRequestResult.data) refundRequests = refundRequestResult.data;
+      if (!subscriptionResult.error) subscription = toSafeSubscription(subscriptionResult.data);
     }
-    if (!subscriptionResult.error) subscription = toSafeSubscription(subscriptionResult.data);
   }
 
   const viewerName = getDisplayName(displayName ?? profile?.display_name, email);
@@ -253,25 +225,30 @@ export default async function MyPage({
   const subscriptionAccessMode = getSubscriptionAccessMode();
 
   return (
-    <MyPageDashboardTabs
-      accountSetupComplete={accountSetupComplete}
-      activeTab={activeTab}
-      email={email}
-      generations={generations}
-      hairRecords={hairRecords}
-      payments={payments}
-      refundRequests={refundRequests}
-      memberProfile={memberProfile}
-      personalColor={personalColor}
-      profile={profile}
-      queryState={{
-        checkoutId,
-        payment,
-        subscribed,
-      }}
-      subscription={subscription}
-      subscriptionAccessMode={subscriptionAccessMode}
-      viewerName={viewerName}
-    />
+    <CustomerShell>
+      <div className="customer-page">
+        <CustomerPageHeader
+          eyebrow="My information"
+          title={`${viewerName}님의 내 정보`}
+          description="계정, 결제, 퍼스널컬러와 바디 프로필을 필요한 순간에 편하게 관리하세요. 스타일 기록은 스타일북, 관리 가이드는 케어에서 확인할 수 있어요."
+        />
+        <MyPageDashboardTabs
+          accountSetupComplete={accountSetupComplete}
+          activeTab={activeTab}
+          email={email}
+          generations={generations}
+          hairRecords={hairRecords}
+          payments={payments}
+          refundRequests={refundRequests}
+          memberProfile={memberProfile}
+          personalColor={personalColor}
+          profile={profile}
+          queryState={{ checkoutId, payment, subscribed }}
+          subscription={subscription}
+          subscriptionAccessMode={subscriptionAccessMode}
+          viewerName={viewerName}
+        />
+      </div>
+    </CustomerShell>
   );
 }

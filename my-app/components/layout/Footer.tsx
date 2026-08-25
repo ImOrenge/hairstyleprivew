@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { footerBusinessInfo } from "../../lib/business-info";
 import { useT } from "../../lib/i18n/useT";
+import { isCustomerShellPath } from "../../lib/customer-navigation";
 
 const footerCompanyName = footerBusinessInfo.rows.find((item) => item.label === "상호")?.value ?? "";
 
@@ -11,7 +12,7 @@ export function Footer() {
   const t = useT();
   const pathname = usePathname();
 
-  if (pathname.startsWith("/consulting")) {
+  if (pathname.startsWith("/consulting") || isCustomerShellPath(pathname)) {
     return null;
   }
 

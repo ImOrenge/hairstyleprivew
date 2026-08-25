@@ -47,3 +47,21 @@ test("the keyboard skip link targets the focusable root main", () => {
   assert.ok(layout.includes(rootMain));
   assert.ok(layout.indexOf(skipLink) < layout.indexOf(rootMain));
 });
+
+test("customer surfaces use the five-item atelier shell while consultation stays immersive", () => {
+  const shell = readFileSync(path.join(appRoot, "components", "customer", "CustomerShell.tsx"), "utf8");
+  const navigation = readFileSync(path.join(appRoot, "lib", "customer-navigation.ts"), "utf8");
+  const header = readFileSync(path.join(appRoot, "components", "layout", "Header.tsx"), "utf8");
+  const footer = readFileSync(path.join(appRoot, "components", "layout", "Footer.tsx"), "utf8");
+
+  for (const label of ["홈", "스타일북", "새 컨설팅", "케어", "내 정보"]) {
+    assert.match(navigation, new RegExp(`label: "${label}"`));
+  }
+  assert.match(navigation, /href: "\/consulting\/new"/);
+  assert.match(navigation, /customerShellRoutes = \["\/home", "\/stylebook", "\/aftercare", "\/mypage"\]/);
+  assert.match(navigation, /customerShellHarnessRoute = "\/e2e-harness\/customer-shell"/);
+  assert.match(shell, /aria-label="고객 주요 내비게이션"/);
+  assert.match(shell, /customer-app__bottom-nav/);
+  assert.match(header, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
+  assert.match(footer, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
+});

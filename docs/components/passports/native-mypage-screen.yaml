@@ -16,9 +16,7 @@ public_api:
   props: []
   events:
     - tab-route-navigation
-    - workspace-navigation
     - account-setup-generation-resume
-    - confirmed-style-guide-open
 
 boundaries:
   route_screen:
@@ -26,7 +24,7 @@ boundaries:
       - auth-aware-mobile-me-load
       - customer-dashboard-load
       - setup-tab-override
-      - metrics-and-active-panel-composition
+      - membership-summary-and-active-settings-panel-composition
   panels:
     source: apps/hairfit-app/components/mypage/panels
     owns:
@@ -38,6 +36,7 @@ boundaries:
       - labels-and-formatters
       - tab-normalization
       - tab-and-generation-route-selection
+      - settings-only-visible-tab-list
 
 dependencies:
   internal:
@@ -59,7 +58,6 @@ styling:
 state:
   route_owned:
     - customer-dashboard
-    - recent-confirmed-style-cards
     - mobile-bootstrap
     - loading-and-partial-error
     - enum-account-setup-continuation
@@ -71,13 +69,11 @@ state:
 a11y_contract:
   navigation: native.mypage.tab-navigation
   async_boundary: native.mypage.async-boundary
-  footer_cta: native-button
 
 test_surface:
   structure: my-app/lib/mypage-decomposition.test.ts
   jest: apps/hairfit-app/__tests__
-  generation_entry_interaction: apps/hairfit-app/__tests__/generation-entry-screen.test.tsx
-  confirmed_style_interaction: apps/hairfit-app/__tests__/confirmed-style-list.test.tsx
+  customer_navigation: apps/hairfit-app/__tests__/role-navigation.test.tsx
   mobile_sync: scripts/mobile-sync-verify.mjs
   interaction: required
   visual: required

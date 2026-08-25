@@ -1,23 +1,12 @@
 import { useAuth } from "@clerk/clerk-expo";
 import {
   parseAccountSetupContinuation,
-  estimateHairstyleGenerations,
-  HAIRSTYLE_GENERATION_CREDITS,
   type MobileBootstrap,
   type MobileDashboard,
 } from "@hairfit/shared";
-import {
-  BodyText,
-  Button,
-  Card,
-  Divider,
-  MetricGrid,
-  MetricTile,
-} from "@hairfit/ui-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import { AppScreen } from "../components/app/AppScreen";
 import { MobileMyPageActivePanel } from "../components/mypage/MobileMyPageActivePanel";
 import { MobileMyPageTabNavigation } from "../components/mypage/MobileMyPageTabNavigation";
 import { useHairfitApi } from "../lib/api";
@@ -29,6 +18,13 @@ import {
   type MobileCustomerDashboard,
   type MobileMyPageTabId,
 } from "../lib/mypage";
+import {
+  CustomerBody,
+  CustomerCard,
+  CustomerHeading,
+  CustomerKicker,
+  CustomerScreen,
+} from "../components/customer/CustomerPrimitives";
 
 export default function MyPageScreen() {
   const api = useHairfitApi();
@@ -109,30 +105,19 @@ export default function MyPageScreen() {
   const activePlan = formatMobileMyPagePlanLabel(
     customer?.planKey ?? me?.planKey,
   );
-  const hairstyleGenerationCredits =
-    customer?.creditPolicy?.hairstyleGeneration ??
-    HAIRSTYLE_GENERATION_CREDITS;
-  const estimatedStyles = estimateHairstyleGenerations(
-    credits,
-    hairstyleGenerationCredits,
-  );
-  const usedCredits = 0;
   const activeTab: MobileMyPageTabId =
     setupRequested || (me !== null && !me.accountSetupComplete)
       ? "account"
       : requestedTab;
 
   return (
-    <AppScreen
-      footerOverlay={
-        <Button
-          disabled={Boolean(me && !me.accountSetupComplete)}
-          onPress={() => router.push("/workspace")}
-        >
-          {me && !me.accountSetupComplete ? "계정 설정 저장 후 생성 가능" : "헤어스타일 생성"}
-        </Button>
-      }
-    >
+    <CustomerScreen>
+      <View style={{ gap: 10, paddingHorizontal: 4, paddingVertical: 8 }}>
+        <CustomerKicker>My information</CustomerKicker>
+        <CustomerHeading>내 정보</CustomerHeading>
+        <CustomerBody>계정, 결제, 퍼스널컬러와 바디 프로필을 필요한 순간에 편하게 관리하세요. 기록은 스타일북, 관리 가이드는 케어에서 확인할 수 있어요.</CustomerBody>
+      </View>
+
       <MobileMyPageTabNavigation
         activeTab={activeTab}
         onSelectTab={(tab) => router.push(getMobileMyPageTabHref(tab))}
@@ -140,44 +125,22 @@ export default function MyPageScreen() {
 
       {error && isSignedIn ? (
         <View accessibilityLiveRegion="assertive" accessibilityRole="alert">
-          <Card>
-            <BodyText>{error}</BodyText>
-          </Card>
+          <CustomerCard><CustomerBody>{error}</CustomerBody></CustomerCard>
         </View>
       ) : null}
 
       {isLoading ? (
-        <Card>
-          <BodyText>불러오는 중...</BodyText>
-        </Card>
+        <CustomerCard><CustomerBody>내 정보를 불러오는 중...</CustomerBody></CustomerCard>
       ) : null}
 
       {hasAccountSnapshot ? (
-        <MetricGrid>
-          <MetricTile
-            label="크레딧"
-            value={credits.toLocaleString("ko-KR")}
-            helper={`헤어 1회 ${hairstyleGenerationCredits}크레딧 · 약 ${estimatedStyles.toLocaleString("ko-KR")}회 가능`}
-          />
-          <MetricTile
-            label="플랜"
-            value={activePlan}
-            helper="활성 구독 정보 없음"
-          />
-          <MetricTile
-            label="사용량"
-            value={usedCredits.toLocaleString("ko-KR")}
-            helper="최근 생성 기록에서 사용한 크레딧"
-          />
-          <MetricTile
-            label="바디프로필"
-            value={customer?.styleProfileReady ? "준비됨" : "필요"}
-            helper="아래 프로필을 완성하세요"
-          />
-        </MetricGrid>
+        <CustomerCard style={{ gap: 6 }}>
+          <CustomerKicker>Membership</CustomerKicker>
+          <CustomerHeading compact>{activePlan}</CustomerHeading>
+          <CustomerBody>{credits.toLocaleString("ko-KR")} 크레딧 · 바디 프로필 {customer?.styleProfileReady ? "준비됨" : "설정 필요"}</CustomerBody>
+        </CustomerCard>
       ) : null}
 
-      <Divider />
       {hasAccountSnapshot || activeTab === "account" ? (
         <MobileMyPageActivePanel
           accountSetupContinuation={accountSetupContinuation}
@@ -189,6 +152,6 @@ export default function MyPageScreen() {
           onAccountSaved={setMe}
         />
       ) : null}
-    </AppScreen>
+    </CustomerScreen>
   );
 }

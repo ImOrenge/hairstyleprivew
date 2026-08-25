@@ -3,10 +3,8 @@
 import Link from "next/link";
 import { type KeyboardEvent, useRef } from "react";
 import {
-  Activity,
   CreditCard,
   Palette,
-  Scissors,
   Shirt,
   UserRound,
 } from "lucide-react";
@@ -16,13 +14,11 @@ import type { MyPageQueryState, MyPageTabId } from "./myPageTypes";
 
 const tabs: {
   description: string;
-  icon: typeof Activity;
+  icon: typeof CreditCard;
   id: MyPageTabId;
   label: string;
 }[] = [
-  { id: "usage", label: "작업 현황", description: "생성 진행 상태", icon: Activity },
   { id: "plan", label: "플랜/결제", description: "구독과 결제", icon: CreditCard },
-  { id: "aftercare", label: "시술 확정", description: "확정 스타일 목록", icon: Scissors },
   { id: "personal-color", label: "퍼스널컬러", description: "컬러 상세 분석", icon: Palette },
   { id: "body-profile", label: "바디프로필", description: "패션 추천 설정", icon: Shirt },
   { id: "account", label: "계정", description: "기본 정보", icon: UserRound },
@@ -64,7 +60,7 @@ export function MyPageTabNavigation({
     <Panel
       as="nav"
       aria-label="마이페이지 탭"
-      className="c-mypage-tab-navigation relative z-10 min-w-0 max-w-full overflow-hidden p-1.5 sm:p-2"
+      className="c-mypage-tab-navigation customer-settings-navigation relative z-10 min-w-0 max-w-full overflow-hidden p-1.5 sm:p-2"
       data-active-tab={activeTab}
     >
       <div

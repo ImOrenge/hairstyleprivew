@@ -1,23 +1,14 @@
 import { useAuth } from "@clerk/clerk-expo";
 import {
-  deriveGenerationDisplayStatus,
-  getStylingSessionStatusPresentation,
   type MobileBootstrap,
-  type MobileConfirmedStyle,
   type MobileDashboard,
-  type MobileDashboardStylingSession,
 } from "@hairfit/shared";
 import {
   BodyText,
   Button,
   Card,
-  Chip,
-  Cluster,
   Heading,
   Kicker,
-  MetricGrid,
-  MetricTile,
-  Panel,
   Stack,
 } from "@hairfit/ui-native";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -35,6 +26,16 @@ import {
   waitForMobileAuthRetry,
 } from "../lib/mobile-auth-expiry";
 import { mapMobileUserError } from "../lib/mobile-user-message";
+import {
+  CustomerBody,
+  CustomerButton,
+  CustomerCard,
+  CustomerHeading,
+  CustomerKicker,
+  CustomerScreen,
+  CustomerSectionHeader,
+} from "../components/customer/CustomerPrimitives";
+import { customerColors } from "../lib/customer-ui";
 
 type CustomerDashboard = Extract<MobileDashboard, { service: "customer" }>["customer"];
 
@@ -43,182 +44,6 @@ function displayName(me: MobileBootstrap | null) {
   if (name) return name;
   const emailName = me?.email?.split("@")[0]?.trim();
   return emailName || "HairFit 사용자";
-}
-
-function formatDate(value: string | null | undefined) {
-  if (!value) return "-";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("ko-KR", {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function genreLabel(value: string | null | undefined) {
-  const labels: Record<string, string> = {
-    minimal: "미니멀",
-    street: "스트릿",
-    casual: "캐주얼",
-    classic: "클래식",
-    office: "오피스",
-    date: "데이트",
-    formal: "포멀",
-    athleisure: "애슬레저",
-  };
-  return value ? labels[value] ?? value : "스타일";
-}
-
-const serviceLabels: Record<string, string> = {
-  cut: "커트",
-  perm: "펌",
-  color: "염색",
-  bleach: "탈색",
-  treatment: "트리트먼트",
-  other: "기타 시술",
-};
-
-function findSelectedHair(customer: CustomerDashboard | null) {
-  if (!customer) return null;
-  return (
-    customer.recentGenerations.find(
-      (item) => item.selectedVariantId && deriveGenerationDisplayStatus({
-        status: item.status,
-        completedVariantCount: item.completedVariantCount,
-        totalVariantCount: item.totalVariantCount,
-      }) === "completed",
-    ) ??
-    customer.recentGenerations.find((item) => item.selectedVariantId) ??
-    null
-  );
-}
-
-function buildCta(customer: CustomerDashboard | null) {
-  const completedStyling = customer?.recentStylingSessions.find((item) => item.status === "completed") ?? null;
-  if (completedStyling) {
-    return {
-      kicker: "최근 스타일 추천",
-      title: "최근 스타일 추천 보기",
-      description: completedStyling.headline || "완성된 룩북과 추천 코디를 다시 확인하세요.",
-      route: `/styler/${completedStyling.id}`,
-      button: "열기",
-    };
-  }
-
-  const selectedHair = findSelectedHair(customer);
-  if (selectedHair?.selectedVariantId) {
-    return {
-      kicker: "다음 단계",
-      title: "이 헤어로 패션 추천 시작",
-      description: selectedHair.selectedVariantLabel || "선택한 헤어에 맞춘 코디 방향을 이어서 만드세요.",
-      route: `/styler/new?generationId=${encodeURIComponent(selectedHair.id)}&variant=${encodeURIComponent(selectedHair.selectedVariantId)}`,
-      button: "패션 추천 시작",
-    };
-  }
-
-  return {
-    kicker: "새 작업",
-    title: "새 헤어 만들기",
-    description: "정면 사진 한 장으로 3x3 헤어 추천 보드를 시작하세요.",
-    route: "/consulting",
-    button: "AI 상담 시작",
-  };
-}
-
-function PreviewBox({
-  accessibilityLabel,
-  aspectRatio = 4 / 5,
-  source,
-}: {
-  accessibilityLabel: string;
-  aspectRatio?: number;
-  source: string | null;
-}) {
-  return (
-    <View style={[styles.preview, { aspectRatio }]}>
-      {source ? (
-        <Image
-          accessibilityLabel={accessibilityLabel}
-          accessibilityRole="image"
-          source={{ uri: source }}
-          style={styles.previewImage}
-        />
-      ) : <BodyText>이미지 준비 중</BodyText>}
-    </View>
-  );
-}
-
-function ConfirmedStyleCard({ item }: { item: MobileConfirmedStyle }) {
-  const router = useRouter();
-
-  return (
-    <Card>
-      <Stack gap={10}>
-        <PreviewBox
-          accessibilityLabel={`${item.styleName} 시술 확정 스타일`}
-          source={item.selectedVariantImageUrl}
-        />
-        <Cluster>
-          <Chip tone="success">시술 확정</Chip>
-          <Chip>{serviceLabels[item.serviceType] || item.serviceType}</Chip>
-        </Cluster>
-        <Heading style={styles.cardHeading}>{item.styleName}</Heading>
-        <BodyText>시술일 {formatDate(item.serviceDate)}</BodyText>
-        <Button variant="secondary" onPress={() => router.push(`/aftercare/${item.id}`)}>
-          관리 가이드 보기
-        </Button>
-      </Stack>
-    </Card>
-  );
-}
-
-function StyleHistoryCard({ item }: { item: MobileDashboardStylingSession }) {
-  const router = useRouter();
-  const presentation = getStylingSessionStatusPresentation(item.status);
-
-  return (
-    <Card>
-      <Stack gap={10}>
-        <PreviewBox
-          accessibilityLabel={`${item.headline || genreLabel(item.genre)} 패션 추천 결과`}
-          aspectRatio={3 / 4}
-          source={item.imageUrl}
-        />
-        <Cluster>
-          <Chip tone={presentation.tone}>{presentation.labelKo}</Chip>
-          <Chip>{genreLabel(item.genre)}</Chip>
-        </Cluster>
-        <Heading style={styles.cardHeading}>{item.headline || "패션 추천"}</Heading>
-        <BodyText>{item.summary || `${formatDate(item.createdAt)} 생성`}</BodyText>
-        <Button variant="secondary" onPress={() => router.push(`/styler/${item.id}`)}>
-          열기
-        </Button>
-      </Stack>
-    </Card>
-  );
-}
-
-function EmptyHistoryCard({
-  button,
-  route,
-  title,
-}: {
-  button: string;
-  route: string;
-  title: string;
-}) {
-  const router = useRouter();
-
-  return (
-    <Card style={styles.emptyCard}>
-      <Stack gap={10}>
-        <BodyText style={styles.emptyTitle}>{title}</BodyText>
-        <Button onPress={() => router.push(route)}>{button}</Button>
-      </Stack>
-    </Card>
-  );
 }
 
 function LoginPromptScreen() {
@@ -296,98 +121,90 @@ function CustomerHome({
   message: string | null;
 }) {
   const router = useRouter();
-  const secondaryCta = buildCta(customer);
-  const showSecondaryCta = secondaryCta.route !== "/consulting";
-  const selectedHair = findSelectedHair(customer);
-  const confirmedStyleItems = (customer?.recentConfirmedStyles ?? []).slice(0, 3);
-  const stylingItems = (customer?.recentStylingSessions ?? []).slice(0, 3);
-  const styleEmptyRoute = selectedHair?.selectedVariantId
-    ? `/styler/new?generationId=${encodeURIComponent(selectedHair.id)}&variant=${encodeURIComponent(selectedHair.selectedVariantId)}`
-    : "/consulting";
+  const inProgress = customer?.recentGenerations.find((item) =>
+    ["queued", "pending", "processing", "running", "generating"].includes(item.status.toLowerCase()),
+  ) ?? null;
+  const completed = customer?.recentGenerations.find((item) => item.status.toLowerCase() === "completed") ?? null;
+  const care = customer?.recentConfirmedStyles[0] ?? null;
+  const heroImage =
+    completed?.selectedVariantImageUrl ??
+    customer?.recentStylingSessions.find((item) => item.imageUrl)?.imageUrl ??
+    care?.selectedVariantImageUrl ??
+    null;
 
   return (
-    <AppScreen>
-      <Panel>
-        <Stack>
-          <Kicker>앱 홈</Kicker>
-          <Heading>{displayName(me)}님의 스타일 홈</Heading>
-          <BodyText>시술 확정 스타일과 패션 추천 기록을 이어서 확인하고 다음 스타일 작업을 바로 시작하세요.</BodyText>
-          <Button variant="secondary" onPress={() => router.push("/mypage")}>
-            마이페이지
-          </Button>
-        </Stack>
-      </Panel>
+    <CustomerScreen>
+      <View style={styles.customerHeader}>
+        <CustomerKicker>Private AI Atelier</CustomerKicker>
+        <CustomerHeading>{displayName(me)}님, 오늘은 어떤 변화를 원하세요?</CustomerHeading>
+        <CustomerBody>원하는 분위기와 관리 습관을 함께 살펴보고 내 얼굴에 맞는 스타일을 차분하게 찾아드릴게요.</CustomerBody>
+        <View style={styles.customerCreditPill}>
+          <Text style={styles.customerCreditText}>
+            {(customer?.credits ?? me?.credits ?? 0).toLocaleString("ko-KR")} 크레딧 · {customer?.planKey ?? me?.planKey ?? "Free"}
+          </Text>
+        </View>
+      </View>
 
       {message ? (
         <View accessibilityLiveRegion="polite">
-          <Card>
-            <BodyText>{message}</BodyText>
-          </Card>
+          <CustomerCard><CustomerBody>{message}</CustomerBody></CustomerCard>
         </View>
       ) : null}
 
       {isLoading ? (
-        <Card>
-          <BodyText>불러오는 중...</BodyText>
-        </Card>
+        <CustomerCard><CustomerBody>스타일 홈을 불러오는 중...</CustomerBody></CustomerCard>
       ) : null}
 
-      <MetricGrid>
-        <MetricTile label="남은 이용량" value={(customer?.credits ?? me?.credits ?? 0).toLocaleString("ko-KR")} helper="헤어와 룩북 생성에 사용" />
-        <MetricTile label="플랜" value={customer?.planKey ?? me?.planKey ?? "free"} helper="현재 활성 플랜" />
-        <MetricTile
-          label="바디 프로필"
-          value={customer?.styleProfileReady ? "준비됨" : "필요"}
-          helper={customer?.styleProfileReady ? "패션 추천 가능" : "패션 추천 전 입력 필요"}
-        />
-      </MetricGrid>
-
-      <Panel style={styles.ctaPanel}>
-        <Stack>
-          <Kicker>AI 헤어 컨설턴트</Kicker>
-          <Heading>사진 근거부터 최종 결정까지 한 상담으로 이어가기</Heading>
-          <BodyText style={styles.ctaText}>사진 품질 검사, AI 얼굴 근거, 3×3 비교와 최종 확정을 서버 세션에서 이어갑니다.</BodyText>
-          <Button onPress={() => router.push("/consulting")}>AI 헤어 컨설턴트 시작</Button>
-          <Button variant="secondary" onPress={() => router.push("/personal-color?source=upload")}>
-            퍼스널컬러 진단
-          </Button>
-          {showSecondaryCta ? (
-            <Button variant="secondary" onPress={() => router.push(secondaryCta.route)}>
-              {secondaryCta.title}
-            </Button>
-          ) : null}
-        </Stack>
-      </Panel>
-
-      <Panel>
-        <Stack>
-          <Kicker>확정 스타일</Kicker>
-          <Heading style={styles.sectionHeading}>시술 확정 목록</Heading>
-          {confirmedStyleItems.length === 0 ? (
-            <EmptyHistoryCard button="AI 상담 시작" route="/consulting" title="아직 시술 확정한 스타일이 없습니다." />
-          ) : (
-            confirmedStyleItems.map((item) => <ConfirmedStyleCard item={item} key={item.id} />)
-          )}
-          <Button variant="secondary" onPress={() => router.push("/aftercare")}>시술 확정 전체 보기</Button>
-        </Stack>
-      </Panel>
-
-      <Panel>
-        <Stack>
-          <Kicker>스타일 기록</Kicker>
-          <Heading style={styles.sectionHeading}>스타일 추천 기록</Heading>
-          {stylingItems.length === 0 ? (
-            <EmptyHistoryCard
-              button={selectedHair ? "패션 추천 시작" : "헤어 생성 먼저 시작"}
-              route={styleEmptyRoute}
-              title="아직 스타일 추천 기록이 없습니다."
+      <CustomerCard style={styles.customerHero}>
+        <View style={styles.customerHeroVisual}>
+          {heroImage ? (
+            <Image
+              accessibilityLabel="최근 완성한 스타일"
+              accessibilityRole="image"
+              source={{ uri: heroImage }}
+              style={styles.customerHeroImage}
             />
           ) : (
-            stylingItems.map((item) => <StyleHistoryCard item={item} key={item.id} />)
+            <View style={styles.customerHeroPlaceholder}>
+              <Text style={styles.customerHeroMonogram}>HF</Text>
+              <Text style={styles.customerHeroPlaceholderText}>YOUR NEXT SIGNATURE LOOK</Text>
+            </View>
           )}
-        </Stack>
-      </Panel>
-    </AppScreen>
+        </View>
+        <View style={styles.customerHeroCopy}>
+          <CustomerKicker>New consultation</CustomerKicker>
+          <CustomerHeading compact>나답게 바뀌는 가장 편안한 방법</CustomerHeading>
+          <CustomerBody>기존 상담 방식 그대로 사진과 답변을 이어가면 얼굴 균형과 현실적인 관리 조건을 함께 고려해 추천해 드립니다.</CustomerBody>
+          <CustomerButton onPress={() => router.push("/consulting")}>새 컨설팅 시작</CustomerButton>
+        </View>
+      </CustomerCard>
+
+      <CustomerSectionHeader kicker="Continue" title="지금 필요한 일부터" />
+      <CustomerCard style={styles.customerPriorityCard}>
+        <CustomerKicker>1 · 진행 중</CustomerKicker>
+        <CustomerHeading compact>{inProgress ? "진행 중인 컨설팅이 있어요" : "진행 중인 컨설팅이 없어요"}</CustomerHeading>
+        <CustomerBody>{inProgress ? "현재 작업 상태를 확인하고 결과가 준비되면 바로 이어보세요." : "새 컨설팅을 시작하면 진행 상태가 이곳에 표시됩니다."}</CustomerBody>
+        <CustomerButton secondary onPress={() => router.push(inProgress ? `/generate/${inProgress.id}` : "/consulting")}>
+          {inProgress ? "이어서 보기" : "컨설팅 시작"}
+        </CustomerButton>
+      </CustomerCard>
+
+      <CustomerCard style={styles.customerPriorityCard}>
+        <CustomerKicker>2 · 최근 결과</CustomerKicker>
+        <CustomerHeading compact>{completed?.selectedVariantLabel || "최근 완성된 결과"}</CustomerHeading>
+        <CustomerBody>{completed ? "완성된 추천 보드를 다시 비교해 보세요." : "완성된 결과가 이곳에 모입니다."}</CustomerBody>
+        <CustomerButton secondary onPress={() => router.push(completed ? `/result/${completed.id}` : "/stylebook")}>
+          {completed ? "결과 다시 보기" : "스타일북 보기"}
+        </CustomerButton>
+      </CustomerCard>
+
+      <CustomerCard style={styles.customerPriorityCard}>
+        <CustomerKicker>3 · 케어</CustomerKicker>
+        <CustomerHeading compact>{care?.styleName || "내 스타일을 오래 유지해요"}</CustomerHeading>
+        <CustomerBody>{care ? "확정한 시술의 맞춤 관리 가이드를 확인하세요." : "시술 확정 후 맞춤 관리 가이드가 준비됩니다."}</CustomerBody>
+        <CustomerButton secondary onPress={() => router.push(care ? `/aftercare/${care.id}` : "/aftercare")}>케어 확인</CustomerButton>
+      </CustomerCard>
+    </CustomerScreen>
   );
 }
 
@@ -581,6 +398,65 @@ export default function HairfitHomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  customerHeader: {
+    gap: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  customerCreditPill: {
+    alignSelf: "flex-start",
+    backgroundColor: customerColors.raised,
+    borderColor: customerColors.line,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+  },
+  customerCreditText: {
+    color: customerColors.ivory,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  customerHero: {
+    padding: 0,
+  },
+  customerHeroVisual: {
+    aspectRatio: 4 / 5,
+    backgroundColor: customerColors.raised,
+    width: "100%",
+  },
+  customerHeroImage: {
+    height: "100%",
+    resizeMode: "cover",
+    width: "100%",
+  },
+  customerHeroPlaceholder: {
+    alignItems: "center",
+    backgroundColor: customerColors.raised,
+    flex: 1,
+    justifyContent: "center",
+  },
+  customerHeroMonogram: {
+    color: customerColors.champagne,
+    fontFamily: "serif",
+    fontSize: 72,
+    fontWeight: "600",
+    letterSpacing: -6,
+  },
+  customerHeroPlaceholderText: {
+    color: customerColors.muted,
+    fontSize: 9,
+    letterSpacing: 2,
+    marginTop: 8,
+  },
+  customerHeroCopy: {
+    gap: 12,
+    padding: 20,
+  },
+  customerPriorityCard: {
+    gap: 12,
+  },
   ctaPanel: {
     backgroundColor: "#101010",
     borderColor: "#d0b06a",

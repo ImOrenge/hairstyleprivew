@@ -38,6 +38,14 @@ styling:
   responsive_overflow:
     - navigation-boundary-min-width-zero
     - tablist-local-horizontal-scroll
+  visible_tabs:
+    - plan
+    - personal-color
+    - body-profile
+    - account
+  moved_surfaces:
+    - usage-to-stylebook
+    - aftercare-to-care
 
 state:
   owned:

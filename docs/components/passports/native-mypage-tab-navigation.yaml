@@ -18,8 +18,8 @@ public_api:
 dependencies:
   internal:
     - apps/hairfit-app/lib/mypage.ts
+    - apps/hairfit-app/lib/customer-ui.ts
   external:
-    - "@hairfit/ui-native"
     - react-native
   forbidden:
     - useRouter
@@ -27,9 +27,14 @@ dependencies:
     - auth-hook
 
 styling:
-  strategy: ui-native-primitives-and-local-StyleSheet
+  strategy: customer-token-module-and-local-StyleSheet
   global_css_changes: false
   inline_styles_allowed: false
+  visible_tabs:
+    - plan
+    - personal-color
+    - body-profile
+    - account
 
 state:
   owned: []
@@ -45,7 +50,7 @@ a11y_contract:
   tab:
     role: tab
     selected: accessibilityState.selected
-  control: ui-native-button
+  control: react-native-Pressable
 
 test_surface:
   contract: my-app/lib/mypage-decomposition.test.ts

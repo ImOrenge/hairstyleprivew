@@ -12,9 +12,10 @@ export interface RoleNavigationItem {
 
 const customerItems: readonly RoleNavigationItem[] = [
   { activePaths: ["/"], exact: true, href: "/", label: "홈" },
-  { activePaths: ["/consulting", "/upload", "/workspace"], href: "/consulting", label: "상담" },
-  { activePaths: ["/mypage"], href: "/mypage", label: "기록" },
-  { activePaths: ["/account"], href: "/account", label: "계정" },
+  { activePaths: ["/stylebook"], href: "/stylebook", label: "스타일북" },
+  { activePaths: ["/consulting", "/upload", "/workspace"], href: "/consulting", label: "새 컨설팅" },
+  { activePaths: ["/aftercare"], href: "/aftercare", label: "케어" },
+  { activePaths: ["/mypage", "/account"], href: "/mypage", label: "내 정보" },
 ];
 
 const salonItems: readonly RoleNavigationItem[] = [
@@ -43,7 +44,6 @@ const navigationHiddenPrefixes = [
   "/billing",
   "/payments",
   "/personal-color",
-  "/aftercare",
   "/salon/match",
 ] as const;
 

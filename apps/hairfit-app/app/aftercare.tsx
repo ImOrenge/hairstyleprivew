@@ -1,10 +1,18 @@
 import type { MobileAftercareRecord } from "@hairfit/shared";
-import { BodyText, Button, Card, Chip, Cluster, Heading, Kicker, Panel, Screen, Stack } from "@hairfit/ui-native";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { useHairfitApi } from "../lib/api";
 import { mapMobileUserError } from "../lib/mobile-user-message";
+import {
+  CustomerBody,
+  CustomerButton,
+  CustomerCard,
+  CustomerHeading,
+  CustomerKicker,
+  CustomerScreen,
+} from "../components/customer/CustomerPrimitives";
+import { customerColors } from "../lib/customer-ui";
 
 const serviceLabels: Record<string, string> = {
   cut: "커트",
@@ -68,76 +76,87 @@ export default function AftercareScreen() {
   }, [loadRecords]);
 
   return (
-    <Screen>
-      <Panel>
-        <Stack>
-          <Kicker>에프터케어</Kicker>
-          <Heading>확정한 헤어스타일 관리 가이드</Heading>
-          <BodyText>{message}</BodyText>
-          <Button onPress={() => router.push("/upload")}>새 헤어 만들기</Button>
-        </Stack>
-      </Panel>
+    <CustomerScreen>
+      <View style={styles.header}>
+        <CustomerKicker>Care</CustomerKicker>
+        <CustomerHeading>선택한 스타일을 오래, 편안하게</CustomerHeading>
+        <CustomerBody>{message}</CustomerBody>
+        <CustomerButton onPress={() => router.push("/consulting")}>새 컨설팅</CustomerButton>
+      </View>
 
       {status === "loading" ? (
-        <Card>
-          <BodyText>시술 확정 목록을 불러오는 중입니다.</BodyText>
-        </Card>
+        <CustomerCard><CustomerBody>시술 확정 목록을 불러오는 중입니다.</CustomerBody></CustomerCard>
       ) : status === "error" ? (
         <View accessibilityRole="alert">
-          <Card>
-            <Stack>
-              <Heading>목록을 불러오지 못했습니다</Heading>
-              <BodyText>{message}</BodyText>
-              <Button onPress={() => void loadRecords()}>다시 시도</Button>
-            </Stack>
-          </Card>
+          <CustomerCard style={styles.contentCard}>
+            <CustomerHeading compact>목록을 불러오지 못했습니다</CustomerHeading>
+            <CustomerBody>{message}</CustomerBody>
+            <CustomerButton onPress={() => void loadRecords()}>다시 시도</CustomerButton>
+          </CustomerCard>
         </View>
       ) : records.length === 0 ? (
-        <Card>
-          <Stack>
-            <Heading>아직 확정된 시술이 없습니다</Heading>
-            <BodyText>결과 화면에서 선택한 헤어스타일을 확정하면 에프터케어 가이드가 생성됩니다.</BodyText>
-            <Button onPress={() => router.push("/generate")}>결과 보러가기</Button>
-          </Stack>
-        </Card>
+        <CustomerCard style={[styles.contentCard, styles.emptyCard]}>
+          <CustomerKicker>Care journal</CustomerKicker>
+          <CustomerHeading compact>아직 확정된 시술이 없어요</CustomerHeading>
+          <CustomerBody>컨설팅 결과에서 마음에 드는 스타일을 확정하면 맞춤 케어 가이드가 자동으로 준비됩니다.</CustomerBody>
+          <CustomerButton onPress={() => router.push("/consulting")}>첫 컨설팅 시작</CustomerButton>
+        </CustomerCard>
       ) : (
-        <Stack>
+        <View style={styles.list}>
           {records.map((record) => (
-            <Card key={record.id}>
-              <Stack>
-                <View style={styles.preview}>
-                  {record.selectedVariantImageUrl ? (
-                    <Image
-                      accessibilityLabel={`${record.styleName} 시술 확정 스타일`}
-                      source={{ uri: record.selectedVariantImageUrl }}
-                      style={styles.previewImage}
-                    />
-                  ) : (
-                    <BodyText>확정 스타일 이미지 준비 중</BodyText>
-                  )}
+            <CustomerCard key={record.id} style={styles.recordCard}>
+              <View style={styles.preview}>
+                {record.selectedVariantImageUrl ? (
+                  <Image
+                    accessibilityLabel={`${record.styleName} 시술 확정 스타일`}
+                    source={{ uri: record.selectedVariantImageUrl }}
+                    style={styles.previewImage}
+                  />
+                ) : (
+                  <View style={styles.placeholder}><CustomerBody>이미지 준비 중</CustomerBody></View>
+                )}
+              </View>
+              <View style={styles.recordBody}>
+                <CustomerKicker>{serviceLabels[record.serviceType] || record.serviceType}</CustomerKicker>
+                <CustomerHeading compact>{record.styleName}</CustomerHeading>
+                <CustomerBody>시술일 {formatDate(record.serviceDate)}</CustomerBody>
+                <View style={styles.dueBox}>
+                  <Text style={styles.dueLabel}>권장 재방문</Text>
+                  <Text style={styles.dueValue}>{nextVisitDate(record.serviceDate, record.nextVisitTargetDays)}</Text>
                 </View>
-                <Cluster>
-                  <Chip tone="success">시술 확정</Chip>
-                  <Chip>{serviceLabels[record.serviceType] || record.serviceType}</Chip>
-                  <Chip>{formatDate(record.serviceDate)}</Chip>
-                </Cluster>
-                <Heading>{record.styleName}</Heading>
-                <BodyText>권장 재방문일: {nextVisitDate(record.serviceDate, record.nextVisitTargetDays)}</BodyText>
-                <Button onPress={() => router.push(`/aftercare/${record.id}`)}>가이드 열기</Button>
-              </Stack>
-            </Card>
+                <CustomerButton secondary onPress={() => router.push(`/aftercare/${record.id}`)}>가이드 열기</CustomerButton>
+              </View>
+            </CustomerCard>
           ))}
-        </Stack>
+        </View>
       )}
-    </Screen>
+    </CustomerScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  header: {
+    gap: 10,
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+  },
+  contentCard: {
+    gap: 12,
+  },
+  emptyCard: {
+    justifyContent: "center",
+    minHeight: 320,
+  },
+  list: {
+    gap: 16,
+  },
+  recordCard: {
+    padding: 0,
+  },
   preview: {
     alignItems: "center",
     aspectRatio: 4 / 5,
-    backgroundColor: "#171812",
+    backgroundColor: customerColors.raised,
     justifyContent: "center",
     overflow: "hidden",
     width: "100%",
@@ -146,5 +165,30 @@ const styles = StyleSheet.create({
     height: "100%",
     resizeMode: "cover",
     width: "100%",
+  },
+  placeholder: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  recordBody: {
+    gap: 10,
+    padding: 18,
+  },
+  dueBox: {
+    borderTopColor: customerColors.line,
+    borderTopWidth: 1,
+    gap: 3,
+    marginTop: 4,
+    paddingTop: 12,
+  },
+  dueLabel: {
+    color: customerColors.subtle,
+    fontSize: 11,
+  },
+  dueValue: {
+    color: customerColors.ivory,
+    fontSize: 14,
+    fontWeight: "800",
   },
 });

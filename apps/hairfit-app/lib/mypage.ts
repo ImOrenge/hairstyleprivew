@@ -21,9 +21,7 @@ export type MobileCustomerDashboard = Extract<
 >;
 
 const tabIds: MobileMyPageTabId[] = [
-  "usage",
   "plan",
-  "aftercare",
   "personal-color",
   "body-profile",
   "account",
@@ -33,9 +31,7 @@ export const MOBILE_MY_PAGE_TABS: {
   id: MobileMyPageTabId;
   label: string;
 }[] = [
-  { id: "usage", label: "작업 현황" },
   { id: "plan", label: "플랜/결제" },
-  { id: "aftercare", label: "시술 확정" },
   { id: "personal-color", label: "퍼스널컬러" },
   { id: "body-profile", label: "바디프로필" },
   { id: "account", label: "계정" },
@@ -45,7 +41,7 @@ export function normalizeMobileMyPageTab(value: unknown): MobileMyPageTabId {
   const first = Array.isArray(value) ? value[0] : value;
   return tabIds.includes(first as MobileMyPageTabId)
     ? (first as MobileMyPageTabId)
-    : "usage";
+    : "account";
 }
 
 export function getMobileMyPageTabHref(tab: MobileMyPageTabId) {

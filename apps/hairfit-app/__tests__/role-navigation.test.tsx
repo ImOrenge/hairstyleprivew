@@ -13,6 +13,7 @@ import {
 let mockPathname = "/admin/stats";
 let mockAccountType: "member" | "salon_owner" | "admin" = "admin";
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 
 jest.mock("@clerk/clerk-expo", () => ({
   useAuth: () => ({
@@ -25,7 +26,7 @@ jest.mock("@clerk/clerk-expo", () => ({
 
 jest.mock("expo-router", () => ({
   usePathname: () => mockPathname,
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
 
 jest.mock("react-native-safe-area-context", () => {
@@ -43,20 +44,21 @@ describe("role navigation contracts", () => {
     mockPathname = "/admin/stats";
     mockAccountType = "admin";
     mockReplace.mockReset();
+    mockPush.mockReset();
   });
 
   test("normalizes nested Clerk metadata and keeps role routes deterministic", () => {
     expect(readAccountTypeMetadata({ public_metadata: { accountType: "salon_owner" } })).toBe("salon_owner");
     expect(resolveRoleNavigationRole(null, "/admin/members")).toBe("admin");
     expect(resolveRoleNavigationRole(null, "/salon/connections")).toBe("customer");
-    expect(getRoleNavigationItems("customer").map((item) => item.label)).toEqual(["홈", "상담", "기록", "계정"]);
+    expect(getRoleNavigationItems("customer").map((item) => item.label)).toEqual(["홈", "스타일북", "새 컨설팅", "케어", "내 정보"]);
     expect(
       getRoleNavigationItems("admin")
         .filter((item) => isRoleNavigationItemActive("/admin/members/123", item))
         .map((item) => item.label),
     ).toEqual(["회원"]);
     expect(isRoleNavigationHidden("/generate/123")).toBe(true);
-    expect(isRoleNavigationHidden("/aftercare/123")).toBe(true);
+    expect(isRoleNavigationHidden("/aftercare/123")).toBe(false);
     expect(isRoleNavigationHidden("/consulting")).toBe(true);
     expect(isRoleNavigationHidden("/admin/stats")).toBe(false);
   });

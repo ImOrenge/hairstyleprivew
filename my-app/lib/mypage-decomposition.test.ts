@@ -21,7 +21,7 @@ test("web MyPage keeps tabs, formatters, routes, and panels in explicit boundari
 
   assert.match(dashboard, /<MyPageTabNavigation/);
   assert.match(dashboard, /<MyPageActivePanel/);
-  assert.equal(occurrenceCount(dashboard, /<MyPageMetricCard/g), 2);
+  assert.equal(occurrenceCount(dashboard, /<MyPageMetricCard/g), 0);
   assert.doesNotMatch(
     dashboard,
     /label="크레딧"|label="사용량"|getCreditsPerStyle|usedCredits|estimatedStyles/,
@@ -44,6 +44,7 @@ test("web MyPage keeps tabs, formatters, routes, and panels in explicit boundari
   assert.match(formatters, /export function formatMyPagePlanLabel/);
   assert.match(routes, /export function normalizeMyPageTab/);
   assert.match(routes, /export function buildMyPageTabHref/);
+  assert.doesNotMatch(navigation, /작업 현황|시술 확정/);
   assert.match(routes, /status === "completed"[\s\S]*`\/result\/\$\{generation\.id\}`/);
   assert.doesNotMatch(formatters + routes, /from "react"|next\/navigation|\bfetch\(/);
 });

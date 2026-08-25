@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "registry_id": "hairfit.frontend.components",
-  "updated_at": "2026-08-22",
+  "updated_at": "2026-08-25",
   "baseline": {
     "git_branch": "develop/2026-07-14-generation-completion-notifications",
     "git_head": "eb77c7f5421b9b8ac44e540e66931573f4097a41",
@@ -337,6 +337,28 @@
       }
     },
     {
+      "id": "web.customer.shell",
+      "name": "CustomerShell family",
+      "platform": "web",
+      "kind": "layout",
+      "status": "experimental",
+      "source": "my-app/components/customer/CustomerShell.tsx",
+      "related_source": [
+        "my-app/components/customer/customer-shell.css",
+        "my-app/lib/customer-navigation.ts",
+        "my-app/app/home/page.tsx",
+        "my-app/app/stylebook/page.tsx",
+        "my-app/app/aftercare/page.tsx",
+        "my-app/app/mypage/page.tsx"
+      ],
+      "owner": "customer-experience",
+      "passport": "docs/components/passports/web-customer-shell.yaml",
+      "observed_usage": {
+        "production_consumer_files": 4,
+        "scope": "authenticated customer home, stylebook, care, and information routes"
+      }
+    },
+    {
       "id": "web.mypage.dashboard",
       "name": "MyPageDashboardTabs",
       "platform": "web",
@@ -372,6 +394,27 @@
         "production_consumer_files": 1,
         "harness_consumer_files": 1,
         "scope": "my-app MyPage dashboard and fail-closed E2E harness"
+      }
+    },
+    {
+      "id": "native.customer.primitives",
+      "name": "CustomerPrimitives family",
+      "platform": "native",
+      "kind": "layout",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/customer/CustomerPrimitives.tsx",
+      "related_source": [
+        "apps/hairfit-app/lib/customer-ui.ts",
+        "apps/hairfit-app/app/index.tsx",
+        "apps/hairfit-app/app/stylebook.tsx",
+        "apps/hairfit-app/app/aftercare.tsx",
+        "apps/hairfit-app/app/mypage.tsx"
+      ],
+      "owner": "customer-experience",
+      "passport": "docs/components/passports/native-customer-primitives.yaml",
+      "observed_usage": {
+        "production_consumer_files": 4,
+        "scope": "HairFit app authenticated customer surfaces"
       }
     },
     {

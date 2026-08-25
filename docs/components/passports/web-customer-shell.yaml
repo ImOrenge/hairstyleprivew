@@ -1,0 +1,84 @@
+id: web.customer.shell
+name: CustomerShell family
+platform: web
+kind: layout
+status: experimental
+source: my-app/components/customer/CustomerShell.tsx
+related_source:
+  - my-app/components/customer/customer-shell.css
+  - my-app/lib/customer-navigation.ts
+owner: customer-experience
+
+public_api:
+  exports:
+    - CustomerShell
+    - CustomerPageHeader
+  props:
+    - children: ReactNode
+    - activePath: optional test-harness route override
+    - page-header-copy-and-action
+  events:
+    - native-link-navigation
+
+boundaries:
+  owns:
+    - customer-only-responsive-navigation
+    - Private-AI-Atelier-visual-tokens
+    - desktop-fixed-rail
+    - tablet-compact-rail
+    - mobile-safe-area-bottom-navigation
+  forbidden:
+    - consultation-stage-rendering
+    - consultation-route-or-data-mutation
+    - salon-or-admin-navigation
+    - account-fetching
+
+route_contract:
+  shell_routes:
+    - /home
+    - /stylebook
+    - /aftercare
+    - /mypage
+  primary_consultation_entry: /consulting/new
+  consultation_shell: hidden
+  internal_consultation_flow: preserved
+
+styling:
+  strategy: customer-scoped-global-css
+  stylesheet: my-app/components/customer/customer-shell.css
+  root_namespace: customer-app
+  tokens:
+    canvas: '#11110F'
+    surface: '#191917'
+    raised: '#22211E'
+    ivory: '#F3EEE3'
+    muted: '#AAA399'
+    champagne: '#C8A96B'
+  global_css_changes: import-only
+  inline_styles_allowed: false
+
+a11y_contract:
+  navigation_label: 고객 주요 내비게이션
+  active_item: aria-current-page
+  focus_indicator: visible-champagne-outline
+  reduced_motion: supported
+
+test_surface:
+  structure: my-app/lib/app-shell-accessibility.test.ts
+  web_typecheck: required
+  interaction: required
+  responsive_visual: required
+
+change_policy:
+  current_gate: behavioral
+  compatible_change_requires:
+    - passport-update
+    - shell-contract-test
+    - web-typecheck
+  breaking_change_requires:
+    - all-customer-route-consumer-update
+    - consultation-boundary-audit
+
+promotion_blockers:
+  - no-authenticated-browser-interaction-evidence
+  - no-mobile-safe-area-device-evidence

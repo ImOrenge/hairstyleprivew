@@ -6,8 +6,6 @@ status: experimental
 source: my-app/components/mypage/MyPageDashboardTabs.tsx
 related_source:
   - my-app/components/mypage/MyPageActivePanel.tsx
-  - my-app/components/mypage/MyPageMetricCard.tsx
-  - my-app/components/mypage/MyPageSectionHeader.tsx
   - my-app/components/mypage/myPageTypes.ts
   - my-app/components/mypage/myPageFormatters.ts
   - my-app/components/mypage/myPagePlanSelectors.ts
@@ -25,23 +23,23 @@ public_api:
   props:
     - account-and-viewer-snapshot
     - active-tab-and-query-state
-    - generation-and-payment-records
-    - personal-color-and-hair-records
+    - payment-records
+    - personal-color-and-body-profile
     - subscription-contract
   events:
     - account-setup-generation-resume
-    - confirmed-style-guide-open
 
 boundaries:
   dashboard:
     owns:
-      - header-and-workspace-cta
-      - metric-composition
-      - tab-and-active-panel-composition
+      - settings-tab-and-active-panel-composition
+      - payment-return-notice
     forbidden:
       - fetch
       - next-navigation-hook
       - panel-implementation
+      - generation-history-navigation
+      - aftercare-history-navigation
   panels:
     source: my-app/components/mypage/panels
     owns:
@@ -55,8 +53,8 @@ boundaries:
     route_selector: my-app/components/mypage/myPageRoutes.ts
 
 styling:
-  strategy: existing-tailwind-utilities-with-global-app-tokens
-  global_css_changes: false
+  strategy: customer-shell-scoped-app-tokens
+  global_css_changes: customer-shell-import-only
   inline_styles_allowed: false
 
 state:
@@ -76,7 +74,7 @@ test_surface:
   structure: my-app/lib/mypage-decomposition.test.ts
   shell_accessibility: my-app/lib/app-shell-accessibility.test.ts
   generation_entry_contract: my-app/lib/canonical-generation-entry.test.ts
-  confirmed_style_contract: my-app/lib/confirmed-style-list.test.ts
+  customer_shell_contract: my-app/lib/app-shell-accessibility.test.ts
   interaction: required
   visual: required
 
@@ -88,7 +86,7 @@ change_policy:
     - web-typecheck
   behavioral_change_requires:
     - authenticated-mypage-tab-interaction-test
-    - confirmed-style-card-navigation-test
+    - customer-shell-navigation-test
 
 promotion_blockers:
   - no-authenticated-tab-keyboard-evidence

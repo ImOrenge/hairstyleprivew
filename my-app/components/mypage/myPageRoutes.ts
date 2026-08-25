@@ -5,9 +5,7 @@ import type {
 } from "./myPageTypes";
 
 const tabIds: MyPageTabId[] = [
-  "usage",
   "plan",
-  "aftercare",
   "personal-color",
   "body-profile",
   "account",
@@ -18,7 +16,7 @@ export function normalizeMyPageTab(
 ): MyPageTabId {
   return tabIds.includes(value as MyPageTabId)
     ? (value as MyPageTabId)
-    : "usage";
+    : "account";
 }
 
 export function buildMyPageTabHref(

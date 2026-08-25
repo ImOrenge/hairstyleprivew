@@ -77,16 +77,25 @@ function PatternLayer() {
 }
 
 export interface AppScreenProps {
+  backgroundColor?: string;
   children: ReactNode;
   footerOverlay?: ReactNode;
   /** Disable the outer ScrollView when the screen owns a FlatList/SectionList. */
   scroll?: boolean;
   /** @deprecated Header rendering is owned by Expo Router layouts. */
   showHeader?: boolean;
+  showPattern?: boolean;
   style?: StyleProp<ViewStyle>;
 }
 
-export function AppScreen({ children, footerOverlay, scroll = true, style }: AppScreenProps) {
+export function AppScreen({
+  backgroundColor,
+  children,
+  footerOverlay,
+  scroll = true,
+  showPattern = true,
+  style,
+}: AppScreenProps) {
   const theme = useThemeColors();
   const { availability } = useNetworkRecovery();
   const offlineNotice = availability === "offline" ? (
@@ -102,9 +111,9 @@ export function AppScreen({ children, footerOverlay, scroll = true, style }: App
   return (
     <SafeAreaView
       edges={footerOverlay ? ["top"] : ["top", "bottom"]}
-      style={[styles.screenFrame, { backgroundColor: theme.background }]}
+      style={[styles.screenFrame, { backgroundColor: backgroundColor ?? theme.background }]}
     >
-      <PatternLayer />
+      {showPattern ? <PatternLayer /> : null}
       {scroll ? (
         <ScrollView
           automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}

@@ -10,6 +10,7 @@ import { HeaderRoleNavLinks, isCurrentNavigationPath } from "./HeaderRoleNavLink
 import { LanguageSwitch } from "./LanguageSwitch";
 import { ThemeToggle } from "./ThemeToggle";
 import { HeaderAuthSlot, MobileHeaderAuthSlot, MobileSignupMenuLink } from "./HeaderAuthSlot";
+import { isCustomerShellPath } from "../../lib/customer-navigation";
 
 function HeaderBrandLink() {
   const { accountHomeHref, isRoleLoaded, isSignedIn } = useHeaderAccount();
@@ -38,7 +39,7 @@ export function Header() {
   const mobileMenuLinkClassName =
     "rounded-[var(--app-radius-control)] px-3 py-2.5 text-[var(--app-muted)] transition hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)]";
 
-  if (pathname.startsWith("/consulting")) {
+  if (pathname.startsWith("/consulting") || isCustomerShellPath(pathname)) {
     return null;
   }
 
