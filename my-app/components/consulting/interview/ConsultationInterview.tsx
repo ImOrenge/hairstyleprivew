@@ -49,7 +49,7 @@ export function InterviewSummaryDrawer({ open, onOpenChange, title, children, fo
   </Dialog>;
 }
 
-export function ConsultationInterviewShell({ kind, title, description, coverage, saveState, savedAt, summaryOpen, onSummaryOpenChange, onExitRequest, children, navigation, summary, footer }: {
+export function ConsultationInterviewShell({ kind, title, description, coverage, saveState, savedAt, summaryOpen, onSummaryOpenChange, children, navigation, summary, footer }: {
   kind: "discovery" | "fashion-direction" | "makeup-direction";
   title: string;
   description: string;
@@ -75,7 +75,6 @@ export function ConsultationInterviewShell({ kind, title, description, coverage,
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="secondary" onClick={() => onSummaryOpenChange(true)}>전체 답변 보기</Button>
-        <Button type="button" variant="ghost" onClick={onExitRequest}>상담 나가기</Button>
       </div>
     </header>
     <div className="f-consulting-interview__body">

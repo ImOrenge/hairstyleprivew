@@ -8,7 +8,12 @@ for (const width of [390, 768, 1440]) {
     await page.goto("/consulting/e2e-harness?stage=makeup");
     const fixture = page.getByTestId("makeup-direction-fixture");
     await expect(fixture).toBeVisible();
+    await expect(fixture.getByText("메이크업 적용 지도", { exact: true })).toBeVisible();
+    await expect(fixture.getByText("Makeup color guide", { exact: true })).toHaveCount(0);
     await expect(fixture.getByText("셀프 메이크업 적용 순서", { exact: true })).toBeVisible();
+    const secondaryActions = fixture.locator("[data-makeup-secondary-actions]");
+    await expect(secondaryActions).not.toHaveAttribute("open", "");
+    await secondaryActions.getByText("제품 찾기와 아티스트 공유", { exact: true }).click();
     await expect(fixture.getByRole("checkbox")).not.toBeChecked();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);

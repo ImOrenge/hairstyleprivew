@@ -87,6 +87,10 @@ boundaries:
       - analysis-photo-in-left-source-pane
       - transient-liveness-screen-host
       - consultation-exit-confirmation
+      - dual-chapter-and-full-stage-progress
+      - single-global-consultation-exit
+      - mobile-collapsible-context-summary
+      - makeup-next-action-after-current-stage-completion
   forbidden:
     - generation-domain-workflow
     - backend-refactor-package-contracts
@@ -147,6 +151,8 @@ a11y_contract:
   navigation: labelled-native-links-and-buttons-without-common-next-control
   chapter_status: one-aria-current-chapter-and-visible-mobile-next-action
   exit: confirmation-dialog-with-escape-focus-return-and-saved-state-disclosure
+  progress: visible-korean-chapter-and-full-stage-count-with-programmatic-label
+  context_summary: mobile-native-disclosure-and-desktop-three-column-definition-list
   scene_entry: programmatic-focus-on-level-one-heading
   reduced_motion: no-required-motion
   split_canvas: labelled-regions-input-first-in-dom-mobile-stacked
@@ -170,7 +176,7 @@ test_surface:
   scan_role: no-client-only-evidence-confidence-edit-and-explicit-photo-recovery
   decision_recovery: missing-finalist-has-an-actionable-route
   makeup_direction: seven-module-source-aligned-svg-map-semantic-matrix-gender-invariant-and-confirmed-snapshot-immutable
-  makeup_harness_navigation: fixture-remains-inside-consultation-scene-with-stage-map-and-recommended-fashion-handoff
+  makeup_harness_navigation: fixture-remains-inside-consultation-scene-with-stage-map-and-fashion-handoff-only-after-makeup-completion
   split_canvas: all-15-scenes-desktop-independent-scroll-and-mobile-stacking
   split_canvas_scroll: all-15-scenes-serious-critical-axe-zero
   input_control_separator: shared-choice-and-text-controls-use-visible-tokenized-boundaries

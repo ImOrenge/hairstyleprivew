@@ -2166,10 +2166,11 @@ textarea::placeholder {
   max-width: 100%;
   overflow: hidden;
   color: inherit;
-  font-size: clamp(0.48rem, 1vw, 0.68rem);
+  font-size: clamp(0.62rem, 1vw, 0.74rem);
   font-weight: 900;
   line-height: 1;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 2px rgb(255 255 255 / 86%);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2211,7 +2212,7 @@ textarea::placeholder {
   --makeup-info-top: 50%;
   position: absolute;
   z-index: 4;
-  top: clamp(12px, calc(var(--makeup-info-top) - 84px), calc(100% - 182px));
+  top: clamp(12px, calc(var(--makeup-info-top) - 70px), calc(100% - 152px));
   display: grid;
   grid-template-columns: minmax(0, 1fr) 58px;
   grid-template-rows: auto 1fr;
@@ -2219,7 +2220,7 @@ textarea::placeholder {
   gap: 8px 12px;
   width: min(240px, 42%);
   margin: 0;
-  min-height: 170px;
+  min-height: 140px;
   border: 1px solid color-mix(in srgb, var(--makeup-chip-color) 48%, white);
   border-radius: var(--app-radius-control);
   padding: 13px 14px;
@@ -2317,7 +2318,7 @@ textarea::placeholder {
   }
 
   .makeup-color-chip__label {
-    font-size: 0.43rem;
+    font-size: 0.58rem;
   }
 
   .makeup-color-chip__swatch {

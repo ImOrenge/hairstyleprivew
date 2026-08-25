@@ -109,6 +109,11 @@ boundaries:
       - artist-brief-and-share-permission
       - customer-first-professional-makeup-report
       - authoritative-collapsible-artist-specification
+      - customer-result-summary-before-application-map
+      - korean-customer-callout-labels-without-hex-or-intensity
+      - explicit-single-direction-confirmation
+      - caution-before-collapsed-artist-specification
+      - collapsed-secondary-product-search-and-artist-share
       - shared-stage-result-pdf-and-public-handoff-report
       - product-search-guide
       - direction-confirmed-makeup-style-simulation
@@ -180,6 +185,7 @@ a11y_contract:
   canvas: decorative-geometry-backed-by-callout-button-accessible-names
   toolbar: native-buttons-with-aria-pressed
   color_callouts: native-buttons-with-hover-focus-touch-parity-and-visible-text
+  color_callout_copy: korean-zone-color-application-and-texture-labels-with-technical-values-kept-in-artist-specification
   adjustments: native-range-and-buttons-with-text-labels
   color: family-name-and-text-always-present
   reduced_motion: no-required-animation
@@ -193,6 +199,7 @@ test_surface:
   shared: packages/shared/src/makeup/contract.test.ts
   interaction_visual: tests/web-e2e/makeup-direction.spec.ts
   responsive_accessibility: tests/web-e2e/personal-color-makeup-quality.spec.ts
+  customer_information_order: result-summary-then-map-then-confirmation-and-after-confirmation-report-routine-cautions-specification-secondary-actions
   visual_review: docs/hairfit-v2/evidence/p39-makeup-reference-visual-review-2026-08-16.md
   semantic_contract: my-app/lib/makeup/makeup-semantic-contract.test.ts
   fixture_manifest: packages/shared/src/makeup/fixtures-v3.ts

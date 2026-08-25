@@ -98,6 +98,15 @@ export function MakeupProfessionalReportDetails({ routine, brief }: { routine: M
           ))}
         </ol>
       </SurfaceCard>
+      <SurfaceCard className="p-5 sm:p-7">
+        <p className="app-kicker">피해야 할 표현과 확인할 점</p>
+        {disabled.length ? (
+          <p className="mt-3 text-sm">
+            <strong>제외한 부위:</strong> {disabled.map((item) => LABELS[item.module]).join(" · ")}
+          </p>
+        ) : null}
+        <ul className="mt-4 grid gap-2 text-sm leading-6">{cautions.length ? cautions.map((item) => <li key={item}>— {item}</li>) : <li>— 실제 발색과 질감은 피부 상태, 제품, 조명과 적용 방법에 따라 달라질 수 있습니다.</li>}</ul>
+      </SurfaceCard>
       <details className="border border-[var(--app-border)] bg-[var(--app-surface)] p-5 sm:p-7">
         <summary className="cursor-pointer font-black">메이크업 아티스트용 상세 명세</summary>
         <p className="mt-3 text-sm text-[var(--app-muted)]">정확한 컬러·강도·위치·기법은 AI 문장이 아니라 확정된 상담 데이터를 그대로 표시합니다.</p>
@@ -134,15 +143,6 @@ export function MakeupProfessionalReportDetails({ routine, brief }: { routine: M
           ))}
         </div>
       </details>
-      <SurfaceCard className="p-5 sm:p-7">
-        <p className="app-kicker">피해야 할 표현과 확인할 점</p>
-        {disabled.length ? (
-          <p className="mt-3 text-sm">
-            <strong>제외한 부위:</strong> {disabled.map((item) => LABELS[item.module]).join(" · ")}
-          </p>
-        ) : null}
-        <ul className="mt-4 grid gap-2 text-sm leading-6">{cautions.length ? cautions.map((item) => <li key={item}>— {item}</li>) : <li>— 실제 발색과 질감은 피부 상태, 제품, 조명과 적용 방법에 따라 달라질 수 있습니다.</li>}</ul>
-      </SurfaceCard>
     </div>
   );
 }

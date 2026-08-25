@@ -67,18 +67,16 @@ export function MakeupColorInfo({ callout }: { callout: MakeupColorCalloutView }
     data-side={callout.side}
     style={style}
     aria-live="polite"
-    aria-label={`${callout.title}, ${callout.family}, ${callout.color}, 강도 ${callout.intensity}%, ${callout.direction}`}
+    aria-label={`${callout.title}, ${callout.family}, ${callout.direction}`}
   >
     <div className="makeup-direction-map__info-heading">
       <strong>{callout.label}</strong>
       <span>{callout.title}</span>
     </div>
     <dl>
-      <div><dt>COLOR</dt><dd>{callout.family}</dd></div>
-      <div><dt>HEX</dt><dd>{callout.color.toUpperCase()}</dd></div>
-      <div><dt>INTENSITY</dt><dd>{callout.intensity}%</dd></div>
-      <div><dt>BLEND</dt><dd>{callout.blend}</dd></div>
-      <div><dt>TEXTURE</dt><dd>{callout.texture}</dd></div>
+      <div><dt>추천 색</dt><dd>{callout.family}</dd></div>
+      <div><dt>바르는 방향</dt><dd>{callout.blend}</dd></div>
+      <div><dt>표현 질감</dt><dd>{callout.texture}</dd></div>
     </dl>
     <span className="makeup-direction-map__info-sample" aria-hidden="true" />
   </div>;

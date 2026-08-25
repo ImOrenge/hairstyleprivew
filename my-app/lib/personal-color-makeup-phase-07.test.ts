@@ -72,6 +72,10 @@ test("confirmed Makeup shows professional report, routine, artist brief, product
   assert.match(report, /셀프 메이크업 적용 순서/);
   assert.match(report, /메이크업 아티스트용 상세 명세/);
   assert.match(outputs, /제품 찾기/);
+  assert.match(outputs, /제품 찾기와 아티스트 공유/);
+  assert.match(outputs, /data-makeup-secondary-actions/);
+  assert.match(stage, /이 메이크업 방향으로 확정/);
+  assert.match(stage, /data-makeup-direction-summary/);
   assert.match(outputs, /checked=\{includeSourcePhoto\}/);
   assert.match(outputs, /useState\(false\)/);
 });

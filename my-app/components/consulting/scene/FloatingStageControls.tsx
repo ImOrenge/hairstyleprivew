@@ -17,9 +17,12 @@ export function FloatingStageControls({ snapshot, stage, onOpenMap, chapterNavig
   const recommendedDefinition = CONSULTATION_STAGE_DEFINITIONS.find((item) => item.slug === recommended);
   const previousAllowed = previous && snapshot.journey.allowedStages.includes(previous) ? previous : null;
   const presentation = deriveConsultationChapterPresentation(snapshot, stage);
+  const currentStageComplete = snapshot.journey.completedStages.includes(stage);
+  const canOpenRecommended = stage !== "makeup" || currentStageComplete;
+  const recommendedLabel = stage === "makeup" ? "패션 방향 이어서 보기" : presentation.recommendedTask.label;
   const control = "inline-flex min-h-11 items-center justify-center gap-2 border border-[var(--app-border)] bg-[var(--app-surface)] px-3 text-xs font-black uppercase tracking-[0.04em] shadow-[var(--app-shadow)] hover:border-[var(--app-border-strong)]";
   return (
-    <nav className="fixed inset-x-0 bottom-4 z-40 mx-auto flex w-fit max-w-[calc(100%-1rem)] items-center gap-2 bg-[color-mix(in_srgb,var(--app-bg)_88%,transparent)] p-1 backdrop-blur" aria-label="상담 단계 이동">
+    <nav className="fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 mx-auto flex w-fit max-w-[calc(100%-1rem)] items-center gap-2 bg-[color-mix(in_srgb,var(--app-bg)_88%,transparent)] p-1 backdrop-blur" aria-label="상담 단계 이동" data-current-stage-complete={currentStageComplete ? "true" : "false"}>
       {!chapterNavigationEnabled && previousAllowed ? (
         <Link href={consultationStageHrefForPath(snapshot.sessionId, previousAllowed, pathname)} className={control} aria-label="이전 상담 화면">
           <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -34,11 +37,11 @@ export function FloatingStageControls({ snapshot, stage, onOpenMap, chapterNavig
         <List className="h-4 w-4" aria-hidden />
         {chapterNavigationEnabled ? "챕터" : "전체 단계"}
       </button>
-      {recommended !== stage && snapshot.journey.allowedStages.includes(recommended) ? (
-        <Link href={consultationStageHrefForPath(snapshot.sessionId, recommended, pathname)} className={control} aria-label={`다음 추천 작업: ${presentation.recommendedTask.label}`}>
+      {canOpenRecommended && recommended !== stage && snapshot.journey.allowedStages.includes(recommended) ? (
+        <Link href={consultationStageHrefForPath(snapshot.sessionId, recommended, pathname)} className={control} aria-label={`다음 추천 작업: ${recommendedLabel}`}>
           <Sparkles className="h-4 w-4" aria-hidden />
           <span className="sm:hidden">다음</span>
-          <span className="hidden sm:inline">{chapterNavigationEnabled ? presentation.recommendedTask.label : (recommendedDefinition?.task ?? recommended)}</span>
+          <span className="hidden sm:inline">{chapterNavigationEnabled ? recommendedLabel : (recommendedDefinition?.task ?? recommended)}</span>
         </Link>
       ) : null}
       <button type="button" onClick={() => setExitOpen(true)} className={control} aria-label="상담 나가기" title="상담 나가기">

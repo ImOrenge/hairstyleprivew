@@ -1,12 +1,10 @@
 "use client";
 
 import { createConsultationStartContext, type OptionalOpeningIntent } from "@hairfit/shared/consulting/start-context";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { ConsultationPatch, ConsultationSnapshot } from "../../../lib/consulting/contracts";
 import { trackConsultationInterviewEvent } from "../../../lib/consulting/interview-observability-client";
 import { Button } from "../../ui/Button";
-import { ConfirmActionDialog } from "../../ui/ConfirmActionDialog";
 
 const OPENING_OPTIONS: readonly { value: OptionalOpeningIntent; label: string; detail: string }[] = [
   { value: "leave_it_to_ai", label: "AI가 정해주세요", detail: "사진을 먼저 보고 가장 어울리는 방향부터 제안해요." },
@@ -20,11 +18,9 @@ export function ZeroInputConsultationStart({ snapshot, mutate, saving }: {
   mutate: (patch: Omit<ConsultationPatch, "expectedVersion">, options?: { navigate?: boolean }) => Promise<unknown>;
   saving: boolean;
 }) {
-  const router = useRouter();
   const [optionalOpen, setOptionalOpen] = useState(false);
   const [selected, setSelected] = useState<OptionalOpeningIntent | null>(snapshot.startContext?.optionalOpeningIntent ?? null);
   const [optionalNote, setOptionalNote] = useState(snapshot.startContext?.optionalNote ?? "");
-  const [exitOpen, setExitOpen] = useState(false);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "offline" | "conflict">("idle");
   const opened = useRef(false);
 
@@ -53,8 +49,7 @@ export function ZeroInputConsultationStart({ snapshot, mutate, saving }: {
     setSaveState(outcome?.conflict ? "conflict" : "offline");
   };
 
-  return <>
-    <section
+  return <section
       className="f-consulting-interview"
       data-kind="discovery"
       data-layout="standalone"
@@ -68,7 +63,6 @@ export function ZeroInputConsultationStart({ snapshot, mutate, saving }: {
           <h2 id="zero-input-intake-title" className="mt-2 text-2xl font-black">사진을 먼저 보고 필요한 것만 물어볼게요</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--app-muted)]">상담 범위나 모발 상태를 미리 작성하지 않아도 됩니다. 사진의 얼굴·헤어·모질을 분석한 뒤 결과를 바꿀 내용만 짧게 확인합니다.</p>
         </div>
-        <Button type="button" variant="ghost" onClick={() => setExitOpen(true)}>상담 나가기</Button>
       </header>
       <div className="f-consulting-interview__body" data-zero-input-body="true">
         <div className="f-consulting-interview__content">
@@ -113,10 +107,5 @@ export function ZeroInputConsultationStart({ snapshot, mutate, saving }: {
           </div>
         </div>
       </div>
-    </section>
-    <ConfirmActionDialog open={exitOpen} onOpenChange={setExitOpen} onConfirm={() => {
-      void trackConsultationInterviewEvent({ consultationId: snapshot.sessionId, event: "exited", interviewKind: "discovery", revision: snapshot.startContext?.revision ?? 0, keepalive: true });
-      router.push("/home");
-    }} title="상담을 나갈까요?" description="사진을 제출하기 전이라도 상담은 나중에 다시 시작할 수 있습니다." confirmLabel="상담 나가기" cancelLabel="계속 상담하기" />
-  </>;
+    </section>;
 }

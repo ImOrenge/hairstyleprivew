@@ -58,18 +58,28 @@ export function StageContextStrip({ snapshot, stage }: { snapshot: ConsultationS
   if (!context) return null;
   const goal = snapshot.discovery.goals[0];
   const reflected = goal ? `${context.reflected} · ${goal}` : context.reflected;
-  return (
-    <dl className="mt-6 grid border border-[var(--app-border)] bg-[var(--app-surface)] text-sm sm:grid-cols-3" data-consulting-stage-context="true">
-      {[
-        ["반영한 정보", reflected],
-        ["이번에 확인할 것", context.focus],
-        ["완료 후 받는 결과", context.result],
-      ].map(([label, value]) => (
+  const items = [
+    ["반영한 기준", reflected],
+    ["이번에 확인할 것", context.focus],
+    ["완료 후 받는 결과", context.result],
+  ];
+  const content = (className: string) => (
+    <dl className={className}>
+      {items.map(([label, value]) => (
         <div key={label} className="grid gap-1 border-b border-[var(--app-border)] p-3 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0">
           <dt className="text-xs font-black text-[var(--app-muted)]">{label}</dt>
           <dd className="m-0 font-bold leading-5">{value}</dd>
         </div>
       ))}
     </dl>
+  );
+  return (
+    <div className="mt-5" data-consulting-stage-context="true">
+      <details className="border border-[var(--app-border)] bg-[var(--app-surface)] text-sm sm:hidden">
+        <summary className="cursor-pointer px-4 py-3 font-black">이번 결과에 반영한 기준</summary>
+        {content("grid border-t border-[var(--app-border)]")}
+      </details>
+      {content("hidden border border-[var(--app-border)] bg-[var(--app-surface)] text-sm sm:grid sm:grid-cols-3")}
+    </div>
   );
 }

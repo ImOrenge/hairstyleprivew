@@ -47,6 +47,10 @@ test("customer Canvas exposes interactive color info while the diagnostic Matrix
   assert.match(canvas, /jaw_shadow/);
   assert.match(callouts, /data-makeup-color-callout/);
   assert.match(callouts, /makeup-direction-map__info/);
+  for (const label of ["추천 색", "바르는 방향", "표현 질감"]) assert.match(callouts, new RegExp(label));
+  assert.doesNotMatch(callouts, />HEX</);
+  assert.doesNotMatch(callouts, />INTENSITY</);
+  for (const label of ["눈썹", "아이섀도", "아이라인", "볼", "입술", "속눈썹", "콧대 음영", "턱선 음영"]) assert.match(canvas, new RegExp(label));
   assert.match(canvas, /data-makeup-visible-callout/);
   assert.match(canvas, /interactiveCalloutId/);
   assert.match(canvas, /showInfo \|\| interactiveCalloutId/);

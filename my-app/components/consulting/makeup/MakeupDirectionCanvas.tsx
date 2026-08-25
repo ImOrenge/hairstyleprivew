@@ -13,6 +13,7 @@ import type {
   MakeupSemanticProjectionV3,
   MakeupTopologyProjectionV2,
 } from "@hairfit/shared/makeup";
+import { makeupTechnicalCustomerLabel } from "@hairfit/shared/makeup";
 import { MakeupColorInfo, MakeupColorRail, type MakeupColorCalloutId, type MakeupColorCalloutView } from "./MakeupColorCallouts";
 import { MakeupDirectionPaths } from "./MakeupDirectionPaths";
 
@@ -89,29 +90,29 @@ const LEGACY_COMPLEXION_GUIDES: MakeupComplexionGuideGeometry[] = [
 type CalloutSpec = { id: MakeupColorCalloutId; label: string; module: MakeupModule; side: "left" | "right"; top: number };
 
 const CALLOUT_SPECS: CalloutSpec[] = [
-  { id: "brow", label: "EYEBROW", module: "brow", side: "left", top: 19 },
-  { id: "eyeshadow", label: "EYESHADOW", module: "eyeshadow", side: "left", top: 32 },
-  { id: "eyeliner", label: "EYELINER", module: "eyeliner", side: "left", top: 45 },
-  { id: "blush", label: "BLUSH", module: "blush", side: "left", top: 59 },
-  { id: "lip", label: "LIP", module: "lip", side: "left", top: 73 },
-  { id: "t_zone_highlight", label: "T-ZONE", module: "base", side: "right", top: 20 },
-  { id: "lashes", label: "LASHES", module: "lashes", side: "right", top: 36 },
-  { id: "nose_contour", label: "NOSE CONTOUR", module: "base", side: "right", top: 53 },
-  { id: "jaw_shadow", label: "JAW SHADOW", module: "base", side: "right", top: 73 },
+  { id: "brow", label: "눈썹", module: "brow", side: "left", top: 19 },
+  { id: "eyeshadow", label: "아이섀도", module: "eyeshadow", side: "left", top: 32 },
+  { id: "eyeliner", label: "아이라인", module: "eyeliner", side: "left", top: 45 },
+  { id: "blush", label: "볼", module: "blush", side: "left", top: 59 },
+  { id: "lip", label: "입술", module: "lip", side: "left", top: 73 },
+  { id: "t_zone_highlight", label: "T존 밝힘", module: "base", side: "right", top: 20 },
+  { id: "lashes", label: "속눈썹", module: "lashes", side: "right", top: 36 },
+  { id: "nose_contour", label: "콧대 음영", module: "base", side: "right", top: 53 },
+  { id: "jaw_shadow", label: "턱선 음영", module: "base", side: "right", top: 73 },
 ];
 
 const GUIDE_LABELS: Record<MakeupComplexionGuideId, string> = {
   t_zone_highlight: "T존 하이라이트",
-  nose_contour: "노즈 컨투어",
-  jaw_shadow: "턱선 섀도우",
+  nose_contour: "콧대 음영",
+  jaw_shadow: "턱선 음영",
 };
 
 const MODULE_LABELS: Partial<Record<MakeupModule, string>> = {
   brow: "눈썹",
   eyeshadow: "아이섀도",
   eyeliner: "아이라인",
-  blush: "블러셔",
-  lip: "립",
+  blush: "볼",
+  lip: "입술",
   lashes: "속눈썹",
 };
 
@@ -128,7 +129,7 @@ const DEFAULT_CALLOUT_BY_MODULE: Record<MakeupModule, MakeupColorCalloutId> = {
 const isComplexionGuideId = (value: MakeupColorCalloutId): value is MakeupComplexionGuideId =>
   value === "t_zone_highlight" || value === "nose_contour" || value === "jaw_shadow";
 const familyName = (value: string | null | undefined, fallback: string) => value?.trim()
-  ? value.trim().replaceAll("_", " ").toUpperCase()
+  ? makeupTechnicalCustomerLabel(value.trim())
   : fallback;
 const moduleColor = (item: MakeupModuleDirection | undefined, module: MakeupModule) => {
   const family = item?.direction.colorFamily?.toLowerCase() ?? "";
@@ -206,7 +207,7 @@ export function MakeupDirectionCanvas({ photoUrl, modules, topology = null, dens
           : item?.direction.technical.applicationDirection.join(" · ") || "얼굴 결을 따라 얇게 블렌딩하세요.";
     const texture = guide?.role === "highlight" ? "은은한 광" : guide?.role === "shadow" ? "매트 섀도우" : item?.direction.texture ?? "내추럴";
     const family = guide
-      ? (guide.role === "highlight" ? "LUMINOUS BEIGE" : guide.id === "nose_contour" ? "NEUTRAL TAUPE" : "DEEP NEUTRAL TAUPE")
+      ? (guide.role === "highlight" ? "은은한 베이지" : guide.id === "nose_contour" ? "뉴트럴 토프" : "딥 뉴트럴 토프")
       : familyName(item?.direction.colorFamily, spec.label);
     const blend = spec.id === "brow"
       ? "결을 따라 안→밖"

@@ -743,21 +743,32 @@ test("fashion Scene starts an adaptive entitlement-checked batch and keeps every
 
 test("navigation has no common Next control and outputs open by lifecycle capability", () => {
   const controls = read("../../components/consulting/scene/FloatingStageControls.tsx");
+  const identity = read("../../components/consulting/scene/SceneIdentity.tsx");
+  const context = read("../../components/consulting/scene/StageContextStrip.tsx");
   const overlay = read("../../components/consulting/scene/StageMapOverlay.tsx");
   const mutation = read("../../hooks/useConsultationMutation.ts");
   assert.doesNotMatch(controls, />Next</i);
   assert.match(controls, /recommendedStage/);
+  assert.match(controls, /currentStageComplete/);
+  assert.match(controls, /stage === "makeup"/);
+  assert.match(identity, /전체 상담 \$\{stageIndex \+ 1\}\/\$\{CONSULTATION_STAGE_DEFINITIONS\.length\}/);
+  assert.match(context, /이번 결과에 반영한 기준/);
+  assert.match(context, /<details/);
   assert.match(overlay, /allowedStages/);
   assert.match(mutation, /snapshot\.journey\.recommendedStage/);
 });
 
 test("every consultation Scene can exit while preserving saved server work", () => {
   const controls = read("../../components/consulting/scene/FloatingStageControls.tsx");
+  const interview = read("../../components/consulting/interview/ConsultationInterview.tsx");
+  const zeroInput = read("../../components/consulting/interview/ZeroInputConsultationStart.tsx");
   assert.match(controls, /ConfirmActionDialog/);
   assert.match(controls, /상담 나가기/);
   assert.match(controls, /저장된 상담 내용과 진행 중인 AI 작업은 유지됩니다/);
   assert.match(controls, /아직 저장하지 않은 입력은 사라질 수 있습니다/);
   assert.match(controls, /router\.push\("\/home"\)/);
+  assert.doesNotMatch(interview, />상담 나가기</);
+  assert.doesNotMatch(zeroInput, />상담 나가기</);
 });
 
 test("consultation liveness uses real task state, optional kinetic fidget, and automatic readiness handoff", () => {

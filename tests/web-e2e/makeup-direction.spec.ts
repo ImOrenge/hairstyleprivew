@@ -40,6 +40,7 @@ test("makeup stays inside the consultation journey with stage selection and a re
 
   const navigation = page.getByRole("navigation", { name: "상담 단계 이동" });
   await expect(navigation).toBeVisible();
+  await expect(page.getByText("스타일 설계 3/4 · 전체 상담 12/15", { exact: true })).toBeVisible();
   await navigation.getByRole("button", { name: "챕터" }).click();
 
   const stageMap = page.getByRole("dialog", { name: "4개 상담 챕터" });
@@ -47,7 +48,7 @@ test("makeup stays inside the consultation journey with stage selection and a re
   await expect(stageMap.getByText("최종 리포트", { exact: true })).toBeVisible();
   await stageMap.getByRole("button", { name: "전체 단계 닫기" }).click();
 
-  const recommended = navigation.getByRole("link", { name: "다음 추천 작업: 패션 방향 정하기" });
+  const recommended = navigation.getByRole("link", { name: "다음 추천 작업: 패션 방향 이어서 보기" });
   await expect(recommended).toBeVisible();
   await recommended.click();
   await expect(page).toHaveURL(/\/consulting\/e2e-harness\?stage=fashion$/);
@@ -80,8 +81,8 @@ test("makeup direction presents separated color callouts, local eye guides, and 
   expect(desktopInfoBox!.y).toBeGreaterThanOrEqual(desktopStageBox!.y);
   expect(desktopInfoBox!.y + desktopInfoBox!.height).toBeLessThanOrEqual(desktopStageBox!.y + desktopStageBox!.height + 1);
   await expect(fixture.locator("[data-makeup-semantic-zone], [data-makeup-application-line], [data-makeup-zone-trace]")).toHaveCount(0);
-  await fixture.getByRole("button", { name: "블러셔 색상 정보" }).click();
-  await expect(fixture.getByRole("button", { name: "블러셔 색상 정보" })).toHaveAttribute("aria-pressed", "true");
+  await fixture.getByRole("button", { name: "볼 색상 정보" }).click();
+  await expect(fixture.getByRole("button", { name: "볼 색상 정보" })).toHaveAttribute("aria-pressed", "true");
   await expect(fixture.locator("svg")).toHaveAttribute("viewBox", "0 0 1000 1250");
   await expect(fixture.locator("[data-makeup-topology-version='makeup-dense-atlas-v3']")).toBeVisible();
   await expect(fixture.locator("[data-makeup-connector-geometry-source='precision-atlas-v3']").first()).toBeVisible();
@@ -126,6 +127,9 @@ test("makeup direction presents separated color callouts, local eye guides, and 
   await expect(fixture.getByText("AI 메이크업 디렉터 리포트", { exact: true })).toBeVisible();
   await expect(fixture.getByText("셀프 메이크업 적용 순서", { exact: true })).toBeVisible();
   await expect(fixture.getByText("메이크업 아티스트용 상세 명세", { exact: true })).toBeVisible();
+  const secondaryActions = fixture.locator("[data-makeup-secondary-actions]");
+  await expect(secondaryActions).not.toHaveAttribute("open", "");
+  await secondaryActions.getByText("제품 찾기와 아티스트 공유", { exact: true }).click();
   await expect(fixture.getByText("브랜드와 관계없이 활용할 검색어", { exact: true })).toBeVisible();
   await expect(fixture.getByText("아티스트에게 리포트 전달", { exact: true })).toBeVisible();
   await expect(fixture.getByRole("checkbox")).not.toBeChecked();
@@ -167,6 +171,11 @@ test("makeup callouts remain distinct and operable at mobile width", async ({ pa
   await expect(fixture.getByRole("button", { name: "아이라인 색상 정보" })).toHaveAttribute("aria-pressed", "true");
   const mobileInfo = fixture.locator("[data-makeup-color-info]");
   await expect(mobileInfo).toBeVisible();
+  await expect(mobileInfo.getByText("추천 색", { exact: true })).toBeVisible();
+  await expect(mobileInfo.getByText("바르는 방향", { exact: true })).toBeVisible();
+  await expect(mobileInfo.getByText("표현 질감", { exact: true })).toBeVisible();
+  await expect(mobileInfo.getByText("HEX", { exact: true })).toHaveCount(0);
+  await expect(mobileInfo.getByText("INTENSITY", { exact: true })).toHaveCount(0);
   const [mobileStageBox, mobileInfoBox] = await Promise.all([
     fixture.locator(".makeup-direction-map__stage").boundingBox(),
     mobileInfo.boundingBox(),
