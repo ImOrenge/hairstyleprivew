@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { DiscoveryPageTemplate } from "@/components/discovery/DiscoveryPageTemplate";
-import { getDiscoveryPageBySlug, getPublishedDiscoveryPages } from "@/lib/discovery/discovery-pages";
+import { getDiscoveryPageBySlug } from "@/lib/discovery/discovery-pages";
 import { createDiscoveryMetadata } from "@/lib/discovery/metadata";
 
-export const dynamicParams = false;
-
-export function generateStaticParams() {
-  return getPublishedDiscoveryPages().map(({ slug }) => ({ slug }));
-}
+// Cloudflare Workers does not ship Next's generated fallback cache alongside
+// version-only uploads. Render the closed registry at request time so every
+// published SEO document remains available without a fallback cache lookup.
+export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug: string }> };
 

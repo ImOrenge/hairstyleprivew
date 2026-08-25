@@ -15,10 +15,9 @@ const metadata = read("lib", "discovery", "metadata.ts");
 const sitemap = read("app", "sitemap.ts");
 const bobRedirect = read("app", "(marketing)", "discover", "bob-cut-preview", "route.ts");
 
-test("detail route is a closed static registry route", () => {
-  assert.match(detailRoute, /export const dynamicParams = false/);
-  assert.match(detailRoute, /generateStaticParams/);
-  assert.match(detailRoute, /getPublishedDiscoveryPages/);
+test("detail route is a closed server-rendered registry route", () => {
+  assert.match(detailRoute, /export const dynamic = "force-dynamic"/);
+  assert.doesNotMatch(detailRoute, /dynamicParams|generateStaticParams|getPublishedDiscoveryPages/);
   assert.match(detailRoute, /getDiscoveryPageBySlug/);
   assert.match(detailRoute, /notFound\(\)/);
   assert.doesNotMatch(detailRoute, /auth\(|cookies\(|headers\(|supabase|use client/);
