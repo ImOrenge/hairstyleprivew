@@ -11,12 +11,24 @@ import { getSupabaseAdminClient, isSupabaseConfigured } from "../supabase";
 export interface CustomerStyleRecordV2 {
   selectionId: string;
   consultationId: string;
-  resultGenerationId: string;
   previewVariantId: string;
   name: string;
   recommendationReason: string;
   imageUrl: string | null;
   confirmedAt: string;
+}
+
+export interface CustomerStyleFactV2 {
+  label: string;
+  value: string;
+}
+
+export interface CustomerStyleResultV2 extends CustomerStyleRecordV2 {
+  strategyLabel: string;
+  designFacts: CustomerStyleFactV2[];
+  colorFacts: CustomerStyleFactV2[];
+  feasibilityFacts: CustomerStyleFactV2[];
+  selectedAt: string;
 }
 
 export interface CustomerAftercareCheckpointV2 {
@@ -108,6 +120,11 @@ type ParsedSelection = {
   recommendationReason: string;
   imagePath: string | null;
   confirmedAt: string;
+  selectedAt: string;
+  strategyBucket: StyleSelectionSnapshotV2["style"]["strategyBucket"];
+  design: Record<string, unknown>;
+  color: Record<string, unknown> | null;
+  implementationFeasibility: Record<string, unknown>;
 };
 
 const CHECKPOINT_OFFSETS = new Set(["D+1", "D+3", "D+7", "D+30", "D+45", "D+90"]);
@@ -129,13 +146,129 @@ function stringArray(value: unknown) {
     : [];
 }
 
+const CUSTOMER_VALUE_LABELS: Record<string, string> = {
+  short: "짧은 기장",
+  medium: "중간 기장",
+  long: "긴 기장",
+  none: "없음",
+  true: "예",
+  false: "아니요",
+  requires_stylist_confirmation: "미용실 현장 확인 필요",
+  "controlled straight texture": "정돈된 직모 텍스처",
+  "controlled tight curl texture": "정돈된 탄력 컬 텍스처",
+  "defined soft wave texture": "선명한 소프트 웨이브 텍스처",
+  "medium shadow wave": "중기장 쉐도우 웨이브",
+  "curtain fringe": "커튼 프린지",
+  "no fixed bangs": "고정 앞머리 없음",
+  "soft fringe": "소프트 프린지",
+  crown: "정수리",
+  "crown-balance": "정수리 균형",
+  jawline: "턱선",
+  "lower-frame": "하단 윤곽",
+  temple: "관자놀이",
+  "temple-balance": "관자놀이 균형",
+};
+
+const STRATEGY_LABELS: Record<StyleSelectionSnapshotV2["style"]["strategyBucket"], string> = {
+  face_balance: "얼굴 균형",
+  image_change: "인상 변화",
+  manageability: "관리 편의",
+};
+
+function customerText(value: unknown): string | null {
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    if (!normalized || normalized === "unknown") return null;
+    return CUSTOMER_VALUE_LABELS[normalized] ?? normalized.replaceAll("_", " ");
+  }
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  if (typeof value === "boolean") return CUSTOMER_VALUE_LABELS[String(value)];
+  if (Array.isArray(value)) {
+    const items = value.flatMap((item) => {
+      if (typeof item !== "string" && typeof item !== "number" && typeof item !== "boolean") return [];
+      const text = customerText(item);
+      return text ? [text] : [];
+    });
+    return items.length ? items.join(" · ") : null;
+  }
+  return null;
+}
+
+function customerFacts(
+  source: Record<string, unknown> | null,
+  fields: ReadonlyArray<readonly [key: string, label: string]>,
+): CustomerStyleFactV2[] {
+  if (!source) return [];
+  return fields.flatMap(([key, label]) => {
+    const value = customerText(source[key]);
+    return value ? [{ label, value }] : [];
+  });
+}
+
+function toCustomerStyleRecord(
+  selection: ParsedSelection,
+  imageUrl: string | null,
+): CustomerStyleRecordV2 {
+  return {
+    selectionId: selection.selectionId,
+    consultationId: selection.consultationId,
+    previewVariantId: selection.previewVariantId,
+    name: selection.name,
+    recommendationReason: selection.recommendationReason,
+    imageUrl,
+    confirmedAt: selection.confirmedAt,
+  };
+}
+
+function toCustomerStyleResult(
+  selection: ParsedSelection,
+  imageUrl: string | null,
+): CustomerStyleResultV2 {
+  return {
+    ...toCustomerStyleRecord(selection, imageUrl),
+    strategyLabel: STRATEGY_LABELS[selection.strategyBucket] ?? "맞춤 스타일",
+    designFacts: customerFacts(selection.design, [
+      ["lengthBucket", "길이"],
+      ["silhouette", "실루엣"],
+      ["texture", "텍스처"],
+      ["bangType", "앞머리"],
+      ["volumeFocusTags", "볼륨 포인트"],
+    ]),
+    colorFacts: customerFacts(selection.color, [
+      ["name", "컬러"],
+      ["colorName", "컬러"],
+      ["technique", "기법"],
+      ["targetLevel", "명도"],
+      ["rationale", "선정 이유"],
+    ]),
+    feasibilityFacts: customerFacts(selection.implementationFeasibility, [
+      ["status", "시술 확인"],
+      ["currentHair", "현재 모발 조건"],
+    ]),
+    selectedAt: selection.selectedAt,
+  };
+}
+
 export function parseCustomerSelectionRowV2(row: SelectionRow): ParsedSelection | null {
   const snapshot = objectOrNull(row.snapshot) as StyleSelectionSnapshotV2 | null;
+  if (snapshot?.schemaVersion !== "style-selection-snapshot-v1") return null;
   const style = objectOrNull(snapshot?.style);
   const previewImage = objectOrNull(snapshot?.previewImage);
+  const design = objectOrNull(style?.design);
+  const color = objectOrNull(style?.color);
+  const implementationFeasibility = objectOrNull(style?.implementationFeasibility);
   const confirmedAt = cleanString(row.confirmed_at ?? snapshot?.confirmedAt);
+  const selectedAt = cleanString(snapshot?.selectedAt, confirmedAt);
   const name = cleanString(style?.name);
-  if (!row.id || !row.consultation_id || !row.preview_variant_id || !confirmedAt || !name) return null;
+  const strategyBucket = cleanString(style?.strategyBucket) as StyleSelectionSnapshotV2["style"]["strategyBucket"];
+  if (
+    !row.id
+    || !row.consultation_id
+    || !row.preview_variant_id
+    || !confirmedAt
+    || !name
+    || !(strategyBucket in STRATEGY_LABELS)
+  ) return null;
 
   return {
     selectionId: row.id,
@@ -145,6 +278,11 @@ export function parseCustomerSelectionRowV2(row: SelectionRow): ParsedSelection 
     recommendationReason: cleanString(style?.recommendationReason, "확정한 스타일 방향"),
     imagePath: cleanString(previewImage?.path) || null,
     confirmedAt,
+    selectedAt,
+    strategyBucket,
+    design: design ?? {},
+    color,
+    implementationFeasibility: implementationFeasibility ?? {},
   };
 }
 
@@ -220,33 +358,35 @@ export async function loadCustomerStylebookV2(userId: string): Promise<CustomerS
     .filter((value): value is ParsedSelection => value !== null);
   if (!selections.length) return [];
 
-  const consultationIds = selections.map((selection) => selection.consultationId);
-  const sessions = await db
-    .from("consultation_sessions")
-    .select("id,source_generation_id")
-    .eq("user_id", userId)
-    .in("id", consultationIds);
-  if (sessions.error) throw new Error(sessions.error.message);
-  const generationByConsultation = new Map<string, string>();
-  for (const row of (sessions.data ?? []) as unknown as Array<{ id: string; source_generation_id: string | null }>) {
-    if (row.source_generation_id) generationByConsultation.set(row.id, row.source_generation_id);
-  }
-
   const imageUrls = await signedImageUrls(selections.map((selection) => selection.imagePath), db as unknown as ServerSupabaseLike);
-  return selections.flatMap((selection) => {
-    const resultGenerationId = generationByConsultation.get(selection.consultationId);
-    if (!resultGenerationId) return [];
-    return [{
-      selectionId: selection.selectionId,
-      consultationId: selection.consultationId,
-      resultGenerationId,
-      previewVariantId: selection.previewVariantId,
-      name: selection.name,
-      recommendationReason: selection.recommendationReason,
-      imageUrl: selection.imagePath ? imageUrls.get(selection.imagePath) ?? null : null,
-      confirmedAt: selection.confirmedAt,
-    }];
-  });
+  return selections.map((selection) => toCustomerStyleRecord(
+    selection,
+    selection.imagePath ? imageUrls.get(selection.imagePath) ?? null : null,
+  ));
+}
+
+export async function loadCustomerStyleResultV2(
+  userId: string,
+  selectionId: string,
+): Promise<CustomerStyleResultV2 | null> {
+  if (!isSupabaseConfigured()) return null;
+  const db = getSupabaseAdminClient();
+  const result = await db
+    .from("style_selection_snapshots_v2")
+    .select("id,consultation_id,preview_variant_id,snapshot,confirmed_at")
+    .eq("id", selectionId)
+    .eq("user_id", userId)
+    .eq("status", "confirmed")
+    .maybeSingle();
+  if (result.error) throw new Error(result.error.message);
+  if (!result.data) return null;
+
+  const selection = parseCustomerSelectionRowV2(result.data as unknown as SelectionRow);
+  if (!selection) return null;
+  const imageUrl = selection.imagePath
+    ? await createSignedUrl(db as unknown as ServerSupabaseLike, STYLING_RESULTS_BUCKET, selection.imagePath)
+    : null;
+  return toCustomerStyleResult(selection, imageUrl);
 }
 
 export async function loadCustomerAftercareV2(userId: string): Promise<CustomerAftercareRecordV2[]> {

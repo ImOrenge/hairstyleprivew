@@ -8,6 +8,7 @@ related_source:
   - my-app/components/customer/customer-shell.css
   - my-app/lib/customer-navigation.ts
   - my-app/lib/v2/customer-history-server.ts
+  - my-app/app/result/v2/[selectionId]/page.tsx
 owner: customer-experience
 
 public_api:
@@ -45,6 +46,7 @@ route_contract:
     - /stylebook
     - /aftercare
     - /mypage
+    - /result/v2/{selectionId}
   primary_consultation_entry: /consulting/new
   consultation_shell: hidden
   internal_consultation_flow: preserved
@@ -52,7 +54,9 @@ route_contract:
 
 history_data_contract:
   stylebook_source: style_selection_snapshots_v2-confirmed-only
-  stylebook_destination: /result/{sourceGenerationId}
+  stylebook_destination: /result/v2/{selectionId}
+  style_result_source: style_selection_snapshots_v2-confirmed-owned-selection-only
+  legacy_generation_dependency: forbidden
   aftercare_sources:
     - actual_services_v2
     - aftercare_programs_v2
@@ -94,7 +98,7 @@ test_surface:
   customer_copy: credit-balance-excluded
 
 change_policy:
-  current_gate: behavioral
+  current_gate: breaking
   compatible_change_requires:
     - passport-update
     - shell-contract-test
