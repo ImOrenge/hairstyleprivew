@@ -452,6 +452,55 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.customer-stylebook {
+  display: grid;
+  gap: 1rem;
+}
+
+.customer-stylebook-tabs {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  gap: 0.3rem;
+  border: 1px solid var(--customer-line);
+  border-radius: 999px;
+  padding: 0.3rem;
+  background: var(--customer-surface);
+}
+
+.customer-stylebook-tabs a {
+  display: inline-flex;
+  min-height: 2.7rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0 1rem;
+  color: var(--customer-muted);
+  font-size: 0.78rem;
+  font-weight: 780;
+}
+
+.customer-stylebook-tabs a[aria-current="page"] {
+  background: var(--customer-graphite);
+  color: var(--customer-ivory);
+}
+
+.customer-stylebook-tabs span {
+  display: grid;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--customer-raised);
+  color: var(--customer-muted);
+  font-size: 0.64rem;
+}
+
+.customer-stylebook-tabs a[aria-current="page"] span {
+  background: var(--customer-champagne-soft);
+  color: var(--customer-graphite);
+}
+
 .customer-stylebook-card {
   overflow: hidden;
   box-shadow: none;
@@ -464,9 +513,24 @@
 }
 
 .customer-stylebook-card__visual {
+  position: relative;
   aspect-ratio: 4 / 5;
   overflow: hidden;
   background: var(--customer-raised);
+}
+
+.customer-stylebook-card__badge {
+  position: absolute;
+  top: 0.8rem;
+  right: 0.8rem;
+  border: 1px solid rgb(244 241 232 / 45%);
+  border-radius: 999px;
+  padding: 0.35rem 0.6rem;
+  background: rgb(21 20 18 / 82%);
+  color: var(--customer-ivory);
+  font-size: 0.62rem;
+  font-weight: 800;
+  backdrop-filter: blur(8px);
 }
 
 .customer-stylebook-card__visual img {
@@ -515,6 +579,23 @@
   line-height: 1.55;
 }
 
+.customer-stylebook-card__body--fashion {
+  min-height: 11rem;
+}
+
+.customer-stylebook-palette {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.7rem;
+}
+
+.customer-stylebook-palette span {
+  width: 1.1rem;
+  height: 1.1rem;
+  border: 1px solid rgb(21 20 18 / 14%);
+  border-radius: 50%;
+}
+
 .customer-stylebook-card__body div > p:last-child {
   margin-top: 0.35rem;
 }
@@ -559,6 +640,15 @@
 }
 
 @media (max-width: 560px) {
+  .customer-stylebook-tabs {
+    width: 100%;
+  }
+
+  .customer-stylebook-tabs a {
+    flex: 1;
+    justify-content: center;
+  }
+
   .customer-stylebook-grid {
     grid-template-columns: 1fr;
   }

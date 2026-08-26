@@ -381,6 +381,27 @@
       }
     },
     {
+      "id": "web.customer.stylebook",
+      "name": "CustomerStylebookCollection",
+      "platform": "web",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "my-app/components/customer/CustomerStylebookCollection.tsx",
+      "related_source": [
+        "my-app/app/stylebook/page.tsx",
+        "my-app/lib/v2/customer-history-server.ts",
+        "my-app/app/api/mobile/stylebook/route.ts",
+        "my-app/components/e2e/CustomerStylebookHarness.tsx"
+      ],
+      "owner": "customer-experience",
+      "passport": "docs/components/passports/web-customer-stylebook.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "harness_consumer_files": 1,
+        "scope": "authenticated V2 final hair and fashion collection"
+      }
+    },
+    {
       "id": "web.mypage.tab-navigation",
       "name": "MyPageTabNavigation",
       "platform": "web",
@@ -449,6 +470,25 @@
       "observed_usage": {
         "consumer_files": 1,
         "scope": "HairFit Expo AI consultant Personal Color workspace"
+      }
+    },
+    {
+      "id": "native.customer.stylebook",
+      "name": "NativeStylebookCollection",
+      "platform": "native",
+      "kind": "feature",
+      "status": "experimental",
+      "source": "apps/hairfit-app/components/customer/NativeStylebookCollection.tsx",
+      "related_source": [
+        "apps/hairfit-app/app/stylebook.tsx",
+        "apps/hairfit-app/app/consulting.tsx",
+        "packages/api-client/src/index.ts"
+      ],
+      "owner": "customer-experience",
+      "passport": "docs/components/passports/native-customer-stylebook.yaml",
+      "observed_usage": {
+        "production_consumer_files": 1,
+        "scope": "HairFit app V2 final hair and fashion collection"
       }
     },
     {

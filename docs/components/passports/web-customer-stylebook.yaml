@@ -1,0 +1,61 @@
+id: web.customer.stylebook
+name: CustomerStylebookCollection
+platform: web
+kind: feature
+status: experimental
+source: my-app/components/customer/CustomerStylebookCollection.tsx
+owner: customer-experience
+
+public_api:
+  props:
+    - collection: CustomerStylebookV2
+    - activeView: hair-or-fashion
+    - routeBase: optional-harness-navigation-base
+  events:
+    - native-link-navigation
+
+boundaries:
+  owns:
+    - final-hair-and-fashion-tab-presentation
+    - per-tab-empty-state
+    - final-result-deep-links
+  forbidden:
+    - data-fetching
+    - consultation-stage-mutation
+    - legacy-generation-aggregation
+    - credit-or-product-commerce-copy
+
+data_contract:
+  schema: customer-stylebook-v2
+  hair_source: style_selection_snapshots_v2-confirmed
+  fashion_source: fashion_preview_sets_v2-latest-per-consultation
+  final_filter: consultation_sessions-completed-result
+  fashion_media: completed-v2-selection-styling-session
+
+styling:
+  strategy: customer-shell-scoped-global-css
+  stylesheet: my-app/components/customer/customer-shell.css
+  root_namespace: customer-stylebook
+  tokens: [customer-surface, customer-graphite, customer-ivory, customer-champagne]
+  inline_styles_allowed: runtime-validated-palette-colors-only
+
+a11y_contract:
+  tab_navigation: native-links-with-aria-current-page
+  collection_label: per-active-view
+  images: descriptive-alt
+  focus_indicator: inherited-customer-shell-visible-outline
+
+test_surface:
+  contract: my-app/lib/app-shell-accessibility.test.ts
+  interaction: tests/web-e2e/customer-shell-v2.spec.ts
+  responsive_visual: required
+  web_typecheck: required
+
+change_policy:
+  current_gate: compatible-behavioral-style-contract
+  compatible_change_requires: [passport-update, typecheck, harness-verification]
+  breaking_change_requires: [consumer-update, migration-note]
+
+promotion_blockers:
+  - no-authenticated-production-fashion-record-evidence
+  - no-screen-reader-evidence

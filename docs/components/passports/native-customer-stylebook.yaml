@@ -1,0 +1,58 @@
+id: native.customer.stylebook
+name: NativeStylebookCollection
+platform: native
+kind: feature
+status: experimental
+source: apps/hairfit-app/components/customer/NativeStylebookCollection.tsx
+owner: customer-experience
+
+public_api:
+  props:
+    - collection: CustomerStylebookV2
+    - activeView: hair-or-fashion
+    - onViewChange
+    - onOpenConsultation
+    - onStartConsultation
+
+boundaries:
+  owns:
+    - native-final-hair-and-fashion-tab-presentation
+    - native-card-and-empty-state-interaction
+  forbidden:
+    - api-data-fetching
+    - persistent-consultation-state
+    - legacy-dashboard-history
+    - credit-or-product-commerce-copy
+
+data_contract:
+  endpoint: GET-/api/mobile/stylebook
+  schema: customer-stylebook-v2
+  destination: /consulting?consultationId={consultationId}
+  result_surface: existing-mobile-consultation-final-report
+
+styling:
+  strategy: app-local-StyleSheet-and-customer-token-module
+  token_source: apps/hairfit-app/lib/customer-ui.ts
+  palette: [ivory, graphite, champagne]
+  inline_styles_allowed: runtime-validated-palette-colors-only
+
+a11y_contract:
+  tabs: tablist-and-selected-tab-state
+  cards: named-button
+  images: named-image
+  minimum_control_height: 48
+
+test_surface:
+  native_typecheck: required
+  native_lint: required
+  component_jest: required
+  device_smoke: required
+
+change_policy:
+  current_gate: compatible-behavioral-style-contract
+  compatible_change_requires: [passport-update, native-typecheck, component-test]
+  breaking_change_requires: [screen-consumer-update, migration-note]
+
+promotion_blockers:
+  - no-iOS-and-Android-device-visual-evidence
+  - no-screen-reader-evidence

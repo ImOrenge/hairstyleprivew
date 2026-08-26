@@ -8,6 +8,7 @@ related_source:
   - my-app/components/customer/customer-shell.css
   - my-app/lib/customer-navigation.ts
   - my-app/lib/v2/customer-history-server.ts
+  - my-app/components/customer/CustomerStylebookCollection.tsx
   - my-app/app/result/v2/[selectionId]/page.tsx
 owner: customer-experience
 
@@ -30,6 +31,7 @@ boundaries:
     - tablet-compact-rail
     - mobile-safe-area-bottom-navigation
     - V2-confirmed-style-history-presentation
+    - V2-final-fashion-look-history-presentation
     - V2-actual-service-aftercare-presentation
   forbidden:
     - consultation-stage-rendering
@@ -53,8 +55,13 @@ route_contract:
   compatibility_redirect: /result/v2/{selectionId} -> /consulting/{consultationId}/result
 
 history_data_contract:
-  stylebook_source: style_selection_snapshots_v2-confirmed-only
-  stylebook_destination: /consulting/{consultationId}/result
+  stylebook_sources:
+    - style_selection_snapshots_v2-confirmed-only
+    - fashion_preview_sets_v2-latest-final-selection
+    - styling_sessions-v2-selection-completed-media
+  stylebook_destinations:
+    - /consulting/{consultationId}/result
+    - /consulting/{consultationId}/result?tab=fashion
   stylebook_result_surface: existing-consultation-final-result-stage
   legacy_generation_dependency: forbidden
   aftercare_sources:

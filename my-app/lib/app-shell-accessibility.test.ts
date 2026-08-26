@@ -61,7 +61,8 @@ test("customer surfaces use the five-item atelier shell while consultation stays
   }
   assert.match(navigation, /href: "\/consulting\/new"/);
   assert.match(navigation, /customerShellRoutes = \["\/home", "\/stylebook", "\/aftercare", "\/mypage"\]/);
-  assert.match(navigation, /customerShellHarnessRoute = "\/e2e-harness\/customer-shell"/);
+  assert.match(navigation, /"\/e2e-harness\/customer-shell"/);
+  assert.match(navigation, /"\/e2e-harness\/customer-stylebook"/);
   assert.match(navigation, /pathname\.startsWith\(`\$\{route\}\/`\)/);
   assert.match(shell, /aria-label="고객 주요 내비게이션"/);
   assert.match(shell, /customer-app__bottom-nav/);
@@ -73,23 +74,31 @@ test("customer surfaces use the five-item atelier shell while consultation stays
 
 test("stylebook and aftercare use only the HairFit V2 customer history read model", () => {
   const stylebook = readFileSync(path.join(appRoot, "app", "stylebook", "page.tsx"), "utf8");
+  const stylebookCollection = readFileSync(path.join(appRoot, "components", "customer", "CustomerStylebookCollection.tsx"), "utf8");
+  const mobileStylebook = readFileSync(path.join(appRoot, "..", "apps", "hairfit-app", "app", "stylebook.tsx"), "utf8");
+  const mobileStylebookApi = readFileSync(path.join(appRoot, "app", "api", "mobile", "stylebook", "route.ts"), "utf8");
   const styleResultRedirect = readFileSync(path.join(appRoot, "app", "result", "v2", "[selectionId]", "page.tsx"), "utf8");
   const aftercare = readFileSync(path.join(appRoot, "app", "aftercare", "page.tsx"), "utf8");
   const aftercareDetail = readFileSync(path.join(appRoot, "app", "aftercare", "[hairRecordId]", "page.tsx"), "utf8");
   const history = readFileSync(path.join(appRoot, "lib", "v2", "customer-history-server.ts"), "utf8");
   const customerHistorySurfaces = `${stylebook}\n${aftercare}\n${aftercareDetail}`;
 
-  assert.match(stylebook, /loadCustomerStylebookV2/);
-  assert.match(stylebook, /`\/consulting\/\$\{encodeURIComponent\(entry\.consultationId\)\}\/result`/);
+  assert.match(stylebook, /loadCustomerStylebookCollectionV2/);
+  assert.match(stylebookCollection, /`\/consulting\/\$\{encodeURIComponent\(entry\.consultationId\)\}\/result`/);
+  assert.match(stylebookCollection, /result\?tab=fashion/);
+  assert.match(stylebookCollection, /aria-label="스타일북 분류"/);
   assert.doesNotMatch(stylebook, /resultGenerationId|`\/result\/|`\/result\/v2\/|entry\.actualServiceId|`\/aftercare\/\$\{encodeURIComponent/);
   assert.match(styleResultRedirect, /loadCustomerStyleResultConsultationV2/);
   assert.match(styleResultRedirect, /consultationStageHref\(consultationId, "result"\)/);
   assert.doesNotMatch(styleResultRedirect, /CustomerShell|CustomerPageHeader|loadCustomerStyleResultV2/);
   assert.match(aftercare, /loadCustomerAftercareV2/);
   assert.match(aftercareDetail, /loadCustomerAftercareRecordV2/);
-  assert.doesNotMatch(customerHistorySurfaces, /loadCustomerDashboardForUser|user_hair_records|user_aftercare_guides|recentGenerations|recentStylingSessions/);
+  assert.doesNotMatch(`${customerHistorySurfaces}\n${mobileStylebook}`, /loadCustomerDashboardForUser|user_hair_records|user_aftercare_guides|recentGenerations|recentStylingSessions/);
   for (const table of [
     "style_selection_snapshots_v2",
+    "fashion_preview_sets_v2",
+    "styling_sessions",
+    "consultation_sessions",
     "actual_services_v2",
     "aftercare_programs_v2",
     "aftercare_checkins_v2",
@@ -97,5 +106,8 @@ test("stylebook and aftercare use only the HairFit V2 customer history read mode
     assert.match(history, new RegExp(table));
   }
   assert.match(history, /STYLING_RESULTS_BUCKET/);
-  assert.doesNotMatch(history, /consultation_sessions|source_generation_id|resultGenerationId/);
+  assert.match(history, /lifecycle_state", "completed"/);
+  assert.match(history, /current_stage", "result"/);
+  assert.match(mobileStylebookApi, /requireMobileService\("customer"\)/);
+  assert.doesNotMatch(history, /source_generation_id|resultGenerationId/);
 });

@@ -23,6 +23,7 @@ export * from "./generation/upload-validation";
 export * from "./mobile/app-version";
 export * from "./salon/connection-consent";
 export * from "./styling/contract";
+export * from "./customer-stylebook";
 
 export type MobileServiceKey = "customer" | "salon" | "admin";
 

@@ -12,10 +12,11 @@ const confirmedStyleMedia = read("./confirmed-style-media.ts");
 const mobileHome = read("../../apps/hairfit-app/app/index.tsx");
 const stylebook = read("../app/stylebook/page.tsx");
 const mobileStylebook = read("../../apps/hairfit-app/app/stylebook.tsx");
+const mobileStylebookCollection = read("../../apps/hairfit-app/components/customer/NativeStylebookCollection.tsx");
+const mobileStylebookApi = read("../app/api/mobile/stylebook/route.ts");
 const mobileAftercareApi = read("../app/api/mobile/aftercare/route.ts");
 const confirmedStyleSurfaces = [
   dashboard,
-  read("../app/aftercare/page.tsx"),
   mobileAftercareApi,
   read("../app/api/mobile/aftercare/[hairRecordId]/route.ts"),
 ];
@@ -46,10 +47,12 @@ test("web and native home prioritize care while the unified stylebook owns durab
     assert.doesNotMatch(source, />헤어 생성 기록</);
   }
   for (const source of [stylebook, mobileStylebook]) {
-    assert.match(source, /recentGenerations/);
-    assert.match(source, /recentStylingSessions/);
-    assert.match(source, /recentConfirmedStyles/);
+    assert.doesNotMatch(source, /recentGenerations|recentStylingSessions|recentConfirmedStyles/);
   }
+  assert.match(stylebook, /loadCustomerStylebookCollectionV2/);
+  assert.match(mobileStylebook, /getCustomerStylebookV2/);
+  assert.match(mobileStylebookCollection, /CustomerStylebookV2/);
+  assert.match(mobileStylebookApi, /loadCustomerStylebookCollectionV2/);
 });
 
 test("generation monitoring remains available as a clearly separated work-status surface", () => {

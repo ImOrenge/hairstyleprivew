@@ -5,7 +5,7 @@
   "scripts": {
     "auth:return-target:test": "node --no-warnings --test lib/clerk.test.ts",
     "app-links:external:check": "node --no-warnings scripts/check-app-link-associations.mjs",
-    "ui-shell:contract:test": "node --no-warnings --test lib/app-shell-accessibility.test.ts",
+    "ui-shell:contract:test": "node --no-warnings --test lib/app-shell-accessibility.test.ts lib/v2/customer-stylebook-parser.test.ts",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "start": "next start",

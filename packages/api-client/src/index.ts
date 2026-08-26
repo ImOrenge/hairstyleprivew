@@ -15,6 +15,7 @@ import type {
   MobileAftercareListResponse,
   MobileBootstrap,
   MobileDashboard,
+  CustomerStylebookV2,
   MobilePaymentCompleteResponse,
   MobilePaymentPlan,
   MobilePaymentPrepareResponse,
@@ -627,6 +628,10 @@ export class HairfitApiClient {
     return this.request<MobileDashboard>(
       `/api/mobile/dashboard?${params.toString()}`,
     );
+  }
+
+  getCustomerStylebookV2() {
+    return this.request<CustomerStylebookV2>("/api/mobile/stylebook");
   }
 
   listAdminMembers(

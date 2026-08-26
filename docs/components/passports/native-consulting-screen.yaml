@@ -15,9 +15,12 @@ owner: consulting-feature
 
 public_api:
   route: /consulting
+  optional_route_query:
+    - consultationId: owned-existing-consultation-to-open
   inputs:
     - authenticated-user
     - active-consultation-id-from-secure-store
+    - optional-owned-consultation-id-from-stylebook
     - shared-ConsultationSnapshot
   outputs:
     - zero-required-answer-photo-first-intake

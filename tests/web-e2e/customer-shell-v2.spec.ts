@@ -28,3 +28,35 @@ test("customer shell keeps consultation prominent across desktop and mobile", as
   await expect(bottomNavigation.getByRole("link", { name: "새 컨설팅" })).toHaveAttribute("href", "/consulting/new");
   await page.screenshot({ path: testInfo.outputPath("customer-shell-mobile.png"), fullPage: true, animations: "disabled" });
 });
+
+test("stylebook separates final hair and fashion records without leaving the final report", async ({ page }, testInfo) => {
+  await page.goto("/e2e-harness/customer-stylebook");
+  await expect(page.locator('[data-e2e-customer-stylebook="true"]')).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "스타일북 분류" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /헤어 스타일/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator('.customer-stylebook-card[data-kind="hair"]')).toHaveCount(2);
+  await expect(page.locator('.customer-stylebook-card[data-kind="hair"]').first()).toHaveAttribute(
+    "href",
+    "/consulting/consultation-hair-1/result",
+  );
+
+  await page.getByRole("link", { name: /패션 룩/ }).click();
+  await expect(page).toHaveURL(/\/e2e-harness\/customer-stylebook\?view=fashion$/);
+  await expect(page.getByRole("link", { name: /패션 룩/ })).toHaveAttribute("aria-current", "page");
+  await expect(page.locator('.customer-stylebook-card[data-kind="fashion"]')).toHaveCount(3);
+  await expect(page.getByText("최종 확정")).toHaveCount(3);
+  await expect(page.locator('.customer-stylebook-card[data-kind="fashion"]').first()).toHaveAttribute(
+    "href",
+    "/consulting/consultation-fashion-1/result?tab=fashion",
+  );
+  await page.screenshot({ path: testInfo.outputPath("customer-stylebook-fashion-desktop.png"), fullPage: true, animations: "disabled" });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+  expect(horizontalOverflow).toBe(false);
+  await page.screenshot({ path: testInfo.outputPath("customer-stylebook-fashion-mobile.png"), fullPage: true, animations: "disabled" });
+
+  await page.goto("/e2e-harness/customer-stylebook?view=fashion&empty=1");
+  await expect(page.locator('[data-stylebook-empty="fashion"]')).toContainText("아직 확정한 패션 룩이 없어요");
+  await expect(page.locator('[data-stylebook-empty="fashion"]')).toContainText("컨설팅 마지막 단계");
+});

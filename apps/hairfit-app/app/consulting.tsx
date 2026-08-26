@@ -44,7 +44,7 @@ import {
   Stack,
 } from "@hairfit/ui-native";
 import * as Crypto from "expo-crypto";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   AppState,
@@ -159,6 +159,12 @@ export default function MobileConsultingScreen() {
   const { isLoaded, isSignedIn } = useAuth();
   const api = useHairfitApi();
   const router = useRouter();
+  const { consultationId: requestedConsultationIdParam } = useLocalSearchParams<{
+    consultationId?: string | string[];
+  }>();
+  const requestedConsultationId = typeof requestedConsultationIdParam === "string"
+    ? requestedConsultationIdParam.trim()
+    : "";
   const [consultation, setConsultation] =
     useState<ConsultationSessionV2 | null>(null);
   const [workspace, setWorkspace] = useState<ConsultationSnapshot | null>(null);
@@ -378,6 +384,12 @@ export default function MobileConsultingScreen() {
       return;
     }
     let cancelled = false;
+    if (requestedConsultationId) {
+      void load(requestedConsultationId);
+      return () => {
+        cancelled = true;
+      };
+    }
     void readActiveV2ConsultationId().then((consultationId) => {
       if (cancelled) return;
       if (consultationId) void load(consultationId);
@@ -386,7 +398,7 @@ export default function MobileConsultingScreen() {
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, isSignedIn, load, router]);
+  }, [isLoaded, isSignedIn, load, requestedConsultationId, router]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {

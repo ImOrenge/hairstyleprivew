@@ -7,10 +7,13 @@ export const CUSTOMER_NAVIGATION_ITEMS = [
 ] as const;
 
 const customerShellRoutes = ["/home", "/stylebook", "/aftercare", "/mypage"] as const;
-const customerShellHarnessRoute = "/e2e-harness/customer-shell";
+const customerShellHarnessRoutes = [
+  "/e2e-harness/customer-shell",
+  "/e2e-harness/customer-stylebook",
+] as const;
 
 export function isCustomerShellPath(pathname: string) {
-  return pathname === customerShellHarnessRoute
+  return customerShellHarnessRoutes.includes(pathname as (typeof customerShellHarnessRoutes)[number])
     || customerShellRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 

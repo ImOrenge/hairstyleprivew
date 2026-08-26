@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { CustomerStylebookHairEntryV2, CustomerStylebookV2 } from "@hairfit/shared";
 import type { AftercareProgramV2, StyleSelectionSnapshotV2 } from "@hairfit/shared/v2";
 import {
   createSignedUrl,
@@ -7,16 +8,13 @@ import {
   type ServerSupabaseLike,
 } from "../style-profile-server";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../supabase";
+import {
+  parseCustomerFashionPreviewSetRowV2,
+  type FashionPreviewSetRowV2,
+  type ParsedCustomerFashionSelectionV2,
+} from "./customer-stylebook-parser";
 
-export interface CustomerStyleRecordV2 {
-  selectionId: string;
-  consultationId: string;
-  previewVariantId: string;
-  name: string;
-  recommendationReason: string;
-  imageUrl: string | null;
-  confirmedAt: string;
-}
+export type CustomerStyleRecordV2 = CustomerStylebookHairEntryV2;
 
 export interface CustomerAftercareCheckpointV2 {
   offset: AftercareProgramV2["checkpoints"][number]["offset"];
@@ -99,6 +97,15 @@ type CheckinRow = {
   failure_message: string | null;
 };
 
+type StylingSessionRow = {
+  id: string;
+  consultation_id: string | null;
+  selection_snapshot_id: string | null;
+  source_mode: string | null;
+  status: string;
+  generated_image_path: string | null;
+};
+
 type ParsedSelection = {
   selectionId: string;
   consultationId: string;
@@ -133,11 +140,12 @@ function toCustomerStyleRecord(
   imageUrl: string | null,
 ): CustomerStyleRecordV2 {
   return {
-    selectionId: selection.selectionId,
+    kind: "hair",
+    id: selection.selectionId,
     consultationId: selection.consultationId,
     previewVariantId: selection.previewVariantId,
-    name: selection.name,
-    recommendationReason: selection.recommendationReason,
+    title: selection.name,
+    description: selection.recommendationReason,
     imageUrl,
     confirmedAt: selection.confirmedAt,
   };
@@ -218,28 +226,105 @@ async function signedImageUrls(paths: Array<string | null>, supabase: ServerSupa
   return new Map(entries);
 }
 
-export async function loadCustomerStylebookV2(userId: string): Promise<CustomerStyleRecordV2[]> {
-  if (!isSupabaseConfigured()) return [];
-  const db = getSupabaseAdminClient();
-  const result = await db
-    .from("style_selection_snapshots_v2")
-    .select("id,consultation_id,preview_variant_id,snapshot,confirmed_at")
+async function loadFinalConsultationIds(
+  userId: string,
+  consultationIds: string[],
+): Promise<Set<string>> {
+  const ids = [...new Set(consultationIds.filter(Boolean))];
+  if (!ids.length) return new Set();
+  const result = await getSupabaseAdminClient()
+    .from("consultation_sessions")
+    .select("id")
     .eq("user_id", userId)
-    .eq("status", "confirmed")
-    .order("confirmed_at", { ascending: false })
-    .limit(100);
+    .eq("lifecycle_state", "completed")
+    .eq("current_stage", "result")
+    .in("id", ids);
   if (result.error) throw new Error(result.error.message);
+  return new Set(((result.data ?? []) as Array<{ id: string }>).map((row) => row.id));
+}
 
-  const selections = ((result.data ?? []) as unknown as SelectionRow[])
+export async function loadCustomerStylebookCollectionV2(userId: string): Promise<CustomerStylebookV2> {
+  const empty: CustomerStylebookV2 = { schemaVersion: "customer-stylebook-v2", hair: [], fashion: [] };
+  if (!isSupabaseConfigured()) return empty;
+  const db = getSupabaseAdminClient();
+  const [selectionResult, fashionResult] = await Promise.all([
+    db.from("style_selection_snapshots_v2")
+      .select("id,consultation_id,preview_variant_id,snapshot,confirmed_at")
+      .eq("user_id", userId)
+      .eq("status", "confirmed")
+      .order("confirmed_at", { ascending: false })
+      .limit(100),
+    db.from("fashion_preview_sets_v2")
+      .select("id,consultation_id,selection_snapshot_id,version,preview_set,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(100),
+  ]);
+  if (selectionResult.error) throw new Error(selectionResult.error.message);
+  if (fashionResult.error) throw new Error(fashionResult.error.message);
+
+  const selections = ((selectionResult.data ?? []) as unknown as SelectionRow[])
     .map(parseCustomerSelectionRowV2)
     .filter((value): value is ParsedSelection => value !== null);
-  if (!selections.length) return [];
+  const seenFashionConsultations = new Set<string>();
+  const fashionSelections = ((fashionResult.data ?? []) as unknown as FashionPreviewSetRowV2[])
+    .map(parseCustomerFashionPreviewSetRowV2)
+    .filter((value): value is ParsedCustomerFashionSelectionV2 => value !== null)
+    .filter((value) => {
+      if (seenFashionConsultations.has(value.consultationId)) return false;
+      seenFashionConsultations.add(value.consultationId);
+      return true;
+    });
 
-  const imageUrls = await signedImageUrls(selections.map((selection) => selection.imagePath), db as unknown as ServerSupabaseLike);
-  return selections.map((selection) => toCustomerStyleRecord(
-    selection,
-    selection.imagePath ? imageUrls.get(selection.imagePath) ?? null : null,
-  ));
+  const finalConsultationIds = await loadFinalConsultationIds(userId, [
+    ...selections.map((selection) => selection.consultationId),
+    ...fashionSelections.map((selection) => selection.consultationId),
+  ]);
+  const finalSelections = selections.filter((selection) => finalConsultationIds.has(selection.consultationId));
+  const finalFashionSelections = fashionSelections.filter((selection) => finalConsultationIds.has(selection.consultationId));
+
+  const stylingSessionIds = finalFashionSelections.map((selection) => selection.selectedStylingSessionId);
+  let stylingSessions: StylingSessionRow[] = [];
+  if (stylingSessionIds.length) {
+    const stylingResult = await db.from("styling_sessions")
+      .select("id,consultation_id,selection_snapshot_id,source_mode,status,generated_image_path")
+      .eq("user_id", userId)
+      .in("id", stylingSessionIds);
+    if (stylingResult.error) throw new Error(stylingResult.error.message);
+    stylingSessions = (stylingResult.data ?? []) as unknown as StylingSessionRow[];
+  }
+
+  const validStylingSessionById = new Map(stylingSessions
+    .filter((session) => session.source_mode === "v2_selection" && session.status === "completed")
+    .map((session) => [session.id, session]));
+  const fashionWithImagePaths = finalFashionSelections.flatMap((selection) => {
+    const session = validStylingSessionById.get(selection.selectedStylingSessionId);
+    const validSession = session
+      && session.consultation_id === selection.consultationId
+      && session.selection_snapshot_id === selection.selectionSnapshotId;
+    const imagePath = validSession ? cleanString(session.generated_image_path) : "";
+    return validSession && imagePath ? [{ ...selection, imagePath }] : [];
+  });
+
+  const imageUrls = await signedImageUrls([
+    ...finalSelections.map((selection) => selection.imagePath),
+    ...fashionWithImagePaths.map((selection) => selection.imagePath),
+  ], db as unknown as ServerSupabaseLike);
+  return {
+    schemaVersion: "customer-stylebook-v2",
+    hair: finalSelections.map((selection) => toCustomerStyleRecord(
+      selection,
+      selection.imagePath ? imageUrls.get(selection.imagePath) ?? null : null,
+    )),
+    fashion: fashionWithImagePaths.map(({ imagePath, ...selection }) => ({
+      ...selection,
+      imageUrl: imagePath ? imageUrls.get(imagePath) ?? null : null,
+    })),
+  };
+}
+
+export async function loadCustomerStylebookV2(userId: string): Promise<CustomerStyleRecordV2[]> {
+  return (await loadCustomerStylebookCollectionV2(userId)).hair;
 }
 
 export async function loadCustomerStyleResultConsultationV2(
