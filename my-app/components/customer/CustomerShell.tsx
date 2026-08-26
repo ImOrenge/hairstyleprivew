@@ -32,7 +32,7 @@ export function CustomerShell({ children, activePath }: { children: ReactNode; a
   return (
     <div className="customer-app">
       <aside className="customer-app__rail" aria-label="고객 주요 내비게이션">
-        <Link href="/home" className="customer-app__brand" aria-label="HairFit 고객 홈">
+        <Link href="/home" prefetch={activePath ? false : undefined} className="customer-app__brand" aria-label="HairFit 고객 홈">
           <span className="customer-app__brand-mark" aria-hidden="true">
             HF
           </span>
@@ -51,6 +51,7 @@ export function CustomerShell({ children, activePath }: { children: ReactNode; a
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={activePath ? false : undefined}
                 aria-current={active ? "page" : undefined}
                 className={action ? "customer-app__nav-item customer-app__nav-action" : "customer-app__nav-item"}
               >
@@ -80,6 +81,7 @@ export function CustomerShell({ children, activePath }: { children: ReactNode; a
             <Link
               key={item.href}
               href={item.href}
+              prefetch={activePath ? false : undefined}
               aria-current={active ? "page" : undefined}
               className={action ? "customer-app__bottom-item customer-app__bottom-action" : "customer-app__bottom-item"}
             >

@@ -23,7 +23,7 @@ public_api:
 boundaries:
   owns:
     - customer-only-responsive-navigation
-    - Private-AI-Atelier-visual-tokens
+    - HairFit-editorial-hybrid-visual-tokens
     - desktop-fixed-rail
     - tablet-compact-rail
     - mobile-safe-area-bottom-navigation
@@ -45,16 +45,22 @@ route_contract:
   internal_consultation_flow: preserved
 
 styling:
-  strategy: customer-scoped-global-css
+  strategy: HairFit-editorial-hybrid-customer-scoped-global-css
   stylesheet: my-app/components/customer/customer-shell.css
   root_namespace: customer-app
   tokens:
-    canvas: '#11110F'
-    surface: '#191917'
-    raised: '#22211E'
-    ivory: '#F3EEE3'
-    muted: '#AAA399'
-    champagne: '#C8A96B'
+    canvas: '#F6F5F1'
+    surface: '#FFFFFF'
+    raised: '#ECEAE3'
+    graphite: '#151412'
+    ivory: '#F4F1E8'
+    ink: '#191816'
+    muted: '#625F57'
+    champagne: '#A8863A'
+  inverse_surface_scope:
+    - desktop-rail
+    - consultation-hero
+    - mobile-bottom-navigation
   global_css_changes: import-only
   inline_styles_allowed: false
 
@@ -72,7 +78,7 @@ test_surface:
   customer_copy: credit-balance-excluded
 
 change_policy:
-  current_gate: behavioral
+  current_gate: style-contract
   compatible_change_requires:
     - passport-update
     - shell-contract-test

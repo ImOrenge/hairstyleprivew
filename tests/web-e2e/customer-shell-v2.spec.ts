@@ -10,6 +10,12 @@ test("customer shell keeps consultation prominent across desktop and mobile", as
 
   const rail = page.locator(".customer-app__rail");
   const bottomNavigation = page.locator(".customer-app__bottom-nav");
+  const hero = page.locator(".customer-home-hero");
+  const priorityCard = page.locator(".customer-home-priority__card").first();
+  await expect(page.locator(".customer-app")).toHaveCSS("color-scheme", "light");
+  await expect(rail).toHaveCSS("background-color", "rgb(21, 20, 18)");
+  await expect(hero).toHaveCSS("background-color", "rgb(21, 20, 18)");
+  await expect(priorityCard).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(rail).toBeVisible();
   await expect(bottomNavigation).toBeHidden();
   await expect(rail.getByRole("link", { name: "홈", exact: true })).toHaveAttribute("aria-current", "page");
