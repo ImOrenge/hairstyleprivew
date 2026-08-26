@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { resolve } from "node:path";
 import test from "node:test";
 import {
+  assertAutomaticProductionDeployGuard,
   assertWranglerAssetBinding,
   collectManifestAssets,
   expectedMimePattern,
@@ -46,4 +47,8 @@ test("every custom-domain OpenNext Worker uploads the same static asset director
     resolve(appRoot, "workers", "open-next-multi", "wrangler.middleware.jsonc"),
     "../../.open-next/assets",
   ));
+});
+
+test("the default Workers Builds command cannot upload the production Worker", () => {
+  assert.doesNotThrow(() => assertAutomaticProductionDeployGuard(resolve(appRoot, "wrangler.jsonc")));
 });

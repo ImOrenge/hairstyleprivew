@@ -77,6 +77,19 @@ export function assertWranglerAssetBinding(configPath, expectedDirectory) {
   assert(/"binding"\s*:\s*"ASSETS"/u.test(source), `${relative(appRoot, configPath)} is missing the ASSETS binding`);
 }
 
+export function assertAutomaticProductionDeployGuard(configPath) {
+  const source = readFileSync(configPath, "utf8");
+  const guardedEntryPoint = ".cloudflare-builds-disabled/worker.js";
+  assert(
+    /"main"\s*:\s*"\.cloudflare-builds-disabled\/worker\.js"/u.test(source),
+    `${relative(appRoot, configPath)} must keep the fail-closed Workers Builds entry point`,
+  );
+  assert(
+    !existsSync(resolve(appRoot, guardedEntryPoint)),
+    `${guardedEntryPoint} must remain absent so a single-Worker production upload cannot succeed`,
+  );
+}
+
 function readBuildManifestAssets() {
   const functionsRoot = resolve(outputRoot, "server-functions");
   const manifestFiles = walkFiles(functionsRoot).filter((file) => (
@@ -106,6 +119,7 @@ export function verifyLocalArtifacts() {
   );
 
   assertWranglerAssetBinding(resolve(appRoot, "wrangler.jsonc"), ".open-next/assets");
+  assertAutomaticProductionDeployGuard(resolve(appRoot, "wrangler.jsonc"));
   assertWranglerAssetBinding(
     resolve(appRoot, "workers", "open-next-multi", "wrangler.server.jsonc"),
     "../../.open-next/assets",

@@ -8,7 +8,7 @@ Use these values for the production Worker connected to `main`:
 
 - Root directory: `my-app`
 - Build command: `npm run cf:build`
-- Deploy command: disabled for automatic production rollout; use the atomic split release command below
+- Deploy command: `npm run cf:builds:deploy` (intentionally fails; use the atomic split release command below)
 - Non-production branch deploy command: `npm run cf:builds:preview`
 
 Do not use `npx wrangler versions upload` as the production deploy command. `versions upload` is reserved for preview/non-production versions. Workers Builds does not run the Wrangler custom-build configuration, so the explicit build command is required.
@@ -24,6 +24,8 @@ Do not use `npx wrangler versions upload` as the production deploy command. `ver
 5. the primary Worker, split server, and production router declare the `ASSETS` binding and correct asset directory.
 
 `npm run cf:builds:deploy` intentionally fails. A single-Worker deploy can publish HTML from one OpenNext build while the router still pins server, media, or admin Workers from another build.
+
+`my-app/wrangler.jsonc` also points at the intentionally absent `.cloudflare-builds-disabled/worker.js`. This is a fail-closed repository guard: even if Workers Builds is accidentally reset to `npx wrangler versions upload`, Wrangler stops before uploading or promoting the production Worker. The real production entry points live only in `workers/open-next-multi/*.jsonc` and are selected explicitly by `npm run cf:deploy`.
 
 ## Atomic production release
 

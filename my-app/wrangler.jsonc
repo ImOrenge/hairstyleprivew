@@ -1,8 +1,10 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // my-app/wrangler.jsonc
-"name": "hairstyleprivew",
-  "main": ".open-next/worker.js",
+  // This root config is retained for secret-management commands and as a
+  // fail-closed guard for Cloudflare Workers Builds. Production releases must
+  // use workers/open-next-multi/*.jsonc through `npm run cf:deploy`.
+  "name": "hairstyleprivew",
+  "main": ".cloudflare-builds-disabled/worker.js",
   "minify": true,
   "find_additional_modules": true,
   "base_dir": ".open-next/middleware",
