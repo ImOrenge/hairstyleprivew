@@ -1,6 +1,17 @@
 import type { CustomerStylebookV2 } from "@hairfit/shared";
 import { fireEvent, render } from "@testing-library/react-native";
+import type { ReactNode } from "react";
 import { NativeStylebookCollection } from "../components/customer/NativeStylebookCollection";
+
+jest.mock("react-native-safe-area-context", () => {
+  const ReactModule = jest.requireActual<typeof import("react")>("react");
+  const { View } = jest.requireActual<typeof import("react-native")>("react-native");
+
+  return {
+    SafeAreaView: ({ children, ...props }: { children: ReactNode }) =>
+      ReactModule.createElement(View, props, children),
+  };
+});
 
 const collection: CustomerStylebookV2 = {
   schemaVersion: "customer-stylebook-v2",
