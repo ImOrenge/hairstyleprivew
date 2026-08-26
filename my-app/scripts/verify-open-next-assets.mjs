@@ -102,6 +102,10 @@ export function verifyLocalArtifacts() {
     resolve(appRoot, "workers", "open-next-multi", "wrangler.server.jsonc"),
     "../../.open-next/assets",
   );
+  assertWranglerAssetBinding(
+    resolve(appRoot, "workers", "open-next-multi", "wrangler.middleware.jsonc"),
+    "../../.open-next/assets",
+  );
 
   const files = walkFiles(staticRoot);
   const counts = Object.fromEntries([".js", ".css", ".woff2"].map((extension) => [
@@ -160,10 +164,12 @@ export async function verifyLiveAssets(pageUrl) {
 }
 
 async function main() {
-  const liveArgument = process.argv.find((value) => value.startsWith("--url="));
-  if (liveArgument) {
-    const result = await verifyLiveAssets(liveArgument.slice("--url=".length));
-    console.log(`[cf:assets] live page=${result.page} assets=${result.assets} status=ok`);
+  const liveArguments = process.argv.filter((value) => value.startsWith("--url="));
+  if (liveArguments.length > 0) {
+    for (const liveArgument of liveArguments) {
+      const result = await verifyLiveAssets(liveArgument.slice("--url=".length));
+      console.log(`[cf:assets] live page=${result.page} assets=${result.assets} status=ok`);
+    }
     return;
   }
   const result = verifyLocalArtifacts();

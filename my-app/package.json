@@ -128,11 +128,11 @@
     "landing-flat-surface:contract:test": "node --no-warnings --test lib/landing-flat-surface-contract.test.ts",
     "landing-motion:contract:test": "node --no-warnings --test lib/landing-motion-contract.test.ts",
     "aftercare:model:smoke": "node --no-warnings scripts/smoke-aftercare-model.mjs",
-    "cf:assets:contract:test": "node --no-warnings --test scripts/verify-open-next-assets.test.mjs",
+    "cf:assets:contract:test": "node --no-warnings --test scripts/verify-open-next-assets.test.mjs scripts/deploy-open-next-split-release.test.mjs",
     "cf:assets:verify": "node --no-warnings scripts/verify-open-next-assets.mjs",
-    "cf:assets:live": "node --no-warnings scripts/verify-open-next-assets.mjs --url=https://hairfit.beauty/login",
+    "cf:assets:live": "node --no-warnings scripts/verify-open-next-assets.mjs --url=https://hairfit.beauty/login --url=https://hairfit.beauty/consulting/e2e-harness",
     "cf:build": "opennextjs-cloudflare build && npm run cf:assets:verify",
-    "cf:builds:deploy": "npm run cf:assets:verify && wrangler deploy && npm run cf:assets:live",
+    "cf:builds:deploy": "node -e \"throw new Error('Single-Worker production deploy disabled; use the atomic split release command in docs/runbooks/cloudflare-open-next-static-assets.md')\"",
     "cf:builds:preview": "npm run cf:assets:verify && wrangler versions upload",
     "cf:upload": "npm run cf:build && wrangler versions upload",
     "cf:multi:build": "npm run cf:build && node scripts/bundle-open-next-split-functions.mjs media admin",
@@ -148,7 +148,7 @@
     "cf:multi:server:launch": "node scripts/upload-hairfit-v2-staff-canary.mjs --mode=launch",
     "cf:multi:staff-canary:verify": "node scripts/verify-hairfit-v2-version-override.mjs",
     "cf:preview": "npm run cf:build && opennextjs-cloudflare preview",
-    "cf:deploy": "npm run cf:build && opennextjs-cloudflare deploy && npm run cf:assets:live",
+    "cf:deploy": "npm run cf:multi:build && node scripts/deploy-open-next-split-release.mjs",
     "cf:typegen": "wrangler types"
   },
   "dependencies": {

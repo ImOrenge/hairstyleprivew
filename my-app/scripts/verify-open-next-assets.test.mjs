@@ -42,4 +42,8 @@ test("every custom-domain OpenNext Worker uploads the same static asset director
     resolve(appRoot, "workers", "open-next-multi", "wrangler.server.jsonc"),
     "../../.open-next/assets",
   ));
+  assert.doesNotThrow(() => assertWranglerAssetBinding(
+    resolve(appRoot, "workers", "open-next-multi", "wrangler.middleware.jsonc"),
+    "../../.open-next/assets",
+  ));
 });
