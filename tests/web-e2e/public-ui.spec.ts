@@ -159,8 +159,12 @@ test("partnerships page exposes its CTA, public metadata, links, and responsive 
     await page.setViewportSize(viewport);
     await page.goto("/partnerships", { waitUntil: "load" });
     await dismissAutomaticNotice(page);
-    await expect(page.getByRole("heading", { name: /스타일을 고르는 순간에/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /스타일 선택과/ })).toBeVisible();
     await expect(page.getByRole("link", { name: "제휴 제안 보내기" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "브랜드가 활용할 수 있는 세 가지 접점" })).toBeVisible();
+    await expect(page.locator("main img")).toHaveCount(0);
+    await page.getByRole("heading", { name: "HairFit 경험과 브랜드 역할을 이렇게 연결합니다" }).scrollIntoViewIfNeeded();
+    await expect(page.getByRole("list", { name: "HairFit 제품 경험과 브랜드 접점 연결" }).getByRole("listitem")).toHaveCount(3);
     const overflow = await page.evaluate(() => ({
       clientWidth: document.documentElement.clientWidth,
       scrollWidth: document.documentElement.scrollWidth,
@@ -171,6 +175,7 @@ test("partnerships page exposes its CTA, public metadata, links, and responsive 
   await expect(page).toHaveTitle(/광고·제휴 문의/);
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/partnerships$/);
   await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", /광고/);
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute("content", /\/logo\.png/);
   await expect(page.locator('footer a[href="/partnerships"]')).toHaveText("광고·제휴 문의");
 
   const faqSummary = page.locator("details summary").first();

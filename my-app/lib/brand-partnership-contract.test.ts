@@ -111,6 +111,14 @@ test("public page, privacy disclosure, and crawler contracts are connected", () 
 
   assert.match(page, /alternates:[\s\S]*canonical: "\/partnerships"/);
   assert.match(page, /제휴 제안 보내기/);
+  assert.match(page, /브랜드가 활용할 수 있는 세 가지 접점/);
+  assert.match(page, /HairFit 경험과 브랜드 역할을 이렇게 연결합니다/);
+  assert.match(page, /사용자 상황/);
+  assert.match(page, /브랜드 접점/);
+  assert.doesNotMatch(page, /hairfit-brand-partnership-hero/);
+  assert.doesNotMatch(page, /hairfit-brand-campaign-journey/);
+  assert.doesNotMatch(page, /\/hero\/fashion-demo\/lookbook-board\.png/);
+  assert.doesNotMatch(page, /\/landing\/editorial\/salon-consultation\.webp/);
   assert.match(form, /leadKind: "brand_partnership"/);
   assert.match(form, /role="alert"/);
   assert.match(form, /role="status"/);

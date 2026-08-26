@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, BookOpenText, Check, ChevronDown, Handshake, Megaphone, Sparkles } from "lucide-react";
+import { ArrowRight, BookOpenText, ChevronDown, Handshake, Megaphone, Sparkles } from "lucide-react";
 import { PartnershipLeadForm } from "../../components/partnerships/PartnershipLeadForm";
 import { AppPage, Panel, SurfaceCard } from "../../components/ui/Surface";
 
@@ -22,10 +21,10 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     images: [
       {
-        url: "/hero/fashion-demo/lookbook-board.png",
-        width: 1717,
-        height: 916,
-        alt: "HairFit 헤어와 패션 스타일 미리보기 보드",
+        url: "/logo.png",
+        width: 1024,
+        height: 1024,
+        alt: "HairFit 광고·제휴 문의",
       },
     ],
   },
@@ -35,18 +34,30 @@ const partnershipAreas = [
   {
     icon: Megaphone,
     title: "광고",
+    placement: "스타일 탐색 화면",
+    outcome: "제품 발견",
     description: "HairFit의 스타일 탐색 맥락 안에서 브랜드와 제품을 자연스럽게 소개하는 방식을 검토합니다.",
   },
   {
     icon: BookOpenText,
     title: "브랜디드 콘텐츠",
+    placement: "선택 가이드 콘텐츠",
+    outcome: "제품 이해",
     description: "헤어·패션 선택에 도움이 되는 주제와 브랜드 메시지를 연결해 콘텐츠 경험을 함께 설계합니다.",
   },
   {
     icon: Handshake,
     title: "공동 캠페인",
+    placement: "시즌·신제품 테마",
+    outcome: "고객 참여",
     description: "시즌, 신제품, 고객 참여 목표에 맞춰 HairFit의 미리보기 경험을 활용한 캠페인을 논의합니다.",
   },
+] as const;
+
+const productConnectionRows = [
+  ["새 스타일 탐색", "헤어·패션 비교", "관련 제품 발견"],
+  ["선택 기준 확인", "스타일 가이드", "브랜드 콘텐츠"],
+  ["시즌 변화 시도", "테마형 미리보기", "공동 캠페인 참여"],
 ] as const;
 
 const processSteps = [
@@ -71,10 +82,10 @@ export default function PartnershipsPage() {
           <div className="flex flex-col justify-center p-6 sm:p-9 lg:p-11">
             <p className="app-kicker">HairFit for brands</p>
             <h1 className="mt-4 text-4xl font-black leading-[1.05] tracking-[-0.04em] text-[var(--app-text)] sm:text-5xl">
-              스타일을 고르는 순간에<br />브랜드 경험을 연결합니다
+              스타일 선택과<br />브랜드를 연결합니다
             </h1>
             <p className="mt-5 max-w-xl text-sm leading-7 text-[var(--app-muted)] sm:text-base">
-              HairFit의 헤어·패션 미리보기 경험과 브랜드의 캠페인 목표가 만나는 광고, 브랜디드 콘텐츠, 공동 캠페인을 제안해 주세요.
+              HairFit의 헤어·패션 미리보기 안에서 브랜드를 발견하고 이해하고 참여할 수 있는 광고, 브랜디드 콘텐츠, 공동 캠페인을 제안해 주세요.
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Link
@@ -87,18 +98,35 @@ export default function PartnershipsPage() {
               <span className="text-xs leading-5 text-[var(--app-muted)]">제안 접수는 협업 확정을 의미하지 않습니다.</span>
             </div>
           </div>
-          <div className="relative min-h-[310px] border-t border-[var(--app-border)] bg-[var(--app-surface-muted)] lg:min-h-[520px] lg:border-l lg:border-t-0">
-            <Image
-              src="/hero/fashion-demo/lookbook-board.png"
-              alt="HairFit에서 헤어와 패션 스타일을 함께 탐색하는 실제 제품 이미지"
-              fill
-              priority
-              sizes="(max-width: 1024px) 100vw, 55vw"
-              className="object-cover object-center"
-            />
-            <div className="absolute inset-x-4 bottom-4 rounded-xl border border-white/60 bg-white/90 px-4 py-3 text-xs font-bold leading-5 text-stone-800 shadow-sm backdrop-blur sm:inset-x-6 sm:bottom-6">
-              실제 HairFit 미리보기 화면을 바탕으로 협업 접점을 검토합니다.
+          <div className="border-t border-[var(--app-border)] bg-[var(--app-inverse)] p-5 text-[var(--app-inverse-text)] sm:p-7 lg:min-h-[520px] lg:border-l lg:border-t-0 lg:p-9">
+            <div className="flex items-start justify-between gap-6">
+              <div>
+                <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-stone-400">Partnership inventory</p>
+                <h2 className="mt-3 text-2xl font-black tracking-tight text-white sm:text-3xl">브랜드가 활용할 수 있는 세 가지 접점</h2>
+              </div>
+              <span className="shrink-0 rounded-full border border-white/30 px-3 py-1 text-xs font-black tracking-[0.12em] text-stone-300">01–03</span>
             </div>
+            <ol className="mt-6 divide-y divide-white/15 border-y border-white/20">
+              {partnershipAreas.map((area, index) => {
+                const Icon = area.icon;
+                return (
+                  <li key={area.title} className="grid grid-cols-[auto_1fr] gap-4 py-5">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full border border-white/25 text-xs font-black text-stone-300">0{index + 1}</span>
+                    <div>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-4 w-4 text-[var(--app-accent)]" aria-hidden="true" />
+                          <h3 className="text-base font-black text-white">{area.title}</h3>
+                        </div>
+                        <span className="rounded-full bg-white px-2.5 py-1 text-[0.68rem] font-black text-stone-950">목적: {area.outcome}</span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-stone-300">노출 방식 · {area.placement}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="mt-5 text-xs leading-5 text-stone-400">확정 상품표가 아닙니다. 캠페인 목표, 타깃, 예산과 일정에 맞춰 가능한 접점과 범위를 함께 정합니다.</p>
           </div>
         </div>
       </Panel>
@@ -124,41 +152,52 @@ export default function PartnershipsPage() {
         </div>
       </section>
 
-      <section aria-labelledby="product-experience-title" className="mt-14 grid gap-5 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
-        <div className="relative min-h-[360px] overflow-hidden rounded-[var(--app-radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface-muted)] sm:min-h-[500px]">
-          <Image
-            src="/landing/editorial/salon-consultation.webp"
-            alt="HairFit 스타일 상담 제품 경험"
-            fill
-            sizes="(max-width: 1024px) 100vw, 52vw"
-            className="object-cover"
-          />
-        </div>
-        <SurfaceCard className="flex flex-col justify-center p-6 sm:p-8 lg:p-10">
-          <p className="app-kicker">Product experience</p>
-          <h2 id="product-experience-title" className="mt-3 text-3xl font-black tracking-tight text-[var(--app-text)]">
-            제품을 보는 데서 끝나지 않고, 내 스타일로 상상하도록
-          </h2>
-          <p className="mt-4 text-sm leading-7 text-[var(--app-muted)]">
-            HairFit은 사용자가 헤어스타일과 패션 무드를 탐색하고 비교하는 제품 경험을 제공합니다. 협업은 이 선택 흐름을 해치지 않으면서 브랜드가 실질적인 영감을 더할 수 있는지를 중심으로 검토합니다.
-          </p>
-          <ul className="mt-6 space-y-3 text-sm leading-6 text-[var(--app-text)]">
-            {[
-              "사용자의 스타일 탐색 맥락과 맞는 메시지",
-              "헤어·뷰티 선택에 도움이 되는 콘텐츠",
-              "브랜드 목표와 사용자 경험을 함께 고려한 범위",
-            ].map((item) => (
-              <li key={item} className="flex gap-3">
-                <Check className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <Link href="#partnership-inquiry" className="mt-7 inline-flex items-center gap-2 self-start text-sm font-black text-[var(--app-text)] underline decoration-2 underline-offset-4">
-            제휴 제안 보내기
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </SurfaceCard>
+      <section aria-labelledby="product-experience-title" className="mt-14">
+        <Panel className="p-6 sm:p-8 lg:p-10">
+          <div className="grid gap-8 lg:grid-cols-[0.38fr_0.62fr] lg:items-start">
+            <div>
+              <p className="app-kicker">Product connection</p>
+              <h2 id="product-experience-title" className="mt-3 text-3xl font-black tracking-tight text-[var(--app-text)]">
+                HairFit 경험과 브랜드 역할을 이렇게 연결합니다
+              </h2>
+              <p className="mt-4 text-sm leading-7 text-[var(--app-muted)]">
+                사용자가 어떤 상황에서 HairFit을 이용하는지부터 보고, 그 흐름을 해치지 않는 브랜드 역할을 협의합니다.
+              </p>
+              <Link href="#partnership-inquiry" className="mt-6 inline-flex items-center gap-2 text-sm font-black text-[var(--app-text)] underline decoration-2 underline-offset-4">
+                제휴 제안 보내기
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <div>
+              <div className="hidden grid-cols-[1fr_auto_1fr_auto_1fr] items-center gap-3 px-4 pb-3 text-xs font-black uppercase tracking-[0.12em] text-[var(--app-muted)] sm:grid" aria-hidden="true">
+                <span>사용자 상황</span><span /><span>HairFit 경험</span><span /><span>브랜드 접점</span>
+              </div>
+              <ol className="space-y-3" aria-label="HairFit 제품 경험과 브랜드 접점 연결">
+                {productConnectionRows.map(([userContext, hairfitExperience, brandRole], index) => (
+                  <li key={userContext} className="grid gap-3 rounded-[var(--app-radius-panel)] border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-4 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
+                    <div>
+                      <span className="text-[0.68rem] font-black tracking-[0.14em] text-[var(--app-subtle)] sm:hidden">사용자 상황</span>
+                      <p className="mt-1 text-sm font-black text-[var(--app-text)] sm:mt-0">{userContext}</p>
+                    </div>
+                    <ArrowRight className="hidden h-4 w-4 text-[var(--app-subtle)] sm:block" aria-hidden="true" />
+                    <div>
+                      <span className="text-[0.68rem] font-black tracking-[0.14em] text-[var(--app-subtle)] sm:hidden">HairFit 경험</span>
+                      <p className="mt-1 text-sm font-black text-[var(--app-text)] sm:mt-0">{hairfitExperience}</p>
+                    </div>
+                    <ArrowRight className="hidden h-4 w-4 text-[var(--app-subtle)] sm:block" aria-hidden="true" />
+                    <div className="flex items-center justify-between gap-3 rounded-[var(--app-radius-control)] bg-[var(--app-surface)] px-3 py-2 sm:block sm:bg-transparent sm:p-0">
+                      <div>
+                        <span className="text-[0.68rem] font-black tracking-[0.14em] text-[var(--app-subtle)] sm:hidden">브랜드 접점</span>
+                        <p className="mt-1 text-sm font-black text-[var(--app-text)] sm:mt-0">{brandRole}</p>
+                      </div>
+                      <span className="text-xs font-black text-[var(--app-accent-strong)]">0{index + 1}</span>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </div>
+        </Panel>
       </section>
 
       <section aria-labelledby="partnership-process-title" className="mt-14">
