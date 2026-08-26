@@ -3,9 +3,9 @@ import test from "node:test";
 import {
   assertBuiltRelease,
   assertRouterState,
-  directTrafficVersion,
   parseUploadedVersion,
   versionDeploymentArgs,
+  versionPromotionArgs,
 } from "./deploy-open-next-split-release.mjs";
 
 const oldVersion = "71577fe3-a898-474a-b021-a68b1a00ff81";
@@ -26,16 +26,13 @@ test("split versions are registered without changing direct traffic", () => {
   );
 });
 
-test("post-router repair selects the current direct server version", () => {
-  assert.equal(directTrafficVersion({
-    versions: [
-      { version_id: oldVersion, percentage: 100 },
-      { version_id: newVersion, percentage: 0 },
+test("split Workers are promoted only after the router cutover", () => {
+  assert.deepEqual(
+    versionPromotionArgs(newVersion, "workers/open-next-multi/wrangler.server.jsonc"),
+    [
+      "versions", "deploy", `${newVersion}@100%`,
+      "-y", "--config", "workers/open-next-multi/wrangler.server.jsonc",
     ],
-  }, newVersion), oldVersion);
-  assert.throws(
-    () => directTrafficVersion({ versions: [{ version_id: newVersion, percentage: 100 }] }, newVersion),
-    /current 100% direct server/u,
   );
 });
 

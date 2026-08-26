@@ -76,14 +76,8 @@ export function versionDeploymentArgs(currentVersion, nextVersion, config) {
   ];
 }
 
-export function directTrafficVersion(status, nextVersion) {
-  const direct = status?.versions?.find((version) => (
-    version?.percentage === 100 &&
-    /^[0-9a-f-]{36}$/iu.test(version?.version_id ?? "") &&
-    version.version_id !== nextVersion
-  ));
-  if (!direct) throw new Error("Could not resolve the current 100% direct server version");
-  return direct.version_id;
+export function versionPromotionArgs(version, config) {
+  return ["versions", "deploy", `${version}@100%`, "-y", "--config", config];
 }
 
 export function assertRouterState(state) {
@@ -222,13 +216,13 @@ async function main() {
     registerVersion(current.pinnedAdminVersion, versions.admin, configs.admin);
     versions.router = uploadRouter(versions, sourceRevision);
     runWrangler(["versions", "deploy", `${versions.router}@100%`, "-y", "--config", configs.router]);
-    // Updating the custom-domain router can resync the default Worker's direct
-    // deployment and remove its 0% version. Re-register after router cutover so
-    // the service-binding version override remains eligible.
-    const serverStatus = JSON.parse(runWrangler([
-      "deployments", "status", "--config", configs.server, "--json",
-    ]));
-    registerVersion(directTrafficVersion(serverStatus, versions.server), versions.server, configs.server);
+    // Cloudflare can mix a freshly overridden Worker with the prior production
+    // module/asset state after a custom-domain cutover. Promote every pinned
+    // split Worker after the router owns the matching asset set so service
+    // bindings no longer depend on version override behavior.
+    runWrangler(versionPromotionArgs(versions.server, configs.server));
+    runWrangler(versionPromotionArgs(versions.media, configs.media));
+    runWrangler(versionPromotionArgs(versions.admin, configs.admin));
     await retryVerification(() => verifyRelease(sourceRevision, versions));
     console.log(`atomic split release source: ${sourceRevision}`);
     console.log(`server version: ${versions.server}`);
