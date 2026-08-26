@@ -42,6 +42,33 @@ test("consulting entry derives progress from the shared journey and promises the
   assert.match(entry, /퍼스널 컬러·메이크업·패션/);
 });
 
+test("consultation creation ensures the Clerk user profile before dependent writes", () => {
+  const legacySource = read("./server-store.ts");
+  const legacyCreate = legacySource.slice(legacySource.indexOf("export async function createServerConsultation"));
+  const v2Source = read("../v2/consultation-server.ts");
+  const v2Create = v2Source.slice(v2Source.indexOf("export async function createConsultationV2"));
+
+  for (const source of [legacyCreate, v2Create]) {
+    const profileIndex = source.indexOf("ensureCurrentUserProfile(");
+    const grantIndex = source.indexOf("ensureFreeHairDemoGrantV2(");
+    const sessionInsertIndex = source.indexOf('.from("consultation_sessions").insert(');
+    assert.ok(profileIndex >= 0);
+    assert.ok(profileIndex < grantIndex);
+    assert.ok(profileIndex < sessionInsertIndex);
+    assert.match(source, /CONSULTATION_USER_PROFILE_SYNC_FAILED/);
+  }
+});
+
+test("consultation entry and route never expose raw database error messages", () => {
+  const entry = read("../../components/consulting/ConsultingEntry.tsx");
+  const route = read("../../app/api/consultations/route.ts");
+  assert.match(entry, /mapWebResponseError/);
+  assert.match(entry, /mapWebUserError/);
+  assert.doesNotMatch(entry, /data\.error|cause instanceof Error \? cause\.message/);
+  assert.doesNotMatch(route, /error instanceof Error \? error\.message\s*:/);
+  assert.match(route, /잠시 후 다시 시도해 주세요/);
+});
+
 test("consulting frontend defaults on while either explicit rollback switch turns it off", () => {
   assert.equal(isConsultationFrontendEnabled({}), true);
   assert.equal(

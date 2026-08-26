@@ -15,6 +15,7 @@ import { isColorStudioEnabled, isConsultationResultEnabled, isMakeupStyleSimulat
 import { mapColorSelection, mapResultSnapshot, type ColorSelectionRow, type HairMaskRow, type ResultSnapshotRow } from "./color-persistence-mapping";
 import { readHairDiagnosisState } from "./hair-profile-server";
 import { ensureFreeHairDemoGrantV2 } from "../v2/entitlement-server";
+import { ensureCurrentUserProfile, type ServerSupabaseLike } from "../style-profile-server";
 
 type Row = { id: string; user_id: string; version: number; lifecycle_state?: string; current_stage: string; snapshot: unknown; created_at: string; updated_at: string };
 
@@ -326,6 +327,8 @@ async function hydrateTaskState(snapshot: ConsultationSnapshot) {
 export async function createServerConsultation(userId: string, idempotencyKey?: string) {
   if (idempotencyKey && idempotencyKey.length < 8) throw new Error("INVALID_IDEMPOTENCY_KEY");
   const db = getSupabaseAdminClient();
+  const profile = await ensureCurrentUserProfile(userId, db as unknown as ServerSupabaseLike);
+  if (profile.error) throw new Error("CONSULTATION_USER_PROFILE_SYNC_FAILED");
   await ensureFreeHairDemoGrantV2(userId);
   if (idempotencyKey) {
     const existing = await db.from("consultation_sessions")

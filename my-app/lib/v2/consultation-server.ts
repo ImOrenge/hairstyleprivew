@@ -2,6 +2,7 @@ import "server-only";
 import type { ConsultationKindV2, ConsultationSessionV2, ConsultationStateV2 } from "@hairfit/shared/v2";
 import { randomUUID } from "node:crypto";
 import { createConsultationSnapshot } from "../consulting/defaults";
+import { ensureCurrentUserProfile, type ServerSupabaseLike } from "../style-profile-server";
 import { getSupabaseAdminClient } from "../supabase";
 import { HairfitV2Error } from "./errors";
 import { ensureFreeHairDemoGrantV2 } from "./entitlement-server";
@@ -12,8 +13,11 @@ function map(row:SessionRow):ConsultationSessionV2{return{schemaVersion:"consult
 const SELECT="id,user_id,session_kind,lifecycle_state,version,entitlement_grant_id,source_generation_id,source_photo_id,analysis_evidence_id,current_preview_board_id,selected_snapshot_id,preferences,plan_snapshot,created_at,updated_at,completed_at,cancelled_at";
 export async function createConsultationV2(input:{userId:string;sessionKind:ConsultationKindV2;idempotencyKey:string;preferences?:Record<string,unknown>;planSnapshot?:Record<string,unknown>}){
   if(input.idempotencyKey.trim().length<8)throw new HairfitV2Error("INVALID_IDEMPOTENCY_KEY",400,"idempotency key가 너무 짧습니다.");
+  const db=getSupabaseAdminClient();
+  const profile=await ensureCurrentUserProfile(input.userId,db as unknown as ServerSupabaseLike);
+  if(profile.error)throw new HairfitV2Error("CONSULTATION_USER_PROFILE_SYNC_FAILED",503,"회원 정보를 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.");
   await ensureFreeHairDemoGrantV2(input.userId);
-  const db=getSupabaseAdminClient(); const existing=await db.from("consultation_sessions").select(SELECT).eq("user_id",input.userId).eq("idempotency_key",input.idempotencyKey).maybeSingle(); if(existing.error)throw new Error(existing.error.message); if(existing.data)return map(existing.data as unknown as SessionRow);
+  const existing=await db.from("consultation_sessions").select(SELECT).eq("user_id",input.userId).eq("idempotency_key",input.idempotencyKey).maybeSingle(); if(existing.error)throw new Error(existing.error.message); if(existing.data)return map(existing.data as unknown as SessionRow);
   const id=randomUUID(); const snapshot=createConsultationSnapshot({sessionId:id,userId:input.userId}); const {data,error}=await db.from("consultation_sessions").insert({id,user_id:input.userId,version:1,current_stage:"discovery",snapshot,session_kind:input.sessionKind,lifecycle_state:"draft",idempotency_key:input.idempotencyKey,preferences:input.preferences??{},plan_snapshot:input.planSnapshot??{}}).select(SELECT).single();
   if(error){
     if(error.code==="23505"){
