@@ -5,9 +5,12 @@ import { Button } from "../../../components/ui/Button";
 
 const STAGES = ["new", "qualified", "negotiation", "contracted", "dropped"] as const;
 type LeadStage = (typeof STAGES)[number];
+type LeadKind = "salon_adoption" | "brand_partnership";
+type LeadKindFilter = "all" | LeadKind;
 
 interface LeadRow {
   id: string;
+  lead_kind: LeadKind;
   company_name: string;
   contact_name: string;
   email: string;
@@ -31,6 +34,13 @@ interface LeadRow {
   source_page: string | null;
   webhook_delivered: boolean;
   webhook_error: string | null;
+  partnership_type: "advertising" | "branded_content" | "joint_campaign" | "other" | null;
+  company_website: string | null;
+  campaign_goal: string | null;
+  target_audience: string | null;
+  reference_url: string | null;
+  privacy_consent_at: string | null;
+  privacy_retention_expires_at: string | null;
 }
 
 interface StageSummary {
@@ -76,6 +86,19 @@ const stageLabels: Record<LeadStage, string> = {
   dropped: "종료",
 };
 
+const leadKindLabels: Record<LeadKindFilter, string> = {
+  all: "전체",
+  salon_adoption: "살롱 도입",
+  brand_partnership: "브랜드 제휴",
+};
+
+const partnershipTypeLabels: Record<NonNullable<LeadRow["partnership_type"]>, string> = {
+  advertising: "광고",
+  branded_content: "브랜디드 콘텐츠",
+  joint_campaign: "공동 캠페인",
+  other: "기타 제휴",
+};
+
 function sourceLabel(source: LeadRow["source"]) {
   return source === "public_form" ? "웹 문의" : "관리자 등록";
 }
@@ -89,6 +112,7 @@ function webhookLabel(lead: LeadRow) {
 export default function AdminB2BPage() {
   const [query, setQuery] = useState("");
   const [stageFilter, setStageFilter] = useState<"all" | LeadStage>("all");
+  const [leadKindFilter, setLeadKindFilter] = useState<LeadKindFilter>("all");
   const [leads, setLeads] = useState<LeadRow[]>([]);
   const [total, setTotal] = useState(0);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -107,9 +131,12 @@ export default function AdminB2BPage() {
     if (stageFilter !== "all") {
       params.set("stage", stageFilter);
     }
+    if (leadKindFilter !== "all") {
+      params.set("leadKind", leadKindFilter);
+    }
     params.set("limit", "120");
     return `/api/admin/b2b/leads?${params.toString()}`;
-  }, [query, stageFilter]);
+  }, [leadKindFilter, query, stageFilter]);
 
   const loadLeads = useCallback(async (cursor?: string) => {
     listAbortController.current?.abort();
@@ -208,15 +235,33 @@ export default function AdminB2BPage() {
           현재 {leads.length.toLocaleString("ko-KR")} / 총 {total.toLocaleString("ko-KR")}건
         </p>
         <p className="mt-1 text-xs leading-5 text-stone-500">
-          도입 문의를 조회하고 단계와 운영 메모를 변경할 수 있습니다. 저장 버튼을 눌러야 변경 내용이 반영됩니다.
+          살롱 도입과 브랜드 제휴 문의를 조회하고 단계와 운영 메모를 변경할 수 있습니다. 저장 버튼을 눌러야 변경 내용이 반영됩니다.
         </p>
+
+        <div className="mt-4 flex flex-wrap gap-2" aria-label="B2B 리드 유형 필터">
+          {(Object.keys(leadKindLabels) as LeadKindFilter[]).map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              aria-pressed={leadKindFilter === kind}
+              onClick={() => setLeadKindFilter(kind)}
+              className={`rounded-full border px-4 py-2 text-sm font-bold transition ${
+                leadKindFilter === kind
+                  ? "border-stone-900 bg-stone-900 text-white"
+                  : "border-stone-300 bg-white text-stone-700 hover:border-stone-500"
+              }`}
+            >
+              {leadKindLabels[kind]}
+            </button>
+          ))}
+        </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
           <input
             aria-label="B2B 리드 검색"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="회사명 / 담당자 / 이메일 검색"
+            placeholder="회사명 / 담당자 / 목표 / 이메일 검색"
             className="h-10 rounded-xl border border-stone-300 px-3 text-sm outline-none focus:border-stone-900"
           />
           <select
@@ -262,7 +307,12 @@ export default function AdminB2BPage() {
           <article key={lead.id} className="rounded-2xl border border-stone-200 bg-white p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-lg font-black text-stone-950">{lead.company_name}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-lg font-black text-stone-950">{lead.company_name}</p>
+                  <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[11px] font-bold text-stone-600">
+                    {leadKindLabels[lead.lead_kind]}
+                  </span>
+                </div>
                 <p className="mt-1 text-sm text-stone-600">
                   {lead.contact_name} · {lead.email} {lead.phone ? `· ${lead.phone}` : ""}
                 </p>
@@ -298,7 +348,8 @@ export default function AdminB2BPage() {
               </div>
             </div>
 
-            <div className="mt-3 grid gap-2 rounded-lg border border-stone-100 bg-stone-50 px-3 py-3 text-xs text-stone-600 sm:grid-cols-2 lg:grid-cols-4">
+            {lead.lead_kind === "salon_adoption" ? (
+              <div className="mt-3 grid gap-2 rounded-lg border border-stone-100 bg-stone-50 px-3 py-3 text-xs text-stone-600 sm:grid-cols-2 lg:grid-cols-4">
               <p>
                 <span className="font-bold text-stone-900">관심 플랜</span>
                 <br />
@@ -346,7 +397,57 @@ export default function AdminB2BPage() {
                   {lead.source_page}
                 </p>
               ) : null}
-            </div>
+              </div>
+            ) : (
+              <div className="mt-3 grid gap-3 rounded-lg border border-stone-100 bg-stone-50 px-3 py-3 text-xs text-stone-600 sm:grid-cols-2 lg:grid-cols-4">
+                <p>
+                  <span className="font-bold text-stone-900">제휴 유형</span><br />
+                  {lead.partnership_type ? partnershipTypeLabels[lead.partnership_type] : "-"}
+                </p>
+                <p>
+                  <span className="font-bold text-stone-900">희망 시점</span><br />
+                  {lead.desired_timeline || "-"}
+                </p>
+                <p>
+                  <span className="font-bold text-stone-900">예산 구간</span><br />
+                  {lead.budget_range || "-"}
+                </p>
+                <p>
+                  <span className="font-bold text-stone-900">외부 전달</span><br />
+                  {webhookLabel(lead)}
+                </p>
+                <p className="sm:col-span-2">
+                  <span className="font-bold text-stone-900">캠페인 목표</span><br />
+                  {lead.campaign_goal || "-"}
+                </p>
+                <p className="sm:col-span-2">
+                  <span className="font-bold text-stone-900">타깃 고객</span><br />
+                  {lead.target_audience || "-"}
+                </p>
+                {lead.company_website ? (
+                  <p className="min-w-0 sm:col-span-2">
+                    <span className="font-bold text-stone-900">회사 웹사이트</span><br />
+                    <a href={lead.company_website} target="_blank" rel="noreferrer" className="break-all underline underline-offset-2">{lead.company_website}</a>
+                  </p>
+                ) : null}
+                {lead.reference_url ? (
+                  <p className="min-w-0 sm:col-span-2">
+                    <span className="font-bold text-stone-900">참고 URL</span><br />
+                    <a href={lead.reference_url} target="_blank" rel="noreferrer" className="break-all underline underline-offset-2">{lead.reference_url}</a>
+                  </p>
+                ) : null}
+                <p className="sm:col-span-2">
+                  <span className="font-bold text-stone-900">개인정보 동의 / 미계약 보유 만료</span><br />
+                  {formatDate(lead.privacy_consent_at)} / {formatDate(lead.privacy_retention_expires_at)}
+                </p>
+                {lead.source_page ? (
+                  <p className="min-w-0 sm:col-span-2">
+                    <span className="font-bold text-stone-900">유입 페이지</span><br />
+                    <span className="break-all">{lead.source_page}</span>
+                  </p>
+                ) : null}
+              </div>
+            )}
 
             <p className="mt-3 whitespace-pre-wrap rounded-lg border border-stone-100 bg-stone-50 px-3 py-3 text-sm leading-6 text-stone-700">
               {lead.message}

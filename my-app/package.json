@@ -70,6 +70,7 @@
     "release:environment:preflight": "node --no-warnings scripts/check-release-environment-readiness.mjs",
     "generation:workflow-dispatch:db-smoke": "node scripts/smoke-generation-workflow-dispatch-recovery.mjs",
     "notification-retention:contract:test": "node --no-warnings --test lib/notification-outbox-retention.test.ts",
+    "brand-partnership:contract:test": "node --no-warnings --test lib/brand-partnership-contract.test.ts",
     "generation:original-retention:contract:test": "node --no-warnings --test lib/generation-original-retention.test.ts",
     "account-deletion:contract:test": "node --no-warnings --test lib/account-deletion.test.ts",
     "generation-entry:contract:test": "node --no-warnings --test lib/canonical-generation-entry.test.ts lib/billing-return-target.test.ts lib/generation-funnel-analytics.test.ts",

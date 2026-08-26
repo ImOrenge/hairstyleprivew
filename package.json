@@ -38,6 +38,7 @@
     "generation-progress-parity:contract:test": "npm --prefix my-app run generation-progress-parity:contract:test",
     "release-rollout:contract:test": "npm --prefix my-app run release-rollout:contract:test",
     "notification-retention:contract:test": "npm --prefix my-app run notification-retention:contract:test",
+    "brand-partnership:contract:test": "npm --prefix my-app run brand-partnership:contract:test",
     "generation:original-retention:contract:test": "npm --prefix my-app run generation:original-retention:contract:test",
     "account-deletion:contract:test": "npm --prefix my-app run account-deletion:contract:test",
     "admin-high-risk:contract:test": "npm --prefix my-app run admin-high-risk:contract:test",

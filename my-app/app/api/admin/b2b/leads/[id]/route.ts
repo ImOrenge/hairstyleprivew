@@ -102,7 +102,7 @@ export async function PATCH(request: Request, { params }: Params) {
     .update(updates)
     .eq("id", leadId)
     .select(
-      "id,company_name,contact_name,email,phone,message,stage,source,owner_admin_user_id,owner_note,last_contacted_at,created_at,updated_at",
+      "id,lead_kind,company_name,contact_name,email,phone,message,stage,source,owner_admin_user_id,owner_note,last_contacted_at,created_at,updated_at,plan_interest,region,shop_count,seat_count,monthly_clients,current_tools,desired_timeline,budget_range,source_page,webhook_delivered,webhook_error,partnership_type,company_website,campaign_goal,target_audience,reference_url,privacy_consent_at,privacy_retention_expires_at",
     )
     .maybeSingle<LeadRow>();
 

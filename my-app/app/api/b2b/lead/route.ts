@@ -1,4 +1,11 @@
 import { NextResponse } from "next/server";
+import {
+  buildLeadWebhook,
+  LEAD_KINDS,
+  parseBrandPartnershipFields,
+  type LeadKind,
+  type LeadWebhookRow,
+} from "../../../../lib/b2b-lead-contract";
 import { trimText } from "../../../../lib/onboarding";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../../../lib/supabase";
 
@@ -6,8 +13,11 @@ type PlanInterest = "salon" | "pro" | "standard" | "basic" | "other";
 
 interface LeadRequestBody {
   turnstileToken?: unknown;
+  leadKind?: unknown;
   planInterest?: unknown;
+  partnershipType?: unknown;
   companyName?: unknown;
+  companyWebsite?: unknown;
   contactName?: unknown;
   email?: unknown;
   phone?: unknown;
@@ -16,8 +26,12 @@ interface LeadRequestBody {
   seatCount?: unknown;
   monthlyClients?: unknown;
   currentTools?: unknown;
+  campaignGoal?: unknown;
+  targetAudience?: unknown;
   desiredTimeline?: unknown;
   budgetRange?: unknown;
+  referenceUrl?: unknown;
+  privacyConsent?: unknown;
   message?: unknown;
   sourcePage?: unknown;
 }
@@ -31,25 +45,8 @@ interface TurnstileResult {
   cdata?: string;
 }
 
-interface LeadRow {
-  id: string;
-  company_name: string;
-  contact_name: string;
-  email: string;
-  phone: string | null;
-  message: string;
+interface LeadRow extends LeadWebhookRow {
   stage: string;
-  source: string;
-  created_at: string;
-  plan_interest?: string | null;
-  region?: string | null;
-  shop_count?: number | null;
-  seat_count?: number | null;
-  monthly_clients?: number | null;
-  current_tools?: string | null;
-  desired_timeline?: string | null;
-  budget_range?: string | null;
-  source_page?: string | null;
 }
 
 const PLAN_INTERESTS = ["salon", "pro", "standard", "basic", "other"] as const;
@@ -61,6 +58,10 @@ function isEmail(value: string) {
 
 function isPlanInterest(value: string): value is PlanInterest {
   return PLAN_INTERESTS.includes(value as PlanInterest);
+}
+
+function isLeadKind(value: string): value is LeadKind {
+  return LEAD_KINDS.includes(value as LeadKind);
 }
 
 function trimOptional(value: unknown, maxLength: number) {
@@ -87,35 +88,43 @@ function getRequestIp(request: Request) {
 async function verifyTurnstile(token: string, request: Request) {
   const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
   if (!secret) {
-    return { ok: false as const, status: 503, error: "TURNSTILE_SECRET_KEY is not configured" };
+    return { ok: false as const, status: 503, error: "Security verification is temporarily unavailable" };
   }
 
   if (!token || token.length > 2048) {
     return { ok: false as const, status: 400, error: "Cloudflare verification token is invalid" };
   }
 
-  const response = await fetch(TURNSTILE_SITEVERIFY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      secret,
-      response: token,
-      remoteip: getRequestIp(request),
-      idempotency_key: crypto.randomUUID(),
-    }),
-  });
+  try {
+    const response = await fetch(TURNSTILE_SITEVERIFY_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        secret,
+        response: token,
+        remoteip: getRequestIp(request),
+        idempotency_key: crypto.randomUUID(),
+      }),
+    });
 
-  const result = (await response.json().catch(() => ({}))) as TurnstileResult;
-  if (!response.ok || !result.success) {
+    const result = (await response.json().catch(() => ({}))) as TurnstileResult;
+    if (!response.ok || !result.success) {
+      return {
+        ok: false as const,
+        status: 403,
+        error: "Cloudflare verification failed. Please try again.",
+        result,
+      };
+    }
+
+    return { ok: true as const, result };
+  } catch {
     return {
       ok: false as const,
-      status: 403,
-      error: "Cloudflare verification failed. Please try again.",
-      result,
+      status: 503,
+      error: "Cloudflare verification is temporarily unavailable",
     };
   }
-
-  return { ok: true as const, result };
 }
 
 function bytesToHex(bytes: ArrayBuffer) {
@@ -144,42 +153,12 @@ async function deliverLeadWebhook(lead: LeadRow) {
   }
 
   const submittedAt = new Date().toISOString();
-  const payload = {
-    event: "b2b.lead.created",
-    leadId: lead.id,
-    submittedAt,
-    planInterest: lead.plan_interest || "salon",
-    company: {
-      name: lead.company_name,
-      region: lead.region,
-    },
-    contact: {
-      name: lead.contact_name,
-      email: lead.email,
-      phone: lead.phone,
-    },
-    businessProfile: {
-      shopCount: lead.shop_count,
-      seatCount: lead.seat_count,
-      monthlyClients: lead.monthly_clients,
-      currentTools: lead.current_tools,
-    },
-    requirements: {
-      desiredTimeline: lead.desired_timeline,
-      budgetRange: lead.budget_range,
-      message: lead.message,
-    },
-    source: {
-      type: lead.source,
-      page: lead.source_page,
-      createdAt: lead.created_at,
-    },
-  };
+  const webhook = buildLeadWebhook(lead, submittedAt);
 
-  const rawPayload = JSON.stringify(payload);
+  const rawPayload = JSON.stringify(webhook.payload);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "x-hairfit-event": "b2b.lead.created",
+    "x-hairfit-event": webhook.event,
     "x-hairfit-timestamp": submittedAt,
   };
 
@@ -218,7 +197,7 @@ export async function POST(request: Request) {
   const turnstile = await verifyTurnstile(turnstileToken, request);
   if (!turnstile.ok) {
     return NextResponse.json(
-      { error: turnstile.error, turnstile: turnstile.result },
+      { error: turnstile.error },
       { status: turnstile.status },
     );
   }
@@ -228,6 +207,11 @@ export async function POST(request: Request) {
   const email = trimText(body.email, 160).toLowerCase();
   const phone = trimOptional(body.phone, 40);
   const message = trimText(body.message, 2000);
+  const leadKindRaw = trimText(body.leadKind, 40);
+  if (leadKindRaw && !isLeadKind(leadKindRaw)) {
+    return NextResponse.json({ error: "leadKind is invalid" }, { status: 400 });
+  }
+  const leadKind: LeadKind = isLeadKind(leadKindRaw) ? leadKindRaw : "salon_adoption";
   const planInterestRaw = trimText(body.planInterest, 40);
   const planInterest = isPlanInterest(planInterestRaw) ? planInterestRaw : "salon";
 
@@ -243,6 +227,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "message must be at least 5 characters" }, { status: 400 });
   }
 
+  const brandFields = leadKind === "brand_partnership"
+    ? parseBrandPartnershipFields(body as Record<string, unknown>)
+    : null;
+  if (brandFields && !brandFields.ok) {
+    return NextResponse.json({ error: brandFields.error }, { status: 400 });
+  }
+
+  const privacyConsentAt = brandFields?.ok ? new Date().toISOString() : null;
+
   const supabase = getSupabaseAdminClient();
   const { data, error } = await supabase
     .from("b2b_leads")
@@ -254,25 +247,33 @@ export async function POST(request: Request) {
       message,
       stage: "new",
       source: "public_form",
+      lead_kind: leadKind,
       plan_interest: planInterest,
       region: trimOptional(body.region, 80),
       shop_count: parseOptionalNumber(body.shopCount, 10000),
       seat_count: parseOptionalNumber(body.seatCount, 10000),
       monthly_clients: parseOptionalNumber(body.monthlyClients, 1_000_000),
       current_tools: trimOptional(body.currentTools, 500),
-      desired_timeline: trimOptional(body.desiredTimeline, 80),
-      budget_range: trimOptional(body.budgetRange, 80),
+      desired_timeline: brandFields?.ok ? brandFields.value.desiredTimeline : trimOptional(body.desiredTimeline, 80),
+      budget_range: brandFields?.ok ? brandFields.value.budgetRange : trimOptional(body.budgetRange, 80),
       source_page: trimOptional(body.sourcePage, 500),
+      partnership_type: brandFields?.ok ? brandFields.value.partnershipType : null,
+      company_website: brandFields?.ok ? brandFields.value.companyWebsite : null,
+      campaign_goal: brandFields?.ok ? brandFields.value.campaignGoal : null,
+      target_audience: brandFields?.ok ? brandFields.value.targetAudience : null,
+      reference_url: brandFields?.ok ? brandFields.value.referenceUrl : null,
+      privacy_consent_at: privacyConsentAt,
       turnstile_hostname: turnstile.result.hostname || null,
       turnstile_challenge_ts: turnstile.result.challenge_ts || null,
     })
     .select(
-      "id,company_name,contact_name,email,phone,message,stage,source,created_at,plan_interest,region,shop_count,seat_count,monthly_clients,current_tools,desired_timeline,budget_range,source_page",
+      "id,lead_kind,company_name,contact_name,email,phone,message,stage,source,created_at,plan_interest,region,shop_count,seat_count,monthly_clients,current_tools,desired_timeline,budget_range,source_page,partnership_type,company_website,campaign_goal,target_audience,reference_url,privacy_consent_at,privacy_retention_expires_at",
     )
     .maybeSingle<LeadRow>();
 
   if (error || !data) {
-    return NextResponse.json({ error: error?.message || "Lead insert failed" }, { status: 500 });
+    console.error("[b2b/lead] insert failed", error);
+    return NextResponse.json({ error: "문의 접수에 실패했습니다. 잠시 후 다시 시도해 주세요." }, { status: 500 });
   }
 
   const webhook = await deliverLeadWebhook(data);

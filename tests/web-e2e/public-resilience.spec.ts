@@ -124,3 +124,70 @@ test("B2B inquiry preserves input and recovers after an offline submission", asy
   await expect(companyName).toHaveValue("");
   expect(requestAttempt).toBe(2);
 });
+
+test("partnership inquiry preserves input, prevents duplicate work, and recovers offline", async ({ page }) => {
+  await page.route("https://challenges.cloudflare.com/**", async (route) => {
+    await route.fulfill({ body: "", contentType: "application/javascript", status: 200 });
+  });
+  await page.addInitScript(() => {
+    type MockTurnstileOptions = { callback?: (token: string) => void };
+    type MockWindow = Window & {
+      __hairfitPartnershipTurnstileCallback?: (token: string) => void;
+      turnstile?: {
+        remove: () => void;
+        render: (container: HTMLElement, options: MockTurnstileOptions) => string;
+        reset: () => void;
+      };
+    };
+    const target = window as MockWindow;
+    target.turnstile = {
+      render: (_container, options) => {
+        target.__hairfitPartnershipTurnstileCallback = options.callback;
+        queueMicrotask(() => options.callback?.("partnership-initial-token"));
+        return "partnership-turnstile";
+      },
+      reset: () => queueMicrotask(() => target.__hairfitPartnershipTurnstileCallback?.("partnership-retry-token")),
+      remove: () => undefined,
+    };
+  });
+
+  await page.goto("/partnerships", { waitUntil: "load" });
+  const form = page.locator("#partnership-inquiry");
+  await form.getByLabel("브랜드 / 회사명").fill("테스트 뷰티 브랜드");
+  await form.getByLabel("담당자명").fill("제휴 담당자");
+  await form.getByLabel("이메일").fill("partnership@example.com");
+  await form.getByLabel("캠페인 목표").fill("신제품 인지도와 스타일 체험 전환 확대");
+  await form.getByLabel("희망 시점").selectOption("1–3개월");
+  await form.getByLabel("예산 구간").selectOption("300만–1천만원");
+  await form.getByLabel("상세 내용").fill("헤어스타일 탐색 맥락에 맞는 공동 콘텐츠를 제안합니다.");
+  await form.getByLabel(/개인정보 수집·이용에 동의합니다/).check();
+
+  let requestAttempt = 0;
+  await page.route("**/api/b2b/lead", async (route) => {
+    requestAttempt += 1;
+    const requestBody = route.request().postDataJSON() as Record<string, unknown>;
+    expect(requestBody.leadKind).toBe("brand_partnership");
+    expect(requestBody.privacyConsent).toBe(true);
+    if (requestAttempt === 1) {
+      await route.abort("internetdisconnected");
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ webhookDelivered: true }),
+      status: 201,
+    });
+  });
+
+  const submit = form.getByRole("button", { name: "제휴 제안 보내기" });
+  await submit.click();
+  await expect(form.getByRole("alert")).toHaveText("네트워크 연결을 확인한 뒤 입력 내용을 유지한 채 다시 시도해 주세요.");
+  await expect(form.getByLabel("브랜드 / 회사명")).toHaveValue("테스트 뷰티 브랜드");
+  await expect(form.getByLabel("캠페인 목표")).toHaveValue("신제품 인지도와 스타일 체험 전환 확대");
+
+  await submit.dblclick();
+  await expect(form.getByRole("status")).toHaveText(/제휴 제안이 접수되었습니다/);
+  await expect(form.getByLabel("브랜드 / 회사명")).toHaveValue("");
+  expect(requestAttempt).toBe(2);
+});

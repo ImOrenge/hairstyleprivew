@@ -27,6 +27,12 @@ export default function B2BContactPage() {
           B2B 회원가입
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>
+        <p className="text-sm leading-6 text-[var(--app-muted)]">
+          뷰티 브랜드의 광고, 브랜디드 콘텐츠, 공동 캠페인을 제안하시나요?{" "}
+          <Link href="/partnerships" className="font-bold text-[var(--app-text)] underline underline-offset-4">
+            브랜드 광고·제휴 문의
+          </Link>
+        </p>
       </header>
 
       <B2BLeadForm />

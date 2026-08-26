@@ -4,6 +4,7 @@ import { expect, type Page, test } from "@playwright/test";
 const publicRoutes = [
   { name: "home", path: "/" },
   { name: "b2b-contact", path: "/b2b/contact" },
+  { name: "partnerships", path: "/partnerships" },
   { name: "login", path: "/login" },
   { name: "signup", path: "/signup" },
   { name: "privacy", path: "/privacy-policy" },
@@ -140,6 +141,55 @@ test("homepage and makeup discovery keep a 320px viewport free of horizontal ove
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
     expect(await page.locator("[data-nextjs-dialog]").count()).toBe(0);
   }
+  expect(consoleErrors).toEqual([]);
+});
+
+test("partnerships page exposes its CTA, public metadata, links, and responsive layout", async ({ page, request }) => {
+  const consoleErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") consoleErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => consoleErrors.push(error.message));
+
+  for (const viewport of [
+    { width: 390, height: 844 },
+    { width: 768, height: 900 },
+    { width: 1440, height: 1000 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/partnerships", { waitUntil: "load" });
+    await dismissAutomaticNotice(page);
+    await expect(page.getByRole("heading", { name: /스타일을 고르는 순간에/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: "제휴 제안 보내기" }).first()).toBeVisible();
+    const overflow = await page.evaluate(() => ({
+      clientWidth: document.documentElement.clientWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+    }));
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth);
+  }
+
+  await expect(page).toHaveTitle(/광고·제휴 문의/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/partnerships$/);
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute("content", /광고/);
+  await expect(page.locator('footer a[href="/partnerships"]')).toHaveText("광고·제휴 문의");
+
+  const faqSummary = page.locator("details summary").first();
+  await faqSummary.focus();
+  await page.keyboard.press("Enter");
+  await expect(faqSummary.locator("..")).toHaveAttribute("open", "");
+  const inquiryForm = page.locator("#partnership-inquiry");
+  await expect(inquiryForm).toBeVisible();
+  for (const label of ["제휴 유형", "브랜드 / 회사명", "담당자명", "이메일", "캠페인 목표", "희망 시점", "예산 구간", "상세 내용"]) {
+    await expect(page.getByLabel(label)).toBeVisible();
+  }
+
+  await page.goto("/b2b/contact", { waitUntil: "load" });
+  await expect(page.getByRole("link", { name: "브랜드 광고·제휴 문의" })).toHaveAttribute("href", "/partnerships");
+
+  const sitemapResponse = await request.get("/sitemap.xml");
+  expect(await sitemapResponse.text()).toContain("/partnerships");
+  const robotsResponse = await request.get("/robots.txt");
+  expect(await robotsResponse.text()).toContain("Allow: /partnerships");
   expect(consoleErrors).toEqual([]);
 });
 

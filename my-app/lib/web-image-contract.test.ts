@@ -114,5 +114,5 @@ test("non-aftercare web images keep explicit descriptions and loading policy", (
 
   assert.deepEqual(failures, []);
   assert.equal(rawImages.length, 27, "raw image inventory changed; review loading and layout policy");
-  assert.equal(nextImages.length, 34, "next/image inventory changed; review alt coverage");
+  assert.equal(nextImages.length, 36, "next/image inventory changed; review alt coverage");
 });
