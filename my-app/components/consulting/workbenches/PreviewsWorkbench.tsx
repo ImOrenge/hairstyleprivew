@@ -393,7 +393,7 @@ export function PreviewsWorkbench({ snapshot, mutate, saving }: { snapshot: Cons
                 <p className="app-kicker">유료 상담 시작 전 확인</p>
                 <h2 className="mt-2 text-xl font-black">이 작업부터 유료 상담 1회가 시작됩니다</h2>
               </div>
-              <p className="text-sm leading-6">시작 후에는 단순 변심에 따른 해당 회차의 청약철회와 환불이 제한됩니다. 연간 플랜의 아직 시작하지 않은 회차와 법정 예외 사유에 대한 권리는 유지됩니다.</p>
+              <p className="text-sm leading-6">시작 후에는 단순 변심에 따른 해당 회차의 청약철회와 환불이 제한됩니다. Signature Style Membership의 아직 시작하지 않은 회차와 법정 예외 사유에 대한 권리는 유지됩니다.</p>
               {paidStart.statutoryWithdrawalDeadline ? (
                 <p className="text-xs leading-5">
                   현재 계약의 법정 청약철회 마감: <strong>{new Date(paidStart.statutoryWithdrawalDeadline).toLocaleString("ko-KR")}</strong>

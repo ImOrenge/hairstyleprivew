@@ -44,7 +44,7 @@ function fullStyleEligibilityDescription(quote: NonNullable<RefundQuote["fullSty
   if (quote.eligibilityCode === "statutory_withdrawal") return "법정 청약철회 기간 안이며 시작한 상담이 없어 전액 환불 대상입니다.";
   if (quote.eligibilityCode === "started_session_restriction") {
     return quote.eligibleForImmediateRefund
-      ? "시작된 회차는 제외하고, 연간 플랜의 아직 시작하지 않은 회차만 결제 당시 회차 단가로 계산했습니다."
+      ? "시작된 회차는 제외하고, Signature Style Membership의 아직 시작하지 않은 회차만 결제 당시 회차 단가로 계산했습니다."
       : "상담 회차가 이미 시작되어 단순 변심에 따른 환불이 제한됩니다.";
   }
   if (quote.eligibilityCode === "window_expired") return "법정 청약철회 7일이 지나 단순 변심 환불액은 0원입니다. 구매한 권리는 계약 만료일까지 이용할 수 있습니다.";

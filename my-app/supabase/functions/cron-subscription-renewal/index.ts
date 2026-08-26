@@ -552,7 +552,7 @@ async function renewFullStyleContracts(supabase:FullStyleRenewalClient) {
       if(FULL_STYLE_REFUND_POLICY_V2_ENABLED&&!contract.contract_document_snapshot)throw new Error("verified contract document snapshot is missing");
       const billingKey=await decryptEncryptedBillingKey(contract.billing_key_encrypted);
       const customer=await getBillingKeyCustomer(billingKey,contract.user_id);
-      const orderName=contract.offering_key==="full_style_quarterly"?"HairFit 3개월 스타일 관리 갱신":"HairFit 연간 스타일 아카이브 갱신";
+      const orderName=contract.offering_key==="full_style_quarterly"?"HairFit Total Image Direction 갱신":"HairFit Signature Style Membership 갱신";
       const tx=await supabase.from("payment_transactions").insert({
         user_id:contract.user_id,provider:"portone",provider_order_id:paymentId,provider_customer_id:contract.user_id,
         amount,currency,status:"pending",credits_to_grant:quantity,

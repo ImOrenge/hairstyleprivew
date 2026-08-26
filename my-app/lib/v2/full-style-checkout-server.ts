@@ -12,6 +12,7 @@ import { sendFullStyleContractEmail } from "../resend";
 import { getSiteUrl } from "../site-url";
 import { isHairfitV2Enabled } from "./feature-flags";
 import { assertFullStyleContractDocumentReady, buildFullStyleContractDocument } from "./full-style-contract-document";
+import { getFullStylePlanDisplayName } from "../premium-offer-policy";
 
 type PreparedRow = {
   id:string; user_id:string; consultation_id:string|null; offering_id:string; offering_key:string;
@@ -60,6 +61,7 @@ export async function prepareFullStyleCheckout(input:{
     included_consultation_sessions:number; capabilities:OfferingCapabilities;
     product_prices_v2:Array<{id:string;version:number;provider_product_id:string|null;currency:string;amount_minor:number}>;
   };
+  offering.customer_name = getFullStylePlanDisplayName(offering.offering_key) ?? offering.customer_name;
   const price = offering.product_prices_v2[0];
   if (!price) throw new HairfitV2Error("OFFERING_PRICE_NOT_FOUND",409,"활성 결제 가격이 없습니다.");
   const paymentId = fullStylePaymentId(offering.offering_key);

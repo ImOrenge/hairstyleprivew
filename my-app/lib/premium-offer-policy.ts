@@ -8,8 +8,14 @@ export const FULL_STYLE_COMMON_BENEFITS = [
   "Salon Brief·AI 결과 해설·PDF·애프터케어",
 ] as const;
 
+export const FULL_STYLE_PLAN_DISPLAY_NAMES = {
+  full_style_once: "Private Hair Direction",
+  full_style_quarterly: "Total Image Direction",
+  full_style_annual: "Signature Style Membership",
+} as const;
+
 export const PREMIUM_OFFER_POLICY = {
-  version: "2026-08-25-v6",
+  version: "2026-08-26-v7",
   priceVersion: 3,
   statusLabel: "가격 확정",
   disclosure:
@@ -29,8 +35,8 @@ export const PREMIUM_OFFER_POLICY = {
   offers: [
     {
       key: "full_style_once",
-      name: "Full Style Once",
-      koreanName: "풀 스타일 1회",
+      name: FULL_STYLE_PLAN_DISPLAY_NAMES.full_style_once,
+      koreanName: FULL_STYLE_PLAN_DISPLAY_NAMES.full_style_once,
       priceKrw: 59_000,
       priceLabel: "59,000원",
       periodLabel: "/ 1회",
@@ -41,7 +47,7 @@ export const PREMIUM_OFFER_POLICY = {
       tagline: "한 번의 스타일 결정을 완결합니다.",
       summary: "풀코스 1회, 전체 재시작 1회와 시술 후 D+30 사후상담 1회",
       management: ["풀 스타일 컨설팅 1회", "최종 확정 전 전체 재시작 1회", "시술 후 D+30 AI 사후상담 1회", "완료 후 60일 보관"],
-      ctaLabel: "1회 컨설팅 선택",
+      ctaLabel: "Private Hair Direction 선택",
       recommended: false,
       planTypeLabel: "1회 완결형",
       retentionDays: 60,
@@ -49,8 +55,8 @@ export const PREMIUM_OFFER_POLICY = {
     },
     {
       key: "full_style_quarterly",
-      name: "Full Style Quarterly",
-      koreanName: "3개월 관리형",
+      name: FULL_STYLE_PLAN_DISPLAY_NAMES.full_style_quarterly,
+      koreanName: FULL_STYLE_PLAN_DISPLAY_NAMES.full_style_quarterly,
       priceKrw: 129_000,
       priceLabel: "129,000원",
       periodLabel: "/ 3개월",
@@ -61,7 +67,7 @@ export const PREMIUM_OFFER_POLICY = {
       tagline: "한 계절의 변화와 관리를 한 기준으로 이어갑니다.",
       summary: "3개월마다 풀코스 1회, 전체 재시작 2회와 D+30·60·90 AI 사후상담",
       management: ["3개월 안에 풀코스 1회", "상담당 전체 재시작 2회", "시술 후 D+30·60·90 AI 사후상담 3회", "회차별 결과 완료 후 90일 보관"],
-      ctaLabel: "3개월 관리형 선택",
+      ctaLabel: "Total Image Direction 선택",
       recommended: true,
       planTypeLabel: "3개월 관리형",
       retentionDays: 90,
@@ -69,8 +75,8 @@ export const PREMIUM_OFFER_POLICY = {
     },
     {
       key: "full_style_annual",
-      name: "Full Style Annual",
-      koreanName: "연간",
+      name: FULL_STYLE_PLAN_DISPLAY_NAMES.full_style_annual,
+      koreanName: FULL_STYLE_PLAN_DISPLAY_NAMES.full_style_annual,
       priceKrw: 412_800,
       priceLabel: "412,800원",
       periodLabel: "/ 년",
@@ -81,7 +87,7 @@ export const PREMIUM_OFFER_POLICY = {
       tagline: "한 해의 변화를 네 번의 결정으로 축적합니다.",
       summary: "연 4회, 상담마다 전체 재시작 5회와 D+30·60·90 AI 사후상담",
       management: ["연 4회 자유 사용", "각 상담 전체 재시작 5회 · 연 최대 20회", "각 상담 D+30·60·90 AI 사후상담 3회 · 연 최대 12회", "회차별 전후 비교·연간 종합 리포트", "회차별 결과 완료 후 365일 보관"],
-      ctaLabel: "연간 플랜 선택",
+      ctaLabel: "Signature Style Membership 선택",
       recommended: false,
       planTypeLabel: "연간 관리형",
       retentionDays: 365,
@@ -100,8 +106,8 @@ export const PREMIUM_OFFER_POLICY = {
       "유료 3×3 생성 또는 무료 데모 결제 후 비교 계속하기를 실행하면 해당 상담 회차가 시작되며, 시작된 회차는 7일 이내라도 단순 변심 환불이 제한됩니다.",
       "중복·오결제, 승인하지 않은 결제, HairFit 책임의 결과 미제공, 표시·광고·계약과 중요한 부분이 다른 경우는 별도 예외 규정으로 처리합니다.",
     ],
-    paidStartNotice:"지금 유료 상담 1회가 시작됩니다. 시작 후에는 단순 변심에 따른 해당 회차의 청약철회와 환불이 제한됩니다. 연간 플랜의 아직 시작하지 않은 회차와 법정 예외 사유에 대한 권리는 유지됩니다.",
-    annualNotice:"법정 청약철회 기간 안에 일부 상담을 시작했다면 시작하지 않은 회차는 회차당 103,200원으로 계산합니다. 청약철회 기간이 지난 뒤에는 미시작 회차도 단순 변심 환불 대상이 아닙니다.",
+    paidStartNotice:"지금 유료 상담 1회가 시작됩니다. 시작 후에는 단순 변심에 따른 해당 회차의 청약철회와 환불이 제한됩니다. Signature Style Membership의 아직 시작하지 않은 회차와 법정 예외 사유에 대한 권리는 유지됩니다.",
+    annualNotice:"Signature Style Membership에서 법정 청약철회 기간 안에 일부 상담을 시작했다면 시작하지 않은 회차는 회차당 103,200원으로 계산합니다. 청약철회 기간이 지난 뒤에는 미시작 회차도 단순 변심 환불 대상이 아닙니다.",
   },
 } as const;
 
@@ -115,4 +121,10 @@ export function isFullStyleOfferingKey(value: string): value is FullStyleOfferin
 
 export function getFullStyleOffer(key: string): FullStyleOffer | null {
   return PREMIUM_OFFER_POLICY.offers.find((offer) => offer.key === key) ?? null;
+}
+
+export function getFullStylePlanDisplayName(key: string): string | null {
+  return Object.prototype.hasOwnProperty.call(FULL_STYLE_PLAN_DISPLAY_NAMES, key)
+    ? FULL_STYLE_PLAN_DISPLAY_NAMES[key as FullStyleOfferingKey]
+    : null;
 }

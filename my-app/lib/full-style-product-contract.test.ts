@@ -14,6 +14,8 @@ const activationMigration=read("../supabase/migrations/20260825041004_activate_f
 const activationMirrored=read("supabase/migrations/20260825041004_activate_full_style_v2_catalog.sql");
 const priceV3Migration=read("../supabase/migrations/20260825103949_full_style_price_v3.sql");
 const priceV3Mirrored=read("supabase/migrations/20260825103949_full_style_price_v3.sql");
+const planNamesMigration=read("../supabase/migrations/20260826112017_full_style_v3_plan_names.sql");
+const planNamesMirrored=read("supabase/migrations/20260826112017_full_style_v3_plan_names.sql");
 const start=read("components/consulting/interview/ZeroInputConsultationStart.tsx");
 const compare=read("components/consulting/workbenches/CompareWorkbench.tsx");
 const previews=read("components/consulting/workbenches/PreviewsWorkbench.tsx");
@@ -30,6 +32,7 @@ const paymentCatalogGenerator=read("../scripts/generate-payment-catalog-pdf.py")
 
 test("approved total prices, sessions, periods and shared capabilities are one contract",()=>{
   for(const value of ["59,000원","129,000원","412,800원","full_style_once","full_style_quarterly","full_style_annual"])assert.match(policy,new RegExp(value));
+  for(const name of ["Private Hair Direction","Total Image Direction","Signature Style Membership"])assert.match(policy,new RegExp(name));
   for(const amount of ["59000","129000","412800"])assert.match(priceV3Migration,new RegExp(amount));
   assert.match(policy,/priceVersion: 3/);
   assert.match(policy,/sessions: 4/); assert.match(policy,/미사용 회차가 이월되지 않으며/);
@@ -110,6 +113,19 @@ test("V3 price catalog retires V2 for new sales and preserves snapshot-based con
   assert.match(priceV3Migration,/version,provider,provider_product_id,currency,amount_minor,status,valid_from/);
   assert.match(priceV3Migration,/FULL_STYLE_V3_CATALOG_INCOMPLETE/);
   assert.match(checkout,/prepared\.amount_minor/);
+});
+
+test("V3 customer plan names use the premium naming contract everywhere",()=>{
+  assert.equal(planNamesMigration,planNamesMirrored);
+  for(const name of ["Private Hair Direction","Total Image Direction","Signature Style Membership"]) {
+    assert.match(planNamesMigration,new RegExp(name));
+    assert.match(paymentCatalog,new RegExp(name));
+    assert.match(paymentCatalogGenerator,new RegExp(name));
+  }
+  assert.match(planNamesMigration,/version = 3/);
+  assert.match(planNamesMigration,/FULL_STYLE_V3_PLAN_NAMES_INCOMPLETE/);
+  assert.match(renewal,/HairFit Total Image Direction 갱신/);
+  assert.match(renewal,/HairFit Signature Style Membership 갱신/);
 });
 
 test("KG Inicis catalog publishes only current V3 sale terms",()=>{

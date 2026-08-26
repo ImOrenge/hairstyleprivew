@@ -10,7 +10,7 @@ import { DEFAULT_BILLING_RETURN_TARGET, normalizeBillingReturnTarget } from "../
 import { getPlanDisplayBenefits } from "../../lib/plan-benefit-display";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
 import { getSubscriptionAccessMode } from "../../lib/subscription-access";
-import { getFullStyleOffer } from "../../lib/premium-offer-policy";
+import { getFullStyleOffer, getFullStylePlanDisplayName } from "../../lib/premium-offer-policy";
 import { isHairfitV2Enabled } from "../../lib/v2/feature-flags";
 
 type LegacySubscription = { plan_key:string; status:string; current_period_end:string|null; cancel_at_period_end:boolean };
@@ -55,7 +55,7 @@ async function readFullStyleContract(userId:string|null):Promise<FullStyleContra
 }
 
 function fullStyleLabel(key:string) {
-  return key === "full_style_once" ? "풀 스타일 1회" : key === "full_style_quarterly" ? "3개월 관리형" : "연간";
+  return getFullStylePlanDisplayName(key) ?? "HairFit 풀 스타일";
 }
 
 export default async function BillingPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
