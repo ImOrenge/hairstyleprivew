@@ -59,6 +59,27 @@ test("consultation creation ensures the Clerk user profile before dependent writ
   }
 });
 
+test("consulting server routes recover auth and data failures without a React server-component crash", () => {
+  const routeServer = read("../../lib/consulting/route-server.ts");
+  const newPage = read("../../app/consulting/new/page.tsx");
+  const stagePage = read("../../app/consulting/[sessionId]/[stage]/page.tsx");
+  const recovery = read("../../components/consulting/ConsultationRouteRecovery.tsx");
+
+  assert.match(routeServer, /unstable_rethrow\(error\)/);
+  assert.match(routeServer, /Clerk auth context unavailable/);
+  assert.match(routeServer, /Server route data unavailable/);
+  assert.doesNotMatch(routeServer, /error\.message/);
+  for (const source of [newPage, stagePage]) {
+    assert.match(source, /readConsultationRouteUserId\(\)/);
+    assert.match(source, /loadConsultationRouteData\(/);
+    assert.doesNotMatch(source, /await auth\(\)/);
+    assert.match(source, /ConsultationRouteRecovery/);
+  }
+  assert.match(recovery, /data-consulting-route-recovery="true"/);
+  assert.match(recovery, /<a className="f-landing-cta" href=\{retryHref\}>/);
+  assert.doesNotMatch(recovery, /<Link/);
+});
+
 test("consultation entry and route never expose raw database error messages", () => {
   const entry = read("../../components/consulting/ConsultingEntry.tsx");
   const route = read("../../app/api/consultations/route.ts");

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { ConsultingEntry } from "../../../components/consulting/ConsultingEntry";
+import { ConsultationRouteRecovery } from "../../../components/consulting/ConsultationRouteRecovery";
 import { buildSignInRedirectUrl } from "../../../lib/clerk";
 import { CONSULTATION_STAGE_SLUGS } from "../../../lib/consulting/contracts";
 import { isConsultationFrontendEnabled } from "../../../lib/consulting/feature-flag";
+import { loadConsultationRouteData, readConsultationRouteUserId } from "../../../lib/consulting/route-server";
 import { readLatestServerConsultation } from "../../../lib/consulting/server-store";
 
 export const metadata: Metadata = {
@@ -13,7 +14,12 @@ export const metadata: Metadata = {
 };
 export default async function NewConsultationPage() {
   if (!isConsultationFrontendEnabled()) redirect("/workspace");
-  const { userId } = await auth();
+  const userId = await readConsultationRouteUserId();
   if (!userId) redirect(buildSignInRedirectUrl("/consulting/new"));
-  return <ConsultingEntry latest={await readLatestServerConsultation(userId)} />;
+  const latest = await loadConsultationRouteData(
+    "read-latest-consultation",
+    () => readLatestServerConsultation(userId),
+  );
+  if (!latest.ok) return <ConsultationRouteRecovery retryHref="/consulting/new" />;
+  return <ConsultingEntry latest={latest.data} />;
 }
