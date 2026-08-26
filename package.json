@@ -14,7 +14,7 @@
     "cf:assets:verify": "npm --prefix my-app run cf:assets:verify",
     "cf:assets:live": "npm --prefix my-app run cf:assets:live",
     "cf:upload": "npm --prefix my-app run cf:upload",
-    "cf:deploy": "npm --prefix my-app run cf:deploy",
+    "cf:deploy": "npm --prefix my-app run cf:deploy --",
     "cf:preview": "npm --prefix my-app run cf:preview",
     "lint": "npm --prefix my-app run lint",
     "lint:all": "npm --workspaces --if-present run lint",

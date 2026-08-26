@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
 import {
   assertBuiltRelease,
@@ -10,6 +12,11 @@ import {
 
 const oldVersion = "71577fe3-a898-474a-b021-a68b1a00ff81";
 const newVersion = "d66b0199-a9fd-488c-98ad-ca3d5c311a0d";
+
+test("workspace deploy forwards confirmation arguments to the app release script", () => {
+  const workspacePackage = JSON.parse(readFileSync(resolve(import.meta.dirname, "..", "..", "package.json"), "utf8"));
+  assert.equal(workspacePackage.scripts["cf:deploy"], "npm --prefix my-app run cf:deploy --");
+});
 
 test("atomic split deploy parses Wrangler version output", () => {
   assert.equal(parseUploadedVersion(`Uploaded worker\nWorker Version ID: ${newVersion}\n`), newVersion);
