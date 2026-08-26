@@ -11,6 +11,7 @@ import { verifyLiveAssets } from "./verify-open-next-assets.mjs";
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(appRoot, "..");
+const wranglerCli = resolve(repoRoot, "node_modules", "wrangler", "bin", "wrangler.js");
 const confirmation = "HAIRFIT_ATOMIC_SPLIT_DEPLOY";
 const productionOrigin = "https://hairfit.beauty";
 const configs = Object.freeze({
@@ -55,7 +56,7 @@ function run(command, args, options = {}) {
 }
 
 function runWrangler(args) {
-  return run(process.platform === "win32" ? "npx.cmd" : "npx", ["wrangler", ...args]);
+  return run(process.execPath, [wranglerCli, ...args]);
 }
 
 export function parseUploadedVersion(output) {
