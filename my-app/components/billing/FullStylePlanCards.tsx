@@ -1,5 +1,4 @@
 import { Check } from "lucide-react";
-import Link from "next/link";
 import { PREMIUM_OFFER_POLICY } from "../../lib/premium-offer-policy";
 
 export function FullStylePlanCards({ checkoutEnabled, consultationId = "" }: { checkoutEnabled:boolean; consultationId?:string }) {
@@ -24,7 +23,7 @@ export function FullStylePlanCards({ checkoutEnabled, consultationId = "" }: { c
               </ul>
               <p className="mt-4 border-t border-[var(--app-border)] pt-3 text-xs leading-5 text-[var(--app-muted)]">법정 청약철회 7일 경과 후에는 미사용 상태라도 단순 변심 환불이 불가능합니다. 기간말 해지는 별도로 신청할 수 있습니다.</p>
             </div>
-            {checkoutEnabled ? <Link href={`/billing/checkout?${query.toString()}`} className="flex min-h-11 items-center justify-center bg-[var(--app-inverse)] px-4 text-sm font-black text-[var(--app-inverse-text)]">{offer.ctaLabel}</Link> : <span className="flex min-h-11 items-center justify-center border border-[var(--app-border)] px-4 text-sm font-black text-[var(--app-muted)]">결제 순차 오픈 예정</span>}
+            {checkoutEnabled ? <a href={`/billing/checkout?${query.toString()}`} className="flex min-h-11 items-center justify-center bg-[var(--app-inverse)] px-4 text-sm font-black text-[var(--app-inverse-text)]">{offer.ctaLabel}</a> : <span className="flex min-h-11 items-center justify-center border border-[var(--app-border)] px-4 text-sm font-black text-[var(--app-muted)]">결제 순차 오픈 예정</span>}
           </article>
         );
       })}

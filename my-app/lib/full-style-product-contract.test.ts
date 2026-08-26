@@ -27,6 +27,8 @@ const generationAccept=read("app/api/generations/accept/route.ts");
 const generationRun=read("app/api/generations/run/route.ts");
 const paymentCatalog=read("../docs/payment-product-catalog.md");
 const paymentCatalogGenerator=read("../scripts/generate-payment-catalog-pdf.py");
+const planCards=read("components/billing/FullStylePlanCards.tsx");
+const checkoutPage=read("app/billing/checkout/page.tsx");
 
 test("approved total prices, sessions, periods and shared capabilities are one contract",()=>{
   for(const value of ["59,000원","129,000원","412,800원","full_style_once","full_style_quarterly","full_style_annual"])assert.match(policy,new RegExp(value));
@@ -65,6 +67,14 @@ test("checkout trusts server catalog snapshots and preserves idempotent grant ma
   assert.doesNotMatch(publicCatalog,/internalName|releasePolicy|providerProductId/);
   assert.match(middleware,/isPublicConsultingPlansRoute/);
   assert.match(middleware,/isPublicCatalogRoute\(req\) && !isMutationRequest\(req\)/);
+});
+
+test("full-style plan selection survives the authentication boundary with the active price version",()=>{
+  assert.match(planCards,/<a href=\{`\/billing\/checkout\?\$\{query\.toString\(\)\}`\}/);
+  assert.doesNotMatch(planCards,/import Link from "next\/link"/);
+  assert.match(checkoutPage,/Number\.isInteger\(requestedPriceVersion\) && requestedPriceVersion > 0/);
+  assert.match(checkoutPage,/: PREMIUM_OFFER_POLICY\.priceVersion/);
+  assert.match(checkoutPage,/priceVersion=\$\{priceVersion\}/);
 });
 
 test("restart, RLS and retention cleanup remain server-owned and migrations mirror",()=>{
