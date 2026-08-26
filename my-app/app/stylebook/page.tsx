@@ -50,9 +50,7 @@ export default async function StylebookPage() {
             {entries.map((entry) => (
               <Link
                 key={entry.selectionId}
-                href={entry.actualServiceId
-                  ? `/aftercare/${encodeURIComponent(entry.actualServiceId)}`
-                  : `/consulting/${encodeURIComponent(entry.consultationId)}/decision`}
+                href={`/result/${encodeURIComponent(entry.resultGenerationId)}`}
                 className="customer-card customer-stylebook-card"
               >
                 <div className="customer-stylebook-card__visual">
@@ -64,7 +62,7 @@ export default async function StylebookPage() {
                 </div>
                 <div className="customer-stylebook-card__body">
                   <div>
-                    <p className="customer-kicker">{entry.actualServiceId ? "시술·케어 연결" : "확정 스타일"}</p>
+                    <p className="customer-kicker">컨설팅 리설트</p>
                     <h2>{entry.name}</h2>
                     <p>{entry.recommendationReason}</p>
                   </div>

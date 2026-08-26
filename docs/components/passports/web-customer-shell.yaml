@@ -52,6 +52,7 @@ route_contract:
 
 history_data_contract:
   stylebook_source: style_selection_snapshots_v2-confirmed-only
+  stylebook_destination: /result/{sourceGenerationId}
   aftercare_sources:
     - actual_services_v2
     - aftercare_programs_v2

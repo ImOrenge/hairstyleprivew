@@ -11,12 +11,12 @@ import { getSupabaseAdminClient, isSupabaseConfigured } from "../supabase";
 export interface CustomerStyleRecordV2 {
   selectionId: string;
   consultationId: string;
+  resultGenerationId: string;
   previewVariantId: string;
   name: string;
   recommendationReason: string;
   imageUrl: string | null;
   confirmedAt: string;
-  actualServiceId: string | null;
 }
 
 export interface CustomerAftercareCheckpointV2 {
@@ -220,30 +220,33 @@ export async function loadCustomerStylebookV2(userId: string): Promise<CustomerS
     .filter((value): value is ParsedSelection => value !== null);
   if (!selections.length) return [];
 
-  const selectionIds = selections.map((selection) => selection.selectionId);
-  const actualServices = await db
-    .from("actual_services_v2")
-    .select("id,selection_snapshot_id")
+  const consultationIds = selections.map((selection) => selection.consultationId);
+  const sessions = await db
+    .from("consultation_sessions")
+    .select("id,source_generation_id")
     .eq("user_id", userId)
-    .in("selection_snapshot_id", selectionIds)
-    .order("confirmed_at", { ascending: false });
-  if (actualServices.error) throw new Error(actualServices.error.message);
-  const actualServiceBySelection = new Map<string, string>();
-  for (const row of (actualServices.data ?? []) as unknown as Array<{ id: string; selection_snapshot_id: string }>) {
-    if (!actualServiceBySelection.has(row.selection_snapshot_id)) actualServiceBySelection.set(row.selection_snapshot_id, row.id);
+    .in("id", consultationIds);
+  if (sessions.error) throw new Error(sessions.error.message);
+  const generationByConsultation = new Map<string, string>();
+  for (const row of (sessions.data ?? []) as unknown as Array<{ id: string; source_generation_id: string | null }>) {
+    if (row.source_generation_id) generationByConsultation.set(row.id, row.source_generation_id);
   }
 
   const imageUrls = await signedImageUrls(selections.map((selection) => selection.imagePath), db as unknown as ServerSupabaseLike);
-  return selections.map((selection) => ({
-    selectionId: selection.selectionId,
-    consultationId: selection.consultationId,
-    previewVariantId: selection.previewVariantId,
-    name: selection.name,
-    recommendationReason: selection.recommendationReason,
-    imageUrl: selection.imagePath ? imageUrls.get(selection.imagePath) ?? null : null,
-    confirmedAt: selection.confirmedAt,
-    actualServiceId: actualServiceBySelection.get(selection.selectionId) ?? null,
-  }));
+  return selections.flatMap((selection) => {
+    const resultGenerationId = generationByConsultation.get(selection.consultationId);
+    if (!resultGenerationId) return [];
+    return [{
+      selectionId: selection.selectionId,
+      consultationId: selection.consultationId,
+      resultGenerationId,
+      previewVariantId: selection.previewVariantId,
+      name: selection.name,
+      recommendationReason: selection.recommendationReason,
+      imageUrl: selection.imagePath ? imageUrls.get(selection.imagePath) ?? null : null,
+      confirmedAt: selection.confirmedAt,
+    }];
+  });
 }
 
 export async function loadCustomerAftercareV2(userId: string): Promise<CustomerAftercareRecordV2[]> {

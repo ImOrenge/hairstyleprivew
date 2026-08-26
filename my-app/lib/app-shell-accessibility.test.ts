@@ -79,6 +79,8 @@ test("stylebook and aftercare use only the HairFit V2 customer history read mode
   const customerHistorySurfaces = `${stylebook}\n${aftercare}\n${aftercareDetail}`;
 
   assert.match(stylebook, /loadCustomerStylebookV2/);
+  assert.match(stylebook, /`\/result\/\$\{encodeURIComponent\(entry\.resultGenerationId\)\}`/);
+  assert.doesNotMatch(stylebook, /entry\.actualServiceId|`\/aftercare\/\$\{encodeURIComponent|`\/consulting\/\$\{encodeURIComponent/);
   assert.match(aftercare, /loadCustomerAftercareV2/);
   assert.match(aftercareDetail, /loadCustomerAftercareRecordV2/);
   assert.doesNotMatch(customerHistorySurfaces, /loadCustomerDashboardForUser|user_hair_records|user_aftercare_guides|recentGenerations|recentStylingSessions/);
@@ -91,4 +93,6 @@ test("stylebook and aftercare use only the HairFit V2 customer history read mode
     assert.match(history, new RegExp(table));
   }
   assert.match(history, /STYLING_RESULTS_BUCKET/);
+  assert.match(history, /consultation_sessions/);
+  assert.match(history, /source_generation_id/);
 });
