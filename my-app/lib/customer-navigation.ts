@@ -10,7 +10,8 @@ const customerShellRoutes = ["/home", "/stylebook", "/aftercare", "/mypage"] as 
 const customerShellHarnessRoute = "/e2e-harness/customer-shell";
 
 export function isCustomerShellPath(pathname: string) {
-  return pathname === customerShellHarnessRoute || customerShellRoutes.some((route) => pathname === route);
+  return pathname === customerShellHarnessRoute
+    || customerShellRoutes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 }
 
 export function isCustomerNavigationItemActive(pathname: string, href: string) {

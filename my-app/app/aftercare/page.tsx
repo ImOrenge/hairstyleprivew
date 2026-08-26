@@ -4,28 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowRight, CalendarDays, Plus } from "lucide-react";
 import { CustomerPageHeader, CustomerShell } from "../../components/customer/CustomerShell";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
-import { getConfirmedStyleMediaFromRelation } from "../../lib/confirmed-style-media";
-import { getSupabaseAdminClient, isSupabaseConfigured } from "../../lib/supabase";
-
-interface HairRecordRow {
-  id: string;
-  style_name: string;
-  service_type: string;
-  service_date: string;
-  next_visit_target_days: number;
-  created_at: string;
-  generation?: unknown;
-  selected_variant_image_url?: string | null;
-}
-
-const SERVICE_LABELS: Record<string, string> = {
-  cut: "커트",
-  perm: "펌",
-  color: "염색",
-  bleach: "탈색",
-  treatment: "트리트먼트",
-  other: "기타 시술",
-};
+import { loadCustomerAftercareV2 } from "../../lib/v2/customer-history-server";
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -37,37 +16,13 @@ function formatDate(value: string) {
   });
 }
 
-function nextVisitDate(serviceDate: string, days: number) {
-  const date = new Date(`${serviceDate}T00:00:00+09:00`);
-  if (Number.isNaN(date.getTime())) return "";
-  date.setDate(date.getDate() + days);
-  return formatDate(date.toISOString());
-}
-
 export default async function AftercarePage() {
   const { userId } = await auth();
   if (!userId) {
     redirect(buildSignInRedirectUrl("/aftercare"));
   }
 
-  let records: HairRecordRow[] = [];
-
-  if (isSupabaseConfigured()) {
-    const supabase = getSupabaseAdminClient();
-    const { data, error } = await supabase
-      .from("user_hair_records")
-      .select("id,style_name,service_type,service_date,next_visit_target_days,created_at,generation:generations(selected_variant_id,options)")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (!error && data) {
-      records = (data as HairRecordRow[]).map((record) => ({
-        ...record,
-        selected_variant_image_url: getConfirmedStyleMediaFromRelation(record.generation).selectedVariantImageUrl,
-      }));
-    }
-  }
+  const records = await loadCustomerAftercareV2(userId);
 
   return (
     <CustomerShell>
@@ -75,7 +30,7 @@ export default async function AftercarePage() {
         <CustomerPageHeader
           eyebrow="Care"
           title="선택한 스타일을 오래, 편안하게"
-          description="시술일과 모발 상태에 맞춘 드라이·트리트먼트·스타일링 가이드를 한곳에서 확인하세요."
+          description="실제 시술 기록과 HairFit V2 관리 일정, 사후 체크인을 한곳에서 확인하세요."
           action={
             <Link href="/consulting/new" className="customer-primary-button">
               <Plus aria-hidden="true" />
@@ -97,22 +52,22 @@ export default async function AftercarePage() {
         ) : (
           <section className="customer-care-grid" aria-label="케어 가이드 목록">
             {records.map((record) => (
-              <Link key={record.id} href={`/aftercare/${record.id}`} className="customer-card customer-care-card">
+              <Link key={record.actualServiceId} href={`/aftercare/${record.actualServiceId}`} className="customer-card customer-care-card">
                 <div className="customer-care-card__visual">
-                  {record.selected_variant_image_url ? (
+                  {record.imageUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={record.selected_variant_image_url} alt={`${record.style_name} 시술 확정 스타일`} />
+                    <img src={record.imageUrl} alt={`${record.styleName} 시술 확정 스타일`} />
                   ) : (
                     <div className="customer-stylebook-card__placeholder" aria-hidden="true">HF</div>
                   )}
                 </div>
                 <div className="customer-care-card__body">
-                  <p className="customer-kicker">{SERVICE_LABELS[record.service_type] || record.service_type}</p>
-                  <h2>{record.style_name}</h2>
-                  <p><CalendarDays aria-hidden="true" /> 시술일 {formatDate(record.service_date)}</p>
+                  <p className="customer-kicker">{record.services.join(" · ") || "시술 기록"}</p>
+                  <h2>{record.styleName}</h2>
+                  <p><CalendarDays aria-hidden="true" /> 시술일 {formatDate(record.serviceDate)}</p>
                   <div className="customer-care-card__due">
-                    <span>권장 재방문</span>
-                    <strong>{nextVisitDate(record.service_date, record.next_visit_target_days)}</strong>
+                    <span>관리 프로그램</span>
+                    <strong>{record.program ? `${record.program.checkpoints.length}단계 · 체크인 ${record.checkins.length}회` : "준비 중"}</strong>
                   </div>
                 </div>
               </Link>

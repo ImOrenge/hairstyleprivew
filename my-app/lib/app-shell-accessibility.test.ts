@@ -62,10 +62,33 @@ test("customer surfaces use the five-item atelier shell while consultation stays
   assert.match(navigation, /href: "\/consulting\/new"/);
   assert.match(navigation, /customerShellRoutes = \["\/home", "\/stylebook", "\/aftercare", "\/mypage"\]/);
   assert.match(navigation, /customerShellHarnessRoute = "\/e2e-harness\/customer-shell"/);
+  assert.match(navigation, /pathname\.startsWith\(`\$\{route\}\/`\)/);
   assert.match(shell, /aria-label="고객 주요 내비게이션"/);
   assert.match(shell, /customer-app__bottom-nav/);
   assert.doesNotMatch(`${home}\n${harness}`, /크레딧/);
   assert.match(home, /formatMembershipLabel\(dashboard\.planKey\)/);
   assert.match(header, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
   assert.match(footer, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
+});
+
+test("stylebook and aftercare use only the HairFit V2 customer history read model", () => {
+  const stylebook = readFileSync(path.join(appRoot, "app", "stylebook", "page.tsx"), "utf8");
+  const aftercare = readFileSync(path.join(appRoot, "app", "aftercare", "page.tsx"), "utf8");
+  const aftercareDetail = readFileSync(path.join(appRoot, "app", "aftercare", "[hairRecordId]", "page.tsx"), "utf8");
+  const history = readFileSync(path.join(appRoot, "lib", "v2", "customer-history-server.ts"), "utf8");
+  const customerHistorySurfaces = `${stylebook}\n${aftercare}\n${aftercareDetail}`;
+
+  assert.match(stylebook, /loadCustomerStylebookV2/);
+  assert.match(aftercare, /loadCustomerAftercareV2/);
+  assert.match(aftercareDetail, /loadCustomerAftercareRecordV2/);
+  assert.doesNotMatch(customerHistorySurfaces, /loadCustomerDashboardForUser|user_hair_records|user_aftercare_guides|recentGenerations|recentStylingSessions/);
+  for (const table of [
+    "style_selection_snapshots_v2",
+    "actual_services_v2",
+    "aftercare_programs_v2",
+    "aftercare_checkins_v2",
+  ]) {
+    assert.match(history, new RegExp(table));
+  }
+  assert.match(history, /STYLING_RESULTS_BUCKET/);
 });

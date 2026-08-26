@@ -7,6 +7,7 @@ source: my-app/components/customer/CustomerShell.tsx
 related_source:
   - my-app/components/customer/customer-shell.css
   - my-app/lib/customer-navigation.ts
+  - my-app/lib/v2/customer-history-server.ts
 owner: customer-experience
 
 public_api:
@@ -27,12 +28,16 @@ boundaries:
     - desktop-fixed-rail
     - tablet-compact-rail
     - mobile-safe-area-bottom-navigation
+    - V2-confirmed-style-history-presentation
+    - V2-actual-service-aftercare-presentation
   forbidden:
     - consultation-stage-rendering
     - consultation-route-or-data-mutation
     - salon-or-admin-navigation
     - account-fetching
     - customer-credit-balance-copy
+    - legacy-generation-stylebook-aggregation
+    - legacy-user-hair-record-aftercare
 
 route_contract:
   shell_routes:
@@ -43,6 +48,16 @@ route_contract:
   primary_consultation_entry: /consulting/new
   consultation_shell: hidden
   internal_consultation_flow: preserved
+  nested_customer_routes: supported
+
+history_data_contract:
+  stylebook_source: style_selection_snapshots_v2-confirmed-only
+  aftercare_sources:
+    - actual_services_v2
+    - aftercare_programs_v2
+    - aftercare_checkins_v2
+  preview_media: signed-styling-results-path-from-selection-snapshot
+  read_behavior: server-only-no-mutating-ensure-call
 
 styling:
   strategy: HairFit-editorial-hybrid-customer-scoped-global-css
@@ -78,15 +93,15 @@ test_surface:
   customer_copy: credit-balance-excluded
 
 change_policy:
-  current_gate: style-contract
+  current_gate: behavioral
   compatible_change_requires:
     - passport-update
     - shell-contract-test
     - web-typecheck
+    - V2-history-source-contract-test
   breaking_change_requires:
     - all-customer-route-consumer-update
     - consultation-boundary-audit
 
 promotion_blockers:
-  - no-authenticated-browser-interaction-evidence
   - no-mobile-safe-area-device-evidence
