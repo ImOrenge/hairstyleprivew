@@ -23,14 +23,14 @@ test("manifest references resolve into the uploaded OpenNext asset tree", () => 
 
 test("live HTML extraction checks only same-origin Next static assets", () => {
   const html = [
-    '<link rel="stylesheet" href="/_next/static/css/app.css">',
-    '<script src="/_next/static/chunks/main.js"></script>',
+    '<link rel="stylesheet" href="/_next/static/css/app.css?dpl=abc">',
+    '<script src="/_next/static/chunks/main.js?dpl=abc"></script>',
     '<script src="https://clerk.example.test/clerk.js"></script>',
-    '<script src="/_next/static/chunks/main.js"></script>',
+    '<script src="/_next/static/chunks/main.js?dpl=abc"></script>',
   ].join("");
   assert.deepEqual(extractHtmlStaticAssets(html), [
-    "/_next/static/chunks/main.js",
-    "/_next/static/css/app.css",
+    "/_next/static/chunks/main.js?dpl=abc",
+    "/_next/static/css/app.css?dpl=abc",
   ]);
   assert.match("text/css; charset=utf-8", expectedMimePattern("/app.css"));
   assert.match("application/javascript", expectedMimePattern("/app.js"));

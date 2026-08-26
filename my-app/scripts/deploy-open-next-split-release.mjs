@@ -109,6 +109,16 @@ function uploadWorker(name, sourceRevision, secretsPath = "") {
   return parseUploadedVersion(runWrangler(args));
 }
 
+export function assertBuiltRelease(sourceRevision, marker) {
+  if (
+    marker?.sourceRevision !== sourceRevision ||
+    marker?.deploymentId !== sourceRevision
+  ) {
+    throw new Error("OpenNext artifacts were not built with this source revision as NEXT_DEPLOYMENT_ID");
+  }
+  return marker;
+}
+
 function registerVersion(currentVersion, nextVersion, config) {
   runWrangler(versionDeploymentArgs(currentVersion, nextVersion, config));
 }
@@ -178,6 +188,8 @@ async function main() {
   }
   const head = run("git", ["rev-parse", "HEAD"], { cwd: repoRoot }).trim();
   if (head !== sourceRevision) throw new Error(`source revision does not match HEAD (${head})`);
+  const buildMarker = JSON.parse(readFileSync(resolve(appRoot, ".open-next", "hairfit-deployment.json"), "utf8"));
+  assertBuiltRelease(sourceRevision, buildMarker);
 
   const envFile = argumentValue("--env-file");
   const runtimeInputs = envFile ? parseEnv(readFileSync(resolve(envFile), "utf8")) : process.env;

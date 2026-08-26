@@ -19,8 +19,9 @@ Do not use `npx wrangler versions upload` as the production deploy command. `ver
 
 1. `.open-next/worker.js` exists.
 2. `.open-next/assets/_next/static` contains JavaScript, CSS, and font files.
-3. every static file referenced by the OpenNext build manifests exists in the upload directory.
-4. the primary Worker, split server, and production router declare the `ASSETS` binding and correct asset directory.
+3. `NEXT_DEPLOYMENT_ID` and `.open-next/hairfit-deployment.json` bind the build to the exact 40-character Git `HEAD`.
+4. every static file referenced by every default, media, and admin OpenNext manifest exists in the upload directory.
+5. the primary Worker, split server, and production router declare the `ASSETS` binding and correct asset directory.
 
 `npm run cf:builds:deploy` intentionally fails. A single-Worker deploy can publish HTML from one OpenNext build while the router still pins server, media, or admin Workers from another build.
 
@@ -32,7 +33,7 @@ Run from a clean checkout whose `HEAD` is the published `main` revision:
 npm run cf:deploy -- --apply --confirm=HAIRFIT_ATOMIC_SPLIT_DEPLOY --source-revision=<40-character-main-SHA> --env-file=<HAIRFIT_PRODUCTION_ENV>
 ```
 
-The command builds once, uploads server, media, and admin from that exact output, registers each new version at 0% beside the currently pinned version, uploads one router version that pins all three new IDs and the matching asset set, and finally deploys only that router version at 100%. It refuses a source revision that differs from `HEAD` and requires the production runtime inputs without printing secret values.
+The command builds once with the Git `HEAD` as Next.js `deploymentId`, uploads server, media, and admin from that exact output, registers each new version at 0% beside the currently pinned version, uploads one router version that pins all three new IDs and the matching asset set, and finally deploys only that router version at 100%. It refuses a source revision that differs from `HEAD` or the build marker and requires the production runtime inputs without printing secret values. The deployment ID makes a stale tab hard-navigate when it encounters a newer server instead of mixing old RSC navigation data with new assets.
 
 The final gate verifies both `/login` and `/consulting/e2e-harness`. This is required because authenticated consultation pages are rendered by the media Worker and can reference a different chunk set even when `/login` is healthy.
 
@@ -42,4 +43,4 @@ For a standalone production check:
 npm run cf:assets:live
 ```
 
-The live check is intentionally cache-busted and should be retained as the final release gate.
+The live check is intentionally cache-busted. It also requires the same Git SHA in `<html data-dpl-id>` and every `/_next/static/*?dpl=` reference, and should be retained as the final release gate.

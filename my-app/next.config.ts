@@ -5,8 +5,10 @@ import type { NextConfig } from "next";
 const appDir = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(appDir, "..");
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
+const deploymentId = process.env.NEXT_DEPLOYMENT_ID?.trim();
 
 const nextConfig: NextConfig = {
+    deploymentId: deploymentId || undefined,
     distDir: process.env.NEXT_DIST_DIR?.trim() || ".next",
     outputFileTracingRoot: workspaceRoot,
     outputFileTracingIncludes: {

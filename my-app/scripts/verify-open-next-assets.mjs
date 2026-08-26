@@ -78,8 +78,8 @@ export function assertWranglerAssetBinding(configPath, expectedDirectory) {
 }
 
 function readBuildManifestAssets() {
-  const defaultFunctionRoot = resolve(outputRoot, "server-functions", "default");
-  const manifestFiles = walkFiles(defaultFunctionRoot).filter((file) => (
+  const functionsRoot = resolve(outputRoot, "server-functions");
+  const manifestFiles = walkFiles(functionsRoot).filter((file) => (
     file.endsWith(".json") && /manifest/iu.test(file)
   ));
   const assets = new Set();
@@ -96,6 +96,14 @@ function readBuildManifestAssets() {
 export function verifyLocalArtifacts() {
   assert(existsSync(resolve(outputRoot, "worker.js")), ".open-next/worker.js is missing; run the OpenNext build before upload");
   assert(existsSync(staticRoot), ".open-next/assets/_next/static is missing; refusing an asset-less upload");
+  const deploymentMarkerPath = resolve(outputRoot, "hairfit-deployment.json");
+  assert(existsSync(deploymentMarkerPath), ".open-next/hairfit-deployment.json is missing; refusing a build without skew protection");
+  const deploymentMarker = JSON.parse(readFileSync(deploymentMarkerPath, "utf8"));
+  assert(
+    /^[0-9a-f]{40}$/u.test(deploymentMarker.deploymentId ?? "") &&
+      deploymentMarker.sourceRevision === deploymentMarker.deploymentId,
+    "OpenNext deployment marker must bind sourceRevision and deploymentId to one 40-character Git SHA",
+  );
 
   assertWranglerAssetBinding(resolve(appRoot, "wrangler.jsonc"), ".open-next/assets");
   assertWranglerAssetBinding(
@@ -127,7 +135,7 @@ export function verifyLocalArtifacts() {
     `OpenNext manifests reference ${missing.length} missing assets:\n${missing.slice(0, 20).join("\n")}`,
   );
 
-  return { files: files.length, manifestAssets: manifestAssets.size, counts };
+  return { files: files.length, manifestAssets: manifestAssets.size, counts, deploymentId: deploymentMarker.deploymentId };
 }
 
 export async function verifyLiveAssets(pageUrl) {
@@ -141,6 +149,13 @@ export async function verifyLiveAssets(pageUrl) {
   const html = await htmlResponse.text();
   const assets = extractHtmlStaticAssets(html);
   assert(assets.length > 0, `Live page exposes no /_next/static assets: ${target.origin}${target.pathname}`);
+  const deploymentId = html.match(/<html[^>]*\sdata-dpl-id=["']([^"']+)["']/iu)?.[1] ?? "";
+  assert(/^[0-9a-f]{40}$/u.test(deploymentId), `Live page is missing a Git SHA data-dpl-id: ${target.origin}${target.pathname}`);
+  const unversionedAssets = assets.filter((assetPath) => new URL(assetPath, target.origin).searchParams.get("dpl") !== deploymentId);
+  assert(
+    unversionedAssets.length === 0,
+    `Live page exposes ${unversionedAssets.length} assets without matching ?dpl=${deploymentId}`,
+  );
 
   const failures = [];
   await Promise.all(assets.map(async (assetPath) => {
@@ -160,7 +175,7 @@ export async function verifyLiveAssets(pageUrl) {
     failures.length === 0,
     `Live HTML/static asset deployment mismatch (${failures.length}/${assets.length}):\n${failures.slice(0, 30).join("\n")}`,
   );
-  return { page: `${target.origin}${target.pathname}`, assets: assets.length };
+  return { page: `${target.origin}${target.pathname}`, assets: assets.length, deploymentId };
 }
 
 async function main() {
@@ -168,14 +183,15 @@ async function main() {
   if (liveArguments.length > 0) {
     for (const liveArgument of liveArguments) {
       const result = await verifyLiveAssets(liveArgument.slice("--url=".length));
-      console.log(`[cf:assets] live page=${result.page} assets=${result.assets} status=ok`);
+      console.log(`[cf:assets] live page=${result.page} assets=${result.assets} deploymentId=${result.deploymentId} status=ok`);
     }
     return;
   }
   const result = verifyLocalArtifacts();
   console.log(
     `[cf:assets] local files=${result.files} manifestRefs=${result.manifestAssets} ` +
-    `js=${result.counts[".js"]} css=${result.counts[".css"]} fonts=${result.counts[".woff2"]} status=ok`,
+    `js=${result.counts[".js"]} css=${result.counts[".css"]} fonts=${result.counts[".woff2"]} ` +
+    `deploymentId=${result.deploymentId} status=ok`,
   );
 }
 

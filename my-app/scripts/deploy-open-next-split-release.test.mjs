@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  assertBuiltRelease,
   assertRouterState,
   parseUploadedVersion,
   versionDeploymentArgs,
@@ -33,4 +34,14 @@ test("router preflight requires all three pinned split versions", () => {
   };
   assert.equal(assertRouterState(valid), valid);
   assert.throws(() => assertRouterState({ ...valid, pinnedMediaVersion: "" }), /valid pinned/u);
+});
+
+test("atomic deploy rejects artifacts built without matching skew protection", () => {
+  const revision = "b7412d03000ee28ec2f9cab074aea07e03661887";
+  const marker = { sourceRevision: revision, deploymentId: revision };
+  assert.equal(assertBuiltRelease(revision, marker), marker);
+  assert.throws(
+    () => assertBuiltRelease(revision, { sourceRevision: revision, deploymentId: "older" }),
+    /NEXT_DEPLOYMENT_ID/u,
+  );
 });
