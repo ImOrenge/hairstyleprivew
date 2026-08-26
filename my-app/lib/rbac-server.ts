@@ -1,6 +1,7 @@
 import "server-only";
 
 import { auth } from "@clerk/nextjs/server";
+import { unstable_rethrow } from "next/navigation";
 import { NextResponse } from "next/server";
 import { isDevClerkSalonUserId } from "./clerk";
 import { ensureCurrentUserProfile, type ServerSupabaseLike } from "./style-profile-server";
@@ -12,6 +13,19 @@ type SupabaseAdminClient = ReturnType<typeof getSupabaseAdminClient>;
 
 interface ActorRoleRow {
   account_type?: string | null;
+}
+
+async function loadAuthenticatedUserId() {
+  try {
+    const { userId } = await auth();
+    return { ok: true as const, userId };
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("[rbac] Clerk auth context unavailable", {
+      error: error instanceof Error ? error.name : "UnknownError",
+    });
+    return { ok: false as const, userId: null };
+  }
 }
 
 async function loadActorRoleRow(supabase: SupabaseAdminClient, userId: string) {
@@ -39,14 +53,15 @@ function forbiddenMessage(permission: RbacPermission) {
 }
 
 export async function getCurrentActor() {
-  const { userId } = await auth();
-  if (!userId) {
+  const authenticated = await loadAuthenticatedUserId();
+  if (!authenticated.ok || !authenticated.userId) {
     return {
       ok: false as const,
       status: 401 as const,
       error: "Unauthorized",
     };
   }
+  const userId = authenticated.userId;
 
   if (!isSupabaseConfigured()) {
     return {
@@ -56,49 +71,61 @@ export async function getCurrentActor() {
     };
   }
 
-  const supabase = getSupabaseAdminClient();
-  let roleResult = await loadActorRoleRow(supabase, userId);
-  if (roleResult.error) {
+  try {
+    const supabase = getSupabaseAdminClient();
+    let roleResult = await loadActorRoleRow(supabase, userId);
+    if (roleResult.error) {
+      return {
+        ok: false as const,
+        status: 500 as const,
+        error: roleResult.error.message,
+      };
+    }
+
+    if (!roleResult.data) {
+      const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
+      if (ensured.error) {
+        return {
+          ok: false as const,
+          status: 500 as const,
+          error: ensured.error.message,
+        };
+      }
+      roleResult = await loadActorRoleRow(supabase, userId);
+      if (roleResult.error || !roleResult.data) {
+        return {
+          ok: false as const,
+          status: 500 as const,
+          error: roleResult.error?.message ?? "User profile was not found after initialization",
+        };
+      }
+    }
+
+    const dbAccountType = isAccountType(roleResult.data.account_type) ? roleResult.data.account_type : null;
+    const accountType = dbAccountType ?? (isDevClerkSalonUserId(userId) ? "salon_owner" : null);
+    const actor: RbacActor = {
+      userId,
+      accountType,
+      isAdmin: accountType === "admin",
+    };
+
+    return {
+      ok: true as const,
+      userId,
+      actor,
+      supabase,
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    console.error("[rbac] Actor profile unavailable", {
+      error: error instanceof Error ? error.name : "UnknownError",
+    });
     return {
       ok: false as const,
-      status: 500 as const,
-      error: roleResult.error.message,
+      status: 503 as const,
+      error: "Authorization context unavailable",
     };
   }
-
-  if (!roleResult.data) {
-    const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
-    if (ensured.error) {
-      return {
-        ok: false as const,
-        status: 500 as const,
-        error: ensured.error.message,
-      };
-    }
-    roleResult = await loadActorRoleRow(supabase, userId);
-    if (roleResult.error || !roleResult.data) {
-      return {
-        ok: false as const,
-        status: 500 as const,
-        error: roleResult.error?.message ?? "User profile was not found after initialization",
-      };
-    }
-  }
-
-  const dbAccountType = isAccountType(roleResult.data.account_type) ? roleResult.data.account_type : null;
-  const accountType = dbAccountType ?? (isDevClerkSalonUserId(userId) ? "salon_owner" : null);
-  const actor: RbacActor = {
-    userId,
-    accountType,
-    isAdmin: accountType === "admin",
-  };
-
-  return {
-    ok: true as const,
-    userId,
-    actor,
-    supabase,
-  };
 }
 
 export async function getApiContext(permission: RbacPermission) {

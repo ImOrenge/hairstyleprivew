@@ -151,6 +151,21 @@ test("existing admin and salon role reads do not rewrite the authenticated profi
   );
 });
 
+test("protected RBAC surfaces recover when Clerk cannot resolve the session", () => {
+  const rbacServer = readFileSync(new URL("./rbac-server.ts", import.meta.url), "utf8");
+  const middleware = readFileSync(new URL("../middleware.ts", import.meta.url), "utf8");
+
+  assert.match(rbacServer, /async function loadAuthenticatedUserId\(\)/);
+  assert.match(rbacServer, /unstable_rethrow\(error\)/);
+  assert.match(rbacServer, /Clerk auth context unavailable/);
+  assert.match(rbacServer, /status: 401 as const/);
+  assert.match(rbacServer, /Actor profile unavailable/);
+  assert.match(rbacServer, /status: 503 as const/);
+  assert.match(middleware, /function authContextUnavailableResponse/);
+  assert.match(middleware, /Authentication unavailable/);
+  assert.match(middleware, /Clerk auth context unavailable/);
+});
+
 test("protected E2E separates customer, admin, and salon read-only role states", () => {
   const preflight = readFileSync(
     new URL("../../scripts/check-clerk-protected-e2e-fixture.mjs", import.meta.url),

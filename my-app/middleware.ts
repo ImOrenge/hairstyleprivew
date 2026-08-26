@@ -154,6 +154,15 @@ function isMobileSessionApiRoute(req: NextRequest) {
   );
 }
 
+function authContextUnavailableResponse(req: NextRequest) {
+  const returnBackPath = `${req.nextUrl.pathname}${req.nextUrl.search}`;
+  if (req.nextUrl.pathname.startsWith("/api/")) {
+    return withMobileCors(req, NextResponse.json({ error: "Authentication unavailable" }, { status: 503 }));
+  }
+
+  return NextResponse.redirect(new URL(buildSignInRedirectUrl(returnBackPath), req.url));
+}
+
 function withMobileCors(req: NextRequest, response: NextResponse) {
   if (!isMobileSessionApiRoute(req)) {
     return response;
@@ -243,9 +252,17 @@ const clerkAppMiddleware = clerkMiddleware(async (auth, req) => {
         return withMobileCors(req, NextResponse.next());
       }
 
-      const authObject = isMobileSessionApiRoute(req)
-        ? await auth({ acceptsToken: "session_token" })
-        : await auth();
+      let authObject;
+      try {
+        authObject = isMobileSessionApiRoute(req)
+          ? await auth({ acceptsToken: "session_token" })
+          : await auth();
+      } catch (error) {
+        console.error("[middleware] Clerk auth context unavailable", {
+          error: error instanceof Error ? error.name : "UnknownError",
+        });
+        return authContextUnavailableResponse(req);
+      }
       const { userId } = authObject;
       const returnBackPath = `${req.nextUrl.pathname}${req.nextUrl.search}`;
       const isApiRequest = req.nextUrl.pathname.startsWith("/api/");
