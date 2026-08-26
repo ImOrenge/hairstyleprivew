@@ -76,6 +76,16 @@ export function versionDeploymentArgs(currentVersion, nextVersion, config) {
   ];
 }
 
+export function directTrafficVersion(status, nextVersion) {
+  const direct = status?.versions?.find((version) => (
+    version?.percentage === 100 &&
+    /^[0-9a-f-]{36}$/iu.test(version?.version_id ?? "") &&
+    version.version_id !== nextVersion
+  ));
+  if (!direct) throw new Error("Could not resolve the current 100% direct server version");
+  return direct.version_id;
+}
+
 export function assertRouterState(state) {
   const entries = [
     state?.pinnedServerVersion,
@@ -212,6 +222,13 @@ async function main() {
     registerVersion(current.pinnedAdminVersion, versions.admin, configs.admin);
     versions.router = uploadRouter(versions, sourceRevision);
     runWrangler(["versions", "deploy", `${versions.router}@100%`, "-y", "--config", configs.router]);
+    // Updating the custom-domain router can resync the default Worker's direct
+    // deployment and remove its 0% version. Re-register after router cutover so
+    // the service-binding version override remains eligible.
+    const serverStatus = JSON.parse(runWrangler([
+      "deployments", "status", "--config", configs.server, "--json",
+    ]));
+    registerVersion(directTrafficVersion(serverStatus, versions.server), versions.server, configs.server);
     await retryVerification(() => verifyRelease(sourceRevision, versions));
     console.log(`atomic split release source: ${sourceRevision}`);
     console.log(`server version: ${versions.server}`);
