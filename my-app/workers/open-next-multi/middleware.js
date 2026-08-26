@@ -102,6 +102,17 @@ function ensureMiddlewareProcessEnv(env) {
     }
   }
 
+  // Clerk normally falls back to CLERK_SECRET_KEY when it encrypts middleware
+  // request data. Dynamic middleware keys require the equivalent fallback to
+  // be explicit so the downstream server Worker receives the auth context.
+  if (
+    !process.env.CLERK_ENCRYPTION_KEY &&
+    typeof env.CLERK_SECRET_KEY === "string" &&
+    env.CLERK_SECRET_KEY.length > 0
+  ) {
+    process.env.CLERK_ENCRYPTION_KEY = env.CLERK_SECRET_KEY;
+  }
+
   // Next.js replaces NEXT_PUBLIC_* references while compiling middleware.
   // Mirror the runtime binding to the server-only alias so Clerk's dynamic
   // middleware options cannot fall back to a development key baked at build time.

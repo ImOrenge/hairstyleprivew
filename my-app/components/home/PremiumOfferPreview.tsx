@@ -78,7 +78,7 @@ export function PremiumOfferPreview() {
         <p>NO CARD REQUIRED</p>
         <h2>무료 결과를 본 뒤, 필요한 이용 기간을 선택하세요.</h2>
         <div>
-          <Link href="/consulting/new" className="f-landing-cta">{demo.ctaLabel} <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+          <Link href="/consulting/new" prefetch={false} className="f-landing-cta">{demo.ctaLabel} <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
           <Link href="/consulting/plans" className="f-landing-ghost-cta">상품·혜택 자세히 비교</Link>
         </div>
       </div>

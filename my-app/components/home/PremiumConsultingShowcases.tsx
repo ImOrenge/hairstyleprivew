@@ -156,7 +156,7 @@ export function DirectionShowcase() {
         <div className="f-premium-table-head"><span>STRATEGY FIELD</span><span>AI RECOMMENDATION</span><span>EVIDENCE & IMPACT</span></div>
         {directionRows.map(([field, decision, reason]) => <div key={field}><span>{field}</span><strong>{decision}</strong><p>{reason}</p></div>)}
       </div>
-      <Link href="/consulting/new" className="f-landing-cta" data-reveal-item data-reveal-order="6">
+      <Link href="/consulting/new" prefetch={false} className="f-landing-cta" data-reveal-item data-reveal-order="6">
         내 얼굴 분석부터 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" />
       </Link>
     </LandingScene>
@@ -242,7 +242,7 @@ export function SalonBriefShowcase() {
                 <li key={index}><span>{index}</span><strong>{title}</strong><p>{body}</p></li>
               ))}
             </ol>
-            <Link href="/consulting/new" className="f-landing-cta f-landing-cta--inverse">
+            <Link href="/consulting/new" prefetch={false} className="f-landing-cta f-landing-cta--inverse">
               내 상담 브리프 준비 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" />
             </Link>
           </div>
@@ -300,7 +300,7 @@ export function MakeupDirectionShowcase() {
             <p>눈·볼·입술의 정확한 컬러·강도·위치는 AI가 다시 쓰지 않고 확정된 전문가 명세를 그대로 전달합니다.</p>
           </div>
           <div className="f-premium-makeup__actions">
-            <Link href="/consulting/new" className="f-landing-cta">내 메이크업 방향 확인 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+            <Link href="/consulting/new" prefetch={false} className="f-landing-cta">내 메이크업 방향 확인 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
             <Link href="/discover/personal-color-makeup" className="f-landing-ghost-cta">퍼스널 컬러 메이크업 가이드</Link>
           </div>
         </div>
@@ -362,7 +362,7 @@ export function StyleDossierShowcase() {
       <div className="f-premium-dossier">
         <div>
           <SceneHeader eyebrow="Style Dossier · Sample" title="한 번의 생성이 아니라, 결정의 맥락을 남깁니다." description="현재 컨설팅에서 이어지는 분석·전략·결정·브리프·관리 데이터를 하나의 샘플 Dossier로 보여드립니다." />
-          <Link href="/consulting/new" className="f-landing-cta f-landing-cta--inverse" data-reveal-item data-reveal-order="4">내 스타일 기록 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+          <Link href="/consulting/new" prefetch={false} className="f-landing-cta f-landing-cta--inverse" data-reveal-item data-reveal-order="4">내 스타일 기록 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
         </div>
         <div className="f-premium-dossier__sheet" data-reveal-item data-reveal-order="5">
           <p>HAIRFIT / PRIVATE STYLE DIRECTION</p>

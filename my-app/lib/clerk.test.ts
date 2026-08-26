@@ -89,3 +89,31 @@ test("Clerk middleware passes runtime keys explicitly instead of SDK build const
   assert.match(middleware, /secretKey: secretKey \?\? undefined/);
   assert.match(middleware, /}, getClerkMiddlewareRuntimeOptions\);/);
 });
+
+test("login recovery uses a hard navigation and protected consultation links never prefetch", () => {
+  const loginPage = readFileSync(new URL("../app/(auth)/login/[[...rest]]/page.tsx", import.meta.url), "utf8");
+  const loginGate = readFileSync(new URL("../components/auth/LoginAuthGate.tsx", import.meta.url), "utf8");
+  const protectedEntryFiles = [
+    "../app/home/page.tsx",
+    "../app/consulting/plans/page.tsx",
+    "../components/home/HairstylePreviewShowcase.tsx",
+    "../components/home/HeroSection.tsx",
+    "../components/home/MobileStickyCtaBar.tsx",
+    "../components/home/PremiumOfferPreview.tsx",
+    "../components/home/PremiumConsultingShowcases.tsx",
+    "../components/home/PricingPreview.tsx",
+  ].map((path) => readFileSync(new URL(path, import.meta.url), "utf8"));
+
+  assert.match(loginPage, /getSafeClerkReturnPath\(rawReturnPath\)/);
+  assert.match(loginPage, /fallbackRedirectUrl=\{returnPath\}/);
+  assert.match(loginGate, /window\.location\.replace\(returnPath\)/);
+  assert.match(loginGate, /window\.sessionStorage\.getItem\(resumeKey\)/);
+  assert.match(loginGate, /AUTH_RESUME_WINDOW_MS = 15_000/);
+  assert.match(loginGate, /href=\{returnPath\}>상담 다시 열기/);
+  for (const source of protectedEntryFiles) {
+    assert.doesNotMatch(
+      source,
+      /<Link(?=[^>]*href="\/consulting\/new")(?![^>]*prefetch=\{false\})[^>]*>/,
+    );
+  }
+});

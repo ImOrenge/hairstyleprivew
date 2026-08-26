@@ -372,6 +372,7 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /function isServerVerifiedRequest\(pathname\)/);
   assert.match(router, /function ensureMiddlewareProcessEnv\(env\)/);
   assert.match(router, /process\.env\[name\] = env\[name\]/);
+  assert.match(router, /process\.env\.CLERK_ENCRYPTION_KEY = env\.CLERK_SECRET_KEY/);
   assert.match(router, /process\.env\.CLERK_PUBLISHABLE_KEY = env\.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY/);
   assert.doesNotMatch(read("../../middleware.ts"), /const \{ canUseClerkServer: hasClerkConfig \}/);
   assert.match(read("../../middleware.ts"), /const \{ canUseClerkServer \} = getClerkConfigState\(\)/);

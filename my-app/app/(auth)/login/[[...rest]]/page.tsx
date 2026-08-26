@@ -1,6 +1,7 @@
 import { SignIn } from "@clerk/nextjs";
+import { LoginAuthGate } from "../../../../components/auth/LoginAuthGate";
 import { AppPage, Panel } from "../../../../components/ui/Surface";
-import { getClerkConfigState } from "../../../../lib/clerk";
+import { getClerkConfigState, getSafeClerkReturnPath } from "../../../../lib/clerk";
 
 const clerkAppearance = {
   variables: {
@@ -22,9 +23,16 @@ const clerkAppearance = {
   },
 } as const;
 
-export default function LoginPage() {
+interface LoginPageProps {
+  searchParams: Promise<{ redirect_url?: string | string[] }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
   const clerkConfig = getClerkConfigState();
   const hasClerkKey = clerkConfig.canUseClerkFrontend;
+  const query = await searchParams;
+  const rawReturnPath = Array.isArray(query.redirect_url) ? query.redirect_url[0] : query.redirect_url;
+  const returnPath = getSafeClerkReturnPath(rawReturnPath) ?? "/home";
 
   if (!hasClerkKey) {
     const reasonText = "로그인 기능을 준비하지 못했습니다. 잠시 후 다시 열거나 고객지원으로 문의해 주세요.";
@@ -41,14 +49,16 @@ export default function LoginPage() {
 
   return (
     <AppPage className="flex max-w-md justify-center pb-16 pt-8">
-      <SignIn
-        path="/login"
-        signUpUrl="/signup"
-        oauthFlow="redirect"
-        fallbackRedirectUrl="/home"
-        signUpFallbackRedirectUrl="/home"
-        appearance={clerkAppearance}
-      />
+      <LoginAuthGate returnPath={returnPath}>
+        <SignIn
+          path="/login"
+          signUpUrl="/signup"
+          oauthFlow="redirect"
+          fallbackRedirectUrl={returnPath}
+          signUpFallbackRedirectUrl={returnPath}
+          appearance={clerkAppearance}
+        />
+      </LoginAuthGate>
     </AppPage>
   );
 }

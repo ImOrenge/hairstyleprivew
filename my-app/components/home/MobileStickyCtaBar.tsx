@@ -57,6 +57,7 @@ export function MobileStickyCtaBar() {
     >
       <Link
         href="/consulting/new"
+        prefetch={false}
         tabIndex={isVisible ? undefined : -1}
         className="f-landing-sticky-cta__action"
       >

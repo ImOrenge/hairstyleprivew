@@ -235,6 +235,7 @@ function EmptyCard({ href, label, title }: { href: string; label: string; title:
       <p className="text-sm font-black text-[var(--app-text)]">{title}</p>
       <Link
         href={href}
+        prefetch={false}
         className="mt-4 inline-flex min-h-10 items-center justify-center gap-2 rounded-[var(--app-radius-control)] border border-[var(--app-border-strong)] bg-[var(--app-inverse)] px-4 py-2 text-sm font-bold uppercase tracking-[0.04em] text-[var(--app-inverse-text)] transition hover:bg-[var(--app-inverse-muted)]"
       >
         {label}
@@ -437,6 +438,7 @@ export default async function CustomerHomePage() {
             </div>
             <Link
               href="/consulting/new"
+              prefetch={false}
               className="app-inverse-cta mt-6 inline-flex w-full items-center justify-center gap-2 px-5 py-3 text-sm font-bold uppercase tracking-[0.04em] transition sm:w-auto"
             >
               AI 컨설팅 시작

@@ -405,7 +405,7 @@ export function HeroSection({ userCount = 0, avatars = [] }: HeroSectionProps) {
         </p>
 
         <div className={styles.actions}>
-          <Link href="/consulting/new" className={styles.primaryAction}>
+          <Link href="/consulting/new" prefetch={false} className={styles.primaryAction}>
             무료 퍼스널 컬러·3×3 시작
             <ArrowRight className={styles.actionIcon} aria-hidden="true" />
           </Link>

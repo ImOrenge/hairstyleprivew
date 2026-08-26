@@ -231,7 +231,7 @@ export function PricingPreview({
         <p>PHOTO-FIRST AI HAIR CONSULTING</p>
         <h2>사진 한 장으로, 내게 맞는 스타일 기준을 시작하세요.</h2>
         <div>
-          <Link href="/consulting/new" className="f-landing-cta">내 사진 분석 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
+          <Link href="/consulting/new" prefetch={false} className="f-landing-cta">내 사진 분석 시작 <ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>
           <Link href="/b2b/contact" className="f-landing-ghost-cta">살롱 도입 문의</Link>
         </div>
       </div>
