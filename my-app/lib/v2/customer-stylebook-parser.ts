@@ -29,6 +29,17 @@ function stringArray(value: unknown) {
     : [];
 }
 
+function emptyState(): CustomerStylebookFashionEntryV2["state"] {
+  return {
+    customTitle: null,
+    note: "",
+    tags: [],
+    favorite: false,
+    archivedAt: null,
+    updatedAt: null,
+  };
+}
+
 function parseFashionItems(value: unknown) {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
@@ -88,5 +99,6 @@ export function parseCustomerFashionPreviewSetRowV2(
     shoppingKeywords: stringArray(selectedLook?.shoppingKeywords),
     imagePath: null,
     confirmedAt,
+    state: emptyState(),
   };
 }

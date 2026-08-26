@@ -390,15 +390,21 @@
       "related_source": [
         "my-app/app/stylebook/page.tsx",
         "my-app/lib/v2/customer-history-server.ts",
+        "my-app/lib/v2/customer-stylebook-metadata-server.ts",
+        "my-app/lib/v2/customer-stylebook-actions-server.ts",
         "my-app/app/api/mobile/stylebook/route.ts",
-        "my-app/components/e2e/CustomerStylebookHarness.tsx"
+        "my-app/components/customer/stylebook/CustomerStylebookWorkspace.tsx",
+        "my-app/components/customer/stylebook/CustomerStylebookCard.tsx",
+        "my-app/components/customer/stylebook/CustomerStylebookDialogs.tsx",
+        "my-app/components/e2e/CustomerStylebookHarness.tsx",
+        "my-app/app/stylebook/share/[token]/page.tsx"
       ],
       "owner": "customer-experience",
       "passport": "docs/components/passports/web-customer-stylebook.yaml",
       "observed_usage": {
         "production_consumer_files": 1,
         "harness_consumer_files": 1,
-        "scope": "authenticated V2 final hair and fashion collection"
+        "scope": "authenticated V2 hair fashion total-set management workspace"
       }
     },
     {
@@ -449,6 +455,7 @@
         "apps/hairfit-app/components/consulting/NativeFaceEvidenceOverlay.tsx",
         "apps/hairfit-app/lib/v2-consultation-resume.ts",
         "packages/api-client/src/index.ts",
+        "packages/shared/src/customer-stylebook.ts",
         "packages/shared/src/consulting/contract.ts"
       ],
       "owner": "consulting-feature",
@@ -482,13 +489,15 @@
       "related_source": [
         "apps/hairfit-app/app/stylebook.tsx",
         "apps/hairfit-app/app/consulting.tsx",
-        "packages/api-client/src/index.ts"
+        "packages/api-client/src/index.ts",
+        "packages/shared/src/customer-stylebook.ts",
+        "packages/shared/src/customer-stylebook-utils.ts"
       ],
       "owner": "customer-experience",
       "passport": "docs/components/passports/native-customer-stylebook.yaml",
       "observed_usage": {
         "production_consumer_files": 1,
-        "scope": "HairFit app V2 final hair and fashion collection"
+        "scope": "HairFit app V2 hair fashion total-set management workspace"
       }
     },
     {
@@ -953,6 +962,8 @@
       "status": "candidate",
       "source": "my-app/components/consulting/scene/ConsultationScene.tsx",
       "related_source": [
+        "my-app/components/consulting/ConsultationStagePage.tsx",
+        "my-app/components/consulting/scene/StageContextStrip.tsx",
         "my-app/components/consulting/workbenches/shared.tsx",
         "my-app/components/consulting/interview/ConsultantIntentInterview.tsx",
         "my-app/components/consulting/analysis/HairTraitInsightPanel.tsx"

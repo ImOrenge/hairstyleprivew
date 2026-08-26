@@ -16,6 +16,11 @@ import type {
   MobileBootstrap,
   MobileDashboard,
   CustomerStylebookV2,
+  CustomerStylebookConsultationReferenceContextV2,
+  CustomerStylebookCollectionMutationV2,
+  CustomerStylebookItemStatePatchV2,
+  CustomerStylebookShareRequestV2,
+  CustomerStylebookWearLogRequestV2,
   MobilePaymentCompleteResponse,
   MobilePaymentPlan,
   MobilePaymentPrepareResponse,
@@ -632,6 +637,69 @@ export class HairfitApiClient {
 
   getCustomerStylebookV2() {
     return this.request<CustomerStylebookV2>("/api/mobile/stylebook");
+  }
+
+  getCustomerStylebookReferenceV2(consultationId: string) {
+    return this.request<{ reference: CustomerStylebookConsultationReferenceContextV2 | null }>(
+      `/api/mobile/stylebook?referenceConsultationId=${encodeURIComponent(consultationId)}`,
+    );
+  }
+
+  updateCustomerStylebookItemStateV2(input: CustomerStylebookItemStatePatchV2) {
+    return this.request<{ state: CustomerStylebookV2["hair"][number]["state"] }>(
+      "/api/mobile/stylebook",
+      { method: "PATCH", body: JSON.stringify(input) },
+    );
+  }
+
+  mutateCustomerStylebookCollectionV2(input: CustomerStylebookCollectionMutationV2) {
+    return this.request<Record<string, unknown>>("/api/mobile/stylebook", {
+      method: "POST",
+      body: JSON.stringify({ action: "collection", collection: input }),
+    });
+  }
+
+  createCustomerStylebookWearLogV2(
+    value: CustomerStylebookWearLogRequestV2,
+    photo?: { uri: string; name: string; type: string } | null,
+    photoConsent = false,
+  ) {
+    const formData = new FormData();
+    formData.append("value", JSON.stringify(value));
+    if (photo) formData.append("file", photo as unknown as Blob);
+    formData.append("photoConsent", String(photoConsent));
+    return this.request<{ id: string }>("/api/mobile/stylebook", {
+      method: "POST",
+      body: formData,
+    });
+  }
+
+  deleteCustomerStylebookWearLogV2(id: string) {
+    return this.request<{ deleted: boolean }>("/api/mobile/stylebook", {
+      method: "DELETE",
+      body: JSON.stringify({ action: "wear_log", id }),
+    });
+  }
+
+  createCustomerStylebookShareV2(input: CustomerStylebookShareRequestV2) {
+    return this.request<{ id: string; token: string; expiresAt: string }>(
+      "/api/mobile/stylebook",
+      { method: "POST", body: JSON.stringify({ action: "share", share: input }) },
+    );
+  }
+
+  revokeCustomerStylebookShareV2(id: string) {
+    return this.request<{ revokedAt: string }>("/api/mobile/stylebook", {
+      method: "DELETE",
+      body: JSON.stringify({ action: "share", id }),
+    });
+  }
+
+  createCustomerStylebookReferencedConsultationV2(item: CustomerStylebookShareRequestV2["item"]) {
+    return this.request<{ snapshot: ConsultationSnapshot }>("/api/mobile/stylebook", {
+      method: "POST",
+      body: JSON.stringify({ action: "reference", item }),
+    });
   }
 
   listAdminMembers(

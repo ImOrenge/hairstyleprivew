@@ -54,7 +54,7 @@ export function ReportToolbar({ consultationId, resultVersion }: { consultationI
     }
   };
 
-  return <div data-report-toolbar="true" className="f-consulting-report__toolbar flex flex-wrap items-center justify-between gap-3 border border-[var(--app-border)] bg-[var(--app-surface)] p-3">
+  return <div id="report-toolbar" data-report-toolbar="true" className="f-consulting-report__toolbar flex flex-wrap items-center justify-between gap-3 border border-[var(--app-border)] bg-[var(--app-surface)] p-3">
     <div className="flex items-center gap-2 text-sm"><FileText className="h-4 w-4" aria-hidden="true" /><p aria-live="polite">{message}</p></div>
     <div className="flex flex-wrap gap-2">
       <Button type="button" variant="secondary" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" aria-hidden="true" />인쇄</Button>

@@ -2,7 +2,16 @@ import type { CustomerStylebookV2, CustomerStylebookViewV2 } from "@hairfit/shar
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { CustomerPageHeader, CustomerShell } from "../customer/CustomerShell";
-import { CustomerStylebookCollection } from "../customer/CustomerStylebookCollection";
+import { CustomerStylebookWorkspace } from "../customer/stylebook/CustomerStylebookWorkspace";
+
+const EMPTY_STATE = {
+  customTitle: null,
+  note: "",
+  tags: [] as string[],
+  favorite: false,
+  archivedAt: null,
+  updatedAt: null,
+};
 
 const FIXTURE_COLLECTION: CustomerStylebookV2 = {
   schemaVersion: "customer-stylebook-v2",
@@ -10,12 +19,19 @@ const FIXTURE_COLLECTION: CustomerStylebookV2 = {
     {
       kind: "hair",
       id: "hair-fixture-1",
-      consultationId: "consultation-hair-1",
+      consultationId: "consultation-fashion-1",
       previewVariantId: "preview-hair-1",
       title: "소프트 레이어드 보브",
       description: "얼굴선은 가볍게 감싸고 정수리 볼륨은 자연스럽게 살린 최종안",
       imageUrl: "/discovery/models/women-hairstyle/preview-03.webp",
       confirmedAt: "2026-08-24T08:30:00.000Z",
+      strategyBucket: "soft-classic",
+      length: "medium",
+      bang: "see_through",
+      texture: "wavy",
+      volume: ["crown", "side"],
+      maintenanceLevel: "low",
+      state: { ...EMPTY_STATE, tags: ["관리 쉬움", "단발 후보"], favorite: true },
     },
     {
       kind: "hair",
@@ -26,6 +42,13 @@ const FIXTURE_COLLECTION: CustomerStylebookV2 = {
       description: "손질 부담을 줄이고 부드러운 인상을 유지하는 데일리 스타일",
       imageUrl: "/discovery/models/women-hairstyle/preview-02.webp",
       confirmedAt: "2026-08-12T11:00:00.000Z",
+      strategyBucket: "natural",
+      length: "medium",
+      bang: "none",
+      texture: "wavy",
+      volume: ["crown"],
+      maintenanceLevel: "medium_maintenance",
+      state: { ...EMPTY_STATE },
     },
   ],
   fashion: [
@@ -45,6 +68,7 @@ const FIXTURE_COLLECTION: CustomerStylebookV2 = {
       shoppingKeywords: ["아이보리 니트", "차콜 와이드 팬츠"],
       imageUrl: "/discovery/models/women-hairstyle/preview-01.webp",
       confirmedAt: "2026-08-25T09:10:00.000Z",
+      state: { ...EMPTY_STATE, tags: ["가을", "데이트"] },
     },
     {
       kind: "fashion",
@@ -62,6 +86,7 @@ const FIXTURE_COLLECTION: CustomerStylebookV2 = {
       shoppingKeywords: ["그래파이트 재킷"],
       imageUrl: null,
       confirmedAt: "2026-08-20T06:20:00.000Z",
+      state: { ...EMPTY_STATE },
     },
     {
       kind: "fashion",
@@ -79,9 +104,37 @@ const FIXTURE_COLLECTION: CustomerStylebookV2 = {
       shoppingKeywords: ["크롭 재킷", "와이드 팬츠"],
       imageUrl: "/discovery/models/women-hairstyle/preview-04.webp",
       confirmedAt: "2026-08-15T04:15:00.000Z",
+      state: { ...EMPTY_STATE },
     },
   ],
+  sets: [],
+  collections: [
+    {
+      id: "collection-fixture-1",
+      name: "가을 데이트",
+      colorKey: "champagne",
+      sortOrder: 0,
+      itemRefs: [{ kind: "fashion", id: "fashion-fixture-1", consultationId: "consultation-fashion-1" }],
+      createdAt: "2026-08-25T10:00:00.000Z",
+      updatedAt: "2026-08-25T10:00:00.000Z",
+    },
+  ],
+  wearLogs: [],
+  activeShares: [],
+  references: [],
+  metadataAvailable: true,
 };
+
+FIXTURE_COLLECTION.sets = [{
+  id: "set-fixture-1",
+  consultationId: "consultation-fashion-1",
+  hairEntryId: "hair-fixture-1",
+  fashionEntryId: "fashion-fixture-1",
+  title: "소프트 레이어드 보브 · 아이보리 모던 데일리",
+  mood: "soft-classic · minimal",
+  palette: ["#F4F1E8", "#34322C", "#A8863A"],
+  confirmedAt: "2026-08-25T09:10:00.000Z",
+}];
 
 export function CustomerStylebookHarness({
   activeView,
@@ -100,17 +153,18 @@ export function CustomerStylebookHarness({
         <CustomerPageHeader
           eyebrow="Stylebook"
           title="나의 스타일북"
-          description="컨설팅에서 최종 확정한 헤어와 패션 룩을 모아, 완성된 리포트로 다시 확인하세요."
+          description="최종 헤어·패션을 검색하고 비교해 컬렉션과 토털 세트로 정리하고, 실제 사용 기록까지 이어가세요."
           action={(
             <Link href="/consulting/new" className="customer-primary-button">
               <Plus aria-hidden="true" /> 새 컨설팅
             </Link>
           )}
         />
-        <CustomerStylebookCollection
-          collection={collection}
+        <CustomerStylebookWorkspace
+          initialCollection={collection}
           activeView={activeView}
           routeBase="/e2e-harness/customer-stylebook"
+          memoryPersistence
         />
       </div>
     </CustomerShell>

@@ -48,6 +48,14 @@ test("parses the durable final fashion selection into the customer stylebook con
     shoppingKeywords: ["아이보리 니트"],
     imagePath: null,
     confirmedAt: "2026-08-25T09:00:00.000Z",
+    state: {
+      customTitle: null,
+      note: "",
+      tags: [],
+      favorite: false,
+      archivedAt: null,
+      updatedAt: null,
+    },
   });
 });
 

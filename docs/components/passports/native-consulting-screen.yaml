@@ -21,6 +21,7 @@ public_api:
     - authenticated-user
     - active-consultation-id-from-secure-store
     - optional-owned-consultation-id-from-stylebook
+    - optional-separate-stylebook-reference-context
     - shared-ConsultationSnapshot
   outputs:
     - zero-required-answer-photo-first-intake
@@ -40,6 +41,7 @@ public_api:
     - post-fashion-result-synthesis
     - report-v3-provenance-and-all-hair-fashion-generated-results
     - actual-service-aftercare
+    - stylebook-reference-display-with-full-existing-flow-preserved
 
 boundaries:
   authoritative_state: server-consultation-snapshot
@@ -61,6 +63,7 @@ boundaries:
     - client-authoritative-lifecycle
     - paid-generation-confirmation
     - raw-photo-or-provider-payload-logging
+    - stylebook-reference-driven-stage-question-or-order-mutation
 
 styling:
   strategy: ui-native-primitives-and-local-StyleSheet

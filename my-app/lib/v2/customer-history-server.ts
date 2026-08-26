@@ -13,6 +13,7 @@ import {
   type FashionPreviewSetRowV2,
   type ParsedCustomerFashionSelectionV2,
 } from "./customer-stylebook-parser";
+import { attachCustomerStylebookMetadataV2, emptyCustomerStylebookCollectionV2 } from "./customer-stylebook-metadata-server";
 
 export type CustomerStyleRecordV2 = CustomerStylebookHairEntryV2;
 
@@ -114,6 +115,12 @@ type ParsedSelection = {
   recommendationReason: string;
   imagePath: string | null;
   confirmedAt: string;
+  strategyBucket: string;
+  length: string;
+  bang: string;
+  texture: string;
+  volume: string[];
+  maintenanceLevel: string;
 };
 
 const CHECKPOINT_OFFSETS = new Set(["D+1", "D+3", "D+7", "D+30", "D+45", "D+90"]);
@@ -148,6 +155,20 @@ function toCustomerStyleRecord(
     description: selection.recommendationReason,
     imageUrl,
     confirmedAt: selection.confirmedAt,
+    strategyBucket: selection.strategyBucket,
+    length: selection.length,
+    bang: selection.bang,
+    texture: selection.texture,
+    volume: selection.volume,
+    maintenanceLevel: selection.maintenanceLevel,
+    state: {
+      customTitle: null,
+      note: "",
+      tags: [],
+      favorite: false,
+      archivedAt: null,
+      updatedAt: null,
+    },
   };
 }
 
@@ -155,6 +176,9 @@ export function parseCustomerSelectionRowV2(row: SelectionRow): ParsedSelection 
   const snapshot = objectOrNull(row.snapshot) as StyleSelectionSnapshotV2 | null;
   if (snapshot?.schemaVersion !== "style-selection-snapshot-v1") return null;
   const style = objectOrNull(snapshot?.style);
+  const design = objectOrNull(style?.design);
+  const preferences = objectOrNull(snapshot?.preferences);
+  const maintenance = objectOrNull(preferences?.maintenance);
   const previewImage = objectOrNull(snapshot?.previewImage);
   const confirmedAt = cleanString(row.confirmed_at ?? snapshot?.confirmedAt);
   const name = cleanString(style?.name);
@@ -168,6 +192,12 @@ export function parseCustomerSelectionRowV2(row: SelectionRow): ParsedSelection 
     recommendationReason: cleanString(style?.recommendationReason, "확정한 스타일 방향"),
     imagePath: cleanString(previewImage?.path) || null,
     confirmedAt,
+    strategyBucket: cleanString(style?.strategyBucket, "personalized"),
+    length: cleanString(design?.lengthBucket, "unknown"),
+    bang: cleanString(design?.bangType, "unknown"),
+    texture: cleanString(design?.texture, "unknown"),
+    volume: stringArray(design?.volumeFocusTags),
+    maintenanceLevel: cleanString(maintenance?.maintenanceLevel, "unknown"),
   };
 }
 
@@ -244,7 +274,7 @@ async function loadFinalConsultationIds(
 }
 
 export async function loadCustomerStylebookCollectionV2(userId: string): Promise<CustomerStylebookV2> {
-  const empty: CustomerStylebookV2 = { schemaVersion: "customer-stylebook-v2", hair: [], fashion: [] };
+  const empty = emptyCustomerStylebookCollectionV2();
   if (!isSupabaseConfigured()) return empty;
   const db = getSupabaseAdminClient();
   const [selectionResult, fashionResult] = await Promise.all([
@@ -310,7 +340,7 @@ export async function loadCustomerStylebookCollectionV2(userId: string): Promise
     ...finalSelections.map((selection) => selection.imagePath),
     ...fashionWithImagePaths.map((selection) => selection.imagePath),
   ], db as unknown as ServerSupabaseLike);
-  return {
+  return attachCustomerStylebookMetadataV2(userId, {
     schemaVersion: "customer-stylebook-v2",
     hair: finalSelections.map((selection) => toCustomerStyleRecord(
       selection,
@@ -320,7 +350,13 @@ export async function loadCustomerStylebookCollectionV2(userId: string): Promise
       ...selection,
       imageUrl: imagePath ? imageUrls.get(imagePath) ?? null : null,
     })),
-  };
+    sets: [],
+    collections: [],
+    wearLogs: [],
+    activeShares: [],
+    references: [],
+    metadataAvailable: false,
+  });
 }
 
 export async function loadCustomerStylebookV2(userId: string): Promise<CustomerStyleRecordV2[]> {

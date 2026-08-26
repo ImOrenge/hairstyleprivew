@@ -1,13 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
+import type { CustomerStylebookConsultationReferenceContextV2 } from "@hairfit/shared";
 import type { ConsultationChapterSurfaceV1, ConsultationSnapshot, ConsultationStage } from "../../../lib/consulting/contracts";
 import { SceneIdentity } from "./SceneIdentity";
 import { FloatingStageControls } from "./FloatingStageControls";
 import { StageMapOverlay } from "./StageMapOverlay";
 import { StageContextStrip } from "./StageContextStrip";
 
-export function ConsultationScene({ snapshot, stage, surface, children, notice, onRefresh, chapterNavigationEnabled = true }: { snapshot: ConsultationSnapshot; stage: ConsultationStage; surface?: ConsultationChapterSurfaceV1; children: ReactNode; notice?: string | null; onRefresh?: () => void; chapterNavigationEnabled?: boolean }) {
+export function ConsultationScene({ snapshot, stage, surface, children, notice, onRefresh, chapterNavigationEnabled = true, stylebookReference = null }: { snapshot: ConsultationSnapshot; stage: ConsultationStage; surface?: ConsultationChapterSurfaceV1; children: ReactNode; notice?: string | null; onRefresh?: () => void; chapterNavigationEnabled?: boolean; stylebookReference?: CustomerStylebookConsultationReferenceContextV2 | null }) {
   const [mapOpen, setMapOpen] = useState(false);
   const hydrated = useSyncExternalStore(
     () => () => {},
@@ -24,7 +25,7 @@ export function ConsultationScene({ snapshot, stage, surface, children, notice, 
   return (
     <div data-consulting-hydrated={hydrated ? "true" : "false"} data-consulting-layout={reportMode ? "report" : "workbench"} data-consulting-surface={surface?.mode ?? "input"} className="mx-auto min-h-dvh w-full max-w-[96rem] px-4 pb-28 pt-8 sm:px-8 sm:pt-12 lg:px-12 lg:pb-24 lg:pt-6">
       <SceneIdentity stage={stage} snapshot={snapshot} chapterNavigationEnabled={chapterNavigationEnabled} />
-      <StageContextStrip stage={stage} snapshot={snapshot} />
+      <StageContextStrip stage={stage} snapshot={snapshot} stylebookReference={stylebookReference} />
       {notice ? (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border border-[var(--app-warning)] bg-[var(--app-warning-bg)] px-4 py-3 text-sm">
           <p>{notice}</p>

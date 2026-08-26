@@ -1,4 +1,5 @@
 import type { ConsultationSnapshot, ConsultationStage } from "../../../lib/consulting/contracts";
+import type { CustomerStylebookConsultationReferenceContextV2 } from "@hairfit/shared";
 
 const CONTEXT: Partial<Record<ConsultationStage, { reflected: string; focus: string; result: string }>> = {
   analysis: {
@@ -53,9 +54,15 @@ const CONTEXT: Partial<Record<ConsultationStage, { reflected: string; focus: str
   },
 };
 
-export function StageContextStrip({ snapshot, stage }: { snapshot: ConsultationSnapshot; stage: ConsultationStage }) {
+export function StageContextStrip({ snapshot, stage, stylebookReference = null }: { snapshot: ConsultationSnapshot; stage: ConsultationStage; stylebookReference?: CustomerStylebookConsultationReferenceContextV2 | null }) {
   const context = CONTEXT[stage];
-  if (!context) return null;
+  if (!context && !stylebookReference) return null;
+  const reference = stylebookReference ? (
+    <div className="mb-3 flex items-center gap-3 border border-[var(--app-border-strong)] bg-[var(--app-surface)] p-3 text-sm" data-consulting-stylebook-reference="true">
+      <p><strong>스타일북 참고</strong> · {stylebookReference.item.title}<br /><span className="text-xs text-[var(--app-muted)]">질문과 단계는 그대로 진행하며, 이 결과는 참고 기준으로만 사용합니다.</span></p>
+    </div>
+  ) : null;
+  if (!context) return <div className="mt-5">{reference}</div>;
   const goal = snapshot.discovery.goals[0];
   const reflected = goal ? `${context.reflected} · ${goal}` : context.reflected;
   const items = [
@@ -75,6 +82,7 @@ export function StageContextStrip({ snapshot, stage }: { snapshot: ConsultationS
   );
   return (
     <div className="mt-5" data-consulting-stage-context="true">
+      {reference}
       <details className="border border-[var(--app-border)] bg-[var(--app-surface)] text-sm sm:hidden">
         <summary className="cursor-pointer px-4 py-3 font-black">이번 결과에 반영한 기준</summary>
         {content("grid border-t border-[var(--app-border)]")}

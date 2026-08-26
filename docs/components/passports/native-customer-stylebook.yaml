@@ -9,15 +9,24 @@ owner: customer-experience
 public_api:
   props:
     - collection: CustomerStylebookV2
-    - activeView: hair-or-fashion
+    - activeView: hair-or-fashion-or-sets
     - onViewChange
     - onOpenConsultation
     - onStartConsultation
+    - onUpdateItemState
+    - onMutateCollection
+    - onCreateWearLog
+    - onDeleteWearLog
+    - onCreateShare
+    - onRevokeShare
+    - onStartFromReference
 
 boundaries:
   owns:
-    - native-final-hair-and-fashion-tab-presentation
-    - native-card-and-empty-state-interaction
+    - native-final-hair-fashion-and-total-set-tab-presentation
+    - native-search-filter-sort-and-two-to-three-item-comparison
+    - native-card-collection-management-and-empty-state-interaction
+    - native-private-photo-wear-log-and-revocable-share-controls
   forbidden:
     - api-data-fetching
     - persistent-consultation-state
@@ -29,6 +38,9 @@ data_contract:
   schema: customer-stylebook-v2
   destination: /consulting?consultationId={consultationId}
   result_surface: existing-mobile-consultation-final-report
+  mutations: PATCH-POST-DELETE-/api/mobile/stylebook
+  private_photo_picker: expo-image-picker-with-explicit-record-consent
+  reference_context: optional-separate-stylebook-reference-on-existing-consulting-screen
 
 styling:
   strategy: app-local-StyleSheet-and-customer-token-module
@@ -41,6 +53,7 @@ a11y_contract:
   cards: named-button
   images: named-image
   minimum_control_height: 48
+  modal_controls: labelled-native-inputs-buttons-and-selected-state
 
 test_surface:
   native_typecheck: required
@@ -55,4 +68,6 @@ change_policy:
 
 promotion_blockers:
   - no-iOS-and-Android-device-visual-evidence
+  - no-authenticated-private-photo-and-share-device-evidence
+  - extension-migration-not-applied-to-live-database
   - no-screen-reader-evidence

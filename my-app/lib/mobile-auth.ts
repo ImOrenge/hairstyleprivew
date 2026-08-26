@@ -90,7 +90,7 @@ function getMobileCorsHeaders(request?: Request) {
   }
 
   headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+  headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
   headers.set("Access-Control-Max-Age", "600");
   return headers;
 }

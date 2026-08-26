@@ -24,6 +24,7 @@ export * from "./mobile/app-version";
 export * from "./salon/connection-consent";
 export * from "./styling/contract";
 export * from "./customer-stylebook";
+export * from "./customer-stylebook-utils";
 
 export type MobileServiceKey = "customer" | "salon" | "admin";
 

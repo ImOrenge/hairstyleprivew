@@ -9,6 +9,7 @@ import { canEnterConsultationStage, consultationStageHref } from "../../../../li
 import { loadConsultationRouteData, readConsultationRouteUserId } from "../../../../lib/consulting/route-server";
 import { readConsultationReportV2 } from "../../../../lib/consulting/report-v2-server";
 import { readServerConsultation } from "../../../../lib/consulting/server-store";
+import { readCustomerStylebookReferenceV2 } from "../../../../lib/v2/customer-stylebook-actions-server";
 
 export const metadata: Metadata = { title: "AI 헤어 컨설팅", description: "근거에서 선택과 관리까지 이어지는 HairFit AI 컨설팅." };
 interface Props { params: Promise<{ sessionId: string; stage: string }>; searchParams: Promise<{ transition?: string }> }
@@ -42,13 +43,18 @@ export default async function ConsultationStageRoute({ params, searchParams }: P
   if (recommended === "color-studio" && !isColorStudioEnabled()) recommended = "salon-brief";
   if (recommended === "result" && !isConsultationResultEnabled()) recommended = "fashion";
   if (!canEnterConsultationStage(snapshot, rawStage)) redirect(consultationStageHref(sessionId, recommended));
-  const report = rawStage === "result"
-    ? await loadConsultationRouteData(
-      "read-consultation-report",
-      () => readConsultationReportV2({ userId, consultationId: sessionId, snapshot }),
-    )
-    : { ok: true as const, data: null };
-  if (!report.ok) return <ConsultationRouteRecovery retryHref={routeHref} />;
-  const initialReport = report.data;
-  return <ConsultationStagePage initialSnapshot={snapshot} initialReport={initialReport} stage={rawStage} initialTransitionKind={isConsultationTaskKind(query.transition) ? query.transition : null} livenessEnabled={isConsultationLivenessEnabled()} interviewEnabled={rawStage === "discovery" ? isConsultationDiscoveryInterviewEnabled() : rawStage === "fashion" ? isConsultationFashionInterviewEnabled() : false} progressiveInterviewEnabled={isConsultationProgressiveInterviewEnabled()} zeroInputIntakeEnabled={isConsultationZeroInputIntakeEnabled()} chapterNavigationEnabled={isConsultationChapterNavigationEnabled()} hairRecommendationEnabled={hairRecommendationEnabled} />;
+  const [report, stylebookReference] = await Promise.all([
+    rawStage === "result"
+      ? loadConsultationRouteData(
+        "read-consultation-report",
+        () => readConsultationReportV2({ userId, consultationId: sessionId, snapshot }),
+      )
+      : { ok: true as const, data: null },
+    loadConsultationRouteData(
+      "read-stylebook-reference",
+      () => readCustomerStylebookReferenceV2(userId, sessionId),
+    ),
+  ]);
+  if (!report.ok || !stylebookReference.ok) return <ConsultationRouteRecovery retryHref={routeHref} />;
+  return <ConsultationStagePage initialSnapshot={snapshot} initialReport={report.data} stylebookReference={stylebookReference.data} stage={rawStage} initialTransitionKind={isConsultationTaskKind(query.transition) ? query.transition : null} livenessEnabled={isConsultationLivenessEnabled()} interviewEnabled={rawStage === "discovery" ? isConsultationDiscoveryInterviewEnabled() : rawStage === "fashion" ? isConsultationFashionInterviewEnabled() : false} progressiveInterviewEnabled={isConsultationProgressiveInterviewEnabled()} zeroInputIntakeEnabled={isConsultationZeroInputIntakeEnabled()} chapterNavigationEnabled={isConsultationChapterNavigationEnabled()} hairRecommendationEnabled={hairRecommendationEnabled} />;
 }

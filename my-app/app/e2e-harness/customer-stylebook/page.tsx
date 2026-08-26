@@ -15,6 +15,6 @@ export default async function CustomerStylebookE2EPage({
 }) {
   if (process.env.E2E_UI_HARNESS_ENABLED !== "true") notFound();
   const query = await searchParams;
-  const activeView: CustomerStylebookViewV2 = query.view === "fashion" ? "fashion" : "hair";
+  const activeView: CustomerStylebookViewV2 = query.view === "fashion" ? "fashion" : query.view === "sets" ? "sets" : "hair";
   return <CustomerStylebookHarness activeView={activeView} empty={query.empty === "1"} />;
 }

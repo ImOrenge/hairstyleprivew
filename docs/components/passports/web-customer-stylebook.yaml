@@ -4,19 +4,34 @@ platform: web
 kind: feature
 status: experimental
 source: my-app/components/customer/CustomerStylebookCollection.tsx
+related_source:
+  - my-app/components/customer/stylebook/CustomerStylebookWorkspace.tsx
+  - my-app/components/customer/stylebook/CustomerStylebookCard.tsx
+  - my-app/components/customer/stylebook/CustomerStylebookDialogs.tsx
+  - my-app/lib/v2/customer-stylebook-metadata-server.ts
+  - my-app/lib/v2/customer-stylebook-actions-server.ts
+  - my-app/app/stylebook/share/[token]/page.tsx
 owner: customer-experience
 
 public_api:
   props:
     - collection: CustomerStylebookV2
-    - activeView: hair-or-fashion
+    - activeView: hair-or-fashion-or-sets
+    - actions: item-collection-wear-log-share-reference-mutations
     - routeBase: optional-harness-navigation-base
   events:
-    - native-link-navigation
+    - final-result-link-navigation
+    - revocable-expiring-public-share
+    - referenced-consultation-start
 
 boundaries:
   owns:
-    - final-hair-and-fashion-tab-presentation
+    - final-hair-fashion-and-total-set-tab-presentation
+    - search-filter-sort-and-two-to-three-item-comparison
+    - favorite-custom-title-note-tags-archive
+    - mixed-hair-fashion-custom-collections
+    - private-real-life-wear-and-service-logs
+    - revocable-expiring-share-print-pdf-and-image-download
     - per-tab-empty-state
     - final-result-deep-links
   forbidden:
@@ -31,6 +46,9 @@ data_contract:
   fashion_source: fashion_preview_sets_v2-latest-per-consultation
   final_filter: consultation_sessions-completed-result
   fashion_media: completed-v2-selection-styling-session
+  extension_tables: [customer_stylebook_item_states_v2, customer_stylebook_collections_v2, customer_stylebook_collection_items_v2, customer_stylebook_wear_logs_v2, customer_stylebook_shares_v2, customer_stylebook_consultation_references_v2]
+  private_photo_bucket: stylebook-wear-photos
+  reference_rule: separate-context-only-no-stage-or-question-mutation
 
 styling:
   strategy: customer-shell-scoped-global-css
@@ -41,12 +59,16 @@ styling:
 
 a11y_contract:
   tab_navigation: native-links-with-aria-current-page
+  filters: labelled-search-selects-and-pressed-state-buttons
+  dialogs: focus-managed-Dialog-primitives
+  comparison: labelled-scrollable-table-region
   collection_label: per-active-view
   images: descriptive-alt
   focus_indicator: inherited-customer-shell-visible-outline
 
 test_surface:
   contract: my-app/lib/app-shell-accessibility.test.ts
+  extension_contract: my-app/lib/customer-stylebook-extensions.test.ts
   interaction: tests/web-e2e/customer-shell-v2.spec.ts
   responsive_visual: required
   web_typecheck: required
@@ -58,4 +80,6 @@ change_policy:
 
 promotion_blockers:
   - no-authenticated-production-fashion-record-evidence
+  - extension-migration-not-applied-to-live-database
+  - authenticated-share-and-private-photo-flow-not-verified
   - no-screen-reader-evidence

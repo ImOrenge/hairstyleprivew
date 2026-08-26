@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CustomerPageHeader, CustomerShell } from "../../components/customer/CustomerShell";
-import { CustomerStylebookCollection } from "../../components/customer/CustomerStylebookCollection";
+import { CustomerStylebookWorkspace } from "../../components/customer/stylebook/CustomerStylebookWorkspace";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
 import { loadCustomerStylebookCollectionV2 } from "../../lib/v2/customer-history-server";
 
@@ -17,7 +17,7 @@ export default async function StylebookPage({
   if (!userId) redirect(buildSignInRedirectUrl("/stylebook"));
 
   const { view } = await searchParams;
-  const activeView: CustomerStylebookViewV2 = view === "fashion" ? "fashion" : "hair";
+  const activeView: CustomerStylebookViewV2 = view === "fashion" ? "fashion" : view === "sets" ? "sets" : "hair";
   const collection = await loadCustomerStylebookCollectionV2(userId);
 
   return (
@@ -35,7 +35,7 @@ export default async function StylebookPage({
           }
         />
 
-        <CustomerStylebookCollection collection={collection} activeView={activeView} />
+        <CustomerStylebookWorkspace initialCollection={collection} activeView={activeView} />
       </div>
     </CustomerShell>
   );

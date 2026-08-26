@@ -91,6 +91,7 @@ boundaries:
       - single-global-consultation-exit
       - mobile-collapsible-context-summary
       - makeup-next-action-after-current-stage-completion
+      - optional-stylebook-reference-context-without-stage-question-or-order-mutation
   forbidden:
     - generation-domain-workflow
     - backend-refactor-package-contracts
@@ -144,6 +145,7 @@ state:
     - consultation-exit-dialog-open
     - paid-start-consent
     - active-chapter-surface-rendering-only
+    - stylebook-reference-display-only
 
 a11y_contract:
   stage_map: dialog-with-escape-and-focus-return

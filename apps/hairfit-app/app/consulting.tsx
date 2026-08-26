@@ -25,6 +25,7 @@ import type {
   MakeupSimulationOutputV1,
   MakeupSimulationSelectionSnapshotV1,
   ConsultationReportViewModelV2,
+  CustomerStylebookConsultationReferenceContextV2,
 } from "@hairfit/shared";
 import {
   CONSULTATION_CHAPTERS,
@@ -215,16 +216,21 @@ export default function MobileConsultingScreen() {
   const [hairDiagnosis, setHairDiagnosis] =
     useState<MobileHairDiagnosisState | null>(null);
   const [report, setReport] = useState<ConsultationReportViewModelV2 | null>(null);
+  const [stylebookReference, setStylebookReference] =
+    useState<CustomerStylebookConsultationReferenceContextV2 | null>(null);
 
   const load = useCallback(
     async (consultationId: string) => {
       setLoading(true);
       setMessage(null);
+      setStylebookReference(null);
       try {
-        const [workspaceResponse, response] = await Promise.all([
+        const [workspaceResponse, response, referenceResponse] = await Promise.all([
           api.getConsultation(consultationId),
           api.getV2Consultation(consultationId),
+          api.getCustomerStylebookReferenceV2(consultationId).catch(() => ({ reference: null })),
         ]);
+        setStylebookReference(referenceResponse.reference);
         setWorkspace(workspaceResponse.snapshot);
         setFashionDirection(
           workspaceResponse.snapshot.fashion.directionSnapshot,
@@ -997,6 +1003,25 @@ export default function MobileConsultingScreen() {
 
   return (
     <AppScreen>
+      {stylebookReference ? (
+        <Panel>
+          <Stack>
+            <Kicker>Stylebook reference · 흐름 유지</Kicker>
+            <Heading style={styles.sectionHeading}>이전 스타일을 참고 정보로 연결했어요</Heading>
+            {stylebookReference.item.imageUrl ? (
+              <Image
+                accessibilityLabel={`${stylebookReference.item.title} 참고 이미지`}
+                source={{ uri: stylebookReference.item.imageUrl }}
+                style={styles.referenceImage}
+              />
+            ) : null}
+            <BodyText>{stylebookReference.item.title}</BodyText>
+            <BodyText>
+              이 항목은 비교를 위한 참고 정보입니다. 기존 컨설팅 단계, 질문, 순서와 결과 확정 방식은 변경하지 않습니다.
+            </BodyText>
+          </Stack>
+        </Panel>
+      ) : null}
       <Panel>
         <Stack>
           <Cluster>
@@ -2009,6 +2034,7 @@ export default function MobileConsultingScreen() {
             setHairRecommendation(null);
             setEvidence(null);
             setSelection(null);
+            setStylebookReference(null);
           });
         }}
       >
@@ -2067,6 +2093,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   primaryPreviewImage: { aspectRatio: 4 / 5, width: "100%" },
+  referenceImage: { aspectRatio: 16 / 10, borderRadius: 6, width: "100%" },
   sectionHeading: { fontSize: 22, lineHeight: 28 },
   textInput: {
     backgroundColor: "#181713",
