@@ -12,6 +12,7 @@ test("Expo defaults to the resumable non-wizard V2 AI consultant", () => {
   const consulting = read("app/consulting.tsx");
   const resume = read("lib/v2-consultation-resume.ts");
   expect(home).toMatch(/새 컨설팅 시작/);
+  expect(home).not.toMatch(/크레딧/);
   expect(home).toMatch(/router\.push\("\/consulting"\)/);
   expect(navigation).toMatch(/href: "\/consulting", label: "새 컨설팅"/);
   expect(resume).toMatch(/SecureStore/);

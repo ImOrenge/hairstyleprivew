@@ -24,7 +24,7 @@ boundaries:
       - auth-aware-mobile-me-load
       - customer-dashboard-load
       - setup-tab-override
-      - membership-summary-and-active-settings-panel-composition
+      - plan-and-profile-summary-and-active-settings-panel-composition
   panels:
     source: apps/hairfit-app/components/mypage/panels
     owns:
@@ -75,6 +75,7 @@ test_surface:
   jest: apps/hairfit-app/__tests__
   customer_navigation: apps/hairfit-app/__tests__/role-navigation.test.tsx
   mobile_sync: scripts/mobile-sync-verify.mjs
+  customer_copy: credit-balance-excluded
   interaction: required
   visual: required
 

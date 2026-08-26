@@ -79,7 +79,6 @@ export function MobileMyPageAccountPanel({
     { label: "계정 유형", value: accountTypeLabel(me?.accountType ?? null) },
     { label: "계정 설정", value: accountSetupLabel(me?.accountSetupComplete) },
     { label: "플랜", value: formatPlanLabel(me?.planKey) },
-    { label: "크레딧", value: (me?.credits ?? 0).toLocaleString("ko-KR") },
     { label: "서비스", value: services },
     { label: "사용자 ID", value: me?.userId || userId || "-" },
   ];

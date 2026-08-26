@@ -101,7 +101,6 @@ export default function MyPageScreen() {
 
   const customer = dashboard?.customer;
   const hasAccountSnapshot = Boolean(customer || me);
-  const credits = customer?.credits ?? me?.credits ?? 0;
   const activePlan = formatMobileMyPagePlanLabel(
     customer?.planKey ?? me?.planKey,
   );
@@ -137,7 +136,7 @@ export default function MyPageScreen() {
         <CustomerCard style={{ gap: 6 }}>
           <CustomerKicker>Membership</CustomerKicker>
           <CustomerHeading compact>{activePlan}</CustomerHeading>
-          <CustomerBody>{credits.toLocaleString("ko-KR")} 크레딧 · 바디 프로필 {customer?.styleProfileReady ? "준비됨" : "설정 필요"}</CustomerBody>
+          <CustomerBody>바디 프로필 {customer?.styleProfileReady ? "준비됨" : "설정 필요"} · 이용 혜택은 플랜에서 확인하세요.</CustomerBody>
         </CustomerCard>
       ) : null}
 
@@ -146,7 +145,6 @@ export default function MyPageScreen() {
           accountSetupContinuation={accountSetupContinuation}
           activePlan={activePlan}
           activeTab={activeTab}
-          credits={credits}
           customer={customer}
           me={me}
           onAccountSaved={setMe}

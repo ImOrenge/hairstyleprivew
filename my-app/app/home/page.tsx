@@ -17,6 +17,16 @@ function formatDate(value: string | null | undefined) {
   return date.toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
 }
 
+function formatMembershipLabel(planKey: string | null) {
+  if (!planKey) return "무료 멤버십 관리";
+  if (planKey === "starter") return "스타터 멤버십 관리";
+  if (planKey === "basic") return "베이직 멤버십 관리";
+  if (planKey === "standard") return "스탠다드 멤버십 관리";
+  if (planKey === "pro") return "프로 멤버십 관리";
+  if (planKey === "salon") return "살롱 멤버십 관리";
+  return "멤버십 관리";
+}
+
 function isGenerationInProgress(item: CustomerHomeGeneration) {
   return ["queued", "pending", "processing", "running", "generating"].includes(item.status.toLowerCase());
 }
@@ -51,7 +61,7 @@ export default async function CustomerHomePage() {
           description="원하는 분위기와 관리 습관을 함께 살펴보고, 내 얼굴에 맞는 스타일을 차분하게 찾아드릴게요."
           action={
             <Link href="/billing" className="customer-secondary-button">
-              {dashboard.credits.toLocaleString("ko-KR")} 크레딧 · {dashboard.planKey || "Free"}
+              {formatMembershipLabel(dashboard.planKey)}
             </Link>
           }
         />

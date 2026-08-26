@@ -14,7 +14,6 @@ interface MobileMyPageActivePanelProps {
   accountSetupContinuation: AccountSetupContinuation | null;
   activePlan: string;
   activeTab: MobileMyPageTabId;
-  credits: number;
   customer: MobileCustomerDashboard["customer"] | undefined;
   me: MobileBootstrap | null;
   onAccountSaved: (next: MobileBootstrap) => void;
@@ -24,7 +23,6 @@ export function MobileMyPageActivePanel({
   accountSetupContinuation,
   activePlan,
   activeTab,
-  credits,
   customer,
   me,
   onAccountSaved,
@@ -33,7 +31,6 @@ export function MobileMyPageActivePanel({
     return (
       <MobileMyPagePlanPanel
         activePlan={activePlan}
-        credits={credits}
         planKey={customer?.planKey ?? null}
         billingPlanBenefits={customer?.billingPlanBenefits ?? []}
         payments={customer?.recentPayments ?? []}

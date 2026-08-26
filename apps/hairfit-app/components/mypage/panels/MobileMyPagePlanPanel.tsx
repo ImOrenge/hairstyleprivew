@@ -13,14 +13,12 @@ import { MobileRefundInterviewFlow } from "../MobileRefundInterviewFlow";
 export function MobileMyPagePlanPanel({
   activePlan,
   billingPlanBenefits,
-  credits,
   planKey,
   payments,
   refundRequests,
 }: {
   activePlan: string;
   billingPlanBenefits: MobilePlanBenefitSummary[];
-  credits: number;
   planKey: string | null;
   payments: MobileCustomerDashboard["customer"]["recentPayments"];
   refundRequests: MobileCustomerDashboard["customer"]["recentRefundRequests"];
@@ -37,7 +35,7 @@ export function MobileMyPagePlanPanel({
         <Card>
           <BodyText>활성 플랜</BodyText>
           <Heading>{activePlan}</Heading>
-          <BodyText>현재 이용권 잔액 {credits.toLocaleString("ko-KR")}</BodyText>
+          <BodyText>플랜별 이용 혜택을 기준으로 서비스를 사용할 수 있습니다.</BodyText>
         </Card>
         {currentPlanBenefit ? (
           <Card>

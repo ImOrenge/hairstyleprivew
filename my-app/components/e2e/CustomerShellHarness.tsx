@@ -12,7 +12,7 @@ export function CustomerShellHarness() {
           eyebrow="Private AI Atelier"
           title="지수님, 오늘은 어떤 변화를 원하세요?"
           description="원하는 분위기와 관리 습관을 함께 살펴보고, 내 얼굴에 맞는 스타일을 차분하게 찾아드릴게요."
-          action={<span className="customer-secondary-button">120 크레딧 · Pro</span>}
+          action={<span className="customer-secondary-button">프로 멤버십 관리</span>}
         />
 
         <section className="customer-home-hero customer-card">

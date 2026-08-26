@@ -32,6 +32,7 @@ boundaries:
     - consultation-route-or-data-mutation
     - salon-or-admin-navigation
     - account-fetching
+    - customer-credit-balance-copy
 
 route_contract:
   shell_routes:
@@ -68,6 +69,7 @@ test_surface:
   web_typecheck: required
   interaction: required
   responsive_visual: required
+  customer_copy: credit-balance-excluded
 
 change_policy:
   current_gate: behavioral

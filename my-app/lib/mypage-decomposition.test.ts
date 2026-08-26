@@ -79,6 +79,10 @@ test("every web MyPage panel owns an AsyncBoundary and its tabpanel contract", (
 
 test("mobile MyPage keeps route selection and panel rendering out of the screen", () => {
   const screen = read("../../apps/hairfit-app/app/mypage.tsx");
+  const activePanel = read("../../apps/hairfit-app/components/mypage/MobileMyPageActivePanel.tsx");
+  const planPanel = read("../../apps/hairfit-app/components/mypage/panels/MobileMyPagePlanPanel.tsx");
+  const accountPanel = read("../../apps/hairfit-app/components/mypage/panels/MobileMyPageAccountPanel.tsx");
+  const accountScreen = read("../../apps/hairfit-app/app/account.tsx");
   const routes = read("../../apps/hairfit-app/lib/mypage.ts");
   const mobileSync = read("../../scripts/mobile-sync-verify.mjs");
   const navigation = read(
@@ -87,6 +91,8 @@ test("mobile MyPage keeps route selection and panel rendering out of the screen"
 
   assert.match(screen, /<MobileMyPageTabNavigation/);
   assert.match(screen, /<MobileMyPageActivePanel/);
+  assert.doesNotMatch(`${screen}\n${activePanel}\n${planPanel}\n${accountPanel}\n${accountScreen}`, /크레딧/);
+  assert.doesNotMatch(`${screen}\n${activePanel}\n${planPanel}`, /credits=\{/);
   assert.doesNotMatch(
     screen,
     /function (UsagePanel|PlanPanel|AftercarePanel|BodyProfilePanel|PersonalColorPanel|AccountPanel|formatDate|formatPlanLabel)/,

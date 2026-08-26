@@ -158,10 +158,8 @@ export default function AccountScreen() {
                   <BodyText>{formatMobileAccountSetup(me.accountSetupComplete)}</BodyText>
                 </Stack>
                 <Stack gap={4}>
-                  <BodyText>플랜 · 크레딧</BodyText>
-                  <BodyText>
-                    {formatMobileMyPagePlanLabel(me.planKey)} · {me.credits.toLocaleString("ko-KR")}크레딧
-                  </BodyText>
+                  <BodyText>멤버십</BodyText>
+                  <BodyText>{formatMobileMyPagePlanLabel(me.planKey)}</BodyText>
                 </Stack>
               </>
             ) : null}

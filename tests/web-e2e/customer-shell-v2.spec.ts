@@ -5,6 +5,8 @@ test("customer shell keeps consultation prominent across desktop and mobile", as
   await expect(page.locator('[data-e2e-customer-shell="true"]')).toBeVisible();
   await expect(page.locator('[data-app-shell="header"]')).toHaveCount(0);
   await expect(page.locator('[data-app-shell="footer"]')).toHaveCount(0);
+  await expect(page.locator("body")).not.toContainText("크레딧");
+  await expect(page.getByText("프로 멤버십 관리", { exact: true })).toBeVisible();
 
   const rail = page.locator(".customer-app__rail");
   const bottomNavigation = page.locator(".customer-app__bottom-nav");

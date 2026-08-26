@@ -36,6 +36,7 @@ import {
   CustomerSectionHeader,
 } from "../components/customer/CustomerPrimitives";
 import { customerColors } from "../lib/customer-ui";
+import { formatMobileMyPagePlanLabel } from "../lib/mypage";
 
 type CustomerDashboard = Extract<MobileDashboard, { service: "customer" }>["customer"];
 
@@ -138,9 +139,9 @@ function CustomerHome({
         <CustomerKicker>Private AI Atelier</CustomerKicker>
         <CustomerHeading>{displayName(me)}님, 오늘은 어떤 변화를 원하세요?</CustomerHeading>
         <CustomerBody>원하는 분위기와 관리 습관을 함께 살펴보고 내 얼굴에 맞는 스타일을 차분하게 찾아드릴게요.</CustomerBody>
-        <View style={styles.customerCreditPill}>
-          <Text style={styles.customerCreditText}>
-            {(customer?.credits ?? me?.credits ?? 0).toLocaleString("ko-KR")} 크레딧 · {customer?.planKey ?? me?.planKey ?? "Free"}
+        <View style={styles.customerMembershipPill}>
+          <Text style={styles.customerMembershipText}>
+            {formatMobileMyPagePlanLabel(customer?.planKey ?? me?.planKey)} 멤버십
           </Text>
         </View>
       </View>
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 8,
   },
-  customerCreditPill: {
+  customerMembershipPill: {
     alignSelf: "flex-start",
     backgroundColor: customerColors.raised,
     borderColor: customerColors.line,
@@ -413,7 +414,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  customerCreditText: {
+  customerMembershipText: {
     color: customerColors.ivory,
     fontSize: 12,
     fontWeight: "700",
