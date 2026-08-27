@@ -17,6 +17,8 @@ public_api:
     - photo-selection
     - crop-confirmation
     - signed-color-capture-upload
+    - durable-analysis-resume
+    - retention-cleanup
     - automatic-analysis-handoff
 
 dependencies:
@@ -54,13 +56,15 @@ state:
   owned:
     - selected-primary-file
     - selected-color-assist-file
+    - independently-validated-assist-file
     - crop-position
     - quick-or-precision-mode
+    - current-analysis-run-id
     - color-quality-projection
     - transient-error
   derived:
     - selected-usage-scopes
-    - color-capture-role
+    - primary-and-secondary-color-capture-roles
     - five-axis-usability
   external_store: false
 
@@ -69,6 +73,9 @@ side_effects:
   - uploads-personal-color-file-through-signed-private-storage-token
   - finalizes-checksum-and-metadata
   - automatically-hands-off-to-analysis
+  - persists-primary-and-assist-receipts-before-analysis
+  - resumes-through-leased-fenced-analysis-worker
+  - schedules-selected-retention-cleanup
 
 a11y_contract:
   controls:
@@ -84,6 +91,8 @@ a11y_contract:
   failure:
     selected-file-preserved: true
     crop-preserved: true
+    stale-result-hidden: true
+    polling-timeout-and-reconnect: true
   motion:
     no-new-motion: true
 

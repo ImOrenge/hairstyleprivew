@@ -93,6 +93,25 @@ test("brief, fashion, result, and aftercare open in the agreed lifecycle order",
   assert.ok(afterResult.allowedStages.includes("aftercare"));
 });
 
+test("a confirmed style bypasses legacy shortlist and finalist requirements", () => {
+  const ready = source({
+    currentStage: "previews",
+    photo: { draftId: "draft", capturedAt: "2026-08-27" } as ConsultationSnapshot["photo"],
+    evidence: { items: [{ id: "evidence" }] } as unknown as ConsultationSnapshot["evidence"],
+    personalColorDiagnosis: { state: "ready", evidenceId: "color", errorMessage: null } as ConsultationSnapshot["personalColorDiagnosis"],
+    strategy: { revision: 1, confirmedAt: "2026-08-27" } as ConsultationSnapshot["strategy"],
+    previews: Array.from({ length: 9 }, (_, index) => ({ id: `preview-${index + 1}`, status: "accepted" })) as ConsultationSnapshot["previews"],
+    shortlist: { previewIds: [], updatedAt: null },
+    finalist: { finalistPreviewId: null, backupPreviewId: null, decidedAt: null },
+    selectedStyleHistory: [{ id: "selection", strategy: { revision: 1 } }] as ConsultationSnapshot["selectedStyleHistory"],
+  });
+  const journey = deriveConsultationJourney(ready, "selection_confirmed");
+  assert.equal(journey.recommendedStage, "salon-brief");
+  assert.equal(journey.completedStages.includes("previews"), true);
+  assert.equal(journey.completedStages.includes("compare"), true);
+  assert.equal(journey.blockingActions.some((action) => action.code === "SHORTLIST_REQUIRED" || action.code === "FINALIST_REQUIRED"), false);
+});
+
 test("zero-input start context unlocks Photo without confirmed discovery answers", () => {
   const journey = deriveConsultationJourney(source({
     discovery: { purpose: "", goals: [], currentHair: "", allowedServices: [] } as unknown as ConsultationSnapshot["discovery"],

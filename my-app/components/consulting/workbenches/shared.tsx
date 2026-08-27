@@ -10,16 +10,16 @@ export { Panel, SurfaceCard };
 
 export function WorkbenchGrid({ input, output, inputLabel = "내가 알려줄 내용", outputLabel = "AI 컨설턴트가 정리한 내용", inputHeading = "내 선택", inputDescription = "원하는 방향을 선택하고 수정할 수 있어요.", outputHeading = "AI 컨설턴트 제안", outputDescription = "확인한 내용과 추천 이유를 함께 보여드려요." }: { input: ReactNode; output: ReactNode; inputLabel?: string; outputLabel?: string; inputHeading?: string; inputDescription?: string; outputHeading?: string; outputDescription?: string }) {
   return (
-    <div data-consulting-split-canvas="true" className="grid gap-5 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-0 lg:overflow-hidden lg:border-y lg:border-[var(--app-border)]">
-      <section data-consulting-pane="input" aria-label={inputLabel} tabIndex={0} className="f-consulting-scroll-pane min-w-0 lg:h-full lg:overflow-y-auto lg:overscroll-contain lg:border-r lg:border-[var(--app-border)] lg:pr-5 lg:[scrollbar-gutter:stable]">
-        <div className="border-b border-[var(--app-border)] bg-[var(--app-bg)] py-3 lg:sticky lg:top-0 lg:z-20">
+    <div data-consulting-split-canvas="true" data-consulting-scroll="document" className="grid gap-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-0 lg:border-y lg:border-[var(--app-border)]">
+      <section data-consulting-pane="input" aria-label={inputLabel} className="min-w-0 lg:border-r lg:border-[var(--app-border)] lg:pr-5">
+        <div className="border-b border-[var(--app-border)] bg-[var(--app-bg)] py-3">
           <p className="app-kicker">{inputHeading}</p>
           <p className="mt-1 text-xs text-[var(--app-muted)]">{inputDescription}</p>
         </div>
         <div className="grid gap-5 py-5 lg:pb-28">{input}</div>
       </section>
-      <section data-consulting-pane="output" aria-label={outputLabel} tabIndex={0} className="f-consulting-scroll-pane min-w-0 lg:h-full lg:overflow-y-auto lg:overscroll-contain lg:pl-5 lg:[scrollbar-gutter:stable]">
-        <div className="border-b border-[var(--app-border)] bg-[var(--app-bg)] py-3 lg:sticky lg:top-0 lg:z-20">
+      <section data-consulting-pane="output" aria-label={outputLabel} className="min-w-0 lg:pl-5">
+        <div className="border-b border-[var(--app-border)] bg-[var(--app-bg)] py-3">
           <p className="app-kicker">{outputHeading}</p>
           <p className="mt-1 text-xs text-[var(--app-muted)]">{outputDescription}</p>
         </div>

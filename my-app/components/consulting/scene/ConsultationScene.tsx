@@ -22,7 +22,7 @@ export function ConsultationScene({ snapshot, stage, surface, children, notice, 
   }, [stage]);
   const reportMode = stage === "result";
   return (
-    <div data-consulting-hydrated={hydrated ? "true" : "false"} data-consulting-layout={reportMode ? "report" : "workbench"} data-consulting-surface={surface?.mode ?? "input"} className={`mx-auto min-h-dvh w-full max-w-[96rem] px-4 pb-28 pt-8 sm:px-8 sm:pt-12 lg:px-12 lg:pt-6 ${reportMode ? "lg:pb-24" : "lg:flex lg:h-dvh lg:min-h-0 lg:flex-col lg:overflow-hidden lg:pb-6"}`}>
+    <div data-consulting-hydrated={hydrated ? "true" : "false"} data-consulting-layout={reportMode ? "report" : "workbench"} data-consulting-surface={surface?.mode ?? "input"} className="mx-auto min-h-dvh w-full max-w-[96rem] px-4 pb-28 pt-8 sm:px-8 sm:pt-12 lg:px-12 lg:pb-24 lg:pt-6">
       <SceneIdentity stage={stage} snapshot={snapshot} chapterNavigationEnabled={chapterNavigationEnabled} />
       <StageContextStrip stage={stage} snapshot={snapshot} />
       {notice ? (
@@ -35,7 +35,7 @@ export function ConsultationScene({ snapshot, stage, surface, children, notice, 
           ) : null}
         </div>
       ) : null}
-      <div className={`mt-10 lg:mt-6 lg:flex-1 ${reportMode ? "" : "lg:min-h-0"}`}>{children}</div>
+      <div className="mt-10 lg:mt-6">{children}</div>
       <FloatingStageControls snapshot={snapshot} stage={stage} onOpenMap={openMap} chapterNavigationEnabled={chapterNavigationEnabled} />
       <StageMapOverlay open={mapOpen} onClose={closeMap} snapshot={snapshot} stage={stage} chapterNavigationEnabled={chapterNavigationEnabled} />
     </div>

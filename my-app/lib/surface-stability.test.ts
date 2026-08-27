@@ -17,7 +17,8 @@ test("Surface exports element-aware polymorphic props for every family member", 
   for (const component of ["AppPage", "Panel", "SurfaceCard", "InverseSection", "InverseCard"]) {
     assert.match(surface, new RegExp(`export function ${component}<T extends ElementType = "div">`));
   }
-  assert.match(harness, /<AppPage[\s\S]*as="main"/);
+  assert.match(harness, /<AppPage[\s\S]*as="div"/);
+  assert.doesNotMatch(harness, /<AppPage[\s\S]*as="main"/);
   assert.match(harness, /<SurfaceCard[\s\S]*as="a"[\s\S]*href="#surface-inverse"/);
 });
 

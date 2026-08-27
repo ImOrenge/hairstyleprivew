@@ -405,7 +405,10 @@ export default {
     const config = await requireConfiguration(env);
     let paths: string[];
     if (controller.cron === ORIGINAL_CLEANUP_CRON) {
-      paths = ["/api/generations/cleanup-stale-originals"];
+      paths = [
+        "/api/generations/cleanup-stale-originals",
+        "/api/consultations/photo-captures/cleanup",
+      ];
     } else if (controller.cron === NOTIFICATION_DRAIN_CRON) {
       paths = [
         "/api/generations/notifications/drain",
@@ -415,6 +418,7 @@ export default {
       paths = [
         "/api/generations/workflow-dispatch",
         "/api/styling/workflow-dispatch",
+        "/api/consultations/photo-analysis/drain",
       ];
     } else {
       console.warn("Unknown generation workflow cron; skipping scheduled work", {

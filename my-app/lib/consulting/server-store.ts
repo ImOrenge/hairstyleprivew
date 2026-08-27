@@ -9,7 +9,7 @@ import { validateConsultationPatch } from "./stage-guards";
 import { isHairfitV2Enabled } from "../v2/feature-flags";
 import { isMissingOptionalTableError } from "./supabase-errors";
 import { enrichPersonalColorEvidenceFromCapabilityResult, mapPersonalColorDiagnosis } from "./personal-color-mapping";
-import type { PersonalColorEvidenceV2 } from "@hairfit/shared/v2";
+import type { PersonalColorEvidenceV2, StyleSelectionSnapshotV2 } from "@hairfit/shared/v2";
 import { compileConsultationResultV2, isResultCompilationReady } from "./result-compiler-server";
 import { isColorStudioEnabled, isConsultationResultEnabled, isMakeupStyleSimulationEnabled, isPersonalColorSceneEnabled } from "./feature-flag";
 import { mapColorSelection, mapResultSnapshot, type ColorSelectionRow, type HairMaskRow, type ResultSnapshotRow } from "./color-persistence-mapping";
@@ -91,6 +91,7 @@ type AnalysisRunRow = {
   id: string; state: ConsultationAnalysisRun["state"]; pipeline: ConsultationAnalysisRun["pipeline"] | null;
   error_code: string | null; error_message: string | null; attempt_count: number;
   started_at: string | null; completed_at: string | null; updated_at: string;
+  retryable: boolean; lease_expires_at: string | null; next_attempt_at: string | null;
 };
 
 type FashionBatchRow = {
@@ -108,6 +109,50 @@ type HairColorRunRow = {
   quality_result: { request?: Partial<Pick<HairColorPreviewRun, "candidateKey" | "purpose" | "quality" | "colorName" | "swatchHex" | "technique" | "targetLevel" | "rationale" | "bleachPolicy" | "maintenance" | "cautions">> } | null;
 };
 
+type StyleSelectionRow = {
+  snapshot: StyleSelectionSnapshotV2;
+  status: StyleSelectionSnapshotV2["status"];
+  confirmed_at: string | null;
+};
+
+function projectConfirmedStyleSelection(snapshot: ConsultationSnapshot, row: StyleSelectionRow | null): SelectedStyleSnapshot[] {
+  if (!row?.snapshot || row.status !== "confirmed") return snapshot.selectedStyleHistory;
+  const selection = row.snapshot;
+  if (snapshot.selectedStyleHistory.some((item) => item.id === selection.id)) return snapshot.selectedStyleHistory;
+  const feasibilityStatus = String(selection.style.implementationFeasibility?.status ?? "");
+  const feasibility = feasibilityStatus === "confirmed"
+    ? "현재 상담 기준으로 구현 가능"
+    : "미용사와 모질·시술 이력을 확인한 뒤 세부 조정";
+  const maintenance = snapshot.discovery.maintenanceLevel === "low"
+    ? "간단한 손질 중심"
+    : snapshot.discovery.maintenanceLevel === "high"
+      ? "정기적인 손질과 스타일링 필요"
+      : "일상적인 드라이와 주기적 정돈";
+  const services = snapshot.discovery.allowedServices.length
+    ? snapshot.discovery.allowedServices
+    : snapshot.discovery.desiredServices.length
+      ? snapshot.discovery.desiredServices
+      : ["커트", "드라이"];
+  return [...snapshot.selectedStyleHistory, {
+    id: selection.id,
+    revision: selection.snapshotVersion,
+    previewId: selection.previewVariantId,
+    label: selection.style.name,
+    reason: selection.style.recommendationReason,
+    imageUrl: null,
+    generatedImagePath: selection.previewImage.path,
+    feasibility,
+    currentHairGap: "현재 모발 길이와 손상도에 따라 현장에서 조정",
+    services,
+    maintenance,
+    limitations: snapshot.discovery.avoid.length ? snapshot.discovery.avoid : ["현장 모질과 시술 이력을 최종 확인"],
+    strategy: snapshot.strategy,
+    selectedAt: selection.selectedAt,
+    supersedesSnapshotId: snapshot.selectedStyleHistory.at(-1)?.id ?? null,
+    serviceConfirmedAt: snapshot.actualService.confirmedAt,
+  }];
+}
+
 function mapAnalysisRun(row: AnalysisRunRow | null): ConsultationAnalysisRun | null {
   return row ? {
     id: row.id,
@@ -116,6 +161,9 @@ function mapAnalysisRun(row: AnalysisRunRow | null): ConsultationAnalysisRun | n
     errorCode: row.error_code,
     errorMessage: row.error_message,
     attemptCount: row.attempt_count,
+    retryable: row.retryable ?? false,
+    leaseExpiresAt: row.lease_expires_at ?? null,
+    nextAttemptAt: row.next_attempt_at ?? null,
     startedAt: row.started_at,
     completedAt: row.completed_at,
     updatedAt: row.updated_at,
@@ -183,11 +231,11 @@ function mapHairColorPreviewRun(row: HairColorRunRow, outputUrl: string | null):
 
 async function hydrateTaskState(snapshot: ConsultationSnapshot) {
   const db = getSupabaseAdminClient();
-  const [analysis, fashion, personalColor, personalColorCapabilityResult, hairColor, colorSelection, hairMasks, resultSnapshot, makeupDirection, makeupSimulationRun, makeupSimulationSelection, hairDiagnosis] = await Promise.all([
+  const [analysis, fashion, personalColor, personalColorCapabilityResult, hairColor, colorSelection, hairMasks, resultSnapshot, makeupDirection, makeupSimulationRun, makeupSimulationSelection, confirmedStyleSelection, hairDiagnosis] = await Promise.all([
     db.from("consultation_analysis_runs_v2")
-      .select("id,state,pipeline,error_code,error_message,attempt_count,started_at,completed_at,updated_at")
+      .select("id,state,pipeline,error_code,error_message,attempt_count,retryable,lease_expires_at,next_attempt_at,started_at,completed_at,updated_at")
       .eq("consultation_id", snapshot.sessionId).eq("user_id", snapshot.userId)
-      .order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("fashion_preview_batches_v2")
       .select("id,state,requested_count,completed_count,failed_count,quote_id,slot_state,slot_progress,last_heartbeat_at,error_code,error_message,generation_input_fingerprint,color_selection_snapshot_id,base_batch_id,expansion_level,recommended_preview_id,selected_preview_id,consumption_receipt_ids,revision,slot_roles,updated_at")
       .eq("consultation_id", snapshot.sessionId).eq("user_id", snapshot.userId)
@@ -224,6 +272,10 @@ async function hydrateTaskState(snapshot: ConsultationSnapshot) {
       .order("snapshot_version", { ascending: false }).limit(1).maybeSingle(),
     db.from("makeup_simulation_runs_v2").select("id,state").eq("consultation_id", snapshot.sessionId).eq("user_id", snapshot.userId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     db.from("makeup_simulation_selections_v2").select("id,output_id").eq("consultation_id", snapshot.sessionId).eq("user_id", snapshot.userId).order("revision", { ascending: false }).limit(1).maybeSingle(),
+    db.from("style_selection_snapshots_v2")
+      .select("snapshot,status,confirmed_at")
+      .eq("consultation_id", snapshot.sessionId).eq("user_id", snapshot.userId).eq("status", "confirmed")
+      .order("snapshot_version", { ascending: false }).limit(1).maybeSingle(),
     readHairDiagnosisState(snapshot.userId, snapshot.sessionId),
   ]);
   if (analysis.error && !isMissingOptionalTableError(analysis.error)) throw new Error(analysis.error.message);
@@ -237,6 +289,7 @@ async function hydrateTaskState(snapshot: ConsultationSnapshot) {
   if (makeupDirection.error && !isMissingOptionalTableError(makeupDirection.error)) throw new Error(makeupDirection.error.message);
   if (makeupSimulationRun.error && !isMissingOptionalTableError(makeupSimulationRun.error)) throw new Error(makeupSimulationRun.error.message);
   if (makeupSimulationSelection.error && !isMissingOptionalTableError(makeupSimulationSelection.error)) throw new Error(makeupSimulationSelection.error.message);
+  if (confirmedStyleSelection.error && !isMissingOptionalTableError(confirmedStyleSelection.error)) throw new Error(confirmedStyleSelection.error.message);
   const personalColorRow = personalColor.error ? null : personalColor.data as unknown as Record<string, unknown> | null;
   const persistedEvidence = personalColorRow ? {
     schemaVersion: (personalColorRow.result as Record<string, unknown> | null)?.axes ? "personal-color-evidence-v2" : "personal-color-evidence-v1",
@@ -258,6 +311,10 @@ async function hydrateTaskState(snapshot: ConsultationSnapshot) {
   const persistedFashionBatch = (fashion.error ? null : fashion.data) as unknown as FashionBatchRow | null;
   const currentFashionBatch = persistedFashionBatch && (persistedFashionBatch.color_selection_snapshot_id ?? null) === (persistedColor.id ?? null) ? persistedFashionBatch : null;
   const hairColorRows = hairColor.error ? [] : hairColor.data as unknown as HairColorRunRow[];
+  const selectedStyleHistory = projectConfirmedStyleSelection(
+    snapshot,
+    confirmedStyleSelection.error ? null : confirmedStyleSelection.data as unknown as StyleSelectionRow | null,
+  );
   const finalHairColorRun = hairColorRows.find((row) => row.quality_result?.request?.purpose !== "exploration") ?? null;
   const hairColorPreviewRuns = (await Promise.all(hairColorRows.map(async (row) => {
     const outputUrl = row.output_path
@@ -271,6 +328,7 @@ async function hydrateTaskState(snapshot: ConsultationSnapshot) {
     fashionBatch: mapFashionBatch(currentFashionBatch),
     hairColorGenerationRun: mapHairColorRun(finalHairColorRun),
     hairColorPreviewRuns,
+    selectedStyleHistory,
     colorDecision: persistedColor,
     result: mapResultSnapshot(snapshot.result, resultSnapshot.error ? null : resultSnapshot.data as unknown as ResultSnapshotRow | null),
     makeupDirection: makeupDirection.error || !makeupDirection.data ? snapshot.makeupDirection : {

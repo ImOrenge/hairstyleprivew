@@ -34,14 +34,7 @@ export async function POST(request: Request, { params }: Params) {
         faceEvidence,
         photo,
       });
-      after(() => processConsultationPhotoAnalysis({
-        runId: queued.run.id,
-        userId,
-        consultationId: sessionId,
-        draftId: body.draftId as string,
-        expectedVersion: queued.input.expectedVersion,
-        faceEvidence,
-      }));
+      after(() => processConsultationPhotoAnalysis({ runId: queued.run.id }));
       return NextResponse.json({ accepted: true, run: queued.run, snapshot: queued.snapshot }, { status: 202 });
     }
     const result = await analyzeConsultationPhoto({
@@ -53,6 +46,24 @@ export async function POST(request: Request, { params }: Params) {
       photo,
     });
     return NextResponse.json(result, { status: result.requiresRetry ? 422 : 200 });
+  } catch (error) {
+    return v2Failure(error);
+  }
+}
+
+export async function PUT(_request: Request, { params }: Params) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  const { sessionId } = await params;
+  try {
+    const run = await readLatestConsultationAnalysisRun(userId, sessionId);
+    if (!run) return NextResponse.json({ error: "재개할 사진 분석이 없습니다." }, { status: 404 });
+    if (run.state === "completed") return NextResponse.json({ accepted: false, run }, { status: 200 });
+    if (!run.retryable || ["failed", "cancelled"].includes(run.state)) {
+      return NextResponse.json({ error: "사진을 확인한 뒤 새 분석을 시작해 주세요.", run }, { status: 409 });
+    }
+    after(() => processConsultationPhotoAnalysis({ runId: run.id }));
+    return NextResponse.json({ accepted: true, run }, { status: 202 });
   } catch (error) {
     return v2Failure(error);
   }

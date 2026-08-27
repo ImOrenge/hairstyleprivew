@@ -3,6 +3,7 @@ import test from "node:test";
 import { HAIRFIT_V2_FEATURE_FLAGS } from "../../../packages/shared/src/v2/feature-flags.ts";
 import {
   isAiLedHairDecisionEnabled,
+  isConsultationAsyncAnalysisEnabled,
   isFashionAdaptiveBatchEnabled,
   isFashionProductTruthEnabled,
   isFashionTrendSignalsV2Enabled,
@@ -38,4 +39,11 @@ test("P46 rollout flags require the exact true literal", () => {
   assert.equal(isFashionAdaptiveBatchEnabled(env), true);
   assert.equal(isFashionTrendSignalsV2Enabled(env), true);
   assert.equal(isAiLedHairDecisionEnabled({ CONSULTATION_AI_LED_HAIR_DECISION_ENABLED: "1" }), false);
+});
+
+test("async photo analysis is fail-closed and requires the exact true literal", () => {
+  assert.equal(isConsultationAsyncAnalysisEnabled({}), false);
+  assert.equal(isConsultationAsyncAnalysisEnabled({ CONSULTATION_ASYNC_ANALYSIS_V2_ENABLED: "false" }), false);
+  assert.equal(isConsultationAsyncAnalysisEnabled({ CONSULTATION_ASYNC_ANALYSIS_V2_ENABLED: "1" }), false);
+  assert.equal(isConsultationAsyncAnalysisEnabled({ CONSULTATION_ASYNC_ANALYSIS_V2_ENABLED: "true" }), true);
 });

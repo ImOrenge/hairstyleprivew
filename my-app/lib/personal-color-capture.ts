@@ -17,7 +17,7 @@ import { assessPersonalColorCaptureQuality } from "./personal-color-capture-qual
 
 export const PERSONAL_COLOR_CAPTURE_BUCKET = "private-color-inputs";
 const MAX_CAPTURE_BYTES = 10 * 1024 * 1024;
-const CAPTURE_TTL_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const CHECKSUM_PATTERN = /^[0-9a-f]{64}$/;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -73,12 +73,14 @@ function assertIntentInput(input: {
   checksumSha256: string;
   contentType: PersonalColorCaptureMetadataV2["contentType"];
   byteSize: number;
+  retentionDays: 1 | 7 | 30;
 }) {
   if (!UUID_PATTERN.test(input.consultationId)) throw new PersonalColorCaptureError("CONSULTATION_ID_INVALID", 400, "상담 ID가 올바르지 않습니다.");
   if (!PERSONAL_COLOR_CAPTURE_ROLES_V2.includes(input.role)) throw new PersonalColorCaptureError("CAPTURE_ROLE_INVALID", 400, "사진 역할이 올바르지 않습니다.");
   if (input.captureMode !== "quick" && input.captureMode !== "precision") throw new PersonalColorCaptureError("CAPTURE_MODE_INVALID", 400, "촬영 모드가 올바르지 않습니다.");
   if (!CHECKSUM_PATTERN.test(input.checksumSha256)) throw new PersonalColorCaptureError("CAPTURE_CHECKSUM_INVALID", 400, "사진 checksum이 올바르지 않습니다.");
   if (!Number.isInteger(input.byteSize) || input.byteSize < 1 || input.byteSize > MAX_CAPTURE_BYTES) throw new PersonalColorCaptureError("CAPTURE_SIZE_INVALID", 413, "사진은 10MB 이하여야 합니다.");
+  if (![1, 7, 30].includes(input.retentionDays)) throw new PersonalColorCaptureError("CAPTURE_RETENTION_INVALID", 400, "사진 보존 기간을 확인해 주세요.");
   normalizeContentType(input.contentType);
 }
 
@@ -130,12 +132,21 @@ async function createIntentRecord(input: {
   checksumSha256: string;
   contentType: PersonalColorCaptureMetadataV2["contentType"];
   byteSize: number;
+  retentionDays: 1 | 7 | 30;
 }) {
   const existing = await readCaptureByChecksum(input);
-  if (existing && existing.status !== "deleted") return { row: existing, replay: true };
+  const expiresAt = new Date(Date.now() + input.retentionDays * DAY_MS).toISOString();
+  if (existing && existing.status !== "deleted") {
+    if (Date.parse(existing.expires_at) >= Date.parse(expiresAt)) return { row: existing, replay: true };
+    const extended = await getSupabaseAdminClient().from("personal_color_capture_assets").update({
+      expires_at: expiresAt,
+      retention_policy_key: `consultation_photo_${input.retentionDays}d`,
+    }).eq("id", existing.id).select("*").single();
+    if (extended.error) throw new Error(extended.error.message);
+    return { row: extended.data as unknown as CaptureRow, replay: true };
+  }
 
   const id = randomUUID();
-  const expiresAt = new Date(Date.now() + CAPTURE_TTL_MS).toISOString();
   const storagePath = `${safeUserHash(input.userId)}/${input.consultationId}/${id}/${input.role}.${extensionFor(input.contentType)}`;
   const metadata: PersonalColorCaptureMetadataV2 = {
     contentType: input.contentType,
@@ -159,6 +170,7 @@ async function createIntentRecord(input: {
     checksum_sha256: input.checksumSha256,
     metadata,
     status: "intent_created",
+    retention_policy_key: `consultation_photo_${input.retentionDays}d`,
     expires_at: expiresAt,
   }).select("*").single();
   if (inserted.error) {
@@ -177,6 +189,7 @@ export async function createPersonalColorCaptureIntent(input: {
   checksumSha256: string;
   contentType: PersonalColorCaptureMetadataV2["contentType"];
   byteSize: number;
+  retentionDays: 1 | 7 | 30;
 }): Promise<PersonalColorCaptureUploadIntentV2> {
   assertIntentInput(input);
   await readOwnedConsultation(input.userId, input.consultationId);
@@ -283,6 +296,7 @@ export async function materializeLegacyPersonalColorCapture(userId: string, imag
     checksumSha256,
     contentType: parsed.contentType,
     byteSize: parsed.buffer.length,
+    retentionDays: 1,
   });
   if (created.row.status === "intent_created") {
     const uploaded = await getSupabaseAdminClient().storage.from(PERSONAL_COLOR_CAPTURE_BUCKET)
@@ -335,6 +349,47 @@ type CleanupClaim = {
   checksumSha256: string;
   leaseToken: string;
 };
+
+type CleanupBatchClaim = Omit<CleanupClaim, "claimed">;
+
+export async function drainExpiredPersonalColorCaptures(limit = 100) {
+  const boundedLimit = Math.max(1, Math.min(limit, 100));
+  const db = getSupabaseAdminClient() as SupabaseClient;
+  const queued = await db.rpc("queue_expired_personal_color_capture_cleanup", { p_limit: boundedLimit });
+  if (queued.error) throw new Error(queued.error.message);
+  const leaseToken = randomUUID();
+  const claimed = await db.rpc("claim_personal_color_capture_cleanup", {
+    p_limit: boundedLimit,
+    p_lease_token: leaseToken,
+    p_lease_seconds: 300,
+  });
+  if (claimed.error) throw new Error(claimed.error.message);
+  const claims = (claimed.data ?? []) as unknown as CleanupBatchClaim[];
+  let completed = 0;
+  let retried = 0;
+  for (const claim of claims) {
+    const removed = await db.storage.from(claim.bucket).remove([claim.path]);
+    if (removed.error) {
+      retried += 1;
+      const retry = await db.rpc("retry_personal_color_capture_cleanup", {
+        p_outbox_id: claim.outboxId,
+        p_lease_token: claim.leaseToken,
+        p_error: "storage_remove_failed",
+        p_delay_seconds: 60,
+      });
+      if (retry.error) throw new Error(retry.error.message);
+      continue;
+    }
+    const finished = await db.rpc("finish_personal_color_capture_cleanup", {
+      p_outbox_id: claim.outboxId,
+      p_lease_token: claim.leaseToken,
+      p_reason: "retention_expired",
+    });
+    if (finished.error) throw new Error(finished.error.message);
+    completed += 1;
+  }
+  return { queued: Number(queued.data ?? 0), claimed: claims.length, completed, retried };
+}
 
 export async function deletePersonalColorCapture(input: { userId: string; consultationId: string; assetId: string; reason: string }) {
   await readOwnedAsset(input.userId, input.consultationId, input.assetId);

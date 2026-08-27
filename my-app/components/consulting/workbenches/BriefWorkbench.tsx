@@ -10,6 +10,21 @@ import { useConsultationTaskRuntime } from "../transition/ConsultationTaskRuntim
 import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, TextField, WorkbenchGrid } from "./shared";
 
 function StructuredBriefDetails({ brief }: { brief: SalonBriefV2 }) {
+  const recommendationSourceLabels: Record<keyof SalonBriefV2["recommendationSources"], string> = {
+    cut: "커트 방향",
+    volumeTexture: "볼륨과 질감",
+    color: "컬러 방향",
+    styling: "손질 방법",
+    cautions: "시술 전 확인 사항",
+    maintenance: "유지 관리",
+    aftercare: "시술 후 관리",
+    fashion: "패션 연계",
+  };
+  const styleTargetLabel = brief.inputSnapshot.styleTarget === "male"
+    ? "남성형 헤어 기준"
+    : brief.inputSnapshot.styleTarget === "female"
+      ? "여성형 헤어 기준"
+      : "중성형 헤어 기준";
   const detailRows = [
     { label: "상담 목표", value: brief.details.consultationGoals.join(" · ") || "미확인" },
     { label: "현재 모발", value: brief.details.currentHair.join(" · ") || "미확인" },
@@ -32,14 +47,13 @@ function StructuredBriefDetails({ brief }: { brief: SalonBriefV2 }) {
   return <SurfaceCard className="p-5" data-brief-engine={brief.engine.id}>
     <p className="app-kicker">미용실 전달용 상세 정보</p>
     <h2 className="mt-2 text-xl font-black">살롱 전달용 상세 브리프</h2>
-    <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">구 블루프린트 엔진의 시술 항목을 현재 상담 입력 스냅샷과 연결했습니다. 확인되지 않은 내용은 추측하지 않고 표시합니다.</p>
+    <p className="mt-2 text-sm leading-6 text-[var(--app-muted)]">확정한 헤어 방향과 상담 내용을 미용사가 바로 확인할 수 있는 시술 항목으로 정리했습니다. 확인되지 않은 내용은 현장에서 다시 확인하도록 표시합니다.</p>
     <div className="mt-5"><DefinitionRows items={detailRows} /></div>
     <div className="mt-5 border-t border-[var(--app-border)] pt-4"><DefinitionRows items={[
-      { label: "Style target", value: brief.inputSnapshot.styleTarget },
-      { label: "Engine", value: `${brief.engine.id} · ${brief.engine.mode}` },
-      { label: "Input snapshot", value: `${brief.inputSnapshot.inputFingerprint.slice(0, 12)}…` },
-      { label: "Provenance", value: `${brief.inputSnapshot.provenance.length}개 입력 출처` },
-      { label: "Recommendation sources", value: Object.entries(brief.recommendationSources).map(([section, sources]) => `${section}: ${sources.join(", ")}`).join(" · ") },
+      { label: "스타일 적용 기준", value: styleTargetLabel },
+      { label: "정리 방식", value: brief.engine.mode === "recycled-blueprint" ? "헤어 설계 기준 반영" : "현재 상담 기준 반영" },
+      { label: "확인한 상담 정보", value: `${brief.inputSnapshot.provenance.length}개 항목` },
+      { label: "시술 제안에 반영한 내용", value: (Object.keys(brief.recommendationSources) as Array<keyof SalonBriefV2["recommendationSources"]>).map((key) => recommendationSourceLabels[key]).join(" · ") || "확정 헤어와 상담 요청" },
     ]} /></div>
   </SurfaceCard>;
 }
@@ -50,7 +64,7 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
   const initial = useMemo<SalonBriefVersion>(() => snapshot.salonBrief.createdAt ? snapshot.salonBrief : {
     ...snapshot.salonBrief,
     summary: style ? `${style.label}: ${style.reason}` : "",
-    cut: style?.services.includes("커트") ? "선택 스냅샷의 기장과 레이어 시작점을 기준으로 현장에서 미세 조정" : "커트 필요 여부를 현장에서 확인",
+    cut: style?.services.includes("커트") ? "확정한 스타일의 기장과 레이어 시작점을 기준으로 현장에서 미세 조정" : "커트 필요 여부를 현장에서 확인",
     volumeTexture: `정수리 ${snapshot.strategy.crownVolume}, 사이드 ${snapshot.strategy.sideVolume}, 질감 ${snapshot.strategy.texture}`,
     styling: style?.maintenance || "관리 범위 확인",
     caution: style?.limitations || [],
@@ -113,7 +127,7 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
       setBrief(next);
       taskRuntime.updateTask({ phaseKey: "constraints", phaseIndex: 2, completedUnits: 2, partialOutputCount: generated.cautions.length + generated.styling.length, detail: "커트·질감·스타일링·주의사항을 서버 버전에 연결했습니다." });
       const result = await mutate({ salonBrief: next, completeStage: "salon-brief", currentStage: "salon-brief" }, { navigate: false }) as { ok?: boolean };
-      if (!result.ok) throw new Error("자동 생성 Brief를 상담 snapshot에 연결하지 못했습니다.");
+      if (!result.ok) throw new Error("자동으로 만든 브리프를 현재 상담에 저장하지 못했습니다.");
       taskRuntime.completeTask({ completedUnits: 3, totalUnits: 3, partialOutputCount: generated.cautions.length + generated.styling.length + 1 });
     }).catch((cause) => {
       const message = cause instanceof Error ? cause.message : "Salon Brief를 자동 생성하지 못했습니다.";
@@ -176,7 +190,7 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
       if (v2Error.brief) setStructuredBrief(v2Error.brief);
       taskRuntime.updateTask({ phaseKey: "constraints", phaseIndex: 2, completedUnits: 2, partialOutputCount: 2, detail: "서버가 브리프 내용과 제약 조건을 저장했습니다." });
       const result = await mutate({ salonBrief: { ...brief, version, rawFaceIncluded: false, createdAt: new Date().toISOString() }, completeStage: "salon-brief", currentStage: "salon-brief" }, { navigate: false }) as { ok?: boolean };
-      if (!result.ok) throw new Error("Salon Brief 버전을 상담 snapshot에 연결하지 못했습니다.");
+      if (!result.ok) throw new Error("살롱 브리프를 현재 상담에 저장하지 못했습니다.");
       taskRuntime.completeTask({ completedUnits: 3, totalUnits: 3, partialOutputCount: 3 });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "살롱 브리프를 저장하지 못했습니다.";
@@ -222,8 +236,8 @@ export function BriefWorkbench({ snapshot, mutate, saving }: { snapshot: Consult
         },
         currentStage: "aftercare",
       }, { navigate: false }) as { ok?: boolean };
-      if (!result.ok) throw new Error("Aftercare 프로그램을 상담 snapshot에 연결하지 못했습니다.");
-      taskRuntime.updateTask({ phaseKey: "checkpoints", phaseIndex: 2, completedUnits: 2, partialOutputCount: data.program.today.length + data.program.checkpoints.length, detail: "관리 체크포인트를 상담 snapshot에 연결했습니다." });
+      if (!result.ok) throw new Error("애프터케어 프로그램을 현재 상담에 저장하지 못했습니다.");
+      taskRuntime.updateTask({ phaseKey: "checkpoints", phaseIndex: 2, completedUnits: 2, partialOutputCount: data.program.today.length + data.program.checkpoints.length, detail: "관리 일정과 확인 항목을 현재 상담에 저장했습니다." });
       taskRuntime.completeTask({ completedUnits: 3, totalUnits: 3, partialOutputCount: data.program.today.length });
     } catch (cause) {
       const message = cause instanceof Error ? cause.message : "실제 시술 기록을 저장하지 못했습니다.";

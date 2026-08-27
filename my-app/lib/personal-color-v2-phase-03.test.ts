@@ -83,6 +83,6 @@ test("workbench separates capture and profile confidence and discloses unavailab
   assert.match(workbench, /사진 관찰 신뢰도/);
   assert.match(workbench, /프로필 추론 신뢰도/);
   assert.match(workbench, /axis\.unavailableReason/);
-  assert.match(workbench, /12타입 posterior/);
+  assert.match(workbench, /12타입 유사도/);
   assert.match(workbench, /기술 상세 보기/);
 });

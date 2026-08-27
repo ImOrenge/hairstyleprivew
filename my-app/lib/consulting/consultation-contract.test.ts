@@ -144,20 +144,20 @@ test("Scene composition is headerless and dynamically loads all workbenches", ()
   assert.match(scene, /StageContextStrip/);
 });
 
-test("all consultant workbenches use a semantic input and AI-output split canvas", () => {
+test("all consultant workbenches use a semantic split canvas with one document scroll", () => {
   const shared = read("../../components/consulting/workbenches/shared.tsx");
   const globalCss = read("../../app/globals.css");
   const scene = read("../../components/consulting/scene/ConsultationScene.tsx");
   assert.match(shared, /data-consulting-split-canvas="true"/);
   assert.match(shared, /data-consulting-pane="input"/);
   assert.match(shared, /data-consulting-pane="output"/);
-  assert.match(shared, /lg:overflow-y-auto/);
+  assert.match(shared, /data-consulting-scroll="document"/);
+  assert.doesNotMatch(shared, /lg:overflow-y-auto|lg:overflow-hidden|lg:h-full/);
   assert.match(shared, /ConsultationSystemData/);
   assert.equal((shared.match(/data-consulting-input-control="true"/g) || []).length, 2);
   assert.match(globalCss, /\.f-consulting-input-control\s*\{[\s\S]*?border-bottom:\s*1px solid var\(--app-border\)/);
   assert.match(globalCss, /\.f-consulting-input-control:last-child\s*\{[\s\S]*?border-bottom:\s*0/);
-  assert.match(scene, /lg:h-dvh/);
-  assert.match(scene, /lg:overflow-hidden/);
+  assert.doesNotMatch(scene, /lg:h-dvh|lg:overflow-hidden/);
   for (const workbench of ["Discovery", "Photo", "Scan", "Analysis", "Direction", "Previews", "Compare", "Decision", "Brief", "Aftercare", "FashionBatch"]) {
     const source = read(`../../components/consulting/workbenches/${workbench}Workbench.tsx`);
     assert.match(source, /<WorkbenchGrid/);
@@ -501,7 +501,8 @@ test("photo analysis advances through a durable automatic pipeline without scan 
   assert.match(analysisServer, /processConsultationPhotoAnalysis/);
   assert.match(route, /after\(\(\) => processConsultationPhotoAnalysis/);
   assert.match(route, /status: 202/);
-  assert.match(scan, /setTimeout\(poll, 1200\)/);
+  assert.match(scan, /Math\.min\(8_000, 1_200/);
+  assert.match(scan, /Date\.now\(\) - startedAt >= 120_000/);
   assert.doesNotMatch(scan, /근거 검토 완료/);
   assert.match(store, /assertPersistedPhotoGeometry/);
   assert.match(store, /select\("id,landmarks,contours,measurements"\)/);
@@ -639,6 +640,9 @@ test("durable capability execution reclaims retryable failures and expired lease
   assert.match(runtime, /fencingToken/);
   assert.match(migration, /task\.state = 'failed' and task\.retryable/);
   assert.match(migration, /task\.lease_expires_at < timezone\('utc', now\(\)\)/);
+  assert.match(runtime, /CAPABILITY_LEASE_EXPIRED/);
+  assert.match(runtime, /capability\.lease_expired/);
+  assert.match(runtime, /\.lte\("lease_expires_at", now\)/);
   assert.match(migration, /task\.current_attempt < 20/);
 });
 
@@ -720,6 +724,8 @@ test("AI strategy recommendations remain linked to evidence through confirmation
 test("AI-led hair decision keeps one gallery and waits for all nine before final confirmation", () => {
   const recommendation = read("../../components/consulting/hair/HairRecommendationWorkbench.tsx");
   const transitionPartial = read("../../components/consulting/transition/PartialResultReveal.tsx");
+  const store = read("./server-store.ts");
+  const journey = read("../../../packages/shared/src/consulting/journey.ts");
   assert.match(recommendation, /data-hair-generated-gallery="all-nine"/);
   assert.equal((recommendation.match(/data-hair-generated-gallery="all-nine"/g) ?? []).length, 1);
   assert.match(recommendation, /acceptedCount === 9/);
@@ -730,6 +736,10 @@ test("AI-led hair decision keeps one gallery and waits for all nine before final
   assert.doesNotMatch(recommendation, /Shortlist|선택한 후보 비교하기/);
   assert.doesNotMatch(transitionPartial, /<Image|<img|f-consultant-activity__result-grid/);
   assert.match(transitionPartial, /같은 이미지를 중복해서 보여주지 않습니다/);
+  assert.match(store, /projectConfirmedStyleSelection/);
+  assert.match(store, /style_selection_snapshots_v2/);
+  assert.match(journey, /shortlistReady \|\| selectionReady/);
+  assert.match(journey, /!selectionReady && !shortlistReady/);
 });
 
 test("decision chain enforces accepted shortlist, finalist, immutable revision and actual-service lock", () => {
@@ -870,7 +880,9 @@ test("comparison, decision, brief and aftercare use derived lifecycle data", () 
   assert.match(brief, /미용사 응답 · 별도 기록/);
   assert.match(brief, /확정한 헤어는 바꾸지 않습니다/);
   assert.match(brief, /살롱 전달용 상세 브리프/);
-  assert.match(brief, /inputSnapshot\.inputFingerprint/);
+  assert.match(brief, /inputSnapshot\.styleTarget/);
+  assert.match(brief, /inputSnapshot\.provenance/);
+  assert.doesNotMatch(brief, /inputSnapshot\.inputFingerprint/);
   assert.match(sharedContract, /designerFeedback\?:/);
   assert.match(fashion, /준비 중인 패션 제안/);
   assert.match(fashion, /AI 권장/);

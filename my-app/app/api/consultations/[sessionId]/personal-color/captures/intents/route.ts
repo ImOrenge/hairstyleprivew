@@ -26,6 +26,7 @@ export async function POST(request: Request, { params }: Params) {
       checksumSha256: String(body.checksumSha256 ?? "").toLowerCase(),
       contentType: body.contentType as "image/jpeg" | "image/png" | "image/webp",
       byteSize: Number(body.byteSize),
+      retentionDays: body.retentionDays === 7 || body.retentionDays === 30 ? body.retentionDays : 1,
     });
     return NextResponse.json(intent, { status: intent.idempotentReplay ? 200 : 201 });
   } catch (error) {

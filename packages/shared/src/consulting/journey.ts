@@ -139,8 +139,8 @@ export function deriveConsultationJourney(
   }
   if (personalColorTerminal) completed.add("personal-color");
   if (strategyReady) completed.add("direction");
-  if (shortlistReady) completed.add("previews");
-  if (finalistReady) completed.add("compare");
+  if (shortlistReady || selectionReady) completed.add("previews");
+  if (finalistReady || selectionReady) completed.add("compare");
   if (selectionReady) completed.add("decision");
   if (selectionReady && colorDecisionReady) completed.add("color-studio");
   if (briefReady) completed.add("salon-brief");
@@ -177,8 +177,8 @@ export function deriveConsultationJourney(
   else if (!evidenceReady || lifecycleState === "photo_validated") recommendedStage = "scan";
   else if (!personalColorTerminal) recommendedStage = source.currentStage === "scan" ? "analysis" : "personal-color";
   else if (!strategyReady) recommendedStage = "direction";
-  else if (!shortlistReady) recommendedStage = "previews";
-  else if (!finalistReady) recommendedStage = "compare";
+  else if (!selectionReady && !shortlistReady) recommendedStage = "previews";
+  else if (!selectionReady && !finalistReady) recommendedStage = "compare";
   else if (!selectionReady) recommendedStage = "decision";
   else if (!colorDecisionReady) recommendedStage = "color-studio";
   else if (!briefReady) recommendedStage = "salon-brief";
@@ -265,7 +265,7 @@ export function deriveConsultationJourney(
       retryable: failed,
     });
   }
-  if (strategyReady && !shortlistReady && !activeTasks.some((task) => task.stage === "previews")) {
+  if (strategyReady && !selectionReady && !shortlistReady && !activeTasks.some((task) => task.stage === "previews")) {
     activeTasks.push({
       id: "preview-board",
       kind: "preview-generation",
@@ -358,8 +358,8 @@ export function deriveConsultationJourney(
   }
   if (evidenceReady && !personalColorTerminal) block(blockingActions, "direction", "PERSONAL_COLOR_PENDING", "퍼스널 컬러를 완료하거나 나중에 진단을 선택해 주세요.", "personal-color");
   if (!strategyReady) block(blockingActions, "previews", "STRATEGY_REQUIRED", "추천 전략을 확정해 주세요.", "direction");
-  if (!shortlistReady) block(blockingActions, "compare", "SHORTLIST_REQUIRED", "완료된 프리뷰를 2~3개 선택해 주세요.", "previews");
-  if (!finalistReady) block(blockingActions, "decision", "FINALIST_REQUIRED", "비교 화면에서 최종 후보를 지정해 주세요.", "compare");
+  if (!selectionReady && !shortlistReady) block(blockingActions, "compare", "SHORTLIST_REQUIRED", "완료된 프리뷰를 2~3개 선택해 주세요.", "previews");
+  if (!selectionReady && !finalistReady) block(blockingActions, "decision", "FINALIST_REQUIRED", "비교 화면에서 최종 후보를 지정해 주세요.", "compare");
   if (!selectionReady) {
     block(blockingActions, "color-studio", "SELECTION_REQUIRED", "최종 스타일을 먼저 확정해 주세요.", "decision");
     block(blockingActions, "salon-brief", "SELECTION_REQUIRED", "최종 스타일을 먼저 확정해 주세요.", "decision");

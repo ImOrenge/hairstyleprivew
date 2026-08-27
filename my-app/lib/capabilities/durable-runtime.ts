@@ -9,6 +9,7 @@ import { capabilityFingerprint, runInlineCapability, type CapabilityEngineAdapte
 
 type TaskRow = {
   id: string;
+  consultation_id: string;
   state: CapabilityTaskState;
   input_fingerprint: string;
   output_fingerprint: string | null;
@@ -38,7 +39,7 @@ type ResultRow<TOutput> = {
   created_at: string;
 };
 
-const TASK_SELECT = "id,state,input_fingerprint,output_fingerprint,engine_version,source_revision,provider,model,prompt_policy_version,catalog_cycle_id,fallback_mode,cost_receipt,error_code,error_message,retryable,current_attempt,fencing_token,lease_expires_at,created_at,updated_at,completed_at";
+const TASK_SELECT = "id,consultation_id,state,input_fingerprint,output_fingerprint,engine_version,source_revision,provider,model,prompt_policy_version,catalog_cycle_id,fallback_mode,cost_receipt,error_code,error_message,retryable,current_attempt,fencing_token,lease_expires_at,created_at,updated_at,completed_at";
 
 function provenance<TInput, TOutput>(adapter: CapabilityEngineAdapter<TInput, TOutput>, task: TaskRow) {
   return {
@@ -99,13 +100,42 @@ async function replayResult<TInput, TOutput>(adapter: CapabilityEngineAdapter<TI
   };
 }
 
+async function recoverExpiredTask(userId: string, task: TaskRow) {
+  const leaseExpired = ["running", "partial"].includes(task.state)
+    && Boolean(task.lease_expires_at)
+    && Date.parse(task.lease_expires_at!) <= Date.now();
+  if (!leaseExpired) return task;
+  const now = new Date().toISOString();
+  const recovered = await getSupabaseAdminClient().from("consultation_capability_tasks_v2").update({
+    state: "failed",
+    error_code: "CAPABILITY_LEASE_EXPIRED",
+    error_message: "준비 작업이 오래 멈췄습니다. 다시 준비해 주세요.",
+    retryable: true,
+    lease_owner: null,
+    lease_expires_at: null,
+    updated_at: now,
+  }).eq("id", task.id).eq("user_id", userId).eq("fencing_token", task.fencing_token)
+    .in("state", ["running", "partial"]).lte("lease_expires_at", now).select(TASK_SELECT).maybeSingle();
+  if (recovered.error) throw new Error(recovered.error.message);
+  const next = recovered.data as unknown as TaskRow | null;
+  if (!next) return task;
+  await recordV2Event({
+    consultationId: next.consultation_id,
+    userId,
+    eventType: "capability.lease_expired",
+    payload: { taskId: next.id, state: "failed", retryable: true, fencingToken: next.fencing_token },
+  });
+  return next;
+}
+
 async function readTask(userId: string, idempotencyKey: string) {
   const result = await getSupabaseAdminClient().from("consultation_capability_tasks_v2")
     .select(TASK_SELECT)
     .eq("user_id", userId)
     .eq("idempotency_key", idempotencyKey)
     .maybeSingle();
-  return { task: result.data as unknown as TaskRow | null, error: result.error };
+  const task = result.data as unknown as TaskRow | null;
+  return { task: task && !result.error ? await recoverExpiredTask(userId, task) : task, error: result.error };
 }
 
 export async function readDurableCapabilityResult<TInput, TOutput>(

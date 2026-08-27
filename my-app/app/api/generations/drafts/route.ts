@@ -14,6 +14,7 @@ import { getSupabaseAdminClient } from "../../../../lib/supabase";
 interface DraftUploadRequest {
   clientRequestId?: string;
   referenceImageDataUrl?: string;
+  retentionDays?: 1 | 7 | 30;
 }
 
 interface DraftRow {
@@ -47,7 +48,7 @@ interface DraftUploadClient {
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const MAX_DATA_URL_LENGTH = 12_000_000;
-const DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 class ImageUploadRequestError extends Error {
   constructor(
@@ -150,6 +151,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as DraftUploadRequest;
   const clientRequestId = body.clientRequestId?.trim() || "";
   const referenceImageDataUrl = body.referenceImageDataUrl?.trim() || "";
+  const retentionDays = body.retentionDays === 7 || body.retentionDays === 30 ? body.retentionDays : 1;
   if (!UUID_PATTERN.test(clientRequestId)) {
     return NextResponse.json({ error: "clientRequestId must be a valid UUID" }, { status: 400 });
   }
@@ -195,7 +197,7 @@ export async function POST(request: Request) {
       generationId: clientRequestId,
       imageDataUrl: referenceImageDataUrl,
     });
-    const expiresAt = new Date(Date.now() + DRAFT_TTL_MS).toISOString();
+    const expiresAt = new Date(Date.now() + retentionDays * DAY_MS).toISOString();
     const checksum = await sha256Hex(parsed.buffer);
     const { error: registerError } = await supabase.rpc("register_generation_upload_draft", {
       p_draft_id: clientRequestId,

@@ -22,6 +22,8 @@ const EXACT_GENERATION_CALLBACK_PATHS = new Set([
   "/api/styling/fail",
   "/api/styling/workflow-dispatch",
   "/api/styling/notifications/drain",
+  "/api/consultations/photo-analysis/drain",
+  "/api/consultations/photo-captures/cleanup",
 ]);
 const MIN_CALLBACK_SECRET_BYTES = 32;
 const UNSAFE_SECRET_PATTERN = /^(?:your_|change[_-]?me|example|placeholder|test|secret)/i;

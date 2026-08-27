@@ -699,7 +699,7 @@
       "observed_usage": {
         "production_consumer_files": 1,
         "harness_consumer_files": 1,
-        "scope": "HairFit V2 consulting stage loader and fail-closed E2E harness"
+        "scope": "HairFit V2 consulting capture, two-photo precision validation, durable analysis recovery, and fail-closed E2E harness"
       }
     },
     {
@@ -878,7 +878,7 @@
       "passport": "docs/components/passports/web-consulting-scene.yaml",
       "observed_usage": {
         "consumer_files": 15,
-        "scope": "Four customer chapters over 15 internal HairFit workbenches with progressive intake and adaptive hair observation"
+        "scope": "Four customer chapters over 15 internal HairFit workbenches with one document scroll, progressive intake, and adaptive hair observation"
       }
     },
     {

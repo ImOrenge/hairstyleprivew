@@ -44,6 +44,7 @@ export async function uploadPersonalColorCapture(input: {
   face: PhotoFaceDetectionEvidence | null;
   clientTransform?: "none" | "crop" | "color_preserving_encode";
   makeupInfluence?: "low" | "possible" | "high";
+  retentionDays: 1 | 7 | 30;
 }): Promise<{ asset: PersonalColorCaptureAssetV2; idempotentReplay: boolean }> {
   const contentType = supportedContentType(input.file);
   const [checksum, dimensions] = await Promise.all([checksumSha256(input.file), readImageDimensions(input.file)]);
@@ -56,6 +57,7 @@ export async function uploadPersonalColorCapture(input: {
       checksumSha256: checksum,
       contentType,
       byteSize: input.file.size,
+      retentionDays: input.retentionDays,
     }),
   });
   const intent = (await intentResponse.json().catch(() => ({}))) as PersonalColorCaptureUploadIntentV2 & { error?: string };

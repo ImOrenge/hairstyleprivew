@@ -51,7 +51,7 @@ boundaries:
       - versioned-personal-color-axes-posterior-and-technical-details
       - same-photo-pairwise-drape-validation-with-separated-preference
       - semantic-user-input-and-ai-output-panes
-      - desktop-independent-pane-scrolling
+      - single-document-scrolling-with-desktop-split-columns
       - stage-specific-ai-and-system-data-rail
       - compact-desktop-scene-identity
       - lifecycle-capability-navigation
@@ -140,7 +140,6 @@ state:
     - active-evidence-id
     - visible-evidence-layers
     - selected-landmark-id
-    - independent-pane-scroll-position
     - fashion-customer-override-before-confirmation
     - consultation-exit-dialog-open
     - paid-start-consent
@@ -156,7 +155,7 @@ a11y_contract:
   scene_entry: programmatic-focus-on-level-one-heading
   reduced_motion: no-required-motion
   split_canvas: labelled-regions-input-first-in-dom-mobile-stacked
-  split_canvas_scroll: input-and-output-scroll-regions-keyboard-focusable-with-visible-focus-ring
+  split_canvas_scroll: one-document-scroll-without-nested-desktop-scroll-regions
   photo_crop: labelled-native-range-controls-and-explicit-framing-confirmation
   analysis_matrix: native-meter-values-with-text-equivalents-and-non-physical-unit-disclosure
   face_shape_blend: chart-has-text-percentage-equivalent-and-non-medical-disclosure
@@ -177,8 +176,8 @@ test_surface:
   decision_recovery: missing-finalist-has-an-actionable-route
   makeup_direction: seven-module-source-aligned-svg-map-semantic-matrix-gender-invariant-and-confirmed-snapshot-immutable
   makeup_harness_navigation: fixture-remains-inside-consultation-scene-with-stage-map-and-fashion-handoff-only-after-makeup-completion
-  split_canvas: all-15-scenes-desktop-independent-scroll-and-mobile-stacking
-  split_canvas_scroll: all-15-scenes-serious-critical-axe-zero
+  split_canvas: all-15-scenes-single-document-scroll-and-mobile-stacking
+  split_canvas_scroll: all-15-scenes-serious-critical-axe-zero-and-no-nested-scroll-trap
   input_control_separator: shared-choice-and-text-controls-use-visible-tokenized-boundaries
   salon_brief: entry-auto-generation-without-user-save-click
   salon_brief_detail: legacy-blueprint-fields-common-input-provenance-section-source-map-and-explicit-unresolved-values

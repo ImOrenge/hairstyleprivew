@@ -51,6 +51,9 @@ export interface ConsultationAnalysisRun {
   errorCode: string | null;
   errorMessage: string | null;
   attemptCount: number;
+  retryable?: boolean;
+  leaseExpiresAt?: string | null;
+  nextAttemptAt?: string | null;
   startedAt: string | null;
   completedAt: string | null;
   updatedAt: string;
@@ -291,6 +294,8 @@ export interface PhotoSnapshot {
   colorAssistExpiresAt?: string | null;
   colorPrimaryCaptureAssetId?: string | null;
   colorAssistCaptureAssetId?: string | null;
+  analysisRunId?: string | null;
+  captureMode?: "quick" | "precision";
   crop?: PhotoCropTransform | null;
   quality: PhotoQualityDiagnostic[];
   usageScopes: string[];

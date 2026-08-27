@@ -35,14 +35,17 @@ test("capture routes require Clerk owner scope and fail closed behind the V2 wri
   assert.match(service, /\.eq\("id", assetId\)\.eq\("consultation_id", consultationId\)\.eq\("user_id", userId\)/);
 });
 
-test("new consulting color capture uses signed binary upload and never serializes its file as a JSON data URL", () => {
+test("new consulting color capture uses signed binary upload with independent primary and precision-assist roles", () => {
   const client = read("lib/personal-color-capture-client.ts");
   const photo = read("components/consulting/workbenches/PhotoWorkbench.tsx");
   assert.match(client, /uploadToSignedUrl/);
   assert.match(client, /crypto\.subtle\.digest\("SHA-256"/);
   assert.doesNotMatch(client, /readAsDataURL|referenceImageDataUrl/);
   assert.match(photo, /uploadPersonalColorCapture/);
-  assert.match(photo, /role: sourceAssistFile \? "color_secondary" : "color_primary"/);
+  assert.match(photo, /role: "color_primary"/);
+  assert.match(photo, /role: "color_secondary"/);
+  assert.match(photo, /assistValidation\.validateImage/);
+  assert.match(photo, /retentionDays: sourcePhoto\.retentionDays/);
 });
 
 test("quality projection separates blockers, warnings, and five usable axes", () => {

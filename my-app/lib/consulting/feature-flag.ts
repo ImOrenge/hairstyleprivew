@@ -9,8 +9,8 @@ export function isConsultationLifecycleNavigationEnabled(env: ConsultationFeatur
   return env.CONSULTATION_LIFECYCLE_NAV_V2_ENABLED !== "false";
 }
 
-export function isConsultationAsyncAnalysisEnabled() {
-  return process.env.CONSULTATION_ASYNC_ANALYSIS_V2_ENABLED !== "false";
+export function isConsultationAsyncAnalysisEnabled(env: ConsultationFeatureFlagEnv = process.env) {
+  return env.CONSULTATION_ASYNC_ANALYSIS_V2_ENABLED === "true";
 }
 
 export function isFashionBatchEnabled() {

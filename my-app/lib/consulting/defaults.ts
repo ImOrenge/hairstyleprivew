@@ -53,7 +53,7 @@ export function createConsultationSnapshot(input: { sessionId: string; userId: s
     photo: {
       generationId: null, draftId: null, clientRequestId: null, uploadedAt: null, expiresAt: null,
       primaryUrl: null, colorAssistUrl: null, colorAssistDraftId: null, colorAssistUploadedAt: null, colorAssistExpiresAt: null,
-      colorPrimaryCaptureAssetId: null, colorAssistCaptureAssetId: null, crop: null,
+      colorPrimaryCaptureAssetId: null, colorAssistCaptureAssetId: null, analysisRunId: null, captureMode: "quick", crop: null,
       quality: createPendingPhotoDiagnostics(),
       usageScopes: ["analysis", "preview"], retentionDays: 7, capturedAt: null,
     },
