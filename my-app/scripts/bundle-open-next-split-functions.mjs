@@ -7,6 +7,7 @@ import {
   getNormalizedOptions,
   retrieveCompiledConfig,
 } from "../../node_modules/@opennextjs/cloudflare/dist/cli/commands/utils/utils.js";
+import { assertSplitWorkerEntrypoints } from "./verify-open-next-assets.mjs";
 
 const functionNames = process.argv.slice(2);
 if (functionNames.length === 0) throw new Error("OPEN_NEXT_SPLIT_FUNCTION_REQUIRED");
@@ -89,3 +90,6 @@ for (const functionName of functionNames) {
     throw new Error(`OPEN_NEXT_FUNCTION_BUNDLE_MISSING:${functionName}`);
   }
 }
+
+assertSplitWorkerEntrypoints(appRoot);
+console.log("[cf:multi:build] split handlers verified");

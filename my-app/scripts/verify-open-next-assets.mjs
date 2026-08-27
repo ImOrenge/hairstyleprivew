@@ -97,11 +97,11 @@ const splitWorkerEntrypoints = [
   },
   {
     wrapper: "workers/open-next-multi/media-server.js",
-    importPath: "../../.open-next/server-functions/media/index.mjs",
+    importPath: "../../.open-next/server-functions/media/handler.mjs",
   },
   {
     wrapper: "workers/open-next-multi/admin-server.js",
-    importPath: "../../.open-next/server-functions/admin/index.mjs",
+    importPath: "../../.open-next/server-functions/admin/handler.mjs",
   },
 ];
 
@@ -122,25 +122,6 @@ export function assertSplitWorkerEntrypoints(root = appRoot, { verifyOutput = tr
       );
     }
   }
-}
-
-export function assertSplitWorkerRuntimeAliases(root = appRoot) {
-  const expectedAliases = {
-    critters: "./missing-optional-dependency.js",
-    "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api",
-  };
-  for (const worker of ["media", "admin"]) {
-    const configPath = resolve(root, "workers", "open-next-multi", `wrangler.${worker}.jsonc`);
-    const config = JSON.parse(readFileSync(configPath, "utf8"));
-    assert(
-      JSON.stringify(config.alias) === JSON.stringify(expectedAliases),
-      `${relative(root, configPath)} must preserve the split Worker runtime aliases`,
-    );
-  }
-  assert(
-    existsSync(resolve(root, "workers", "open-next-multi", "missing-optional-dependency.js")),
-    "workers/open-next-multi/missing-optional-dependency.js is missing",
-  );
 }
 
 function readBuildManifestAssets() {
@@ -170,8 +151,7 @@ export function verifyLocalArtifacts() {
       deploymentMarker.sourceRevision === deploymentMarker.deploymentId,
     "OpenNext deployment marker must bind sourceRevision and deploymentId to one 40-character Git SHA",
   );
-  assertSplitWorkerEntrypoints();
-  assertSplitWorkerRuntimeAliases();
+  assertSplitWorkerEntrypoints(appRoot, { verifyOutput: false });
 
   assertWranglerAssetBinding(resolve(appRoot, "wrangler.jsonc"), ".open-next/assets");
   assertAutomaticProductionDeployGuard(resolve(appRoot, "wrangler.jsonc"));

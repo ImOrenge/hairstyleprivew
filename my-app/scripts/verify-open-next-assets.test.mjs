@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 import {
   assertAutomaticProductionDeployGuard,
   assertSplitWorkerEntrypoints,
-  assertSplitWorkerRuntimeAliases,
   assertWranglerAssetBinding,
   collectManifestAssets,
   expectedMimePattern,
@@ -59,6 +59,7 @@ test("split Worker wrappers target the current OpenNext server-function entrypoi
   assert.doesNotThrow(() => assertSplitWorkerEntrypoints(appRoot, { verifyOutput: false }));
 });
 
-test("split Worker configs alias optional Next runtime dependencies", () => {
-  assert.doesNotThrow(() => assertSplitWorkerRuntimeAliases(appRoot));
+test("split bundle post-processing verifies generated handler entrypoints", () => {
+  const source = readFileSync(resolve(appRoot, "scripts", "bundle-open-next-split-functions.mjs"), "utf8");
+  assert.match(source, /assertSplitWorkerEntrypoints\(appRoot\)/u);
 });

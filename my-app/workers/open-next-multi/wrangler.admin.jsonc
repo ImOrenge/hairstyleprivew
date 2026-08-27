@@ -4,10 +4,6 @@
   "main": "admin-server.js",
   "compatibility_date": "2026-02-05",
   "compatibility_flags": ["nodejs_compat", "allow_importable_env", "global_fetch_strictly_public"],
-  "alias": {
-    "critters": "./missing-optional-dependency.js",
-    "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api"
-  },
   "minify": true,
   "keep_vars": true,
   "workers_dev": false,

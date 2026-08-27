@@ -1,5 +1,5 @@
 import { runWithCloudflareRequestContext } from "../../.open-next/cloudflare/init.js";
-import { handler } from "../../.open-next/server-functions/media/index.mjs";
+import { handler } from "../../.open-next/server-functions/media/handler.mjs";
 
 const hairFitMediaServer = {
   async fetch(request, env, ctx) {
