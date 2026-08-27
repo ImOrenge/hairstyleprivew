@@ -3,7 +3,7 @@
     "name": "HairFit",
     "slug": "hairfit-app",
     "scheme": "hairfit",
-    "version": "1.7.0",
+    "version": "1.7.1",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "ios": {
