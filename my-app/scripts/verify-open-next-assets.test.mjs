@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 import test from "node:test";
 import {
   assertAutomaticProductionDeployGuard,
+  assertSplitWorkerEntrypoints,
+  assertSplitWorkerRuntimeAliases,
   assertWranglerAssetBinding,
   collectManifestAssets,
   expectedMimePattern,
@@ -51,4 +53,12 @@ test("every custom-domain OpenNext Worker uploads the same static asset director
 
 test("the default Workers Builds command cannot upload the production Worker", () => {
   assert.doesNotThrow(() => assertAutomaticProductionDeployGuard(resolve(appRoot, "wrangler.jsonc")));
+});
+
+test("split Worker wrappers target the current OpenNext server-function entrypoints", () => {
+  assert.doesNotThrow(() => assertSplitWorkerEntrypoints(appRoot, { verifyOutput: false }));
+});
+
+test("split Worker configs alias optional Next runtime dependencies", () => {
+  assert.doesNotThrow(() => assertSplitWorkerRuntimeAliases(appRoot));
 });

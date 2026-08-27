@@ -402,8 +402,13 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(openNextConfig, /"app\/stylebook\/share\/\[token\]\/page"/);
   assert.match(router, /pathname\.startsWith\("\/api\/admin\/hairstyles\/"\)/);
   assert.match(server, /server-functions\/default\/handler\.mjs/);
-  assert.match(mediaServer, /server-functions\/media\/handler\.mjs/);
-  assert.match(adminServer, /server-functions\/admin\/handler\.mjs/);
+  assert.match(mediaServer, /server-functions\/media\/index\.mjs/);
+  assert.match(adminServer, /server-functions\/admin\/index\.mjs/);
+  assert.deepEqual(mediaConfig.alias, {
+    critters: "./missing-optional-dependency.js",
+    "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api",
+  });
+  assert.deepEqual(adminConfig.alias, mediaConfig.alias);
   assert.equal(routerConfig.name, "hairstyleprivew-router");
   assert.equal(routerConfig.keep_vars, true);
   assert.deepEqual(routerConfig.compatibility_flags, ["nodejs_compat", "allow_importable_env", "global_fetch_strictly_public"]);

@@ -90,6 +90,59 @@ export function assertAutomaticProductionDeployGuard(configPath) {
   );
 }
 
+const splitWorkerEntrypoints = [
+  {
+    wrapper: "workers/open-next-multi/server.js",
+    importPath: "../../.open-next/server-functions/default/handler.mjs",
+  },
+  {
+    wrapper: "workers/open-next-multi/media-server.js",
+    importPath: "../../.open-next/server-functions/media/index.mjs",
+  },
+  {
+    wrapper: "workers/open-next-multi/admin-server.js",
+    importPath: "../../.open-next/server-functions/admin/index.mjs",
+  },
+];
+
+export function assertSplitWorkerEntrypoints(root = appRoot, { verifyOutput = true } = {}) {
+  for (const { wrapper, importPath } of splitWorkerEntrypoints) {
+    const wrapperPath = resolve(root, ...wrapper.split("/"));
+    assert(existsSync(wrapperPath), `${wrapper} is missing`);
+    const source = readFileSync(wrapperPath, "utf8");
+    assert(
+      source.includes(`from "${importPath}"`),
+      `${wrapper} must import the generated entry point ${importPath}`,
+    );
+    if (verifyOutput) {
+      const generatedEntrypoint = resolve(dirname(wrapperPath), importPath);
+      assert(
+        existsSync(generatedEntrypoint),
+        `${relative(root, generatedEntrypoint)} is missing; rebuild OpenNext before upload`,
+      );
+    }
+  }
+}
+
+export function assertSplitWorkerRuntimeAliases(root = appRoot) {
+  const expectedAliases = {
+    critters: "./missing-optional-dependency.js",
+    "@opentelemetry/api": "next/dist/compiled/@opentelemetry/api",
+  };
+  for (const worker of ["media", "admin"]) {
+    const configPath = resolve(root, "workers", "open-next-multi", `wrangler.${worker}.jsonc`);
+    const config = JSON.parse(readFileSync(configPath, "utf8"));
+    assert(
+      JSON.stringify(config.alias) === JSON.stringify(expectedAliases),
+      `${relative(root, configPath)} must preserve the split Worker runtime aliases`,
+    );
+  }
+  assert(
+    existsSync(resolve(root, "workers", "open-next-multi", "missing-optional-dependency.js")),
+    "workers/open-next-multi/missing-optional-dependency.js is missing",
+  );
+}
+
 function readBuildManifestAssets() {
   const functionsRoot = resolve(outputRoot, "server-functions");
   const manifestFiles = walkFiles(functionsRoot).filter((file) => (
@@ -117,6 +170,8 @@ export function verifyLocalArtifacts() {
       deploymentMarker.sourceRevision === deploymentMarker.deploymentId,
     "OpenNext deployment marker must bind sourceRevision and deploymentId to one 40-character Git SHA",
   );
+  assertSplitWorkerEntrypoints();
+  assertSplitWorkerRuntimeAliases();
 
   assertWranglerAssetBinding(resolve(appRoot, "wrangler.jsonc"), ".open-next/assets");
   assertAutomaticProductionDeployGuard(resolve(appRoot, "wrangler.jsonc"));
