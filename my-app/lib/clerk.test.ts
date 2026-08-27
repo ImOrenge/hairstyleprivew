@@ -97,7 +97,7 @@ test("Clerk middleware passes runtime keys explicitly instead of SDK build const
   assert.match(middleware, /}, getClerkMiddlewareRuntimeOptions\);/);
 });
 
-test("login recovery uses a hard navigation and protected consultation links never prefetch", () => {
+test("login recovery always resumes the requested route without a redirect blocker", () => {
   const loginPage = readFileSync(new URL("../app/(auth)/login/[[...rest]]/page.tsx", import.meta.url), "utf8");
   const loginGate = readFileSync(new URL("../components/auth/LoginAuthGate.tsx", import.meta.url), "utf8");
   const protectedEntryFiles = [
@@ -114,9 +114,10 @@ test("login recovery uses a hard navigation and protected consultation links nev
   assert.match(loginPage, /getSafeClerkReturnPath\(rawReturnPath\)/);
   assert.match(loginPage, /fallbackRedirectUrl=\{returnPath\}/);
   assert.match(loginGate, /window\.location\.replace\(returnPath\)/);
-  assert.match(loginGate, /window\.sessionStorage\.getItem\(resumeKey\)/);
-  assert.match(loginGate, /AUTH_RESUME_WINDOW_MS = 15_000/);
-  assert.match(loginGate, /href=\{returnPath\}>상담 다시 열기/);
+  assert.doesNotMatch(loginGate, /window\.sessionStorage/);
+  assert.doesNotMatch(loginGate, /AUTH_RESUME_WINDOW_MS/);
+  assert.doesNotMatch(loginGate, /resumeBlocked/);
+  assert.doesNotMatch(loginGate, /상담 다시 열기/);
   for (const source of protectedEntryFiles) {
     assert.doesNotMatch(
       source,
