@@ -32,10 +32,10 @@ Do not use `npx wrangler versions upload` as the production deploy command. `ver
 Run from a clean checkout whose `HEAD` is the published `main` revision:
 
 ```powershell
-npm run cf:deploy -- --apply --confirm=HAIRFIT_ATOMIC_SPLIT_DEPLOY --source-revision=<40-character-main-SHA> --env-file=<HAIRFIT_PRODUCTION_ENV>
+npm run cf:deploy -- --apply --confirm=HAIRFIT_ATOMIC_SPLIT_DEPLOY --source-revision=<40-character-main-SHA> --env-file=<HAIRFIT_PRODUCTION_ENV> --server-rollout=launch
 ```
 
-The command builds once with the Git `HEAD` as Next.js `deploymentId`, uploads server, media, and admin from that exact output, registers each new version at 0% beside the currently pinned version, and uploads one router version that pins all three new IDs and the matching asset set. It deploys the router first, then promotes the matching server, media, and admin versions to 100% so Cloudflare service bindings do not mix a version override with the prior module or asset state. It refuses a source revision that differs from `HEAD` or the build marker and requires the production runtime inputs without printing secret values. The deployment ID makes a stale tab hard-navigate when it encounters a newer server instead of mixing old RSC navigation data with new assets.
+The command builds once with the Git `HEAD` as Next.js `deploymentId`, uploads server, media, and admin from that exact output, registers each new version at 0% beside the currently pinned version, and uploads one router version that pins all three new IDs and the matching asset set. `--server-rollout=launch` binds the repository-owned launch flag snapshot and approved `gpt-4o` vision model to that same server version instead of briefly deploying configuration against older code. It deploys the router first, then promotes the matching server, media, and admin versions to 100% so Cloudflare service bindings do not mix a version override with the prior module or asset state. It refuses a source revision that differs from `HEAD` or the build marker and requires the production runtime inputs without printing secret values. The deployment ID makes a stale tab hard-navigate when it encounters a newer server instead of mixing old RSC navigation data with new assets.
 
 The final gate verifies both `/login` and `/consulting/e2e-harness`. This is required because authenticated consultation pages are rendered by the media Worker and can reference a different chunk set even when `/login` is healthy.
 

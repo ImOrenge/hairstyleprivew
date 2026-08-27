@@ -5,6 +5,7 @@ import test from "node:test";
 import {
   assertBuiltRelease,
   assertRouterState,
+  buildAtomicServerSecrets,
   parseUploadedVersion,
   versionDeploymentArgs,
   versionPromotionArgs,
@@ -62,4 +63,20 @@ test("atomic deploy rejects artifacts built without matching skew protection", (
     () => assertBuiltRelease(revision, { sourceRevision: revision, deploymentId: "older" }),
     /NEXT_DEPLOYMENT_ID/u,
   );
+});
+
+test("atomic launch binds customer flags and gpt-4o to the uploaded server version", () => {
+  const payload = buildAtomicServerSecrets("launch");
+  assert.equal(payload.CONSULTATION_ASYNC_ANALYSIS_V2_ENABLED, "true");
+  assert.equal(payload.ENTITLEMENT_V2_LEGACY_BRIDGE_ENABLED, "false");
+  assert.equal(payload.MAKEUP_SEMANTIC_VISION_STAFF_ONLY, "false");
+  assert.equal(payload.MARKETING_EMAIL_DELIVERY_MODE, "test");
+  assert.equal(payload.PROMPT_VISION_MODEL, "gpt-4o");
+  assert.equal("OPENAI_API_KEY" in payload, false);
+  assert.equal("SUPABASE_SERVICE_ROLE_KEY" in payload, false);
+});
+
+test("atomic deployment preserves server settings unless launch is explicit", () => {
+  assert.equal(buildAtomicServerSecrets(""), null);
+  assert.throws(() => buildAtomicServerSecrets("canary"), /only --server-rollout=launch/u);
 });

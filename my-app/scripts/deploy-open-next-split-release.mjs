@@ -7,6 +7,8 @@ import {
   parseEnv,
   selectRuntimeSecrets,
 } from "./upload-open-next-split-worker.mjs";
+import { buildServerVersionPayload } from "./upload-hairfit-v2-staff-canary.mjs";
+import { buildModelPayload } from "./set-hairfit-v2-cloudflare-model.mjs";
 import { verifyLiveAssets } from "./verify-open-next-assets.mjs";
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -124,6 +126,17 @@ export function assertBuiltRelease(sourceRevision, marker) {
   return marker;
 }
 
+export function buildAtomicServerSecrets(mode) {
+  if (!mode) return null;
+  if (mode !== "launch") {
+    throw new Error("atomic production deployment supports only --server-rollout=launch");
+  }
+  return {
+    ...buildServerVersionPayload(mode),
+    ...buildModelPayload(),
+  };
+}
+
 function registerVersion(currentVersion, nextVersion, config) {
   runWrangler(versionDeploymentArgs(currentVersion, nextVersion, config));
 }
@@ -201,15 +214,21 @@ async function main() {
   const missing = requiredRuntimeNames.filter((name) => !runtimeInputs[name]?.trim());
   if (missing.length > 0) throw new Error(`Missing split Worker runtime inputs: ${missing.join(", ")}`);
   const runtimeSecrets = selectRuntimeSecrets(runtimeInputs);
+  const serverRollout = argumentValue("--server-rollout");
+  const serverSecrets = buildAtomicServerSecrets(serverRollout);
   const current = assertRouterState(await fetchJson("/.well-known/hairfit-router"));
   const tempRoot = mkdtempSync(resolve(tmpdir(), "hairfit-atomic-split-"));
-  const secretsPath = resolve(tempRoot, "secrets.json");
+  const runtimeSecretsPath = resolve(tempRoot, "runtime-secrets.json");
+  const serverSecretsPath = resolve(tempRoot, "server-secrets.json");
   try {
-    writeFileSync(secretsPath, `${JSON.stringify(runtimeSecrets)}\n`, { encoding: "utf8", mode: 0o600 });
+    writeFileSync(runtimeSecretsPath, `${JSON.stringify(runtimeSecrets)}\n`, { encoding: "utf8", mode: 0o600 });
+    if (serverSecrets) {
+      writeFileSync(serverSecretsPath, `${JSON.stringify(serverSecrets)}\n`, { encoding: "utf8", mode: 0o600 });
+    }
     const versions = {
-      server: uploadWorker("server", sourceRevision),
-      media: uploadWorker("media", sourceRevision, secretsPath),
-      admin: uploadWorker("admin", sourceRevision, secretsPath),
+      server: uploadWorker("server", sourceRevision, serverSecrets ? serverSecretsPath : ""),
+      media: uploadWorker("media", sourceRevision, runtimeSecretsPath),
+      admin: uploadWorker("admin", sourceRevision, runtimeSecretsPath),
     };
     registerVersion(current.pinnedServerVersion, versions.server, configs.server);
     registerVersion(current.pinnedMediaVersion, versions.media, configs.media);
@@ -229,6 +248,7 @@ async function main() {
     console.log(`media version: ${versions.media}`);
     console.log(`admin version: ${versions.admin}`);
     console.log(`router version: ${versions.router}`);
+    console.log(`server rollout: ${serverRollout || "preserved"}`);
     console.log("live asset routes: 2/2 ok");
     console.log("secret values rendered: no");
   } finally {
