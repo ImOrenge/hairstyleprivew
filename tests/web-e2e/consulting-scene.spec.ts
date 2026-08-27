@@ -62,12 +62,12 @@ async function dismissGlobalNotices(page: import("@playwright/test").Page) {
   }
 }
 
-test("all consultation scenes are headerless, addressable, and overflow-safe", async ({ page }, testInfo) => {
+test("all consultation scenes keep the global header, remain addressable, and stay overflow-safe", async ({ page }, testInfo) => {
   for (const [stage, title] of STAGES) {
     await page.goto(`/consulting/e2e-harness?stage=${stage}`);
     await dismissGlobalNotices(page);
     await expect(page.getByRole("heading", { level: 1, name: title })).toBeVisible();
-    await expect(page.locator('[data-app-shell="header"]')).toHaveCount(0);
+    await expect(page.locator('[data-app-shell="header"]')).toHaveCount(1);
     await expect(page.locator('[data-app-shell="footer"]')).toHaveCount(0);
     const splitCanvas = page.locator('[data-consulting-split-canvas="true"]');
     if (await splitCanvas.count()) {

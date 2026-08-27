@@ -9,7 +9,10 @@ test("customer shell keeps consultation prominent across desktop and mobile", as
 
   await page.goto("/e2e-harness/customer-shell");
   await expect(page.locator('[data-e2e-customer-shell="true"]')).toBeVisible();
-  await expect(page.locator('[data-app-shell="header"]')).toHaveCount(0);
+  const header = page.locator('[data-app-shell="header"]');
+  await expect(header).toHaveCount(1);
+  await expect(header).toHaveAttribute("data-customer-shell", "true");
+  await expect(header).toHaveCSS("margin-left", "248px");
   const footer = page.locator('[data-app-shell="footer"]');
   await expect(footer).toHaveCount(1);
   await expect(footer).toHaveAttribute("data-customer-shell", "true");
@@ -47,6 +50,7 @@ test("customer shell keeps consultation prominent across desktop and mobile", as
   await expect(footer).toContainText("사업자정보");
 
   await page.setViewportSize({ width: 390, height: 844 });
+  await expect(header).toHaveCSS("margin-left", "0px");
   await expect(rail).toBeHidden();
   await expect(bottomNavigation).toBeVisible();
   await expect(bottomNavigation.locator("svg")).toHaveCount(5);

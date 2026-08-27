@@ -35,6 +35,21 @@
   color-scheme: light;
 }
 
+.customer-app-header {
+  --app-surface: #ffffff;
+  --app-surface-muted: #eceae3;
+  --app-inverse: #050505;
+  --app-inverse-muted: #151412;
+  --app-inverse-text: #f4f1e8;
+  --app-border: #d4cfc4;
+  --app-border-strong: #191816;
+  --app-text: #191816;
+  --app-muted: #625f57;
+  --app-accent: #a8863a;
+  margin-left: 15.5rem;
+  color-scheme: light;
+}
+
 .customer-app__rail {
   position: fixed;
   inset: 0 auto 0 0;
@@ -1228,6 +1243,10 @@
 }
 
 @media (max-width: 1023px) {
+  .customer-app-header {
+    margin-left: 5rem;
+  }
+
   .customer-app__rail {
     width: 5rem;
     align-items: center;
@@ -1268,6 +1287,10 @@
 }
 
 @media (max-width: 719px) {
+  .customer-app-header {
+    margin-left: 0;
+  }
+
   .customer-app__rail {
     display: none;
   }

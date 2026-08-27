@@ -47,6 +47,18 @@ for (const route of protectedRoutes) {
   });
 }
 
+test("customer home exposes a working global logout action", async ({ page }) => {
+  await page.goto("/home", { waitUntil: "domcontentloaded" });
+
+  const header = page.locator('[data-app-shell="header"]');
+  await expect(header).toHaveAttribute("data-customer-shell", "true");
+  const signOutButton = header.getByRole("button", { name: "로그아웃" });
+  await expect(signOutButton).toBeVisible();
+  await signOutButton.click();
+
+  await expect(page).toHaveURL(/\/login(?:\?|$)/);
+});
+
 test("owned completed generation renders its recommendation board without mutation", async ({ page }) => {
   const generationId = requireOwnedGenerationFixture();
   const detailResponse = page.waitForResponse((response) => {

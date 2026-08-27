@@ -34,18 +34,20 @@ export function Header() {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const closeMobileMenu = () => setIsMobileMenuOpen(false);
+  const customerShell = isCustomerShellPath(pathname);
+  const customerContext = customerShell || pathname.startsWith("/consulting");
   const isSupportPage = isCurrentNavigationPath(pathname, "/support");
   const isDiscoveryPage = isCurrentNavigationPath(pathname, "/discover");
   const mobileMenuLinkClassName =
     "rounded-[var(--app-radius-control)] px-3 py-2.5 text-[var(--app-muted)] transition hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)]";
 
-  if (pathname.startsWith("/consulting") || isCustomerShellPath(pathname)) {
-    return null;
-  }
-
   return (
     <HeaderAccountProvider>
-      <header data-app-shell="header" className="sticky top-0 z-50 border-b border-[var(--app-border)] bg-[var(--app-surface)] transition-colors">
+      <header
+        data-app-shell="header"
+        data-customer-shell={customerShell ? "true" : undefined}
+        className={`${customerShell ? "customer-app-header " : ""}sticky top-0 z-50 border-b border-[var(--app-border)] bg-[var(--app-surface)] transition-colors`}
+      >
         <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center justify-between gap-2 px-2 sm:px-3">
           <HeaderBrandLink />
 
@@ -67,7 +69,7 @@ export function Header() {
             <HeaderRoleNavLinks />
 
             <div className="flex shrink-0 items-center gap-2">
-              <HeaderAuthSlot />
+              {customerContext ? <MobileHeaderAuthSlot /> : <HeaderAuthSlot />}
             </div>
             <div className="flex items-center gap-1 border-l border-[var(--app-border)] pl-3">
               <ThemeToggle />

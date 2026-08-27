@@ -7,6 +7,8 @@ source: my-app/components/customer/CustomerShell.tsx
 related_source:
   - my-app/components/customer/customer-shell.css
   - my-app/components/customer/CustomerHomeExperience.tsx
+  - my-app/components/layout/Header.tsx
+  - my-app/components/layout/ClerkAuthButtons.tsx
   - my-app/components/layout/Footer.tsx
   - my-app/lib/customer-navigation.ts
   - my-app/lib/customer-home-v2-server.ts
@@ -37,6 +39,8 @@ boundaries:
     - desktop-fixed-rail
     - tablet-compact-rail
     - mobile-safe-area-bottom-navigation
+    - customer-aligned-global-header
+    - direct-authenticated-sign-out
     - customer-aligned-legal-business-footer
     - HairFit-logo-brand-mark
     - V2-confirmed-style-history-presentation
@@ -60,8 +64,8 @@ route_contract:
     - /aftercare
     - /mypage
   primary_consultation_entry: /consulting/new
-  consultation_shell: hidden
-  global_header: hidden
+  consultation_shell: global-header-only
+  global_header: visible-with-direct-sign-out
   global_footer: visible-and-customer-aligned
   brand_icon: /logo.png
   internal_consultation_flow: preserved
@@ -103,6 +107,7 @@ styling:
   strategy: HairFit-editorial-hybrid-customer-scoped-global-css
   stylesheet: my-app/components/customer/customer-shell.css
   root_namespace: customer-app
+  header_variant_namespace: customer-app-header
   tokens:
     canvas: '#F6F5F1'
     surface: '#FFFFFF'
@@ -116,7 +121,7 @@ styling:
     - desktop-rail
     - consultation-hero
     - mobile-bottom-navigation
-  global_css_changes: import-only
+  global_css_changes: compatible-customer-header-variant
   inline_styles_allowed: false
 
 a11y_contract:
@@ -126,12 +131,15 @@ a11y_contract:
   reduced_motion: supported
   action_state: aria-pressed
   action_keyboard: arrow-keys-home-end
+  sign_out_control: native-button-with-lucide-icon
+  sign_out_redirect: /login
 
 test_surface:
   structure: my-app/lib/app-shell-accessibility.test.ts
   web_typecheck: required
   interaction: required
   responsive_visual: required
+  authenticated_sign_out: required-when-clerk-fixture-is-available
   no-confirmed-image-dom: required
   single-footer: required
   customer_copy: credit-balance-excluded
@@ -149,3 +157,4 @@ change_policy:
 
 promotion_blockers:
   - no-mobile-safe-area-device-evidence
+  - no-authenticated-clerk-logout-evidence-in-current-environment

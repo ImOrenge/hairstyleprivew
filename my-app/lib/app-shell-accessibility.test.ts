@@ -48,7 +48,7 @@ test("the keyboard skip link targets the focusable root main", () => {
   assert.ok(layout.indexOf(skipLink) < layout.indexOf(rootMain));
 });
 
-test("customer surfaces use the five-item atelier shell while consultation stays immersive", () => {
+test("customer surfaces use the five-item atelier shell with a global authenticated header", () => {
   const shell = readFileSync(path.join(appRoot, "components", "customer", "CustomerShell.tsx"), "utf8");
   const home = readFileSync(path.join(appRoot, "app", "home", "page.tsx"), "utf8");
   const homeExperience = readFileSync(path.join(appRoot, "components", "customer", "CustomerHomeExperience.tsx"), "utf8");
@@ -58,6 +58,8 @@ test("customer surfaces use the five-item atelier shell while consultation stays
   const harness = readFileSync(path.join(appRoot, "components", "e2e", "CustomerShellHarness.tsx"), "utf8");
   const navigation = readFileSync(path.join(appRoot, "lib", "customer-navigation.ts"), "utf8");
   const header = readFileSync(path.join(appRoot, "components", "layout", "Header.tsx"), "utf8");
+  const authButtons = readFileSync(path.join(appRoot, "components", "layout", "ClerkAuthButtons.tsx"), "utf8");
+  const customerShellCss = readFileSync(path.join(appRoot, "components", "customer", "customer-shell.css"), "utf8");
   const footer = readFileSync(path.join(appRoot, "components", "layout", "Footer.tsx"), "utf8");
 
   for (const label of ["홈", "스타일북", "새 컨설팅", "케어", "내 정보"]) {
@@ -84,7 +86,15 @@ test("customer surfaces use the five-item atelier shell while consultation stays
   assert.doesNotMatch(homeView, /care\?\.imageUrl/);
   assert.match(homeView, /encodeURIComponent\(care\.actualServiceId\)/);
   assert.doesNotMatch(`${home}\n${dashboardServer}`, /recentGenerations|recentConfirmedStyles|user_hair_records|generationHref|CustomerHomeGeneration/);
-  assert.match(header, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
+  assert.match(header, /const customerShell = isCustomerShellPath\(pathname\)/);
+  assert.match(header, /const customerContext = customerShell \|\| pathname\.startsWith\("\/consulting"\)/);
+  assert.doesNotMatch(header, /if \(pathname\.startsWith\("\/consulting"\)\)/);
+  assert.match(header, /data-customer-shell=\{customerShell \? "true" : undefined\}/);
+  assert.match(header, /customerContext \? <MobileHeaderAuthSlot \/> : <HeaderAuthSlot \/>/);
+  assert.match(authButtons, /<SignOutButton redirectUrl="\/login">/);
+  assert.match(authButtons, /<LogOut aria-hidden="true"/);
+  assert.match(customerShellCss, /\.customer-app-header \{[\s\S]*margin-left: 15\.5rem;/);
+  assert.match(customerShellCss, /@media \(max-width: 719px\) \{[\s\S]*\.customer-app-header \{[\s\S]*margin-left: 0;/);
   assert.match(shell, /<Image src="\/logo\.png" alt="" width=\{40\} height=\{40\} priority \/>/);
   assert.match(footer, /const customerShell = isCustomerShellPath\(pathname\)/);
   assert.match(footer, /data-customer-shell=\{customerShell \? "true" : undefined\}/);

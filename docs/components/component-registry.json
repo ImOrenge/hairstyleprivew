@@ -346,6 +346,8 @@
       "related_source": [
         "my-app/components/customer/customer-shell.css",
         "my-app/components/customer/CustomerHomeExperience.tsx",
+        "my-app/components/layout/Header.tsx",
+        "my-app/components/layout/ClerkAuthButtons.tsx",
         "my-app/components/layout/Footer.tsx",
         "my-app/lib/customer-navigation.ts",
         "my-app/lib/customer-home-v2-server.ts",
