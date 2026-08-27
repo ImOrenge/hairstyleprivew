@@ -14,6 +14,7 @@ const isProtectedRoute = createRouteMatcher([
   "/admin(.*)",
   "/aftercare(.*)",
   "/home(.*)",
+  "/stylebook",
   "/upload(.*)",
   "/workspace(.*)",
   "/generate(.*)",

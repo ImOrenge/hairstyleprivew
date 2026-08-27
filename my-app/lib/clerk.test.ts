@@ -50,6 +50,13 @@ test("middleware preserves validated page targets even when Clerk configuration 
   );
 });
 
+test("customer stylebook requires authentication without protecting public share pages", () => {
+  const middleware = readFileSync(new URL("../middleware.ts", import.meta.url), "utf8");
+
+  assert.match(middleware, /"\/stylebook",/);
+  assert.doesNotMatch(middleware, /"\/stylebook\(\.\*\)",/);
+});
+
 test("production Clerk config prefers the runtime server alias over a baked public development key", () => {
   const names = [
     "NODE_ENV",
