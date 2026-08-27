@@ -7,7 +7,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function CustomerShellE2EPage() {
+export default async function CustomerShellE2EPage({ searchParams }: { searchParams: Promise<{ look?: string }> }) {
   if (process.env.E2E_UI_HARNESS_ENABLED !== "true") notFound();
-  return <CustomerShellHarness />;
+  const query = await searchParams;
+  return <CustomerShellHarness confirmedLook={query.look !== "none"} />;
 }

@@ -51,6 +51,8 @@ test("the keyboard skip link targets the focusable root main", () => {
 test("customer surfaces use the five-item atelier shell while consultation stays immersive", () => {
   const shell = readFileSync(path.join(appRoot, "components", "customer", "CustomerShell.tsx"), "utf8");
   const home = readFileSync(path.join(appRoot, "app", "home", "page.tsx"), "utf8");
+  const homeExperience = readFileSync(path.join(appRoot, "components", "customer", "CustomerHomeExperience.tsx"), "utf8");
+  const homeView = readFileSync(path.join(appRoot, "lib", "customer-home-view.ts"), "utf8");
   const homeProjection = readFileSync(path.join(appRoot, "lib", "customer-home-v2-server.ts"), "utf8");
   const dashboardServer = readFileSync(path.join(appRoot, "lib", "customer-dashboard-server.ts"), "utf8");
   const harness = readFileSync(path.join(appRoot, "components", "e2e", "CustomerShellHarness.tsx"), "utf8");
@@ -75,10 +77,19 @@ test("customer surfaces use the five-item atelier shell while consultation stays
   assert.match(homeProjection, /consultationStageHref\(completedId, "result"\)/);
   assert.match(homeProjection, /loadCustomerAftercareV2\(userId, \{ limit: 1 \}\)/);
   assert.match(homeProjection, /resolveGenerationImageUrl/);
-  assert.match(home, /care\.actualServiceId/);
+  assert.match(home, /buildCustomerHomeView\(customerHome\)/);
+  assert.match(homeExperience, /data-has-confirmed-look=\{view\.confirmedImageUrl/);
+  assert.match(homeExperience, /aria-pressed=\{selectedAction\}/);
+  assert.match(homeView, /const confirmedImageUrl = cleanImageUrl\(completed\?\.imageUrl\)/);
+  assert.doesNotMatch(homeView, /care\?\.imageUrl/);
+  assert.match(homeView, /encodeURIComponent\(care\.actualServiceId\)/);
   assert.doesNotMatch(`${home}\n${dashboardServer}`, /recentGenerations|recentConfirmedStyles|user_hair_records|generationHref|CustomerHomeGeneration/);
   assert.match(header, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
-  assert.match(footer, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
+  assert.match(shell, /<Image src="\/logo\.png" alt="" width=\{40\} height=\{40\} priority \/>/);
+  assert.match(footer, /const customerShell = isCustomerShellPath\(pathname\)/);
+  assert.match(footer, /data-customer-shell=\{customerShell \? "true" : undefined\}/);
+  assert.match(footer, /customerShell \? "customer-app__footer " : ""/);
+  assert.doesNotMatch(footer, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
 });
 
 test("stylebook and aftercare use only the HairFit V2 customer history read model", () => {

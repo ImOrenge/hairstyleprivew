@@ -18,6 +18,7 @@ import type {
 } from "../../../lib/consulting/contracts";
 import { convertImageFileToWebp, cropImageFileToWebp } from "../../../lib/webp-client";
 import { uploadPersonalColorCapture } from "../../../lib/personal-color-capture-client";
+import { uploadGenerationDraftWithSingleRecovery } from "../../../lib/generation-upload-draft-reuse";
 import { useUpload } from "../../../hooks/useUpload";
 import { Button } from "../../ui/Button";
 import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, SurfaceCard, WorkbenchGrid } from "./shared";
@@ -25,7 +26,7 @@ import { ConsultationSystemData, DefinitionRows, Panel, SaveStageButton, Surface
 type DraftReceipt = {
   draftId: string;
   clientRequestId: string;
-  state: "ready";
+  state: "ready" | "accepted";
   uploadedAt: string;
   expiresAt: string;
 };
@@ -39,8 +40,33 @@ type AnalysisResponse = {
   quality?: PhotoQualityDiagnostic[];
   analyzedAt?: string;
   preflightMessage?: string;
+  code?: string;
   error?: string;
+  retryTarget?: "analysis" | "refresh" | "photo";
+  run?: { state?: string };
 };
+
+type PhotoWorkflowStage = "ready" | "preparing" | "uploading" | "linking" | "queueing";
+
+type AnalysisRecovery = {
+  photo: PhotoSnapshot;
+  faceEvidence: PhotoFaceDetectionEvidence | null;
+  retryTarget: "analysis" | "refresh";
+};
+
+class PhotoFlowError extends Error {
+  constructor(message: string, readonly retryTarget: "analysis" | "refresh" | "photo") {
+    super(message);
+    this.name = "PhotoFlowError";
+  }
+}
+
+const PHOTO_WORKFLOW_STEPS: Array<{ id: Exclude<PhotoWorkflowStage, "ready"> | "ready"; label: string }> = [
+  { id: "ready", label: "사진 준비" },
+  { id: "uploading", label: "업로드" },
+  { id: "linking", label: "분석 연결" },
+  { id: "queueing", label: "대기열 등록" },
+];
 
 function fileToDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -79,6 +105,8 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
   const [captureMode, setCaptureMode] = useState<PersonalColorAssetCaptureModeV2>(snapshot.photo.captureMode ?? "quick");
   const [colorQuality, setColorQuality] = useState<PersonalColorCaptureQualityV2 | null>(null);
   const [working, setWorking] = useState(false);
+  const [workflowStage, setWorkflowStage] = useState<PhotoWorkflowStage>("ready");
+  const [analysisRecovery, setAnalysisRecovery] = useState<AnalysisRecovery | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { status, message, details, validateImage, resetValidation } = useUpload();
   const assistValidation = useUpload();
@@ -103,6 +131,8 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
 
   const selectFile = async (selected: File) => {
     setWorking(true);
+    setWorkflowStage("preparing");
+    setAnalysisRecovery(null);
     setError(null);
     setFile(null);
     setAssistFile(null);
@@ -179,11 +209,14 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
       setError(cause instanceof Error ? cause.message : "사진을 준비하지 못했습니다.");
     } finally {
       setWorking(false);
+      setWorkflowStage("ready");
     }
   };
 
   const selectAssistFile = async (selected: File) => {
     setWorking(true);
+    setWorkflowStage("preparing");
+    setAnalysisRecovery(null);
     setError(null);
     queueCaptureCleanup([photo.colorAssistCaptureAssetId], "customer_reselected_assist_photo");
     if (assistPreviewUrl) URL.revokeObjectURL(assistPreviewUrl);
@@ -209,6 +242,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
       setError(cause instanceof Error ? cause.message : "자연광 보조 사진을 준비하지 못했습니다.");
     } finally {
       setWorking(false);
+      setWorkflowStage("ready");
     }
   };
 
@@ -220,28 +254,94 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
   const uploadDraft = async (sourceFile: File | null = file, sourcePhoto: PhotoSnapshot = photo, kind: "primary" | "assist" = "primary") => {
     if (!sourceFile) {
       const existingDraftId = kind === "primary" ? sourcePhoto.draftId : sourcePhoto.colorAssistDraftId;
-      if (existingDraftId) return {
-        draftId: existingDraftId,
-        clientRequestId: kind === "primary" ? sourcePhoto.clientRequestId ?? existingDraftId : existingDraftId,
-        state: "ready" as const,
-        uploadedAt: (kind === "primary" ? sourcePhoto.uploadedAt : sourcePhoto.colorAssistUploadedAt) ?? new Date().toISOString(),
-        expiresAt: (kind === "primary" ? sourcePhoto.expiresAt : sourcePhoto.colorAssistExpiresAt) ?? new Date(Date.now() + 60_000).toISOString(),
-      };
-      throw new Error(kind === "primary" ? "분석할 정면 사진을 먼저 선택해 주세요." : "자연광 보조 사진을 다시 선택해 주세요.");
+      const existingExpiresAt = kind === "primary" ? sourcePhoto.expiresAt : sourcePhoto.colorAssistExpiresAt;
+      const reusableUntil = existingExpiresAt ? Date.parse(existingExpiresAt) : Number.NaN;
+      if (existingDraftId && (!Number.isFinite(reusableUntil) || reusableUntil <= Date.now())) {
+        throw new PhotoFlowError("사진 업로드 보존 시간이 끝났습니다. 사진을 다시 선택해 주세요.", "photo");
+      }
+      if (existingDraftId) {
+        const clientRequestId = kind === "primary" ? sourcePhoto.clientRequestId ?? existingDraftId : existingDraftId;
+        const response = await fetch("/api/generations/drafts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clientRequestId, retentionDays: sourcePhoto.retentionDays }),
+        });
+        const data = (await response.json().catch(() => ({}))) as Partial<DraftReceipt> & { error?: string; retryTarget?: "photo" | "refresh" };
+        if (!response.ok || !data.draftId || !data.clientRequestId || !data.uploadedAt || !data.expiresAt || !["ready", "accepted"].includes(data.state ?? "")) {
+          throw new PhotoFlowError(data.error || "기존 사진 업로드를 확인하지 못했습니다. 사진을 다시 선택해 주세요.", data.retryTarget ?? "photo");
+        }
+        return data as DraftReceipt;
+      }
+      throw new PhotoFlowError(kind === "primary" ? "분석할 정면 사진을 먼저 선택해 주세요." : "자연광 보조 사진을 다시 선택해 주세요.", "photo");
     }
-    const clientRequestId = kind === "primary" && sourcePhoto.clientRequestId
+    const initialClientRequestId = kind === "primary" && sourcePhoto.clientRequestId
       ? sourcePhoto.clientRequestId
       : await stablePhotoUploadId(sourceFile, snapshot.sessionId, kind);
-    const response = await fetch("/api/generations/drafts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientRequestId, referenceImageDataUrl: await fileToDataUrl(sourceFile), retentionDays: sourcePhoto.retentionDays }),
+    const referenceImageDataUrl = await fileToDataUrl(sourceFile);
+    const postDraft = async (clientRequestId: string) => {
+      const response = await fetch("/api/generations/drafts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientRequestId, referenceImageDataUrl, retentionDays: sourcePhoto.retentionDays }),
+      });
+      const data = (await response.json().catch(() => ({}))) as Partial<DraftReceipt> & {
+        code?: string;
+        error?: string;
+        retryTarget?: "photo" | "refresh";
+      };
+      return { response, data };
+    };
+    const result = await uploadGenerationDraftWithSingleRecovery({
+      initialClientRequestId,
+      createFreshClientRequestId: () => crypto.randomUUID(),
+      postDraft,
     });
-    const data = (await response.json().catch(() => ({}))) as Partial<DraftReceipt> & { error?: string };
-    if (!response.ok || !data.draftId || !data.uploadedAt || !data.expiresAt) {
-      throw new Error(data.error || "사진을 안전하게 업로드하지 못했습니다.");
+    const response = result.response;
+    const data = result.data as Partial<DraftReceipt> & { error?: string; retryTarget?: "photo" | "refresh" };
+    if (!response.ok || !data.draftId || !data.clientRequestId || !data.uploadedAt || !data.expiresAt || !["ready", "accepted"].includes(data.state ?? "")) {
+      throw new PhotoFlowError(data.error || "사진을 안전하게 업로드하지 못했습니다. 잠시 후 다시 시도해 주세요.", data.retryTarget ?? "photo");
     }
     return data as DraftReceipt;
+  };
+
+  const connectPhotoAnalysis = async (uploadedPhoto: PhotoSnapshot, sourceFaceEvidence: PhotoFaceDetectionEvidence | null) => {
+    const response = await fetch(`/api/consultations/${encodeURIComponent(snapshot.sessionId)}/photo-analysis`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ draftId: uploadedPhoto.draftId, expectedVersion: snapshot.version, faceEvidence: sourceFaceEvidence, photo: uploadedPhoto }),
+    });
+    const data = (await response.json().catch(() => ({}))) as AnalysisResponse;
+    if ((response.status === 202 && data.accepted) || (response.ok && data.run?.state === "completed")) {
+      router.replace(`/consulting/${encodeURIComponent(snapshot.sessionId)}/scan?transition=analysis`);
+      return;
+    }
+    if (data.quality) setPhoto((current) => ({ ...current, quality: data.quality ?? current.quality }));
+    if (data.requiresRetry) {
+      throw new PhotoFlowError(data.preflightMessage || "사진 사전검사를 통과하지 못했습니다. 다른 사진을 선택해 주세요.", "photo");
+    }
+    if (!response.ok || !data.evidence || !data.faceAnalysis || !data.strategyRecommendations || !data.quality || !data.analyzedAt) {
+      throw new PhotoFlowError(data.error || "사진 분석 연결을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.", data.retryTarget ?? "analysis");
+    }
+    const nextPhoto: PhotoSnapshot = {
+      ...uploadedPhoto,
+      capturedAt: data.analyzedAt,
+      quality: data.quality,
+    };
+    setPhoto(nextPhoto);
+    const recommendedStrategy: Partial<StrategySnapshot> = {};
+    for (const recommendation of data.strategyRecommendations) {
+      recommendedStrategy[recommendation.axis] = recommendation.recommendedValue;
+    }
+    const result = await mutate({
+      photo: nextPhoto,
+      evidence: data.evidence,
+      faceAnalysis: data.faceAnalysis,
+      strategyRecommendations: data.strategyRecommendations,
+      strategy: { ...snapshot.strategy, ...recommendedStrategy },
+      completeStage: "photo",
+      currentStage: "scan",
+    }) as { ok?: boolean };
+    if (!result.ok) throw new PhotoFlowError("분석 결과를 상담에 연결하지 못했습니다. 다시 시도해 주세요.", "analysis");
   };
 
   const analyze = async (
@@ -256,12 +356,18 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
     }
     setWorking(true);
     setError(null);
+    setAnalysisRecovery(null);
+    setWorkflowStage("preparing");
+    let uploadedForRecovery: PhotoSnapshot | null = null;
+    let failureStage: PhotoWorkflowStage = "preparing";
     try {
       if (!sourcePhoto.crop && sourceFile) throw new Error("분석에 사용할 사진 프레이밍을 확인해 주세요.");
       if (sourcePhoto.usageScopes.includes("personalColor") && captureMode === "precision" && !sourceAssistFile && !sourcePhoto.colorAssistCaptureAssetId) {
         throw new Error("정밀 진단에는 필터 없는 자연광 보조 사진이 필요합니다.");
       }
       const preparedFile = sourceFile && sourcePhoto.crop ? await cropImageFileToWebp(sourceFile, sourcePhoto.crop) : sourceFile;
+      failureStage = "uploading";
+      setWorkflowStage("uploading");
       const receipt = await uploadDraft(preparedFile, sourcePhoto, "primary");
       let uploadedPhoto: PhotoSnapshot = {
         ...sourcePhoto,
@@ -273,7 +379,10 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
         analysisRunId: null,
         captureMode,
       };
+      uploadedForRecovery = uploadedPhoto;
       setPhoto(uploadedPhoto);
+      failureStage = "linking";
+      setWorkflowStage("linking");
       let primaryCapture = null as Awaited<ReturnType<typeof uploadPersonalColorCapture>> | null;
       let assistCapture = null as Awaited<ReturnType<typeof uploadPersonalColorCapture>> | null;
       if (sourcePhoto.usageScopes.includes("personalColor") && !preparedFile && !sourcePhoto.colorPrimaryCaptureAssetId) {
@@ -290,6 +399,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
           retentionDays: sourcePhoto.retentionDays,
         });
         uploadedPhoto = { ...uploadedPhoto, colorPrimaryCaptureAssetId: primaryCapture.asset.id };
+        uploadedForRecovery = uploadedPhoto;
         setPhoto(uploadedPhoto);
       }
       if (sourcePhoto.usageScopes.includes("personalColor") && captureMode === "precision" && sourceAssistFile) {
@@ -303,54 +413,63 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
           retentionDays: sourcePhoto.retentionDays,
         });
         uploadedPhoto = { ...uploadedPhoto, colorAssistCaptureAssetId: assistCapture.asset.id };
+        uploadedForRecovery = uploadedPhoto;
         setPhoto(uploadedPhoto);
       }
       if (captureMode === "quick") uploadedPhoto = { ...uploadedPhoto, colorAssistCaptureAssetId: null };
+      uploadedForRecovery = uploadedPhoto;
       const effectiveQuality = assistCapture?.asset.quality ?? primaryCapture?.asset.quality ?? null;
       if (effectiveQuality) setColorQuality(effectiveQuality);
       const blockers = [...(primaryCapture?.asset.quality?.blockers ?? []), ...(assistCapture?.asset.quality?.blockers ?? [])];
       if (blockers.length) throw new Error(blockers.map((item) => item.message).join(" "));
       setPhoto(uploadedPhoto);
-      const response = await fetch(`/api/consultations/${encodeURIComponent(snapshot.sessionId)}/photo-analysis`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draftId: receipt.draftId, expectedVersion: snapshot.version, faceEvidence: sourceFaceEvidence, photo: uploadedPhoto }),
-      });
-      const data = (await response.json().catch(() => ({}))) as AnalysisResponse;
-      if (response.status === 202 && data.accepted) {
-        router.replace(`/consulting/${encodeURIComponent(snapshot.sessionId)}/scan?transition=analysis`);
-        return;
-      }
-      if (data.quality) setPhoto((current) => ({ ...current, quality: data.quality ?? current.quality }));
-      if (data.requiresRetry) {
-        setError(data.preflightMessage || "사진 사전검사를 통과하지 못했습니다. 다른 사진을 선택해 주세요.");
-        return;
-      }
-      if (!response.ok || !data.evidence || !data.faceAnalysis || !data.strategyRecommendations || !data.quality || !data.analyzedAt) {
-        throw new Error(data.error || "사진 분석을 완료하지 못했습니다.");
-      }
-      const nextPhoto: PhotoSnapshot = {
-        ...uploadedPhoto,
-        capturedAt: data.analyzedAt,
-        quality: data.quality,
-      };
-      setPhoto(nextPhoto);
-      const recommendedStrategy: Partial<StrategySnapshot> = {};
-      for (const recommendation of data.strategyRecommendations) {
-        recommendedStrategy[recommendation.axis] = recommendation.recommendedValue;
-      }
-      const result = await mutate({
-        photo: nextPhoto,
-        evidence: data.evidence,
-        faceAnalysis: data.faceAnalysis,
-        strategyRecommendations: data.strategyRecommendations,
-        strategy: { ...snapshot.strategy, ...recommendedStrategy },
-        completeStage: "photo",
-        currentStage: "scan",
-      }) as { ok?: boolean };
-      if (!result.ok) throw new Error("분석 결과를 상담 snapshot에 연결하지 못했습니다.");
+      failureStage = "queueing";
+      setWorkflowStage("queueing");
+      setAnalysisRecovery({ photo: uploadedPhoto, faceEvidence: sourceFaceEvidence, retryTarget: "analysis" });
+      await connectPhotoAnalysis(uploadedPhoto, sourceFaceEvidence);
+      setAnalysisRecovery(null);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "사진 분석을 완료하지 못했습니다.");
+      const retryTarget = cause instanceof PhotoFlowError ? cause.retryTarget : failureStage === "queueing" ? "analysis" : "photo";
+      if (uploadedForRecovery && retryTarget !== "photo") {
+        setAnalysisRecovery({
+          photo: uploadedForRecovery,
+          faceEvidence: sourceFaceEvidence,
+          retryTarget: retryTarget === "refresh" ? "refresh" : "analysis",
+        });
+      } else if (retryTarget === "photo") {
+        setAnalysisRecovery(null);
+      }
+      const message = cause instanceof PhotoFlowError
+        ? cause.message
+        : cause instanceof Error && /[가-힣]/.test(cause.message)
+          ? cause.message
+          : failureStage === "uploading"
+            ? "사진을 안전하게 업로드하지 못했습니다. 잠시 후 다시 시도해 주세요."
+            : failureStage === "queueing"
+              ? "사진은 보존되었습니다. 분석 연결만 다시 시도해 주세요."
+              : "사진 처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+      setError(message);
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const retryAnalysisConnection = async () => {
+    if (!analysisRecovery) return;
+    if (analysisRecovery.retryTarget === "refresh") {
+      router.refresh();
+      return;
+    }
+    setWorking(true);
+    setWorkflowStage("queueing");
+    setError(null);
+    try {
+      await connectPhotoAnalysis(analysisRecovery.photo, analysisRecovery.faceEvidence);
+      setAnalysisRecovery(null);
+    } catch (cause) {
+      const retryTarget = cause instanceof PhotoFlowError && cause.retryTarget === "refresh" ? "refresh" : "analysis";
+      setAnalysisRecovery((current) => current ? { ...current, retryTarget } : current);
+      setError(cause instanceof PhotoFlowError ? cause.message : "사진은 보존되었습니다. 분석 연결만 다시 시도해 주세요.");
     } finally {
       setWorking(false);
     }
@@ -367,6 +486,8 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
     setFaceEvidence(null);
     setAssistFaceEvidence(null);
     setColorQuality(null);
+    setAnalysisRecovery(null);
+    setWorkflowStage("ready");
     setPhoto({
       ...snapshot.photo,
       draftId: null,
@@ -398,6 +519,8 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
     left: `${-(crop.x / crop.width) * 100}%`,
     top: `${-(crop.y / crop.height) * 100}%`,
   } : undefined;
+  const visibleWorkflowStage = workflowStage === "preparing" ? "ready" : workflowStage;
+  const workflowIndex = Math.max(0, PHOTO_WORKFLOW_STEPS.findIndex((step) => step.id === visibleWorkflowStage));
 
   return <WorkbenchGrid input={
     <Panel className="grid gap-6 p-5 sm:p-7">
@@ -405,6 +528,12 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
         <p className="text-sm font-black">상담용 정면 사진</p>
         <p className="mt-1 text-sm text-[var(--app-muted)]">얼굴과 헤어라인이 잘 보이는 사진을 준비해 주세요. 사진 상태를 확인한 뒤 분석 단계로 바로 이어집니다.</p>
       </div>
+      <ol className="grid grid-cols-2 gap-2 sm:grid-cols-4" aria-label="사진 분석 연결 단계" data-photo-workflow-stage={workflowStage}>
+        {PHOTO_WORKFLOW_STEPS.map((step, index) => {
+          const state = index < workflowIndex ? "complete" : index === workflowIndex ? "current" : "pending";
+          return <li key={step.id} data-state={state} aria-current={state === "current" ? "step" : undefined} className={`border p-3 text-xs font-bold ${state === "complete" ? "border-[var(--app-success)] bg-[var(--app-success-bg)]" : state === "current" ? "border-[var(--app-accent)] bg-[var(--app-accent-soft)]" : "border-[var(--app-border)] text-[var(--app-muted)]"}`}>{index + 1}. {step.label}</li>;
+        })}
+      </ol>
       <fieldset><legend className="text-sm font-black">사진 사용 범위</legend><div className="mt-2 flex flex-wrap gap-2">{[["analysis","얼굴 분석"],["preview","헤어 프리뷰"],["personalColor","컬러 진단"]].map(([scope,label]) => <button type="button" key={scope} onClick={() => setPhoto({ ...photo, usageScopes: photo.usageScopes.includes(scope) ? photo.usageScopes.filter((item) => item !== scope) : [...photo.usageScopes, scope] })} aria-pressed={photo.usageScopes.includes(scope)} className={`min-h-11 border px-4 text-sm font-black ${photo.usageScopes.includes(scope) ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{label}</button>)}</div></fieldset>
       {photo.usageScopes.includes("personalColor") ? <fieldset className="border-l-2 border-[var(--app-accent)] pl-4"><legend className="text-sm font-black">컬러 촬영 모드</legend><div className="mt-2 flex flex-wrap gap-2">{([[
         "quick", "빠른 진단 · 사진 1장",
@@ -435,7 +564,10 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
       {details.width && details.height ? <p className="text-xs text-[var(--app-muted)]">{details.width}×{details.height}px · {details.sizeMB}MB</p> : null}
       <fieldset><legend className="text-sm font-black">사진 보존 기간</legend><div className="mt-2 flex gap-2">{([1,7,30] as const).map((days) => <button type="button" key={days} onClick={() => setPhoto({ ...photo, retentionDays: days })} aria-pressed={photo.retentionDays === days} className={`min-h-11 border px-4 text-sm font-black ${photo.retentionDays === days ? "bg-[var(--app-inverse)] text-[var(--app-inverse-text)]" : "bg-[var(--app-surface)]"}`}>{days}일</button>)}</div></fieldset>
       {error ? <p className="border border-[var(--app-danger)] bg-[var(--app-danger-bg)] p-3 text-sm" role="alert">{error}</p> : null}
-      <div className="flex flex-wrap gap-2">{error ? <SaveStageButton loading={working || saving} disabled={!file && !photo.draftId} onClick={() => void analyze()}>자동 분석 재시도</SaveStageButton> : null}<Button type="button" variant="ghost" disabled={working || saving} onClick={reset}>다시 선택</Button></div>
+      <div className="flex flex-wrap gap-2">
+        {analysisRecovery ? <SaveStageButton loading={working || saving} disabled={working || saving} onClick={() => void retryAnalysisConnection()}>{analysisRecovery.retryTarget === "refresh" ? "화면 새로고침" : "분석 연결 다시 시도"}</SaveStageButton> : error ? <SaveStageButton loading={working || saving} disabled={!file && !photo.draftId} onClick={() => void analyze()}>사진 처리 다시 시도</SaveStageButton> : null}
+        <Button type="button" variant="ghost" disabled={working || saving} onClick={reset}>다시 선택</Button>
+      </div>
     </Panel>
   } output={<>
     {colorQuality ? <SurfaceCard className="p-5"><p className="app-kicker">퍼스널 컬러 사진 확인</p><h2 className="mt-3 text-xl font-black">현재 사진으로 확인할 수 있는 범위</h2><div className="mt-4 grid gap-2 sm:grid-cols-2">{Object.entries(colorQuality.usableAxes).map(([axis, usable]) => <div key={axis} className={`border p-3 ${usable ? "border-[var(--app-success)] bg-[var(--app-success-bg)]" : "border-[var(--app-warning)] bg-[var(--app-warning-bg)]"}`}><p className="text-sm font-black">{{ temperature: "웜·쿨", value: "밝기", chroma: "선명도", contrast: "대비" }[axis as "temperature" | "value" | "chroma" | "contrast"] ?? axis}</p><p className="mt-1 text-xs text-[var(--app-muted)]">{usable ? "현재 사진으로 확인 가능" : "조명 영향이 있어 자연광 사진 권장"}</p></div>)}</div>{colorQuality.blockers.length ? <div className="mt-4" role="alert"><p className="text-sm font-black text-[var(--app-danger)]">다시 촬영이 필요한 항목</p><ul className="mt-2 grid gap-2 text-sm">{colorQuality.blockers.map((item) => <li key={item.code}>{item.message}</li>)}</ul></div> : null}{colorQuality.warnings.length ? <div className="mt-4"><p className="text-sm font-black">확인할 점</p><ul className="mt-2 grid gap-2 text-sm text-[var(--app-muted)]">{colorQuality.warnings.map((item) => <li key={item.code}>{item.message}</li>)}</ul></div> : null}</SurfaceCard> : null}
@@ -446,7 +578,7 @@ export function PhotoWorkbench({ snapshot, mutate, saving }: {
       { label: "컬러 촬영 모드", value: captureMode === "precision" ? "정밀 · 사진 2장" : "빠른 · 사진 1장" },
       { label: "자연광 보조 사진", value: photo.colorAssistCaptureAssetId ? "안전하게 연결됨" : assistFile ? "검사 완료 · 업로드 준비됨" : captureMode === "precision" ? "필수 사진 대기" : "사용하지 않음" },
       { label: "얼굴 감지", value: faceEvidence ? "완료" : "대기" },
-      { label: "분석 연결", value: photo.draftId ? "완료" : "업로드 대기" },
+      { label: "분석 연결", value: analysisRecovery ? "다시 연결 필요 · 사진 보존됨" : photo.analysisRunId ? "완료" : photo.draftId ? "업로드 완료 · 연결 대기" : "업로드 대기" },
     ]} /></details></SurfaceCard>
     <SurfaceCard className="p-5"><p className="app-kicker">사진 보호</p><h2 className="mt-3 text-xl font-black">사진은 분석에 필요한 기간만 비공개로 보관합니다</h2><p className="mt-3 text-sm leading-6 text-[var(--app-muted)]">원본 경로는 고객 화면이나 공유 자료에 노출하지 않으며, 선택한 보존 기간이 지나면 삭제합니다.</p></SurfaceCard>
     <ConsultationSystemData snapshot={snapshot} items={[{ label: "사진 검사 상태", value: status }]} />

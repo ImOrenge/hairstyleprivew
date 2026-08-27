@@ -345,8 +345,11 @@
       "source": "my-app/components/customer/CustomerShell.tsx",
       "related_source": [
         "my-app/components/customer/customer-shell.css",
+        "my-app/components/customer/CustomerHomeExperience.tsx",
+        "my-app/components/layout/Footer.tsx",
         "my-app/lib/customer-navigation.ts",
         "my-app/lib/customer-home-v2-server.ts",
+        "my-app/lib/customer-home-view.ts",
         "my-app/app/home/page.tsx",
         "my-app/app/stylebook/page.tsx",
         "my-app/app/aftercare/page.tsx",
@@ -787,6 +790,12 @@
       "kind": "feature",
       "status": "candidate",
       "source": "my-app/components/consulting/workbenches/PhotoWorkbench.tsx",
+      "related_source": [
+        "my-app/lib/generation-upload-draft-reuse.ts",
+        "my-app/app/api/generations/drafts/route.ts",
+        "my-app/app/api/consultations/[sessionId]/photo-analysis/route.ts",
+        "supabase/migrations/20260827120303_consultation_photo_analysis_input_recovery.sql"
+      ],
       "owner": "consulting-feature",
       "passport": "docs/components/passports/web-consulting-photo-workbench.yaml",
       "observed_usage": {

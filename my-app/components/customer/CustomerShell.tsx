@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   BookHeart,
@@ -34,7 +35,7 @@ export function CustomerShell({ children, activePath }: { children: ReactNode; a
       <aside className="customer-app__rail" aria-label="고객 주요 내비게이션">
         <Link href="/home" prefetch={activePath ? false : undefined} className="customer-app__brand" aria-label="HairFit 고객 홈">
           <span className="customer-app__brand-mark" aria-hidden="true">
-            HF
+            <Image src="/logo.png" alt="" width={40} height={40} priority />
           </span>
           <span className="customer-app__brand-copy">
             <strong>HairFit</strong>

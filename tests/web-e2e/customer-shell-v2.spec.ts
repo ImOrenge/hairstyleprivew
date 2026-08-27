@@ -1,10 +1,18 @@
 import { expect, test } from "@playwright/test";
 
 test("customer shell keeps consultation prominent across desktop and mobile", async ({ page }, testInfo) => {
+  const runtimeErrors: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") runtimeErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => runtimeErrors.push(error.message));
+
   await page.goto("/e2e-harness/customer-shell");
   await expect(page.locator('[data-e2e-customer-shell="true"]')).toBeVisible();
   await expect(page.locator('[data-app-shell="header"]')).toHaveCount(0);
-  await expect(page.locator('[data-app-shell="footer"]')).toHaveCount(0);
+  const footer = page.locator('[data-app-shell="footer"]');
+  await expect(footer).toHaveCount(1);
+  await expect(footer).toHaveAttribute("data-customer-shell", "true");
   await expect(page.locator("body")).not.toContainText("크레딧");
   await expect(page.getByText("프로 멤버십 관리", { exact: true })).toBeVisible();
 
@@ -18,15 +26,50 @@ test("customer shell keeps consultation prominent across desktop and mobile", as
   await expect(priorityCard).toHaveCSS("background-color", "rgb(255, 255, 255)");
   await expect(rail).toBeVisible();
   await expect(bottomNavigation).toBeHidden();
+  const brandIcon = rail.locator(".customer-app__brand-mark img");
+  await expect(brandIcon).toBeVisible();
+  await expect(brandIcon).toHaveAttribute("src", /logo\.png/);
+  await expect(rail.locator(".customer-app__nav-icon svg")).toHaveCount(5);
   await expect(rail.getByRole("link", { name: "홈", exact: true })).toHaveAttribute("aria-current", "page");
-  await expect(page.getByRole("link", { name: "새 컨설팅 시작" })).toHaveAttribute("href", "/consulting/new");
+  await expect(page.locator('[data-customer-home-confirmed-look="true"] img')).toHaveCount(1);
+  const resultAction = page.locator('[data-action-id="result"]');
+  const careAction = page.locator('[data-action-id="care"]');
+  await expect(resultAction).toHaveAttribute("aria-pressed", "true");
+  await careAction.click();
+  await expect(careAction).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("heading", { name: "내추럴 레이어드 컷 홈 케어" })).toBeVisible();
+  await careAction.press("ArrowLeft");
+  await expect(resultAction).toHaveAttribute("aria-pressed", "true");
+  await expect(resultAction).toBeFocused();
   await page.screenshot({ path: testInfo.outputPath("customer-shell-desktop.png"), fullPage: true, animations: "disabled" });
+  await footer.scrollIntoViewIfNeeded();
+  await expect(footer).toBeVisible();
+  await expect(footer).toContainText("사업자정보");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(rail).toBeHidden();
   await expect(bottomNavigation).toBeVisible();
+  await expect(bottomNavigation.locator("svg")).toHaveCount(5);
   await expect(bottomNavigation.getByRole("link", { name: "새 컨설팅" })).toHaveAttribute("href", "/consulting/new");
+  const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
+  expect(horizontalOverflow).toBe(false);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(resultAction).toHaveCSS("transition-duration", "0s");
   await page.screenshot({ path: testInfo.outputPath("customer-shell-mobile.png"), fullPage: true, animations: "disabled" });
+  await expect(page.locator("[data-nextjs-dialog]")).toHaveCount(0);
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("customer home hides the image region and recommends consultation without a confirmed look", async ({ page }) => {
+  await page.goto("/e2e-harness/customer-shell?look=none");
+
+  const hero = page.locator(".customer-home-hero");
+  await expect(hero).toHaveAttribute("data-has-confirmed-look", "false");
+  await expect(hero.locator(".customer-home-hero__visual")).toHaveCount(0);
+  await expect(page.locator('[data-customer-home-confirmed-look="true"]')).toHaveCount(0);
+  await expect(page.locator('[data-customer-home-recommendation="true"]')).toBeVisible();
+  await expect(page.getByRole("link", { name: "새 컨설팅 시작" })).toHaveAttribute("href", "/consulting/new");
+  await expect(page.locator('[data-app-shell="footer"]')).toHaveCount(1);
 });
 
 test("stylebook separates final hair and fashion records without leaving the final report", async ({ page }, testInfo) => {

@@ -6,8 +6,11 @@ status: experimental
 source: my-app/components/customer/CustomerShell.tsx
 related_source:
   - my-app/components/customer/customer-shell.css
+  - my-app/components/customer/CustomerHomeExperience.tsx
+  - my-app/components/layout/Footer.tsx
   - my-app/lib/customer-navigation.ts
   - my-app/lib/customer-home-v2-server.ts
+  - my-app/lib/customer-home-view.ts
   - my-app/lib/v2/customer-history-server.ts
   - my-app/components/customer/CustomerStylebookCollection.tsx
   - my-app/app/result/v2/[selectionId]/page.tsx
@@ -17,12 +20,15 @@ public_api:
   exports:
     - CustomerShell
     - CustomerPageHeader
+    - CustomerHomeExperience
   props:
     - children: ReactNode
     - activePath: optional test-harness route override
     - page-header-copy-and-action
   events:
     - native-link-navigation
+    - home-action-selection
+    - home-action-keyboard-navigation
 
 boundaries:
   owns:
@@ -31,9 +37,13 @@ boundaries:
     - desktop-fixed-rail
     - tablet-compact-rail
     - mobile-safe-area-bottom-navigation
+    - customer-aligned-legal-business-footer
+    - HairFit-logo-brand-mark
     - V2-confirmed-style-history-presentation
     - V2-final-fashion-look-history-presentation
     - V2-actual-service-aftercare-presentation
+    - confirmed-result-only-home-hero-media
+    - state-aware-home-action-deck
   forbidden:
     - consultation-stage-rendering
     - consultation-route-or-data-mutation
@@ -51,6 +61,9 @@ route_contract:
     - /mypage
   primary_consultation_entry: /consulting/new
   consultation_shell: hidden
+  global_header: hidden
+  global_footer: visible-and-customer-aligned
+  brand_icon: /logo.png
   internal_consultation_flow: preserved
   nested_customer_routes: supported
   compatibility_redirect: /result/v2/{selectionId} -> /consulting/{consultationId}/result
@@ -64,6 +77,12 @@ history_data_contract:
     - /consulting/{consultationId}/result
     - /aftercare/{actualServiceId}
   home_legacy_generation_dependency: forbidden
+  home_hero_media: completed-consultation-image-only
+  home_without_confirmed_media: recommendation-panel-with-no-image-dom
+  home_default_priority:
+    - in-progress-consultation
+    - completed-result
+    - new-consultation
   stylebook_sources:
     - style_selection_snapshots_v2-confirmed-only
     - fashion_preview_sets_v2-latest-final-selection
@@ -105,16 +124,20 @@ a11y_contract:
   active_item: aria-current-page
   focus_indicator: visible-champagne-outline
   reduced_motion: supported
+  action_state: aria-pressed
+  action_keyboard: arrow-keys-home-end
 
 test_surface:
   structure: my-app/lib/app-shell-accessibility.test.ts
   web_typecheck: required
   interaction: required
   responsive_visual: required
+  no-confirmed-image-dom: required
+  single-footer: required
   customer_copy: credit-balance-excluded
 
 change_policy:
-  current_gate: breaking
+  current_gate: behavioral-and-style-contract
   compatible_change_requires:
     - passport-update
     - shell-contract-test

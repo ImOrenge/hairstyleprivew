@@ -26,6 +26,26 @@ test("photo diagnosis migration is mirrored and uses durable claim fencing", () 
   assert.match(root, /revoke all[\s\S]*authenticated[\s\S]*grant execute[\s\S]*service_role/i);
 });
 
+test("photo analysis input recovery is mirrored and rearms invalid or terminal jobs safely", () => {
+  const name = "20260827120303_consultation_photo_analysis_input_recovery.sql";
+  const root = readFileSync(join(repo, "supabase", "migrations", name), "utf8");
+  const mirror = readFileSync(join(app, "supabase", "migrations", name), "utf8");
+  const rootSmoke = readFileSync(join(repo, "supabase", "tests", "consultation_photo_analysis_input_recovery_smoke.sql"), "utf8");
+  const mirrorSmoke = readFileSync(join(app, "supabase", "tests", "consultation_photo_analysis_input_recovery_smoke.sql"), "utf8");
+  assert.equal(root, mirror);
+  assert.equal(rootSmoke, mirrorSmoke);
+  assert.match(root, /PHOTO_ANALYSIS_INPUT_INVALID/);
+  assert.match(root, /expectedVersion/);
+  assert.match(root, /faceEvidence/);
+  assert.match(root, /photo' ->> 'draftId'/);
+  assert.match(root, /v_existing\.source_photo_id <> p_source_photo_id/);
+  assert.match(root, /v_existing\.state = 'completed'[\s\S]*return v_existing/);
+  assert.match(root, /attempt_count = 0/);
+  assert.match(root, /fencing_token = run\.fencing_token \+ 1/);
+  assert.match(root, /lease_owner = null/);
+  assert.match(root, /grant execute[\s\S]*service_role/i);
+});
+
 test("new photo analysis clears old evidence and fences persistence by run id", () => {
   const server = readApp("lib/consulting/photo-analysis-server.ts");
   assert.match(server, /analysisRunId: run\.id/);
@@ -46,6 +66,12 @@ test("precision capture requires and uploads independently validated primary and
   assert.match(photo, /captureMode === "precision" && !sourceAssistFile/);
   assert.match(photo, /retentionDays: sourcePhoto\.retentionDays/);
   assert.match(photo, /stablePhotoUploadId/);
+  assert.match(photo, /uploadGenerationDraftWithSingleRecovery/);
+  assert.match(photo, /createFreshClientRequestId: \(\) => crypto\.randomUUID\(\)/);
+  assert.match(photo, /분석 연결 다시 시도/);
+  assert.match(photo, /retryAnalysisConnection/);
+  assert.match(photo, /connectPhotoAnalysis\(analysisRecovery\.photo, analysisRecovery\.faceEvidence\)/);
+  assert.doesNotMatch(photo.match(/const retryAnalysisConnection[\s\S]*?\n  };/)?.[0] ?? "", /uploadDraft/);
   assert.match(photo, /customer_reselected_primary_photo/);
   assert.match(photo, /colorAssistCaptureAssetId: null/);
   assert.doesNotMatch(photo, /const colorFile = sourceAssistFile \?\? preparedFile/);
@@ -73,4 +99,21 @@ test("retention selection controls both draft and personal color capture expiry"
   assert.match(capture, /input\.retentionDays \* DAY_MS/);
   assert.match(worker, /\/api\/consultations\/photo-captures\/cleanup/);
   assert.match(worker, /\/api\/consultations\/photo-analysis\/drain/);
+});
+
+test("draft and analysis APIs expose safe recovery targets and reserve 202 for executable work", () => {
+  const draft = readApp("app/api/generations/drafts/route.ts");
+  const analysisRoute = readApp("app/api/consultations/[sessionId]/photo-analysis/route.ts");
+  const analysisServer = readApp("lib/consulting/photo-analysis-server.ts");
+  assert.match(draft, /evaluateGenerationDraftReuse/);
+  assert.match(draft, /DRAFT_NOT_REUSABLE/);
+  assert.match(draft, /DRAFT_UPLOAD_FAILED/);
+  assert.match(draft, /retryTarget: "photo"/);
+  assert.doesNotMatch(draft, /\{ error: message \}/);
+  assert.match(analysisRoute, /isConsultationAnalysisRunExecutable\(queued\.run\)/);
+  assert.match(analysisRoute, /queued\.run\.state === "completed"/);
+  assert.match(analysisRoute, /PHOTO_ANALYSIS_NOT_QUEUEABLE/);
+  assert.match(analysisRoute, /retryTarget/);
+  assert.match(analysisServer, /current\?\.photo\.analysisRunId === run\.id/);
+  assert.match(analysisServer, /PHOTO_ANALYSIS_QUEUE_FAILED/);
 });

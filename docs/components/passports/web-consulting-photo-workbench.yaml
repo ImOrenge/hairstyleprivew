@@ -20,11 +20,16 @@ public_api:
     - durable-analysis-resume
     - retention-cleanup
     - automatic-analysis-handoff
+    - analysis-only-retry
+    - expired-draft-single-reupload
 
 dependencies:
   internal:
     - my-app/lib/personal-color-capture-client.ts
     - my-app/lib/consulting/photo-preflight-server.ts
+    - my-app/lib/generation-upload-draft-reuse.ts
+    - my-app/app/api/generations/drafts/route.ts
+    - my-app/app/api/consultations/[sessionId]/photo-analysis/route.ts
     - my-app/components/consulting/workbenches/shared.tsx
   external:
     - react
@@ -62,6 +67,8 @@ state:
     - current-analysis-run-id
     - color-quality-projection
     - transient-error
+    - photo-workflow-stage
+    - uploaded-photo-analysis-recovery
   derived:
     - selected-usage-scopes
     - primary-and-secondary-color-capture-roles
@@ -73,6 +80,9 @@ side_effects:
   - uploads-personal-color-file-through-signed-private-storage-token
   - finalizes-checksum-and-metadata
   - automatically-hands-off-to-analysis
+  - validates-ready-or-accepted-draft-state-path-and-future-expiry
+  - retries-expired-or-nonreusable-draft-once-with-new-uuid
+  - retries-analysis-link-without-reuploading-preserved-photo
   - persists-primary-and-assist-receipts-before-analysis
   - resumes-through-leased-fenced-analysis-worker
   - schedules-selected-retention-cleanup
@@ -93,6 +103,7 @@ a11y_contract:
     crop-preserved: true
     stale-result-hidden: true
     polling-timeout-and-reconnect: true
+    internal-errors-hidden-behind-korean-message: true
   motion:
     no-new-motion: true
 
@@ -105,6 +116,8 @@ test_surface:
     route: /consulting/e2e-harness?stage=photo
     evidence: docs/hairfit-v2/evidence/p29-phase-01-photo-capture-modes.png
   typecheck: required
+  upload_reuse_contract: my-app/lib/generation-upload-draft-reuse.test.ts
+  durable_queue_contract: my-app/lib/consulting/photo-diagnosis-hardening.test.ts
 
 change_policy:
   current_gate: behavioral
@@ -120,3 +133,4 @@ change_policy:
 promotion_blockers:
   - authenticated-live-storage-upload-not-verified
   - remote-migration-not-applied
+  - authenticated-analysis-only-retry-not-live-verified

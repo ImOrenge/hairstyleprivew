@@ -92,6 +92,14 @@ function mapAnalysisRun(row: AnalysisRunRow): ConsultationAnalysisRun {
   };
 }
 
+export function isConsultationAnalysisRunExecutable(run: ConsultationAnalysisRun) {
+  return run.state === "queued"
+    || run.state === "preflight"
+    || run.state === "landmarks"
+    || run.state === "analyzing"
+    || (run.state === "retry_required" && run.retryable);
+}
+
 export async function readLatestConsultationAnalysisRun(userId: string, consultationId: string) {
   const result = await getSupabaseAdminClient().from("consultation_analysis_runs_v2")
     .select(ANALYSIS_RUN_SELECT)
@@ -140,13 +148,30 @@ export async function queueConsultationPhotoAnalysis(input: {
     ].join(":"),
     p_input_snapshot: initialInput,
   });
-  if (queued.error || !queued.data) throw new Error(queued.error?.message || "사진 분석 작업을 준비하지 못했습니다.");
+  if (queued.error || !queued.data) {
+    const code = queued.error?.message.match(/PHOTO_ANALYSIS_[A-Z_]+/)?.[0];
+    if (code === "PHOTO_ANALYSIS_INPUT_INVALID") {
+      throw new HairfitV2Error(code, 409, "사진 분석 정보를 다시 연결해 주세요.");
+    }
+    if (code === "PHOTO_ANALYSIS_SOURCE_CONFLICT") {
+      throw new HairfitV2Error(code, 409, "다른 사진 요청과 충돌했습니다. 화면을 새로고침해 주세요.");
+    }
+    throw new HairfitV2Error("PHOTO_ANALYSIS_QUEUE_FAILED", 503, "사진 분석 대기열을 준비하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+  }
   const runRow = queued.data as unknown as AnalysisRunRow;
   const run = mapAnalysisRun(runRow);
   if (run.state === "completed") {
     const current = await readServerConsultation(input.userId, input.consultationId);
     if (!current) throw new HairfitV2Error("CONSULTATION_NOT_FOUND", 404, "상담을 찾을 수 없습니다.");
     return { run, snapshot: current, input: { ...input, expectedVersion: current.version } };
+  }
+  if (!isConsultationAnalysisRunExecutable(run)) {
+    throw new HairfitV2Error("PHOTO_ANALYSIS_NOT_QUEUEABLE", 409, "사진 분석을 다시 연결해 주세요.");
+  }
+  const current = await readServerConsultation(input.userId, input.consultationId);
+  if (current?.photo.analysisRunId === run.id) {
+    parseStoredAnalysisInput(runRow);
+    return { run, snapshot: current, input: { ...input, photo: current.photo, expectedVersion: current.version } };
   }
   const clean = createConsultationSnapshot({ sessionId: input.consultationId, userId: input.userId });
   const queuedPhoto = { ...input.photo, analysisRunId: run.id };

@@ -9,6 +9,7 @@ import {
   removeGenerationOriginalImage,
   uploadGenerationOriginalImage,
 } from "../../../../lib/generation-image-storage";
+import { evaluateGenerationDraftReuse } from "../../../../lib/generation-upload-draft-reuse";
 import { getSupabaseAdminClient } from "../../../../lib/supabase";
 
 interface DraftUploadRequest {
@@ -145,7 +146,7 @@ function draftResponse(row: DraftRow, alreadyUploaded: boolean) {
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ code: "AUTH_REQUIRED", error: "로그인이 필요합니다.", retryTarget: "refresh" }, { status: 401 });
   }
 
   const body = (await request.json().catch(() => ({}))) as DraftUploadRequest;
@@ -153,17 +154,27 @@ export async function POST(request: Request) {
   const referenceImageDataUrl = body.referenceImageDataUrl?.trim() || "";
   const retentionDays = body.retentionDays === 7 || body.retentionDays === 30 ? body.retentionDays : 1;
   if (!UUID_PATTERN.test(clientRequestId)) {
-    return NextResponse.json({ error: "clientRequestId must be a valid UUID" }, { status: 400 });
+    return NextResponse.json({ code: "INVALID_REQUEST_ID", error: "사진 업로드 요청을 다시 시작해 주세요.", retryTarget: "photo" }, { status: 400 });
   }
+  const supabase = getSupabaseAdminClient() as unknown as DraftUploadClient;
   if (!referenceImageDataUrl) {
-    return NextResponse.json(
-      { code: "INVALID_IMAGE_DATA", error: "Image data is required" },
-      { status: 400 },
-    );
+    try {
+      await ensureUserProfile(userId, supabase);
+      const existing = await loadDraft(supabase, userId, clientRequestId);
+      if (existing) {
+        const reuse = evaluateGenerationDraftReuse(existing);
+        if (reuse.reusable) return NextResponse.json(draftResponse(existing, true), { status: 200 });
+        return NextResponse.json({ code: reuse.code, error: reuse.message, retryTarget: "photo" }, { status: reuse.status });
+      }
+      return NextResponse.json({ code: "DRAFT_NOT_REUSABLE", error: "기존 사진 업로드를 찾지 못했습니다. 사진을 다시 선택해 주세요.", retryTarget: "photo" }, { status: 409 });
+    } catch (error) {
+      console.error("[generation-drafts] Draft reuse check failed", error);
+      return NextResponse.json({ code: "DRAFT_REUSE_CHECK_FAILED", error: "사진 업로드 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.", retryTarget: "photo" }, { status: 500 });
+    }
   }
   if (referenceImageDataUrl.length > MAX_DATA_URL_LENGTH) {
     return NextResponse.json(
-      { code: "IMAGE_TOO_LARGE", error: "Image exceeds 8MB" },
+      { code: "IMAGE_TOO_LARGE", error: "사진은 8MB 이하로 선택해 주세요.", retryTarget: "photo" },
       { status: 413 },
     );
   }
@@ -174,21 +185,35 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof ImageUploadRequestError) {
       return NextResponse.json(
-        { code: error.code, error: error.message },
+        {
+          code: error.code,
+          error: error.code === "IMAGE_TOO_LARGE"
+            ? "사진은 8MB 이하로 선택해 주세요."
+            : error.code === "UNSUPPORTED_IMAGE_TYPE"
+              ? "JPG, PNG 또는 WebP 사진을 선택해 주세요."
+              : "사진 파일을 읽지 못했습니다. 다른 사진을 선택해 주세요.",
+          retryTarget: "photo",
+        },
         { status: error.status },
       );
     }
     return NextResponse.json(
-      { code: "INVALID_IMAGE_DATA", error: "Invalid image data" },
+      { code: "INVALID_IMAGE_DATA", error: "사진 파일을 읽지 못했습니다. 다른 사진을 선택해 주세요.", retryTarget: "photo" },
       { status: 400 },
     );
   }
 
-  const supabase = getSupabaseAdminClient() as unknown as DraftUploadClient;
   try {
     await ensureUserProfile(userId, supabase);
     const existing = await loadDraft(supabase, userId, clientRequestId);
     if (existing) {
+      const reuse = evaluateGenerationDraftReuse(existing);
+      if (!reuse.reusable) {
+        return NextResponse.json(
+          { code: reuse.code, error: reuse.message, retryTarget: "photo" },
+          { status: reuse.status },
+        );
+      }
       return NextResponse.json(draftResponse(existing, true), { status: 200 });
     }
 
@@ -212,7 +237,10 @@ export async function POST(request: Request) {
 
     const reconciled = await loadDraft(supabase, userId, clientRequestId).catch(() => null);
     if (reconciled) {
-      return NextResponse.json(draftResponse(reconciled, false), { status: 201 });
+      const reuse = evaluateGenerationDraftReuse(reconciled);
+      if (reuse.reusable) {
+        return NextResponse.json(draftResponse(reconciled, false), { status: 201 });
+      }
     }
 
     await removeGenerationOriginalImage(supabase, storedOriginal.path).catch((cleanupError) => {
@@ -220,7 +248,10 @@ export async function POST(request: Request) {
     });
     throw new Error(registerError?.message || "Draft upload could not be registered");
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Draft upload failed";
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error("[generation-drafts] Draft upload failed", error);
+    return NextResponse.json(
+      { code: "DRAFT_UPLOAD_FAILED", error: "사진을 안전하게 업로드하지 못했습니다. 잠시 후 다시 시도해 주세요.", retryTarget: "photo" },
+      { status: 500 },
+    );
   }
 }
