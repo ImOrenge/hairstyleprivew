@@ -379,6 +379,8 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(read("../../middleware.ts"), /}, getClerkMiddlewareRuntimeOptions\);/);
   assert.match(router, /await import\(\s*"\.\.\/\.\.\/\.open-next\/middleware\/handler\.mjs"/);
   assert.match(router, /SERVER_VERIFIED_CALLBACK_PATHS/);
+  assert.match(router, /"\/api\/consultations\/photo-analysis\/drain"/);
+  assert.match(router, /"\/api\/consultations\/photo-captures\/cleanup"/);
   assert.match(router, /pathname\.startsWith\("\/api\/admin\/hairstyles\/"\)/);
   assert.match(server, /server-functions\/default\/handler\.mjs/);
   assert.match(mediaServer, /server-functions\/media\/handler\.mjs/);

@@ -44,6 +44,8 @@ const SERVER_VERIFIED_CALLBACK_PATHS = new Set([
   "/api/styling/fail",
   "/api/styling/workflow-dispatch",
   "/api/styling/notifications/drain",
+  "/api/consultations/photo-analysis/drain",
+  "/api/consultations/photo-captures/cleanup",
 ]);
 const SERVER_VERIFIED_CALLBACK_DETAIL = /^\/api\/(?:generations|styling)\/[0-9a-f-]+\/(?:notify|cleanup-original)\/?$/i;
 

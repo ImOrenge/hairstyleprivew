@@ -20,6 +20,10 @@ test("only the explicit workflow callback route shapes bypass user authenticatio
     "/api/generations/cleanup-stale-originals",
     "/api/generations/notifications/drain",
     "/api/generations/notifications/drain/",
+    "/api/consultations/photo-analysis/drain",
+    "/api/consultations/photo-analysis/drain/",
+    "/api/consultations/photo-captures/cleanup",
+    "/api/consultations/photo-captures/cleanup/",
     `/api/generations/${generationId}/notify`,
     `/api/generations/${generationId}/cleanup-original`,
   ];
@@ -27,6 +31,8 @@ test("only the explicit workflow callback route shapes bypass user authenticatio
     "/api/generations/start",
     "/api/generations/notifications/drain/extra",
     "/api/generations/not-a-uuid/notify",
+    "/api/consultations/photo-analysis/drain/extra",
+    "/api/consultations/photo-captures/cleanup/extra",
     `/api/generations/${generationId}`,
     `/api/generations/${generationId}/notify/extra`,
     "/api/payments/webhook",
@@ -37,6 +43,19 @@ test("only the explicit workflow callback route shapes bypass user authenticatio
   }
   for (const pathname of rejected) {
     assert.equal(isGenerationWorkflowCallbackPath(pathname), false, pathname);
+  }
+});
+
+test("photo workflow callbacks require the exact shared secret", async () => {
+  for (const pathname of [
+    "/api/consultations/photo-analysis/drain",
+    "/api/consultations/photo-captures/cleanup",
+  ]) {
+    const request = new Request(`https://hairfit.beauty${pathname}`, {
+      method: "POST",
+      headers: { "x-hairfit-generation-secret": secret },
+    });
+    assert.equal(await isAuthorizedGenerationWorkflowCallback(request, secret), true, pathname);
   }
 });
 
