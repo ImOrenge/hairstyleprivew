@@ -331,6 +331,7 @@ test("server-produced landmark evidence is persisted and rendered without client
 
 test("Cloudflare multi-worker deployment keeps server secrets and pins the exact downstream version", () => {
   const router = read("../../workers/open-next-multi/middleware.js");
+  const openNextConfig = read("../../open-next.config.ts");
   const imageRoute = read("../../workers/open-next-multi/image-route.js");
   const server = read("../../workers/open-next-multi/server.js");
   const mediaServer = read("../../workers/open-next-multi/media-server.js");
@@ -381,6 +382,8 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /SERVER_VERIFIED_CALLBACK_PATHS/);
   assert.match(router, /"\/api\/consultations\/photo-analysis\/drain"/);
   assert.match(router, /"\/api\/consultations\/photo-captures\/cleanup"/);
+  assert.match(openNextConfig, /"app\/api\/consultations\/photo-analysis\/drain\/route"/);
+  assert.match(openNextConfig, /"app\/api\/consultations\/photo-captures\/cleanup\/route"/);
   assert.match(router, /pathname\.startsWith\("\/api\/admin\/hairstyles\/"\)/);
   assert.match(server, /server-functions\/default\/handler\.mjs/);
   assert.match(mediaServer, /server-functions\/media\/handler\.mjs/);

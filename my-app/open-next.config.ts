@@ -34,6 +34,8 @@ const consultationWorkerRoutes = [
   "app/api/consultations/[sessionId]/refresh-assets/route",
   "app/api/consultations/[sessionId]/route",
   "app/api/consultations/[sessionId]/share/route",
+  "app/api/consultations/photo-analysis/drain/route",
+  "app/api/consultations/photo-captures/cleanup/route",
   "app/api/consultations/route",
   "app/api/v2/consultations/[consultationId]/aftercare-photo/route",
   "app/api/v2/consultations/[consultationId]/aftercare/notifications/route",
