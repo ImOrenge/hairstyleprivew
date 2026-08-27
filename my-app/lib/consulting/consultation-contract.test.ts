@@ -385,6 +385,18 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.match(router, /"\/api\/consultations\/photo-captures\/cleanup"/);
   assert.match(openNextConfig, /"app\/api\/consultations\/photo-analysis\/drain\/route"/);
   assert.match(openNextConfig, /"app\/api\/consultations\/photo-captures\/cleanup\/route"/);
+  assert.match(openNextConfig, /"app\/api\/mobile\/stylebook\/route"/);
+  assert.match(openNextConfig, /"app\/api\/stylebook-shares\/\[token\]\/route"/);
+  assert.match(openNextConfig, /"app\/aftercare\/page"/);
+  assert.match(openNextConfig, /"app\/aftercare\/\[hairRecordId\]\/page"/);
+  assert.match(openNextConfig, /"app\/api\/mobile\/aftercare\/route"/);
+  assert.match(openNextConfig, /"app\/api\/v2\/consultations\/\[consultationId\]\/aftercare-checkins\/route"/);
+  assert.match(openNextConfig, /"app\/admin\/email-campaigns\/page"/);
+  assert.match(openNextConfig, /"app\/api\/admin\/email-campaigns\/route"/);
+  assert.match(openNextConfig, /"app\/api\/admin\/makeup-recipe-catalog\/route"/);
+  assert.match(openNextConfig, /"app\/result\/v2\/\[selectionId\]\/page"/);
+  assert.match(openNextConfig, /"app\/stylebook\/page"/);
+  assert.match(openNextConfig, /"app\/stylebook\/share\/\[token\]\/page"/);
   assert.match(router, /pathname\.startsWith\("\/api\/admin\/hairstyles\/"\)/);
   assert.match(server, /server-functions\/default\/handler\.mjs/);
   assert.match(mediaServer, /server-functions\/media\/handler\.mjs/);
@@ -484,11 +496,20 @@ test("Cloudflare router sends only explicit dynamic route families to split Work
     "/api/styling/job-1/notify",
     "/api/personal-color/analyze",
     "/api/style-profile/body-photo",
+    "/api/mobile/stylebook",
+    "/api/mobile/aftercare",
+    "/api/mobile/aftercare/record-1",
+    "/api/stylebook-shares/token-1",
+    "/aftercare",
+    "/aftercare/record-1",
     "/consulting/new",
     "/consulting/share/token-1",
     "/consulting/session-1/analysis",
     "/generate/job-1",
     "/result/job-1",
+    "/result/v2/selection-1",
+    "/stylebook",
+    "/stylebook/share/token-1",
     "/styler/job-1",
     "/.well-known/hairfit-media-deployment",
   ]) {
@@ -497,7 +518,6 @@ test("Cloudflare router sends only explicit dynamic route families to split Work
 
   for (const pathname of [
     "/",
-    "/aftercare",
     "/api/email/resend",
     "/api/v2/catalog",
     "/consulting/e2e-harness",

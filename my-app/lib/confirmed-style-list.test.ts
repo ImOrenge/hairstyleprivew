@@ -8,6 +8,8 @@ function read(relativePath: string) {
 
 const home = read("../app/home/page.tsx");
 const dashboard = read("./customer-home-data.ts");
+const customerDashboardServer = read("./customer-dashboard-server.ts");
+const customerHomeV2Server = read("./customer-home-v2-server.ts");
 const confirmedStyleMedia = read("./confirmed-style-media.ts");
 const mobileHome = read("../../apps/hairfit-app/app/index.tsx");
 const stylebook = read("../app/stylebook/page.tsx");
@@ -40,12 +42,15 @@ test("confirmed cards prefer the durable selected variant column over stale opti
 });
 
 test("web and native home prioritize care while the unified stylebook owns durable history", () => {
-  for (const source of [home, mobileHome]) {
-    assert.match(source, /recentConfirmedStyles/);
-    assert.match(source, /3 · 케어/);
-    assert.match(source, /selectedVariantImageUrl/);
-    assert.doesNotMatch(source, />헤어 생성 기록</);
-  }
+  assert.match(home, /loadCustomerDashboardForUser/);
+  assert.match(home, /3 · 케어/);
+  assert.match(customerDashboardServer, /loadCustomerHomeV2/);
+  assert.match(customerHomeV2Server, /loadCustomerAftercareV2/);
+  assert.doesNotMatch(home, />헤어 생성 기록</);
+  assert.match(mobileHome, /recentConfirmedStyles/);
+  assert.match(mobileHome, /3 · 케어/);
+  assert.match(mobileHome, /selectedVariantImageUrl/);
+  assert.doesNotMatch(mobileHome, />헤어 생성 기록</);
   for (const source of [stylebook, mobileStylebook]) {
     assert.doesNotMatch(source, /recentGenerations|recentStylingSessions|recentConfirmedStyles/);
   }
