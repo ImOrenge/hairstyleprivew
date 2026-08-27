@@ -57,12 +57,12 @@ export default async function CustomerHomePage() {
               기존 상담 방식 그대로 사진과 답변을 이어가면, 얼굴 균형과 현실적인 관리 조건을 함께 고려해 추천해 드립니다.
             </p>
             <div className="flex flex-wrap gap-3">
-              <Link href={inProgress?.href ?? "/consulting/new"} className="customer-primary-button">
+              <Link href={inProgress?.href ?? "/consulting/new"} prefetch={false} className="customer-primary-button">
                 {inProgress ? "컨설팅 이어하기" : "새 컨설팅 시작"}
                 <ArrowRight aria-hidden="true" />
               </Link>
               {inProgress ? (
-                <Link href="/consulting/new" className="customer-secondary-button">
+                <Link href="/consulting/new" prefetch={false} className="customer-secondary-button">
                   새 컨설팅
                 </Link>
               ) : null}
@@ -98,7 +98,7 @@ export default async function CustomerHomePage() {
                   ? `${formatDate(inProgress.startedAt)} 시작한 상담을 저장된 단계부터 이어가세요.`
                   : "새 컨설팅을 시작하면 진행 상태를 이곳에서 바로 확인할 수 있어요."}
               </p>
-              <Link href={inProgress?.href ?? "/consulting/new"} className="customer-text-link">
+              <Link href={inProgress?.href ?? "/consulting/new"} prefetch={false} className="customer-text-link">
                 {inProgress ? "상담 이어하기" : "컨설팅 시작"}
                 <ArrowRight aria-hidden="true" />
               </Link>
