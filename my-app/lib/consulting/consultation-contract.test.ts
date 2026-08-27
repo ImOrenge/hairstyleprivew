@@ -30,13 +30,14 @@ test("consulting timestamps are deterministic across server and browser locales"
   assert.doesNotMatch(read("../../components/consulting/workbenches/shared.tsx"), /toLocaleString\("ko-KR"\)/);
 });
 
-test("consulting entry derives progress from the shared journey and promises the photo-first flow", () => {
+test("consulting entry localizes the shared recommended stage and promises the photo-first flow", () => {
   const entry = read("../../components/consulting/ConsultingEntry.tsx");
   const page = read("../../app/consulting/new/page.tsx");
-  for (const source of [entry, page]) {
-    assert.match(source, /CONSULTATION_STAGE_SLUGS\.length/);
-    assert.doesNotMatch(source, /11단계|\/11/);
-  }
+  assert.match(page, /CONSULTATION_STAGE_SLUGS\.length/);
+  assert.doesNotMatch(entry, /CONSULTATION_STAGE_SLUGS|\{latest\.journey\.recommendedStage\}/);
+  assert.match(entry, /CONSULTATION_STAGE_DEFINITIONS/);
+  assert.match(entry, /recommendedDefinition\?\.title/);
+  assert.doesNotMatch(`${entry}\n${page}`, /11단계|\/11/);
   assert.match(entry, /사진을 먼저 분석하고/);
   assert.match(entry, /9개 전략형 프리뷰/);
   assert.match(entry, /퍼스널 컬러·메이크업·패션/);
@@ -832,7 +833,9 @@ test("navigation has no common Next control and outputs open by lifecycle capabi
   assert.match(controls, /recommendedStage/);
   assert.match(controls, /currentStageComplete/);
   assert.match(controls, /stage === "makeup"/);
-  assert.match(identity, /전체 상담 \$\{stageIndex \+ 1\}\/\$\{CONSULTATION_STAGE_DEFINITIONS\.length\}/);
+  assert.match(identity, /const visibleProgressLabel/);
+  assert.match(identity, /전체 상담 내부 단계 \$\{stageIndex \+ 1\}\/\$\{CONSULTATION_STAGE_DEFINITIONS\.length\}/);
+  assert.match(identity, />\{visibleProgressLabel\}<\/p>/);
   assert.match(context, /이번 결과에 반영한 기준/);
   assert.match(context, /<details/);
   assert.match(overlay, /allowedStages/);

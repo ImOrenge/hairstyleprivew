@@ -7,6 +7,7 @@ source: my-app/components/customer/CustomerShell.tsx
 related_source:
   - my-app/components/customer/customer-shell.css
   - my-app/lib/customer-navigation.ts
+  - my-app/lib/customer-home-v2-server.ts
   - my-app/lib/v2/customer-history-server.ts
   - my-app/components/customer/CustomerStylebookCollection.tsx
   - my-app/app/result/v2/[selectionId]/page.tsx
@@ -55,6 +56,14 @@ route_contract:
   compatibility_redirect: /result/v2/{selectionId} -> /consulting/{consultationId}/result
 
 history_data_contract:
+  home_sources:
+    - consultation_sessions-v2-active-and-completed
+    - actual_services_v2-latest-confirmed
+  home_destinations:
+    - /consulting/{consultationId}/{recommendedStage}
+    - /consulting/{consultationId}/result
+    - /aftercare/{actualServiceId}
+  home_legacy_generation_dependency: forbidden
   stylebook_sources:
     - style_selection_snapshots_v2-confirmed-only
     - fashion_preview_sets_v2-latest-final-selection

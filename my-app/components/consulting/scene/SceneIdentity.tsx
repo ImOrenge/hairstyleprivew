@@ -10,12 +10,15 @@ export function SceneIdentity({ stage, snapshot, chapterNavigationEnabled = true
   const presentation = deriveConsultationChapterPresentation(snapshot, stage);
   const chapterIndex = CONSULTATION_CHAPTERS.indexOf(presentation.activeChapter);
   const stageIndex = consultationStageIndex(stage);
-  const progressLabel = chapterNavigationEnabled
-    ? `${CHAPTER_CUSTOMER_LABELS[presentation.activeChapter]} ${chapterIndex + 1}/4 · 전체 상담 ${stageIndex + 1}/${CONSULTATION_STAGE_DEFINITIONS.length}`
-    : `${stageIndex + 1}/${CONSULTATION_STAGE_DEFINITIONS.length}`;
+  const visibleProgressLabel = chapterNavigationEnabled
+    ? `${CHAPTER_CUSTOMER_LABELS[presentation.activeChapter]} ${chapterIndex + 1}/4`
+    : `현재 단계 ${stageIndex + 1}/${CONSULTATION_STAGE_DEFINITIONS.length}`;
+  const assistiveProgressLabel = chapterNavigationEnabled
+    ? `${visibleProgressLabel}. 전체 상담 내부 단계 ${stageIndex + 1}/${CONSULTATION_STAGE_DEFINITIONS.length}`
+    : visibleProgressLabel;
   return (
     <header data-consulting-scene-identity="true" data-identity-variant={compact ? "compact" : "scene"} className="max-w-4xl">
-      <p className="app-kicker" aria-label={`상담 진행 ${progressLabel}`}>{progressLabel}</p>
+      <p className="app-kicker" aria-label={`상담 진행 ${assistiveProgressLabel}`}>{visibleProgressLabel}</p>
       <p className={compact ? "mt-3 text-xl font-black uppercase tracking-[-0.03em] text-[var(--app-muted)] sm:text-2xl" : "mt-4 text-[clamp(1.65rem,4vw,3.25rem)] font-black uppercase leading-[0.9] tracking-[-0.055em] text-[var(--app-muted)]"} aria-hidden="true">
         {chapterNavigationEnabled ? CHAPTER_LABELS[presentation.activeChapter] : definition.task}
       </p>

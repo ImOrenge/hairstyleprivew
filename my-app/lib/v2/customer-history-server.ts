@@ -379,15 +379,19 @@ export async function loadCustomerStyleResultConsultationV2(
   return cleanString((result.data as { consultation_id?: unknown } | null)?.consultation_id) || null;
 }
 
-export async function loadCustomerAftercareV2(userId: string): Promise<CustomerAftercareRecordV2[]> {
+export async function loadCustomerAftercareV2(
+  userId: string,
+  options: { limit?: number } = {},
+): Promise<CustomerAftercareRecordV2[]> {
   if (!isSupabaseConfigured()) return [];
   const db = getSupabaseAdminClient();
+  const limit = Math.min(50, Math.max(1, Math.floor(options.limit ?? 50)));
   const servicesResult = await db
     .from("actual_services_v2")
     .select("id,consultation_id,selection_snapshot_id,services,service_date,designer_notes,confirmed_at")
     .eq("user_id", userId)
     .order("confirmed_at", { ascending: false })
-    .limit(50);
+    .limit(limit);
   if (servicesResult.error) throw new Error(servicesResult.error.message);
   const actualServices = (servicesResult.data ?? []) as unknown as ActualServiceRow[];
   if (!actualServices.length) return [];

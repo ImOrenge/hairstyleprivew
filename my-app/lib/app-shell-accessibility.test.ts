@@ -51,6 +51,8 @@ test("the keyboard skip link targets the focusable root main", () => {
 test("customer surfaces use the five-item atelier shell while consultation stays immersive", () => {
   const shell = readFileSync(path.join(appRoot, "components", "customer", "CustomerShell.tsx"), "utf8");
   const home = readFileSync(path.join(appRoot, "app", "home", "page.tsx"), "utf8");
+  const homeProjection = readFileSync(path.join(appRoot, "lib", "customer-home-v2-server.ts"), "utf8");
+  const dashboardServer = readFileSync(path.join(appRoot, "lib", "customer-dashboard-server.ts"), "utf8");
   const harness = readFileSync(path.join(appRoot, "components", "e2e", "CustomerShellHarness.tsx"), "utf8");
   const navigation = readFileSync(path.join(appRoot, "lib", "customer-navigation.ts"), "utf8");
   const header = readFileSync(path.join(appRoot, "components", "layout", "Header.tsx"), "utf8");
@@ -67,7 +69,14 @@ test("customer surfaces use the five-item atelier shell while consultation stays
   assert.match(shell, /aria-label="고객 주요 내비게이션"/);
   assert.match(shell, /customer-app__bottom-nav/);
   assert.doesNotMatch(`${home}\n${harness}`, /크레딧/);
-  assert.match(home, /formatMembershipLabel\(dashboard\.planKey\)/);
+  assert.match(home, /formatMembershipLabel\(planKey\)/);
+  assert.match(home, /customerHome/);
+  assert.match(homeProjection, /from\("consultation_sessions"\)/);
+  assert.match(homeProjection, /consultationStageHref\(completedId, "result"\)/);
+  assert.match(homeProjection, /loadCustomerAftercareV2\(userId, \{ limit: 1 \}\)/);
+  assert.match(homeProjection, /resolveGenerationImageUrl/);
+  assert.match(home, /care\.actualServiceId/);
+  assert.doesNotMatch(`${home}\n${dashboardServer}`, /recentGenerations|recentConfirmedStyles|user_hair_records|generationHref|CustomerHomeGeneration/);
   assert.match(header, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
   assert.match(footer, /pathname\.startsWith\("\/consulting"\) \|\| isCustomerShellPath\(pathname\)/);
 });

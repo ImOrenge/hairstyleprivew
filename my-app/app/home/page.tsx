@@ -8,7 +8,6 @@ import { CustomerPageHeader, CustomerShell } from "../../components/customer/Cus
 import { AccountSetupPromptModal } from "../../components/home/AccountSetupPromptModal";
 import { buildSignInRedirectUrl } from "../../lib/clerk";
 import { loadCustomerDashboardForUser } from "../../lib/customer-dashboard-server";
-import type { CustomerHomeGeneration } from "../../lib/customer-home-data";
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "-";
@@ -27,29 +26,13 @@ function formatMembershipLabel(planKey: string | null) {
   return "멤버십 관리";
 }
 
-function isGenerationInProgress(item: CustomerHomeGeneration) {
-  return ["queued", "pending", "processing", "running", "generating"].includes(item.status.toLowerCase());
-}
-
-function generationHref(item: CustomerHomeGeneration) {
-  if (isGenerationInProgress(item)) return `/generate/${encodeURIComponent(item.id)}`;
-  const variant = item.selectedVariantId ? `?variant=${encodeURIComponent(item.selectedVariantId)}` : "";
-  return `/result/${encodeURIComponent(item.id)}${variant}`;
-}
-
 export default async function CustomerHomePage() {
   const { userId } = await auth();
   if (!userId) redirect(buildSignInRedirectUrl("/home"));
 
-  const { accountSetupComplete, dashboard, viewerName } = await loadCustomerDashboardForUser(userId);
-  const inProgress = dashboard.recentGenerations.find(isGenerationInProgress) ?? null;
-  const completed = dashboard.recentGenerations.find((item) => item.status.toLowerCase() === "completed") ?? null;
-  const care = dashboard.recentConfirmedStyles[0] ?? null;
-  const heroImage =
-    completed?.selectedVariantImageUrl ??
-    dashboard.recentStylingSessions.find((item) => item.imageUrl)?.imageUrl ??
-    care?.selectedVariantImageUrl ??
-    null;
+  const { accountSetupComplete, customerHome, planKey, viewerName } = await loadCustomerDashboardForUser(userId);
+  const { inProgress, completed, care } = customerHome;
+  const heroImage = completed?.imageUrl ?? care?.imageUrl ?? null;
 
   return (
     <CustomerShell>
@@ -61,7 +44,7 @@ export default async function CustomerHomePage() {
           description="원하는 분위기와 관리 습관을 함께 살펴보고, 내 얼굴에 맞는 스타일을 차분하게 찾아드릴게요."
           action={
             <Link href="/billing" className="customer-secondary-button">
-              {formatMembershipLabel(dashboard.planKey)}
+              {formatMembershipLabel(planKey)}
             </Link>
           }
         />
@@ -73,10 +56,17 @@ export default async function CustomerHomePage() {
             <p>
               기존 상담 방식 그대로 사진과 답변을 이어가면, 얼굴 균형과 현실적인 관리 조건을 함께 고려해 추천해 드립니다.
             </p>
-            <Link href="/consulting/new" className="customer-primary-button">
-              새 컨설팅 시작
-              <ArrowRight aria-hidden="true" />
-            </Link>
+            <div className="flex flex-wrap gap-3">
+              <Link href={inProgress?.href ?? "/consulting/new"} className="customer-primary-button">
+                {inProgress ? "컨설팅 이어하기" : "새 컨설팅 시작"}
+                <ArrowRight aria-hidden="true" />
+              </Link>
+              {inProgress ? (
+                <Link href="/consulting/new" className="customer-secondary-button">
+                  새 컨설팅
+                </Link>
+              ) : null}
+            </div>
           </div>
           <div className="customer-home-hero__visual">
             {heroImage ? (
@@ -102,14 +92,14 @@ export default async function CustomerHomePage() {
             <article className="customer-card customer-home-priority__card">
               <Clock3 aria-hidden="true" />
               <p className="customer-kicker">1 · 진행 중</p>
-              <h3>{inProgress ? "진행 중인 컨설팅이 있어요" : "진행 중인 컨설팅이 없어요"}</h3>
+              <h3>{inProgress ? inProgress.stageTitle : "진행 중인 컨설팅이 없어요"}</h3>
               <p>
                 {inProgress
-                  ? `${formatDate(inProgress.createdAt)} 시작한 작업을 이어서 확인하세요.`
+                  ? `${formatDate(inProgress.startedAt)} 시작한 상담을 저장된 단계부터 이어가세요.`
                   : "새 컨설팅을 시작하면 진행 상태를 이곳에서 바로 확인할 수 있어요."}
               </p>
-              <Link href={inProgress ? generationHref(inProgress) : "/consulting/new"} className="customer-text-link">
-                {inProgress ? "이어서 보기" : "컨설팅 시작"}
+              <Link href={inProgress?.href ?? "/consulting/new"} className="customer-text-link">
+                {inProgress ? "상담 이어하기" : "컨설팅 시작"}
                 <ArrowRight aria-hidden="true" />
               </Link>
             </article>
@@ -117,9 +107,9 @@ export default async function CustomerHomePage() {
             <article className="customer-card customer-home-priority__card">
               <Sparkles aria-hidden="true" />
               <p className="customer-kicker">2 · 최근 결과</p>
-              <h3>{completed?.selectedVariantLabel || "최근 완성된 결과"}</h3>
-              <p>{completed ? `${formatDate(completed.createdAt)} 완성된 스타일을 다시 비교해 보세요.` : "완성된 결과가 여기에 모입니다."}</p>
-              <Link href={completed ? generationHref(completed) : "/stylebook"} className="customer-text-link">
+              <h3>{completed?.title || "최근 완성된 결과"}</h3>
+              <p>{completed ? `${formatDate(completed.completedAt)} 완성된 통합 결과를 다시 확인하세요.` : "완성된 결과가 여기에 모입니다."}</p>
+              <Link href={completed?.href ?? "/stylebook"} className="customer-text-link">
                 {completed ? "결과 다시 보기" : "스타일북 보기"}
                 <ArrowRight aria-hidden="true" />
               </Link>
@@ -130,7 +120,7 @@ export default async function CustomerHomePage() {
               <p className="customer-kicker">3 · 케어</p>
               <h3>{care?.styleName || "내 스타일을 오래 유지해요"}</h3>
               <p>{care ? `${formatDate(care.serviceDate)} 시술의 관리 가이드를 확인하세요.` : "시술 확정 후 맞춤 관리 가이드가 준비됩니다."}</p>
-              <Link href={care ? `/aftercare/${encodeURIComponent(care.id)}` : "/aftercare"} className="customer-text-link">
+              <Link href={care ? `/aftercare/${encodeURIComponent(care.actualServiceId)}` : "/aftercare"} className="customer-text-link">
                 케어 확인
                 <ArrowRight aria-hidden="true" />
               </Link>

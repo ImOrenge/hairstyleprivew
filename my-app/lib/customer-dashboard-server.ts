@@ -1,6 +1,10 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { loadCustomerHomeDashboard, type CustomerHomeDashboard } from "./customer-home-data";
+import {
+  emptyCustomerHomeV2,
+  loadCustomerHomeV2,
+  type CustomerHomeV2,
+} from "./customer-home-v2-server";
 import { isAccountType, isMemberStyleTarget, parseOnboardingMetadata } from "./onboarding";
 import { getActivePlan } from "./plan-entitlements";
 import { getSupabaseAdminClient, isSupabaseConfigured } from "./supabase";
@@ -9,7 +13,6 @@ import { ensureCurrentUserProfile, type ServerSupabaseLike } from "./style-profi
 interface UserRow {
   account_type?: string | null;
   onboarding_completed_at?: string | null;
-  credits?: number | null;
   display_name?: string | null;
   email?: string | null;
 }
@@ -18,17 +21,6 @@ interface MemberProfileRow {
   display_name?: string | null;
   style_target?: string | null;
 }
-
-const emptyDashboard: CustomerHomeDashboard = {
-  credits: 0,
-  planKey: null,
-  styleProfileReady: false,
-  recentConfirmedStyles: [],
-  recentGenerations: [],
-  recentPayments: [],
-  recentStylingSessions: [],
-  recentRefundRequests: [],
-};
 
 function logDashboardLoadFailure(stage: string, userId: string, error: unknown) {
   console.error("[customer-dashboard] Failed to load authenticated customer data:", {
@@ -50,7 +42,8 @@ export async function loadCustomerDashboardForUser(userId: string) {
   const metadata = parseOnboardingMetadata(clerkUser?.publicMetadata);
   let userRow: UserRow | null = null;
   let memberProfile: MemberProfileRow | null = null;
-  let dashboard = emptyDashboard;
+  let planKey: string | null = null;
+  let customerHome: CustomerHomeV2 = emptyCustomerHomeV2();
 
   if (isSupabaseConfigured()) {
     try {
@@ -58,10 +51,10 @@ export async function loadCustomerDashboardForUser(userId: string) {
       const ensured = await ensureCurrentUserProfile(userId, supabase as unknown as ServerSupabaseLike);
       if (ensured.error) logDashboardLoadFailure("ensure_user_profile", userId, ensured.error);
 
-      const [{ data, error }, { data: memberData, error: memberError }] = await Promise.all([
+      const [userResult, memberResult, activePlanResult, customerHomeResult] = await Promise.allSettled([
         supabase
           .from("users")
-          .select("account_type,onboarding_completed_at,credits,display_name,email")
+          .select("account_type,onboarding_completed_at,display_name,email")
           .eq("id", userId)
           .maybeSingle<UserRow>(),
         supabase
@@ -69,27 +62,22 @@ export async function loadCustomerDashboardForUser(userId: string) {
           .select("display_name,style_target")
           .eq("user_id", userId)
           .maybeSingle<MemberProfileRow>(),
+        getActivePlan(supabase as never, userId),
+        loadCustomerHomeV2(userId),
       ]);
 
-      if (error) logDashboardLoadFailure("users_select", userId, error);
-      else userRow = data;
-      if (memberError) logDashboardLoadFailure("member_profiles_select", userId, memberError);
-      else memberProfile = memberData;
-
-      const credits = Number.isInteger(userRow?.credits) ? Number(userRow?.credits) : 0;
-      let planKey: CustomerHomeDashboard["planKey"] = null;
-      try {
-        planKey = await getActivePlan(supabase as never, userId);
-      } catch (error) {
-        logDashboardLoadFailure("active_plan", userId, error);
-      }
-
-      try {
-        dashboard = await loadCustomerHomeDashboard(supabase as never, userId, { credits, planKey });
-      } catch (error) {
-        dashboard = { ...emptyDashboard, credits, planKey };
-        logDashboardLoadFailure("customer_home_dashboard", userId, error);
-      }
+      if (userResult.status === "fulfilled") {
+        if (userResult.value.error) logDashboardLoadFailure("users_select", userId, userResult.value.error);
+        else userRow = userResult.value.data;
+      } else logDashboardLoadFailure("users_select", userId, userResult.reason);
+      if (memberResult.status === "fulfilled") {
+        if (memberResult.value.error) logDashboardLoadFailure("member_profiles_select", userId, memberResult.value.error);
+        else memberProfile = memberResult.value.data;
+      } else logDashboardLoadFailure("member_profiles_select", userId, memberResult.reason);
+      if (activePlanResult.status === "fulfilled") planKey = activePlanResult.value;
+      else logDashboardLoadFailure("active_plan", userId, activePlanResult.reason);
+      if (customerHomeResult.status === "fulfilled") customerHome = customerHomeResult.value;
+      else logDashboardLoadFailure("customer_home_v2", userId, customerHomeResult.reason);
     } catch (error) {
       logDashboardLoadFailure("supabase_bootstrap", userId, error);
     }
@@ -122,5 +110,5 @@ export async function loadCustomerDashboardForUser(userId: string) {
     email.split("@")[0] ||
     "HairFit 사용자";
 
-  return { accountSetupComplete, dashboard, viewerName };
+  return { accountSetupComplete, customerHome, planKey, viewerName };
 }
