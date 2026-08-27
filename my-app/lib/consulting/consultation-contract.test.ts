@@ -402,6 +402,22 @@ test("Cloudflare multi-worker deployment keeps server secrets and pins the exact
   assert.equal(serverConfig.keep_vars, true);
   assert.deepEqual(serverConfig.compatibility_flags, routerConfig.compatibility_flags);
   assert.equal(serverConfig.vars.HAIRFIT_SOURCE_REVISION, "unversioned");
+  for (const splitConfig of [serverConfig, mediaConfig, adminConfig]) {
+    assert.deepEqual(splitConfig.workflows, [
+      {
+        name: "hairfit-generation-workflow",
+        binding: "GENERATION_WORKFLOW",
+        class_name: "GenerationWorkflow",
+        script_name: "hairfit-generation-workflow",
+      },
+      {
+        name: "hairfit-styling-workflow",
+        binding: "STYLING_WORKFLOW",
+        class_name: "StylingWorkflow",
+        script_name: "hairfit-generation-workflow",
+      },
+    ]);
+  }
   assert.deepEqual(serverConfig.services, [
     { binding: "WORKER_SELF_REFERENCE", service: "hairstyleprivew-router" },
     { binding: "REPORT_PDF_WORKER", service: "hairfit-report-pdf" },

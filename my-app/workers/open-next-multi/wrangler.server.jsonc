@@ -31,6 +31,12 @@
       "binding": "GENERATION_WORKFLOW",
       "class_name": "GenerationWorkflow",
       "script_name": "hairfit-generation-workflow"
+    },
+    {
+      "name": "hairfit-styling-workflow",
+      "binding": "STYLING_WORKFLOW",
+      "class_name": "StylingWorkflow",
+      "script_name": "hairfit-generation-workflow"
     }
   ],
   "services": [
