@@ -39,6 +39,9 @@ test("new consulting color capture uses signed binary upload with independent pr
   const client = read("lib/personal-color-capture-client.ts");
   const photo = read("components/consulting/workbenches/PhotoWorkbench.tsx");
   assert.match(client, /uploadToSignedUrl/);
+  assert.match(client, /if \(uploaded\.error && !intent\.idempotentReplay\)/);
+  assert.doesNotMatch(client, /already exists\|duplicate/);
+  assert.ok(client.indexOf("/finalize") > client.indexOf("uploadToSignedUrl"));
   assert.match(client, /crypto\.subtle\.digest\("SHA-256"/);
   assert.doesNotMatch(client, /readAsDataURL|referenceImageDataUrl/);
   assert.match(photo, /uploadPersonalColorCapture/);

@@ -68,7 +68,11 @@ export async function uploadPersonalColorCapture(input: {
     const uploaded = await browserSupabase().storage
       .from(intent.upload.bucket)
       .uploadToSignedUrl(intent.upload.path, intent.upload.token, input.file, { contentType });
-    if (uploaded.error && !(intent.idempotentReplay && /already exists|duplicate/i.test(uploaded.error.message))) {
+    // A previous attempt can upload the object and fail before finalize updates the
+    // database row. On an idempotent replay, let the server-side finalize step
+    // verify the stored object's checksum, size, MIME type, and dimensions instead
+    // of depending on Supabase's human-readable duplicate error message.
+    if (uploaded.error && !intent.idempotentReplay) {
       throw new Error("사진을 private Storage에 업로드하지 못했습니다.");
     }
   }
